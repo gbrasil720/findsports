@@ -1,52 +1,53 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-
-import { useTRPC } from "@/utils/trpc";
+import { Toaster } from "sonner";
+import { DualAudience } from "@/components/landing/dual-audience";
+import { Faq } from "@/components/landing/faq";
+import { Footer } from "@/components/landing/footer";
+import { Hero } from "@/components/landing/hero";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { Nav } from "@/components/landing/navbar";
+import { Ticker } from "@/components/landing/ticker";
+import { WaitlistForm } from "@/components/landing/waitlist-form";
 
 export const Route = createFileRoute("/")({
-  component: HomeComponent,
+	head: () => ({
+		meta: [
+			{ title: "FindSports — Ache o bar que está passando seu jogo" },
+			{
+				name: "description",
+				content:
+					"FindSports conecta torcedores aos bares e pubs que estão transmitindo o jogo que você quer assistir. Entre na lista de espera.",
+			},
+			{
+				property: "og:title",
+				content: "FindSports — Ache o bar que está passando seu jogo",
+			},
+			{
+				property: "og:description",
+				content:
+					"Conecte-se com bares que estão passando o jogo certo. Lista de espera aberta.",
+			},
+			{ property: "og:type", content: "website" },
+			{ name: "twitter:card", content: "summary_large_image" },
+		],
+	}),
+	component: Landing,
 });
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
-
-function HomeComponent() {
-  const trpc = useTRPC();
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
-
-  return (
-    <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <div className="grid gap-6">
-        <section className="rounded-lg border p-4">
-          <h2 className="mb-2 font-medium">API Status</h2>
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-            />
-            <span className="text-muted-foreground text-sm">
-              {healthCheck.isLoading
-                ? "Checking..."
-                : healthCheck.data
-                  ? "Connected"
-                  : "Disconnected"}
-            </span>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
+function Landing() {
+	return (
+		<div className="min-h-screen bg-white font-body text-foreground">
+			<Nav />
+			<Ticker />
+			<main>
+				<Hero />
+				<HowItWorks />
+				<DualAudience />
+				<WaitlistForm />
+				<Faq />
+			</main>
+			<Footer />
+			<Toaster position="top-center" richColors />
+		</div>
+	);
 }
