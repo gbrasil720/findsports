@@ -7,6 +7,12 @@
       "skillPath": "better-auth/best-practices/SKILL.md",
       "computedHash": "9ab075b5061be2a5f299c10505667345cc1ec76e8de4120901cfd586643e776f"
     },
+    "copywriting": {
+      "source": "coreyhaines31/marketingskills",
+      "sourceType": "github",
+      "skillPath": "skills/copywriting/SKILL.md",
+      "computedHash": "20663e361c3b6767e1318de69111b75edc1fb19ded6369cffca677b8bd0c8696"
+    },
     "neon-postgres": {
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
@@ -24,6 +30,12 @@
       "sourceType": "github",
       "skillPath": "skills/turborepo/SKILL.md",
       "computedHash": "0e217b3f6f91a2d5c700777896ba8b2c74aee04814ffce4995b1f170d5fdf84e"
+    },
+    "using-superpowers": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/using-superpowers/SKILL.md",
+      "computedHash": "de10fd3ff46d797acc92b9df6b3ea456a5cd1d095b73c90bc921e83cce4c5bb9"
     },
     "vercel-composition-patterns": {
       "source": "vercel-labs/agent-skills",

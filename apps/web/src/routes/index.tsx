@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { useSmoothScroll } from "@/hooks/use-smooth-scroll";
 import { DualAudience } from "@/components/landing/dual-audience";
 import { Faq } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
@@ -35,8 +36,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+	useSmoothScroll(900);
 	return (
-		<div className="min-h-screen bg-white font-body text-foreground">
+		<div className="min-h-screen overflow-x-hidden bg-white font-body text-foreground">
 			<Nav />
 			<Ticker />
 			<main>

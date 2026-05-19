@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback } from "@findsports_oficial/ui/components/avatar";
 import { Button } from "@findsports_oficial/ui/components/button";
 import {
   DropdownMenu,
@@ -29,9 +30,19 @@ export default function UserMenu() {
     );
   }
 
+  const initials = session.user.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
+      <DropdownMenuTrigger render={<Button variant="outline" className="flex items-center gap-2" />}>
+        <Avatar size="sm">
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
         {session.user.name}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-card">

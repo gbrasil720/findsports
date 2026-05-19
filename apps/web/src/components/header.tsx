@@ -1,3 +1,4 @@
+import { Separator } from "@findsports_oficial/ui/components/separator";
 import { Link } from "@tanstack/react-router";
 
 import UserMenu from "./user-menu";
@@ -24,7 +25,7 @@ export default function Header() {
           <UserMenu />
         </div>
       </div>
-      <hr />
+      <Separator />
     </div>
   );
 }

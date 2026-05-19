@@ -21,7 +21,7 @@ export function DualAudience() {
 				<h2 className="mb-6 font-bold font-heading text-4xl leading-tight md:text-5xl">
 					Barulho de bar é melhor que silêncio de sofá.
 				</h2>
-				<ul className="mb-8 space-y-4 text-base md:text-lg">
+				<ul className="mb-8 flex flex-col gap-4 text-base md:text-lg">
 					<li className="flex items-center gap-3">
 						<Check color="bg-brand-orange" /> Busca por partida específica, não
 						só por esporte
@@ -57,7 +57,7 @@ export function DualAudience() {
 				<h2 className="mb-6 font-bold font-heading text-4xl leading-tight md:text-5xl">
 					Lote suas mesas até nas terças de chuva.
 				</h2>
-				<ul className="mb-8 space-y-4 text-base md:text-lg">
+				<ul className="mb-8 flex flex-col gap-4 text-base md:text-lg">
 					<li className="flex items-center gap-3">
 						<Check color="bg-brand-blue" /> Atraia torcedores do time certo, no
 						jogo certo

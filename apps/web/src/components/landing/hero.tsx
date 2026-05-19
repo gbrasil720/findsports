@@ -1,3 +1,6 @@
+import { Badge } from "@findsports_oficial/ui/components/badge";
+import { Separator } from "@findsports_oficial/ui/components/separator";
+
 import heroBar from "../../../public/hero-bar.jpg";
 
 export function Hero() {
@@ -7,10 +10,12 @@ export function Hero() {
 			className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-16 pb-20 md:px-8 md:pt-20 md:pb-28 lg:grid-cols-[1.05fr_1fr] lg:gap-16"
 		>
 			<div>
-				<span className="mb-6 inline-flex items-center gap-2 rounded-full bg-black px-3 py-1.5 font-bold text-[10px] text-white uppercase tracking-[0.2em]">
+				<Badge
+					className="mb-6 h-auto rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em]"
+				>
 					<span className="size-1.5 animate-pulse rounded-full bg-brand-orange" />
 					Lista de espera aberta
-				</span>
+				</Badge>
 				<h1 className="mb-6 font-bold font-heading text-5xl leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl xl:text-[5.5rem]">
 					NUNCA MAIS PERCA O{" "}
 					<span className="text-brand-orange">APITO INICIAL</span>.
@@ -42,14 +47,14 @@ export function Hero() {
 				<div className="mt-10 flex items-center gap-6 text-xs text-zinc-500">
 					<div>
 						<div className="font-bold font-heading text-2xl text-black">
-							3.420+
+							1.800+
 						</div>
 						<div className="uppercase tracking-widest">torcedores na fila</div>
 					</div>
-					<div className="h-10 w-px bg-zinc-200" />
+					<Separator orientation="vertical" className="h-10" />
 					<div>
 						<div className="font-bold font-heading text-2xl text-black">
-							180+
+							100+
 						</div>
 						<div className="uppercase tracking-widest">bares parceiros</div>
 					</div>
@@ -57,7 +62,7 @@ export function Hero() {
 			</div>
 
 			<div className="relative">
-				<div className="absolute -inset-6 rounded-[3rem] bg-gradient-to-br from-brand-orange/20 via-transparent to-brand-blue/20 blur-2xl" />
+				<div className="absolute inset-x-0 -inset-y-6 rounded-[3rem] bg-gradient-to-br from-brand-orange/20 via-transparent to-brand-blue/20 blur-2xl" />
 				<div className="relative aspect-[4/5] overflow-hidden rounded-3xl shadow-2xl ring-1 ring-black/5">
 					<img
 						src={heroBar}
