@@ -21,14 +21,14 @@ const STEPS = [
 
 export function HowItWorks() {
 	return (
-		<section className="bg-black py-24 text-white md:py-32">
+		<section className="bg-black py-24 text-white md:py-32" aria-labelledby="how-it-works-title">
 			<div className="mx-auto max-w-7xl px-6 md:px-8">
 				<div className="mb-16 text-center md:mb-20">
 					<span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.3em]">
 						Como funciona
 					</span>
-					<h2 className="mt-3 font-bold font-heading text-4xl md:text-5xl lg:text-6xl">
-						Três <span className="text-brand-orange">tempos</span>. Zero
+					<h2 id="how-it-works-title" className="mt-3 font-bold font-heading text-4xl md:text-5xl lg:text-6xl">
+						Três <span className="text-brand-orange">etapas</span>. Zero
 						estresse.
 					</h2>
 				</div>

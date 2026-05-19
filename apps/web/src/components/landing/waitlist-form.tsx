@@ -12,6 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 
+import { formatPhone } from "../../utils/format-phone";
 import { useTRPCClient } from "../../utils/trpc";
 
 const COUNTRIES = [
@@ -35,17 +36,6 @@ const COUNTRIES = [
 	{ code: "IN", name: "Índia", dial: "+91", flag: "🇮🇳" },
 	{ code: "ZA", name: "África do Sul", dial: "+27", flag: "🇿🇦" },
 ] as const;
-
-function formatPhone(digits: string, countryCode: string): string {
-	if (countryCode === "BR") {
-		if (digits.length === 0) return "";
-		if (digits.length <= 2) return `(${digits}`;
-		if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-		if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-		return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-	}
-	return digits;
-}
 
 export function WaitlistForm() {
 	const [role, setRole] = useState<"fan" | "pub">("fan");
@@ -87,25 +77,30 @@ export function WaitlistForm() {
 		<section
 			id="waitlist"
 			className="bg-gradient-to-b from-white to-zinc-50 px-6 py-24 md:px-8 md:py-32"
+			aria-labelledby="waitlist-title"
 		>
 			<div className="mx-auto max-w-2xl">
 				<div className="mb-10 text-center md:mb-12">
 					<span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.3em]">
 						Lista de espera
 					</span>
-					<h2 className="mt-3 mb-4 font-bold font-heading text-4xl md:text-5xl">
+					<h2 id="waitlist-title" className="mt-3 mb-4 font-bold font-heading text-4xl md:text-5xl">
 						ENTRE NO TIME TITULAR.
 					</h2>
 					<p className="text-zinc-600 md:text-lg">
-						Seja avisado em primeira mão quando o FindSports chegar na sua
-						cidade.
+						Mais de 1.800 torcedores já reservaram sua vaga. Acesso antecipado
+						e condições exclusivas para quem entrar agora.
 					</p>
 				</div>
 
 				{success ? (
-					<p className="rounded-xl bg-zinc-100 py-6 text-center font-bold text-zinc-700">
-						Você está na lista! Te avisamos em breve.
-					</p>
+					<div className="rounded-xl bg-zinc-100 py-8 px-6 text-center">
+						<p className="font-bold text-zinc-800 text-lg mb-2">Você está no time!</p>
+						<p className="text-sm text-zinc-500">
+							Compartilhe com torcedores da sua cidade — quanto mais pessoas se
+							inscreverem, mais rápido chegamos até você.
+						</p>
+					</div>
 				) : (
 					<form className="flex flex-col gap-5" noValidate onSubmit={handleSubmit}>
 						<FieldGroup>
@@ -208,7 +203,7 @@ export function WaitlistForm() {
 						</Button>
 
 						<p className="text-center text-xs text-zinc-500">
-							Sem spam. Só te avisamos quando rolar.
+							Mais de 1.800 torcedores já na fila · Sem spam · Um e-mail no lançamento
 						</p>
 					</form>
 				)}

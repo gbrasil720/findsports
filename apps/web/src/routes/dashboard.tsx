@@ -5,8 +5,14 @@ import { getUser } from "@/functions/get-user";
 import { useTRPC } from "@/utils/trpc";
 
 export const Route = createFileRoute("/dashboard")({
-  component: RouteComponent,
-  beforeLoad: async () => {
+	head: () => ({
+		meta: [
+			{ title: "Dashboard — FindSports" },
+			{ name: "robots", content: "noindex, nofollow" },
+		],
+	}),
+	component: RouteComponent,
+	beforeLoad: async () => {
     const session = await getUser();
     return { session };
   },

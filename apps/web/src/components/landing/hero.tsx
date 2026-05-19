@@ -29,7 +29,7 @@ export function Hero() {
 						href="#waitlist"
 						className="group rounded-full bg-brand-orange px-7 py-4 font-bold text-base text-white shadow-[0_10px_30px_-10px_rgba(255,90,31,0.5)] transition-transform hover:scale-[1.03] md:text-lg"
 					>
-						Quero achar meu jogo
+						Garantir acesso antecipado
 						<span className="ml-2 inline-block transition-transform group-hover:translate-x-1">
 							→
 						</span>

@@ -1,0 +1,1 @@
+- [FindSports SEO State](project_findsports_seo.md) — SEO audit done 2026-05-19; all code fixes applied; 3 image assets still needed manually

@@ -12,7 +12,7 @@ const ITEMS = [
 	},
 	{
 		q: "Quando vocês lançam?",
-		a: "Estamos em pré-lançamento. Quem entra na lista de espera recebe acesso antecipado nas primeiras cidades.",
+		a: "Estamos em fase de pré-lançamento com chegada prevista em breve nas principais capitais. Quem se inscrever agora recebe acesso prioritário e garante as condições exclusivas da fase inicial.",
 	},
 	{
 		q: "Como vocês garantem que o jogo está mesmo passando no bar?",
@@ -30,13 +30,13 @@ const ITEMS = [
 
 export function Faq() {
 	return (
-		<section className="bg-zinc-50 py-24 md:py-32">
+		<section className="bg-zinc-50 py-24 md:py-32" aria-labelledby="faq-title">
 			<div className="mx-auto max-w-3xl px-6 md:px-8">
 				<div className="mb-12 text-center">
 					<span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.3em]">
 						Dúvidas frequentes
 					</span>
-					<h2 className="mt-3 font-bold font-heading text-4xl md:text-5xl">
+					<h2 id="faq-title" className="mt-3 font-bold font-heading text-4xl md:text-5xl">
 						PERGUNTAS?
 					</h2>
 				</div>
