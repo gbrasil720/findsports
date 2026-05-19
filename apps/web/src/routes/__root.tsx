@@ -1,4 +1,4 @@
-import type { AppRouter } from "@findsports_oficial/api/routers/index";
+﻿import type { AppRouter } from "@findsports_oficial/api/routers/index";
 import { Toaster } from "@findsports_oficial/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -67,8 +67,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 		],
 		links: [
 			{ rel: "stylesheet", href: appCss },
-			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
-			{ rel: "icon", type: "image/png", href: "/findsports-logo.png" },
+			{ rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
 			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 			{ rel: "preconnect", href: "https://fonts.googleapis.com" },
 			{
