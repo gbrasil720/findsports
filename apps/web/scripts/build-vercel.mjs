@@ -4,12 +4,14 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(__dirname, "..");
-// scripts/ → apps/web/ → apps/ → repo root
-const repoRoot = resolve(__dirname, "../../..");
 
 const distServer = resolve(webRoot, "dist/server");
 const distClient = resolve(webRoot, "dist/client");
-const vercelOut = resolve(repoRoot, ".vercel/output");
+
+// Output relative to cwd (= Vercel's root directory).
+// When Vercel root = apps/web  → cwd = apps/web  → apps/web/.vercel/output ✓
+// When Vercel root = repo root → cwd = repo root → .vercel/output ✓
+const vercelOut = resolve(process.cwd(), ".vercel/output");
 const funcDir = resolve(vercelOut, "functions/ssr.func");
 
 if (!existsSync(distServer)) {
@@ -18,8 +20,8 @@ if (!existsSync(distServer)) {
 }
 
 console.log("Creating Vercel Build Output...");
-console.log("  repo root:", repoRoot);
-console.log("  output:   ", vercelOut);
+console.log("  cwd:    ", process.cwd());
+console.log("  output: ", vercelOut);
 
 // Clean previous output and create structure
 rmSync(vercelOut, { recursive: true, force: true });

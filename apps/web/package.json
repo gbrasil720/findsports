@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:vercel": "vite build && bun scripts/build-vercel.mjs",
     "serve": "vite preview",
     "dev": "vite dev"
   },
