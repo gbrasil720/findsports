@@ -23,8 +23,8 @@ const ITEMS = [
 		a: "O cadastro para bares parceiros é gratuito. Os detalhes do modelo comercial serão divulgados antes do lançamento — quem está na lista de espera é o primeiro a ser informado.",
 	},
 	{
-		q: "Em quais cidades vocês começam?",
-		a: "Nas capitais com maior demanda registrada na lista de espera. Cada inscrição da sua cidade conta: quanto mais torcedores e bares se cadastrarem, mais rápido o FindSports chega até você.",
+		q: "O FindSports vai chegar na minha cidade?",
+		a: "Sim. O FindSports expande para qualquer cidade com demanda suficiente — não só capitais. Cada inscrição na lista de espera conta: quanto mais torcedores e bares da sua cidade se cadastrarem, mais rápido chegamos até você.",
 	},
 ];
 
@@ -36,7 +36,10 @@ export function Faq() {
 					<span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.3em]">
 						Dúvidas frequentes
 					</span>
-					<h2 id="faq-title" className="mt-3 font-bold font-heading text-4xl md:text-5xl">
+					<h2
+						id="faq-title"
+						className="mt-3 font-bold font-heading text-4xl md:text-5xl"
+					>
 						PERGUNTAS?
 					</h2>
 				</div>
@@ -47,7 +50,7 @@ export function Faq() {
 							value={item.q}
 							className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
 						>
-							<AccordionTrigger className="p-6 text-sm font-bold hover:no-underline">
+							<AccordionTrigger className="cursor-pointer p-6 font-bold text-sm hover:no-underline">
 								{item.q}
 							</AccordionTrigger>
 							<AccordionContent className="px-6 pb-6 text-zinc-600 leading-relaxed">

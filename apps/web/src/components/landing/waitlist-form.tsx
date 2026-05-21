@@ -1,8 +1,3 @@
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupInput,
-} from "@findsports_oficial/ui/components/input-group";
 import { Button } from "@findsports_oficial/ui/components/button";
 import {
 	DropdownMenu,
@@ -10,18 +5,30 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@findsports_oficial/ui/components/dropdown-menu";
-import { Field, FieldGroup, FieldLabel } from "@findsports_oficial/ui/components/field";
-import { ToggleGroup, ToggleGroupItem } from "@findsports_oficial/ui/components/toggle-group";
-import { HugeiconsIcon } from "@hugeicons/react";
 import {
+	Field,
+	FieldGroup,
+	FieldLabel,
+} from "@findsports_oficial/ui/components/field";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from "@findsports_oficial/ui/components/input-group";
+import {
+	ToggleGroup,
+	ToggleGroupItem,
+} from "@findsports_oficial/ui/components/toggle-group";
+import {
+	ArrowDown01Icon,
 	Location01Icon,
 	Mail01Icon,
 	SmartPhone01Icon,
 	Store01Icon,
 	User02Icon,
 } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useMutation } from "@tanstack/react-query";
-import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 
 import { formatPhone } from "../../utils/format-phone";
@@ -88,12 +95,18 @@ export function WaitlistForm() {
 		setErrorMsg(null);
 
 		const form = e.currentTarget;
-		const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-		const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+		const name = (
+			form.elements.namedItem("name") as HTMLInputElement
+		).value.trim();
+		const email = (
+			form.elements.namedItem("email") as HTMLInputElement
+		).value.trim();
 
 		if (!name || !email) return;
 
-		const phone = phoneDigits ? `${selectedCountry.dial}${phoneDigits}` : undefined;
+		const phone = phoneDigits
+			? `${selectedCountry.dial}${phoneDigits}`
+			: undefined;
 
 		mutate({
 			name,
@@ -101,7 +114,10 @@ export function WaitlistForm() {
 			role,
 			phone,
 			...(role === "pub"
-				? { pubName: pubName.trim() || undefined, bairro: bairro.trim() || undefined }
+				? {
+						pubName: pubName.trim() || undefined,
+						bairro: bairro.trim() || undefined,
+					}
 				: {}),
 		});
 	}
@@ -117,25 +133,34 @@ export function WaitlistForm() {
 					<span className="font-mono text-[10px] text-zinc-500 uppercase tracking-[0.3em]">
 						Lista de espera
 					</span>
-					<h2 id="waitlist-title" className="mt-3 mb-4 font-bold font-heading text-4xl md:text-5xl">
+					<h2
+						id="waitlist-title"
+						className="mt-3 mb-4 font-bold font-heading text-4xl md:text-5xl"
+					>
 						ENTRE NO TIME TITULAR.
 					</h2>
 					<p className="text-zinc-600 md:text-lg">
-						Mais de 1.800 torcedores já reservaram sua vaga. Acesso antecipado
-						e condições exclusivas para quem entrar agora.
+						Mais de 1.800 torcedores já reservaram sua vaga. Acesso antecipado e
+						condições exclusivas para quem entrar agora.
 					</p>
 				</div>
 
 				{success ? (
-					<div className="rounded-xl bg-zinc-100 py-8 px-6 text-center">
-						<p className="font-bold text-zinc-800 text-lg mb-2">Você está no time!</p>
+					<div className="rounded-xl bg-zinc-100 px-6 py-8 text-center">
+						<p className="mb-2 font-bold text-lg text-zinc-800">
+							Você está no time!
+						</p>
 						<p className="text-sm text-zinc-500">
 							Compartilhe com torcedores da sua cidade — quanto mais pessoas se
 							inscreverem, mais rápido chegamos até você.
 						</p>
 					</div>
 				) : (
-					<form className="flex flex-col gap-5" noValidate onSubmit={handleSubmit}>
+					<form
+						className="flex flex-col gap-5"
+						noValidate
+						onSubmit={handleSubmit}
+					>
 						<FieldGroup>
 							<div className="grid gap-4 md:grid-cols-2">
 								<Field>
@@ -191,19 +216,20 @@ export function WaitlistForm() {
 							<FieldLabel className="sr-only">Telefone (opcional)</FieldLabel>
 							<div className="flex overflow-hidden rounded-xl border-2 border-zinc-200 bg-white transition-colors focus-within:border-brand-orange">
 								<DropdownMenu>
-									<DropdownMenuTrigger className="flex shrink-0 cursor-pointer items-center gap-1.5 border-r-2 border-zinc-200 bg-zinc-50 px-4 py-4 text-sm font-medium transition-colors hover:bg-zinc-100 focus:outline-none">
+									<DropdownMenuTrigger className="flex shrink-0 cursor-pointer items-center gap-1.5 border-zinc-200 border-r-2 bg-zinc-50 px-4 py-4 font-medium text-sm transition-colors hover:bg-zinc-100 focus:outline-none">
+										<span>{selectedCountry.flag}</span>
+										<span className="text-zinc-600">
+											{selectedCountry.dial}
+										</span>
 										<HugeiconsIcon
-											icon={SmartPhone01Icon}
-											size={14}
+											icon={ArrowDown01Icon}
+											size={12}
 											color="currentColor"
-											strokeWidth={1.5}
+											strokeWidth={2}
 											className="text-zinc-400"
 										/>
-										<span>{selectedCountry.flag}</span>
-										<span className="text-zinc-600">{selectedCountry.dial}</span>
-										<ChevronDownIcon className="size-3 text-zinc-400" />
 									</DropdownMenuTrigger>
-									<DropdownMenuContent className="w-72 max-h-60">
+									<DropdownMenuContent className="max-h-60 w-72">
 										{COUNTRIES.map((country) => (
 											<DropdownMenuItem
 												key={country.code}
@@ -224,7 +250,9 @@ export function WaitlistForm() {
 									value={formatPhone(phoneDigits, selectedCountry.code)}
 									onChange={(e) => {
 										const max = selectedCountry.code === "BR" ? 11 : 15;
-										setPhoneDigits(e.target.value.replace(/\D/g, "").slice(0, max));
+										setPhoneDigits(
+											e.target.value.replace(/\D/g, "").slice(0, max),
+										);
 									}}
 									className="min-w-0 flex-1 bg-transparent px-4 py-4 text-sm outline-none placeholder:text-zinc-400"
 								/>
@@ -234,19 +262,20 @@ export function WaitlistForm() {
 						<ToggleGroup
 							value={[role]}
 							onValueChange={(values) => {
-								if (values.length > 0) setRole(values[values.length - 1] as "fan" | "pub");
+								if (values.length > 0)
+									setRole(values[values.length - 1] as "fan" | "pub");
 							}}
 							className="relative grid w-full grid-cols-2 rounded-xl bg-zinc-100 p-1"
 						>
 							<ToggleGroupItem
 								value="fan"
-								className="relative rounded-lg px-4 py-3 font-bold text-sm uppercase tracking-wider text-zinc-500 transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-orange aria-pressed:shadow-sm"
+								className="relative cursor-pointer rounded-lg px-4 py-3 font-bold text-sm text-zinc-500 uppercase tracking-wider transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-orange aria-pressed:shadow-sm"
 							>
 								Sou Torcedor
 							</ToggleGroupItem>
 							<ToggleGroupItem
 								value="pub"
-								className="relative rounded-lg px-4 py-3 font-bold text-sm uppercase tracking-wider text-zinc-500 transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-blue aria-pressed:shadow-sm"
+								className="relative cursor-pointer rounded-lg px-4 py-3 font-bold text-sm text-zinc-500 uppercase tracking-wider transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-blue aria-pressed:shadow-sm"
 							>
 								Tenho um Bar
 							</ToggleGroupItem>
@@ -306,19 +335,20 @@ export function WaitlistForm() {
 						)}
 
 						{errorMsg && (
-							<p className="text-center text-sm text-red-500">{errorMsg}</p>
+							<p className="text-center text-red-500 text-sm">{errorMsg}</p>
 						)}
 
 						<Button
 							type="submit"
 							disabled={isPending}
-							className="w-full rounded-xl bg-black py-5 font-bold text-sm text-white uppercase tracking-[0.2em] transition-colors hover:bg-brand-orange disabled:cursor-not-allowed disabled:opacity-60"
+							className="w-full cursor-pointer rounded-xl bg-black py-5 font-bold text-sm text-white uppercase tracking-[0.2em] ring-offset-white transition-all duration-300 hover:bg-brand-orange hover:ring-4 hover:ring-brand-orange/50 hover:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-black disabled:hover:ring-0"
 						>
 							{isPending ? "Aguarde..." : "Garantir acesso antecipado"}
 						</Button>
 
 						<p className="text-center text-xs text-zinc-500">
-							Mais de 1.800 torcedores já na fila · Sem spam · Um e-mail no lançamento
+							Mais de 1.800 torcedores já na fila · Sem spam · Um e-mail no
+							lançamento
 						</p>
 					</form>
 				)}

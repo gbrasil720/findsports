@@ -10,9 +10,7 @@ export function Hero() {
 			className="mx-auto grid max-w-7xl items-center gap-12 px-6 pt-16 pb-20 md:px-8 md:pt-20 md:pb-28 lg:grid-cols-[1.05fr_1fr] lg:gap-16"
 		>
 			<div>
-				<Badge
-					className="mb-6 h-auto rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em]"
-				>
+				<Badge className="mb-6 h-auto rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em]">
 					<span className="size-1.5 animate-pulse rounded-full bg-brand-orange" />
 					Lista de espera aberta
 				</Badge>
@@ -78,7 +76,7 @@ export function Hero() {
 								● AO VIVO AGORA
 							</div>
 							<div className="font-bold font-heading text-lg leading-tight">
-								Flamengo 2 × 1 Palmeiras
+								Flamengo 2 × 2 Palmeiras
 							</div>
 							<div className="text-white/70 text-xs">Bar do Zé • 1,2 km</div>
 						</div>
