@@ -10,5 +10,7 @@ export const waitlistEntries = pgTable("waitlist_entries", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   role: waitlistRoleEnum("role").notNull(),
+  pubName: text("pub_name").notNull().default("N/A"),
+  bairro: text("bairro").notNull().default("N/A"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

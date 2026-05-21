@@ -7,24 +7,24 @@ import {
 
 const ITEMS = [
 	{
-		q: "O FindSports é gratuito pra torcedor?",
-		a: "Sim, 100% gratuito. Você só precisa do app pra achar o bar e o jogo certos.",
+		q: "O FindSports é gratuito para torcedores?",
+		a: "Sim, totalmente gratuito. Para encontrar o bar certo, confirmar as transmissões e curtir o jogo com quem também entende de futebol, você não paga nada.",
 	},
 	{
-		q: "Quando vocês lançam?",
-		a: "Estamos em fase de pré-lançamento com chegada prevista em breve nas principais capitais. Quem se inscrever agora recebe acesso prioritário e garante as condições exclusivas da fase inicial.",
+		q: "Quando o FindSports será lançado?",
+		a: "O FindSports está em desenvolvimento ativo. Os inscritos na lista de espera recebem acesso prioritário e serão os primeiros notificados quando o lançamento se aproximar.",
 	},
 	{
-		q: "Como vocês garantem que o jogo está mesmo passando no bar?",
-		a: "Os bares cadastram e atualizam sua própria grade em tempo real. A comunidade também ajuda a confirmar transmissões e manter o catálogo preciso.",
+		q: "Como garantir que o jogo realmente está passando no bar?",
+		a: "Os bares cadastrados mantêm sua grade de transmissões atualizada em tempo real. A própria comunidade de torcedores também confirma as exibições — criando um catálogo preciso, coletivo e confiável.",
 	},
 	{
-		q: "Sou dono de bar. Quanto custa?",
-		a: "Durante a fase inicial é grátis pros bares parceiros. Quem entra agora trava condições especiais no lançamento.",
+		q: "Sou dono de bar. Qual é o custo?",
+		a: "O cadastro para bares parceiros é gratuito. Os detalhes do modelo comercial serão divulgados antes do lançamento — quem está na lista de espera é o primeiro a ser informado.",
 	},
 	{
 		q: "Em quais cidades vocês começam?",
-		a: "Começamos pelas capitais com maior demanda da lista de espera. Quanto mais gente da sua cidade se inscrever, mais cedo chegamos aí.",
+		a: "Nas capitais com maior demanda registrada na lista de espera. Cada inscrição da sua cidade conta: quanto mais torcedores e bares se cadastrarem, mais rápido o FindSports chega até você.",
 	},
 ];
 

@@ -12,13 +12,21 @@ export const waitlistRouter = router({
         email: z.string().email().max(255),
         phone: z.string().max(30).optional(),
         role: z.enum(["fan", "pub"]),
+        pubName: z.string().max(100).optional(),
+        bairro: z.string().max(100).optional(),
       }),
     )
     .mutation(async ({ input }) => {
+      const { pubName, bairro, ...rest } = input;
+      const values = {
+        ...rest,
+        pubName: input.role === "pub" && pubName ? pubName : "N/A",
+        bairro: input.role === "pub" && bairro ? bairro : "N/A",
+      };
       try {
         const [entry] = await db
           .insert(waitlistEntries)
-          .values(input)
+          .values(values)
           .returning({ id: waitlistEntries.id });
 
         return { id: entry!.id };
