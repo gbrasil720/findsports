@@ -3,7 +3,7 @@ import { useEffect } from "react";
 const NAV_OFFSET = 80;
 
 function easeInOutCubic(t: number): number {
-	return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+	return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
 function animateScroll(targetY: number, duration: number) {

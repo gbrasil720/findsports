@@ -5,46 +5,46 @@ import { z } from "zod";
 import { publicProcedure, router } from "../index";
 
 export const waitlistRouter = router({
-  join: publicProcedure
-    .input(
-      z.object({
-        name: z.string().min(2).max(100),
-        email: z.string().email().max(255),
-        phone: z.string().max(30).optional(),
-        role: z.enum(["fan", "pub"]),
-        pubName: z.string().max(100).optional(),
-        bairro: z.string().max(100).optional(),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      const { pubName, bairro, ...rest } = input;
-      const values = {
-        ...rest,
-        pubName: input.role === "pub" && pubName ? pubName : "N/A",
-        bairro: input.role === "pub" && bairro ? bairro : "N/A",
-      };
-      try {
-        const [entry] = await db
-          .insert(waitlistEntries)
-          .values(values)
-          .returning({ id: waitlistEntries.id });
+	join: publicProcedure
+		.input(
+			z.object({
+				name: z.string().min(2).max(100),
+				email: z.string().email().max(255),
+				phone: z.string().max(30).optional(),
+				role: z.enum(["fan", "pub"]),
+				pubName: z.string().max(100).optional(),
+				bairro: z.string().max(100).optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			const { pubName, bairro, ...rest } = input;
+			const values = {
+				...rest,
+				pubName: input.role === "pub" && pubName ? pubName : "N/A",
+				bairro: input.role === "pub" && bairro ? bairro : "N/A",
+			};
+			try {
+				const [entry] = await db
+					.insert(waitlistEntries)
+					.values(values)
+					.returning({ id: waitlistEntries.id });
 
-        return { id: entry!.id };
-      } catch (err: unknown) {
-        const isDuplicateEmail =
-          err instanceof Error && err.message.includes("unique");
+				return { id: entry!.id };
+			} catch (err: unknown) {
+				const isDuplicateEmail =
+					err instanceof Error && err.message.includes("unique");
 
-        if (isDuplicateEmail) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Email já cadastrado na lista de espera.",
-          });
-        }
+				if (isDuplicateEmail) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message: "Email já cadastrado na lista de espera.",
+					});
+				}
 
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Erro ao cadastrar. Tente novamente.",
-        });
-      }
-    }),
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Erro ao cadastrar. Tente novamente.",
+				});
+			}
+		}),
 });

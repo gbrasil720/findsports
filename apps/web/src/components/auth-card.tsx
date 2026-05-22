@@ -18,7 +18,9 @@ export function AuthCard({
 	return (
 		<Card className="mx-auto mt-10 w-full max-w-md rounded-xl">
 			<CardHeader>
-				<CardTitle className="text-center text-3xl font-bold">{title}</CardTitle>
+				<CardTitle className="text-center font-bold text-3xl">
+					{title}
+				</CardTitle>
 			</CardHeader>
 			<CardContent>{children}</CardContent>
 			<CardFooter className="justify-center">{footer}</CardFooter>

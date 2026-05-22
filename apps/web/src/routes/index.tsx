@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Toaster } from "sonner";
-import { useSmoothScroll } from "@/hooks/use-smooth-scroll";
 import { DualAudience } from "@/components/landing/dual-audience";
 import { Faq } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
@@ -9,6 +8,7 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { Nav } from "@/components/landing/navbar";
 import { Ticker } from "@/components/landing/ticker";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
+import { useSmoothScroll } from "@/hooks/use-smooth-scroll";
 
 const HOMEPAGE_SCHEMA = {
 	"@context": "https://schema.org",
@@ -77,9 +77,7 @@ export const Route = createFileRoute("/")({
 				content: "https://findsports.com.br/og-image.png",
 			},
 		],
-		links: [
-			{ rel: "canonical", href: "https://findsports.com.br/" },
-		],
+		links: [{ rel: "canonical", href: "https://findsports.com.br/" }],
 	}),
 	component: Landing,
 });

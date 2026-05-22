@@ -1,24 +1,24 @@
 {
-  "name": "@findsports_oficial/auth",
-  "type": "module",
-  "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    },
-    "./*": {
-      "default": "./src/*.ts"
-    }
-  },
-  "scripts": {},
-  "dependencies": {
-    "@findsports_oficial/db": "workspace:*",
-    "@findsports_oficial/env": "workspace:*",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@findsports_oficial/config": "workspace:*",
-    "typescript": "catalog:"
-  }
+	"name": "@findsports_oficial/auth",
+	"type": "module",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		},
+		"./*": {
+			"default": "./src/*.ts"
+		}
+	},
+	"scripts": {},
+	"dependencies": {
+		"@findsports_oficial/db": "workspace:*",
+		"@findsports_oficial/env": "workspace:*",
+		"better-auth": "catalog:",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@findsports_oficial/config": "workspace:*",
+		"typescript": "catalog:"
+	}
 }
