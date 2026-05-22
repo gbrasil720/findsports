@@ -1,4 +1,4 @@
-﻿import type { AppRouter } from "@findsports_oficial/api/routers/index";
+import type { AppRouter } from "@findsports_oficial/api/routers/index";
 import { Toaster } from "@findsports_oficial/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../index.css?url";
 export interface RouterAppContext {
@@ -81,8 +82,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 			},
 		],
 	}),
-  shellComponent: RootShell,
-  component: RootDocument,
+	shellComponent: RootShell,
+	component: RootDocument,
 });
 
 function RootDocument() {
@@ -98,6 +99,7 @@ function RootDocument() {
 				<Toaster richColors />
 				<TanStackRouterDevtools position="bottom-left" />
 				<ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+				<Analytics />
 				<Scripts />
 			</body>
 		</html>
@@ -105,15 +107,15 @@ function RootDocument() {
 }
 
 function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt-BR">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
+	return (
+		<html lang="pt-BR">
+			<head>
+				<HeadContent />
+			</head>
+			<body>
+				{children}
+				<Scripts />
+			</body>
+		</html>
+	);
 }

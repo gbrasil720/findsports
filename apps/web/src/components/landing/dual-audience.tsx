@@ -36,7 +36,9 @@ function AudiencePanel({
 			id={id}
 			className={`flex flex-col justify-center p-10 md:p-16 lg:p-20 ${className}`}
 		>
-			<span className={`mb-4 font-bold text-xs uppercase tracking-[0.25em] ${overlineColor}`}>
+			<span
+				className={`mb-4 font-bold text-xs uppercase tracking-[0.25em] ${overlineColor}`}
+			>
 				{overline}
 			</span>
 			<h2 className="mb-6 font-bold font-heading text-4xl leading-tight md:text-5xl">
@@ -61,7 +63,10 @@ function AudiencePanel({
 
 export function DualAudience() {
 	return (
-		<section className="grid md:grid-cols-2" aria-label="Para torcedores e bares">
+		<section
+			className="grid md:grid-cols-2"
+			aria-label="Para torcedores e bares"
+		>
 			<AudiencePanel
 				id="torcedores"
 				className="border-black/5 border-b bg-brand-orange/5 md:border-r md:border-b-0"

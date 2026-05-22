@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const BASE_URL = "https://findsports.com.br";
 
-const PUBLIC_ROUTES = [
-	{ path: "/", priority: "1.0", changefreq: "weekly" },
-];
+const PUBLIC_ROUTES = [{ path: "/", priority: "1.0", changefreq: "weekly" }];
 
 function buildSitemap(): string {
 	const now = new Date().toISOString().split("T")[0];
