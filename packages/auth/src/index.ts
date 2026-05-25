@@ -18,6 +18,16 @@ export function createAuth() {
 		emailAndPassword: {
 			enabled: true,
 		},
+		user: {
+			additionalFields: {
+				role: {
+					type: "string",
+					required: true,
+					defaultValue: "fan",
+					input: true,
+				},
+			},
+		},
 		secret: env.BETTER_AUTH_SECRET,
 		baseURL: env.BETTER_AUTH_URL,
 		plugins: [tanstackStartCookies()],
