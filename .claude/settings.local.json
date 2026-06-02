@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat\\(auth\\): add role as additionalField in better-auth user config *)",
+      "Bash(git commit -m 'feat\\(api\\): add waitlist.getAll protected procedure for admin access *)"
+    ]
+  }
+}
