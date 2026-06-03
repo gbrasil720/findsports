@@ -29,6 +29,20 @@
       "when": 1779725892297,
       "tag": "0004_motionless_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780448810210,
+      "tag": "0005_pretty_the_hunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780531060339,
+      "tag": "0006_cool_titanium_man",
+      "breakpoints": true
     }
   ]
 }
