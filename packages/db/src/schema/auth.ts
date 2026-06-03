@@ -10,6 +10,7 @@ export const user = pgTable('user', {
   role: text('role', { enum: ['fan', 'pub', 'admin'] })
     .notNull()
     .default('fan'),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

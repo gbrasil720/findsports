@@ -13,7 +13,8 @@
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:studio": "drizzle-kit studio",
-		"db:migrate": "drizzle-kit migrate"
+		"db:migrate": "drizzle-kit migrate",
+		"db:seed:sports": "bun --env-file=../../apps/web/.env run src/seed/sports.ts"
 	},
 	"dependencies": {
 		"@findsports_oficial/env": "workspace:*",
