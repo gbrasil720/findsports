@@ -32,6 +32,12 @@ export function createAuth() {
         required: false,
         defaultValue: false,
         input: false
+      },
+      searchRadiusKm: {
+        type: 'number',
+        required: false,
+        defaultValue: 3,
+        input: false
       }
     },
     secret: env.BETTER_AUTH_SECRET,
