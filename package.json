@@ -30,6 +30,7 @@
 		"db:generate": "turbo -F @findsports_oficial/db db:generate",
 		"db:migrate": "turbo -F @findsports_oficial/db db:migrate",
 		"db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
+		"db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
 		"check": "biome check --write ."
 	},
 	"dependencies": {
@@ -43,6 +44,9 @@
 		"@types/node": "catalog:",
 		"turbo": "^2.8.12",
 		"typescript": "catalog:"
+	},
+	"overrides": {
+		"drizzle-orm": "0.45.2"
 	},
 	"packageManager": "bun@1.3.1"
 }

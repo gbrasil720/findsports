@@ -25,19 +25,19 @@ export function createAuth() {
           required: true,
           defaultValue: 'fan',
           input: true
+        },
+        onboardingCompleted: {
+          type: 'boolean',
+          required: false,
+          defaultValue: false,
+          input: false
+        },
+        searchRadiusKm: {
+          type: 'number',
+          required: false,
+          defaultValue: 3,
+          input: false
         }
-      },
-      onboardingCompleted: {
-        type: 'boolean',
-        required: false,
-        defaultValue: false,
-        input: false
-      },
-      searchRadiusKm: {
-        type: 'number',
-        required: false,
-        defaultValue: 3,
-        input: false
       }
     },
     secret: env.BETTER_AUTH_SECRET,

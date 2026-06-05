@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "findsports_oficial",
@@ -148,6 +147,9 @@
         "typescript": "catalog:",
       },
     },
+  },
+  "overrides": {
+    "drizzle-orm": "0.45.2",
   },
   "catalog": {
     "@trpc/client": "^11.16.0",
