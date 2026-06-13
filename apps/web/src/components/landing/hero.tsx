@@ -14,7 +14,7 @@ export function Hero() {
           <span className="size-1.5 animate-pulse rounded-full bg-brand-orange" />
           Lista de espera aberta
         </Badge>
-        <h1 className="mb-6 font-bold font-heading text-5xl leading-[0.92] tracking-tight sm:text-6xl lg:text-7xl xl:text-[5.5rem]">
+        <h1 className="mb-6 font-bold font-heading text-[2.5rem] leading-[0.92] tracking-tight sm:text-5xl lg:text-7xl xl:text-[5.5rem]">
           NUNCA MAIS PERCA O{' '}
           <span className="text-brand-orange">APITO INICIAL</span>.
         </h1>

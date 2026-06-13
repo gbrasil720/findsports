@@ -1,3 +1,3 @@
 {
-	"extends": "@findsports_oficial/config/tsconfig.base.json"
+  "extends": "@findsports_oficial/config/tsconfig.base.json"
 }

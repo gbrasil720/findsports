@@ -45,7 +45,7 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
     const onboardingRoute =
       session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan'
 
-    if (!pathname.startsWith('/onboarding')) {
+    if (!pathname.startsWith(onboardingRoute)) {
       throw redirect({ to: onboardingRoute })
     }
     return
@@ -53,7 +53,7 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
 
   if (pathname.startsWith('/onboarding')) {
     throw redirect({
-      to: session.user.role === 'pub' ? '/admin' : '/dashboard'
+      to: session.user.role === 'pub' ? '/plan' : '/dashboard'
     })
   }
 

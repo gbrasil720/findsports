@@ -229,7 +229,7 @@ export function WaitlistForm() {
                       className="text-zinc-400"
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 w-72">
+                  <DropdownMenuContent className="max-h-60 w-72 max-w-[calc(100vw-3rem)]">
                     {COUNTRIES.map((country) => (
                       <DropdownMenuItem
                         key={country.code}

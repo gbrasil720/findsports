@@ -15,7 +15,14 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'trialing',
   'active',
   'inactive',
-  'past_due'
+  'past_due',
+  'cancelled'
+])
+
+export const subscriptionPlanEnum = pgEnum('subscription_plan', [
+  'starter',
+  'pro',
+  'elite'
 ])
 
 export const bar = pgTable(
@@ -89,6 +96,7 @@ export const event = pgTable(
       .references(() => sport.id),
     championship: text('championship').notNull(),
     startsAt: timestamp('starts_at').notNull(),
+    endsAt: timestamp('ends_at'),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
@@ -146,6 +154,7 @@ export const subscription = pgTable('subscription', {
     .notNull()
     .unique()
     .references(() => bar.id, { onDelete: 'cascade' }),
+  plan: subscriptionPlanEnum('plan').notNull().default('starter'),
   status: subscriptionStatusEnum('status').notNull().default('trialing'),
   dodoSubscriptionId: text('dodo_subscription_id').unique(),
   currentPeriodEnd: timestamp('current_period_end'),
@@ -156,11 +165,9 @@ export const subscription = pgTable('subscription', {
     .notNull()
 })
 
+// Relations — idênticas ao original
 export const barRelations = relations(bar, ({ one, many }) => ({
-  user: one(user, {
-    fields: [bar.userId],
-    references: [user.id]
-  }),
+  user: one(user, { fields: [bar.userId], references: [user.id] }),
   events: many(event),
   subscription: one(subscription, {
     fields: [bar.id],
@@ -176,22 +183,13 @@ export const sportRelations = relations(sport, ({ many }) => ({
 }))
 
 export const teamRelations = relations(team, ({ one, many }) => ({
-  sport: one(sport, {
-    fields: [team.sportId],
-    references: [sport.id]
-  }),
+  sport: one(sport, { fields: [team.sportId], references: [sport.id] }),
   eventParticipants: many(eventParticipants)
 }))
 
 export const eventRelations = relations(event, ({ one, many }) => ({
-  bar: one(bar, {
-    fields: [event.barId],
-    references: [bar.id]
-  }),
-  sport: one(sport, {
-    fields: [event.sportId],
-    references: [sport.id]
-  }),
+  bar: one(bar, { fields: [event.barId], references: [bar.id] }),
+  sport: one(sport, { fields: [event.sportId], references: [sport.id] }),
   participants: many(eventParticipants)
 }))
 
@@ -230,16 +228,10 @@ export const userFavoriteBarsRelations = relations(
       fields: [userFavoriteBars.userId],
       references: [user.id]
     }),
-    bar: one(bar, {
-      fields: [userFavoriteBars.barId],
-      references: [bar.id]
-    })
+    bar: one(bar, { fields: [userFavoriteBars.barId], references: [bar.id] })
   })
 )
 
 export const subscriptionRelations = relations(subscription, ({ one }) => ({
-  bar: one(bar, {
-    fields: [subscription.barId],
-    references: [bar.id]
-  })
+  bar: one(bar, { fields: [subscription.barId], references: [bar.id] })
 }))

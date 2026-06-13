@@ -67,7 +67,7 @@ function SignupPage() {
         return
       }
       toast.success('Conta criada! Bem-vindo ao time.')
-      navigate({ to: '/' })
+      navigate({ to: '/dashboard' })
     }
   })
 

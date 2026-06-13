@@ -31,12 +31,18 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter
+} from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/landing/logo'
 import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
+import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin/waitlist')({
@@ -392,7 +398,7 @@ function AdminWaitlistPage() {
                         {s.email}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {s.phone ?? '—'}
+                        {s.phone ? formatStoredPhone(s.phone) : '—'}
                       </TableCell>
                       <TableCell>
                         <Badge

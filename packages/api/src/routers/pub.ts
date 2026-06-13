@@ -1,8 +1,9 @@
-import { db, eq } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
   event,
-  eventParticipants
+  eventParticipants,
+  subscription
 } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -10,9 +11,12 @@ import { z } from 'zod'
 import { protectedProcedure, router } from '../index'
 import { geocodeAddress } from '../lib/geocode-address'
 
+const STARTER_EVENT_LIMIT = 5
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
-    where: eq(bar.userId, userId)
+    where: eq(bar.userId, userId),
+    with: { subscription: true }
   })
 
   if (!result) {
@@ -23,6 +27,31 @@ async function getBarByUserId(userId: string) {
   }
 
   return result
+}
+
+// Conta eventos criados no período de billing atual
+async function countEventsInCurrentPeriod(
+  barId: string,
+  currentPeriodEnd: Date | null
+): Promise<number> {
+  // Calcula o início do período subtraindo 1 mês do currentPeriodEnd
+  const periodStart = currentPeriodEnd ? new Date(currentPeriodEnd) : new Date()
+
+  if (currentPeriodEnd) {
+    periodStart.setMonth(periodStart.getMonth() - 1)
+  } else {
+    // Fallback: últimos 30 dias
+    periodStart.setDate(periodStart.getDate() - 30)
+  }
+
+  const result = await db.execute(sql`
+    SELECT COUNT(*) as count
+    FROM event
+    WHERE bar_id = ${barId}
+    AND created_at >= ${periodStart.toISOString()}
+  `)
+
+  return Number((result.rows[0] as any)?.count ?? 0)
 }
 
 export const pubRouter = router({
@@ -64,7 +93,6 @@ export const pubRouter = router({
       const existingBar = await getBarByUserId(userId)
 
       let coordinates: { latitude: string; longitude: string } | undefined
-
       const addressChanged = input.address || input.neighborhood || input.city
 
       if (addressChanged) {
@@ -120,9 +148,7 @@ export const pubRouter = router({
       with: {
         sport: true,
         participants: {
-          with: {
-            team: true
-          }
+          with: { team: true }
         }
       },
       orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -135,6 +161,7 @@ export const pubRouter = router({
         sportId: z.string().uuid(),
         championship: z.string().min(2).max(150),
         startsAt: z.string().datetime(),
+        endsAt: z.string().datetime().optional(),
         participantIds: z.array(z.string().uuid()).optional()
       })
     )
@@ -148,6 +175,18 @@ export const pubRouter = router({
         })
       }
 
+      if (input.endsAt) {
+        const starts = new Date(input.startsAt)
+        const ends = new Date(input.endsAt)
+        if (ends <= starts) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'O horário de término deve ser posterior ao horário de início.'
+          })
+        }
+      }
+
       const existingBar = await getBarByUserId(userId)
 
       if (!existingBar.isActive) {
@@ -158,6 +197,21 @@ export const pubRouter = router({
         })
       }
 
+      // Verifica limite do plano Starter
+      const plan = existingBar.subscription?.plan ?? 'starter'
+      if (plan === 'starter') {
+        const count = await countEventsInCurrentPeriod(
+          existingBar.id,
+          existingBar.subscription?.currentPeriodEnd ?? null
+        )
+        if (count >= STARTER_EVENT_LIMIT) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
+          })
+        }
+      }
+
       await db.transaction(async (tx) => {
         const [newEvent] = await tx
           .insert(event)
@@ -165,7 +219,8 @@ export const pubRouter = router({
             barId: existingBar.id,
             sportId: input.sportId,
             championship: input.championship,
-            startsAt: new Date(input.startsAt)
+            startsAt: new Date(input.startsAt),
+            ...(input.endsAt && { endsAt: new Date(input.endsAt) })
           })
           .returning({ id: event.id })
 
@@ -199,6 +254,7 @@ export const pubRouter = router({
         sportId: z.string().uuid().optional(),
         championship: z.string().min(2).max(150).optional(),
         startsAt: z.string().datetime().optional(),
+        endsAt: z.string().datetime().optional(),
         participantIds: z.array(z.string().uuid()).optional()
       })
     )
@@ -225,13 +281,27 @@ export const pubRouter = router({
         })
       }
 
+      if (input.endsAt) {
+        const effectiveStartsAt = input.startsAt
+          ? new Date(input.startsAt)
+          : existingEvent.startsAt
+        if (new Date(input.endsAt) <= effectiveStartsAt) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'O horário de término deve ser posterior ao horário de início.'
+          })
+        }
+      }
+
       await db.transaction(async (tx) => {
         await tx
           .update(event)
           .set({
             ...(input.sportId && { sportId: input.sportId }),
             ...(input.championship && { championship: input.championship }),
-            ...(input.startsAt && { startsAt: new Date(input.startsAt) })
+            ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
+            ...(input.endsAt && { endsAt: new Date(input.endsAt) })
           })
           .where(eq(event.id, input.eventId))
 
@@ -256,6 +326,7 @@ export const pubRouter = router({
 
       return { success: true }
     }),
+
   deleteEvent: protectedProcedure
     .input(z.object({ eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -284,5 +355,21 @@ export const pubRouter = router({
       await db.delete(event).where(eq(event.id, input.eventId))
 
       return { success: true }
-    })
+    }),
+
+  // Retorna o plano e status atual da subscription do bar
+  getMySubscription: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(userId)
+
+    return existingBar.subscription ?? null
+  })
 })

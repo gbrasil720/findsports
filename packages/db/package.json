@@ -1,32 +1,32 @@
 {
-	"name": "@findsports_oficial/db",
-	"type": "module",
-	"exports": {
-		".": {
-			"default": "./src/index.ts"
-		},
-		"./*": {
-			"default": "./src/*.ts"
-		}
-	},
-	"scripts": {
-		"db:push": "drizzle-kit push",
-		"db:generate": "drizzle-kit generate",
-		"db:studio": "drizzle-kit studio",
-		"db:migrate": "drizzle-kit migrate",
-		"db:seed:sports": "bun --env-file=../../apps/web/.env run src/seed/sports.ts",
-		"db:seed:teams": "bun --env-file=../../apps/web/.env run src/seed/teams.ts"
-	},
-	"dependencies": {
-		"@findsports_oficial/env": "workspace:*",
-		"@neondatabase/serverless": "^1.0.2",
-		"dotenv": "catalog:",
-		"drizzle-orm": "^0.45.1",
-		"zod": "catalog:"
-	},
-	"devDependencies": {
-		"@findsports_oficial/config": "workspace:*",
-		"drizzle-kit": "^0.31.8",
-		"typescript": "catalog:"
-	}
+  "name": "@findsports_oficial/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed:sports": "bun --env-file=../../apps/web/.env run src/seed/sports.ts",
+    "db:seed:teams": "bun --env-file=../../apps/web/.env run src/seed/teams.ts"
+  },
+  "dependencies": {
+    "@findsports_oficial/env": "workspace:*",
+    "@neondatabase/serverless": "^1.0.2",
+    "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@findsports_oficial/config": "workspace:*",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "catalog:"
+  }
 }

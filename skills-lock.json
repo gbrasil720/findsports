@@ -25,6 +25,12 @@
       "skillPath": "skills/neon-postgres/SKILL.md",
       "computedHash": "8c6faa84ee17d412e2afb898aa00c1f1d398fb8302701b893984c738df9b1b31"
     },
+    "responsive-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/responsive-design/SKILL.md",
+      "computedHash": "155eff4b1bc8d867ae6bea9900c485ab1081de0b4873c1900adb66bf62466aed"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
