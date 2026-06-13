@@ -33,12 +33,18 @@ export function Nav() {
               Admin
             </Link>
           )}
-          <a
-            href="#waitlist"
+          <Link
+            to="/login"
+            className="normal-case tracking-normal text-zinc-600 transition-colors hover:text-black"
+          >
+            Entrar
+          </Link>
+          <Link
+            to="/signup"
             className="rounded-full bg-black px-5 py-2.5 text-white normal-case tracking-normal transition-colors hover:bg-brand-orange"
           >
-            Entrar na lista
-          </a>
+            Criar conta
+          </Link>
         </div>
         <div className="flex items-center gap-2 md:hidden">
           {isAdmin && (
@@ -49,12 +55,18 @@ export function Nav() {
               Admin
             </Link>
           )}
-          <a
-            href="#waitlist"
-            className="rounded-full bg-black px-4 py-3 font-bold text-white text-xs min-h-[44px] inline-flex items-center"
+          <Link
+            to="/login"
+            className="rounded-full border border-zinc-200 px-4 py-3 font-bold text-black text-xs min-h-[44px] inline-flex items-center"
           >
             Entrar
-          </a>
+          </Link>
+          <Link
+            to="/signup"
+            className="rounded-full bg-black px-4 py-3 font-bold text-white text-xs min-h-[44px] inline-flex items-center"
+          >
+            Criar conta
+          </Link>
         </div>
       </div>
     </nav>
