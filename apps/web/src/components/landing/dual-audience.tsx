@@ -1,9 +1,12 @@
+import { Tick01Icon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
+
 function Check({ color }: { color: string }) {
   return (
     <span
-      className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center font-bold text-white text-xs`}
+      className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center text-white`}
     >
-      ✓
+      <HugeiconsIcon icon={Tick01Icon} size={12} color="currentColor" strokeWidth={2} />
     </span>
   )
 }
@@ -34,7 +37,7 @@ function AudiencePanel({
   return (
     <div
       id={id}
-      className={`flex flex-col justify-center p-10 md:p-16 lg:p-20 ${className}`}
+      className={`flex flex-col justify-center p-8 md:p-16 lg:p-20 ${className}`}
     >
       <span
         className={`mb-4 font-bold text-xs uppercase tracking-[0.25em] ${overlineColor}`}

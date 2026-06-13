@@ -10,22 +10,35 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
-import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as PlanRouteImport } from './routes/plan'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
+import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
+import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
+import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
+import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
+import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -33,9 +46,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/admin_/billing',
+  path: '/admin/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
-  id: '/admin/waitlist',
-  path: '/admin/waitlist',
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => AdminRoute,
+} as any)
+const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
+  id: '/(dashboard)/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authSignupRoute = authSignupRouteImport.update({
@@ -53,84 +76,165 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   path: '/api/trpc/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
+  id: '/api/bar/photo',
+  path: '/api/bar/photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
+  id: '/(pub)/pub/$pubId',
+  path: '/pub/$pubId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const onboardingOnboardingPubRoute = onboardingOnboardingPubRouteImport.update({
+  id: '/(onboarding)/onboarding/pub',
+  path: '/onboarding/pub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
+  id: '/(onboarding)/onboarding/fan',
+  path: '/onboarding/fan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const dashboardDashboardProfileRoute =
+  dashboardDashboardProfileRouteImport.update({
+    id: '/(dashboard)/dashboard_/profile',
+    path: '/dashboard/profile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/dashboard': typeof dashboardDashboardRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/onboarding/fan': typeof onboardingOnboardingFanRoute
+  '/onboarding/pub': typeof onboardingOnboardingPubRoute
+  '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/dashboard': typeof dashboardDashboardRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/onboarding/fan': typeof onboardingOnboardingFanRoute
+  '/onboarding/pub': typeof onboardingOnboardingPubRoute
+  '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
+  '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
+  '/admin_/billing': typeof AdminBillingRoute
+  '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
+  '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
+  '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
+  '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/dashboard'
+    | '/admin'
+    | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/dashboard'
     | '/admin/waitlist'
+    | '/admin/billing'
+    | '/dashboard/profile'
+    | '/onboarding/fan'
+    | '/onboarding/pub'
+    | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/photo'
     | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/dashboard'
+    | '/admin'
+    | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/dashboard'
     | '/admin/waitlist'
+    | '/admin/billing'
+    | '/dashboard/profile'
+    | '/onboarding/fan'
+    | '/onboarding/pub'
+    | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/photo'
     | '/api/trpc/$'
   id:
     | '__root__'
     | '/'
-    | '/dashboard'
+    | '/admin'
+    | '/plan'
     | '/sitemap.xml'
     | '/(auth)/login'
     | '/(auth)/signup'
+    | '/(dashboard)/dashboard'
     | '/admin/waitlist'
+    | '/admin_/billing'
+    | '/(dashboard)/dashboard_/profile'
+    | '/(onboarding)/onboarding/fan'
+    | '/(onboarding)/onboarding/pub'
+    | '/(pub)/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/photo'
     | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  PlanRoute: typeof PlanRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
-  AdminWaitlistRoute: typeof AdminWaitlistRoute
+  dashboardDashboardRoute: typeof dashboardDashboardRoute
+  AdminBillingRoute: typeof AdminBillingRoute
+  dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
+  onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
+  onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
+  pubPubPubIdRoute: typeof pubPubPubIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
 
@@ -143,11 +247,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,11 +268,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/billing': {
+      id: '/admin_/billing'
+      path: '/admin/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/waitlist': {
       id: '/admin/waitlist'
-      path: '/admin/waitlist'
+      path: '/waitlist'
       fullPath: '/admin/waitlist'
       preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/(dashboard)/dashboard': {
+      id: '/(dashboard)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/signup': {
@@ -185,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTrpcSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/bar/photo': {
+      id: '/api/bar/photo'
+      path: '/api/bar/photo'
+      fullPath: '/api/bar/photo'
+      preLoaderRoute: typeof ApiBarPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -192,17 +324,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(pub)/pub/$pubId': {
+      id: '/(pub)/pub/$pubId'
+      path: '/pub/$pubId'
+      fullPath: '/pub/$pubId'
+      preLoaderRoute: typeof pubPubPubIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(onboarding)/onboarding/pub': {
+      id: '/(onboarding)/onboarding/pub'
+      path: '/onboarding/pub'
+      fullPath: '/onboarding/pub'
+      preLoaderRoute: typeof onboardingOnboardingPubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(onboarding)/onboarding/fan': {
+      id: '/(onboarding)/onboarding/fan'
+      path: '/onboarding/fan'
+      fullPath: '/onboarding/fan'
+      preLoaderRoute: typeof onboardingOnboardingFanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/profile': {
+      id: '/(dashboard)/dashboard_/profile'
+      path: '/dashboard/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof dashboardDashboardProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminWaitlistRoute: typeof AdminWaitlistRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminWaitlistRoute: AdminWaitlistRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  AdminRoute: AdminRouteWithChildren,
+  PlanRoute: PlanRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
-  AdminWaitlistRoute: AdminWaitlistRoute,
+  dashboardDashboardRoute: dashboardDashboardRoute,
+  AdminBillingRoute: AdminBillingRoute,
+  dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
+  onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
+  onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
+  pubPubPubIdRoute: pubPubPubIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }
 export const routeTree = rootRouteImport

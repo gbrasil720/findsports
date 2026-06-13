@@ -1,47 +1,55 @@
 {
-	"name": "findsports_oficial",
-	"private": true,
-	"workspaces": {
-		"packages": [
-			"apps/*",
-			"packages/*"
-		],
-		"catalog": {
-			"dotenv": "^17.2.2",
-			"zod": "^4.1.13",
-			"typescript": "^6",
-			"@types/node": "^22.13.14",
-			"next-themes": "^0.4.6",
-			"@trpc/server": "^11.16.0",
-			"@trpc/client": "^11.16.0",
-			"better-auth": "1.6.9",
-			"@types/react-dom": "^19.2.3"
-		}
-	},
-	"type": "module",
-	"scripts": {
-		"dev": "turbo dev",
-		"build": "turbo build",
-		"check-types": "turbo check-types",
-		"dev:web": "turbo -F web dev",
-		"build:vercel": "turbo -F web build && bun apps/web/scripts/build-vercel.mjs",
-		"db:push": "turbo -F @findsports_oficial/db db:push",
-		"db:studio": "turbo -F @findsports_oficial/db db:studio",
-		"db:generate": "turbo -F @findsports_oficial/db db:generate",
-		"db:migrate": "turbo -F @findsports_oficial/db db:migrate",
-		"check": "biome check --write ."
-	},
-	"dependencies": {
-		"@findsports_oficial/env": "workspace:*",
-		"dotenv": "catalog:",
-		"zod": "catalog:"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.2.0",
-		"@findsports_oficial/config": "workspace:*",
-		"@types/node": "catalog:",
-		"turbo": "^2.8.12",
-		"typescript": "catalog:"
-	},
-	"packageManager": "bun@1.3.1"
+  "name": "findsports_oficial",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.2.2",
+      "zod": "^4.1.13",
+      "typescript": "^6",
+      "@types/node": "^22.13.14",
+      "next-themes": "^0.4.6",
+      "@trpc/server": "^11.16.0",
+      "@trpc/client": "^11.16.0",
+      "better-auth": "1.6.9",
+      "@types/react-dom": "^19.2.3"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "build:vercel": "turbo -F web build && bun apps/web/scripts/build-vercel.mjs",
+    "db:push": "turbo -F @findsports_oficial/db db:push",
+    "db:studio": "turbo -F @findsports_oficial/db db:studio",
+    "db:generate": "turbo -F @findsports_oficial/db db:generate",
+    "db:migrate": "turbo -F @findsports_oficial/db db:migrate",
+    "db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
+    "db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
+    "check": "biome check --write ."
+  },
+  "dependencies": {
+    "@dodopayments/better-auth": "^1.6.3",
+    "@findsports_oficial/env": "workspace:*",
+    "@vercel/blob": "^2.4.0",
+    "dodopayments": "^2.37.0",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@findsports_oficial/config": "workspace:*",
+    "@types/node": "catalog:",
+    "turbo": "^2.8.12",
+    "typescript": "catalog:"
+  },
+  "overrides": {
+    "drizzle-orm": "0.45.2"
+  },
+  "packageManager": "bun@1.3.1"
 }

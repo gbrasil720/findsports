@@ -9,3 +9,11 @@ export function formatPhone(digits: string, countryCode: string): string {
   }
   return digits
 }
+
+export function formatStoredPhone(phone: string): string {
+  if (phone.startsWith('+55')) return formatPhone(phone.slice(3), 'BR')
+  if (phone.startsWith('+')) return phone
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length > 0) return formatPhone(digits, 'BR')
+  return phone
+}

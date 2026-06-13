@@ -1,5 +1,12 @@
 import { relations } from 'drizzle-orm'
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp
+} from 'drizzle-orm/pg-core'
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -10,6 +17,8 @@ export const user = pgTable('user', {
   role: text('role', { enum: ['fan', 'pub', 'admin'] })
     .notNull()
     .default('fan'),
+  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
+  searchRadiusKm: integer('search_radius_km').default(3).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
