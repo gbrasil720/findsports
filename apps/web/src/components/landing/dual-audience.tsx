@@ -1,5 +1,6 @@
 import { Tick01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { Link } from '@tanstack/react-router'
 
 function Check({ color }: { color: string }) {
   return (
@@ -21,6 +22,7 @@ type AudiencePanelProps = {
   items: string[]
   ctaColor: string
   cta: string
+  to: '/signup' | '/login'
 }
 
 function AudiencePanel({
@@ -32,7 +34,8 @@ function AudiencePanel({
   checkColor,
   items,
   ctaColor,
-  cta
+  cta,
+  to
 }: AudiencePanelProps) {
   return (
     <div
@@ -54,12 +57,12 @@ function AudiencePanel({
           </li>
         ))}
       </ul>
-      <a
-        href="#waitlist"
+      <Link
+        to={to}
         className={`self-start rounded-full ${ctaColor} px-6 py-3 font-bold text-white transition-transform hover:scale-105`}
       >
         {cta}
-      </a>
+      </Link>
     </div>
   )
 }
@@ -84,7 +87,8 @@ export function DualAudience() {
           'Mapa em tempo real com lotação atualizada'
         ]}
         ctaColor="bg-brand-orange"
-        cta="Garantir meu acesso antecipado"
+        cta="Criar minha conta"
+        to="/signup"
       />
       <AudiencePanel
         id="bares"
@@ -100,7 +104,8 @@ export function DualAudience() {
           'Painel com analytics de público e horários'
         ]}
         ctaColor="bg-brand-blue"
-        cta="Garantir condições de lançamento"
+        cta="Cadastrar meu bar"
+        to="/signup"
       />
     </section>
   )

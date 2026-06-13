@@ -1,5 +1,6 @@
 import { Badge } from '@findsports_oficial/ui/components/badge'
 import { Separator } from '@findsports_oficial/ui/components/separator'
+import { Link } from '@tanstack/react-router'
 
 import heroBar from '../../../public/hero-bar.jpg'
 
@@ -12,7 +13,7 @@ export function Hero() {
       <div>
         <Badge className="mb-6 h-auto rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em]">
           <span className="size-1.5 animate-pulse rounded-full bg-brand-orange" />
-          Lista de espera aberta
+          Cadastros abertos
         </Badge>
         <h1 className="mb-6 font-bold font-heading text-[2.5rem] leading-[0.92] tracking-tight sm:text-5xl lg:text-7xl xl:text-[5.5rem]">
           NUNCA MAIS PERCA O{' '}
@@ -23,24 +24,24 @@ export function Hero() {
           passando o seu jogo — e encontre a galera certa pra gritar gol junto.
         </p>
         <div className="flex flex-wrap gap-3">
-          <a
-            href="#waitlist"
+          <Link
+            to="/signup"
             className="group rounded-full bg-brand-orange px-7 py-4 font-bold text-base text-white shadow-[0_10px_30px_-10px_rgba(255,90,31,0.5)] transition-transform hover:scale-[1.03] md:text-lg"
           >
-            Garantir acesso antecipado
+            Criar minha conta
             <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">
               →
             </span>
-          </a>
-          <a
-            href="#waitlist"
+          </Link>
+          <Link
+            to="/signup"
             className="group rounded-full bg-brand-blue px-7 py-4 font-bold text-base text-white shadow-[0_10px_30px_-10px_rgba(22,104,255,0.5)] transition-transform hover:scale-[1.03] md:text-lg"
           >
             Tenho um bar
             <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">
               →
             </span>
-          </a>
+          </Link>
         </div>
         <div className="mt-10 flex items-center gap-6 text-xs text-zinc-500">
           <div>
