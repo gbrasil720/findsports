@@ -144,7 +144,7 @@ export function createAuth() {
       additionalFields: {
         role: {
           type: 'string',
-          required: true,
+          required: false,
           defaultValue: 'fan',
           input: true
         },
