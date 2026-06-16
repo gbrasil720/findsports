@@ -130,7 +130,10 @@ export function createAuth() {
       provider: 'pg',
       schema: schema
     }),
-    trustedOrigins: [env.CORS_ORIGIN],
+    trustedOrigins: [
+      env.CORS_ORIGIN,
+      'https://nintendo-hyperlink-undamaged.ngrok-free.dev'
+    ],
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
