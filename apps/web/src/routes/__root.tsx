@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noHeadElement: <> */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
@@ -9,16 +10,31 @@ import {
   Scripts
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
-
+import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
+import { authMiddleware } from '../middleware/auth'
+import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
+
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
 }
 
+const getSession = createServerFn()
+  .middleware([authMiddleware])
+  .handler(({ context }) => {
+    return context.session
+  })
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
+  beforeLoad: async ({ location }) => {
+    const session = await getSession()
+    applyAuthGuards(session as AuthSession, location.pathname)
+    return { session }
+  },
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -31,7 +47,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       { name: 'author', content: 'FindSports' },
       { name: 'theme-color', content: '#FF5A1F' },
-      // Open Graph fallbacks (overridden per route)
       { property: 'og:site_name', content: 'FindSports' },
       { property: 'og:type', content: 'website' },
       {
@@ -50,7 +65,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
       { property: 'og:url', content: 'https://findsports.com.br/' },
-      // Twitter Card fallbacks (overridden per route)
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
@@ -97,6 +111,7 @@ function RootDocument() {
           <Outlet />
         </div>
         <Toaster richColors />
+        <ImpersonationBanner />
         <TanStackRouterDevtools position="bottom-left" />
         <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         <Analytics />

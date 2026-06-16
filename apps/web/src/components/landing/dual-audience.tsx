@@ -1,9 +1,18 @@
+import { Tick01Icon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { Link } from '@tanstack/react-router'
+
 function Check({ color }: { color: string }) {
   return (
     <span
-      className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center font-bold text-white text-xs`}
+      className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center text-white`}
     >
-      ✓
+      <HugeiconsIcon
+        icon={Tick01Icon}
+        size={12}
+        color="currentColor"
+        strokeWidth={2}
+      />
     </span>
   )
 }
@@ -18,6 +27,7 @@ type AudiencePanelProps = {
   items: string[]
   ctaColor: string
   cta: string
+  to: '/signup' | '/login'
 }
 
 function AudiencePanel({
@@ -29,12 +39,13 @@ function AudiencePanel({
   checkColor,
   items,
   ctaColor,
-  cta
+  cta,
+  to
 }: AudiencePanelProps) {
   return (
     <div
       id={id}
-      className={`flex flex-col justify-center p-10 md:p-16 lg:p-20 ${className}`}
+      className={`flex flex-col justify-center p-8 md:p-16 lg:p-20 ${className}`}
     >
       <span
         className={`mb-4 font-bold text-xs uppercase tracking-[0.25em] ${overlineColor}`}
@@ -51,12 +62,12 @@ function AudiencePanel({
           </li>
         ))}
       </ul>
-      <a
-        href="#waitlist"
+      <Link
+        to={to}
         className={`self-start rounded-full ${ctaColor} px-6 py-3 font-bold text-white transition-transform hover:scale-105`}
       >
         {cta}
-      </a>
+      </Link>
     </div>
   )
 }
@@ -81,7 +92,8 @@ export function DualAudience() {
           'Mapa em tempo real com lotação atualizada'
         ]}
         ctaColor="bg-brand-orange"
-        cta="Garantir meu acesso antecipado"
+        cta="Criar minha conta"
+        to="/signup"
       />
       <AudiencePanel
         id="bares"
@@ -97,7 +109,8 @@ export function DualAudience() {
           'Painel com analytics de público e horários'
         ]}
         ctaColor="bg-brand-blue"
-        cta="Garantir condições de lançamento"
+        cta="Cadastrar meu bar"
+        to="/signup"
       />
     </section>
   )

@@ -16,6 +16,7 @@ import {
   TableRow
 } from '@findsports_oficial/ui/components/table'
 import {
+  ArrowLeft01Icon,
   Calendar01Icon,
   Download01Icon,
   DrinkIcon,
@@ -31,15 +32,21 @@ import {
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter
+} from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/landing/logo'
 import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
+import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
-export const Route = createFileRoute('/admin/waitlist')({
+export const Route = createFileRoute('/internal_/waitlist')({
   head: () => ({
     meta: [
       { title: 'Admin — FindSports Waitlist' },
@@ -160,6 +167,13 @@ function AdminWaitlistPage() {
             </span>
           </Link>
           <div className="flex items-center gap-3">
+            <Link
+              to="/internal"
+              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 font-medium text-sm text-zinc-600 transition-colors hover:border-black/20 hover:text-zinc-900"
+            >
+              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
+              Hall
+            </Link>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-orange px-2 py-1 font-bold text-[10px] text-white uppercase tracking-[0.2em]">
               Admin
             </span>
@@ -284,7 +298,10 @@ function AdminWaitlistPage() {
               className="rounded-full border-none bg-zinc-50 pl-10 focus:ring-2 focus:ring-black/10"
             />
           </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <Select
+            value={roleFilter}
+            onValueChange={(v) => setRoleFilter(v ?? 'all')}
+          >
             <SelectTrigger className="w-full rounded-full border-none bg-zinc-50 sm:w-48">
               <SelectValue placeholder="Filtrar por tipo" />
             </SelectTrigger>
@@ -392,7 +409,7 @@ function AdminWaitlistPage() {
                         {s.email}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {s.phone ?? '—'}
+                        {s.phone ? formatStoredPhone(s.phone) : '—'}
                       </TableCell>
                       <TableCell>
                         <Badge

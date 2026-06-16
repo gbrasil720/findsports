@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "search_radius_km" integer DEFAULT 3 NOT NULL;
