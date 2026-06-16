@@ -4,7 +4,7 @@ import { LoaderPinwheelIcon, NavigationIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
 import { GoogleMap, type MapBar } from '@/components/app/google-map'
 import { BarCard } from '@/components/dashboard/bar-card'
@@ -70,6 +70,9 @@ function FanDashboard() {
     null
   )
   const [locationError, setLocationError] = useState(false)
+  const [locationPermission, setLocationPermission] = useState<
+    PermissionState | 'unknown'
+  >('unknown')
   const [sportId, setSportId] = useState<string | undefined>(undefined)
   const [championship, setChampionship] = useState('')
   const [radiusKm, setRadiusKm] = useState<1 | 3 | 5 | 10>(5)
@@ -81,26 +84,39 @@ function FanDashboard() {
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!navigator.geolocation) {
-      setLocationError(true)
-      return
-    }
+  const requestLocation = useCallback(() => {
     navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocationPermission('granted')
+      },
       (err) => {
         console.log('Geolocation error:', err.code, err.message)
         setLocationError(true)
+        setLocationPermission('denied')
       },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 5 * 60 * 1000
-      }
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 }
     )
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationError(true)
+      return
+    }
+    if (!navigator.permissions) {
+      requestLocation()
+      return
+    }
+    navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+      setLocationPermission(status.state)
+      if (status.state === 'denied') {
+        setLocationError(true)
+      } else {
+        requestLocation()
+      }
+    })
+  }, [requestLocation])
 
   const { data: sports = [] } = useQuery(trpc.pubs.getSports.queryOptions())
 
@@ -269,6 +285,23 @@ function FanDashboard() {
         activeFilters={activeFilters}
         onReset={reset}
       />
+
+      {locationPermission === 'prompt' && !coords && (
+        <button
+          type="button"
+          onClick={requestLocation}
+          className="w-full flex items-center gap-2 bg-brand-orange/10 text-brand-orange text-sm font-bold px-4 py-3 rounded-2xl mb-2 hover:bg-brand-orange/20"
+        >
+          <HugeiconsIcon
+            icon={NavigationIcon}
+            size={16}
+            color="currentColor"
+            strokeWidth={2}
+            className="shrink-0"
+          />
+          Compartilhar localização para ver bares perto de você
+        </button>
+      )}
 
       <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
         <section className="min-w-0 lg:order-last">
