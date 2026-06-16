@@ -13,6 +13,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
+import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
 import { authMiddleware } from '../middleware/auth'
 import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
@@ -110,6 +111,7 @@ function RootDocument() {
           <Outlet />
         </div>
         <Toaster richColors />
+        <ImpersonationBanner />
         <TanStackRouterDevtools position="bottom-left" />
         <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         <Analytics />

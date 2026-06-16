@@ -1,8 +1,6 @@
 /** biome-ignore-all lint/a11y/useValidAriaRole: <explanation> */
 /** biome-ignore-all lint/a11y/noAutofocus: <explanation> */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -11,8 +9,8 @@ import {
   Cancel01Icon,
   Compass01Icon,
   Edit03Icon,
-  FlashIcon,
   FavouriteIcon,
+  FlashIcon,
   FloppyDiskIcon,
   HeartMinusIcon,
   ListViewIcon,
@@ -25,6 +23,8 @@ import {
   Tick01Icon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
 import { GoogleMap, type MapBar } from '@/components/app/google-map'
@@ -80,10 +80,19 @@ function formatEventDate(startsAt: string | Date): string {
   const today = new Date()
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const time = d.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
   if (d.toDateString() === today.toDateString()) return `Hoje, ${time}`
   if (d.toDateString() === tomorrow.toDateString()) return `Amanhã, ${time}`
-  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }) + `, ${time}`
+  return (
+    d.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    }) + `, ${time}`
+  )
 }
 
 function ProfilePage() {
@@ -101,7 +110,9 @@ function ProfilePage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
 
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null
+  )
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list')
   const [sortBy, setSortBy] = useState<SortBy>('upcoming')
   const [filterWithEvents, setFilterWithEvents] = useState(false)
@@ -110,7 +121,8 @@ function ProfilePage() {
   useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) =>
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       () => {}
     )
   }, [])
@@ -130,9 +142,10 @@ function ProfilePage() {
     trpc.pubs.getFavorites.queryOptions()
   )
 
-  const userRadius = ([1, 3, 5, 10] as const).find(
-    (v) => v === session?.data?.user?.searchRadiusKm
-  ) ?? 5
+  const userRadius =
+    ([1, 3, 5, 10] as const).find(
+      (v) => v === session?.data?.user?.searchRadiusKm
+    ) ?? 5
 
   const { data: nearbyData } = useQuery({
     ...trpc.pubs.search.queryOptions({
@@ -147,7 +160,9 @@ function ProfilePage() {
   const updatePrefsMutation = useMutation(
     trpc.pubs.updateMyPreferences.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.pubs.getMyPreferences.queryKey() })
+        queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getMyPreferences.queryKey()
+        })
         setEditingSports(false)
       }
     })
@@ -160,8 +175,10 @@ function ProfilePage() {
       onMutate: async ({ barId }) => {
         await queryClient.cancelQueries({ queryKey: favoritesQueryKey })
         const prev = queryClient.getQueryData(favoritesQueryKey)
-        queryClient.setQueryData(favoritesQueryKey, (old: typeof favorites | undefined) =>
-          (old ?? []).filter((f) => f.barId !== barId)
+        queryClient.setQueryData(
+          favoritesQueryKey,
+          (old: typeof favorites | undefined) =>
+            (old ?? []).filter((f) => f.barId !== barId)
         )
         return { prev }
       },
@@ -185,17 +202,27 @@ function ProfilePage() {
       .toUpperCase() ?? '?'
 
   const memberSince = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    ? new Date(user.createdAt).toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+      })
     : null
 
-  const completionItems = useMemo(() => [
-    { label: 'Foto de perfil', done: !!user?.image },
-    { label: 'Esportes favoritos', done: (myPreferences as any[]).length > 0 },
-    { label: 'Primeiro bar favorito', done: (favorites as any[]).length > 0 }
-  ], [user?.image, myPreferences, favorites])
+  const completionItems = useMemo(
+    () => [
+      { label: 'Foto de perfil', done: !!user?.image },
+      {
+        label: 'Esportes favoritos',
+        done: (myPreferences as any[]).length > 0
+      },
+      { label: 'Primeiro bar favorito', done: (favorites as any[]).length > 0 }
+    ],
+    [user?.image, myPreferences, favorites]
+  )
 
   const completionScore = Math.round(
-    (completionItems.filter((i) => i.done).length / completionItems.length) * 100
+    (completionItems.filter((i) => i.done).length / completionItems.length) *
+      100
   )
 
   const upcomingEvents = useMemo(() => {
@@ -203,18 +230,24 @@ function ProfilePage() {
       .flatMap((f) =>
         (f.bar.events ?? []).map((e: any) => ({ ...e, bar: f.bar }))
       )
-      .sort((a: any, b: any) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      )
       .slice(0, 5)
   }, [favorites])
 
   const nearbyBars = useMemo(() => {
     const favIds = new Set((favorites as any[]).map((f) => f.bar.id))
-    return (nearbyData?.bars ?? []).filter((b: any) => !favIds.has(b.id)).slice(0, 3)
+    return (nearbyData?.bars ?? [])
+      .filter((b: any) => !favIds.has(b.id))
+      .slice(0, 3)
   }, [nearbyData, favorites])
 
   const sortedFavorites = useMemo(() => {
     let list = [...(favorites as any[])]
-    if (filterWithEvents) list = list.filter((f) => (f.bar.events ?? []).length > 0)
+    if (filterWithEvents)
+      list = list.filter((f) => (f.bar.events ?? []).length > 0)
     if (sortBy === 'upcoming') {
       list.sort((a, b) => {
         const aNext = a.bar.events?.[0]?.startsAt
@@ -309,7 +342,13 @@ function ProfilePage() {
     return (
       <AppShell role="fan">
         <div className="flex items-center justify-center py-24 text-zinc-400">
-          <HugeiconsIcon icon={Loading01Icon} size={24} color="currentColor" strokeWidth={1.5} className="animate-spin" />
+          <HugeiconsIcon
+            icon={Loading01Icon}
+            size={24}
+            color="currentColor"
+            strokeWidth={1.5}
+            className="animate-spin"
+          />
         </div>
       </AppShell>
     )
@@ -330,7 +369,13 @@ function ProfilePage() {
         to="/dashboard"
         className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-black mb-4"
       >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={16} color="currentColor" strokeWidth={1.5} /> Voltar
+        <HugeiconsIcon
+          icon={ArrowLeft01Icon}
+          size={16}
+          color="currentColor"
+          strokeWidth={1.5}
+        />{' '}
+        Voltar
       </Link>
 
       {/* Header card */}
@@ -340,7 +385,11 @@ function ProfilePage() {
           <div className="relative shrink-0 self-start md:self-auto">
             <div className="size-24 rounded-3xl bg-white text-brand-orange grid place-items-center font-heading font-bold text-4xl ring-4 ring-white/30 overflow-hidden">
               {user?.image ? (
-                <img src={user.image} alt={user.name ?? 'Foto de perfil'} className="size-full object-cover" />
+                <img
+                  src={user.image}
+                  alt={user.name ?? 'Foto de perfil'}
+                  className="size-full object-cover"
+                />
               ) : (
                 initials
               )}
@@ -352,10 +401,22 @@ function ProfilePage() {
               className="absolute -bottom-1.5 -right-1.5 size-8 rounded-full bg-white text-brand-orange grid place-items-center shadow-lg ring-2 ring-white/30 hover:scale-105 transition-transform disabled:opacity-60"
               aria-label="Trocar foto de perfil"
             >
-              {uploadingImage
-                ? <HugeiconsIcon icon={Loading01Icon} size={14} color="currentColor" strokeWidth={2} className="animate-spin" />
-                : <HugeiconsIcon icon={Camera01Icon} size={14} color="currentColor" strokeWidth={2} />
-              }
+              {uploadingImage ? (
+                <HugeiconsIcon
+                  icon={Loading01Icon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={2}
+                  className="animate-spin"
+                />
+              ) : (
+                <HugeiconsIcon
+                  icon={Camera01Icon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={2}
+                />
+              )}
             </button>
           </div>
 
@@ -372,33 +433,69 @@ function ProfilePage() {
                   className="bg-white/20 text-white placeholder-white/50 rounded-xl px-3 py-1.5 font-heading text-2xl font-bold outline-none focus:ring-2 focus:ring-white/40 w-full max-w-xs"
                   autoFocus
                 />
-                <button type="button" onClick={handleSaveName} className="p-2 rounded-full bg-white/20 hover:bg-white/30">
-                  <HugeiconsIcon icon={FloppyDiskIcon} size={16} color="currentColor" strokeWidth={1.5} />
+                <button
+                  type="button"
+                  onClick={handleSaveName}
+                  className="p-2 rounded-full bg-white/20 hover:bg-white/30"
+                >
+                  <HugeiconsIcon
+                    icon={FloppyDiskIcon}
+                    size={16}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />
                 </button>
-                <button type="button" onClick={() => setEditingName(false)} className="p-2 rounded-full bg-white/20 hover:bg-white/30">
-                  <HugeiconsIcon icon={Cancel01Icon} size={16} color="currentColor" strokeWidth={1.5} />
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  className="p-2 rounded-full bg-white/20 hover:bg-white/30"
+                >
+                  <HugeiconsIcon
+                    icon={Cancel01Icon}
+                    size={16}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />
                 </button>
               </div>
             ) : (
-              <h1 className="font-heading text-3xl md:text-4xl font-bold tracking-tight mb-1">{user?.name}</h1>
+              <h1 className="font-heading text-3xl md:text-4xl font-bold tracking-tight mb-1">
+                {user?.name}
+              </h1>
             )}
             <p className="text-white/80 text-sm">{user?.email}</p>
             {memberSince && (
               <p className="text-white/60 text-xs mt-1 flex items-center gap-1">
-                <HugeiconsIcon icon={Calendar01Icon} size={11} color="currentColor" strokeWidth={1.5} />
+                <HugeiconsIcon
+                  icon={Calendar01Icon}
+                  size={11}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                />
                 Membro desde {memberSince}
               </p>
             )}
-            {imageError && <p className="text-red-200 text-xs mt-2">{imageError}</p>}
+            {imageError && (
+              <p className="text-red-200 text-xs mt-2">{imageError}</p>
+            )}
           </div>
 
           {!editingName && (
             <button
               type="button"
-              onClick={() => { setNameInput(user?.name ?? ''); setEditingName(true) }}
+              onClick={() => {
+                setNameInput(user?.name ?? '')
+                setEditingName(true)
+              }}
               className="bg-white/15 hover:bg-white/25 backdrop-blur px-4 py-2.5 rounded-full text-sm font-bold inline-flex items-center gap-2 shrink-0"
             >
-              <HugeiconsIcon icon={Edit03Icon} size={16} color="currentColor" strokeWidth={1.5} /> Editar nome
+              <HugeiconsIcon
+                icon={Edit03Icon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+              />{' '}
+              Editar nome
             </button>
           )}
         </div>
@@ -412,7 +509,9 @@ function ProfilePage() {
             type="button"
             onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
-              tab === t ? 'bg-black text-white' : 'text-zinc-600 hover:text-black'
+              tab === t
+                ? 'bg-black text-white'
+                : 'text-zinc-600 hover:text-black'
             }`}
           >
             {t}
@@ -423,13 +522,17 @@ function ProfilePage() {
       {/* ─── Visão geral ──────────────────────────────────── */}
       {tab === 'Visão geral' && (
         <div className="space-y-6">
-
           {/* Completion nudge */}
           {completionScore < 100 && (
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="font-bold text-sm">Perfil {completionScore}% configurado</p>
-                <span className="text-xs text-zinc-500">{completionItems.filter((i) => i.done).length}/{completionItems.length}</span>
+                <p className="font-bold text-sm">
+                  Perfil {completionScore}% configurado
+                </p>
+                <span className="text-xs text-zinc-500">
+                  {completionItems.filter((i) => i.done).length}/
+                  {completionItems.length}
+                </span>
               </div>
               <div className="h-1.5 rounded-full bg-zinc-100 mb-4 overflow-hidden">
                 <div
@@ -439,11 +542,25 @@ function ProfilePage() {
               </div>
               <ul className="space-y-1.5">
                 {completionItems.map((item) => (
-                  <li key={item.label} className="flex items-center gap-2 text-xs">
-                    <span className={`size-4 rounded-full grid place-items-center ${item.done ? 'bg-brand-orange text-white' : 'bg-zinc-100 text-zinc-400'}`}>
-                      <HugeiconsIcon icon={Tick01Icon} size={10} color="currentColor" strokeWidth={2.5} />
+                  <li
+                    key={item.label}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    <span
+                      className={`size-4 rounded-full grid place-items-center ${item.done ? 'bg-brand-orange text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                    >
+                      <HugeiconsIcon
+                        icon={Tick01Icon}
+                        size={10}
+                        color="currentColor"
+                        strokeWidth={2.5}
+                      />
                     </span>
-                    <span className={item.done ? 'text-zinc-700' : 'text-zinc-400'}>{item.label}</span>
+                    <span
+                      className={item.done ? 'text-zinc-700' : 'text-zinc-400'}
+                    >
+                      {item.label}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -453,9 +570,24 @@ function ProfilePage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { v: String((favorites as any[]).length), l: 'Favoritos', i: FavouriteIcon, tab: 'Favoritos' as Tab },
-              { v: `${user?.searchRadiusKm ?? 3} km`, l: 'Raio de busca', i: Location01Icon, tab: 'Configurações' as Tab },
-              { v: String((myPreferences as any[]).length), l: 'Esportes', i: Medal01Icon, tab: 'Configurações' as Tab }
+              {
+                v: String((favorites as any[]).length),
+                l: 'Favoritos',
+                i: FavouriteIcon,
+                tab: 'Favoritos' as Tab
+              },
+              {
+                v: `${user?.searchRadiusKm ?? 3} km`,
+                l: 'Raio de busca',
+                i: Location01Icon,
+                tab: 'Configurações' as Tab
+              },
+              {
+                v: String((myPreferences as any[]).length),
+                l: 'Esportes',
+                i: Medal01Icon,
+                tab: 'Configurações' as Tab
+              }
             ].map((s) => (
               <button
                 key={s.l}
@@ -463,11 +595,23 @@ function ProfilePage() {
                 onClick={() => setTab(s.tab)}
                 className="bg-white rounded-2xl ring-1 ring-black/5 p-5 text-left hover:ring-brand-orange/30 hover:shadow-sm transition-all group"
               >
-                <HugeiconsIcon icon={s.i} size={20} color="currentColor" strokeWidth={1.5} className="text-brand-orange mb-3" />
+                <HugeiconsIcon
+                  icon={s.i}
+                  size={20}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-brand-orange mb-3"
+                />
                 <div className="font-heading text-3xl font-bold">{s.v}</div>
                 <div className="text-[10px] uppercase tracking-widest text-zinc-500 mt-1 flex items-center justify-between">
                   {s.l}
-                  <HugeiconsIcon icon={ArrowRight01Icon} size={12} color="currentColor" strokeWidth={2} className="text-zinc-300 group-hover:text-brand-orange transition-colors" />
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    size={12}
+                    color="currentColor"
+                    strokeWidth={2}
+                    className="text-zinc-300 group-hover:text-brand-orange transition-colors"
+                  />
                 </div>
               </button>
             ))}
@@ -477,7 +621,13 @@ function ProfilePage() {
           {loadingFavorites ? null : upcomingEvents.length > 0 ? (
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6">
               <h2 className="font-heading text-lg font-bold flex items-center gap-2 mb-4">
-                <HugeiconsIcon icon={FlashIcon} size={18} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+                <HugeiconsIcon
+                  icon={FlashIcon}
+                  size={18}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-brand-orange"
+                />
                 Próximos jogos nos seus bares
               </h2>
               <ul className="divide-y divide-zinc-100">
@@ -489,17 +639,29 @@ function ProfilePage() {
                       className="flex items-center gap-3 py-3 group"
                     >
                       <div className="size-9 rounded-xl bg-brand-orange/10 grid place-items-center shrink-0">
-                        <HugeiconsIcon icon={Medal01Icon} size={16} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+                        <HugeiconsIcon
+                          icon={Medal01Icon}
+                          size={16}
+                          color="currentColor"
+                          strokeWidth={1.5}
+                          className="text-brand-orange"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-sm truncate group-hover:text-brand-orange transition-colors">
                           {e.championship}
                         </div>
-                        <div className="text-xs text-zinc-500 truncate">{e.bar.name}</div>
+                        <div className="text-xs text-zinc-500 truncate">
+                          {e.bar.name}
+                        </div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="text-xs font-bold text-zinc-700">{formatEventDate(e.startsAt)}</div>
-                        <div className="text-[10px] text-zinc-400 uppercase tracking-wide">{e.sport?.name}</div>
+                        <div className="text-xs font-bold text-zinc-700">
+                          {formatEventDate(e.startsAt)}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 uppercase tracking-wide">
+                          {e.sport?.name}
+                        </div>
                       </div>
                     </Link>
                   </li>
@@ -510,25 +672,69 @@ function ProfilePage() {
                 onClick={() => setTab('Favoritos')}
                 className="mt-2 text-xs font-bold text-brand-orange hover:underline flex items-center gap-1"
               >
-                Ver todos os favoritos <HugeiconsIcon icon={ArrowRight01Icon} size={12} color="currentColor" strokeWidth={2} />
+                Ver todos os favoritos{' '}
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={12}
+                  color="currentColor"
+                  strokeWidth={2}
+                />
               </button>
             </section>
           ) : (favorites as any[]).length > 0 ? (
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 text-center">
-              <HugeiconsIcon icon={FlashIcon} size={28} color="currentColor" strokeWidth={1.5} className="text-zinc-200 mx-auto mb-2" />
-              <p className="text-sm font-bold text-zinc-700 mb-1">Sem jogos agendados nos seus bares</p>
-              <p className="text-xs text-zinc-500 mb-3">Seus bares favoritos não têm eventos próximos.</p>
-              <Link to="/dashboard" className="text-xs font-bold text-brand-orange hover:underline inline-flex items-center gap-1">
-                Encontrar bar para hoje <HugeiconsIcon icon={ArrowRight01Icon} size={12} color="currentColor" strokeWidth={2} />
+              <HugeiconsIcon
+                icon={FlashIcon}
+                size={28}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="text-zinc-200 mx-auto mb-2"
+              />
+              <p className="text-sm font-bold text-zinc-700 mb-1">
+                Sem jogos agendados nos seus bares
+              </p>
+              <p className="text-xs text-zinc-500 mb-3">
+                Seus bares favoritos não têm eventos próximos.
+              </p>
+              <Link
+                to="/dashboard"
+                className="text-xs font-bold text-brand-orange hover:underline inline-flex items-center gap-1"
+              >
+                Encontrar bar para hoje{' '}
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={12}
+                  color="currentColor"
+                  strokeWidth={2}
+                />
               </Link>
             </section>
           ) : (
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 text-center">
-              <HugeiconsIcon icon={FavouriteIcon} size={28} color="currentColor" strokeWidth={1.5} className="text-zinc-200 mx-auto mb-2" />
-              <p className="text-sm font-bold text-zinc-700 mb-1">Nenhum bar favoritado</p>
-              <p className="text-xs text-zinc-500 mb-3">Favorite bares para acompanhar os próximos jogos aqui.</p>
-              <Link to="/dashboard" className="text-xs font-bold text-brand-orange hover:underline inline-flex items-center gap-1">
-                Explorar bares <HugeiconsIcon icon={ArrowRight01Icon} size={12} color="currentColor" strokeWidth={2} />
+              <HugeiconsIcon
+                icon={FavouriteIcon}
+                size={28}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="text-zinc-200 mx-auto mb-2"
+              />
+              <p className="text-sm font-bold text-zinc-700 mb-1">
+                Nenhum bar favoritado
+              </p>
+              <p className="text-xs text-zinc-500 mb-3">
+                Favorite bares para acompanhar os próximos jogos aqui.
+              </p>
+              <Link
+                to="/dashboard"
+                className="text-xs font-bold text-brand-orange hover:underline inline-flex items-center gap-1"
+              >
+                Explorar bares{' '}
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={12}
+                  color="currentColor"
+                  strokeWidth={2}
+                />
               </Link>
             </section>
           )}
@@ -538,11 +744,26 @@ function ProfilePage() {
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-heading text-lg font-bold flex items-center gap-2">
-                  <HugeiconsIcon icon={Compass01Icon} size={18} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+                  <HugeiconsIcon
+                    icon={Compass01Icon}
+                    size={18}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                    className="text-brand-orange"
+                  />
                   Perto de você
                 </h2>
-                <Link to="/dashboard" className="text-xs font-bold text-zinc-500 hover:text-black flex items-center gap-1">
-                  Ver mais <HugeiconsIcon icon={ArrowRight01Icon} size={12} color="currentColor" strokeWidth={2} />
+                <Link
+                  to="/dashboard"
+                  className="text-xs font-bold text-zinc-500 hover:text-black flex items-center gap-1"
+                >
+                  Ver mais{' '}
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    size={12}
+                    color="currentColor"
+                    strokeWidth={2}
+                  />
                 </Link>
               </div>
               <div className="grid sm:grid-cols-3 gap-3">
@@ -557,12 +778,21 @@ function ProfilePage() {
                       {b.name}
                     </div>
                     <div className="text-xs text-zinc-500 flex items-center gap-1 mb-2">
-                      <HugeiconsIcon icon={Location01Icon} size={11} color="currentColor" strokeWidth={1.5} />
-                      {b.neighborhood} · {b.distance_km < 1 ? `${Math.round(b.distance_km * 1000)} m` : `${b.distance_km.toFixed(1)} km`}
+                      <HugeiconsIcon
+                        icon={Location01Icon}
+                        size={11}
+                        color="currentColor"
+                        strokeWidth={1.5}
+                      />
+                      {b.neighborhood} ·{' '}
+                      {b.distance_km < 1
+                        ? `${Math.round(b.distance_km * 1000)} m`
+                        : `${b.distance_km.toFixed(1)} km`}
                     </div>
                     {b.event_count > 0 && (
                       <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange">
-                        {b.event_count} jogo{b.event_count !== 1 ? 's' : ''} agendado{b.event_count !== 1 ? 's' : ''}
+                        {b.event_count} jogo{b.event_count !== 1 ? 's' : ''}{' '}
+                        agendado{b.event_count !== 1 ? 's' : ''}
                       </div>
                     )}
                   </Link>
@@ -581,18 +811,28 @@ function ProfilePage() {
             <div className="flex flex-wrap items-center gap-2">
               {/* Sort */}
               <div className="flex items-center gap-1 bg-white rounded-full ring-1 ring-black/5 p-1">
-                <HugeiconsIcon icon={Sorting01Icon} size={14} color="currentColor" strokeWidth={1.5} className="text-zinc-400 ml-2" />
-                {([
-                  { v: 'upcoming', l: 'Próximos jogos' },
-                  { v: 'az', l: 'A–Z' },
-                  { v: 'city', l: 'Cidade' }
-                ] as { v: SortBy; l: string }[]).map((s) => (
+                <HugeiconsIcon
+                  icon={Sorting01Icon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-zinc-400 ml-2"
+                />
+                {(
+                  [
+                    { v: 'upcoming', l: 'Próximos jogos' },
+                    { v: 'az', l: 'A–Z' },
+                    { v: 'city', l: 'Cidade' }
+                  ] as { v: SortBy; l: string }[]
+                ).map((s) => (
                   <button
                     key={s.v}
                     type="button"
                     onClick={() => setSortBy(s.v)}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                      sortBy === s.v ? 'bg-black text-white' : 'text-zinc-600 hover:text-black'
+                      sortBy === s.v
+                        ? 'bg-black text-white'
+                        : 'text-zinc-600 hover:text-black'
                     }`}
                   >
                     {s.l}
@@ -621,7 +861,12 @@ function ProfilePage() {
                   className={`p-1.5 rounded-full transition-colors ${viewMode === 'list' ? 'bg-black text-white' : 'text-zinc-500 hover:text-black'}`}
                   aria-label="Visualização em lista"
                 >
-                  <HugeiconsIcon icon={ListViewIcon} size={14} color="currentColor" strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={ListViewIcon}
+                    size={14}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />
                 </button>
                 <button
                   type="button"
@@ -629,7 +874,12 @@ function ProfilePage() {
                   className={`p-1.5 rounded-full transition-colors ${viewMode === 'map' ? 'bg-black text-white' : 'text-zinc-500 hover:text-black'}`}
                   aria-label="Visualização no mapa"
                 >
-                  <HugeiconsIcon icon={MapsLocation01Icon} size={14} color="currentColor" strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={MapsLocation01Icon}
+                    size={14}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />
                 </button>
               </div>
             </div>
@@ -638,81 +888,130 @@ function ProfilePage() {
           {/* Loading */}
           {loadingFavorites && (
             <div className="flex justify-center py-12 text-zinc-400">
-              <HugeiconsIcon icon={Loading01Icon} size={24} color="currentColor" strokeWidth={1.5} className="animate-spin" />
+              <HugeiconsIcon
+                icon={Loading01Icon}
+                size={24}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="animate-spin"
+              />
             </div>
           )}
 
           {/* Empty */}
           {!loadingFavorites && (favorites as any[]).length === 0 && (
             <section className="bg-white rounded-2xl ring-1 ring-black/5 p-8 text-center">
-              <HugeiconsIcon icon={FavouriteIcon} size={36} color="currentColor" strokeWidth={1.5} className="text-zinc-200 mx-auto mb-3" />
-              <p className="text-sm font-bold text-zinc-700 mb-1">Nenhum bar favoritado</p>
-              <p className="text-xs text-zinc-500 mb-4">Explore bares e favorite os seus preferidos.</p>
-              <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-orange hover:underline">
-                Explorar bares <HugeiconsIcon icon={ArrowRight01Icon} size={14} color="currentColor" strokeWidth={2} />
+              <HugeiconsIcon
+                icon={FavouriteIcon}
+                size={36}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="text-zinc-200 mx-auto mb-3"
+              />
+              <p className="text-sm font-bold text-zinc-700 mb-1">
+                Nenhum bar favoritado
+              </p>
+              <p className="text-xs text-zinc-500 mb-4">
+                Explore bares e favorite os seus preferidos.
+              </p>
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-brand-orange hover:underline"
+              >
+                Explorar bares{' '}
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={2}
+                />
               </Link>
             </section>
           )}
 
           {/* Filter empty */}
-          {!loadingFavorites && (favorites as any[]).length > 0 && sortedFavorites.length === 0 && (
-            <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 text-center">
-              <p className="text-sm text-zinc-500">Nenhum bar favorito com jogos agendados no momento.</p>
-            </section>
-          )}
+          {!loadingFavorites &&
+            (favorites as any[]).length > 0 &&
+            sortedFavorites.length === 0 && (
+              <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 text-center">
+                <p className="text-sm text-zinc-500">
+                  Nenhum bar favorito com jogos agendados no momento.
+                </p>
+              </section>
+            )}
 
           {/* Map view */}
-          {!loadingFavorites && viewMode === 'map' && sortedFavorites.length > 0 && (
-            <div className="relative h-[420px] md:h-[520px] rounded-2xl overflow-hidden ring-1 ring-black/5">
-              <GoogleMap
-                bars={mapBars}
-                center={coords ?? undefined}
-                hoveredId={hoveredBarId}
-                onHover={setHoveredBarId}
-                onSelect={(id) => navigate({ to: '/pub/$pubId', params: { pubId: id } })}
-              />
-              <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 text-xs font-bold ring-1 ring-black/5">
-                {sortedFavorites.length} bar{sortedFavorites.length !== 1 ? 'es' : ''} favorito{sortedFavorites.length !== 1 ? 's' : ''}
+          {!loadingFavorites &&
+            viewMode === 'map' &&
+            sortedFavorites.length > 0 && (
+              <div className="relative h-[420px] md:h-[520px] rounded-2xl overflow-hidden ring-1 ring-black/5">
+                <GoogleMap
+                  bars={mapBars}
+                  center={coords ?? undefined}
+                  hoveredId={hoveredBarId}
+                  onHover={setHoveredBarId}
+                  onSelect={(id) =>
+                    navigate({ to: '/pub/$pubId', params: { pubId: id } })
+                  }
+                />
+                <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 text-xs font-bold ring-1 ring-black/5">
+                  {sortedFavorites.length} bar
+                  {sortedFavorites.length !== 1 ? 'es' : ''} favorito
+                  {sortedFavorites.length !== 1 ? 's' : ''}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* List view — flat or grouped by city */}
-          {!loadingFavorites && viewMode === 'list' && sortedFavorites.length > 0 && (
-            <>
-              {favoritesByCity ? (
-                Array.from(favoritesByCity.entries()).map(([city, bars]) => (
-                  <div key={city}>
-                    <div className="flex items-center gap-2 mb-2 px-1">
-                      <HugeiconsIcon icon={Location01Icon} size={13} color="currentColor" strokeWidth={1.5} className="text-zinc-400" />
-                      <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{city}</span>
-                    </div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {bars.map((f: any) => (
-                        <FavoriteCard
-                          key={f.bar.id}
-                          favorite={f}
-                          onUnfavorite={() => unfavoriteMutation.mutate({ barId: f.bar.id })}
-                          isPending={unfavoriteMutation.isPending}
+          {!loadingFavorites &&
+            viewMode === 'list' &&
+            sortedFavorites.length > 0 && (
+              <>
+                {favoritesByCity ? (
+                  Array.from(favoritesByCity.entries()).map(([city, bars]) => (
+                    <div key={city}>
+                      <div className="flex items-center gap-2 mb-2 px-1">
+                        <HugeiconsIcon
+                          icon={Location01Icon}
+                          size={13}
+                          color="currentColor"
+                          strokeWidth={1.5}
+                          className="text-zinc-400"
                         />
-                      ))}
+                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                          {city}
+                        </span>
+                      </div>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {bars.map((f: any) => (
+                          <FavoriteCard
+                            key={f.bar.id}
+                            favorite={f}
+                            onUnfavorite={() =>
+                              unfavoriteMutation.mutate({ barId: f.bar.id })
+                            }
+                            isPending={unfavoriteMutation.isPending}
+                          />
+                        ))}
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {sortedFavorites.map((f: any) => (
+                      <FavoriteCard
+                        key={f.bar.id}
+                        favorite={f}
+                        onUnfavorite={() =>
+                          unfavoriteMutation.mutate({ barId: f.bar.id })
+                        }
+                        isPending={unfavoriteMutation.isPending}
+                      />
+                    ))}
                   </div>
-                ))
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {sortedFavorites.map((f: any) => (
-                    <FavoriteCard
-                      key={f.bar.id}
-                      favorite={f}
-                      onUnfavorite={() => unfavoriteMutation.mutate({ barId: f.bar.id })}
-                      isPending={unfavoriteMutation.isPending}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
         </div>
       )}
 
@@ -723,7 +1022,13 @@ function ProfilePage() {
           <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-heading text-lg font-bold flex items-center gap-2">
-                <HugeiconsIcon icon={Medal01Icon} size={20} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+                <HugeiconsIcon
+                  icon={Medal01Icon}
+                  size={20}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-brand-orange"
+                />
                 Esportes favoritos
               </h3>
               {!editingSports && (
@@ -732,13 +1037,25 @@ function ProfilePage() {
                   onClick={openEditSports}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 hover:text-black px-3 py-1.5 rounded-full hover:bg-zinc-100"
                 >
-                  <HugeiconsIcon icon={Edit03Icon} size={14} color="currentColor" strokeWidth={1.5} /> Editar
+                  <HugeiconsIcon
+                    icon={Edit03Icon}
+                    size={14}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />{' '}
+                  Editar
                 </button>
               )}
             </div>
 
             {loadingPrefs ? (
-              <HugeiconsIcon icon={Loading01Icon} size={16} color="currentColor" strokeWidth={1.5} className="animate-spin text-zinc-400" />
+              <HugeiconsIcon
+                icon={Loading01Icon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="animate-spin text-zinc-400"
+              />
             ) : editingSports ? (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
@@ -750,28 +1067,43 @@ function ProfilePage() {
                         type="button"
                         onClick={() => toggleSport(s.id)}
                         className={`relative rounded-xl p-4 text-left transition-all ring-1 ${
-                          on ? 'bg-brand-orange text-white ring-transparent' : 'bg-zinc-50 ring-zinc-200 hover:bg-zinc-100'
+                          on
+                            ? 'bg-brand-orange text-white ring-transparent'
+                            : 'bg-zinc-50 ring-zinc-200 hover:bg-zinc-100'
                         }`}
                       >
                         <div className="font-bold text-sm">{s.name}</div>
                         {on && (
-                          <HugeiconsIcon icon={Tick01Icon} size={14} color="currentColor" strokeWidth={1.5} className="absolute top-2 right-2" />
+                          <HugeiconsIcon
+                            icon={Tick01Icon}
+                            size={14}
+                            color="currentColor"
+                            strokeWidth={1.5}
+                            className="absolute top-2 right-2"
+                          />
                         )}
                       </button>
                     )
                   })}
                 </div>
                 <p className="text-xs text-zinc-400 mb-4">
-                  {selectedSportIds.length} selecionado{selectedSportIds.length !== 1 ? 's' : ''} — escolha pelo menos 1.
+                  {selectedSportIds.length} selecionado
+                  {selectedSportIds.length !== 1 ? 's' : ''} — escolha pelo
+                  menos 1.
                 </p>
                 {updatePrefsMutation.error && (
-                  <p className="text-xs text-red-500 mb-3">{updatePrefsMutation.error.message}</p>
+                  <p className="text-xs text-red-500 mb-3">
+                    {updatePrefsMutation.error.message}
+                  </p>
                 )}
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={saveSports}
-                    disabled={selectedSportIds.length === 0 || updatePrefsMutation.isPending}
+                    disabled={
+                      selectedSportIds.length === 0 ||
+                      updatePrefsMutation.isPending
+                    }
                     className="px-4 py-2 rounded-full text-sm font-bold bg-brand-orange text-white disabled:opacity-50"
                   >
                     {updatePrefsMutation.isPending ? 'Salvando...' : 'Salvar'}
@@ -788,10 +1120,15 @@ function ProfilePage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {(myPreferences as any[]).length === 0 ? (
-                  <p className="text-sm text-zinc-500">Nenhum esporte selecionado.</p>
+                  <p className="text-sm text-zinc-500">
+                    Nenhum esporte selecionado.
+                  </p>
                 ) : (
                   (myPreferences as any[]).map((p) => (
-                    <span key={p.sportId} className="px-3 py-1.5 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-bold">
+                    <span
+                      key={p.sportId}
+                      className="px-3 py-1.5 rounded-full bg-brand-orange/10 text-brand-orange text-xs font-bold"
+                    >
                       {p.sport.name}
                     </span>
                   ))
@@ -803,10 +1140,18 @@ function ProfilePage() {
           {/* Raio de busca */}
           <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6">
             <h3 className="font-heading text-lg font-bold flex items-center gap-2 mb-1">
-              <HugeiconsIcon icon={Location01Icon} size={20} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+              <HugeiconsIcon
+                icon={Location01Icon}
+                size={20}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="text-brand-orange"
+              />
               Raio de busca
             </h3>
-            <p className="text-xs text-zinc-500 mb-4">Distância máxima para buscar bares</p>
+            <p className="text-xs text-zinc-500 mb-4">
+              Distância máxima para buscar bares
+            </p>
             <div className="flex gap-2 flex-wrap">
               {RADIUS_OPTIONS.map((km) => (
                 <button
@@ -815,19 +1160,25 @@ function ProfilePage() {
                   disabled={savingRadius}
                   onClick={async () => {
                     setSavingRadius(true)
-                    await authClient.updateUser({ searchRadiusKm: km as number })
+                    await authClient.updateUser({
+                      searchRadiusKm: km as number
+                    })
                     queryClient.invalidateQueries({ queryKey: ['session'] })
                     setSavingRadius(false)
                   }}
                   className={`px-4 py-2 rounded-full text-sm font-bold transition-colors disabled:opacity-60 ${
-                    user?.searchRadiusKm === km ? 'bg-brand-orange text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                    user?.searchRadiusKm === km
+                      ? 'bg-brand-orange text-white'
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
                   }`}
                 >
                   {km} km
                 </button>
               ))}
             </div>
-            {savingRadius && <p className="text-[10px] text-zinc-400 mt-2">Salvando...</p>}
+            {savingRadius && (
+              <p className="text-[10px] text-zinc-400 mt-2">Salvando...</p>
+            )}
           </section>
 
           {/* Sair */}
@@ -838,11 +1189,21 @@ function ProfilePage() {
               className="w-full text-left p-5 flex items-center gap-4 hover:bg-red-50 transition-colors group"
             >
               <div className="size-10 rounded-xl bg-zinc-100 group-hover:bg-red-100 grid place-items-center transition-colors">
-                <HugeiconsIcon icon={Logout01Icon} size={16} color="currentColor" strokeWidth={1.5} className="group-hover:text-red-600 transition-colors" />
+                <HugeiconsIcon
+                  icon={Logout01Icon}
+                  size={16}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="group-hover:text-red-600 transition-colors"
+                />
               </div>
               <div className="flex-1">
-                <div className="font-bold text-sm group-hover:text-red-600 transition-colors">Sair</div>
-                <div className="text-xs text-zinc-500">Encerrar a sessão neste dispositivo</div>
+                <div className="font-bold text-sm group-hover:text-red-600 transition-colors">
+                  Sair
+                </div>
+                <div className="text-xs text-zinc-500">
+                  Encerrar a sessão neste dispositivo
+                </div>
               </div>
               <span className="text-zinc-300">›</span>
             </button>
@@ -859,7 +1220,11 @@ type FavoriteCardProps = {
   isPending: boolean
 }
 
-function FavoriteCard({ favorite: f, onUnfavorite, isPending }: FavoriteCardProps) {
+function FavoriteCard({
+  favorite: f,
+  onUnfavorite,
+  isPending
+}: FavoriteCardProps) {
   const nextEvent = f.bar.events?.[0]
 
   return (
@@ -869,7 +1234,12 @@ function FavoriteCard({ favorite: f, onUnfavorite, isPending }: FavoriteCardProp
           {f.bar.name}
         </div>
         <div className="text-xs text-zinc-500 flex items-center gap-1 mb-3">
-          <HugeiconsIcon icon={Location01Icon} size={11} color="currentColor" strokeWidth={1.5} />
+          <HugeiconsIcon
+            icon={Location01Icon}
+            size={11}
+            color="currentColor"
+            strokeWidth={1.5}
+          />
           {f.bar.neighborhood}, {f.bar.city}
         </div>
         {nextEvent ? (
@@ -877,8 +1247,12 @@ function FavoriteCard({ favorite: f, onUnfavorite, isPending }: FavoriteCardProp
             <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange mb-0.5">
               {nextEvent.sport?.name}
             </div>
-            <div className="text-xs font-bold text-zinc-800 truncate">{nextEvent.championship}</div>
-            <div className="text-xs text-zinc-500 mt-0.5">{formatEventDate(nextEvent.startsAt)}</div>
+            <div className="text-xs font-bold text-zinc-800 truncate">
+              {nextEvent.championship}
+            </div>
+            <div className="text-xs text-zinc-500 mt-0.5">
+              {formatEventDate(nextEvent.startsAt)}
+            </div>
           </div>
         ) : (
           <div className="rounded-lg bg-zinc-50 px-3 py-2">
@@ -893,7 +1267,12 @@ function FavoriteCard({ favorite: f, onUnfavorite, isPending }: FavoriteCardProp
         className="absolute top-3 right-3 size-7 rounded-full grid place-items-center text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
         aria-label={`Remover ${f.bar.name} dos favoritos`}
       >
-        <HugeiconsIcon icon={HeartMinusIcon} size={14} color="currentColor" strokeWidth={1.5} />
+        <HugeiconsIcon
+          icon={HeartMinusIcon}
+          size={14}
+          color="currentColor"
+          strokeWidth={1.5}
+        />
       </button>
     </div>
   )

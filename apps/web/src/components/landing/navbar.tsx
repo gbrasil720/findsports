@@ -27,7 +27,7 @@ export function Nav() {
           </a>
           {isAdmin && (
             <Link
-              to="/admin/waitlist"
+              to="/internal"
               className="rounded-full bg-brand-orange px-5 py-2.5 text-white normal-case tracking-normal transition-colors hover:bg-brand-orange/80"
             >
               Admin
@@ -49,7 +49,7 @@ export function Nav() {
         <div className="flex items-center gap-2 md:hidden">
           {isAdmin && (
             <Link
-              to="/admin/waitlist"
+              to="/internal"
               className="rounded-full bg-brand-orange px-4 py-3 font-bold text-white text-xs transition-colors hover:bg-brand-orange/80 min-h-[44px] inline-flex items-center"
             >
               Admin

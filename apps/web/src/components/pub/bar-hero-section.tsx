@@ -1,4 +1,10 @@
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle
+} from '@findsports_oficial/ui/components/dialog'
+import {
   CallIcon,
   Copy01Icon,
   FavouriteIcon,
@@ -6,16 +12,10 @@ import {
   MapPinIcon,
   NavigationIcon,
   ShareKnowledgeIcon,
-  Tick01Icon,
+  Tick01Icon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from '@findsports_oficial/ui/components/dialog'
 
 import { formatStoredPhone } from '@/utils/format-phone'
 
@@ -50,7 +50,7 @@ export function BarHeroSection({
   liveEvent,
   isFavorited = false,
   onDirections,
-  onFavorite,
+  onFavorite
 }: Props) {
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -87,7 +87,11 @@ export function BarHeroSection({
           <div className="flex gap-5 items-start">
             <div className="size-20 md:size-24 rounded-3xl ring-4 ring-white/20 overflow-hidden shrink-0 bg-white/10">
               {bar.photoUrl ? (
-                <img src={bar.photoUrl} alt={bar.name} className="size-full object-cover" />
+                <img
+                  src={bar.photoUrl}
+                  alt={bar.name}
+                  className="size-full object-cover"
+                />
               ) : (
                 <div className="size-full grid place-items-center font-heading font-bold text-3xl text-white/80">
                   {initials}
@@ -110,12 +114,22 @@ export function BarHeroSection({
               </h1>
               <div className="flex flex-wrap items-center gap-4 text-sm text-white/80">
                 <span className="inline-flex items-center gap-1.5">
-                  <HugeiconsIcon icon={MapPinIcon} size={16} color="currentColor" strokeWidth={1.5} />
+                  <HugeiconsIcon
+                    icon={MapPinIcon}
+                    size={16}
+                    color="currentColor"
+                    strokeWidth={1.5}
+                  />
                   {bar.address} · {bar.neighborhood}
                 </span>
                 {bar.phone && (
                   <span className="inline-flex items-center gap-1.5">
-                    <HugeiconsIcon icon={CallIcon} size={16} color="currentColor" strokeWidth={1.5} />
+                    <HugeiconsIcon
+                      icon={CallIcon}
+                      size={16}
+                      color="currentColor"
+                      strokeWidth={1.5}
+                    />
                     {formatStoredPhone(bar.phone)}
                   </span>
                 )}
@@ -135,7 +149,13 @@ export function BarHeroSection({
               onClick={onDirections}
               className="bg-brand-orange text-white text-sm font-bold px-5 py-3 rounded-full hover:scale-105 transition-transform shadow-[0_8px_30px_-6px_rgba(255,90,31,0.7)] inline-flex items-center gap-2 min-h-[44px]"
             >
-              <HugeiconsIcon icon={NavigationIcon} size={16} color="currentColor" strokeWidth={1.5} /> Como chegar
+              <HugeiconsIcon
+                icon={NavigationIcon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+              />{' '}
+              Como chegar
             </button>
             <button
               type="button"
@@ -155,7 +175,12 @@ export function BarHeroSection({
               onClick={handleShareClick}
               className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <HugeiconsIcon icon={ShareKnowledgeIcon} size={16} color="currentColor" strokeWidth={1.5} />
+              <HugeiconsIcon
+                icon={ShareKnowledgeIcon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+              />
             </button>
           </div>
         </div>
@@ -166,7 +191,13 @@ export function BarHeroSection({
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-2xl bg-brand-orange/10 grid place-items-center shrink-0">
-                <HugeiconsIcon icon={ShareKnowledgeIcon} size={18} color="currentColor" strokeWidth={1.5} className="text-brand-orange" />
+                <HugeiconsIcon
+                  icon={ShareKnowledgeIcon}
+                  size={18}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-brand-orange"
+                />
               </div>
               <DialogTitle>Compartilhar bar</DialogTitle>
             </div>
@@ -174,12 +205,22 @@ export function BarHeroSection({
           </div>
 
           <p className="text-sm text-zinc-500 mb-4">
-            Compartilhe <span className="font-semibold text-zinc-800">{bar.name}</span> com seus amigos.
+            Compartilhe{' '}
+            <span className="font-semibold text-zinc-800">{bar.name}</span> com
+            seus amigos.
           </p>
 
           <div className="flex items-center gap-2 bg-zinc-50 ring-1 ring-black/8 rounded-xl px-4 py-3 mb-4">
-            <HugeiconsIcon icon={LinkCircleIcon} size={16} color="currentColor" strokeWidth={1.5} className="text-zinc-400 shrink-0" />
-            <span className="text-sm text-zinc-600 truncate flex-1 font-mono">{shareUrl}</span>
+            <HugeiconsIcon
+              icon={LinkCircleIcon}
+              size={16}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="text-zinc-400 shrink-0"
+            />
+            <span className="text-sm text-zinc-600 truncate flex-1 font-mono">
+              {shareUrl}
+            </span>
             <button
               type="button"
               onClick={handleCopy}
@@ -201,7 +242,12 @@ export function BarHeroSection({
               onClick={handleNativeShare}
               className="w-full bg-black text-white text-sm font-bold py-3 rounded-xl hover:bg-zinc-800 transition-colors inline-flex items-center justify-center gap-2"
             >
-              <HugeiconsIcon icon={ShareKnowledgeIcon} size={16} color="currentColor" strokeWidth={1.5} />
+              <HugeiconsIcon
+                icon={ShareKnowledgeIcon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+              />
               Compartilhar via...
             </button>
           )}

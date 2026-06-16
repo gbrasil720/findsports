@@ -1,7 +1,10 @@
+import {
+  ArrowLeftBigIcon,
+  LoaderPinwheelIcon
+} from '@hugeicons/core-free-icons'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeftBigIcon, LoaderPinwheelIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
 import { BarHeroSection } from '@/components/pub/bar-hero-section'
@@ -16,7 +19,8 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
       { title: 'Bar parceiro — FindSports' },
       {
         name: 'description',
-        content: 'Veja a programação de jogos, horários e como chegar neste bar parceiro do FindSports.'
+        content:
+          'Veja a programação de jogos, horários e como chegar neste bar parceiro do FindSports.'
       }
     ]
   }),
@@ -70,8 +74,13 @@ function BarPage() {
     return { prev }
   }
 
-  const rollback = (_err: unknown, _vars: unknown, ctx: { prev?: FavCache } | undefined) => {
-    if (ctx?.prev !== undefined) queryClient.setQueryData<FavCache>(isFavQueryKey, ctx.prev)
+  const rollback = (
+    _err: unknown,
+    _vars: unknown,
+    ctx: { prev?: FavCache } | undefined
+  ) => {
+    if (ctx?.prev !== undefined)
+      queryClient.setQueryData<FavCache>(isFavQueryKey, ctx.prev)
   }
 
   const settle = () => {
@@ -97,7 +106,13 @@ function BarPage() {
     return (
       <AppShell role="fan" userMeta={''}>
         <div className="flex items-center justify-center py-24 text-zinc-400">
-          <HugeiconsIcon icon={LoaderPinwheelIcon} size={24} color="currentColor" strokeWidth={1.5} className="animate-spin mr-2" />
+          <HugeiconsIcon
+            icon={LoaderPinwheelIcon}
+            size={24}
+            color="currentColor"
+            strokeWidth={1.5}
+            className="animate-spin mr-2"
+          />
           <span className="text-sm">Carregando...</span>
         </div>
       </AppShell>
@@ -154,7 +169,13 @@ function BarPage() {
         to="/dashboard"
         className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-black mb-4"
       >
-        <HugeiconsIcon icon={ArrowLeftBigIcon} size={16} color="currentColor" strokeWidth={1.5} /> Voltar
+        <HugeiconsIcon
+          icon={ArrowLeftBigIcon}
+          size={16}
+          color="currentColor"
+          strokeWidth={1.5}
+        />{' '}
+        Voltar
       </Link>
 
       <BarHeroSection

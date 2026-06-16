@@ -1,7 +1,17 @@
+import {
+  Car01Icon,
+  FireIcon,
+  MapPinIcon,
+  MedalFirstPlaceIcon,
+  RadioButtonIcon,
+  TargetDollarIcon,
+  Tick01Icon,
+  VolleyballIcon,
+  WeightIcon
+} from '@hugeicons/core-free-icons'
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Car01Icon, FireIcon, MapPinIcon, MedalFirstPlaceIcon, RadioButtonIcon, TargetDollarIcon, Tick01Icon, VolleyballIcon, WeightIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
@@ -19,7 +29,8 @@ export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
       { title: 'Configure sua conta de torcedor — FindSports' },
       {
         name: 'description',
-        content: 'Personalize sua experiência: escolha seus esportes e defina o raio de busca. Leva menos de 1 minuto.'
+        content:
+          'Personalize sua experiência: escolha seus esportes e defina o raio de busca. Leva menos de 1 minuto.'
       },
       { name: 'robots', content: 'noindex' }
     ]
@@ -160,7 +171,12 @@ function FanOnboarding() {
         {step === 3 && (
           <div className="text-center py-6">
             <div className="mx-auto mb-6 grid place-items-center size-20 rounded-full bg-brand-orange">
-              <HugeiconsIcon icon={Tick01Icon} size={40} color="currentColor" strokeWidth={1.5} />
+              <HugeiconsIcon
+                icon={Tick01Icon}
+                size={40}
+                color="currentColor"
+                strokeWidth={1.5}
+              />
             </div>
             <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight mb-3">
               Tudo pronto, torcedor!

@@ -30,7 +30,13 @@ export function RadiusSelector({ value, options, onChange }: Props) {
                 : 'bg-white/5 ring-white/10 hover:bg-white/10'
             }`}
           >
-            <HugeiconsIcon icon={MapPinIcon} size={20} color="currentColor" strokeWidth={1.5} className="mb-3 opacity-80" />
+            <HugeiconsIcon
+              icon={MapPinIcon}
+              size={20}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="mb-3 opacity-80"
+            />
             <div className="font-heading text-2xl font-bold leading-none">
               {km} km
             </div>

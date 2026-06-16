@@ -7,7 +7,12 @@ function Check({ color }: { color: string }) {
     <span
       className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center text-white`}
     >
-      <HugeiconsIcon icon={Tick01Icon} size={12} color="currentColor" strokeWidth={2} />
+      <HugeiconsIcon
+        icon={Tick01Icon}
+        size={12}
+        color="currentColor"
+        strokeWidth={2}
+      />
     </span>
   )
 }

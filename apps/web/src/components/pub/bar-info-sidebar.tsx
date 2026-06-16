@@ -27,12 +27,24 @@ export function BarInfoSidebar({ bar, onDirections }: Props) {
         <h3 className="font-heading text-lg font-bold mb-4">Informações</h3>
         <ul className="space-y-3 text-sm">
           <li className="flex items-start gap-3 text-zinc-700">
-            <HugeiconsIcon icon={MapPinIcon} size={16} color="currentColor" strokeWidth={1.5} className="text-zinc-400 mt-0.5 shrink-0" />
+            <HugeiconsIcon
+              icon={MapPinIcon}
+              size={16}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="text-zinc-400 mt-0.5 shrink-0"
+            />
             {bar.address}, {bar.neighborhood}, {bar.city}
           </li>
           {bar.phone && (
             <li className="flex items-center gap-3 text-zinc-700">
-              <HugeiconsIcon icon={CallIcon} size={16} color="currentColor" strokeWidth={1.5} className="text-zinc-400 shrink-0" />
+              <HugeiconsIcon
+                icon={CallIcon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="text-zinc-400 shrink-0"
+              />
               {formatStoredPhone(bar.phone)}
             </li>
           )}
@@ -41,7 +53,14 @@ export function BarInfoSidebar({ bar, onDirections }: Props) {
 
       <section className="bg-white rounded-2xl ring-1 ring-black/5 p-5">
         <h3 className="font-heading text-lg font-bold mb-3 flex items-center gap-2">
-          <HugeiconsIcon icon={MapPinIcon} size={16} color="currentColor" strokeWidth={1.5} className="text-brand-orange" /> Localização
+          <HugeiconsIcon
+            icon={MapPinIcon}
+            size={16}
+            color="currentColor"
+            strokeWidth={1.5}
+            className="text-brand-orange"
+          />{' '}
+          Localização
         </h3>
         <div className="relative h-44 rounded-xl overflow-hidden bg-zinc-100">
           <GoogleMap

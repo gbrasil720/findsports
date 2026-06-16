@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as InternalRouteImport } from './routes/internal'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
+import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
-import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
@@ -36,6 +38,11 @@ const PlanRoute = PlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalRoute = InternalRouteImport.update({
+  id: '/internal',
+  path: '/internal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -46,15 +53,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
+  id: '/internal_/waitlist',
+  path: '/internal/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
+  id: '/internal_/manage-users',
+  path: '/internal/manage-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin_/billing',
   path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
-  getParentRoute: () => AdminRoute,
 } as any)
 const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   id: '/(dashboard)/dashboard',
@@ -110,14 +122,16 @@ const dashboardDashboardProfileRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
+  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard': typeof dashboardDashboardRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/manage-users': typeof InternalManageUsersRoute
+  '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -128,14 +142,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
+  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard': typeof dashboardDashboardRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/manage-users': typeof InternalManageUsersRoute
+  '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -147,14 +163,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
+  '/admin': typeof AdminRoute
+  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/admin_/billing': typeof AdminBillingRoute
+  '/internal_/manage-users': typeof InternalManageUsersRoute
+  '/internal_/waitlist': typeof InternalWaitlistRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -168,13 +186,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/internal'
     | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
     | '/dashboard'
-    | '/admin/waitlist'
     | '/admin/billing'
+    | '/internal/manage-users'
+    | '/internal/waitlist'
     | '/dashboard/profile'
     | '/onboarding/fan'
     | '/onboarding/pub'
@@ -186,13 +206,15 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/internal'
     | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
     | '/dashboard'
-    | '/admin/waitlist'
     | '/admin/billing'
+    | '/internal/manage-users'
+    | '/internal/waitlist'
     | '/dashboard/profile'
     | '/onboarding/fan'
     | '/onboarding/pub'
@@ -204,13 +226,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/internal'
     | '/plan'
     | '/sitemap.xml'
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/(dashboard)/dashboard'
-    | '/admin/waitlist'
     | '/admin_/billing'
+    | '/internal_/manage-users'
+    | '/internal_/waitlist'
     | '/(dashboard)/dashboard_/profile'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
@@ -222,13 +246,16 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
+  AdminRoute: typeof AdminRoute
+  InternalRoute: typeof InternalRoute
   PlanRoute: typeof PlanRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  InternalManageUsersRoute: typeof InternalManageUsersRoute
+  InternalWaitlistRoute: typeof InternalWaitlistRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
@@ -254,6 +281,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal': {
+      id: '/internal'
+      path: '/internal'
+      fullPath: '/internal'
+      preLoaderRoute: typeof InternalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -268,19 +302,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal_/waitlist': {
+      id: '/internal_/waitlist'
+      path: '/internal/waitlist'
+      fullPath: '/internal/waitlist'
+      preLoaderRoute: typeof InternalWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internal_/manage-users': {
+      id: '/internal_/manage-users'
+      path: '/internal/manage-users'
+      fullPath: '/internal/manage-users'
+      preLoaderRoute: typeof InternalManageUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/billing': {
       id: '/admin_/billing'
       path: '/admin/billing'
       fullPath: '/admin/billing'
       preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/admin/waitlist': {
-      id: '/admin/waitlist'
-      path: '/waitlist'
-      fullPath: '/admin/waitlist'
-      preLoaderRoute: typeof AdminWaitlistRouteImport
-      parentRoute: typeof AdminRoute
     }
     '/(dashboard)/dashboard': {
       id: '/(dashboard)/dashboard'
@@ -355,25 +396,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminRouteChildren {
-  AdminWaitlistRoute: typeof AdminWaitlistRoute
-}
-
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminWaitlistRoute: AdminWaitlistRoute,
-}
-
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
+  AdminRoute: AdminRoute,
+  InternalRoute: InternalRoute,
   PlanRoute: PlanRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
+  InternalManageUsersRoute: InternalManageUsersRoute,
+  InternalWaitlistRoute: InternalWaitlistRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,

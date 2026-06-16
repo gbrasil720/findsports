@@ -164,7 +164,13 @@ export function EventListItem({
             onClick={() => onEdit(e.id)}
             className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
           >
-            <HugeiconsIcon icon={PencilIcon} size={16} color="currentColor" strokeWidth={1.5} className="text-zinc-600" />
+            <HugeiconsIcon
+              icon={PencilIcon}
+              size={16}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="text-zinc-600"
+            />
           </button>
           <button
             type="button"
@@ -172,7 +178,12 @@ export function EventListItem({
             disabled={isDeleting}
             className="p-2 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
           >
-            <HugeiconsIcon icon={DeleteThrowIcon} size={16} color="currentColor" strokeWidth={1.5} />
+            <HugeiconsIcon
+              icon={DeleteThrowIcon}
+              size={16}
+              color="currentColor"
+              strokeWidth={1.5}
+            />
           </button>
         </div>
       </div>

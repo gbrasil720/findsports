@@ -11,6 +11,7 @@ import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { admin } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
 
@@ -165,6 +166,10 @@ export function createAuth() {
     baseURL: env.BETTER_AUTH_URL,
     plugins: [
       tanstackStartCookies(),
+      admin({
+        adminRoles: ['admin'],
+        defaultRole: 'fan'
+      }),
       dodopayments({
         client: dodoClient,
         createCustomerOnSignUp: true,

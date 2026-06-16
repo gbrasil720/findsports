@@ -42,11 +42,25 @@ export function SportSelector({
                 : 'bg-white/5 ring-white/10 hover:bg-white/10'
             }`}
           >
-            <HugeiconsIcon icon={icon} size={24} color="currentColor" strokeWidth={1.5} className="mb-3 opacity-90" />
+            <HugeiconsIcon
+              icon={icon}
+              size={24}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="mb-3 opacity-90"
+            />
             <div className="font-heading text-lg font-bold leading-none">
               {s.name}
             </div>
-            {on && <HugeiconsIcon icon={Tick01Icon} size={16} color="currentColor" strokeWidth={1.5} className="absolute top-3 right-3" />}
+            {on && (
+              <HugeiconsIcon
+                icon={Tick01Icon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="absolute top-3 right-3"
+              />
+            )}
           </button>
         )
       })}

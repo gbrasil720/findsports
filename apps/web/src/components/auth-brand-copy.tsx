@@ -71,7 +71,12 @@ export function AuthBrandCopy({ role }: AuthBrandCopyProps) {
             <span
               className={`flex size-5 shrink-0 items-center justify-center rounded-full ${c.checkColor}`}
             >
-              <HugeiconsIcon icon={Tick01Icon} size={12} color="currentColor" strokeWidth={2} />
+              <HugeiconsIcon
+                icon={Tick01Icon}
+                size={12}
+                color="currentColor"
+                strokeWidth={2}
+              />
             </span>
             {item}
           </li>

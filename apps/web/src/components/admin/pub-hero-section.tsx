@@ -123,7 +123,9 @@ export function PubHeroSection({
             )}
           </div>
 
-          <div className={`flex gap-5 ${editing ? 'flex-col sm:flex-row sm:items-start' : 'items-start'}`}>
+          <div
+            className={`flex gap-5 ${editing ? 'flex-col sm:flex-row sm:items-start' : 'items-start'}`}
+          >
             {/* Avatar clicável */}
             <BarAvatar
               name={bar.name}

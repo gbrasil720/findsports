@@ -44,7 +44,13 @@ export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
     <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-          <HugeiconsIcon icon={CalendarsIcon} size={20} color="currentColor" strokeWidth={1.5} className="text-brand-blue" />
+          <HugeiconsIcon
+            icon={CalendarsIcon}
+            size={20}
+            color="currentColor"
+            strokeWidth={1.5}
+            className="text-brand-blue"
+          />
           Próximos jogos transmitidos
         </h2>
       </div>
