@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarsIcon, PlusSignIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTRPC } from '@/utils/trpc'
 import { EmptyEventsState } from './empty-events-state'
@@ -135,7 +135,14 @@ export function EventsManager() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <HugeiconsIcon icon={CalendarsIcon} size={20} color="currentColor" strokeWidth={1.5} className="text-brand-blue" /> Agenda de jogos
+            <HugeiconsIcon
+              icon={CalendarsIcon}
+              size={20}
+              color="currentColor"
+              strokeWidth={1.5}
+              className="text-brand-blue"
+            />{' '}
+            Agenda de jogos
           </h2>
           {!isLoading && events.length > 0 && (
             <p className="text-sm text-zinc-500 mt-0.5">
@@ -159,7 +166,13 @@ export function EventsManager() {
           onClick={openCreate}
           className="bg-black text-white text-xs font-bold px-4 py-3 rounded-full inline-flex items-center gap-2 hover:bg-brand-blue transition-colors min-h-[44px]"
         >
-          <HugeiconsIcon icon={PlusSignIcon} size={16} color="currentColor" strokeWidth={1.5} /> Novo evento
+          <HugeiconsIcon
+            icon={PlusSignIcon}
+            size={16}
+            color="currentColor"
+            strokeWidth={1.5}
+          />{' '}
+          Novo evento
         </button>
       </div>
 

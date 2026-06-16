@@ -57,6 +57,11 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
     })
   }
 
+  // Não-admin tentando acessar área interna
+  if (pathname.startsWith('/internal') && session.user.role !== 'admin') {
+    throw redirect({ to: session.user.role === 'pub' ? '/admin' : '/dashboard' })
+  }
+
   // Fan tentando acessar área do bar
   if (session.user.role === 'fan' && pathname.startsWith('/admin')) {
     throw redirect({ to: '/dashboard' })

@@ -10,9 +10,9 @@ import {
   InputGroupButton,
   InputGroupInput
 } from '@findsports_oficial/ui/components/input-group'
-import type { FieldApi } from '@tanstack/react-form'
 import { EyeIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import type { FieldApi } from '@tanstack/react-form'
 import { useState } from 'react'
 
 interface AuthFormFieldProps {
@@ -52,9 +52,21 @@ export function AuthFormField({
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
-                <HugeiconsIcon icon={ViewOffSlashIcon} size={14} color="currentColor" strokeWidth={1.5} className="text-muted-foreground" />
+                <HugeiconsIcon
+                  icon={ViewOffSlashIcon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-muted-foreground"
+                />
               ) : (
-                <HugeiconsIcon icon={EyeIcon} size={14} color="currentColor" strokeWidth={1.5} className="text-muted-foreground" />
+                <HugeiconsIcon
+                  icon={EyeIcon}
+                  size={14}
+                  color="currentColor"
+                  strokeWidth={1.5}
+                  className="text-muted-foreground"
+                />
               )}
             </InputGroupButton>
           </InputGroupAddon>

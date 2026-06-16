@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
 import { LoaderPinwheelIcon, Tick01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTRPC } from '@/utils/trpc'
 
@@ -69,8 +69,10 @@ export function EventFormComponent({
     }))
   }
 
-  const endsAtValid = !form.endsAt || (!!form.startsAt && form.endsAt > form.startsAt)
-  const canSave = form.sportId && form.championship && form.startsAt && endsAtValid
+  const endsAtValid =
+    !form.endsAt || (!!form.startsAt && form.endsAt > form.startsAt)
+  const canSave =
+    form.sportId && form.championship && form.startsAt && endsAtValid
 
   return (
     <div className="space-y-4 max-h-[70dvh] overflow-y-auto pr-1">
@@ -142,7 +144,14 @@ export function EventFormComponent({
 
           {loadingTeams ? (
             <div className="flex items-center gap-2 text-zinc-400 text-sm py-2">
-              <HugeiconsIcon icon={LoaderPinwheelIcon} size={16} color="currentColor" strokeWidth={1.5} className="animate-spin" /> Carregando times...
+              <HugeiconsIcon
+                icon={LoaderPinwheelIcon}
+                size={16}
+                color="currentColor"
+                strokeWidth={1.5}
+                className="animate-spin"
+              />{' '}
+              Carregando times...
             </div>
           ) : teams.length > 0 ? (
             <>
@@ -165,7 +174,14 @@ export function EventFormComponent({
                             : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                       }`}
                     >
-                      {selected && <HugeiconsIcon icon={Tick01Icon} size={12} color="currentColor" strokeWidth={1.5} />}
+                      {selected && (
+                        <HugeiconsIcon
+                          icon={Tick01Icon}
+                          size={12}
+                          color="currentColor"
+                          strokeWidth={1.5}
+                        />
+                      )}
                       {t.name}
                     </button>
                   )

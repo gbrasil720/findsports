@@ -19,6 +19,10 @@ export const user = pgTable('user', {
     .default('fan'),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   searchRadiusKm: integer('search_radius_km').default(3).notNull(),
+  // better-auth admin plugin fields
+  banned: boolean('banned').default(false),
+  banReason: text('ban_reason'),
+  banExpires: timestamp('ban_expires'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
@@ -40,7 +44,9 @@ export const session = pgTable(
     userAgent: text('user_agent'),
     userId: text('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' })
+      .references(() => user.id, { onDelete: 'cascade' }),
+    // better-auth admin plugin: impersonation tracking
+    impersonatedBy: text('impersonated_by')
   },
   (table) => [index('session_userId_idx').on(table.userId)]
 )

@@ -45,7 +45,13 @@ export function WelcomeStep({
             key={text}
             className="flex items-center gap-2.5 rounded-2xl bg-white/5 px-4 py-3 text-sm"
           >
-            <HugeiconsIcon icon={icon} size={16} color="currentColor" strokeWidth={1.5} className={ACCENT_TEXT[accent]} />
+            <HugeiconsIcon
+              icon={icon}
+              size={16}
+              color="currentColor"
+              strokeWidth={1.5}
+              className={ACCENT_TEXT[accent]}
+            />
             <span>{text}</span>
           </div>
         ))}

@@ -86,7 +86,9 @@ export function PhoneInput({
   placeholder = '(11) 9 1234-5678'
 }: Props) {
   const parsed = parsePhone(defaultValue)
-  const [selectedCountry, setSelectedCountry] = useState<Country>(parsed.country)
+  const [selectedCountry, setSelectedCountry] = useState<Country>(
+    parsed.country
+  )
   const [digits, setDigits] = useState(parsed.digits)
 
   const s = variants[variant]

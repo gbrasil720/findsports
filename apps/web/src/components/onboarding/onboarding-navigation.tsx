@@ -44,7 +44,13 @@ export function OnboardingNavigation({
         disabled={step === 0}
         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
       >
-        <HugeiconsIcon icon={ArrowLeftBigIcon} size={16} color="currentColor" strokeWidth={1.5} /> Voltar
+        <HugeiconsIcon
+          icon={ArrowLeftBigIcon}
+          size={16}
+          color="currentColor"
+          strokeWidth={1.5}
+        />{' '}
+        Voltar
       </button>
 
       <button
@@ -54,7 +60,12 @@ export function OnboardingNavigation({
         className={`inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all ${ACCENT_BG[accent]} text-white disabled:opacity-40 disabled:pointer-events-none hover:scale-[1.03]`}
       >
         {getNextLabel()}
-        <HugeiconsIcon icon={ArrowRightBigIcon} size={16} color="currentColor" strokeWidth={1.5} />
+        <HugeiconsIcon
+          icon={ArrowRightBigIcon}
+          size={16}
+          color="currentColor"
+          strokeWidth={1.5}
+        />
       </button>
     </div>
   )
