@@ -69,10 +69,11 @@ function FanDashboard() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null
   )
-  const [locationError, setLocationError] = useState(false)
-  const [locationPermission, setLocationPermission] = useState<
-    PermissionState | 'unknown'
+  const [locationState, setLocationState] = useState<
+    'unknown' | 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable'
   >('unknown')
+  const locationError =
+    locationState === 'denied' || locationState === 'unavailable'
   const [sportId, setSportId] = useState<string | undefined>(undefined)
   const [championship, setChampionship] = useState('')
   const [radiusKm, setRadiusKm] = useState<1 | 3 | 5 | 10>(5)
@@ -85,15 +86,15 @@ function FanDashboard() {
   }, [])
 
   const requestLocation = useCallback(() => {
+    setLocationState('requesting')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setLocationPermission('granted')
+        setLocationState('granted')
       },
       (err) => {
         console.log('Geolocation error:', err.code, err.message)
-        setLocationError(true)
-        setLocationPermission('denied')
+        setLocationState(err.code === 1 ? 'denied' : 'unavailable')
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 5 * 60 * 1000 }
     )
@@ -101,21 +102,31 @@ function FanDashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      setLocationError(true)
+      setLocationState('unavailable')
       return
     }
     if (!navigator.permissions) {
+      // No Permissions API (older browsers) — try directly, browser will prompt
       requestLocation()
       return
     }
-    navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-      setLocationPermission(status.state)
-      if (status.state === 'denied') {
-        setLocationError(true)
-      } else {
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((status) => {
+        if (status.state === 'granted') {
+          requestLocation()
+        } else if (status.state === 'denied') {
+          // Already denied at OS/browser level — no point calling, just guide user
+          setLocationState('denied')
+        } else {
+          // 'prompt' — Safari silently rejects without gesture; wait for tap
+          setLocationState('idle')
+        }
+      })
+      .catch(() => {
+        // Permissions API threw (some Safari versions) — try directly
         requestLocation()
-      }
-    })
+      })
   }, [requestLocation])
 
   const { data: sports = [] } = useQuery(trpc.pubs.getSports.queryOptions())
@@ -286,7 +297,7 @@ function FanDashboard() {
         onReset={reset}
       />
 
-      {locationPermission === 'prompt' && !coords && (
+      {locationState === 'idle' && (
         <button
           type="button"
           onClick={requestLocation}
@@ -301,6 +312,20 @@ function FanDashboard() {
           />
           Compartilhar localização para ver bares perto de você
         </button>
+      )}
+
+      {locationState === 'denied' && (
+        <div className="w-full flex flex-col gap-1 bg-zinc-100 text-zinc-600 text-xs px-4 py-3 rounded-2xl mb-2">
+          <p className="font-bold text-zinc-700">Localização bloqueada</p>
+          <p>
+            <span className="font-semibold">iPhone/iPad:</span> Ajustes →
+            Privacidade → Serviços de Localização → Safari → Permitir
+          </p>
+          <p>
+            <span className="font-semibold">Mac (Safari):</span> Safari →
+            Ajustes → Sites → Localização → permitir este site
+          </p>
+        </div>
       )}
 
       <div className="grid lg:grid-cols-[1fr_1fr] gap-6">
