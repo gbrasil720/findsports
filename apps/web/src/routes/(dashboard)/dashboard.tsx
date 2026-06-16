@@ -82,6 +82,7 @@ function FanDashboard() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     if (!navigator.geolocation) {
       setLocationError(true)
       return
@@ -89,7 +90,15 @@ function FanDashboard() {
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setLocationError(true)
+      (err) => {
+        console.log('Geolocation error:', err.code, err.message)
+        setLocationError(true)
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 5 * 60 * 1000
+      }
     )
   }, [])
 
