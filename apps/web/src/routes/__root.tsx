@@ -111,10 +111,6 @@ function PostHogProvider() {
 
   // Init — roda uma vez no cliente
   useEffect(() => {
-    console.log('PostHog useEffect rodou')
-    console.log('initialized.current:', initialized.current)
-    console.log('key:', import.meta.env.VITE_POSTHOG_KEY)
-
     if (initialized.current) return
     initialized.current = true
 
@@ -125,7 +121,8 @@ function PostHogProvider() {
       persistence: 'localStorage+cookie'
     })
 
-    console.log('posthog após init:', posthog)
+    // expõe globalmente para debug
+    ;(window as any).ph = posthog
   }, [])
 
   // Identify — roda quando sessão muda
