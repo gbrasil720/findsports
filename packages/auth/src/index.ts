@@ -14,6 +14,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { admin } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
+import { z } from 'zod'
 
 export const dodoClient = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
@@ -170,6 +171,28 @@ export function createAuth() {
         adminRoles: ['admin'],
         defaultRole: 'fan'
       }),
+      // The admin() plugin above redefines `role` with `input: false`, which
+      // blocks clients from setting it at signup (error: "role is not
+      // allowed to be set"). Since plugin schemas merge in array order and
+      // later entries win, this plugin re-enables input but restricts the
+      // accepted values to non-privileged roles, preventing signup from
+      // self-escalating to `admin`.
+      {
+        id: 'allow-role-on-signup',
+        schema: {
+          user: {
+            fields: {
+              role: {
+                type: 'string',
+                required: false,
+                defaultValue: 'fan',
+                input: true,
+                validator: { input: z.enum(['fan', 'pub']) }
+              }
+            }
+          }
+        }
+      },
       dodopayments({
         client: dodoClient,
         createCustomerOnSignUp: true,
