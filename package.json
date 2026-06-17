@@ -39,6 +39,7 @@
     "@vercel/blob": "^2.4.0",
     "dodopayments": "^2.37.0",
     "dotenv": "catalog:",
+    "posthog-js": "^1.387.0",
     "zod": "catalog:"
   },
   "devDependencies": {

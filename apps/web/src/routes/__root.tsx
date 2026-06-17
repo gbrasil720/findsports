@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/style/noHeadElement: <> */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <> */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
@@ -7,12 +8,15 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
-  Scripts
+  Scripts,
+  useRouterState
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
+import posthog from 'posthog-js'
+import { useEffect } from 'react'
 import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
 import { authMiddleware } from '../middleware/auth'
@@ -100,6 +104,47 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootDocument
 })
 
+function PostHogProvider() {
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+  // Inicializa PostHog uma única vez no cliente
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (posthog.__loaded) return
+
+    posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+      api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
+      capture_pageview: false, // controlamos manualmente por causa do client-side routing
+      capture_pageleave: true,
+      persistence: 'localStorage+cookie'
+    })
+  }, [])
+
+  // Identifica o usuário quando a sessão muda
+  useEffect(() => {
+    if (!posthog.__loaded) return
+
+    if (session?.user) {
+      posthog.identify(session.user.id, {
+        email: session.user.email,
+        name: session.user.name,
+        role: session.user.role // 'fan' | 'pub' | 'admin'
+      })
+    } else {
+      posthog.reset()
+    }
+  }, [session?.user?.id])
+
+  // Captura pageview a cada mudança de rota
+  useEffect(() => {
+    if (!posthog.__loaded) return
+    posthog.capture('$pageview', { $current_url: window.location.href })
+  }, [pathname])
+
+  return null
+}
+
 function RootDocument() {
   return (
     <html lang="pt-BR">
@@ -108,6 +153,7 @@ function RootDocument() {
       </head>
       <body>
         <div className="grid min-h-svh grid-rows-[auto_1fr]">
+          <PostHogProvider />
           <Outlet />
         </div>
         <Toaster richColors />
