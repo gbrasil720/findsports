@@ -122,6 +122,8 @@ function PostHogProvider() {
 
   // Identifica o usuário quando a sessão muda
   useEffect(() => {
+    if (!posthog.__initialized) return
+
     if (session?.user) {
       posthog.identify(session.user.id, {
         email: session.user.email,
@@ -135,6 +137,7 @@ function PostHogProvider() {
 
   // Captura pageview a cada mudança de rota
   useEffect(() => {
+    if (!posthog.__initialized) return
     posthog.capture('$pageview', { $current_url: window.location.href })
   }, [pathname])
 
