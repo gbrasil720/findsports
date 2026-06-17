@@ -113,6 +113,9 @@ function PostHogProvider() {
     if (typeof window === 'undefined') return
     if (posthog.__loaded) return
 
+    console.log('PostHog key:', import.meta.env.VITE_POSTHOG_KEY)
+    console.log('PostHog host:', import.meta.env.VITE_POSTHOG_HOST)
+
     posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
       capture_pageview: false, // controlamos manualmente por causa do client-side routing
