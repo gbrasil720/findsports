@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/style/noHeadElement: <> */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <> */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
@@ -16,7 +16,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
 import posthog from 'posthog-js'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
 import { authMiddleware } from '../middleware/auth'
@@ -107,37 +107,39 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 function PostHogProvider() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const initialized = useRef(false)
 
-  // Inicializa PostHog uma única vez no cliente
+  // Init — roda uma vez no cliente
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (initialized.current) return
+    initialized.current = true
 
     posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
-      capture_pageview: false, // controlamos manualmente por causa do client-side routing
+      capture_pageview: false,
       capture_pageleave: true,
       persistence: 'localStorage+cookie'
     })
   }, [])
 
-  // Identifica o usuário quando a sessão muda
+  // Identify — roda quando sessão muda
   useEffect(() => {
-    if (!posthog.__initialized) return
+    if (!initialized.current) return
 
     if (session?.user) {
       posthog.identify(session.user.id, {
         email: session.user.email,
         name: session.user.name,
-        role: session.user.role // 'fan' | 'pub' | 'admin'
+        role: session.user.role
       })
     } else {
       posthog.reset()
     }
   }, [session?.user?.id])
 
-  // Captura pageview a cada mudança de rota
+  // Pageview — roda quando rota muda
   useEffect(() => {
-    if (!posthog.__initialized) return
+    if (!initialized.current) return
     posthog.capture('$pageview', { $current_url: window.location.href })
   }, [pathname])
 
