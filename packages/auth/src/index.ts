@@ -195,7 +195,10 @@ export function createAuth() {
       },
       dodopayments({
         client: dodoClient,
-        createCustomerOnSignUp: true,
+        // MVP launches with payments disabled (single bar, manually set to
+        // pro plan). Disabled so signup doesn't depend on a working Dodo
+        // API key/environment.
+        createCustomerOnSignUp: false,
         use: [
           checkout({
             products: [
