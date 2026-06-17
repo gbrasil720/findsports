@@ -120,9 +120,6 @@ function PostHogProvider() {
       capture_pageleave: true,
       persistence: 'localStorage+cookie'
     })
-
-    // expõe globalmente para debug
-    ;(window as any).ph = posthog
   }, [])
 
   // Identify — roda quando sessão muda
