@@ -31,6 +31,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { analytics } from '../../lib/analytics'
 import { formatPhone } from '../../utils/format-phone'
 import { useTRPCClient } from '../../utils/trpc'
 
@@ -84,6 +85,7 @@ export function WaitlistForm() {
     onSuccess: () => {
       setSuccess(true)
       setErrorMsg(null)
+      analytics.waitlistSubmitted(role)
     },
     onError: (err: Error) => {
       setErrorMsg(err.message)
@@ -262,8 +264,10 @@ export function WaitlistForm() {
             <ToggleGroup
               value={[role]}
               onValueChange={(values) => {
-                if (values.length > 0)
-                  setRole(values[values.length - 1] as 'fan' | 'pub')
+                if (values.length > 0) {
+                  const newRole = values[values.length - 1] as 'fan' | 'pub'
+                  setRole(newRole)
+                }
               }}
               className="relative grid w-full grid-cols-2 rounded-xl bg-zinc-100 p-1"
             >
@@ -341,6 +345,7 @@ export function WaitlistForm() {
             <Button
               type="submit"
               disabled={isPending}
+              onClick={() => analytics.landingCtaClicked('waitlist_submit')}
               className="w-full cursor-pointer rounded-xl bg-black py-5 font-bold text-sm text-white uppercase tracking-[0.2em] ring-offset-white transition-all duration-300 will-change-transform hover:bg-brand-orange hover:ring-4 hover:ring-brand-orange/50 hover:ring-offset-2 focus-visible:border-transparent focus-visible:ring-0 active:not-aria-[haspopup]:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-black disabled:hover:ring-0"
             >
               {isPending ? 'Aguarde...' : 'Garantir acesso antecipado'}

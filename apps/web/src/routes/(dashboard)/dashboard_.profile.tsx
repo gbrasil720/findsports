@@ -28,6 +28,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
 import { GoogleMap, type MapBar } from '@/components/app/google-map'
+import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { useTRPC } from '@/utils/trpc'
 
@@ -102,6 +103,17 @@ function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [tab, setTab] = useState<Tab>('Visão geral')
+
+  // profile_viewed uma vez ao montar
+  useEffect(() => {
+    analytics.profileViewed()
+  }, [])
+
+  const handleTabChange = (t: Tab) => {
+    setTab(t)
+    if (t === 'Favoritos') analytics.favoritesTabViewed()
+    if (t === 'Configurações') analytics.settingsTabViewed()
+  }
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [editingSports, setEditingSports] = useState(false)
@@ -291,6 +303,7 @@ function ProfilePage() {
   }, [favorites])
 
   const handleLogout = async () => {
+    analytics.signout()
     await authClient.signOut()
     navigate({ to: '/login' })
   }
@@ -299,6 +312,7 @@ function ProfilePage() {
     if (!nameInput.trim()) return
     await authClient.updateUser({ name: nameInput.trim() })
     queryClient.invalidateQueries({ queryKey: ['session'] })
+    analytics.profileNameUpdated()
     setEditingName(false)
   }
 
@@ -335,6 +349,10 @@ function ProfilePage() {
 
   const saveSports = () => {
     if (selectedSportIds.length === 0) return
+    const slugs = allSports
+      .filter((s: any) => selectedSportIds.includes(s.id))
+      .map((s: any) => s.slug)
+    analytics.profileSportsUpdated(slugs)
     updatePrefsMutation.mutate({ sportIds: selectedSportIds })
   }
 
@@ -507,7 +525,7 @@ function ProfilePage() {
           <button
             key={t}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => handleTabChange(t)}
             className={`px-4 py-2 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
               tab === t
                 ? 'bg-black text-white'
@@ -1164,6 +1182,7 @@ function ProfilePage() {
                       searchRadiusKm: km as number
                     })
                     queryClient.invalidateQueries({ queryKey: ['session'] })
+                    analytics.profileRadiusUpdated(km)
                     setSavingRadius(false)
                   }}
                   className={`px-4 py-2 rounded-full text-sm font-bold transition-colors disabled:opacity-60 ${

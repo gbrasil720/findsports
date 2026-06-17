@@ -8,6 +8,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { Logo } from '@/components/landing/logo'
+import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 
 export const Route = createFileRoute('/(auth)/login')({
@@ -45,6 +46,7 @@ function LoginPage() {
         )
         return
       }
+      analytics.signinCompleted()
       toast.success('Bem-vindo de volta!')
       navigate({ to: '/dashboard' })
     }
@@ -65,9 +67,7 @@ function LoginPage() {
         </p>
       </AuthBrandPanel>
 
-      {/* ── Right form panel ── */}
       <main className="flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:px-10 lg:px-16">
-        {/* Mobile logo */}
         <Link to="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
           <Logo className="size-9" />
           <span className="font-bold font-heading text-xl tracking-tight">
@@ -94,6 +94,7 @@ function LoginPage() {
           <form
             className="flex flex-col gap-4"
             noValidate
+            onFocus={() => analytics.signupStarted()}
             onSubmit={(e) => {
               e.preventDefault()
               form.handleSubmit()

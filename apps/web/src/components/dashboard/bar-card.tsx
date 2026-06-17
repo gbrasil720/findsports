@@ -1,6 +1,7 @@
 import { FavouriteIcon, MapPinIcon, StarIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Link } from '@tanstack/react-router'
+import { analytics } from '@/lib/analytics'
 
 type ApiEvent = {
   id: string
@@ -86,7 +87,6 @@ function SportBadge({ slug, name }: { slug: string; name: string }) {
   )
 }
 
-// Configuração visual por plano
 const PLAN_CONFIG = {
   elite: {
     ring: 'ring-amber-400/60',
@@ -137,7 +137,6 @@ export function BarCard({
     .slice(0, 2)
     .toUpperCase()
 
-  // Define o ring do card baseado em: hover state > ao vivo > plano
   const ringClass = isHovered
     ? planConfig
       ? planConfig.ringHovered
@@ -154,9 +153,9 @@ export function BarCard({
       params={{ pubId: bar.id }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onClick={() => analytics.barCardClicked(bar.id, plan)}
       className={`group relative bg-white rounded-2xl ring-1 transition-all p-4 grid grid-cols-[auto_1fr_auto] gap-4 items-center ${ringClass}`}
     >
-      {/* Badge de plano Pro/Elite — canto superior direito */}
       {planConfig && (
         <span
           className={`absolute top-3 right-14 inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${planConfig.badge}`}
@@ -171,7 +170,6 @@ export function BarCard({
         </span>
       )}
 
-      {/* Avatar */}
       <div
         className={`size-16 rounded-2xl text-white grid place-items-center font-heading font-bold text-xl shrink-0 overflow-hidden ${
           live
@@ -194,9 +192,7 @@ export function BarCard({
         )}
       </div>
 
-      {/* Content */}
       <div className="min-w-0">
-        {/* Status row */}
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           {event ? (
             live ? (
@@ -214,7 +210,6 @@ export function BarCard({
               Sem eventos programados
             </span>
           )}
-
           {newBar && (
             <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
               Novo
@@ -222,12 +217,10 @@ export function BarCard({
           )}
         </div>
 
-        {/* Bar name */}
         <h3 className="font-heading text-lg font-bold leading-tight mb-1 group-hover:text-brand-orange transition-colors truncate">
           {bar.name}
         </h3>
 
-        {/* Meta row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="inline-flex items-center gap-1 text-sm font-bold text-zinc-700">
             <HugeiconsIcon
@@ -238,22 +231,18 @@ export function BarCard({
             />
             {bar.distance_km.toFixed(1)} km
           </span>
-
           <span className="text-xs text-zinc-400">{bar.neighborhood}</span>
-
           {event && (
             <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500 truncate">
               <SportBadge slug={event.sport.slug} name={event.sport.name} />
               <span className="truncate">{event.championship}</span>
             </span>
           )}
-
           {event && event.participants.length > 0 && (
             <span className="text-xs text-zinc-400 truncate">
               {event.participants.map((p) => p.team.name).join(' × ')}
             </span>
           )}
-
           {extraEvents > 0 && (
             <span className="inline-flex items-center text-[10px] font-bold text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full shrink-0">
               +{extraEvents} {extraEvents === 1 ? 'jogo' : 'jogos'}
@@ -262,7 +251,6 @@ export function BarCard({
         </div>
       </div>
 
-      {/* Favorite */}
       <button
         type="button"
         onClick={(e) => {

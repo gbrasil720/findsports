@@ -14,8 +14,9 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -102,6 +103,10 @@ function BillingPage() {
   const trpc = useTRPC()
   const [openingPortal, setOpeningPortal] = useState(false)
 
+  useEffect(() => {
+    analytics.billingPageViewed()
+  }, [])
+
   const { data: subscription, isLoading: loadingSub } = useQuery(
     trpc.pub.getMySubscription.queryOptions()
   )
@@ -119,6 +124,7 @@ function BillingPage() {
   })
 
   const handleOpenPortal = async () => {
+    analytics.portalOpened()
     setOpeningPortal(true)
     try {
       const { data } = await (authClient.dodopayments.customer as any).portal()
@@ -260,6 +266,12 @@ function BillingPage() {
               {plan !== 'elite' && (
                 <Link
                   to="/plan"
+                  onClick={() =>
+                    analytics.upgradeClicked(
+                      plan,
+                      plan === 'starter' ? 'pro' : 'elite'
+                    )
+                  }
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-blue text-white text-xs font-bold hover:bg-brand-blue/90 transition-colors"
                 >
                   <HugeiconsIcon

@@ -12,6 +12,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useState } from 'react'
 import { BarAvatar } from '@/components/admin/pub-avatar'
 import { PhoneInput } from '@/components/phone-input'
+import { analytics } from '@/lib/analytics'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -75,7 +76,11 @@ export function PubHeroSection({
   )
 
   const handleSave = async () => {
+    const changedFields = (Object.keys(form) as (keyof EditForm)[]).filter(
+      (k) => form[k] !== initialForm[k]
+    )
     await onSave(form)
+    analytics.barProfileUpdated(changedFields)
     setEditing(false)
   }
 
@@ -130,7 +135,10 @@ export function PubHeroSection({
             <BarAvatar
               name={bar.name}
               photoUrl={bar.photoUrl}
-              onUploadSuccess={onPhotoUpdate}
+              onUploadSuccess={(url) => {
+                analytics.barPhotoUploaded()
+                onPhotoUpdate(url)
+              }}
             />
 
             <div className="flex-1 min-w-0">

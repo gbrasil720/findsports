@@ -12,7 +12,7 @@ import {
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -21,6 +21,7 @@ import { RadiusSelector } from '@/components/onboarding/radius-selector'
 import { SportSelector } from '@/components/onboarding/sport-selector'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
@@ -77,10 +78,23 @@ function FanOnboarding() {
 
   const completeMutation = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
-      onSuccess: () => navigate({ to: '/dashboard' }),
+      onSuccess: () => {
+        analytics.fanOnboardingCompleted(
+          sports
+            .filter((s) => selectedSportIds.includes(s.id))
+            .map((s) => s.slug),
+          radius
+        )
+        navigate({ to: '/dashboard' })
+      },
       onError: (err) => setError(err.message)
     })
   )
+
+  // Dispara started uma única vez ao montar
+  useEffect(() => {
+    analytics.fanOnboardingStarted()
+  }, [])
 
   const canAdvance = (() => {
     if (step === 0) return true
@@ -91,6 +105,20 @@ function FanOnboarding() {
 
   const next = () => {
     setError(null)
+
+    // Evento por step
+    if (step === 0) analytics.fanOnboardingStepCompleted(1)
+    if (step === 1) {
+      analytics.fanOnboardingStepCompleted(2)
+      analytics.fanOnboardingSportsSelected(
+        sports.filter((s) => selectedSportIds.includes(s.id)).map((s) => s.slug)
+      )
+    }
+    if (step === 2) {
+      analytics.fanOnboardingStepCompleted(3)
+      analytics.fanOnboardingRadiusSelected(radius)
+    }
+
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
     } else {

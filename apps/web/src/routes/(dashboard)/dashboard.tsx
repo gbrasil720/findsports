@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/a11y/useValidAriaRole: <> */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 
 import { LoaderPinwheelIcon, NavigationIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -11,6 +12,7 @@ import { BarCard } from '@/components/dashboard/bar-card'
 import { BarResultsHeader } from '@/components/dashboard/bar-results-header'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import { SearchFilterBar } from '@/components/dashboard/search-filter-bar'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard')({
@@ -85,6 +87,11 @@ function FanDashboard() {
     return () => clearInterval(interval)
   }, [])
 
+  // dashboard_viewed uma vez ao montar
+  useEffect(() => {
+    analytics.dashboardViewed()
+  }, [])
+
   const requestLocation = useCallback(() => {
     setLocationState('requesting')
     navigator.geolocation.getCurrentPosition(
@@ -106,7 +113,6 @@ function FanDashboard() {
       return
     }
     if (!navigator.permissions) {
-      // No Permissions API (older browsers) — try directly, browser will prompt
       requestLocation()
       return
     }
@@ -116,15 +122,12 @@ function FanDashboard() {
         if (status.state === 'granted') {
           requestLocation()
         } else if (status.state === 'denied') {
-          // Already denied at OS/browser level — no point calling, just guide user
           setLocationState('denied')
         } else {
-          // 'prompt' — Safari silently rejects without gesture; wait for tap
           setLocationState('idle')
         }
       })
       .catch(() => {
-        // Permissions API threw (some Safari versions) — try directly
         requestLocation()
       })
   }, [requestLocation])
@@ -166,7 +169,6 @@ function FanDashboard() {
   )
 
   const favoritesQueryKey = trpc.pubs.getFavorites.queryKey()
-
   type FavoritesCache = typeof favoritesData
 
   const optimisticAdd = async ({ barId }: { barId: string }) => {
@@ -211,9 +213,8 @@ function FanDashboard() {
   })
 
   const bars = useMemo((): BarWithEvents[] => {
-    if ((barsData?.bars?.length ?? 0) > 0) {
+    if ((barsData?.bars?.length ?? 0) > 0)
       return (barsData?.bars ?? []) as BarWithEvents[]
-    }
     return (locationBarsData?.bars ?? []) as BarWithEvents[]
   }, [barsData, locationBarsData])
 
@@ -271,11 +272,43 @@ function FanDashboard() {
     })
   }
 
+  const handleSportChange = (id: string | undefined) => {
+    setSportId(id)
+    if (id) {
+      const sport = sports.find((s) => s.id === id)
+      analytics.searchFilterApplied('sport', sport?.name ?? id)
+    }
+  }
+
+  const handleChampionshipChange = (value: string) => {
+    setChampionship(value)
+  }
+
+  const handleChampionshipSearch = () => {
+    if (championship)
+      analytics.searchFilterApplied('championship', championship)
+  }
+
+  const handleRadiusChange = (km: 1 | 3 | 5 | 10) => {
+    setRadiusKm(km)
+    analytics.searchFilterApplied('radius_km', km)
+  }
+
   const reset = () => {
     setSportId(undefined)
     setChampionship('')
     setRadiusKm(5)
   }
+
+  // Captura search_performed quando os dados de busca mudam e há resultado
+  useEffect(() => {
+    if (!barsData) return
+    analytics.searchPerformed({
+      sportId,
+      radius_km: radiusKm,
+      results_count: barsData.bars.length
+    })
+  }, [barsData])
 
   return (
     <AppShell role="fan">
@@ -287,11 +320,11 @@ function FanDashboard() {
 
       <SearchFilterBar
         championship={championship}
-        onChampionshipChange={setChampionship}
+        onChampionshipChange={handleChampionshipChange}
         sportId={sportId}
-        onSportChange={setSportId}
+        onSportChange={handleSportChange}
         radiusKm={radiusKm}
-        onRadiusChange={setRadiusKm}
+        onRadiusChange={handleRadiusChange}
         sports={sports}
         activeFilters={activeFilters}
         onReset={reset}
@@ -378,8 +411,10 @@ function FanDashboard() {
                 onMouseLeave={() => setHoveredId(null)}
                 onFavorite={(id) => {
                   if (favoriteIds.has(id)) {
+                    analytics.barUnfavorited(id)
                     unfavoriteMutation.mutate({ barId: id })
                   } else {
+                    analytics.barFavorited(id)
                     favoriteMutation.mutate({ barId: id })
                   }
                 }}
@@ -405,9 +440,10 @@ function FanDashboard() {
             center={coords ?? undefined}
             hoveredId={hoveredId}
             onHover={setHoveredId}
-            onSelect={(id) =>
+            onSelect={(id) => {
+              analytics.barMapPinClicked(id)
               navigate({ to: '/pub/$pubId', params: { pubId: id } })
-            }
+            }}
           />
           <div className="pointer-events-none absolute top-4 left-4 bg-white/95 backdrop-blur rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ring-1 ring-black/5">
             <HugeiconsIcon

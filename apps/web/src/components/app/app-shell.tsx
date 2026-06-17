@@ -22,6 +22,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { Logo } from '@/components/landing/logo'
+import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 
 type Props = {
@@ -40,6 +41,7 @@ export function AppShell({ role, userMeta, children }: Props) {
   const { data: session, isPending } = authClient.useSession()
 
   const handleLogout = () => {
+    analytics.signout()
     authClient.signOut({
       fetchOptions: { onSuccess: () => navigate({ to: '/' }) }
     })
@@ -133,7 +135,6 @@ export function AppShell({ role, userMeta, children }: Props) {
 
               <div className="py-1">
                 {isFan ? (
-                  // Fan — link para perfil/configurações
                   <DropdownMenuItem className="rounded-none px-0 py-0 focus:bg-zinc-50">
                     <Link
                       to="/dashboard/profile"
@@ -150,7 +151,6 @@ export function AppShell({ role, userMeta, children }: Props) {
                     </Link>
                   </DropdownMenuItem>
                 ) : (
-                  // Bar — links para painel e billing
                   <>
                     <DropdownMenuItem className="rounded-none px-0 py-0 focus:bg-zinc-50">
                       <Link

@@ -7,7 +7,7 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -15,6 +15,7 @@ import { OnboardingStep } from '@/components/onboarding/onboarding-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -55,10 +56,18 @@ function PubOnboarding() {
 
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
-      onSuccess: () => navigate({ to: '/plan' }),
+      onSuccess: () => {
+        analytics.pubOnboardingCompleted()
+        navigate({ to: '/plan' })
+      },
       onError: (err) => setError(err.message)
     })
   )
+
+  // Dispara started uma única vez ao montar
+  useEffect(() => {
+    analytics.pubOnboardingStarted()
+  }, [])
 
   const handleFieldChange = (field: string, value: string) => {
     switch (field) {
@@ -96,6 +105,10 @@ function PubOnboarding() {
 
   const next = () => {
     setError(null)
+
+    if (step === 0) analytics.pubOnboardingStepCompleted(1)
+    if (step === 1) analytics.pubOnboardingStepCompleted(2)
+
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
     } else {

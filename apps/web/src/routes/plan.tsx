@@ -9,10 +9,11 @@ import {
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { type Plan, PlanCard } from '@/components/pricing/plan-card'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -97,13 +98,23 @@ function PlanSelection() {
     subscription?.status === 'active' || subscription?.status === 'trialing'
 
   const [selected, setSelected] = useState<Plan['id']>(() => {
-    // Pré-seleciona o próximo plano acima do atual
     if (currentPlan === 'starter') return 'pro'
     if (currentPlan === 'pro') return 'elite'
     return 'pro'
   })
 
+  // Dispara plan_page_viewed uma vez ao montar
+  useEffect(() => {
+    analytics.planPageViewed()
+  }, [])
+
+  const handleSelectPlan = (planId: Plan['id']) => {
+    setSelected(planId)
+    analytics.planSelected(planId as 'starter' | 'pro' | 'elite')
+  }
+
   const handleCheckout = async () => {
+    analytics.checkoutStarted(selected as 'starter' | 'pro' | 'elite')
     setLoading(true)
     setError(null)
 
@@ -152,7 +163,6 @@ function PlanSelection() {
         </p>
       </div>
 
-      {/* Aviso de plano atual */}
       {hasActivePlan && currentPlan && (
         <div className="flex items-center gap-3 bg-white/10 ring-1 ring-white/20 rounded-2xl px-5 py-4 mb-8 max-w-2xl mx-auto">
           <HugeiconsIcon
@@ -179,12 +189,11 @@ function PlanSelection() {
             plan={plan}
             isSelected={selected === plan.id}
             isCurrent={currentPlan === plan.id}
-            onSelect={setSelected}
+            onSelect={handleSelectPlan}
           />
         ))}
       </div>
 
-      {/* Aviso de downgrade */}
       {isDowngrade && (
         <p className="text-center text-sm text-amber-400 mb-4">
           Atenção: você está selecionando um plano inferior ao atual.

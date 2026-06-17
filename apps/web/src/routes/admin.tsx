@@ -13,6 +13,7 @@ import { BarPreview } from '@/components/admin/bar-preview'
 import { EventsManager } from '@/components/admin/events-manager'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { AppShell } from '@/components/app/app-shell'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin')({
@@ -57,6 +58,10 @@ function PubDashboard() {
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60_000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    analytics.adminViewed()
   }, [])
 
   const { data: bar, isLoading: loadingBar } = useQuery(
@@ -111,7 +116,12 @@ function PubDashboard() {
     <AppShell role="pub" userMeta={bar?.name}>
       {/* Aviso de bar inativo */}
       {isInactive && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-4">
+        <div
+          className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 mb-4"
+          ref={(el) => {
+            if (el) analytics.barInactiveWarningShown()
+          }}
+        >
           <HugeiconsIcon
             icon={AlertCircleIcon}
             size={20}
@@ -146,6 +156,9 @@ function PubDashboard() {
       {/* Aviso de limite Starter */}
       {isStarter && !isInactive && (
         <div
+          ref={(el) => {
+            if (el && isAtLimit) analytics.eventLimitReached()
+          }}
           className={`flex items-start gap-3 rounded-2xl border px-5 py-4 mb-4 ${
             isAtLimit
               ? 'border-red-200 bg-red-50'

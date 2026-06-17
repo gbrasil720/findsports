@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { Toaster } from 'sonner'
 import { DualAudience } from '@/components/landing/dual-audience'
 import { Faq } from '@/components/landing/faq'
@@ -9,6 +10,7 @@ import { Nav } from '@/components/landing/navbar'
 import { Ticker } from '@/components/landing/ticker'
 import { WaitlistForm } from '@/components/landing/waitlist-form'
 import { useSmoothScroll } from '@/hooks/use-smooth-scroll'
+import { analytics } from '@/lib/analytics'
 
 const HOMEPAGE_SCHEMA = {
   '@context': 'https://schema.org',
@@ -94,6 +96,11 @@ function StructuredData({ schema }: { schema: object }) {
 
 function Landing() {
   useSmoothScroll(900)
+
+  useEffect(() => {
+    analytics.landingViewed()
+  }, [])
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-white font-body text-foreground">
       <StructuredData schema={HOMEPAGE_SCHEMA} />

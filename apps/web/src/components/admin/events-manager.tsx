@@ -2,6 +2,7 @@ import { CalendarsIcon, PlusSignIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 import { EmptyEventsState } from './empty-events-state'
 import { type EventForm, EventFormComponent } from './event-form'
@@ -78,22 +79,41 @@ export function EventsManager() {
     const participantIds = form.participantIds
 
     if (isCreating) {
-      createMutation.mutate({
-        sportId: form.sportId,
-        championship: form.championship,
-        startsAt,
-        endsAt,
-        participantIds
-      })
+      createMutation.mutate(
+        {
+          sportId: form.sportId,
+          championship: form.championship,
+          startsAt,
+          endsAt,
+          participantIds
+        },
+        {
+          onSuccess: () => {
+            const sport = sports.find((s) => s.id === form.sportId)
+            analytics.eventCreated({
+              championship: form.championship,
+              sport: sport?.name ?? form.sportId,
+              has_teams: participantIds.length > 0
+            })
+          }
+        }
+      )
     } else if (editingId) {
-      updateMutation.mutate({
-        eventId: editingId,
-        sportId: form.sportId,
-        championship: form.championship,
-        startsAt,
-        endsAt,
-        participantIds
-      })
+      updateMutation.mutate(
+        {
+          eventId: editingId,
+          sportId: form.sportId,
+          championship: form.championship,
+          startsAt,
+          endsAt,
+          participantIds
+        },
+        {
+          onSuccess: () => {
+            analytics.eventUpdated(editingId)
+          }
+        }
+      )
     }
   }
 
@@ -195,7 +215,10 @@ export function EventsManager() {
                 key={e.id}
                 event={e}
                 onEdit={openEdit}
-                onDelete={(id) => deleteMutation.mutate({ eventId: id })}
+                onDelete={(id) => {
+                  analytics.eventDeleted(id)
+                  deleteMutation.mutate({ eventId: id })
+                }}
                 isDeleting={deleteMutation.isPending}
               />
             ))}

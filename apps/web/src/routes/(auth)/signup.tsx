@@ -19,6 +19,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { Logo } from '@/components/landing/logo'
+import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 
 export const Route = createFileRoute('/(auth)/signup')({
@@ -66,6 +67,7 @@ function SignupPage() {
         toast.error(error.message ?? 'Erro ao criar conta. Tente novamente.')
         return
       }
+      analytics.signupCompleted(role)
       toast.success('Conta criada! Bem-vindo ao time.')
       navigate({ to: '/dashboard' })
     }
@@ -73,9 +75,7 @@ function SignupPage() {
 
   return (
     <div className="flex min-h-dvh font-body">
-      {/* ── Left form panel ── */}
       <main className="flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:px-10 lg:px-16">
-        {/* Mobile logo */}
         <Link to="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
           <Logo className="size-9" />
           <span className="font-bold font-heading text-xl tracking-tight">
@@ -102,12 +102,12 @@ function SignupPage() {
           <form
             className="flex flex-col gap-4"
             noValidate
+            onFocus={() => analytics.signupStarted()}
             onSubmit={(e) => {
               e.preventDefault()
               form.handleSubmit()
             }}
           >
-            {/* Role selector */}
             <div className="flex flex-col gap-1.5">
               <span className="font-semibold text-xs text-zinc-700 uppercase tracking-wider">
                 Sou um
