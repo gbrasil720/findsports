@@ -111,10 +111,6 @@ function PostHogProvider() {
   // Inicializa PostHog uma única vez no cliente
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (posthog.__loaded) return
-
-    console.log('PostHog key:', import.meta.env.VITE_POSTHOG_KEY)
-    console.log('PostHog host:', import.meta.env.VITE_POSTHOG_HOST)
 
     posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
@@ -126,8 +122,6 @@ function PostHogProvider() {
 
   // Identifica o usuário quando a sessão muda
   useEffect(() => {
-    if (!posthog.__loaded) return
-
     if (session?.user) {
       posthog.identify(session.user.id, {
         email: session.user.email,
@@ -141,7 +135,6 @@ function PostHogProvider() {
 
   // Captura pageview a cada mudança de rota
   useEffect(() => {
-    if (!posthog.__loaded) return
     posthog.capture('$pageview', { $current_url: window.location.href })
   }, [pathname])
 
