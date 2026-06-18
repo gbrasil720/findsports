@@ -25,6 +25,12 @@ function toISOWithTimezone(datetimeLocal: string): string {
   return new Date(datetimeLocal).toISOString()
 }
 
+function toDatetimeLocal(date: string | Date): string {
+  const d = new Date(date)
+  const offsetMs = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
 const EMPTY_FORM: EventForm = {
   sportId: '',
   championship: '',
@@ -85,7 +91,8 @@ export function EventsManager() {
           championship: form.championship,
           startsAt,
           endsAt,
-          participantIds
+          participantIds,
+          participantFreeText: form.participantFreeText || undefined
         },
         {
           onSuccess: () => {
@@ -106,7 +113,8 @@ export function EventsManager() {
           championship: form.championship,
           startsAt,
           endsAt,
-          participantIds
+          participantIds,
+          participantFreeText: form.participantFreeText || undefined
         },
         {
           onSuccess: () => {
@@ -237,17 +245,15 @@ export function EventsManager() {
               ? {
                   sportId: editingEvent.sportId,
                   championship: editingEvent.championship,
-                  startsAt: new Date(editingEvent.startsAt)
-                    .toISOString()
-                    .slice(0, 16),
+                  startsAt: toDatetimeLocal(editingEvent.startsAt),
                   endsAt: editingEvent.endsAt
-                    ? new Date(editingEvent.endsAt).toISOString().slice(0, 16)
+                    ? toDatetimeLocal(editingEvent.endsAt)
                     : '',
                   participantIds:
                     editingEvent.participants?.map(
                       (p: { team: { id: string } }) => p.team.id
                     ) ?? [],
-                  participantFreeText: ''
+                  participantFreeText: editingEvent.participantFreeText ?? ''
                 }
               : EMPTY_FORM
           }

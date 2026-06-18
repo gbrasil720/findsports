@@ -57,6 +57,13 @@
       "when": 1781360549086,
       "tag": "0008_curvy_deadpool",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781811323083,
+      "tag": "0009_worried_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

@@ -97,6 +97,7 @@ export const event = pgTable(
     championship: text('championship').notNull(),
     startsAt: timestamp('starts_at').notNull(),
     endsAt: timestamp('ends_at'),
+    participantFreeText: text('participant_free_text'),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [

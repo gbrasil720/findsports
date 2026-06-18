@@ -162,7 +162,8 @@ export const pubRouter = router({
         championship: z.string().min(2).max(150),
         startsAt: z.string().datetime(),
         endsAt: z.string().datetime().optional(),
-        participantIds: z.array(z.string().uuid()).optional()
+        participantIds: z.array(z.string().uuid()).optional(),
+        participantFreeText: z.string().max(200).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -220,7 +221,10 @@ export const pubRouter = router({
             sportId: input.sportId,
             championship: input.championship,
             startsAt: new Date(input.startsAt),
-            ...(input.endsAt && { endsAt: new Date(input.endsAt) })
+            ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
+            ...(input.participantFreeText && {
+              participantFreeText: input.participantFreeText
+            })
           })
           .returning({ id: event.id })
 
@@ -255,7 +259,8 @@ export const pubRouter = router({
         championship: z.string().min(2).max(150).optional(),
         startsAt: z.string().datetime().optional(),
         endsAt: z.string().datetime().optional(),
-        participantIds: z.array(z.string().uuid()).optional()
+        participantIds: z.array(z.string().uuid()).optional(),
+        participantFreeText: z.string().max(200).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -301,7 +306,10 @@ export const pubRouter = router({
             ...(input.sportId && { sportId: input.sportId }),
             ...(input.championship && { championship: input.championship }),
             ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
-            ...(input.endsAt && { endsAt: new Date(input.endsAt) })
+            ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
+            ...(input.participantFreeText !== undefined && {
+              participantFreeText: input.participantFreeText || null
+            })
           })
           .where(eq(event.id, input.eventId))
 
