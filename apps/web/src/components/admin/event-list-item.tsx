@@ -7,6 +7,7 @@ type EventItem = {
   championship: string
   sport?: { name: string }
   participants?: { team: { name: string } }[]
+  participantFreeText?: string | null
 }
 
 const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
@@ -81,7 +82,9 @@ export function EventListItem({
   const past = isPast(e.startsAt)
   const soon = !live && !past && isUpcomingSoon(e.startsAt)
   const timeUntil = soon ? getTimeUntil(e.startsAt) : null
-  const participants = e.participants?.map((p) => p.team.name).join(' × ')
+  const participants =
+    e.participants?.map((p) => p.team.name).join(' × ') ||
+    e.participantFreeText
 
   return (
     <li

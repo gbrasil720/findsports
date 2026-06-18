@@ -50,6 +50,7 @@ export function EventFormComponent({
   const hasLimit = selectedSport
     ? DIRECT_CONFRONTATION_SLUGS.has(selectedSport.slug)
     : false
+  const hasFreeText = form.participantFreeText.trim().length > 0
 
   const toggleTeam = (id: string) => {
     setForm((prev) => ({
@@ -160,16 +161,17 @@ export function EventFormComponent({
                   const selected = form.participantIds.includes(t.id)
                   const maxReached =
                     hasLimit && form.participantIds.length >= 2 && !selected
+                  const disabled = maxReached || hasFreeText
                   return (
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => !maxReached && toggleTeam(t.id)}
-                      disabled={maxReached}
+                      onClick={() => !disabled && toggleTeam(t.id)}
+                      disabled={disabled}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                         selected
                           ? 'bg-brand-blue text-white'
-                          : maxReached
+                          : disabled
                             ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed opacity-50'
                             : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                       }`}
@@ -187,20 +189,27 @@ export function EventFormComponent({
                   )
                 })}
               </div>
-              <p className="text-[10px] text-zinc-400 mb-2">
-                {form.participantIds.length}
-                {hasLimit ? '/2' : ''} selecionado
-                {form.participantIds.length !== 1 ? 's' : ''}
-                {hasLimit ? ' — máximo 2' : ''}
-              </p>
+              {!hasFreeText && (
+                <p className="text-[10px] text-zinc-400 mb-2">
+                  {form.participantIds.length}
+                  {hasLimit ? '/2' : ''} selecionado
+                  {form.participantIds.length !== 1 ? 's' : ''}
+                  {hasLimit ? ' — máximo 2' : ''}
+                </p>
+              )}
             </>
           ) : null}
 
           <input
             value={form.participantFreeText}
-            onChange={(e) =>
-              setForm({ ...form, participantFreeText: e.target.value })
-            }
+            onChange={(e) => {
+              const participantFreeText = e.target.value
+              setForm((prev) => ({
+                ...prev,
+                participantFreeText,
+                participantIds: participantFreeText ? [] : prev.participantIds
+              }))
+            }}
             className="admin-input"
             placeholder={
               teams.length > 0
@@ -210,7 +219,9 @@ export function EventFormComponent({
           />
           <p className="text-[10px] text-zinc-400 mt-1">
             {teams.length > 0
-              ? 'Use os chips acima para times cadastrados, ou escreva livremente.'
+              ? hasFreeText
+                ? 'Escreveu texto livre — chips de times desabilitados. Limpe o campo para voltar a selecioná-los.'
+                : 'Use os chips acima para times cadastrados, ou escreva livremente.'
               : 'Texto livre — use para esportes sem times fixos como F1 ou UFC.'}
           </p>
         </div>
