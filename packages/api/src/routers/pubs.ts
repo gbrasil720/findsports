@@ -79,20 +79,39 @@ export const pubsRouter = router({
           GROUP BY b.id, b.name, b.description, b.address, b.neighborhood, b.city, b.latitude, b.longitude, b.photo_url, b.created_at, s.plan
         ),
         bar_next_event AS (
-          SELECT DISTINCT ON (e.bar_id)
-            e.bar_id,
-            e.id AS next_event_id,
-            e.championship AS next_championship,
-            e.starts_at AS next_event_starts_at,
-            s.name AS next_sport_name,
-            s.slug AS next_sport_slug
-          FROM event e
-          JOIN sport s ON s.id = e.sport_id
-          WHERE e.starts_at >= NOW()
-            ${sportFilter}
-            ${champFilter}
-            ${dateFilter}
-          ORDER BY e.bar_id, e.starts_at ASC
+          SELECT DISTINCT ON (x.bar_id)
+            x.bar_id,
+            x.next_event_id,
+            x.next_championship,
+            x.next_event_starts_at,
+            x.next_sport_name,
+            x.next_sport_slug,
+            x.next_participant_free_text,
+            x.next_participants
+          FROM (
+            SELECT
+              e.bar_id,
+              e.id AS next_event_id,
+              e.championship AS next_championship,
+              e.starts_at AS next_event_starts_at,
+              s.name AS next_sport_name,
+              s.slug AS next_sport_slug,
+              e.participant_free_text AS next_participant_free_text,
+              COALESCE(
+                json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) FILTER (WHERE t.id IS NOT NULL),
+                '[]'::json
+              ) AS next_participants
+            FROM event e
+            JOIN sport s ON s.id = e.sport_id
+            LEFT JOIN event_participants ep ON ep.event_id = e.id
+            LEFT JOIN team t ON t.id = ep.team_id
+            WHERE e.starts_at >= NOW()
+              ${sportFilter}
+              ${champFilter}
+              ${dateFilter}
+            GROUP BY e.id, e.bar_id, e.championship, e.starts_at, s.name, s.slug, e.participant_free_text
+          ) x
+          ORDER BY x.bar_id, x.next_event_starts_at ASC
         )
         SELECT
           be.*,
@@ -100,7 +119,9 @@ export const pubsRouter = router({
           bne.next_championship,
           bne.next_event_starts_at,
           bne.next_sport_name,
-          bne.next_sport_slug
+          bne.next_sport_slug,
+          bne.next_participant_free_text,
+          bne.next_participants
         FROM bar_events be
         LEFT JOIN bar_next_event bne ON bne.bar_id = be.id
         WHERE be.distance_km <= ${uRadius}
@@ -136,6 +157,8 @@ export const pubsRouter = router({
         next_event_starts_at: string | null
         next_sport_name: string | null
         next_sport_slug: string | null
+        next_participant_free_text: string | null
+        next_participants: { name: string; logoUrl: string | null }[]
       }
 
       const bars = (results.rows as RawRow[]).map((row) => ({
@@ -159,9 +182,10 @@ export const pubsRouter = router({
                 name: row.next_sport_name ?? '',
                 slug: row.next_sport_slug ?? ''
               },
-              participants: [] as {
-                team: { name: string; logoUrl?: string | null }
-              }[]
+              participants: row.next_participants.map((p) => ({
+                team: { name: p.name, logoUrl: p.logoUrl }
+              })),
+              participantFreeText: row.next_participant_free_text
             }
           : undefined
       }))
@@ -276,7 +300,10 @@ export const pubsRouter = router({
           with: {
             events: {
               where: (event, { gte }) => gte(event.startsAt, new Date()),
-              with: { sport: true },
+              with: {
+                sport: true,
+                participants: { with: { team: true } }
+              },
               orderBy: (event, { asc }) => [asc(event.startsAt)],
               limit: 3
             }

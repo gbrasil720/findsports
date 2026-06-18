@@ -9,6 +9,13 @@ type Event = {
   startsAt: string
   sport: { name: string; slug: string }
   participants: Participant[]
+  participantFreeText?: string | null
+}
+
+function describeParticipants(e: Event): string {
+  if (e.participants.length > 0)
+    return e.participants.map((p) => p.team.name).join(' × ')
+  return e.participantFreeText || e.championship
 }
 
 function formatEventTime(startsAt: string | Date): string {
@@ -69,9 +76,7 @@ export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
                   {liveEvent.sport.name} · {liveEvent.championship}
                 </div>
                 <div className="font-semibold truncate">
-                  {liveEvent.participants.length > 0
-                    ? liveEvent.participants.map((p) => p.team.name).join(' × ')
-                    : liveEvent.championship}
+                  {describeParticipants(liveEvent)}
                 </div>
               </div>
               <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-orange whitespace-nowrap">
@@ -89,9 +94,7 @@ export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
                   {e.sport.name} · {e.championship}
                 </div>
                 <div className="font-semibold truncate">
-                  {e.participants.length > 0
-                    ? e.participants.map((p) => p.team.name).join(' × ')
-                    : e.championship}
+                  {describeParticipants(e)}
                 </div>
               </div>
               <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">

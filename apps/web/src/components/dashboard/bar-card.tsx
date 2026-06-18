@@ -9,6 +9,7 @@ type ApiEvent = {
   startsAt: string
   sport: { name: string; slug: string }
   participants: { team: { name: string; logoUrl?: string | null } }[]
+  participantFreeText?: string | null
 }
 
 type Bar = {
@@ -238,9 +239,11 @@ export function BarCard({
               <span className="truncate">{event.championship}</span>
             </span>
           )}
-          {event && event.participants.length > 0 && (
+          {event && (event.participants.length > 0 || event.participantFreeText) && (
             <span className="text-xs text-zinc-400 truncate">
-              {event.participants.map((p) => p.team.name).join(' × ')}
+              {event.participants.length > 0
+                ? event.participants.map((p) => p.team.name).join(' × ')
+                : event.participantFreeText}
             </span>
           )}
           {extraEvents > 0 && (
