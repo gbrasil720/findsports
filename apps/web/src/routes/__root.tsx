@@ -16,9 +16,11 @@ import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
 import posthog from 'posthog-js'
+import type { CSSProperties } from 'react'
 import { useEffect, useRef } from 'react'
 import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
+import { authClient } from '../lib/auth-client'
 import { authMiddleware } from '../middleware/auth'
 import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
 
@@ -147,13 +149,27 @@ function PostHogProvider() {
 }
 
 function RootDocument() {
+  const { data: session } = authClient.useSession()
+  const impersonatedBy = (
+    session?.session as { impersonatedBy?: string | null } | undefined
+  )?.impersonatedBy
+
   return (
     <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
       <body>
-        <div className="grid min-h-svh grid-rows-[auto_1fr]">
+        <div
+          className={`grid min-h-svh grid-rows-[auto_1fr] ${
+            impersonatedBy ? 'pt-11' : ''
+          }`}
+          style={
+            {
+              '--banner-h': impersonatedBy ? '2.75rem' : '0px'
+            } as CSSProperties
+          }
+        >
           <PostHogProvider />
           <Outlet />
         </div>

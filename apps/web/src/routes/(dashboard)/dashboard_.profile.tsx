@@ -667,7 +667,11 @@ function ProfilePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-sm truncate group-hover:text-brand-orange transition-colors">
-                          {e.championship}
+                          {e.participants?.length > 0
+                            ? e.participants
+                                .map((p: any) => p.team.name)
+                                .join(' × ')
+                            : e.participantFreeText || e.championship}
                         </div>
                         <div className="text-xs text-zinc-500 truncate">
                           {e.bar.name}
@@ -1267,7 +1271,11 @@ function FavoriteCard({
               {nextEvent.sport?.name}
             </div>
             <div className="text-xs font-bold text-zinc-800 truncate">
-              {nextEvent.championship}
+              {nextEvent.participants?.length > 0
+                ? nextEvent.participants
+                    .map((p: any) => p.team.name)
+                    .join(' × ')
+                : nextEvent.participantFreeText || nextEvent.championship}
             </div>
             <div className="text-xs text-zinc-500 mt-0.5">
               {formatEventDate(nextEvent.startsAt)}

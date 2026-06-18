@@ -24,8 +24,8 @@ export function ImpersonationBanner() {
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] font-body">
-      <div className="flex items-center justify-between gap-4 bg-amber-500 px-4 py-2.5">
+    <div className="fixed top-0 left-0 right-0 z-[60] h-11 font-body">
+      <div className="flex h-full items-center justify-between gap-4 bg-amber-500 px-4">
         <div className="flex items-center gap-2.5">
           <div className="grid size-6 shrink-0 place-items-center rounded-full bg-amber-600">
             <HugeiconsIcon

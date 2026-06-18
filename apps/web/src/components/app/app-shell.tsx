@@ -59,7 +59,10 @@ export function AppShell({ role, userMeta, children }: Props) {
 
   return (
     <div className="min-h-dvh bg-zinc-50 text-foreground">
-      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-black/5">
+      <header
+        className="sticky z-40 bg-white/85 backdrop-blur-md border-b border-black/5"
+        style={{ top: 'var(--banner-h, 0px)' }}
+      >
         <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <Logo className="size-8" />
