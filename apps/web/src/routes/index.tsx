@@ -1,25 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { Toaster } from 'sonner'
-import { DualAudience } from '@/components/landing/dual-audience'
-import { Faq } from '@/components/landing/faq'
-import { Footer } from '@/components/landing/footer'
-import { Hero } from '@/components/landing/hero'
-import { HowItWorks } from '@/components/landing/how-it-works'
-import { Nav } from '@/components/landing/navbar'
-import { Ticker } from '@/components/landing/ticker'
-import { WaitlistForm } from '@/components/landing/waitlist-form'
+import { OnsideLanding } from '@/components/landing/onside-landing'
+import '@/components/landing/onside.css'
 import { useSmoothScroll } from '@/hooks/use-smooth-scroll'
 import { analytics } from '@/lib/analytics'
 
 const HOMEPAGE_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'FindSports',
+  name: 'Onside',
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'Web',
   description:
-    'FindSports conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir.',
+    'Onside mostra quais bares estão transmitindo a sua partida, com lotação, som, telões e torcida.',
   url: 'https://findsports.com.br',
   inLanguage: 'pt-BR',
   offers: {
@@ -36,50 +29,72 @@ const HOMEPAGE_SCHEMA = {
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
-      { title: 'FindSports — Ache o bar que está passando seu jogo' },
+      { title: 'Onside — O jogo é aqui' },
       {
         name: 'description',
         content:
-          'FindSports conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o bar certo para torcer ao vivo. Entre na lista de espera.'
+          'Descubra qual bar está passando a sua partida agora — com lotação, som, telões e torcida. Entre na lista de espera do Onside.'
       },
+      { name: 'theme-color', content: '#F1EEE6' },
       { name: 'robots', content: 'index, follow' },
-      // Open Graph
       {
         property: 'og:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — O jogo é aqui'
       },
       {
         property: 'og:description',
         content:
-          'Conecte torcedores brasileiros aos bares e pubs que estão transmitindo o jogo certo. Encontre o lugar ideal para assistir futebol ao vivo. Lista de espera aberta.'
+          'Escolha a mesa, não o sofá. Encontre transmissões confirmadas, lotação e o clima de cada bar.'
       },
       { property: 'og:type', content: 'website' },
       { property: 'og:url', content: 'https://findsports.com.br/' },
       {
         property: 'og:image',
-        content: 'https://findsports.com.br/og-image.png'
+        content: 'https://findsports.com.br/og-image.png?v=2'
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
-      { property: 'og:site_name', content: 'FindSports' },
+      { property: 'og:site_name', content: 'Onside' },
       { property: 'og:locale', content: 'pt_BR' },
-      // Twitter Card
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — O jogo é aqui'
       },
       {
         name: 'twitter:description',
         content:
-          'Conecte torcedores brasileiros aos bares e pubs que estão transmitindo o jogo certo. Lista de espera aberta.'
+          'Encontre transmissões confirmadas, lotação e o clima de cada bar. Lista de espera aberta.'
       },
       {
         name: 'twitter:image',
-        content: 'https://findsports.com.br/og-image.png'
+        content: 'https://findsports.com.br/og-image.png?v=2'
       }
     ],
-    links: [{ rel: 'canonical', href: 'https://findsports.com.br/' }]
+    links: [
+      { rel: 'canonical', href: 'https://findsports.com.br/' },
+      {
+        rel: 'preload',
+        href: '/fonts/onside/anton-latin-400.woff2?v=2',
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous'
+      },
+      {
+        rel: 'preload',
+        href: '/fonts/onside/archivo-latin-wght.woff2?v=2',
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous'
+      },
+      {
+        rel: 'preload',
+        href: '/fonts/onside/geist-mono-latin-wght.woff2?v=2',
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous'
+      }
+    ]
   }),
   component: Landing
 })
@@ -95,26 +110,16 @@ function StructuredData({ schema }: { schema: object }) {
 }
 
 function Landing() {
-  useSmoothScroll(900)
+  useSmoothScroll()
 
   useEffect(() => {
     analytics.landingViewed()
   }, [])
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white font-body text-foreground">
+    <>
       <StructuredData schema={HOMEPAGE_SCHEMA} />
-      <Nav />
-      <Ticker />
-      <main>
-        <Hero />
-        <HowItWorks />
-        <DualAudience />
-        <WaitlistForm />
-        <Faq />
-      </main>
-      <Footer />
-      <Toaster position="top-center" richColors />
-    </div>
+      <OnsideLanding />
+    </>
   )
 }
