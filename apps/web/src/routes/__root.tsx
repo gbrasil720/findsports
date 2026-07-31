@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/style/noHeadElement: <> */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/style/noHeadElement: The root shell must render the document head directly. */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: PostHog lifecycle effects intentionally use guarded route state. */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         property: 'og:image',
-        content: 'https://findsports.com.br/og-image.png'
+        content: 'https://findsports.com.br/og-image.png?v=2'
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
@@ -83,13 +83,46 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: 'twitter:image',
-        content: 'https://findsports.com.br/og-image.png'
+        content: 'https://findsports.com.br/og-image.png?v=2'
       }
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
-      { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' },
-      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      {
+        rel: 'icon',
+        href: '/favicon-32x32.png?v=3',
+        type: 'image/png',
+        sizes: '32x32'
+      },
+      {
+        rel: 'icon',
+        href: '/favicon-16x16.png?v=3',
+        type: 'image/png',
+        sizes: '16x16'
+      },
+      {
+        rel: 'icon',
+        href: '/favicon-64x64.png?v=3',
+        type: 'image/png',
+        sizes: '64x64'
+      },
+      {
+        rel: 'icon',
+        href: '/favicon-512x512.png?v=3',
+        type: 'image/png',
+        sizes: '512x512'
+      },
+      {
+        rel: 'icon',
+        href: '/favicon.ico?v=3',
+        type: 'image/x-icon',
+        sizes: 'any'
+      },
+      {
+        rel: 'apple-touch-icon',
+        href: '/apple-touch-icon.png?v=3',
+        sizes: '180x180'
+      },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       {
         rel: 'preconnect',
