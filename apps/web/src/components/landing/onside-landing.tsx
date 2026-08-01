@@ -136,7 +136,7 @@ function LiveTicker() {
 
   return (
     <section
-      className={`onside-ticker ${isPaused ? 'is-paused' : ''}`}
+      className={`onside-ticker ${isPaused ? 'is-paused' : ''} rounded-none`}
       aria-label="Transmissões em destaque"
     >
       <button
@@ -340,7 +340,7 @@ function Footer() {
         <span className="onside-footer-note">
           © 2026 Onside · feito por quem assiste em bar
         </span>
-        <div>
+        <div className="invisible">
           <a href="https://www.instagram.com/" rel="noreferrer">
             Instagram
           </a>

@@ -12,17 +12,6 @@ export function Footer() {
           © {new Date().getFullYear()} FindSports • Feito por torcedores, pra
           torcedores
         </p>
-        <div className="flex gap-5 text-xs text-zinc-500">
-          <a href="#" className="hover:text-black">
-            Instagram
-          </a>
-          <a href="#" className="hover:text-black">
-            Twitter
-          </a>
-          <a href="#" className="hover:text-black">
-            Contato
-          </a>
-        </div>
       </div>
     </footer>
   )
