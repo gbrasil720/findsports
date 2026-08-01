@@ -268,7 +268,7 @@
   position: relative;
   overflow: hidden;
   border-bottom: 2px solid var(--onside-ink);
-  border-radius: 22px;
+  border-radius: 0;
   background: var(--onside-ink);
   color: var(--onside-paper);
   padding-block: 10px;
