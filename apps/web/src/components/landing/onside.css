@@ -1625,6 +1625,10 @@
   gap: 6px;
 }
 
+.onside-field-group .onside-role-field {
+  gap: 0;
+}
+
 .onside-page .onside-input {
   height: auto;
   border: 2px solid #4a4a42;
@@ -1646,6 +1650,60 @@
   border-color: var(--onside-acid);
   outline: none;
   box-shadow: 0 0 0 2px var(--onside-acid);
+}
+
+.onside-page .onside-phone-input {
+  display: flex;
+  overflow: hidden;
+  border: 2px solid #4a4a42;
+  border-radius: 22px;
+  background: transparent;
+  transition:
+    border-color 160ms var(--onside-ease-out),
+    box-shadow 160ms var(--onside-ease-out);
+}
+
+.onside-page .onside-phone-input:focus-within {
+  border-color: var(--onside-acid);
+  box-shadow: 0 0 0 2px var(--onside-acid);
+}
+
+.onside-page .onside-phone-trigger {
+  display: flex;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  border-right: 1px solid #4a4a42;
+  background: transparent;
+  color: #b8b4a8;
+  padding: 15px 12px;
+  font-family: "Geist Mono", monospace;
+  font-size: 12px;
+  transition: background 160ms var(--onside-ease-out);
+}
+
+.onside-page .onside-phone-trigger:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.onside-page .onside-phone-trigger:focus-visible {
+  outline: none;
+}
+
+.onside-page .onside-phone-control {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--onside-paper);
+  padding: 15px 16px;
+  font-family: "Geist Mono", monospace;
+  font-size: 13px;
+  outline: none;
+}
+
+.onside-page .onside-phone-control::placeholder {
+  color: #77756d;
 }
 
 .onside-role-group {
@@ -1677,15 +1735,37 @@
   color: var(--onside-ink);
 }
 
+.onside-pub-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows var(--onside-duration-view) var(--onside-ease-out),
+    visibility 0s linear var(--onside-duration-view),
+    opacity var(--onside-duration-press) var(--onside-ease-out),
+    transform var(--onside-duration-view) var(--onside-ease-out);
+}
+
+.onside-pub-disclosure[data-expanded="true"] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
+
+.onside-pub-disclosure-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .onside-pub-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 180ms var(--onside-ease-out),
-    transform 180ms var(--onside-ease-out);
+  padding-top: 12px;
 }
 
 .onside-form-error {
@@ -1765,7 +1845,6 @@
     transform: translateY(8px);
   }
 
-  .onside-pub-fields,
   .onside-form-error {
     opacity: 0;
     transform: translateY(4px);
@@ -1786,56 +1865,6 @@
 .demo-pay:active,
 .demo-done > button:active {
   transform: scale(0.97);
-}
-
-.onside-details-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.onside-details-head .onside-form-label {
-  margin-bottom: 0;
-}
-
-.onside-page .onside-form-back {
-  height: auto;
-  min-height: auto;
-  border-radius: 0;
-  padding: 6px 0;
-  color: #b8b4a8;
-  font-family: "Geist Mono", monospace;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.14em;
-  line-height: normal;
-  text-transform: uppercase;
-}
-
-.onside-page .onside-form-back:hover {
-  background: transparent;
-  color: var(--onside-acid);
-}
-
-.onside-details-title {
-  margin: 18px 0 0;
-  font-size: 30px;
-  line-height: 1;
-  outline: none;
-}
-
-.onside-email-summary {
-  margin: 8px 0 0;
-  overflow-wrap: anywhere;
-  color: #8a8a80;
-  font-family: "Geist Mono", monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-}
-
-.onside-details-fields {
-  margin-top: 18px;
 }
 
 .onside-faq {
@@ -2237,11 +2266,20 @@
       .demo-done
     ),
   .onside-form-stage,
-  .onside-pub-fields,
   .onside-form-error,
   .onside-success {
     transform: none;
     transition-duration: 200ms;
+    transition-delay: 0ms;
+  }
+
+  .onside-pub-disclosure {
+    transform: none;
+    transition-duration: 100ms, 0s, 100ms, 100ms;
+    transition-delay: 0ms, 100ms, 0ms, 0ms;
+  }
+
+  .onside-pub-disclosure[data-expanded="true"] {
     transition-delay: 0ms;
   }
 
