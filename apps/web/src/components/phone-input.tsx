@@ -1,6 +1,7 @@
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@findsports_oficial/ui/components/dropdown-menu'
@@ -69,11 +70,18 @@ const variants = {
       'flex shrink-0 cursor-pointer items-center gap-1.5 border-r border-zinc-200 bg-transparent px-3 py-[0.625rem] text-sm font-semibold text-zinc-600 transition hover:bg-zinc-100 focus:outline-none',
     input:
       'min-w-0 flex-1 bg-transparent px-3 py-[0.625rem] text-sm font-semibold text-zinc-900 placeholder:text-zinc-400 outline-none'
+  },
+  onside: {
+    container: 'onside-phone-input',
+    trigger: 'onside-phone-trigger',
+    input: 'onside-phone-control'
   }
 }
 
 type Props = {
   defaultValue?: string
+  id?: string
+  name?: string
   onChange: (phone: string) => void
   variant?: keyof typeof variants
   placeholder?: string
@@ -81,6 +89,8 @@ type Props = {
 
 export function PhoneInput({
   defaultValue = '',
+  id,
+  name,
   onChange,
   variant = 'dark',
   placeholder = '(11) 9 1234-5678'
@@ -108,7 +118,10 @@ export function PhoneInput({
   return (
     <div className={s.container}>
       <DropdownMenu>
-        <DropdownMenuTrigger className={s.trigger}>
+        <DropdownMenuTrigger
+          aria-label={`Código do país: ${selectedCountry.name} ${selectedCountry.dial}`}
+          className={s.trigger}
+        >
           <span>{selectedCountry.flag}</span>
           <span>{selectedCountry.dial}</span>
           <HugeiconsIcon
@@ -120,19 +133,23 @@ export function PhoneInput({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="max-h-60 w-72 overflow-y-auto">
-          {COUNTRIES.map((country) => (
-            <DropdownMenuItem
-              key={country.code}
-              onClick={() => handleCountryChange(country)}
-            >
-              <span>{country.flag}</span>
-              <span className="flex-1">{country.name}</span>
-              <span className="text-zinc-400">{country.dial}</span>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            {COUNTRIES.map((country) => (
+              <DropdownMenuItem
+                key={country.code}
+                onClick={() => handleCountryChange(country)}
+              >
+                <span>{country.flag}</span>
+                <span className="flex-1">{country.name}</span>
+                <span className="text-zinc-400">{country.dial}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <input
+        id={id}
+        name={name}
         type="tel"
         value={formatPhone(digits, selectedCountry.code)}
         onChange={handleDigitsChange}
