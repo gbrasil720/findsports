@@ -3,4 +3,4 @@ Allow: /
 Disallow: /dashboard
 Disallow: /api/
 
-Sitemap: https://findsports.com.br/sitemap.xml
+Sitemap: https://www.onside.sh/sitemap.xml
