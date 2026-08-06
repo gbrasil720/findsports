@@ -4,6 +4,9 @@ import { OnsideLanding } from '@/components/landing/onside-landing'
 import '@/components/landing/onside.css'
 import { analytics } from '@/lib/analytics'
 
+const SITE_URL = 'https://www.onside.sh'
+const OG_IMAGE_URL = `${SITE_URL}/og-image.png?v=2`
+
 const HOMEPAGE_SCHEMA = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
@@ -12,7 +15,7 @@ const HOMEPAGE_SCHEMA = {
   operatingSystem: 'Web',
   description:
     'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.',
-  url: 'https://findsports.com.br',
+  url: SITE_URL,
   inLanguage: 'pt-BR',
   audience: {
     '@type': 'Audience',
@@ -23,14 +26,23 @@ const HOMEPAGE_SCHEMA = {
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
-      { title: 'Onside — Saiba onde assistir ao seu jogo' },
+      {
+        title: 'Onside — Saiba onde assistir ao seu jogo'
+      },
       {
         name: 'description',
         content:
           'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.'
       },
-      { name: 'theme-color', content: '#C9F135' },
-      { name: 'robots', content: 'index, follow' },
+      {
+        name: 'theme-color',
+        content: '#C9F135'
+      },
+      {
+        name: 'robots',
+        content: 'index, follow'
+      },
+
       {
         property: 'og:title',
         content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
@@ -40,17 +52,39 @@ export const Route = createFileRoute('/')({
         content:
           'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar a Onside a chegar até você.'
       },
-      { property: 'og:type', content: 'website' },
-      { property: 'og:url', content: 'https://findsports.com.br/' },
+      {
+        property: 'og:type',
+        content: 'website'
+      },
+      {
+        property: 'og:url',
+        content: `${SITE_URL}/`
+      },
       {
         property: 'og:image',
-        content: 'https://findsports.com.br/og-image.png?v=2'
+        content: OG_IMAGE_URL
       },
-      { property: 'og:image:width', content: '1200' },
-      { property: 'og:image:height', content: '630' },
-      { property: 'og:site_name', content: 'Onside' },
-      { property: 'og:locale', content: 'pt_BR' },
-      { name: 'twitter:card', content: 'summary_large_image' },
+      {
+        property: 'og:image:width',
+        content: '1200'
+      },
+      {
+        property: 'og:image:height',
+        content: '630'
+      },
+      {
+        property: 'og:site_name',
+        content: 'Onside'
+      },
+      {
+        property: 'og:locale',
+        content: 'pt_BR'
+      },
+
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image'
+      },
       {
         name: 'twitter:title',
         content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
@@ -62,11 +96,15 @@ export const Route = createFileRoute('/')({
       },
       {
         name: 'twitter:image',
-        content: 'https://findsports.com.br/og-image.png?v=2'
+        content: OG_IMAGE_URL
       }
     ],
+
     links: [
-      { rel: 'canonical', href: 'https://findsports.com.br/' },
+      {
+        rel: 'canonical',
+        href: `${SITE_URL}/`
+      },
       {
         rel: 'preload',
         href: '/fonts/onside/anton-latin-400.woff2?v=2',
