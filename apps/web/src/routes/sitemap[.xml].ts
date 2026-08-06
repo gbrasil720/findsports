@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-
-const BASE_URL = 'https://www.onside.sh'
+import { SITE_URL } from '@/lib/site'
 
 const PUBLIC_ROUTES = ['/']
 
 function buildSitemap(): string {
   const urls = PUBLIC_ROUTES.map(
     (path) => `  <url>
-    <loc>${BASE_URL}${path}</loc>
+      <loc>${SITE_URL}${path}</loc>
   </url>`
   ).join('\n')
 

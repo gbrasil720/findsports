@@ -3,9 +3,7 @@ import { useEffect } from 'react'
 import { OnsideLanding } from '@/components/landing/onside-landing'
 import '@/components/landing/onside.css'
 import { analytics } from '@/lib/analytics'
-
-const SITE_URL = 'https://www.onside.sh'
-const OG_IMAGE_URL = `${SITE_URL}/og-image.png?v=2`
+import { OG_IMAGE_URL, SITE_URL } from '@/lib/site'
 
 const HOMEPAGE_SCHEMA = {
   '@context': 'https://schema.org',

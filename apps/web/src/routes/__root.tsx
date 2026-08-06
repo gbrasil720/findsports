@@ -21,6 +21,7 @@ import { useEffect, useRef } from 'react'
 import { ImpersonationBanner } from '../components/impersonation-banner'
 import appCss from '../index.css?url'
 import { authClient } from '../lib/auth-client'
+import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
 
@@ -66,11 +67,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         property: 'og:image',
-        content: 'https://findsports.com.br/og-image.png?v=2'
+        content: OG_IMAGE_URL
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
-      { property: 'og:url', content: 'https://findsports.com.br/' },
+      { property: 'og:url', content: `${SITE_URL}/` },
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
@@ -83,7 +84,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: 'twitter:image',
-        content: 'https://findsports.com.br/og-image.png?v=2'
+        content: OG_IMAGE_URL
       }
     ],
     links: [
