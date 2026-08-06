@@ -61,6 +61,12 @@
       "skillPath": "skills/turborepo/SKILL.md",
       "computedHash": "0e217b3f6f91a2d5c700777896ba8b2c74aee04814ffce4995b1f170d5fdf84e"
     },
+    "ui-sensei": {
+      "source": "gbrasil720/ui-sensei",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "3718a10e696a18c013e514596a1ce17efdf580614cc7cb59a0604968c321f569"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
