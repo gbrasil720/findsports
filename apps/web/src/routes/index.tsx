@@ -11,7 +11,7 @@ const HOMEPAGE_SCHEMA = {
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'Web',
   description:
-    'O Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.',
+    'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.',
   url: 'https://findsports.com.br',
   inLanguage: 'pt-BR',
   audience: {
@@ -27,18 +27,18 @@ export const Route = createFileRoute('/')({
       {
         name: 'description',
         content:
-          'O Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.'
+          'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.'
       },
       { name: 'theme-color', content: '#C9F135' },
       { name: 'robots', content: 'index, follow' },
       {
         property: 'og:title',
-        content: 'Onde seu jogo vai passar? O Onside vai mostrar.'
+        content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
       },
       {
         property: 'og:description',
         content:
-          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar o Onside a chegar até você.'
+          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar a Onside a chegar até você.'
       },
       { property: 'og:type', content: 'website' },
       { property: 'og:url', content: 'https://findsports.com.br/' },
@@ -53,12 +53,12 @@ export const Route = createFileRoute('/')({
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'Onde seu jogo vai passar? O Onside vai mostrar.'
+        content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
       },
       {
         name: 'twitter:description',
         content:
-          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar o Onside a chegar até você.'
+          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar a Onside a chegar até você.'
       },
       {
         name: 'twitter:image',

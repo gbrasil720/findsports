@@ -1,5 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
+import Add from 'reicon-react/icons/Add'
+import ArrowRight from 'reicon-react/icons/ArrowRight'
+import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
+import Check from 'reicon-react/icons/Check'
+import ChevronDown from 'reicon-react/icons/ChevronDown'
+import Menu from 'reicon-react/icons/Menu'
+import Pause from 'reicon-react/icons/Pause'
+import Play from 'reicon-react/icons/Play'
+import Search from 'reicon-react/icons/Search'
+import Xmark from 'reicon-react/icons/Xmark'
 
 import { analytics } from '../../lib/analytics'
 import { useTRPC } from '../../utils/trpc'
@@ -33,7 +43,7 @@ type TrustItem = { id: string; number: string; title: string; body: string }
 type FaqItem = { id: string; question: string; answer: string }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'produto', label: 'O Onside', href: '#produto' },
+  { id: 'produto', label: 'A Onside', href: '#produto' },
   { id: 'como-funciona', label: 'Como funciona', href: '#como-funciona' },
   { id: 'bares', label: 'Para bares', href: '#bares' },
   { id: 'duvidas', label: 'Dúvidas', href: '#duvidas' }
@@ -140,13 +150,13 @@ const TRUST_ITEMS: TrustItem[] = [
 const FAQ_ITEMS: FaqItem[] = [
   {
     id: 'f1',
-    question: 'O Onside já funciona na minha cidade?',
+    question: 'A Onside já funciona na minha cidade?',
     answer:
       'Ainda não. Estamos medindo a demanda de torcedores e a adesão de bares para escolher as primeiras cidades do piloto.'
   },
   {
     id: 'f2',
-    question: 'O Onside será gratuito para torcedores?',
+    question: 'A Onside será gratuita para torcedores?',
     answer:
       'Sim. Buscar partidas, comparar bares e consultar a grade será gratuito para quem assiste.'
   },
@@ -166,7 +176,7 @@ const FAQ_ITEMS: FaqItem[] = [
     id: 'f5',
     question: 'Como funciona para bares?',
     answer:
-      'O bar manifesta interesse no piloto e informa a casa, a cidade e um contato. Quando a operação avançar naquela região, o Onside entra em contato com os próximos passos.'
+      'O bar manifesta interesse no piloto e informa a casa, a cidade e um contato. Quando a operação avançar naquela região, a Onside entra em contato com os próximos passos.'
   },
   {
     id: 'f6',
@@ -298,7 +308,10 @@ function OnsideHeader() {
           href="#lista"
           data-cta="nav_city_waitlist"
         >
-          Levar o Onside à minha cidade <span aria-hidden="true">↗</span>
+          Levar a Onside à minha cidade{' '}
+          <span className="onside-inline-icon" aria-hidden="true">
+            <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
+          </span>
         </a>
 
         <button
@@ -310,8 +323,11 @@ function OnsideHeader() {
           aria-controls={menuId}
           onClick={() => setMenuOpen((open) => !open)}
         >
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
+          {menuOpen ? (
+            <Xmark size={22} aria-hidden="true" focusable="false" />
+          ) : (
+            <Menu size={22} aria-hidden="true" focusable="false" />
+          )}
         </button>
       </div>
 
@@ -349,7 +365,7 @@ function OnsideHeader() {
             href="#lista"
             data-cta="nav_city_waitlist"
           >
-            Levar o Onside à minha cidade
+            Levar a Onside à minha cidade
           </a>
         </div>
       ) : null}
@@ -464,7 +480,7 @@ function OnsideTicker() {
     <section
       className={`onside-schedule-strip${isPaused ? ' is-paused' : ''}${hasLiveEvents ? '' : ' is-benefits'}`}
       aria-label={
-        hasLiveEvents ? 'Agenda confirmada pelos bares' : 'Benefícios do Onside'
+        hasLiveEvents ? 'Agenda confirmada pelos bares' : 'Benefícios da Onside'
       }
     >
       <button
@@ -476,6 +492,11 @@ function OnsideTicker() {
         }
         onClick={() => setIsPaused((current) => !current)}
       >
+        {isPaused ? (
+          <Play size={14} aria-hidden="true" focusable="false" />
+        ) : (
+          <Pause size={14} aria-hidden="true" focusable="false" />
+        )}
         {isPaused ? 'Retomar' : 'Pausar'}
       </button>
       {hasLiveEvents ? (
@@ -507,7 +528,9 @@ function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
         aria-hidden="true"
       >
         <div className="onside-mini-search">
-          <span>⌕</span>
+          <span className="onside-inline-icon">
+            <Search size={16} aria-hidden="true" focusable="false" />
+          </span>
           <strong>Qual jogo você quer ver?</strong>
         </div>
         <div className="onside-sport-options">
@@ -578,7 +601,12 @@ function BarsDashboardMock() {
           <OnsideMark className="onside-dash-symbol" size={17} />
           <b>ONSIDE PARA BARES</b>
         </div>
-        <span>Bar do Zé ▾</span>
+        <span className="onside-dash-select">
+          Bar do Zé{' '}
+          <span className="onside-inline-icon">
+            <ChevronDown size={12} aria-hidden="true" focusable="false" />
+          </span>
+        </span>
       </div>
       <div className="onside-dash-body">
         <aside>
@@ -593,7 +621,12 @@ function BarsDashboardMock() {
               <small>SEMANA DE EXEMPLO</small>
               <h3>Sua grade</h3>
             </div>
-            <span className="onside-dash-add">+ Adicionar transmissão</span>
+            <span className="onside-dash-add">
+              <span className="onside-inline-icon">
+                <Add size={12} aria-hidden="true" focusable="false" />
+              </span>{' '}
+              Adicionar transmissão
+            </span>
           </div>
           <div className="onside-dash-stats">
             <div>
@@ -656,6 +689,27 @@ function BarsDashboardMock() {
   )
 }
 
+function ProofList({
+  items,
+  className
+}: {
+  items: readonly string[]
+  className: string
+}) {
+  return (
+    <div className={className}>
+      {items.map((item) => (
+        <span key={item}>
+          <span className="onside-inline-icon" aria-hidden="true">
+            <Check size={12} aria-hidden="true" focusable="false" />
+          </span>
+          {item}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function OnsideLanding() {
   useEffect(() => {
     function handleCtaClick(event: MouseEvent) {
@@ -686,7 +740,7 @@ export function OnsideLanding() {
           <div className="onside-shell onside-hero-grid">
             <div className="onside-hero-copy">
               <div className="onside-eyebrow">
-                <span className="onside-live-dot" aria-hidden="true" />O ONSIDE
+                <span className="onside-live-dot" aria-hidden="true" />A ONSIDE
                 ESTÁ CHEGANDO
               </div>
               <h1>
@@ -700,7 +754,7 @@ export function OnsideLanding() {
                 </em>
               </h1>
               <p>
-                O Onside vai reunir bares que confirmaram a transmissão e
+                A Onside vai reunir bares que confirmaram a transmissão e
                 mostrar distância, lotação, som, telões e perfil da torcida.
                 Cadastre sua cidade para ajudar a definir o primeiro lançamento.
               </p>
@@ -710,22 +764,38 @@ export function OnsideLanding() {
                   href="#lista"
                   data-cta="hero_city_waitlist"
                 >
-                  Levar o Onside à minha cidade{' '}
-                  <span aria-hidden="true">→</span>
+                  Levar a Onside à minha cidade{' '}
+                  <span className="onside-inline-icon" aria-hidden="true">
+                    <ArrowRight
+                      size={16}
+                      aria-hidden="true"
+                      focusable="false"
+                    />
+                  </span>
                 </a>
                 <a
                   className="onside-text-link"
                   href="#bares"
                   data-cta="hero_bar_interest"
                 >
-                  Quero participar com meu bar <span aria-hidden="true">↗</span>
+                  Quero participar com meu bar{' '}
+                  <span className="onside-inline-icon" aria-hidden="true">
+                    <ArrowUpRight
+                      size={14}
+                      aria-hidden="true"
+                      focusable="false"
+                    />
+                  </span>
                 </a>
               </div>
-              <div className="onside-hero-proof">
-                <span>Grátis para torcedores</span>
-                <span>Sem newsletter</span>
-                <span>1 e-mail no lançamento</span>
-              </div>
+              <ProofList
+                className="onside-hero-proof"
+                items={[
+                  'Grátis para torcedores',
+                  'Sem newsletter',
+                  '1 e-mail no lançamento'
+                ]}
+              />
             </div>
             <OnsideAppDemo />
           </div>
@@ -769,7 +839,7 @@ export function OnsideLanding() {
             </div>
             <div className="onside-definition-copy">
               <p className="onside-big-copy">
-                O Onside pretende reunir a programação publicada pelas casas e
+                A Onside pretende reunir a programação publicada pelas casas e
                 as confirmações de quem já está no local. Assim, você compara
                 onde assistir sem depender de mais um story ou de uma ligação.
               </p>
@@ -858,7 +928,7 @@ export function OnsideLanding() {
               <em>ASSISTIR JUNTO É OUTRA COISA.</em>
             </h2>
             <p>
-              O Onside quer ajudar você a encontrar o bar e a torcida que fazem
+              A Onside quer ajudar você a encontrar o bar e a torcida que fazem
               aquela partida valer a saída de casa.
             </p>
             <a
@@ -866,7 +936,10 @@ export function OnsideLanding() {
               href="#lista"
               data-cta="community_city_waitlist"
             >
-              Levar o Onside à minha cidade <span aria-hidden="true">→</span>
+              Levar a Onside à minha cidade{' '}
+              <span className="onside-inline-icon" aria-hidden="true">
+                <ArrowRight size={16} aria-hidden="true" focusable="false" />
+              </span>
             </a>
           </div>
         </section>
@@ -875,10 +948,10 @@ export function OnsideLanding() {
           <div className="onside-shell onside-waitlist-grid">
             <div className="onside-waitlist-copy">
               <p className="onside-section-kicker onside-acid-text">
-                AJUDE O ONSIDE A CHEGAR
+                AJUDE A ONSIDE A CHEGAR
               </p>
               <h2>
-                LEVE O ONSIDE
+                LEVE A ONSIDE
                 <br />À SUA <em>CIDADE.</em>
               </h2>
               <p>
@@ -887,11 +960,14 @@ export function OnsideLanding() {
                 cidade e você recebe um e-mail quando houver lançamento por
                 perto.
               </p>
-              <div className="onside-waitlist-facts">
-                <span>Grátis para torcedores</span>
-                <span>Sem newsletter</span>
-                <span>1 e-mail no lançamento</span>
-              </div>
+              <ProofList
+                className="onside-waitlist-facts"
+                items={[
+                  'Grátis para torcedores',
+                  'Sem newsletter',
+                  '1 e-mail no lançamento'
+                ]}
+              />
             </div>
             <OnsideFanWaitlistForm />
           </div>
@@ -907,12 +983,21 @@ export function OnsideLanding() {
               </h2>
               <p>
                 No piloto, o bar informa as transmissões da semana e detalhes
-                como som, telões e lotação. O Onside organiza essa informação
+                como som, telões e lotação. A Onside organiza essa informação
                 para o torcedor encontrar a casa pelo jogo e pela localização.
               </p>
               <div className="onside-bars-benefits">
                 {BAR_BENEFITS.map((benefit) => (
-                  <span key={benefit}>{benefit}</span>
+                  <span key={benefit}>
+                    <span className="onside-inline-icon" aria-hidden="true">
+                      <ArrowUpRight
+                        size={14}
+                        aria-hidden="true"
+                        focusable="false"
+                      />
+                    </span>
+                    {benefit}
+                  </span>
                 ))}
               </div>
               <a
@@ -920,7 +1005,14 @@ export function OnsideLanding() {
                 href="#bar-form"
                 data-cta="bars_register_interest"
               >
-                Quero participar do piloto <span aria-hidden="true">↗</span>
+                Quero participar do piloto{' '}
+                <span className="onside-inline-icon" aria-hidden="true">
+                  <ArrowUpRight
+                    size={16}
+                    aria-hidden="true"
+                    focusable="false"
+                  />
+                </span>
               </a>
             </div>
             <BarsDashboardMock />
@@ -952,7 +1044,9 @@ export function OnsideLanding() {
                 <details key={item.id} open={index === 0 || undefined}>
                   <summary>
                     {item.question}
-                    <span aria-hidden="true">+</span>
+                    <span className="onside-faq-icon" aria-hidden="true">
+                      <Add size={18} aria-hidden="true" focusable="false" />
+                    </span>
                   </summary>
                   <p>{item.answer}</p>
                 </details>
@@ -975,13 +1069,15 @@ export function OnsideLanding() {
               href="#lista"
               data-cta="final_city_waitlist"
             >
-              Levar o Onside à minha cidade <span aria-hidden="true">→</span>
+              Levar a Onside à minha cidade{' '}
+              <span className="onside-inline-icon" aria-hidden="true">
+                <ArrowRight size={16} aria-hidden="true" focusable="false" />
+              </span>
             </a>
-            <div className="onside-final-proof">
-              <span>Grátis</span>
-              <span>Sem newsletter</span>
-              <span>1 e-mail no lançamento</span>
-            </div>
+            <ProofList
+              className="onside-final-proof"
+              items={['Grátis', 'Sem newsletter', '1 e-mail no lançamento']}
+            />
           </div>
         </section>
       </main>
