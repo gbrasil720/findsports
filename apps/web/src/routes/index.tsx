@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { OnsideLanding } from '@/components/landing/onside-landing'
 import '@/components/landing/onside.css'
-import { useSmoothScroll } from '@/hooks/use-smooth-scroll'
 import { analytics } from '@/lib/analytics'
 
 const HOMEPAGE_SCHEMA = {
@@ -12,14 +11,9 @@ const HOMEPAGE_SCHEMA = {
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'Web',
   description:
-    'Onside mostra quais bares estão transmitindo a sua partida, com lotação, som, telões e torcida.',
+    'O Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.',
   url: 'https://findsports.com.br',
   inLanguage: 'pt-BR',
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'BRL'
-  },
   audience: {
     '@type': 'Audience',
     audienceType: 'Torcedores e bares esportivos no Brasil'
@@ -29,22 +23,22 @@ const HOMEPAGE_SCHEMA = {
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
-      { title: 'Onside — O jogo é aqui' },
+      { title: 'Onside — Saiba onde assistir ao seu jogo' },
       {
         name: 'description',
         content:
-          'Descubra qual bar está passando a sua partida agora — com lotação, som, telões e torcida. Entre na lista de espera do Onside.'
+          'O Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.'
       },
-      { name: 'theme-color', content: '#F1EEE6' },
+      { name: 'theme-color', content: '#C9F135' },
       { name: 'robots', content: 'index, follow' },
       {
         property: 'og:title',
-        content: 'Onside — O jogo é aqui'
+        content: 'Onde seu jogo vai passar? O Onside vai mostrar.'
       },
       {
         property: 'og:description',
         content:
-          'Escolha a mesa, não o sofá. Encontre transmissões confirmadas, lotação e o clima de cada bar.'
+          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar o Onside a chegar até você.'
       },
       { property: 'og:type', content: 'website' },
       { property: 'og:url', content: 'https://findsports.com.br/' },
@@ -59,12 +53,12 @@ export const Route = createFileRoute('/')({
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'Onside — O jogo é aqui'
+        content: 'Onde seu jogo vai passar? O Onside vai mostrar.'
       },
       {
         name: 'twitter:description',
         content:
-          'Encontre transmissões confirmadas, lotação e o clima de cada bar. Lista de espera aberta.'
+          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar o Onside a chegar até você.'
       },
       {
         name: 'twitter:image',
@@ -110,8 +104,6 @@ function StructuredData({ schema }: { schema: object }) {
 }
 
 function Landing() {
-  useSmoothScroll()
-
   useEffect(() => {
     analytics.landingViewed()
   }, [])
