@@ -1,13 +1,54 @@
 import posthog from 'posthog-js'
 
+export type LandingCtaId =
+  | 'nav_city_waitlist'
+  | 'hero_city_waitlist'
+  | 'hero_bar_interest'
+  | 'community_city_waitlist'
+  | 'bars_register_interest'
+  | 'final_city_waitlist'
+  | 'demo_view_map'
+  | 'demo_view_list'
+
+export type WaitlistRole = 'fan' | 'pub'
+
+export type WaitlistSubmitFailureCategory =
+  | 'conflict'
+  | 'network'
+  | 'server'
+  | 'unknown'
+
+export type DemoView = 'list' | 'map'
+
 export const analytics = {
   // Landing
   landingViewed: () => posthog.capture('landing_viewed'),
 
-  landingCtaClicked: (cta: string) =>
+  landingCtaClicked: (cta: LandingCtaId | string) =>
     posthog.capture('landing_cta_clicked', { cta }),
 
-  waitlistSubmitted: (role: 'fan' | 'pub') =>
+  demoViewChanged: (view: DemoView) =>
+    posthog.capture('demo_view_changed', { view }),
+
+  // Waitlist funnel (no PII — field names only, never values)
+  waitlistFormViewed: (role: WaitlistRole) =>
+    posthog.capture('waitlist_form_viewed', { role }),
+
+  waitlistFormStarted: (role: WaitlistRole) =>
+    posthog.capture('waitlist_form_started', { role }),
+
+  waitlistSubmitAttempted: (role: WaitlistRole) =>
+    posthog.capture('waitlist_submit_attempted', { role }),
+
+  waitlistValidationFailed: (role: WaitlistRole, fields: string[]) =>
+    posthog.capture('waitlist_validation_failed', { role, fields }),
+
+  waitlistSubmitFailed: (
+    role: WaitlistRole,
+    category: WaitlistSubmitFailureCategory
+  ) => posthog.capture('waitlist_submit_failed', { role, category }),
+
+  waitlistSubmitted: (role: WaitlistRole) =>
     posthog.capture('waitlist_submitted', { role }),
 
   // Auth

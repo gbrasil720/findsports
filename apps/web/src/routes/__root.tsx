@@ -194,9 +194,7 @@ function RootDocument() {
       </head>
       <body>
         <div
-          className={`grid min-h-svh grid-rows-[auto_1fr] ${
-            impersonatedBy ? 'pt-11' : ''
-          }`}
+          className={`min-h-svh w-full ${impersonatedBy ? 'pt-11' : ''}`}
           style={
             {
               '--banner-h': impersonatedBy ? '2.75rem' : '0px'

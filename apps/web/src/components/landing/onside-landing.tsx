@@ -1,376 +1,1009 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
+import { analytics } from '../../lib/analytics'
 import { useTRPC } from '../../utils/trpc'
 import { OnsideAppDemo } from './onside-app-demo'
-import { OnsideWaitlist } from './onside-waitlist'
+import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
 
-const TICKER_FALLBACK = [
-  'AO VIVO · FLAMENGO X PALMEIRAS · BAR DO ZÉ · PINHEIROS',
-  'HOJE 21:30 · NBA FINALS · SPORTS CENTRAL · VILA MADALENA',
-  'AMANHÃ 16:00 · CHAMPIONS · THE RED LION · ITAIM',
-  'SÁB 22:00 · UFC 305 · OCTAGON PUB · CONSOLAÇÃO',
-  'DOM 14:00 · GP DE INTERLAGOS · PUB THE BOX · MOEMA'
+type NavItem = { id: string; label: string; href: string }
+type TickerLiveItem = {
+  id: string
+  timeLabel: string
+  event: string
+  place: string
+}
+type TickerBenefitItem = { id: string; text: string }
+type ProblemItem = {
+  id: string
+  number: string
+  title: string
+  body: string
+}
+type DefinitionPoint = { id: string; number: string; text: string }
+type JourneyStep = {
+  id: string
+  number: string
+  title: string
+  body: string
+  variant: 'search' | 'compare' | 'arrival'
+  reverse?: boolean
+}
+type TrustItem = { id: string; number: string; title: string; body: string }
+type FaqItem = { id: string; question: string; answer: string }
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'produto', label: 'O Onside', href: '#produto' },
+  { id: 'como-funciona', label: 'Como funciona', href: '#como-funciona' },
+  { id: 'bares', label: 'Para bares', href: '#bares' },
+  { id: 'duvidas', label: 'Dúvidas', href: '#duvidas' }
 ]
 
-const STEPS = [
+const TICKER_BENEFITS: TickerBenefitItem[] = [
+  { id: 'b1', text: 'BUSQUE PELO JOGO' },
+  { id: 'b2', text: 'COMPARE O AMBIENTE' },
+  { id: 'b3', text: 'VEJA QUANDO A GRADE FOI ATUALIZADA' },
+  { id: 'b4', text: 'CADASTRE SUA CIDADE' }
+]
+
+const PROBLEM_ITEMS: ProblemItem[] = [
   {
+    id: 'p1',
     number: '01',
-    title: 'Diga o jogo',
-    body: 'Time, campeonato ou esporte. Do clássico estadual à luta de sábado.'
+    title: 'Você encontra o bar, não a transmissão.',
+    body: 'O Google mostra endereço e horário, mas não confirma qual partida estará no telão ou se haverá som.'
   },
   {
+    id: 'p2',
     number: '02',
-    title: 'Veja quem passa',
-    body: 'Bares próximos com a transmissão confirmada, ordenados por distância e horário.'
+    title: 'Os stories somem antes da rodada.',
+    body: 'A programação fica espalhada e quase nunca explica lotação, estrutura ou perfil da torcida.'
   },
   {
+    id: 'p3',
     number: '03',
-    title: 'Chegue no clima',
-    body: 'Lotação, torcida predominante, telões e reserva antes de sair de casa.'
+    title: 'A dúvida só acaba quando você chega.',
+    body: 'Lotado, sem som ou em outro jogo: hoje, a confirmação vem tarde demais.'
   }
 ]
 
-const DETAILS = [
-  'A partida exata na grade da casa — não “passa futebol”',
-  'Lotação atualizada pelo próprio bar e por quem já está lá',
-  'Som no jogo ou música: você escolhe o ambiente',
-  'Torcida predominante, para saber onde senta',
-  'Quantidade e tamanho dos telões',
-  'Reserva de mesa para a galera antes do apito'
-]
-
-const FAQ_ITEMS = [
+const DEFINITION_POINTS: DefinitionPoint[] = [
   {
-    question: 'É de graça?',
-    answer:
-      'Para o torcedor, sim: buscar, ver a grade e a lotação não custa nada. Bares têm plano à parte.'
+    id: 'd1',
+    number: '01',
+    text: 'A partida exata, não apenas “passa futebol”.'
   },
   {
-    question: 'Como sei que o jogo passa mesmo?',
-    answer:
-      'A casa mantém a própria grade e quem está no bar confirma. Quando não há confirmação, a gente diz que não há — em vez de arriscar seu sábado.'
+    id: 'd2',
+    number: '02',
+    text: 'A grade publicada pelo bar, com data de atualização.'
   },
   {
-    question: 'Só futebol?',
-    answer:
-      'Não. Futebol puxa a fila, mas basquete, vôlei, luta e corrida estão no mesmo lugar.'
-  },
-  {
-    question: 'Só no Brasil?',
-    answer:
-      'Começa no Brasil e o app já nasce em português e inglês. A ordem das cidades segue a demanda de cadastros.'
-  },
-  {
-    question: 'Tenho um bar. O que preciso fazer?',
-    answer:
-      'Cadastrar a casa, publicar a grade da semana e manter a lotação em dia. Leva menos tempo que imprimir cartaz.'
+    id: 'd3',
+    number: '03',
+    text: 'Sem confirmação recente? A interface mostra a dúvida.'
   }
 ]
 
-function BrandMark({ footer = false }: { footer?: boolean }) {
+const JOURNEY_STEPS: JourneyStep[] = [
+  {
+    id: 'j1',
+    number: '01',
+    title: 'Busque seu jogo.',
+    body: 'Procure por time, campeonato ou esporte.',
+    variant: 'search'
+  },
+  {
+    id: 'j2',
+    number: '02',
+    title: 'Compare o ambiente.',
+    body: 'Veja distância, lotação informada, som, telões e perfil da torcida.',
+    variant: 'compare',
+    reverse: true
+  },
+  {
+    id: 'j3',
+    number: '03',
+    title: 'Vá sabendo o que esperar.',
+    body: 'Escolha o bar, chame a galera e confira quando a informação foi atualizada.',
+    variant: 'arrival'
+  }
+]
+
+const BAR_BENEFITS = [
+  'Publique a programação da semana em um só lugar.',
+  'Atualize estrutura e lotação quando necessário.',
+  'Seja encontrado por jogo e distância.'
+] as const
+
+const TRUST_ITEMS: TrustItem[] = [
+  {
+    id: 't1',
+    number: '01',
+    title: 'Grade publicada pela casa.',
+    body: 'O bar informa o evento específico e a estrutura prevista.'
+  },
+  {
+    id: 't2',
+    number: '02',
+    title: 'Confirmação de quem está lá.',
+    body: 'A comunidade poderá atualizar som, lotação e transmissão.'
+  },
+  {
+    id: 't3',
+    number: '03',
+    title: 'Horário sempre visível.',
+    body: 'Cada informação mostra quando foi publicada ou confirmada.'
+  }
+]
+
+const FAQ_ITEMS: FaqItem[] = [
+  {
+    id: 'f1',
+    question: 'O Onside já funciona na minha cidade?',
+    answer:
+      'Ainda não. Estamos medindo a demanda de torcedores e a adesão de bares para escolher as primeiras cidades do piloto.'
+  },
+  {
+    id: 'f2',
+    question: 'O Onside será gratuito para torcedores?',
+    answer:
+      'Sim. Buscar partidas, comparar bares e consultar a grade será gratuito para quem assiste.'
+  },
+  {
+    id: 'f3',
+    question: 'Como vou saber se a informação está atualizada?',
+    answer:
+      'A proposta é mostrar quem publicou ou confirmou a informação e quando isso aconteceu. Sem confirmação recente, a interface deve deixar a dúvida visível.'
+  },
+  {
+    id: 'f4',
+    question: 'É só para futebol?',
+    answer:
+      'Não. Futebol será o ponto de partida, mas a mesma busca pode incluir basquete, vôlei, automobilismo, lutas e outros eventos.'
+  },
+  {
+    id: 'f5',
+    question: 'Como funciona para bares?',
+    answer:
+      'O bar manifesta interesse no piloto e informa a casa, a cidade e um contato. Quando a operação avançar naquela região, o Onside entra em contato com os próximos passos.'
+  },
+  {
+    id: 'f6',
+    question: 'Como as primeiras cidades serão escolhidas?',
+    answer:
+      'Pela combinação entre demanda de torcedores e bares interessados. Por isso os dois formulários pedem a cidade.'
+  },
+  {
+    id: 'f7',
+    question: 'O que acontece com meus dados?',
+    answer:
+      'Usamos os dados para registrar o interesse e avisar sobre o lançamento pelo e-mail informado.'
+  }
+]
+
+const ONSIDE_ICON_SRC = '/onside-icone-preto.png'
+
+function OnsideMark({
+  className = '',
+  size = 44
+}: {
+  className?: string
+  size?: number
+}) {
   return (
-    <span className={`onside-mark ${footer ? 'is-footer' : ''}`}>
-      <span />
+    // biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline
+    <img
+      className={className}
+      src={ONSIDE_ICON_SRC}
+      alt=""
+      width={size}
+      height={size}
+      decoding="async"
+      aria-hidden="true"
+    />
+  )
+}
+
+const ONSIDE_WORDMARK_SRC = '/onside-wordmark-paper.png'
+
+function OnsideBrand({ className = '' }: { className?: string }) {
+  return (
+    <span className={`onside-brand ${className}`.trim()} translate="no">
+      {/* biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline */}
+      <img
+        className="onside-brand-wordmark"
+        src={ONSIDE_WORDMARK_SRC}
+        alt=""
+        width={166}
+        height={50}
+        decoding="async"
+      />
     </span>
   )
 }
 
-function Brand({ footer = false }: { footer?: boolean }) {
-  return (
-    <span className="onside-brand">
-      <BrandMark footer={footer} />
-      <span>
-        Onside<i>.</i>
-      </span>
-    </span>
-  )
-}
+function OnsideHeader() {
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuId = useId()
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const firstLinkRef = useRef<HTMLAnchorElement>(null)
+  const previousOverflow = useRef<string | null>(null)
 
-function Navbar() {
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+
+    previousOverflow.current = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const frame = requestAnimationFrame(() => {
+      firstLinkRef.current?.focus()
+    })
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+
+    const media = window.matchMedia('(min-width: 1101px)')
+    const onMedia = () => {
+      if (media.matches) setMenuOpen(false)
+    }
+    media.addEventListener('change', onMedia)
+    window.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      document.body.style.overflow = previousOverflow.current ?? ''
+      media.removeEventListener('change', onMedia)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [menuOpen])
+
+  function closeMenu() {
+    setMenuOpen(false)
+  }
+
   return (
-    <nav className="onside-nav" aria-label="Navegação principal">
-      <div className="onside-shell onside-nav-inner">
-        <a href="#top" aria-label="Onside — início">
-          <Brand />
+    <header className={`onside-site-header${scrolled ? ' is-scrolled' : ''}`}>
+      <div className="onside-shell onside-nav-wrap">
+        <a
+          className="onside-brand-link"
+          href="#top"
+          aria-label="Onside — início"
+        >
+          <OnsideBrand />
         </a>
-        <div className="onside-nav-links">
-          <a href="#como">Como funciona</a>
-          <a href="#bares">Para bares</a>
-          <a href="#faq">Dúvidas</a>
-          <a className="onside-nav-cta" href="#cta">
-            Entrar na lista
+
+        <nav className="onside-nav-links" aria-label="Navegação principal">
+          {NAV_ITEMS.map((item) => (
+            <a key={item.id} href={item.href}>
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <a
+          className="onside-nav-cta"
+          href="#lista"
+          data-cta="nav_city_waitlist"
+        >
+          Levar o Onside à minha cidade <span aria-hidden="true">↗</span>
+        </a>
+
+        <button
+          ref={menuButtonRef}
+          className="onside-menu-button"
+          type="button"
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuOpen}
+          aria-controls={menuId}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
+      </div>
+
+      {menuOpen ? (
+        // biome-ignore lint/a11y/noStaticElementInteractions: closes menu when any hash link inside is activated
+        <div
+          id={menuId}
+          className="onside-mobile-menu is-open"
+          onClick={(event) => {
+            const target = event.target
+            if (target instanceof Element && target.closest('a[href^="#"]')) {
+              closeMenu()
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              const target = event.target
+              if (target instanceof Element && target.closest('a[href^="#"]')) {
+                closeMenu()
+              }
+            }
+          }}
+        >
+          {NAV_ITEMS.map((item, index) => (
+            <a
+              key={item.id}
+              ref={index === 0 ? firstLinkRef : undefined}
+              href={item.href}
+            >
+              {item.label}
+            </a>
+          ))}
+          <a
+            className="onside-button onside-button-acid"
+            href="#lista"
+            data-cta="nav_city_waitlist"
+          >
+            Levar o Onside à minha cidade
           </a>
         </div>
-      </div>
-    </nav>
+      ) : null}
+    </header>
   )
 }
 
-function formatTickerEvent(event: Record<string, unknown>) {
-  const startsAt = new Date(String(event.starts_at ?? ''))
-  const time = startsAt.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-  const sport = String(event.sport_name ?? 'Esporte').toUpperCase()
-  const championship = String(event.championship ?? 'Partida').toUpperCase()
-  const bar = String(event.bar_name ?? 'Bar parceiro').toUpperCase()
-  return `${sport} · ${championship} · ${bar} · ${time}`
+function startOfDayInTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date)
+  const year = parts.find((p) => p.type === 'year')?.value
+  const month = parts.find((p) => p.type === 'month')?.value
+  const day = parts.find((p) => p.type === 'day')?.value
+  return `${year}-${month}-${day}`
 }
 
-function LiveTicker() {
+function relativeDayLabel(startsAt: Date, now = new Date()) {
+  const timeZone = 'America/Sao_Paulo'
+  const eventDay = startOfDayInTimeZone(startsAt, timeZone)
+  const today = startOfDayInTimeZone(now, timeZone)
+
+  if (eventDay === today) return 'HOJE'
+
+  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const tomorrow = startOfDayInTimeZone(tomorrowDate, timeZone)
+  if (eventDay === tomorrow) return 'AMANHÃ'
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    weekday: 'short'
+  })
+    .format(startsAt)
+    .replace('.', '')
+    .toUpperCase()
+}
+
+function formatTickerEvent(event: {
+  bar_name?: unknown
+  championship?: unknown
+  starts_at?: unknown
+  sport_name?: unknown
+  neighborhood?: unknown
+  city?: unknown
+}): TickerLiveItem {
+  const startsAtRaw = event.starts_at
+  const startsAt = new Date(String(startsAtRaw ?? ''))
+  const valid = !Number.isNaN(startsAt.getTime())
+
+  const time = valid
+    ? new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(startsAt)
+    : '--:--'
+
+  const dayLabel = valid ? relativeDayLabel(startsAt) : 'EM BREVE'
+  const championship = String(
+    event.championship ?? event.sport_name ?? 'Partida'
+  )
+    .trim()
+    .toUpperCase()
+  const place = String(
+    event.neighborhood || event.city || event.bar_name || 'Bar'
+  )
+    .trim()
+    .toUpperCase()
+
+  return {
+    id: `${String(event.bar_name)}-${String(startsAtRaw)}-${championship}`,
+    timeLabel: `${dayLabel} ${time}`,
+    event: championship,
+    place
+  }
+}
+
+function OnsideTicker() {
   const trpc = useTRPC()
   const [isPaused, setIsPaused] = useState(false)
-  const { data: eliteEvents = [] } = useQuery(
-    trpc.pubs.getEliteEvents.queryOptions()
+  const { data: eliteEvents = [] } = useQuery({
+    ...trpc.pubs.getEliteEvents.queryOptions(),
+    staleTime: 60_000
+  })
+
+  const hasLiveEvents = eliteEvents.length > 0
+  const liveItems = hasLiveEvents
+    ? eliteEvents.map((event) =>
+        formatTickerEvent(event as Record<string, unknown>)
+      )
+    : []
+
+  const liveLoop = [0, 1].flatMap((copy) =>
+    liveItems.map((item) => ({
+      ...item,
+      key: `${copy}-${item.id}`
+    }))
   )
-  const items =
-    eliteEvents.length > 0
-      ? eliteEvents.map((event) => formatTickerEvent(event))
-      : TICKER_FALLBACK
-  const loop = items.flatMap((item) => [
-    { id: `${item}-first`, label: item },
-    { id: `${item}-second`, label: item }
-  ])
+
+  const benefitLoop = [0, 1].flatMap((copy) =>
+    TICKER_BENEFITS.map((item) => ({
+      ...item,
+      key: `${copy}-${item.id}`
+    }))
+  )
 
   return (
     <section
-      className={`onside-ticker ${isPaused ? 'is-paused' : ''} rounded-none`}
-      aria-label="Transmissões em destaque"
+      className={`onside-schedule-strip${isPaused ? ' is-paused' : ''}${hasLiveEvents ? '' : ' is-benefits'}`}
+      aria-label={
+        hasLiveEvents ? 'Agenda confirmada pelos bares' : 'Benefícios do Onside'
+      }
     >
       <button
         className="onside-ticker-control"
         type="button"
         aria-pressed={isPaused}
+        aria-label={
+          isPaused ? 'Retomar animação do ticker' : 'Pausar animação do ticker'
+        }
         onClick={() => setIsPaused((current) => !current)}
       >
         {isPaused ? 'Retomar' : 'Pausar'}
       </button>
-      <div className="onside-ticker-track">
-        {loop.map((item) => (
-          <span key={item.id}>
-            <i />
-            {item.label}
-          </span>
-        ))}
-      </div>
+      {hasLiveEvents ? (
+        <div className="onside-schedule-track">
+          {liveLoop.map((item) => (
+            <span key={item.key}>
+              <b>{item.timeLabel}</b> {item.event} · {item.place}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="onside-schedule-track">
+          {benefitLoop.map((item) => (
+            <span key={item.key}>
+              <b>{item.text}</b>
+            </span>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
 
-function Hero() {
-  const marks = [
-    ['Onde', 'Bares que confirmam a grade, não adivinham'],
-    ['Quando', 'Do apito inicial ao último round'],
-    ['Custo', 'Grátis para quem torce']
-  ]
-  const stats = [
-    ['Distância', '1,2 km'],
-    ['Lotação', '80%'],
-    ['Som', 'Narração ligada']
-  ]
-
-  return (
-    <header id="top" className="onside-shell onside-hero">
-      <div className="onside-hero-copy">
-        <p className="onside-eyebrow">
-          <i />
-          Transmissões ao vivo perto de você
-        </p>
-        <h1>
-          O jogo
-          <br />
-          <span>é aqui.</span>
-        </h1>
-        <p className="onside-hero-lead">
-          Onside mostra qual bar está passando a sua partida agora — com
-          lotação, som ligado, telão e a torcida que está lá. Escolha a mesa,
-          não o sofá.
-        </p>
-        <div className="onside-hero-action">
-          <a href="#cta">Entrar na lista</a>
-          <span>Lançamento em breve · vagas por cidade</span>
+function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
+  if (variant === 'search') {
+    return (
+      <div
+        className="onside-journey-visual onside-search-visual"
+        aria-hidden="true"
+      >
+        <div className="onside-mini-search">
+          <span>⌕</span>
+          <strong>Qual jogo você quer ver?</strong>
         </div>
-        <div className="onside-marks">
-          {marks.map(([label, value]) => (
-            <div key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </div>
-          ))}
+        <div className="onside-sport-options">
+          <span>Futebol</span>
+          <span>Basquete</span>
+          <span>F1</span>
+          <span>UFC</span>
         </div>
       </div>
-      <div className="onside-hero-media">
-        {/* biome-ignore lint/performance/noImgElement: TanStack Start does not provide a built-in optimized image component. */}
-        <img
-          src="/hero-bar.jpg"
-          alt="Bar cheio de torcedores assistindo a uma partida em vários telões"
-          width={1280}
-          height={1024}
-        />
-        <span className="onside-hero-shade" />
-        <div className="onside-live-card">
-          <p>
-            <i />
-            Ao vivo agora
-          </p>
-          <strong>Flamengo 2 × 2 Palmeiras</strong>
-          <div>
-            {stats.map(([label, value]) => (
-              <span key={label}>
-                <small>{label}</small>
-                <b>{value}</b>
+    )
+  }
+
+  if (variant === 'compare') {
+    return (
+      <div
+        className="onside-journey-visual onside-compare-visual"
+        aria-hidden="true"
+      >
+        <div className="onside-compare-row">
+          <strong>Bar do Zé</strong>
+          <span>1,2 km</span>
+          <small>80% cheio · som no jogo</small>
+        </div>
+        <div className="onside-compare-row">
+          <strong>Sports Central</strong>
+          <span>2,4 km</span>
+          <small>3 telões · ambiente esportivo</small>
+        </div>
+        <div className="onside-compare-row">
+          <strong>The Red Lion</strong>
+          <span>3,1 km</span>
+          <small>Torcida rubro-negra</small>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="onside-journey-visual onside-arrival-visual"
+      aria-hidden="true"
+    >
+      <div className="onside-arrival-card">
+        <small>BAR DO ZÉ · PINHEIROS</small>
+        <strong>
+          Grade atualizada
+          <br />
+          antes de você sair.
+        </strong>
+        <div>
+          <span>Atualizada</span>
+          <span>há 18 min</span>
+          <span>Confirmada</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BarsDashboardMock() {
+  return (
+    <div className="onside-dashboard-mock" aria-hidden="true">
+      <p className="onside-dashboard-preview-label">
+        Prévia do painel · ainda não disponível
+      </p>
+      <div className="onside-dash-header">
+        <div className="onside-dash-brand">
+          <OnsideMark className="onside-dash-symbol" size={17} />
+          <b>ONSIDE PARA BARES</b>
+        </div>
+        <span>Bar do Zé ▾</span>
+      </div>
+      <div className="onside-dash-body">
+        <aside>
+          <b>Visão geral</b>
+          <span>Minha grade</span>
+          <span>Meu espaço</span>
+          <span>Configurações</span>
+        </aside>
+        <div className="onside-dash-main">
+          <div className="onside-dash-title">
+            <div>
+              <small>SEMANA DE EXEMPLO</small>
+              <h3>Sua grade</h3>
+            </div>
+            <span className="onside-dash-add">+ Adicionar transmissão</span>
+          </div>
+          <div className="onside-dash-stats">
+            <div>
+              <small>TRANSMISSÕES</small>
+              <strong>—</strong>
+              <span>No piloto</span>
+            </div>
+            <div>
+              <small>ATUALIZAÇÕES</small>
+              <strong>—</strong>
+              <span>No piloto</span>
+            </div>
+            <div>
+              <small>COBERTURA</small>
+              <strong>—</strong>
+              <span>No piloto</span>
+            </div>
+          </div>
+          <div className="onside-dash-list">
+            <div>
+              <span className="onside-day">
+                HOJE
+                <br />
+                <b>04</b>
               </span>
-            ))}
+              <span className="onside-game">
+                <b>Flamengo x Palmeiras</b>
+                <small>Brasileirão · 21:30</small>
+              </span>
+              <span className="onside-published">PUBLICADO</span>
+            </div>
+            <div>
+              <span className="onside-day">
+                QUI
+                <br />
+                <b>06</b>
+              </span>
+              <span className="onside-game">
+                <b>NBA Finals · Jogo 4</b>
+                <small>Basquete · 22:00</small>
+              </span>
+              <span className="onside-published">PUBLICADO</span>
+            </div>
+            <div>
+              <span className="onside-day">
+                SÁB
+                <br />
+                <b>08</b>
+              </span>
+              <span className="onside-game">
+                <b>UFC · Card principal</b>
+                <small>Luta · 23:00</small>
+              </span>
+              <span className="onside-draft">RASCUNHO</span>
+            </div>
           </div>
         </div>
       </div>
-    </header>
-  )
-}
-
-function HowItWorks() {
-  return (
-    <section id="como" className="onside-shell onside-how">
-      <div className="onside-section-heading">
-        <h2>Do sofá à mesa em três toques.</h2>
-        <span>Três passos</span>
-      </div>
-      <div className="onside-steps">
-        {STEPS.map((step) => (
-          <article key={step.number}>
-            <span>{step.number}</span>
-            <h3>{step.title}</h3>
-            <p>{step.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ProductDemo() {
-  return (
-    <section className="onside-product">
-      <div className="onside-shell onside-product-inner">
-        <div>
-          <p className="onside-section-label">
-            O que você sabe antes de sair · teste o app aqui
-          </p>
-          <h2>Nenhuma surpresa ao chegar no bar.</h2>
-          <ul>
-            {DETAILS.map((detail) => (
-              <li key={detail}>
-                <i />
-                <span>{detail}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="onside-demo-wrap">
-          <OnsideAppDemo />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function ForBars() {
-  return (
-    <section id="bares" className="onside-shell onside-bars">
-      <div>
-        <p className="onside-section-label">Para bares e pubs</p>
-        <h2>Sua grade vira motivo pra sair de casa.</h2>
-        <p>
-          Publique as transmissões da semana e apareça exatamente para quem
-          procura aquela partida, naquele raio. O painel do bar continua no
-          navegador — o torcedor fica no app.
-        </p>
-      </div>
-      <div>
-        <a href="#cta">Cadastrar meu bar</a>
-        <span>Cadastro gratuito no lançamento</span>
-      </div>
-    </section>
-  )
-}
-
-function FinalCta() {
-  return (
-    <section id="cta" className="onside-cta">
-      <div className="onside-shell onside-cta-inner">
-        <div className="onside-cta-copy">
-          <p className="onside-section-label">Lista de espera</p>
-          <h2>Entre antes do apito</h2>
-          <p>
-            Sem spam: um e-mail quando o app abrir na sua cidade. Nada mais.
-          </p>
-        </div>
-        <OnsideWaitlist />
-      </div>
-    </section>
-  )
-}
-
-function Faq() {
-  return (
-    <section id="faq" className="onside-shell onside-faq">
-      <div className="onside-section-heading">
-        <h2>Perguntas diretas.</h2>
-        <span>Dúvidas frequentes</span>
-      </div>
-      <div className="onside-faq-list">
-        {FAQ_ITEMS.map((item) => (
-          <article key={item.question}>
-            <h3>{item.question}</h3>
-            <p>{item.answer}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function Footer() {
-  return (
-    <footer className="onside-footer">
-      <div className="onside-shell onside-footer-inner">
-        <Brand footer />
-        <span className="onside-footer-note">
-          © 2026 Onside · feito por quem assiste em bar
-        </span>
-        <div className="invisible">
-          <a href="https://www.instagram.com/" rel="noreferrer">
-            Instagram
-          </a>
-          <a href="https://x.com/" rel="noreferrer">
-            X
-          </a>
-          <a href="mailto:contato@findsports.com.br">Contato</a>
-        </div>
-      </div>
-    </footer>
+    </div>
   )
 }
 
 export function OnsideLanding() {
+  useEffect(() => {
+    function handleCtaClick(event: MouseEvent) {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      // Skip form controls — forms emit dedicated funnel events only
+      if (target.closest('form')) return
+      const ctaEl = target.closest('[data-cta]')
+      if (!(ctaEl instanceof HTMLElement)) return
+      const cta = ctaEl.dataset.cta
+      if (cta) analytics.landingCtaClicked(cta)
+    }
+
+    document.addEventListener('click', handleCtaClick)
+    return () => document.removeEventListener('click', handleCtaClick)
+  }, [])
+
   return (
     <div className="onside-page">
-      <a className="onside-skip-link" href="#conteudo">
+      <a className="onside-skip-link" href="#main">
         Pular para o conteúdo
       </a>
-      <Navbar />
-      <LiveTicker />
-      <main id="conteudo">
-        <Hero />
-        <HowItWorks />
-        <ProductDemo />
-        <ForBars />
-        <FinalCta />
-        <Faq />
+
+      <OnsideHeader />
+
+      <main id="main">
+        <section className="onside-hero" id="top">
+          <div className="onside-shell onside-hero-grid">
+            <div className="onside-hero-copy">
+              <div className="onside-eyebrow">
+                <span className="onside-live-dot" aria-hidden="true" />O ONSIDE
+                ESTÁ CHEGANDO
+              </div>
+              <h1>
+                SAIBA ONDE SEU JOGO
+                <br />
+                VAI PASSAR.{' '}
+                <em>
+                  ANTES
+                  <br />
+                  DE SAIR DE CASA.
+                </em>
+              </h1>
+              <p>
+                O Onside vai reunir bares que confirmaram a transmissão e
+                mostrar distância, lotação, som, telões e perfil da torcida.
+                Cadastre sua cidade para ajudar a definir o primeiro lançamento.
+              </p>
+              <div className="onside-hero-actions">
+                <a
+                  className="onside-button onside-button-acid"
+                  href="#lista"
+                  data-cta="hero_city_waitlist"
+                >
+                  Levar o Onside à minha cidade{' '}
+                  <span aria-hidden="true">→</span>
+                </a>
+                <a
+                  className="onside-text-link"
+                  href="#bares"
+                  data-cta="hero_bar_interest"
+                >
+                  Quero participar com meu bar <span aria-hidden="true">↗</span>
+                </a>
+              </div>
+              <div className="onside-hero-proof">
+                <span>Grátis para torcedores</span>
+                <span>Sem newsletter</span>
+                <span>1 e-mail no lançamento</span>
+              </div>
+            </div>
+            <OnsideAppDemo />
+          </div>
+        </section>
+
+        <OnsideTicker />
+
+        <section className="onside-problem onside-section-pad" id="produto">
+          <div className="onside-shell">
+            <div className="onside-section-intro onside-split-intro">
+              <p className="onside-section-kicker">O PROBLEMA</p>
+              <h2>
+                O BAR APARECE NA BUSCA.
+                <br />
+                <em>A GRADE DO SEU JOGO, NÃO.</em>
+              </h2>
+            </div>
+            <div className="onside-problem-rows">
+              {PROBLEM_ITEMS.map((item) => (
+                <article key={item.id}>
+                  <span className="onside-row-number">{item.number}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="onside-definition onside-section-pad onside-dark-section">
+          <div className="onside-shell onside-definition-grid">
+            <div>
+              <p className="onside-section-kicker onside-acid-text">
+                A PROPOSTA
+              </p>
+              <h2>
+                A GRADE ESPORTIVA
+                <br />
+                DOS BARES, JOGO POR JOGO.
+              </h2>
+            </div>
+            <div className="onside-definition-copy">
+              <p className="onside-big-copy">
+                O Onside pretende reunir a programação publicada pelas casas e
+                as confirmações de quem já está no local. Assim, você compara
+                onde assistir sem depender de mais um story ou de uma ligação.
+              </p>
+              <div className="onside-definition-points">
+                {DEFINITION_POINTS.map((point) => (
+                  <div key={point.id}>
+                    <span>{point.number}</span>
+                    <p>{point.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="onside-experience onside-section-pad"
+          id="como-funciona"
+        >
+          <div className="onside-shell">
+            <div className="onside-section-intro onside-centered-intro">
+              <p className="onside-section-kicker">DO JOGO AO BAR</p>
+              <h2>
+                TRÊS PASSOS PARA
+                <br />
+                <em>ESCOLHER ANTES DE SAIR.</em>
+              </h2>
+            </div>
+            <div className="onside-journey">
+              {JOURNEY_STEPS.map((step) => (
+                <article
+                  key={step.id}
+                  className={`onside-journey-step${step.reverse ? ' is-reverse' : ''}`}
+                >
+                  <JourneyVisual variant={step.variant} />
+                  <div className="onside-journey-copy">
+                    <span>{step.number}</span>
+                    <h3>{step.title}</h3>
+                    <p>{step.body}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="onside-trust onside-section-pad">
+          <div className="onside-shell onside-trust-grid">
+            <div>
+              <p className="onside-section-kicker">INFORMAÇÃO COM ORIGEM</p>
+              <h2>
+                CONFIRMADO APARECE COMO CONFIRMADO.
+                <br />
+                <em>O RESTO APARECE COMO DÚVIDA.</em>
+              </h2>
+            </div>
+            <div className="onside-trust-list">
+              {TRUST_ITEMS.map((item) => (
+                <div key={item.id}>
+                  <strong>{item.number}</strong>
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="onside-community">
+          {/* biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline */}
+          <img
+            className="onside-community-photo"
+            src="/hero-bar.jpg"
+            alt="Torcedores assistindo a uma partida em um bar com vários telões"
+            width={1280}
+            height={1024}
+            loading="lazy"
+            decoding="async"
+          />
+          <div className="onside-community-overlay" aria-hidden="true" />
+          <div className="onside-shell onside-community-content">
+            <p className="onside-section-kicker">O JOGO É AQUI</p>
+            <h2>
+              O GOL É O MESMO.
+              <br />
+              <em>ASSISTIR JUNTO É OUTRA COISA.</em>
+            </h2>
+            <p>
+              O Onside quer ajudar você a encontrar o bar e a torcida que fazem
+              aquela partida valer a saída de casa.
+            </p>
+            <a
+              className="onside-button onside-button-acid"
+              href="#lista"
+              data-cta="community_city_waitlist"
+            >
+              Levar o Onside à minha cidade <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </section>
+
+        <section className="onside-waitlist onside-section-pad" id="lista">
+          <div className="onside-shell onside-waitlist-grid">
+            <div className="onside-waitlist-copy">
+              <p className="onside-section-kicker onside-acid-text">
+                AJUDE O ONSIDE A CHEGAR
+              </p>
+              <h2>
+                LEVE O ONSIDE
+                <br />À SUA <em>CIDADE.</em>
+              </h2>
+              <p>
+                As primeiras cidades serão escolhidas pela demanda de torcedores
+                e pela adesão de bares. Seu cadastro conta na demanda da sua
+                cidade e você recebe um e-mail quando houver lançamento por
+                perto.
+              </p>
+              <div className="onside-waitlist-facts">
+                <span>Grátis para torcedores</span>
+                <span>Sem newsletter</span>
+                <span>1 e-mail no lançamento</span>
+              </div>
+            </div>
+            <OnsideFanWaitlistForm />
+          </div>
+        </section>
+
+        <section className="onside-bars onside-section-pad" id="bares">
+          <div className="onside-shell onside-bars-grid">
+            <div className="onside-bars-copy">
+              <p className="onside-section-kicker">PARA BARES E PUBS</p>
+              <h2>
+                PUBLIQUE SUA GRADE E APAREÇA PARA QUEM JÁ PROCURA{' '}
+                <em>AQUELE JOGO.</em>
+              </h2>
+              <p>
+                No piloto, o bar informa as transmissões da semana e detalhes
+                como som, telões e lotação. O Onside organiza essa informação
+                para o torcedor encontrar a casa pelo jogo e pela localização.
+              </p>
+              <div className="onside-bars-benefits">
+                {BAR_BENEFITS.map((benefit) => (
+                  <span key={benefit}>{benefit}</span>
+                ))}
+              </div>
+              <a
+                className="onside-button onside-button-ink"
+                href="#bar-form"
+                data-cta="bars_register_interest"
+              >
+                Quero participar do piloto <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            <BarsDashboardMock />
+          </div>
+        </section>
+
+        <section className="onside-bar-mini-form" id="bar-form">
+          <div className="onside-shell onside-bar-form-inner">
+            <div>
+              <p className="onside-section-kicker">VOCÊ TEM UM BAR?</p>
+              <h2>CONTE SOBRE SEU BAR.</h2>
+            </div>
+            <OnsideBarInterestForm />
+          </div>
+        </section>
+
+        <section className="onside-faq onside-section-pad" id="duvidas">
+          <div className="onside-shell onside-faq-grid">
+            <div>
+              <p className="onside-section-kicker">DÚVIDAS ANTES DO CADASTRO</p>
+              <h2>
+                O QUE VOCÊ PRECISA
+                <br />
+                <em>SABER ANTES DE SE CADASTRAR.</em>
+              </h2>
+            </div>
+            <div className="onside-faq-list">
+              {FAQ_ITEMS.map((item, index) => (
+                <details key={item.id} open={index === 0 || undefined}>
+                  <summary>
+                    {item.question}
+                    <span aria-hidden="true">+</span>
+                  </summary>
+                  <p>{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="onside-final-cta">
+          <div className="onside-shell onside-final-cta-inner">
+            <OnsideMark className="onside-final-symbol" size={72} />
+            <p>ONSIDE · O JOGO É AQUI</p>
+            <h2>
+              SEU PRÓXIMO JOGO MERECE
+              <br />
+              <em>UMA RESPOSTA ANTES DE VOCÊ SAIR.</em>
+            </h2>
+            <a
+              className="onside-button onside-button-ink"
+              href="#lista"
+              data-cta="final_city_waitlist"
+            >
+              Levar o Onside à minha cidade <span aria-hidden="true">→</span>
+            </a>
+            <div className="onside-final-proof">
+              <span>Grátis</span>
+              <span>Sem newsletter</span>
+              <span>1 e-mail no lançamento</span>
+            </div>
+          </div>
+        </section>
       </main>
-      <Footer />
+
+      <footer className="onside-site-footer">
+        <div className="onside-shell onside-footer-grid">
+          <a
+            className="onside-brand-link onside-footer-brand"
+            href="#top"
+            aria-label="Onside — início"
+          >
+            <OnsideBrand />
+          </a>
+          <p>Feito por quem prefere a mesa ao sofá.</p>
+          <div className="onside-footer-links">
+            <a href="#bares">Para bares</a>
+            <a href="#duvidas">Dúvidas</a>
+            <a href="mailto:contato@onside.sh">Contato</a>
+          </div>
+          <small>© 2026 Onside</small>
+        </div>
+      </footer>
     </div>
   )
 }

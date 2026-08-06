@@ -27,7 +27,6 @@ import {
   Mail01Icon,
   Search01Icon,
   SmartPhone01Icon,
-  User02Icon,
   UserMultipleIcon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -84,6 +83,15 @@ function formatDate(date: Date | string) {
   })
 }
 
+function entryLabel(s: {
+  email: string
+  role: string
+  pubName: string | null
+}) {
+  if (s.role === 'pub' && s.pubName?.trim()) return s.pubName
+  return s.email
+}
+
 /* ---------- page ---------- */
 function AdminWaitlistPage() {
   const [search, setSearch] = useState('')
@@ -103,9 +111,11 @@ function AdminWaitlistPage() {
   } = useQuery(trpc.waitlist.getAll.queryOptions())
 
   const filtered = subscribers.filter((s) => {
+    const q = search.toLowerCase()
     const matchesSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase())
+      s.email.toLowerCase().includes(q) ||
+      s.city.toLowerCase().includes(q) ||
+      (s.pubName?.toLowerCase().includes(q) ?? false)
     const matchesRole = roleFilter === 'all' ? true : s.role === roleFilter
     return matchesSearch && matchesRole
   })
@@ -114,30 +124,32 @@ function AdminWaitlistPage() {
   const fanCount = filtered.filter((s) => s.role === 'fan').length
   const pubCount = filtered.filter((s) => s.role === 'pub').length
 
+  function escapeCsv(value: string) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+
   function handleExportCSV() {
     try {
       const header = [
         'ID',
-        'Nome',
         'Email',
         'Telefone',
         'Tipo',
         'Estabelecimento',
-        'Bairro',
+        'Cidade',
         'Data de inscrição'
       ]
       const rows = filtered.map((s) => [
         s.id,
-        s.name,
         s.email,
         s.phone ?? '',
         s.role,
-        s.pubName !== 'N/A' ? s.pubName : '',
-        s.bairro !== 'N/A' ? s.bairro : '',
+        s.pubName ?? '',
+        s.city,
         formatDate(s.createdAt)
       ])
       const csv = [header, ...rows]
-        .map((r) => r.map((v) => `"${v}"`).join(','))
+        .map((r) => r.map((v) => escapeCsv(String(v))).join(','))
         .join('\n')
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
@@ -292,7 +304,7 @@ function AdminWaitlistPage() {
               className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400"
             />
             <Input
-              placeholder="Buscar por nome ou e-mail..."
+              placeholder="Buscar por e-mail, cidade ou estabelecimento..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-full border-none bg-zinc-50 pl-10 focus:ring-2 focus:ring-black/10"
@@ -321,12 +333,6 @@ function AdminWaitlistPage() {
                 <TableRow className="border-black/5 border-b hover:bg-transparent">
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={User02Icon} className="size-3.5" />
-                      Nome
-                    </span>
-                  </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
-                    <span className="flex items-center gap-1.5">
                       <HugeiconsIcon icon={Mail01Icon} className="size-3.5" />
                       E-mail
                     </span>
@@ -347,6 +353,15 @@ function AdminWaitlistPage() {
                     <span className="flex items-center gap-1.5">
                       <HugeiconsIcon icon={DrinkIcon} className="size-3.5" />
                       Estabelecimento
+                    </span>
+                  </TableHead>
+                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <HugeiconsIcon
+                        icon={Location01Icon}
+                        className="size-3.5"
+                      />
+                      Cidade
                     </span>
                   </TableHead>
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
@@ -389,65 +404,59 @@ function AdminWaitlistPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((s) => (
-                    <TableRow key={s.id} className="border-black/5 border-b">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`grid size-8 shrink-0 place-items-center rounded-full font-bold text-white text-xs ${
+                  filtered.map((s) => {
+                    const label = entryLabel(s)
+                    return (
+                      <TableRow key={s.id} className="border-black/5 border-b">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`grid size-8 shrink-0 place-items-center rounded-full font-bold text-white text-xs ${
+                                s.role === 'fan'
+                                  ? 'bg-brand-orange'
+                                  : 'bg-brand-blue'
+                              }`}
+                            >
+                              {label.slice(0, 1).toUpperCase()}
+                            </div>
+                            <span className="text-muted-foreground text-sm">
+                              {s.email}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {s.phone ? formatStoredPhone(s.phone) : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={`rounded-full font-bold text-[10px] uppercase tracking-wider ${
                               s.role === 'fan'
-                                ? 'bg-brand-orange'
-                                : 'bg-brand-blue'
+                                ? 'border-none bg-brand-orange/10 text-brand-orange'
+                                : 'border-none bg-brand-blue/10 text-brand-blue'
                             }`}
                           >
-                            {s.name.slice(0, 1)}
-                          </div>
-                          {s.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {s.email}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {s.phone ? formatStoredPhone(s.phone) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={`rounded-full font-bold text-[10px] uppercase tracking-wider ${
-                            s.role === 'fan'
-                              ? 'border-none bg-brand-orange/10 text-brand-orange'
-                              : 'border-none bg-brand-blue/10 text-brand-blue'
-                          }`}
-                        >
-                          {s.role === 'fan' ? 'Torcedor' : 'Bar / Pub'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {s.role === 'pub' ? (
-                          <div className="flex flex-col">
+                            {s.role === 'fan' ? 'Torcedor' : 'Bar / Pub'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {s.role === 'pub' ? (
                             <span className="font-medium text-foreground">
-                              {s.pubName !== 'N/A' ? s.pubName : '—'}
+                              {s.pubName?.trim() ? s.pubName : '—'}
                             </span>
-                            {s.bairro !== 'N/A' && (
-                              <span className="mt-0.5 inline-flex items-center gap-1 text-muted-foreground text-xs">
-                                <HugeiconsIcon
-                                  icon={Location01Icon}
-                                  className="size-3"
-                                />
-                                {s.bairro}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(s.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {s.city.trim() ? s.city : '—'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(s.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>

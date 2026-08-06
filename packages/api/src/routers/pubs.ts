@@ -2,7 +2,6 @@ import { db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
   sport,
-  subscription,
   team,
   userFavoriteBars,
   userPreferenceSports
@@ -428,7 +427,9 @@ export const pubsRouter = router({
           b.name AS bar_name,
           e.championship,
           e.starts_at,
-          s.name AS sport_name
+          s.name AS sport_name,
+          b.neighborhood,
+          b.city
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         JOIN sport s ON s.id = e.sport_id
