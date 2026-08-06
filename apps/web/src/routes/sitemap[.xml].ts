@@ -1,17 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { SITE_URL } from '@/lib/site'
 
-const BASE_URL = 'https://findsports.com.br'
-
-const PUBLIC_ROUTES = [{ path: '/', priority: '1.0', changefreq: 'weekly' }]
+const PUBLIC_ROUTES = ['/']
 
 function buildSitemap(): string {
-  const now = new Date().toISOString().split('T')[0]
   const urls = PUBLIC_ROUTES.map(
-    ({ path, priority, changefreq }) => `  <url>
-    <loc>${BASE_URL}${path}</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>${changefreq}</changefreq> 
-    <priority>${priority}</priority>
+    (path) => `  <url>
+      <loc>${SITE_URL}${path}</loc>
   </url>`
   ).join('\n')
 
