@@ -358,14 +358,21 @@
   min-height: 44px;
   padding: 10px;
   cursor: pointer;
+  color: var(--onside-ink);
+  place-items: center;
 }
 
-.onside-page .onside-menu-button span {
+.onside-page .onside-inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 0;
+}
+
+.onside-page .onside-inline-icon svg {
   display: block;
-  height: 2px;
-  background: var(--onside-ink);
-  margin: 7px 0;
-  transition: transform 200ms;
+  flex: none;
 }
 
 .onside-page .onside-mobile-menu {
@@ -575,26 +582,33 @@
   letter-spacing: 0.06em;
 }
 
-.onside-page .onside-hero-proof span {
+.onside-page .onside-hero-proof > span {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.onside-page .onside-hero-proof span::before {
-  content: "✓";
+.onside-page .onside-hero-proof .onside-inline-icon {
   color: var(--onside-live);
-  font-weight: 700;
 }
 
 /* ─── Product demo / phone ─── */
 .onside-page .onside-product-stage {
-  position: relative;
-  min-height: 675px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin: 0;
   min-width: 0;
+}
+
+.onside-page .onside-demo-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 675px;
+  /* Reserva a projeção inferior da sombra do aparelho (22px) */
+  padding-bottom: 22px;
 }
 
 .onside-page .onside-demo-preview-badge {
@@ -617,13 +631,9 @@
 }
 
 .onside-page .onside-demo-caption {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  z-index: 4;
+  position: static;
   width: min(320px, 90%);
-  transform: translateX(-50%);
-  margin: 0;
+  margin: 20px 0 0;
   text-align: center;
   font-family: var(--onside-mono);
   font-size: 9px;
@@ -675,10 +685,19 @@
 .onside-page .onside-phone-topbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 15px 20px 8px;
   font-family: var(--onside-mono);
   font-size: 9px;
   font-weight: 600;
+}
+
+.onside-page .onside-signal-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--onside-ink);
+  flex: none;
 }
 
 .onside-page .onside-phone-content {
@@ -711,7 +730,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  color: var(--onside-ink);
 }
 
 .onside-page .onside-search-box {
@@ -739,6 +758,8 @@
   place-items: center;
   font-family: var(--onside-body);
   font-size: 11px;
+  color: var(--onside-ink);
+  line-height: 0;
 }
 
 .onside-page .onside-match-card {
@@ -1097,6 +1118,8 @@
   border: 1px solid var(--onside-ink);
   font-weight: 700;
   flex: none;
+  color: var(--onside-ink);
+  line-height: 0;
 }
 
 .onside-page .onside-note-confirmed div {
@@ -1150,9 +1173,7 @@
   animation: onside-marquee 36s linear infinite;
 }
 
-.onside-page .onside-schedule-strip.is-paused .onside-schedule-track,
-.onside-page .onside-schedule-strip:hover .onside-schedule-track,
-.onside-page .onside-schedule-strip:focus-within .onside-schedule-track {
+.onside-page .onside-schedule-strip.is-paused .onside-schedule-track {
   animation-play-state: paused;
 }
 
@@ -1186,6 +1207,10 @@
   top: 50%;
   z-index: 2;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 44px;
   min-width: 44px;
   padding: 8px 12px;
@@ -1197,6 +1222,11 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
+}
+
+.onside-page .onside-ticker-control svg {
+  display: block;
+  flex: none;
 }
 
 /* ─── Problem ─── */
@@ -1611,16 +1641,17 @@
   border-top: 1px solid var(--onside-ink);
 }
 
-.onside-page .onside-bars-benefits span {
+.onside-page .onside-bars-benefits > span {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 13px 0;
   border-bottom: 1px solid var(--onside-ink);
   font-size: 14px;
   font-weight: 700;
 }
 
-.onside-page .onside-bars-benefits span::before {
-  content: "↗";
-  margin-right: 12px;
+.onside-page .onside-bars-benefits .onside-inline-icon {
   color: var(--onside-live);
 }
 
@@ -1725,12 +1756,21 @@
 }
 
 .onside-page .onside-dash-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid var(--onside-ink);
   background: var(--onside-acid);
   padding: 9px 11px;
   font-size: 8px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.onside-page .onside-dash-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .onside-page .onside-dash-stats {
@@ -1902,10 +1942,14 @@
   text-transform: uppercase;
 }
 
-.onside-page .onside-waitlist-facts span::before {
-  content: "✓";
+.onside-page .onside-waitlist-facts > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.onside-page .onside-waitlist-facts .onside-inline-icon {
   color: var(--onside-acid);
-  margin-right: 7px;
 }
 
 .onside-page .onside-waitlist-form {
@@ -2192,14 +2236,19 @@
   display: none;
 }
 
-.onside-page .onside-faq summary span {
+.onside-page .onside-faq summary .onside-faq-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--onside-mono);
   font-size: 21px;
   transition: transform 200ms;
   flex: none;
+  line-height: 0;
+  color: var(--onside-ink);
 }
 
-.onside-page .onside-faq details[open] summary span {
+.onside-page .onside-faq details[open] summary .onside-faq-icon {
   transform: rotate(45deg);
 }
 
@@ -2279,16 +2328,14 @@
   letter-spacing: 0.06em;
 }
 
-.onside-page .onside-final-proof span {
+.onside-page .onside-final-proof > span {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.onside-page .onside-final-proof span::before {
-  content: "✓";
+.onside-page .onside-final-proof .onside-inline-icon {
   color: var(--onside-live);
-  font-weight: 700;
 }
 
 /* ─── Footer ─── */
@@ -2367,7 +2414,7 @@
   }
 
   .onside-page .onside-menu-button {
-    display: block;
+    display: grid;
     justify-self: end;
   }
 
@@ -2531,9 +2578,11 @@
   }
 
   .onside-page .onside-product-stage {
-    min-height: 680px;
     margin: 28px 0 8px;
-    padding-bottom: 36px;
+  }
+
+  .onside-page .onside-demo-visual {
+    min-height: 660px;
   }
 
   .onside-page .onside-demo-preview-badge {
@@ -2545,8 +2594,8 @@
   }
 
   .onside-page .onside-demo-caption {
-    bottom: 0;
     width: min(300px, 94%);
+    margin-top: 18px;
   }
 
   .onside-page .onside-stage-glow {
@@ -2845,7 +2894,7 @@
   .onside-page .onside-button,
   .onside-page .onside-nav-cta,
   .onside-page .onside-nav-links a::after,
-  .onside-page .onside-faq summary span,
+  .onside-page .onside-faq summary .onside-faq-icon,
   .onside-page .onside-site-header {
     transition: none;
   }

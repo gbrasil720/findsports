@@ -7,6 +7,8 @@ import {
 import { Input } from '@findsports_oficial/ui/components/input'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import ArrowRight from 'reicon-react/icons/ArrowRight'
+import Check from 'reicon-react/icons/Check'
 
 import {
   analytics,
@@ -184,11 +186,13 @@ export function OnsideFanWaitlistForm() {
   if (successCity) {
     return (
       <div className="onside-form-success" role="status" aria-live="polite">
-        <span aria-hidden="true">✓</span>
+        <span aria-hidden="true">
+          <Check size={22} aria-hidden="true" focusable="false" />
+        </span>
         <div>
           <b>Cidade registrada: {successCity}.</b>
           <small>
-            Vamos avisar pelo e-mail informado quando o Onside avançar por
+            Vamos avisar pelo e-mail informado quando a Onside avançar por
             perto.
           </small>
         </div>
@@ -207,7 +211,7 @@ export function OnsideFanWaitlistForm() {
       <div className="onside-form-number">01 — SUA CIDADE</div>
       <Field data-invalid={Boolean(fieldErrors.city)}>
         <FieldLabel htmlFor="fan-city">
-          Em qual cidade você quer usar o Onside?
+          Em qual cidade você quer usar a Onside?
         </FieldLabel>
         <div className="onside-input-wrap">
           <Input
@@ -239,7 +243,7 @@ export function OnsideFanWaitlistForm() {
       <div className="onside-form-number">02 — SEU E-MAIL</div>
       <Field data-invalid={Boolean(fieldErrors.email)}>
         <FieldLabel htmlFor="fan-email">
-          Onde avisamos quando o Onside chegar?
+          Onde avisamos quando a Onside chegar?
         </FieldLabel>
         <div className="onside-input-wrap">
           <Input
@@ -281,7 +285,11 @@ export function OnsideFanWaitlistForm() {
         className="onside-button onside-button-acid onside-full-button"
       >
         {isPending ? 'Registrando…' : 'Quero na minha cidade'}
-        {!isPending ? <span aria-hidden="true">→</span> : null}
+        {!isPending ? (
+          <span className="onside-inline-icon" aria-hidden="true">
+            <ArrowRight size={16} aria-hidden="true" focusable="false" />
+          </span>
+        ) : null}
       </Button>
       <p className="onside-form-note">
         Cadastro gratuito · seus dados não entram em uma newsletter
@@ -491,7 +499,11 @@ export function OnsideBarInterestForm() {
 
       <Button type="submit" disabled={isPending} className="onside-bar-submit">
         {isPending ? 'Cadastrando…' : 'Cadastrar meu bar no piloto'}
-        {!isPending ? <span aria-hidden="true">→</span> : null}
+        {!isPending ? (
+          <span className="onside-inline-icon" aria-hidden="true">
+            <ArrowRight size={16} aria-hidden="true" focusable="false" />
+          </span>
+        ) : null}
       </Button>
       <p className="onside-form-note onside-bar-form-note">
         Sem compromisso · entraremos em contato pelo e-mail informado
