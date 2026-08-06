@@ -64,6 +64,13 @@
       "when": 1781811323083,
       "tag": "0009_worried_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783500000000,
+      "tag": "0010_waitlist_city",
+      "breakpoints": true
     }
   ]
 }

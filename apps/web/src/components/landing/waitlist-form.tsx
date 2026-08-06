@@ -1,11 +1,5 @@
 import { Button } from '@findsports_oficial/ui/components/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@findsports_oficial/ui/components/dropdown-menu'
-import {
   Field,
   FieldGroup,
   FieldLabel
@@ -20,42 +14,16 @@ import {
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
 import {
-  ArrowDown01Icon,
   Location01Icon,
   Mail01Icon,
-  SmartPhone01Icon,
-  Store01Icon,
-  User02Icon
+  Store01Icon
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { analytics } from '../../lib/analytics'
-import { formatPhone } from '../../utils/format-phone'
 import { useTRPCClient } from '../../utils/trpc'
-
-const COUNTRIES = [
-  { code: 'BR', name: 'Brasil', dial: '+55', flag: '🇧🇷' },
-  { code: 'US', name: 'Estados Unidos', dial: '+1', flag: '🇺🇸' },
-  { code: 'PT', name: 'Portugal', dial: '+351', flag: '🇵🇹' },
-  { code: 'AR', name: 'Argentina', dial: '+54', flag: '🇦🇷' },
-  { code: 'CL', name: 'Chile', dial: '+56', flag: '🇨🇱' },
-  { code: 'CO', name: 'Colômbia', dial: '+57', flag: '🇨🇴' },
-  { code: 'MX', name: 'México', dial: '+52', flag: '🇲🇽' },
-  { code: 'UY', name: 'Uruguai', dial: '+598', flag: '🇺🇾' },
-  { code: 'PE', name: 'Peru', dial: '+51', flag: '🇵🇪' },
-  { code: 'ES', name: 'Espanha', dial: '+34', flag: '🇪🇸' },
-  { code: 'DE', name: 'Alemanha', dial: '+49', flag: '🇩🇪' },
-  { code: 'FR', name: 'França', dial: '+33', flag: '🇫🇷' },
-  { code: 'IT', name: 'Itália', dial: '+39', flag: '🇮🇹' },
-  { code: 'GB', name: 'Reino Unido', dial: '+44', flag: '🇬🇧' },
-  { code: 'CA', name: 'Canadá', dial: '+1', flag: '🇨🇦' },
-  { code: 'AU', name: 'Austrália', dial: '+61', flag: '🇦🇺' },
-  { code: 'JP', name: 'Japão', dial: '+81', flag: '🇯🇵' },
-  { code: 'IN', name: 'Índia', dial: '+91', flag: '🇮🇳' },
-  { code: 'ZA', name: 'África do Sul', dial: '+27', flag: '🇿🇦' }
-] as const
 
 const igCn =
   'h-auto rounded-xl border-2 border-zinc-200 bg-white transition-colors has-[[data-slot=input-group-control]:focus-visible]:border-brand-orange has-[[data-slot=input-group-control]:focus-visible]:ring-0'
@@ -66,22 +34,16 @@ export function WaitlistForm() {
   const [role, setRole] = useState<'fan' | 'pub'>('fan')
   const [success, setSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0])
-  const [phoneDigits, setPhoneDigits] = useState('')
   const [pubName, setPubName] = useState('')
-  const [bairro, setBairro] = useState('')
 
   const client = useTRPCClient()
 
+  type JoinPayload =
+    | { role: 'fan'; email: string; city: string }
+    | { role: 'pub'; email: string; city: string; pubName: string }
+
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: {
-      name: string
-      email: string
-      role: 'fan' | 'pub'
-      phone?: string
-      pubName?: string
-      bairro?: string
-    }) => client.waitlist.join.mutate(data),
+    mutationFn: (data: JoinPayload) => client.waitlist.join.mutate(data),
     onSuccess: () => {
       setSuccess(true)
       setErrorMsg(null)
@@ -97,30 +59,38 @@ export function WaitlistForm() {
     setErrorMsg(null)
 
     const form = e.currentTarget
-    const name = (
-      form.elements.namedItem('name') as HTMLInputElement
-    ).value.trim()
     const email = (
       form.elements.namedItem('email') as HTMLInputElement
     ).value.trim()
+    const city = (
+      form.elements.namedItem('city') as HTMLInputElement | null
+    )?.value.trim()
 
-    if (!name || !email) return
+    if (!email) return
+    if (!city || city.length < 2) {
+      setErrorMsg('Informe a cidade.')
+      return
+    }
 
-    const phone = phoneDigits
-      ? `${selectedCountry.dial}${phoneDigits}`
-      : undefined
+    if (role === 'pub') {
+      const normalizedPubName = pubName.replace(/\s+/g, ' ').trim()
+      if (normalizedPubName.length < 2) {
+        setErrorMsg('Informe o nome do bar.')
+        return
+      }
+      mutate({
+        email,
+        city,
+        role: 'pub',
+        pubName: normalizedPubName
+      })
+      return
+    }
 
     mutate({
-      name,
       email,
-      role,
-      phone,
-      ...(role === 'pub'
-        ? {
-            pubName: pubName.trim() || undefined,
-            bairro: bairro.trim() || undefined
-          }
-        : {})
+      city,
+      role: 'fan'
     })
   }
 
@@ -166,29 +136,6 @@ export function WaitlistForm() {
             <FieldGroup>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel className="sr-only">Nome completo</FieldLabel>
-                  <InputGroup className={igCn}>
-                    <InputGroupAddon className="pl-4">
-                      <HugeiconsIcon
-                        icon={User02Icon}
-                        size={16}
-                        color="currentColor"
-                        strokeWidth={1.5}
-                        className="text-zinc-400"
-                      />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      type="text"
-                      name="name"
-                      placeholder="Seu nome completo"
-                      autoComplete="name"
-                      maxLength={100}
-                      required
-                      className={iiCn}
-                    />
-                  </InputGroup>
-                </Field>
-                <Field>
                   <FieldLabel className="sr-only">E-mail</FieldLabel>
                   <InputGroup className={igCn}>
                     <InputGroupAddon className="pl-4">
@@ -211,55 +158,31 @@ export function WaitlistForm() {
                     />
                   </InputGroup>
                 </Field>
+                <Field>
+                  <FieldLabel className="sr-only">Cidade</FieldLabel>
+                  <InputGroup className={igCn}>
+                    <InputGroupAddon className="pl-4">
+                      <HugeiconsIcon
+                        icon={Location01Icon}
+                        size={16}
+                        color="currentColor"
+                        strokeWidth={1.5}
+                        className="text-zinc-400"
+                      />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      type="text"
+                      name="city"
+                      placeholder="Sua cidade"
+                      autoComplete="address-level2"
+                      maxLength={100}
+                      required
+                      className={iiCn}
+                    />
+                  </InputGroup>
+                </Field>
               </div>
             </FieldGroup>
-
-            <Field>
-              <FieldLabel className="sr-only">Telefone (opcional)</FieldLabel>
-              <div className="flex overflow-hidden rounded-xl border-2 border-zinc-200 bg-white transition-colors focus-within:border-brand-orange">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="flex shrink-0 cursor-pointer items-center gap-1.5 border-zinc-200 border-r-2 bg-zinc-50 px-4 py-4 font-medium text-sm transition-colors hover:bg-zinc-100 focus:outline-none">
-                    <span>{selectedCountry.flag}</span>
-                    <span className="text-zinc-600">
-                      {selectedCountry.dial}
-                    </span>
-                    <HugeiconsIcon
-                      icon={ArrowDown01Icon}
-                      size={12}
-                      color="currentColor"
-                      strokeWidth={2}
-                      className="text-zinc-400"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="max-h-60 w-72 max-w-[calc(100vw-3rem)]">
-                    {COUNTRIES.map((country) => (
-                      <DropdownMenuItem
-                        key={country.code}
-                        onClick={() => setSelectedCountry(country)}
-                      >
-                        <span>{country.flag}</span>
-                        <span className="flex-1">{country.name}</span>
-                        <span className="text-zinc-400">{country.dial}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="(11) 9 1234-5678"
-                  autoComplete="tel-national"
-                  value={formatPhone(phoneDigits, selectedCountry.code)}
-                  onChange={(e) => {
-                    const max = selectedCountry.code === 'BR' ? 11 : 15
-                    setPhoneDigits(
-                      e.target.value.replace(/\D/g, '').slice(0, max)
-                    )
-                  }}
-                  className="min-w-0 flex-1 bg-transparent px-4 py-4 text-sm outline-none placeholder:text-zinc-400"
-                />
-              </div>
-            </Field>
 
             <ToggleGroup
               value={[role]}
@@ -286,56 +209,30 @@ export function WaitlistForm() {
             </ToggleGroup>
 
             {role === 'pub' && (
-              <FieldGroup>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel className="sr-only">Nome do bar</FieldLabel>
-                    <InputGroup className={igCn}>
-                      <InputGroupAddon className="pl-4">
-                        <HugeiconsIcon
-                          icon={Store01Icon}
-                          size={16}
-                          color="currentColor"
-                          strokeWidth={1.5}
-                          className="text-zinc-400"
-                        />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        type="text"
-                        placeholder="Nome do bar"
-                        autoComplete="organization"
-                        maxLength={100}
-                        value={pubName}
-                        onChange={(e) => setPubName(e.target.value)}
-                        className={iiCn}
-                      />
-                    </InputGroup>
-                  </Field>
-                  <Field>
-                    <FieldLabel className="sr-only">Bairro</FieldLabel>
-                    <InputGroup className={igCn}>
-                      <InputGroupAddon className="pl-4">
-                        <HugeiconsIcon
-                          icon={Location01Icon}
-                          size={16}
-                          color="currentColor"
-                          strokeWidth={1.5}
-                          className="text-zinc-400"
-                        />
-                      </InputGroupAddon>
-                      <InputGroupInput
-                        type="text"
-                        placeholder="Bairro"
-                        autoComplete="address-level3"
-                        maxLength={100}
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                        className={iiCn}
-                      />
-                    </InputGroup>
-                  </Field>
-                </div>
-              </FieldGroup>
+              <Field>
+                <FieldLabel className="sr-only">Nome do bar</FieldLabel>
+                <InputGroup className={igCn}>
+                  <InputGroupAddon className="pl-4">
+                    <HugeiconsIcon
+                      icon={Store01Icon}
+                      size={16}
+                      color="currentColor"
+                      strokeWidth={1.5}
+                      className="text-zinc-400"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    type="text"
+                    placeholder="Nome do bar"
+                    autoComplete="organization"
+                    maxLength={100}
+                    value={pubName}
+                    onChange={(e) => setPubName(e.target.value)}
+                    required
+                    className={iiCn}
+                  />
+                </InputGroup>
+              </Field>
             )}
 
             {errorMsg && (
