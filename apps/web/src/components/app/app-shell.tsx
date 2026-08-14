@@ -6,46 +6,38 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@findsports_oficial/ui/components/dropdown-menu'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import {
-  ArrowDownBigIcon,
-  CogIcon,
-  CreditCardIcon,
-  Logout01Icon,
-  UserIcon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { Logo } from '@/components/landing/logo'
-import { analytics } from '@/lib/analytics'
+import ChevronDown from 'reicon-react/icons/ChevronDown'
+import CreditCard from 'reicon-react/icons/CreditCard'
+import Logout from 'reicon-react/icons/Logout'
+import Settings from 'reicon-react/icons/Settings'
+import User from 'reicon-react/icons/User'
+import { OnsideBrand } from '@/components/brand/onside-brand'
+import { useSignOut } from '@/hooks/use-sign-out'
 import { authClient } from '@/lib/auth-client'
+import { ProductFrame } from './product-frame'
+
+type ShellVariant = 'fan' | 'pub' | 'public'
 
 type Props = {
-  role: 'fan' | 'pub'
+  variant: ShellVariant
   userMeta?: string
   children: ReactNode
 }
 
-export function AppShell({ role, userMeta, children }: Props) {
-  const navigate = useNavigate()
-  const isFan = role === 'fan'
-  const accent = isFan ? 'bg-brand-orange' : 'bg-brand-blue'
-  const accentText = isFan ? 'text-brand-orange' : 'text-brand-blue'
-  const accentRing = isFan ? 'ring-brand-orange/30' : 'ring-brand-blue/30'
-
+export function AppShell({ variant, userMeta, children }: Props) {
+  const signOut = useSignOut()
   const { data: session, isPending } = authClient.useSession()
-
-  const handleLogout = () => {
-    analytics.signout()
-    authClient.signOut({
-      fetchOptions: { onSuccess: () => navigate({ to: '/' }) }
-    })
-  }
+  const hasUser = Boolean(session?.user)
+  const accountLabel =
+    variant === 'fan' ? 'Torcedor' : variant === 'pub' ? 'Bar' : 'Conta'
 
   const name = session?.user?.name ?? ''
   const initials = name
@@ -55,165 +47,207 @@ export function AppShell({ role, userMeta, children }: Props) {
         .join('')
         .toUpperCase()
         .slice(0, 2)
-    : '?'
+    : '…'
 
-  return (
-    <div className="min-h-dvh bg-zinc-50 text-foreground">
-      <header
-        className="sticky z-40 bg-white/85 backdrop-blur-md border-b border-black/5"
-        style={{ top: 'var(--banner-h, 0px)' }}
+  const menuLabel = name
+    ? `Menu da conta de ${name}`
+    : isPending
+      ? 'Carregando conta'
+      : 'Menu da conta'
+
+  const header = (
+    <>
+      <Link
+        to="/"
+        className="onside-brand-link shrink-0"
+        aria-label="Onside — página inicial"
       >
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <Logo className="size-8" />
-            <span className="font-heading text-lg font-bold tracking-tight">
-              FindSports
-            </span>
+        <OnsideBrand />
+      </Link>
+
+      {variant === 'pub' && (
+        <p className="onside-kicker hidden min-w-0 truncate md:block">
+          Onside para bares
+        </p>
+      )}
+
+      {variant === 'public' && !hasUser && !isPending ? (
+        <div className="ml-auto flex items-center gap-2">
+          <Link
+            to="/login"
+            className="onside-btn onside-btn-ghost min-h-11 px-3 text-xs"
+          >
+            Entrar
           </Link>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button
-                  type="button"
-                  className={`flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-white ring-1 ${accentRing} hover:ring-2 transition-all`}
-                />
-              }
-            >
-              {isPending ? (
-                <Skeleton className="size-8 rounded-full" />
-              ) : (
-                <Avatar className="size-8 shrink-0">
-                  {session?.user?.image && (
-                    <AvatarImage
-                      src={session.user.image}
-                      alt={name || 'Avatar'}
-                    />
-                  )}
-                  <AvatarFallback
-                    className={`rounded-full ${accent} text-white font-heading font-bold text-sm`}
-                  >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <div className="hidden sm:block leading-tight text-left">
-                <div className="text-xs font-bold truncate max-w-[120px]">
-                  {name || '...'}
-                </div>
-                <div
-                  className={`text-[10px] uppercase tracking-wider ${accentText} truncate max-w-[120px]`}
-                >
-                  {userMeta ?? (isFan ? 'Torcedor' : 'Bar')}
-                </div>
-              </div>
-              <HugeiconsIcon
-                icon={ArrowDownBigIcon}
-                size={14}
-                color="currentColor"
-                strokeWidth={1.5}
-                className="text-zinc-400 transition-transform duration-150"
+          <Link
+            to="/signup"
+            className="onside-btn onside-btn-acid min-h-11 px-3 text-xs"
+          >
+            Criar conta
+          </Link>
+        </div>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label={menuLabel}
+                className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2 transition-[transform,box-shadow] duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--onside-ink)]"
               />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align="end"
-              className="w-64 rounded-2xl shadow-xl ring-1 ring-black/5 overflow-hidden p-0 bg-white"
-            >
-              <div className="px-4 py-3 border-b border-zinc-100">
-                <div className="font-bold text-sm text-zinc-900 truncate">
-                  {name}
-                </div>
-                <div className="text-xs text-zinc-500 truncate">
-                  {session?.user?.email}
-                </div>
-                {userMeta && (
-                  <div
-                    className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${accentText}`}
-                  >
-                    {userMeta}
-                  </div>
+            }
+          >
+            {isPending ? (
+              <Skeleton className="size-8 rounded-none" />
+            ) : (
+              <Avatar className="size-8 shrink-0 rounded-none">
+                {session?.user?.image && (
+                  <AvatarImage
+                    src={session.user.image}
+                    alt=""
+                    className="rounded-none"
+                  />
                 )}
+                <AvatarFallback className="rounded-none bg-[var(--onside-ink)] font-bold text-[var(--onside-paper)] text-sm">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="hidden min-w-0 leading-tight text-left sm:block">
+              <div className="max-w-[140px] truncate font-bold text-xs">
+                {name || '…'}
               </div>
+              <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                {userMeta ?? accountLabel}
+              </div>
+            </div>
+            <ChevronDown
+              size={14}
+              color="currentColor"
+              className="text-[var(--onside-muted)]"
+              aria-hidden="true"
+            />
+          </DropdownMenuTrigger>
 
-              <div className="py-1">
-                {isFan ? (
-                  <DropdownMenuItem className="rounded-none px-0 py-0 focus:bg-zinc-50">
+          <DropdownMenuContent
+            align="end"
+            className="onside-menu w-64 overflow-hidden p-0"
+          >
+            <div className="border-[var(--onside-line)] border-b px-4 py-3">
+              <div className="truncate font-bold text-[var(--onside-ink)] text-sm">
+                {name || '…'}
+              </div>
+              <div className="truncate text-[var(--onside-muted)] text-xs">
+                {session?.user?.email}
+              </div>
+              {userMeta && (
+                <div className="mt-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                  {userMeta}
+                </div>
+              )}
+            </div>
+
+            <DropdownMenuGroup className="py-1">
+              {variant === 'fan' ? (
+                <DropdownMenuItem
+                  className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
+                  render={
                     <Link
                       to="/dashboard/profile"
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-zinc-700 w-full"
-                    >
-                      <HugeiconsIcon
-                        icon={UserIcon}
-                        size={16}
-                        color="currentColor"
-                        strokeWidth={1.5}
-                        className="text-zinc-400"
-                      />
-                      Perfil e configurações
-                    </Link>
-                  </DropdownMenuItem>
-                ) : (
-                  <>
-                    <DropdownMenuItem className="rounded-none px-0 py-0 focus:bg-zinc-50">
-                      <Link
-                        to="/admin"
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-zinc-700 w-full"
-                      >
-                        <HugeiconsIcon
-                          icon={CogIcon}
-                          size={16}
-                          color="currentColor"
-                          strokeWidth={1.5}
-                          className="text-zinc-400"
-                        />
-                        Painel do bar
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-none px-0 py-0 focus:bg-zinc-50">
-                      <Link
-                        to="/admin/billing"
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-zinc-700 w-full"
-                      >
-                        <HugeiconsIcon
-                          icon={CreditCardIcon}
-                          size={16}
-                          color="currentColor"
-                          strokeWidth={1.5}
-                          className="text-zinc-400"
-                        />
-                        Assinatura e billing
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </div>
-
-              <DropdownMenuSeparator className="my-0 bg-zinc-100" />
-
-              <div className="py-1">
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={handleLogout}
-                  className="rounded-none px-4 py-2.5 text-sm font-medium flex items-center gap-2.5 focus:bg-red-50"
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
+                    />
+                  }
                 >
-                  <HugeiconsIcon
-                    icon={Logout01Icon}
+                  <User
                     size={16}
                     color="currentColor"
-                    strokeWidth={1.5}
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
                   />
-                  Sair
+                  Perfil e configurações
                 </DropdownMenuItem>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+              ) : null}
 
-      <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-8">
-        {children}
-      </main>
-    </div>
+              {variant === 'pub' ? (
+                <>
+                  <DropdownMenuItem
+                    className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
+                    render={
+                      <Link
+                        to="/admin"
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
+                      />
+                    }
+                  >
+                    <Settings
+                      size={16}
+                      color="currentColor"
+                      className="text-[var(--onside-muted)]"
+                      aria-hidden="true"
+                    />
+                    Painel do bar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
+                    render={
+                      <Link
+                        to="/admin/billing"
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
+                      />
+                    }
+                  >
+                    <CreditCard
+                      size={16}
+                      color="currentColor"
+                      className="text-[var(--onside-muted)]"
+                      aria-hidden="true"
+                    />
+                    Assinatura e pagamentos
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+
+              {variant === 'public' && hasUser ? (
+                <DropdownMenuItem
+                  className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
+                  render={
+                    <Link
+                      to="/dashboard"
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
+                    />
+                  }
+                >
+                  <User
+                    size={16}
+                    color="currentColor"
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
+                  />
+                  Ir para o app
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuGroup>
+
+            {hasUser ? (
+              <>
+                <DropdownMenuSeparator className="my-0 bg-[var(--onside-line)]" />
+                <DropdownMenuGroup className="py-1">
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => void signOut()}
+                    className="flex items-center gap-2.5 rounded-none px-4 py-2.5 font-medium text-sm focus:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))]"
+                  >
+                    <Logout size={16} color="currentColor" aria-hidden="true" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </>
   )
+
+  return <ProductFrame header={header}>{children}</ProductFrame>
 }
