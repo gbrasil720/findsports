@@ -1,0 +1,1712 @@
+[
+  {
+    "viewport": [
+      320,
+      700
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      320,
+      700
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      320,
+      700
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      320,
+      700
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      320,
+      700
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      375,
+      812
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      375,
+      812
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      375,
+      812
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      375,
+      812
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      375,
+      812
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      760,
+      900
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      760,
+      900
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      760,
+      900
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      760,
+      900
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      760,
+      900
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1024,
+      768
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1100,
+      800
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1100,
+      800
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1100,
+      800
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1100,
+      800
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1100,
+      800
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1440,
+      900
+    ],
+    "path": "/",
+    "title": "Onside — Saiba onde assistir ao seu jogo",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.",
+    "findS": false,
+    "onside": false,
+    "smallTargets": [
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Onside — início",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "Contato",
+        "w": 39,
+        "h": 44
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1440,
+      900
+    ],
+    "path": "/login",
+    "title": "Entrar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "DE VOLTA AO JOGO.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "Cadastre-se grátis",
+        "w": 118,
+        "h": 16
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1440,
+      900
+    ],
+    "path": "/signup",
+    "title": "Criar conta — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "ENTRE NO TIME TITULAR.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Entrar agora",
+        "w": 79,
+        "h": 16
+      },
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 39
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1440,
+      900
+    ],
+    "path": "/onboarding/fan",
+    "title": "Configure sua conta de torcedor — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos achar os melhores bares pro seu jogo.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  },
+  {
+    "viewport": [
+      1440,
+      900
+    ],
+    "path": "/onboarding/pub",
+    "title": "Cadastre seu bar — Onside",
+    "iw": 1081,
+    "cw": 1081,
+    "sw": 1081,
+    "overflow": false,
+    "h1": "Vamos lotar sua casa nos próximos clássicos.",
+    "findS": false,
+    "onside": true,
+    "smallTargets": [
+      {
+        "t": "Onside — página inicial",
+        "w": 106,
+        "h": 32
+      },
+      {
+        "t": "",
+        "w": 22,
+        "h": 15
+      },
+      {
+        "t": "",
+        "w": 113,
+        "h": 30
+      },
+      {
+        "t": "",
+        "w": 119,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 105,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 120,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 127,
+        "h": 20
+      },
+      {
+        "t": "",
+        "w": 185,
+        "h": 20
+      }
+    ]
+  }
+]
