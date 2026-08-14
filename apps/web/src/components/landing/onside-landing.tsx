@@ -10,7 +10,7 @@ import Pause from 'reicon-react/icons/Pause'
 import Play from 'reicon-react/icons/Play'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
-
+import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
 import { analytics } from '../../lib/analytics'
 import { useTRPC } from '../../utils/trpc'
 import { OnsideAppDemo } from './onside-app-demo'
@@ -191,47 +191,6 @@ const FAQ_ITEMS: FaqItem[] = [
       'Usamos os dados para registrar o interesse e avisar sobre o lançamento pelo e-mail informado.'
   }
 ]
-
-const ONSIDE_ICON_SRC = '/onside-icone-preto.png'
-
-function OnsideMark({
-  className = '',
-  size = 44
-}: {
-  className?: string
-  size?: number
-}) {
-  return (
-    // biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline
-    <img
-      className={className}
-      src={ONSIDE_ICON_SRC}
-      alt=""
-      width={size}
-      height={size}
-      decoding="async"
-      aria-hidden="true"
-    />
-  )
-}
-
-const ONSIDE_WORDMARK_SRC = '/onside-wordmark-paper.png'
-
-function OnsideBrand({ className = '' }: { className?: string }) {
-  return (
-    <span className={`onside-brand ${className}`.trim()} translate="no">
-      {/* biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline */}
-      <img
-        className="onside-brand-wordmark"
-        src={ONSIDE_WORDMARK_SRC}
-        alt=""
-        width={166}
-        height={50}
-        decoding="async"
-      />
-    </span>
-  )
-}
 
 function OnsideHeader() {
   const [scrolled, setScrolled] = useState(false)

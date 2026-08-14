@@ -1,18 +1,12 @@
-import { Tick01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { Link } from '@tanstack/react-router'
+import CheckIcon from 'reicon-react/icons/Check'
 
 function Check({ color }: { color: string }) {
   return (
     <span
       className={`size-5 rounded-full ${color} flex shrink-0 items-center justify-center text-white`}
     >
-      <HugeiconsIcon
-        icon={Tick01Icon}
-        size={12}
-        color="currentColor"
-        strokeWidth={2}
-      />
+      <CheckIcon size={12} color="currentColor" aria-hidden="true" />
     </span>
   )
 }

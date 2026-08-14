@@ -13,15 +13,11 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
-import {
-  Location01Icon,
-  Mail01Icon,
-  Store01Icon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-
+import Envelope from 'reicon-react/icons/Envelope'
+import Location from 'reicon-react/icons/Location'
+import Store from 'reicon-react/icons/Store'
 import { analytics } from '../../lib/analytics'
 import { useTRPCClient } from '../../utils/trpc'
 
@@ -139,11 +135,9 @@ export function WaitlistForm() {
                   <FieldLabel className="sr-only">E-mail</FieldLabel>
                   <InputGroup className={igCn}>
                     <InputGroupAddon className="pl-4">
-                      <HugeiconsIcon
-                        icon={Mail01Icon}
+                      <Envelope
                         size={16}
                         color="currentColor"
-                        strokeWidth={1.5}
                         className="text-zinc-400"
                       />
                     </InputGroupAddon>
@@ -162,11 +156,9 @@ export function WaitlistForm() {
                   <FieldLabel className="sr-only">Cidade</FieldLabel>
                   <InputGroup className={igCn}>
                     <InputGroupAddon className="pl-4">
-                      <HugeiconsIcon
-                        icon={Location01Icon}
+                      <Location
                         size={16}
                         color="currentColor"
-                        strokeWidth={1.5}
                         className="text-zinc-400"
                       />
                     </InputGroupAddon>
@@ -213,11 +205,9 @@ export function WaitlistForm() {
                 <FieldLabel className="sr-only">Nome do bar</FieldLabel>
                 <InputGroup className={igCn}>
                   <InputGroupAddon className="pl-4">
-                    <HugeiconsIcon
-                      icon={Store01Icon}
+                    <Store
                       size={16}
                       color="currentColor"
-                      strokeWidth={1.5}
                       className="text-zinc-400"
                     />
                   </InputGroupAddon>
