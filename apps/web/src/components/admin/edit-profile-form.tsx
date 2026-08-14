@@ -34,28 +34,24 @@ export function EditProfileForm({
   const canSave = form.name.length >= 2 && form.address.length >= 5
 
   return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="space-y-4 max-h-[70dvh] overflow-y-auto pr-1">
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Nome do bar *
-        </span>
+        <span className="onside-label mb-1.5 block">Nome do bar *</span>
         <input
           value={form.name}
           onChange={set('name')}
-          className="admin-input"
+          className="onside-input font-semibold"
           placeholder="Nome do bar"
           autoComplete="organization"
         />
       </label>
 
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Endereço *
-        </span>
+        <span className="onside-label mb-1.5 block">Endereço *</span>
         <input
           value={form.address}
           onChange={set('address')}
-          className="admin-input"
+          className="onside-input font-semibold"
           placeholder="Rua, número"
           autoComplete="street-address"
         />
@@ -63,49 +59,41 @@ export function EditProfileForm({
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-            Bairro *
-          </span>
+          <span className="onside-label mb-1.5 block">Bairro *</span>
           <input
             value={form.neighborhood}
             onChange={set('neighborhood')}
-            className="admin-input"
+            className="onside-input font-semibold"
             placeholder="Bairro"
           />
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-            Cidade *
-          </span>
+          <span className="onside-label mb-1.5 block">Cidade *</span>
           <input
             value={form.city}
             onChange={set('city')}
-            className="admin-input"
+            className="onside-input font-semibold"
             placeholder="Cidade"
             autoComplete="address-level2"
           />
         </label>
       </div>
 
-      <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Telefone
-        </span>
+      <div className="block">
+        <span className="onside-label mb-1.5 block">Telefone</span>
         <PhoneInput
           defaultValue={form.phone}
           onChange={(phone) => setForm((prev) => ({ ...prev, phone }))}
           variant="admin"
         />
-      </label>
+      </div>
 
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Descrição
-        </span>
+        <span className="onside-label mb-1.5 block">Descrição</span>
         <textarea
           value={form.description}
           onChange={set('description')}
-          className="admin-input resize-none"
+          className="onside-input resize-none font-semibold"
           rows={3}
           placeholder="Descreva o ambiente do seu bar..."
         />

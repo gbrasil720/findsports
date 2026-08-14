@@ -1,26 +1,7 @@
-import { DeleteThrowIcon, PencilIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
-
-type EventItem = {
-  id: string
-  startsAt: string
-  championship: string
-  sport?: { name: string }
-  participants?: { team: { name: string } }[]
-  participantFreeText?: string | null
-}
-
-const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
-
-function isLive(startsAt: string | Date): boolean {
-  const start = new Date(startsAt).getTime()
-  const now = Date.now()
-  return now >= start && now <= start + LIVE_WINDOW_MS
-}
-
-function isPast(startsAt: string | Date): boolean {
-  return new Date(startsAt).getTime() + LIVE_WINDOW_MS < Date.now()
-}
+import Edit from 'reicon-react/icons/Edit'
+import Trash from 'reicon-react/icons/Trash'
+import { getEventTemporalState } from '@/domain/events'
+import type { AdminEvent } from './admin-model'
 
 function isUpcomingSoon(startsAt: string | Date): boolean {
   const diff = new Date(startsAt).getTime() - Date.now()
@@ -65,7 +46,7 @@ function formatEventDate(startsAt: string | Date): {
 }
 
 type Props = {
-  event: EventItem
+  event: AdminEvent
   onEdit: (id: string) => void
   onDelete: (id: string) => void
   isDeleting: boolean
@@ -78,117 +59,102 @@ export function EventListItem({
   isDeleting
 }: Props) {
   const { date, time } = formatEventDate(e.startsAt)
-  const live = isLive(e.startsAt)
-  const past = isPast(e.startsAt)
+  const temporalState = getEventTemporalState(e.startsAt)
+  const live = temporalState === 'live'
+  const past = temporalState === 'past'
   const soon = !live && !past && isUpcomingSoon(e.startsAt)
   const timeUntil = soon ? getTimeUntil(e.startsAt) : null
   const participants =
-    e.participants?.map((p) => p.team.name).join(' × ') ||
-    e.participantFreeText
+    e.participants?.map((p) => p.team.name).join(' × ') || e.participantFreeText
 
   return (
     <li
-      className={`group relative rounded-xl overflow-hidden transition-all duration-200 ${
+      className={`onside-event-row ${
         live
-          ? 'bg-gradient-to-r from-orange-50 to-white ring-1 ring-orange-200 shadow-sm shadow-orange-100/50'
+          ? 'border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_8%,var(--onside-paper))]'
           : past
-            ? 'bg-zinc-50 ring-1 ring-zinc-100'
-            : 'bg-white ring-1 ring-zinc-100 hover:ring-zinc-200 hover:shadow-sm'
+            ? 'bg-[var(--onside-stone)] opacity-80'
+            : 'bg-[var(--onside-paper)]'
       }`}
     >
-      {live && (
-        <div className="absolute left-0 inset-y-0 w-1 bg-gradient-to-b from-brand-orange to-orange-400 rounded-l-xl" />
-      )}
-
-      <div
-        className={`flex items-center gap-4 px-4 py-3.5 ${live ? 'pl-5' : ''}`}
-      >
-        <div className="text-center w-14 shrink-0">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 leading-none mb-1">
-            {date}
-          </div>
-          <div
-            className={`font-heading font-bold text-xl tabular-nums leading-none ${
-              past ? 'text-zinc-400' : 'text-zinc-900'
-            }`}
-          >
-            {time}
-          </div>
-          {live && (
-            <div className="flex items-center justify-center gap-1 mt-1.5">
-              <span className="size-1.5 rounded-full bg-brand-orange animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-wider text-brand-orange">
-                Live
-              </span>
-            </div>
-          )}
-          {soon && timeUntil && (
-            <div className="text-[9px] font-bold text-brand-blue mt-1.5 tabular-nums">
-              {timeUntil}
-            </div>
-          )}
+      <div className="text-center">
+        <div className="mb-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest leading-none">
+          {date}
         </div>
-
         <div
-          className={`w-px self-stretch ${live ? 'bg-orange-200' : 'bg-zinc-100'}`}
-        />
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className={`inline-block text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full ${
-                live
-                  ? 'bg-orange-100 text-brand-orange'
-                  : 'bg-zinc-100 text-zinc-500'
-              }`}
-            >
-              {e.sport?.name}
-            </span>
-            <span className="text-[10px] text-zinc-400 truncate">
-              {e.championship}
-            </span>
-          </div>
-          <div
-            className={`font-heading font-semibold text-base leading-snug truncate ${
-              past ? 'text-zinc-400' : 'text-zinc-900'
-            }`}
-          >
-            {participants || e.championship}
-          </div>
-        </div>
-
-        <div
-          className={`flex gap-1 shrink-0 transition-opacity duration-150 ${
-            past ? 'opacity-40' : 'opacity-0 group-hover:opacity-100'
+          className={`onside-display text-xl tabular-nums leading-none ${
+            past ? 'text-[var(--onside-muted)]' : 'text-[var(--onside-ink)]'
           }`}
         >
-          <button
-            type="button"
-            onClick={() => onEdit(e.id)}
-            className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
-          >
-            <HugeiconsIcon
-              icon={PencilIcon}
-              size={16}
-              color="currentColor"
-              strokeWidth={1.5}
-              className="text-zinc-600"
-            />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(e.id)}
-            disabled={isDeleting}
-            className="p-2 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors disabled:opacity-40"
-          >
-            <HugeiconsIcon
-              icon={DeleteThrowIcon}
-              size={16}
-              color="currentColor"
-              strokeWidth={1.5}
-            />
-          </button>
+          {time}
         </div>
+        {live && (
+          <div className="mt-1.5 flex items-center justify-center gap-1">
+            <span className="onside-live-dot is-pulse" aria-hidden="true" />
+            <span className="font-[family-name:var(--onside-mono)] text-[9px] font-black text-[var(--onside-live)] uppercase tracking-wider">
+              Ao vivo
+            </span>
+          </div>
+        )}
+        {soon && timeUntil && (
+          <div className="mt-1.5 font-[family-name:var(--onside-mono)] text-[9px] font-bold text-[var(--onside-ink)] tabular-nums">
+            {timeUntil}
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span
+            className={`onside-badge ${
+              live
+                ? 'onside-badge-live'
+                : past
+                  ? 'onside-badge-stone'
+                  : 'onside-badge-ink'
+            }`}
+          >
+            {live ? 'AO VIVO' : past ? 'ENCERRADO' : 'PROGRAMADO'}
+          </span>
+          <span className="font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-wider">
+            {e.sport?.name}
+          </span>
+          <span className="truncate text-[10px] text-[var(--onside-muted)]">
+            {e.championship}
+          </span>
+        </div>
+        <div
+          className={`truncate font-semibold text-base leading-snug ${
+            past ? 'text-[var(--onside-muted)]' : 'text-[var(--onside-ink)]'
+          }`}
+        >
+          {participants || e.championship}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 gap-1">
+        <button
+          type="button"
+          onClick={() => onEdit(e.id)}
+          aria-label="Editar evento"
+          className="grid min-h-11 min-w-11 place-items-center border border-[var(--onside-ink)] hover:bg-[var(--onside-stone)]"
+        >
+          <Edit
+            size={16}
+            color="currentColor"
+            className="text-[var(--onside-ink)]"
+            aria-hidden="true"
+          />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(e.id)}
+          disabled={isDeleting}
+          aria-label="Excluir evento"
+          className="grid min-h-11 min-w-11 place-items-center border border-[var(--onside-ink)] text-[var(--onside-live)] hover:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))] disabled:opacity-40"
+        >
+          <Trash size={16} color="currentColor" aria-hidden="true" />
+        </button>
       </div>
     </li>
   )
