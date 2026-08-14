@@ -36,6 +36,9 @@ const getSession = createServerFn()
     return context.session
   })
 
+const ONSIDE_DESCRIPTION =
+  'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location }) => {
     const session = await getSession()
@@ -46,19 +49,18 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'FindSports — Ache o bar que está passando seu jogo' },
+      { title: 'Onside — Ache o bar que está passando seu jogo' },
       {
         name: 'description',
-        content:
-          'FindSports conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
+        content: ONSIDE_DESCRIPTION
       },
-      { name: 'author', content: 'FindSports' },
-      { name: 'theme-color', content: '#FF5A1F' },
-      { property: 'og:site_name', content: 'FindSports' },
+      { name: 'author', content: 'Onside' },
+      { name: 'theme-color', content: '#12120F' },
+      { property: 'og:site_name', content: 'Onside' },
       { property: 'og:type', content: 'website' },
       {
         property: 'og:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — Ache o bar que está passando seu jogo'
       },
       {
         property: 'og:description',
@@ -75,7 +77,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — Ache o bar que está passando seu jogo'
       },
       {
         name: 'twitter:description',
@@ -123,16 +125,6 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         rel: 'apple-touch-icon',
         href: '/apple-touch-icon.png?v=3',
         sizes: '180x180'
-      },
-      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
-        crossOrigin: 'anonymous'
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap'
       }
     ]
   }),
@@ -148,14 +140,16 @@ function PostHogProvider() {
   // Init — roda uma vez no cliente
   useEffect(() => {
     if (initialized.current) return
-    initialized.current = true
+    const projectKey = import.meta.env.VITE_POSTHOG_KEY
+    if (!projectKey) return
 
-    posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+    posthog.init(projectKey, {
       api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
       capture_pageview: false,
       capture_pageleave: true,
       persistence: 'localStorage+cookie'
     })
+    initialized.current = true
   }, [])
 
   // Identify — roda quando sessão muda
@@ -187,6 +181,7 @@ function RootDocument() {
   const impersonatedBy = (
     session?.session as { impersonatedBy?: string | null } | undefined
   )?.impersonatedBy
+  const isDev = import.meta.env.DEV
 
   return (
     <html lang="pt-BR">
@@ -195,20 +190,30 @@ function RootDocument() {
       </head>
       <body>
         <div
-          className={`min-h-svh w-full ${impersonatedBy ? 'pt-11' : ''}`}
+          className="min-h-dvh w-full"
           style={
             {
-              '--banner-h': impersonatedBy ? '2.75rem' : '0px'
+              '--banner-h': impersonatedBy
+                ? 'var(--onside-banner-h, 2.75rem)'
+                : '0px',
+              paddingTop: 'var(--banner-h)'
             } as CSSProperties
           }
         >
           <PostHogProvider />
+          <ImpersonationBanner />
           <Outlet />
         </div>
         <Toaster richColors />
-        <ImpersonationBanner />
-        <TanStackRouterDevtools position="bottom-left" />
-        <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        {isDev ? (
+          <>
+            <TanStackRouterDevtools position="bottom-left" />
+            <ReactQueryDevtools
+              position="bottom"
+              buttonPosition="bottom-right"
+            />
+          </>
+        ) : null}
         <Analytics />
         <Scripts />
       </body>
