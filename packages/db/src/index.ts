@@ -1,6 +1,7 @@
 import { env } from '@findsports_oficial/env/server'
-import { Pool } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-serverless'
+import { neon, Pool } from '@neondatabase/serverless'
+import { drizzle as drizzleHttp } from 'drizzle-orm/neon-http'
+import { drizzle as drizzleWebSocket } from 'drizzle-orm/neon-serverless'
 
 import * as schema from './schema'
 
@@ -8,8 +9,12 @@ export * from './schema'
 
 export function createDb() {
   const pool = new Pool({ connectionString: env.DATABASE_URL })
-  return drizzle(pool, { schema })
+  return drizzleWebSocket(pool, { schema })
+}
+
+export function createHttpDb() {
+  return drizzleHttp(neon(env.DATABASE_URL), { schema })
 }
 
 export const db = createDb()
-export { eq, sql } from 'drizzle-orm'
+export { and, count, eq, gte, sql } from 'drizzle-orm'

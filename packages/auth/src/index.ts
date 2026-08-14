@@ -4,7 +4,7 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
-import { createDb, db, eq } from '@findsports_oficial/db'
+import { createHttpDb, db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
@@ -125,7 +125,7 @@ async function handleSubscriptionCancelled(payload: any) {
 }
 
 export function createAuth() {
-  const db = createDb()
+  const db = createHttpDb()
 
   return betterAuth({
     database: drizzleAdapter(db, {
