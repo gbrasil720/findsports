@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: Dialog fields use associated labels via layout patterns already present. */
 import { Badge } from '@findsports_oficial/ui/components/badge'
 import {
   Dialog,
@@ -33,43 +33,31 @@ import {
   TableRow
 } from '@findsports_oficial/ui/components/table'
 import { Textarea } from '@findsports_oficial/ui/components/textarea'
-import {
-  ArrowLeft01Icon,
-  BlockedIcon,
-  Calendar01Icon,
-  CrownIcon,
-  Loading03Icon,
-  Logout01Icon,
-  Mail01Icon,
-  MoreVerticalIcon,
-  Search01Icon,
-  ShieldUserIcon,
-  User02Icon,
-  UserCheck01Icon,
-  UserMultipleIcon,
-  UserSwitchIcon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  createFileRoute,
-  Link,
-  redirect,
-  useRouter
-} from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
+import Ban from 'reicon-react/icons/Ban'
+import Calendar from 'reicon-react/icons/Calendar'
+import Envelope from 'reicon-react/icons/Envelope'
+import Loader from 'reicon-react/icons/Loader'
+import More from 'reicon-react/icons/More'
+import Search from 'reicon-react/icons/Search'
+import Shield from 'reicon-react/icons/Shield'
+import Trophy from 'reicon-react/icons/Trophy'
+import User from 'reicon-react/icons/User'
+import Users from 'reicon-react/icons/Users'
 import { toast } from 'sonner'
-import { Logo } from '@/components/landing/logo'
+import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
 
 export const Route = createFileRoute('/internal_/manage-users')({
   head: () => ({
     meta: [
-      { title: 'Admin — Gerenciar Usuários' },
+      { title: 'Gerenciar usuários — Onside Admin' },
       {
         name: 'description',
-        content: 'Gerenciamento de usuários da plataforma FindSports.'
+        content: 'Gerenciamento de usuários da plataforma Onside.'
       }
     ]
   }),
@@ -121,10 +109,10 @@ function getRoleLabel(role: string) {
 }
 
 function getRoleBadgeClass(role: string) {
-  if (role === 'fan') return 'border-none bg-brand-orange/10 text-brand-orange'
-  if (role === 'pub') return 'border-none bg-brand-blue/10 text-brand-blue'
-  if (role === 'admin') return 'border-none bg-zinc-800 text-white'
-  return 'border-none bg-zinc-100 text-zinc-600'
+  if (role === 'fan') return 'onside-badge onside-badge-acid'
+  if (role === 'pub') return 'onside-badge onside-badge-ink'
+  if (role === 'admin') return 'onside-badge onside-badge-ink'
+  return 'onside-badge onside-badge-stone'
 }
 
 function getInitials(name: string) {
@@ -138,7 +126,6 @@ function getInitials(name: string) {
 
 /* ---------- page ---------- */
 function ManageUsersPage() {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const { currentUserId } = Route.useLoaderData()
 
@@ -183,11 +170,6 @@ function ManageUsersPage() {
   const bannedCount = allUsers.filter((u) => u.banned).length
 
   /* --- actions --- */
-  async function handleLogout() {
-    await authClient.signOut()
-    router.navigate({ to: '/login' })
-  }
-
   async function handleImpersonate(user: AdminUser) {
     const res = await authClient.admin.impersonateUser({ userId: user.id })
     if (res.error || !res.data) {
@@ -255,40 +237,8 @@ function ManageUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-body text-foreground">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 border-black/5 border-b bg-white/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 md:px-8">
-          <Link to="/" className="flex shrink-0 items-center gap-2.5">
-            <Logo className="size-8" />
-            <span className="font-bold font-heading text-lg tracking-tight">
-              FindSports
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/internal"
-              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 font-medium text-sm text-zinc-600 transition-colors hover:border-black/20 hover:text-zinc-900"
-            >
-              <HugeiconsIcon icon={ArrowLeft01Icon} className="size-4" />
-              Hall
-            </Link>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-orange px-2 py-1 font-bold text-[10px] text-white uppercase tracking-[0.2em]">
-              Admin
-            </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-3 py-1.5 font-medium text-sm text-zinc-600 transition-colors hover:border-black/20 hover:text-zinc-900"
-            >
-              <HugeiconsIcon icon={Logout01Icon} className="size-4" />
-              Sair
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1400px] space-y-6 px-4 py-8 md:px-8">
+    <InternalShell title="Gerenciar usuários" kicker="Admin interno">
+      <div className="space-y-6">
         {/* Title */}
         <div>
           <h1 className="font-bold font-heading text-2xl tracking-tight">
@@ -301,20 +251,14 @@ function ManageUsersPage() {
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-100">
-              <HugeiconsIcon
-                icon={UserMultipleIcon}
-                className="size-5 text-brand-orange"
-              />
+          <div className="flex items-center gap-4 rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] p-5">
+            <div className="grid size-10 shrink-0 place-items-center rounded-none bg-[var(--onside-stone)]">
+              <Users className="size-5 text-[var(--onside-ink)]" />
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
                 {isLoading ? (
-                  <HugeiconsIcon
-                    icon={Loading03Icon}
-                    className="size-5 animate-spin text-zinc-400"
-                  />
+                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
                 ) : (
                   total
                 )}
@@ -324,20 +268,14 @@ function ManageUsersPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-100">
-              <HugeiconsIcon
-                icon={ShieldUserIcon}
-                className="size-5 text-zinc-700"
-              />
+          <div className="flex items-center gap-4 rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] p-5">
+            <div className="grid size-10 shrink-0 place-items-center rounded-none bg-[var(--onside-stone)]">
+              <Shield className="size-5 text-[var(--onside-ink)]" />
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
                 {isLoading ? (
-                  <HugeiconsIcon
-                    icon={Loading03Icon}
-                    className="size-5 animate-spin text-zinc-400"
-                  />
+                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
                 ) : (
                   adminCount
                 )}
@@ -347,20 +285,14 @@ function ManageUsersPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 rounded-2xl border border-black/5 bg-white p-5">
-            <div className="grid size-10 shrink-0 place-items-center rounded-full bg-zinc-100">
-              <HugeiconsIcon
-                icon={BlockedIcon}
-                className="size-5 text-red-500"
-              />
+          <div className="flex items-center gap-4 rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] p-5">
+            <div className="grid size-10 shrink-0 place-items-center rounded-none bg-[var(--onside-stone)]">
+              <Ban className="size-5 text-[var(--onside-live-text)]" />
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
                 {isLoading ? (
-                  <HugeiconsIcon
-                    icon={Loading03Icon}
-                    className="size-5 animate-spin text-zinc-400"
-                  />
+                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
                 ) : (
                   bannedCount
                 )}
@@ -373,24 +305,21 @@ function ManageUsersPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-4 sm:flex-row">
+        <div className="flex flex-col gap-3 rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] p-4 sm:flex-row">
           <div className="relative flex-1">
-            <HugeiconsIcon
-              icon={Search01Icon}
-              className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400"
-            />
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--onside-muted)]" />
             <Input
               placeholder="Buscar por nome ou e-mail..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded-full border-none bg-zinc-50 pl-10 focus:ring-2 focus:ring-black/10"
+              className="rounded-none border-none bg-[var(--onside-paper)] pl-10 focus:ring-2 focus:ring-black/10"
             />
           </div>
           <Select
             value={roleFilter}
             onValueChange={(v) => setRoleFilter(v ?? 'all')}
           >
-            <SelectTrigger className="w-full rounded-full border-none bg-zinc-50 sm:w-48">
+            <SelectTrigger className="w-full rounded-none border-none bg-[var(--onside-paper)] sm:w-48">
               <SelectValue placeholder="Filtrar por role" />
             </SelectTrigger>
             <SelectContent>
@@ -403,26 +332,26 @@ function ManageUsersPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-2xl border border-black/5 bg-white">
+        <div className="overflow-hidden rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)]">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-black/5 border-b hover:bg-transparent">
+                <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={User02Icon} className="size-3.5" />
+                      <User className="size-3.5" />
                       Usuário
                     </span>
                   </TableHead>
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={Mail01Icon} className="size-3.5" />
+                      <Envelope className="size-3.5" />
                       E-mail
                     </span>
                   </TableHead>
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
-                      <HugeiconsIcon icon={CrownIcon} className="size-3.5" />
+                      <Trophy className="size-3.5" />
                       Role
                     </span>
                   </TableHead>
@@ -431,10 +360,7 @@ function ManageUsersPage() {
                   </TableHead>
                   <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
                     <span className="flex items-center gap-1.5">
-                      <HugeiconsIcon
-                        icon={Calendar01Icon}
-                        className="size-3.5"
-                      />
+                      <Calendar className="size-3.5" />
                       Criado em
                     </span>
                   </TableHead>
@@ -447,17 +373,14 @@ function ManageUsersPage() {
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={6} className="py-12 text-center">
-                      <HugeiconsIcon
-                        icon={Loading03Icon}
-                        className="mx-auto size-6 animate-spin text-zinc-400"
-                      />
+                      <Loader className="mx-auto size-6 animate-spin text-[var(--onside-muted)]" />
                     </TableCell>
                   </TableRow>
                 ) : isError ? (
                   <TableRow>
                     <TableCell
                       colSpan={6}
-                      className="py-12 text-center text-red-500 text-sm"
+                      className="py-12 text-center text-[var(--onside-live-text)] text-sm"
                     >
                       Erro ao carregar usuários. Tente novamente.
                     </TableCell>
@@ -473,16 +396,19 @@ function ManageUsersPage() {
                   </TableRow>
                 ) : (
                   filtered.map((u) => (
-                    <TableRow key={u.id} className="border-black/5 border-b">
+                    <TableRow
+                      key={u.id}
+                      className="border-[var(--onside-line)] border-b"
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`grid size-8 shrink-0 place-items-center rounded-full font-bold text-white text-xs ${
+                            className={`grid size-8 shrink-0 place-items-center rounded-none font-bold text-xs ${
                               u.role === 'admin'
-                                ? 'bg-zinc-800'
+                                ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
                                 : u.role === 'pub'
-                                  ? 'bg-brand-blue'
-                                  : 'bg-brand-orange'
+                                  ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                                  : 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
                             }`}
                           >
                             {getInitials(u.name)}
@@ -493,7 +419,7 @@ function ManageUsersPage() {
                           {u.id === currentUserId && (
                             <Badge
                               variant="secondary"
-                              className="rounded-full border-none bg-zinc-100 text-zinc-500 text-[10px] font-bold uppercase tracking-wider"
+                              className="rounded-none border-none bg-[var(--onside-stone)] text-[var(--onside-muted)] text-[10px] font-bold uppercase tracking-wider"
                             >
                               Você
                             </Badge>
@@ -506,7 +432,7 @@ function ManageUsersPage() {
                       <TableCell>
                         <Badge
                           variant="secondary"
-                          className={`rounded-full font-bold text-[10px] uppercase tracking-wider ${getRoleBadgeClass(u.role)}`}
+                          className={`rounded-none font-bold text-[10px] uppercase tracking-wider ${getRoleBadgeClass(u.role)}`}
                         >
                           {getRoleLabel(u.role)}
                         </Badge>
@@ -516,7 +442,7 @@ function ManageUsersPage() {
                           <div className="flex flex-col gap-0.5">
                             <Badge
                               variant="secondary"
-                              className="w-fit rounded-full border-none bg-red-50 text-red-600 font-bold text-[10px] uppercase tracking-wider"
+                              className="w-fit rounded-none border border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_12%,var(--onside-paper))] text-[var(--onside-live-text)] font-bold text-[10px] uppercase tracking-wider"
                             >
                               Banido
                             </Badge>
@@ -532,7 +458,7 @@ function ManageUsersPage() {
                         ) : (
                           <Badge
                             variant="secondary"
-                            className="rounded-full border-none bg-green-50 text-green-600 font-bold text-[10px] uppercase tracking-wider"
+                            className="rounded-none border-none bg-[var(--onside-stone)] text-[var(--onside-ink)] font-bold text-[10px] uppercase tracking-wider"
                           >
                             Ativo
                           </Badge>
@@ -548,14 +474,11 @@ function ManageUsersPage() {
                               render={
                                 <button
                                   type="button"
-                                  className="inline-flex size-8 items-center justify-center rounded-full border border-black/10 bg-white text-zinc-500 transition-colors hover:border-black/20 hover:text-zinc-900"
+                                  className="inline-flex size-8 items-center justify-center rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] text-[var(--onside-muted)] transition-colors hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)]"
                                 />
                               }
                             >
-                              <HugeiconsIcon
-                                icon={MoreVerticalIcon}
-                                className="size-4"
-                              />
+                              <More className="size-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuGroup>
@@ -564,10 +487,7 @@ function ManageUsersPage() {
                                 <DropdownMenuItem
                                   onClick={() => handleImpersonate(u)}
                                 >
-                                  <HugeiconsIcon
-                                    icon={UserSwitchIcon}
-                                    className="size-4"
-                                  />
+                                  <Users className="size-4" />
                                   Impersonar
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
@@ -576,10 +496,7 @@ function ManageUsersPage() {
                                     setNewRole(u.role)
                                   }}
                                 >
-                                  <HugeiconsIcon
-                                    icon={CrownIcon}
-                                    className="size-4"
-                                  />
+                                  <Trophy className="size-4" />
                                   Alterar role
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
@@ -587,10 +504,7 @@ function ManageUsersPage() {
                                   <DropdownMenuItem
                                     onClick={() => handleUnban(u)}
                                   >
-                                    <HugeiconsIcon
-                                      icon={UserCheck01Icon}
-                                      className="size-4"
-                                    />
+                                    <User className="size-4" />
                                     Desbanir
                                   </DropdownMenuItem>
                                 ) : (
@@ -601,10 +515,7 @@ function ManageUsersPage() {
                                       setBanReason('')
                                     }}
                                   >
-                                    <HugeiconsIcon
-                                      icon={BlockedIcon}
-                                      className="size-4"
-                                    />
+                                    <Ban className="size-4" />
                                     Banir
                                   </DropdownMenuItem>
                                 )}
@@ -623,13 +534,13 @@ function ManageUsersPage() {
               </TableBody>
             </Table>
           </div>
-          <div className="border-black/5 border-t px-4 py-3 text-muted-foreground text-xs">
+          <div className="border-[var(--onside-line)] border-t px-4 py-3 text-muted-foreground text-xs">
             {isLoading
               ? 'Carregando usuários...'
               : `Exibindo ${filtered.length} de ${allUsers.length} usuários`}
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Ban dialog */}
       <Dialog
@@ -650,7 +561,7 @@ function ManageUsersPage() {
             </DialogDescription>
           </div>
           <div className="px-6 pb-4 space-y-3">
-            <label className="block text-sm font-semibold text-zinc-700">
+            <label className="block text-sm font-semibold text-[var(--onside-ink)]">
               Motivo do banimento{' '}
               <span className="font-normal text-muted-foreground">
                 (opcional)
@@ -660,27 +571,22 @@ function ManageUsersPage() {
               placeholder="Ex: Violação dos termos de uso..."
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
-              className="resize-none rounded-xl border-black/10 bg-zinc-50 text-sm"
+              className="resize-none rounded-none border-[var(--onside-line)] bg-[var(--onside-paper)] text-sm"
               rows={3}
             />
           </div>
-          <div className="flex justify-end gap-2 border-t border-black/5 px-6 py-4">
-            <DialogClose className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-zinc-600 hover:border-black/20 hover:text-zinc-900 transition-colors">
+          <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
+            <DialogClose className="rounded-none border border-[var(--onside-line)] px-4 py-2 text-sm font-medium text-[var(--onside-muted)] hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)] transition-colors">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleBan}
               disabled={banLoading}
-              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-none bg-[var(--onside-live)] px-5 py-2 text-sm font-bold text-[var(--onside-paper)] transition-colors hover:bg-[var(--onside-live-text)] disabled:opacity-50"
             >
-              {banLoading && (
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  className="size-4 animate-spin"
-                />
-              )}
-              <HugeiconsIcon icon={BlockedIcon} className="size-4" />
+              {banLoading && <Loader className="size-4 animate-spin" />}
+              <Ban className="size-4" />
               Banir
             </button>
           </div>
@@ -705,7 +611,7 @@ function ManageUsersPage() {
             </DialogDescription>
           </div>
           <div className="px-6 pb-4 space-y-3">
-            <label className="block text-sm font-semibold text-zinc-700">
+            <label className="block text-sm font-semibold text-[var(--onside-ink)]">
               Novo role
             </label>
             <Select
@@ -714,7 +620,7 @@ function ManageUsersPage() {
                 if (v) setNewRole(v)
               }}
             >
-              <SelectTrigger className="rounded-xl border-black/10 bg-zinc-50 w-full">
+              <SelectTrigger className="rounded-none border-[var(--onside-line)] bg-[var(--onside-paper)] w-full">
                 <SelectValue placeholder="Selecione um role" />
               </SelectTrigger>
               <SelectContent>
@@ -724,33 +630,28 @@ function ManageUsersPage() {
               </SelectContent>
             </Select>
             {newRole === 'admin' && (
-              <p className="text-xs text-amber-600 font-medium">
+              <p className="text-xs text-[var(--onside-live-text)] font-medium">
                 Atenção: este usuário terá acesso total ao painel admin.
               </p>
             )}
           </div>
-          <div className="flex justify-end gap-2 border-t border-black/5 px-6 py-4">
-            <DialogClose className="rounded-full border border-black/10 px-4 py-2 text-sm font-medium text-zinc-600 hover:border-black/20 hover:text-zinc-900 transition-colors">
+          <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
+            <DialogClose className="rounded-none border border-[var(--onside-line)] px-4 py-2 text-sm font-medium text-[var(--onside-muted)] hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)] transition-colors">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleSetRole}
               disabled={roleLoading || !newRole}
-              className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-blue disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-none bg-[var(--onside-ink)] px-5 py-2 text-sm font-bold text-[var(--onside-paper)] transition-colors hover:bg-[var(--onside-ink)] disabled:opacity-50"
             >
-              {roleLoading && (
-                <HugeiconsIcon
-                  icon={Loading03Icon}
-                  className="size-4 animate-spin"
-                />
-              )}
-              <HugeiconsIcon icon={CrownIcon} className="size-4" />
+              {roleLoading && <Loader className="size-4 animate-spin" />}
+              <Trophy className="size-4" />
               Salvar
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </InternalShell>
   )
 }
