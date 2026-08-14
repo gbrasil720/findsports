@@ -1,38 +1,42 @@
-import { Cancel01Icon, SearchingIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useState } from 'react'
+import Crosshairs from 'reicon-react/icons/Crosshairs'
+import Loader from 'reicon-react/icons/Loader'
+import Search from 'reicon-react/icons/Search'
+import Xmark from 'reicon-react/icons/Xmark'
+import { SportIcon } from '@/components/sports/sport-icon'
+import type { SportsState } from '@/domain/dashboard-selectors'
+import {
+  DEFAULT_RADIUS_KM,
+  type LocationState,
+  type RadiusKm,
+  SEARCH_RADII
+} from '@/domain/discovery'
 
-const RADIUS_OPTIONS = [
-  { km: 1, label: 'a pé' },
-  { km: 3, label: 'perto' },
-  { km: 5, label: 'no bairro' },
-  { km: 10, label: 'explorar' }
-] as const
+const RADIUS_LABELS: Record<RadiusKm, string> = {
+  1: '1 km',
+  3: '3 km',
+  5: '5 km',
+  10: '10 km'
+}
 
-type ActiveFilter = { label: string; clear: () => void }
-type Sport = { id: string; name: string; slug: string }
+export type ActiveFilter = { label: string; clear: () => void }
 
 type Props = {
   championship: string
-  onChampionshipChange: (v: string) => void
+  onChampionshipChange: (value: string) => void
   sportId: string | undefined
-  onSportChange: (v: string | undefined) => void
-  radiusKm: 1 | 3 | 5 | 10
-  onRadiusChange: (v: 1 | 3 | 5 | 10) => void
-  sports: Sport[]
+  onSportChange: (value: string | undefined) => void
+  radiusKm: RadiusKm
+  onRadiusChange: (value: RadiusKm) => void
+  sportsState: SportsState
   activeFilters: ActiveFilter[]
   onReset: () => void
+  locationState: LocationState
+  onRequestLocation: () => void
 }
 
-// Emojis por slug como fallback visual rápido
-const SPORT_EMOJI: Record<string, string> = {
-  futebol: '⚽',
-  basquete: '🏀',
-  volei: '🏐',
-  'futebol-americano': '🏈',
-  'formula-1': '🏎️',
-  'mma-ufc': '🥊'
-}
+const chipBase =
+  'inline-flex min-h-11 items-center gap-2 border border-[var(--onside-ink)] px-3.5 py-2 font-bold text-xs uppercase tracking-[0.04em] transition-colors'
 
 export function SearchFilterBar({
   championship,
@@ -41,124 +45,239 @@ export function SearchFilterBar({
   onSportChange,
   radiusKm,
   onRadiusChange,
-  sports,
+  sportsState,
   activeFilters,
-  onReset
+  onReset,
+  locationState,
+  onRequestLocation
 }: Props) {
   const [focused, setFocused] = useState(false)
+  const locationBusy = locationState === 'requesting'
+  const locationGranted = locationState === 'granted'
 
   return (
-    <div className="sticky top-16 z-20 -mx-4 px-4 md:mx-0 md:px-0 mb-6">
-      <div className="bg-white rounded-2xl ring-1 ring-black/5 shadow-sm overflow-hidden">
-        {/* Campo de busca */}
+    <div className="onside-sticky-filters -mx-4 mb-6 max-h-[min(50dvh,24rem)] space-y-3 overflow-y-auto px-4 md:mx-0 md:max-h-none md:overflow-visible md:px-0">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <div
-          className={`flex items-center gap-3 px-4 py-3 border-b transition-colors ${focused ? 'border-brand-orange/30 bg-orange-50/30' : 'border-zinc-100'}`}
+          className={`flex min-h-12 min-w-0 flex-1 items-center gap-3 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-3 transition-colors ${
+            focused ? 'bg-[var(--onside-stone)]' : ''
+          }`}
         >
-          <HugeiconsIcon
-            icon={SearchingIcon}
+          <Search
             size={18}
             color="currentColor"
-            strokeWidth={1.5}
-            className={`shrink-0 transition-colors ${focused ? 'text-brand-orange' : 'text-zinc-400'}`}
+            className={`shrink-0 ${focused ? 'text-[var(--onside-live)]' : 'text-[var(--onside-muted)]'}`}
+            aria-hidden="true"
           />
+          <label htmlFor="championship-search" className="sr-only">
+            Buscar bar, time ou campeonato
+          </label>
           <input
+            id="championship-search"
+            name="championship"
+            type="search"
             value={championship}
-            onChange={(e) => onChampionshipChange(e.target.value)}
+            onChange={(event) => onChampionshipChange(event.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder="Buscar bar, time ou campeonato..."
-            className="flex-1 bg-transparent text-sm font-medium text-zinc-800 placeholder-zinc-400 outline-none"
+            autoComplete="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            className="min-h-11 min-w-0 flex-1 bg-transparent font-medium text-[var(--onside-ink)] text-base outline-none placeholder:text-[var(--onside-muted)] focus-visible:ring-0"
           />
-          {championship && (
+          {championship ? (
             <button
               type="button"
               onClick={() => onChampionshipChange('')}
-              className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors shrink-0"
+              aria-label="Limpar busca"
+              className="grid size-11 shrink-0 place-items-center border border-transparent hover:border-[var(--onside-ink)] hover:bg-[var(--onside-stone)]"
             >
-              <HugeiconsIcon
-                icon={Cancel01Icon}
-                size={13}
+              <Xmark
+                size={14}
                 color="currentColor"
-                strokeWidth={1.5}
-                className="text-zinc-400"
+                className="text-[var(--onside-muted)]"
+                aria-hidden="true"
               />
             </button>
-          )}
+          ) : null}
         </div>
 
-        {/* Esportes como chips */}
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={onRequestLocation}
+          disabled={locationBusy}
+          className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-4 font-bold text-xs uppercase tracking-[0.08em] text-[var(--onside-ink)] transition-colors hover:bg-[var(--onside-stone)] disabled:opacity-60"
+        >
+          {locationBusy ? (
+            <Loader
+              size={16}
+              color="currentColor"
+              className="animate-spin"
+              aria-hidden="true"
+            />
+          ) : (
+            <Crosshairs size={16} color="currentColor" aria-hidden="true" />
+          )}
+          {locationBusy
+            ? 'Obtendo…'
+            : locationGranted
+              ? 'Atualizar localização'
+              : 'Usar minha localização'}
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-0">
+        <fieldset className="min-w-0">
+          <legend className="sr-only">Filtrar por esporte</legend>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => onSportChange(undefined)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              aria-pressed={!sportId}
+              className={`${chipBase} ${
                 !sportId
-                  ? 'bg-zinc-900 text-white'
-                  : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                  : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
               }`}
             >
               Todos
             </button>
-            {sports.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() =>
-                  onSportChange(sportId === s.id ? undefined : s.id)
-                }
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  sportId === s.id
-                    ? 'bg-brand-orange text-white shadow-sm'
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                }`}
+            {sportsState.status === 'loading' ? (
+              <span
+                className="inline-flex min-h-11 items-center gap-2 text-[var(--onside-muted)] text-xs"
+                aria-live="polite"
               >
-                <span>{SPORT_EMOJI[s.slug] ?? '🏆'}</span>
-                {s.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Raio */}
-        <div className="px-4 py-3 flex items-center gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 whitespace-nowrap shrink-0">
-            Raio
-          </span>
-          <div className="flex gap-1.5 flex-wrap">
-            {RADIUS_OPTIONS.map(({ km, label }) => (
-              <button
-                key={km}
-                type="button"
-                onClick={() => onRadiusChange(km)}
-                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  radiusKm === km
-                    ? 'bg-brand-orange text-white shadow-sm'
-                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                }`}
-              >
-                {km} km
-                <span
-                  className={`${radiusKm === km ? 'text-white/70' : 'text-zinc-400'} hidden sm:inline`}
-                >
-                  · {label}
+                <Loader
+                  size={14}
+                  color="currentColor"
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+                Carregando esportes…
+              </span>
+            ) : null}
+            {sportsState.status === 'error' ? (
+              <span className="inline-flex min-h-11 flex-wrap items-center gap-2 text-xs">
+                <span className="text-[var(--onside-live-text)]">
+                  Não foi possível carregar os esportes.
                 </span>
-              </button>
-            ))}
+                <button
+                  type="button"
+                  onClick={sportsState.retry}
+                  className="min-h-11 font-bold text-[var(--onside-ink)] underline underline-offset-2"
+                >
+                  Tentar de novo
+                </button>
+              </span>
+            ) : null}
+            {sportsState.status === 'ready' &&
+            sportsState.sports.length === 0 ? (
+              <span className="min-h-11 text-[var(--onside-muted)] text-xs">
+                Nenhum esporte disponível.
+              </span>
+            ) : null}
+            {sportsState.status === 'ready'
+              ? sportsState.sports.map((sport) => {
+                  const selected = sportId === sport.id
+                  return (
+                    <button
+                      key={sport.id}
+                      type="button"
+                      onClick={() =>
+                        onSportChange(
+                          sportId === sport.id ? undefined : sport.id
+                        )
+                      }
+                      aria-pressed={selected}
+                      className={`${chipBase} ${
+                        selected
+                          ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                          : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
+                      }`}
+                    >
+                      <SportIcon
+                        slug={sport.slug}
+                        name={sport.name}
+                        size={15}
+                        color="currentColor"
+                        aria-hidden="true"
+                      />
+                      {sport.name}
+                    </button>
+                  )
+                })
+              : null}
           </div>
+        </fieldset>
 
-          {/* Limpar tudo */}
-          {activeFilters.length > 0 && (
-            <button
-              type="button"
-              onClick={onReset}
-              className="ml-auto text-[11px] font-bold text-zinc-400 hover:text-brand-orange transition-colors whitespace-nowrap"
-            >
-              Limpar filtros
-            </button>
-          )}
-        </div>
+        <div
+          className="hidden h-10 w-px shrink-0 self-center bg-[var(--onside-ink)] lg:mx-4 lg:block"
+          aria-hidden="true"
+        />
+
+        <fieldset className="shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <legend className="onside-kicker m-0 shrink-0 pr-1">Raio</legend>
+            <div className="flex flex-wrap gap-2">
+              {SEARCH_RADII.map((km) => {
+                const selected = radiusKm === km
+                const suggested = km === DEFAULT_RADIUS_KM
+                return (
+                  <button
+                    key={km}
+                    type="button"
+                    onClick={() => onRadiusChange(km)}
+                    aria-pressed={selected}
+                    className={`relative inline-flex min-h-11 min-w-[3.75rem] flex-col items-center justify-center border border-[var(--onside-ink)] px-3 py-1.5 font-bold text-xs uppercase tracking-[0.04em] tabular-nums transition-colors ${
+                      selected
+                        ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                        : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
+                    }`}
+                  >
+                    <span className="leading-none">{RADIUS_LABELS[km]}</span>
+                    {suggested ? (
+                      <span
+                        className={`mt-0.5 font-[family-name:var(--onside-mono)] text-[8px] font-bold tracking-[0.1em] ${
+                          selected
+                            ? 'text-[var(--onside-ink)] opacity-70'
+                            : 'text-[var(--onside-muted)]'
+                        }`}
+                      >
+                        Sugerido
+                      </span>
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </fieldset>
       </div>
+
+      {activeFilters.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {activeFilters.map((filter) => (
+            <button
+              key={filter.label}
+              type="button"
+              onClick={filter.clear}
+              className="inline-flex min-h-11 items-center gap-1.5 border border-[var(--onside-ink)] bg-[var(--onside-stone)] px-3 font-bold text-[var(--onside-ink)] text-xs"
+              aria-label={`Remover filtro ${filter.label}`}
+            >
+              {filter.label}
+              <Xmark size={12} color="currentColor" aria-hidden="true" />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={onReset}
+            className="min-h-11 font-bold text-[11px] text-[var(--onside-muted)] transition-colors hover:text-[var(--onside-live-text)]"
+          >
+            Limpar filtros
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
