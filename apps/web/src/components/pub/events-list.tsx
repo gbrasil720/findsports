@@ -1,5 +1,4 @@
-import { CalendarsIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import Calendar from 'reicon-react/icons/Calendar'
 
 type Participant = { team: { name: string } }
 
@@ -31,13 +30,11 @@ function formatEventTime(startsAt: string | Date): string {
 
   if (d.toDateString() === today.toDateString()) return `Hoje · ${time}`
   if (d.toDateString() === tomorrow.toDateString()) return `Amanhã · ${time}`
-  return (
-    d.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    }) + ` · ${time}`
-  )
+  return `${d.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short'
+  })} · ${time}`
 }
 
 type Props = {
@@ -48,56 +45,66 @@ type Props = {
 
 export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
   return (
-    <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 md:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-          <HugeiconsIcon
-            icon={CalendarsIcon}
+    <section className="onside-panel p-6 md:p-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="onside-display flex items-center gap-2 text-2xl">
+          <Calendar
             size={20}
             color="currentColor"
-            strokeWidth={1.5}
-            className="text-brand-blue"
+            className="text-[var(--onside-live)]"
+            aria-hidden="true"
           />
           Próximos jogos transmitidos
         </h2>
       </div>
 
       {allEvents.length === 0 ? (
-        <p className="text-sm text-zinc-500 py-4">
+        <p className="py-4 text-[var(--onside-muted)] text-sm">
           Nenhum jogo cadastrado ainda.
         </p>
       ) : (
-        <ul className="divide-y divide-zinc-100">
+        <ul className="divide-y divide-[var(--onside-line)]">
           {liveEvent && (
-            <li key={liveEvent.id} className="py-4 flex items-center gap-4">
-              <span className="size-2 rounded-full bg-brand-orange animate-pulse shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange mb-0.5">
+            <li
+              key={liveEvent.id}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-4"
+            >
+              <span
+                className="onside-live-dot is-pulse shrink-0"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <div className="mb-0.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live)] uppercase tracking-widest">
                   {liveEvent.sport.name} · {liveEvent.championship}
                 </div>
-                <div className="font-semibold truncate">
+                <div className="truncate font-semibold">
                   {describeParticipants(liveEvent)}
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-orange whitespace-nowrap">
-                <span className="size-1.5 rounded-full bg-brand-orange animate-pulse" />
+              <span className="onside-badge onside-badge-live whitespace-nowrap">
                 Ao vivo
               </span>
             </li>
           )}
 
           {upcomingEvents.map((e) => (
-            <li key={e.id} className="py-4 flex items-center gap-4">
-              <span className="size-2 rounded-full bg-zinc-300 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange mb-0.5">
+            <li
+              key={e.id}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-4"
+            >
+              <span
+                className="size-2 shrink-0 bg-[var(--onside-ink)]"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <div className="mb-0.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest">
                   {e.sport.name} · {e.championship}
                 </div>
-                <div className="font-semibold truncate">
+                <div className="truncate font-semibold">
                   {describeParticipants(e)}
                 </div>
               </div>
-              <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">
+              <div className="whitespace-nowrap font-bold text-[var(--onside-muted)] text-xs tabular-nums">
                 {formatEventTime(e.startsAt)}
               </div>
             </li>

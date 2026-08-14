@@ -1,7 +1,6 @@
-import { CallIcon, MapPinIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import Call from 'reicon-react/icons/Call'
+import Location from 'reicon-react/icons/Location'
 import { GoogleMap } from '@/components/app/google-map'
-
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Bar = {
@@ -22,47 +21,48 @@ type Props = {
 
 export function BarInfoSidebar({ bar, onDirections }: Props) {
   return (
-    <aside className="space-y-6">
-      <section className="bg-white rounded-2xl ring-1 ring-black/5 p-5">
-        <h3 className="font-heading text-lg font-bold mb-4">Informações</h3>
+    <aside className="space-y-6 lg:sticky lg:top-[calc(var(--banner-h,0px)+var(--onside-header-h)+16px)]">
+      <section className="onside-panel p-5">
+        <h3 className="onside-display mb-4 text-xl">Informações</h3>
         <ul className="space-y-3 text-sm">
-          <li className="flex items-start gap-3 text-zinc-700">
-            <HugeiconsIcon
-              icon={MapPinIcon}
+          <li className="flex items-start gap-3 text-[var(--onside-ink)]">
+            <Location
               size={16}
               color="currentColor"
-              strokeWidth={1.5}
-              className="text-zinc-400 mt-0.5 shrink-0"
+              className="mt-0.5 shrink-0 text-[var(--onside-muted)]"
+              aria-hidden="true"
             />
-            {bar.address}, {bar.neighborhood}, {bar.city}
+            <span className="min-w-0 break-words">
+              {bar.address}, {bar.neighborhood}, {bar.city}
+            </span>
           </li>
           {bar.phone && (
-            <li className="flex items-center gap-3 text-zinc-700">
-              <HugeiconsIcon
-                icon={CallIcon}
+            <li className="flex items-center gap-3 text-[var(--onside-ink)]">
+              <Call
                 size={16}
                 color="currentColor"
-                strokeWidth={1.5}
-                className="text-zinc-400 shrink-0"
+                className="shrink-0 text-[var(--onside-muted)]"
+                aria-hidden="true"
               />
-              {formatStoredPhone(bar.phone)}
+              <span className="min-w-0 break-all">
+                {formatStoredPhone(bar.phone)}
+              </span>
             </li>
           )}
         </ul>
       </section>
 
-      <section className="bg-white rounded-2xl ring-1 ring-black/5 p-5">
-        <h3 className="font-heading text-lg font-bold mb-3 flex items-center gap-2">
-          <HugeiconsIcon
-            icon={MapPinIcon}
+      <section className="onside-panel p-5">
+        <h3 className="onside-display mb-3 flex items-center gap-2 text-xl">
+          <Location
             size={16}
             color="currentColor"
-            strokeWidth={1.5}
-            className="text-brand-orange"
-          />{' '}
+            className="text-[var(--onside-live)]"
+            aria-hidden="true"
+          />
           Localização
         </h3>
-        <div className="relative h-44 rounded-xl overflow-hidden bg-zinc-100">
+        <div className="onside-map-frame relative h-44">
           <GoogleMap
             center={{
               lat: parseFloat(bar.latitude),
@@ -74,8 +74,7 @@ export function BarInfoSidebar({ bar, onDirections }: Props) {
                 name: bar.name,
                 lat: parseFloat(bar.latitude),
                 lng: parseFloat(bar.longitude),
-                accent: 'orange',
-                occupancy: 0
+                accent: 'live'
               }
             ]}
           />
@@ -83,7 +82,7 @@ export function BarInfoSidebar({ bar, onDirections }: Props) {
         <button
           type="button"
           onClick={onDirections}
-          className="w-full mt-3 bg-black text-white text-xs font-bold py-2.5 rounded-full hover:bg-brand-orange transition-colors"
+          className="onside-btn onside-btn-ink onside-btn-full mt-3 min-h-11"
         >
           Como chegar
         </button>

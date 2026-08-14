@@ -4,19 +4,15 @@ import {
   DialogContent,
   DialogTitle
 } from '@findsports_oficial/ui/components/dialog'
-import {
-  CallIcon,
-  Copy01Icon,
-  FavouriteIcon,
-  LinkCircleIcon,
-  MapPinIcon,
-  NavigationIcon,
-  ShareKnowledgeIcon,
-  Tick01Icon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useState } from 'react'
-
+import Call from 'reicon-react/icons/Call'
+import Check from 'reicon-react/icons/Check'
+import Compass from 'reicon-react/icons/Compass'
+import Copy from 'reicon-react/icons/Copy'
+import Heart from 'reicon-react/icons/Heart'
+import Link from 'reicon-react/icons/Link'
+import Location from 'reicon-react/icons/Location'
+import Share from 'reicon-react/icons/Share'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -41,6 +37,9 @@ type Props = {
   bar: Bar
   liveEvent?: Event
   isFavorited?: boolean
+  favoritePending?: boolean
+  favoriteDisabled?: boolean
+  favoriteHint?: string
   onDirections: () => void
   onFavorite: () => void
 }
@@ -49,11 +48,15 @@ export function BarHeroSection({
   bar,
   liveEvent,
   isFavorited = false,
+  favoritePending = false,
+  favoriteDisabled = false,
+  favoriteHint,
   onDirections,
   onFavorite
 }: Props) {
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
 
   const initials = bar.name
     .split(' ')
@@ -65,13 +68,25 @@ export function BarHeroSection({
   const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(shareUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setShareError(null)
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setShareError('Não foi possível copiar o link.')
+    }
   }
 
-  const handleNativeShare = () => {
-    navigator.share({ title: bar.name, url: shareUrl })
+  const handleNativeShare = async () => {
+    setShareError(null)
+    try {
+      await navigator.share({ title: bar.name, url: shareUrl })
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') {
+        setShareError('Não foi possível compartilhar.')
+      }
+    }
   }
 
   const handleShareClick = () => {
@@ -80,158 +95,169 @@ export function BarHeroSection({
 
   return (
     <>
-      <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white mb-8">
-        <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_30%_20%,rgba(255,90,31,0.6),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(30,107,255,0.5),transparent_45%)]" />
-        <div className="relative p-8 md:p-10 grid md:grid-cols-[1fr_auto] gap-6 items-end">
-          {/* Left: avatar + info */}
-          <div className="flex gap-5 items-start">
-            <div className="size-20 md:size-24 rounded-3xl ring-4 ring-white/20 overflow-hidden shrink-0 bg-white/10">
+      <section className="onside-panel-ink relative mb-8 overflow-hidden">
+        {liveEvent && (
+          <div
+            className="h-1.5 w-full bg-[var(--onside-live)]"
+            aria-hidden="true"
+          />
+        )}
+        <div className="relative grid items-end gap-6 p-6 md:grid-cols-[1fr_auto] md:p-10">
+          <div className="flex items-start gap-5">
+            <div className="size-[88px] shrink-0 overflow-hidden border-2 border-[var(--onside-paper)] bg-[rgb(241_238_230_/_10%)] md:size-[112px]">
               {bar.photoUrl ? (
                 <img
                   src={bar.photoUrl}
                   alt={bar.name}
+                  width={112}
+                  height={112}
                   className="size-full object-cover"
                 />
               ) : (
-                <div className="size-full grid place-items-center font-heading font-bold text-3xl text-white/80">
+                <div className="grid size-full place-items-center font-bold text-3xl text-[var(--onside-paper)]">
                   {initials}
                 </div>
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               {liveEvent && (
-                <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-brand-orange mb-3">
-                  <span className="size-1.5 rounded-full bg-brand-orange animate-pulse" />
+                <div className="mb-3 inline-flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live)] uppercase tracking-[0.16em]">
+                  <span
+                    className="onside-live-dot is-pulse"
+                    aria-hidden="true"
+                  />
                   Ao vivo ·{' '}
                   {liveEvent.participants.length > 0
                     ? liveEvent.participants.map((p) => p.team.name).join(' × ')
                     : liveEvent.championship}
                 </div>
               )}
-              <h1 className="font-heading text-4xl md:text-5xl font-bold tracking-tight leading-[0.95] mb-3">
+              <h1 className="onside-display mb-3 break-words text-4xl text-[var(--onside-paper)] md:text-5xl">
                 {bar.name}
               </h1>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-white/80">
+              <div className="flex flex-wrap items-center gap-4 text-[color-mix(in_srgb,var(--onside-paper)_78%,transparent)] text-sm">
                 <span className="inline-flex items-center gap-1.5">
-                  <HugeiconsIcon
-                    icon={MapPinIcon}
-                    size={16}
-                    color="currentColor"
-                    strokeWidth={1.5}
-                  />
+                  <Location size={16} color="currentColor" aria-hidden="true" />
                   {bar.address} · {bar.neighborhood}
                 </span>
                 {bar.phone && (
                   <span className="inline-flex items-center gap-1.5">
-                    <HugeiconsIcon
-                      icon={CallIcon}
-                      size={16}
-                      color="currentColor"
-                      strokeWidth={1.5}
-                    />
+                    <Call size={16} color="currentColor" aria-hidden="true" />
                     {formatStoredPhone(bar.phone)}
                   </span>
                 )}
               </div>
               {bar.description && (
-                <p className="text-sm text-white/60 mt-3 max-w-lg">
+                <p className="mt-3 max-w-lg text-[color-mix(in_srgb,var(--onside-paper)_65%,transparent)] text-sm">
                   {bar.description}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Right: action buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               onClick={onDirections}
-              className="bg-brand-orange text-white text-sm font-bold px-5 py-3 rounded-full hover:scale-105 transition-transform shadow-[0_8px_30px_-6px_rgba(255,90,31,0.7)] inline-flex items-center gap-2 min-h-[44px]"
+              className="onside-btn onside-btn-acid min-h-11"
             >
-              <HugeiconsIcon
-                icon={NavigationIcon}
-                size={16}
-                color="currentColor"
-                strokeWidth={1.5}
-              />{' '}
+              <Compass size={16} color="currentColor" aria-hidden="true" />
               Como chegar
             </button>
             <button
               type="button"
               onClick={onFavorite}
-              className={`p-3 rounded-full backdrop-blur min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${isFavorited ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+              disabled={favoritePending || favoriteDisabled}
+              title={favoriteHint}
+              aria-label={
+                favoriteHint
+                  ? favoriteHint
+                  : isFavorited
+                    ? 'Remover dos favoritos'
+                    : 'Adicionar aos favoritos'
+              }
+              aria-pressed={isFavorited}
+              className={`grid min-h-11 min-w-11 place-items-center border border-[var(--onside-paper)] transition-colors disabled:opacity-50 ${
+                isFavorited
+                  ? 'bg-[var(--onside-live)] text-[var(--onside-paper)]'
+                  : 'bg-transparent text-[var(--onside-paper)] hover:bg-[rgb(241_238_230_/_12%)]'
+              }`}
             >
-              <HugeiconsIcon
-                icon={FavouriteIcon}
+              <Heart
                 size={16}
                 color="currentColor"
-                strokeWidth={1.5}
                 fill={isFavorited ? 'currentColor' : 'none'}
+                aria-hidden="true"
               />
             </button>
             <button
               type="button"
               onClick={handleShareClick}
-              className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Compartilhar bar"
+              className="grid min-h-11 min-w-11 place-items-center border border-[var(--onside-paper)] text-[var(--onside-paper)] transition-colors hover:bg-[rgb(241_238_230_/_12%)]"
             >
-              <HugeiconsIcon
-                icon={ShareKnowledgeIcon}
-                size={16}
-                color="currentColor"
-                strokeWidth={1.5}
-              />
+              <Share size={16} color="currentColor" aria-hidden="true" />
             </button>
           </div>
         </div>
       </section>
 
       <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-        <DialogContent>
-          <div className="flex items-start justify-between mb-4">
+        <DialogContent className="onside-dialog max-w-[calc(100vw-2rem)] rounded-none border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] sm:max-w-lg">
+          <div className="mb-4 flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-2xl bg-brand-orange/10 grid place-items-center shrink-0">
-                <HugeiconsIcon
-                  icon={ShareKnowledgeIcon}
-                  size={18}
-                  color="currentColor"
-                  strokeWidth={1.5}
-                  className="text-brand-orange"
-                />
+              <div className="grid size-10 shrink-0 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-acid)]">
+                <Share size={18} color="currentColor" aria-hidden="true" />
               </div>
-              <DialogTitle>Compartilhar bar</DialogTitle>
+              <DialogTitle className="font-bold text-[var(--onside-ink)]">
+                Compartilhar bar
+              </DialogTitle>
             </div>
-            <DialogClose />
+            <DialogClose className="min-h-11 min-w-11" />
           </div>
 
-          <p className="text-sm text-zinc-500 mb-4">
+          <p className="mb-4 text-[var(--onside-muted)] text-sm">
             Compartilhe{' '}
-            <span className="font-semibold text-zinc-800">{bar.name}</span> com
-            seus amigos.
+            <span className="font-semibold text-[var(--onside-ink)]">
+              {bar.name}
+            </span>{' '}
+            com seus amigos.
           </p>
 
-          <div className="flex items-center gap-2 bg-zinc-50 ring-1 ring-black/8 rounded-xl px-4 py-3 mb-4">
-            <HugeiconsIcon
-              icon={LinkCircleIcon}
+          {shareError ? (
+            <p
+              className="mb-3 text-sm text-[var(--onside-live-text)]"
+              role="alert"
+            >
+              {shareError}
+            </p>
+          ) : null}
+
+          <div className="mb-4 flex flex-col gap-2 border border-[var(--onside-ink)] bg-[var(--onside-stone)] px-4 py-3 sm:flex-row sm:items-center">
+            <Link
               size={16}
               color="currentColor"
-              strokeWidth={1.5}
-              className="text-zinc-400 shrink-0"
+              className="shrink-0 text-[var(--onside-muted)]"
+              aria-hidden="true"
             />
-            <span className="text-sm text-zinc-600 truncate flex-1 font-mono">
+            <span className="min-w-0 flex-1 break-all font-[family-name:var(--onside-mono)] text-[var(--onside-muted)] text-sm">
               {shareUrl}
             </span>
             <button
               type="button"
               onClick={handleCopy}
-              className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${copied ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-200 hover:bg-zinc-300 text-zinc-700'}`}
+              className={`inline-flex shrink-0 items-center gap-1.5 border border-[var(--onside-ink)] px-3 py-1.5 font-bold text-xs transition-colors ${
+                copied
+                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                  : 'bg-[var(--onside-paper)] text-[var(--onside-ink)]'
+              }`}
             >
-              <HugeiconsIcon
-                icon={copied ? Tick01Icon : Copy01Icon}
-                size={13}
-                color="currentColor"
-                strokeWidth={1.5}
-              />
+              {copied ? (
+                <Check size={13} color="currentColor" aria-hidden="true" />
+              ) : (
+                <Copy size={13} color="currentColor" aria-hidden="true" />
+              )}
               {copied ? 'Copiado!' : 'Copiar'}
             </button>
           </div>
@@ -240,14 +266,9 @@ export function BarHeroSection({
             <button
               type="button"
               onClick={handleNativeShare}
-              className="w-full bg-black text-white text-sm font-bold py-3 rounded-xl hover:bg-zinc-800 transition-colors inline-flex items-center justify-center gap-2"
+              className="onside-btn onside-btn-ink onside-btn-full"
             >
-              <HugeiconsIcon
-                icon={ShareKnowledgeIcon}
-                size={16}
-                color="currentColor"
-                strokeWidth={1.5}
-              />
+              <Share size={16} color="currentColor" aria-hidden="true" />
               Compartilhar via...
             </button>
           )}
