@@ -36,11 +36,14 @@ export const pubsRouter = router({
       const uRadius = sql.raw(String(radiusKm))
 
       const sportFilter = sportId ? sql`AND e.sport_id = ${sportId}` : sql``
+      const championshipPattern = championship
+        ? `%${championship.toLowerCase()}%`
+        : ''
       const champFilter = championship
-        ? sql`AND LOWER(e.championship) LIKE ${'%' + championship.toLowerCase() + '%'}`
+        ? sql`AND LOWER(e.championship) LIKE ${championshipPattern}`
         : sql``
       const champBarFilter = championship
-        ? sql`AND (LOWER(e.championship) LIKE ${'%' + championship.toLowerCase() + '%'} OR LOWER(b.name) LIKE ${'%' + championship.toLowerCase() + '%'})`
+        ? sql`AND (LOWER(e.championship) LIKE ${championshipPattern} OR LOWER(b.name) LIKE ${championshipPattern})`
         : sql``
       const dateFilter = date ? sql`AND DATE(e.starts_at) = ${date}` : sql``
 
@@ -402,9 +405,33 @@ export const pubsRouter = router({
         OFFSET ${cursor}
       `)
 
+      type RawLocationRow = {
+        id: string
+        name: string
+        neighborhood: string
+        city: string
+        latitude: string
+        longitude: string
+        photo_url: string | null
+        created_at: string
+        distance_km: number
+      }
+
+      const bars = (results.rows as RawLocationRow[]).map((row) => ({
+        id: row.id,
+        name: row.name,
+        neighborhood: row.neighborhood,
+        city: row.city,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        photo_url: row.photo_url,
+        created_at: row.created_at,
+        distance_km: row.distance_km
+      }))
+
       return {
-        bars: results.rows,
-        nextCursor: results.rows.length === limit ? cursor + limit : null
+        bars,
+        nextCursor: bars.length === limit ? cursor + limit : null
       }
     }),
 

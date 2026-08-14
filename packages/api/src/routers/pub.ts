@@ -1,4 +1,4 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, eq } from '@findsports_oficial/db'
 import {
   bar,
   event,
@@ -9,9 +9,11 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import {
+  getEventCreationPolicy,
+  STARTER_EVENT_LIMIT
+} from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
-
-const STARTER_EVENT_LIMIT = 5
 
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
@@ -27,31 +29,6 @@ async function getBarByUserId(userId: string) {
   }
 
   return result
-}
-
-// Conta eventos criados no período de billing atual
-async function countEventsInCurrentPeriod(
-  barId: string,
-  currentPeriodEnd: Date | null
-): Promise<number> {
-  // Calcula o início do período subtraindo 1 mês do currentPeriodEnd
-  const periodStart = currentPeriodEnd ? new Date(currentPeriodEnd) : new Date()
-
-  if (currentPeriodEnd) {
-    periodStart.setMonth(periodStart.getMonth() - 1)
-  } else {
-    // Fallback: últimos 30 dias
-    periodStart.setDate(periodStart.getDate() - 30)
-  }
-
-  const result = await db.execute(sql`
-    SELECT COUNT(*) as count
-    FROM event
-    WHERE bar_id = ${barId}
-    AND created_at >= ${periodStart.toISOString()}
-  `)
-
-  return Number((result.rows[0] as any)?.count ?? 0)
 }
 
 export const pubRouter = router({
@@ -155,6 +132,20 @@ export const pubRouter = router({
     })
   }),
 
+  getMyEventCreationPolicy: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(userId)
+    return getEventCreationPolicy(db, existingBar)
+  }),
+
   createEvent: protectedProcedure
     .input(
       z.object({
@@ -188,36 +179,49 @@ export const pubRouter = router({
         }
       }
 
-      const existingBar = await getBarByUserId(userId)
+      await db.transaction(async (tx) => {
+        const [lockedBar] = await tx
+          .select()
+          .from(bar)
+          .where(eq(bar.userId, userId))
+          .for('update')
+          .limit(1)
 
-      if (!existingBar.isActive) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message:
-            'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+        if (!lockedBar) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Bar não encontrado para este usuário.'
+          })
+        }
+
+        const existingSubscription = await tx.query.subscription.findFirst({
+          where: eq(subscription.barId, lockedBar.id)
         })
-      }
+        const policy = await getEventCreationPolicy(tx, {
+          id: lockedBar.id,
+          isActive: lockedBar.isActive,
+          subscription: existingSubscription ?? null
+        })
 
-      // Verifica limite do plano Starter
-      const plan = existingBar.subscription?.plan ?? 'starter'
-      if (plan === 'starter') {
-        const count = await countEventsInCurrentPeriod(
-          existingBar.id,
-          existingBar.subscription?.currentPeriodEnd ?? null
-        )
-        if (count >= STARTER_EVENT_LIMIT) {
+        if (policy.status === 'inactive') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message:
+              'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+          })
+        }
+
+        if (policy.status === 'limited' && !policy.canCreate) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
           })
         }
-      }
 
-      await db.transaction(async (tx) => {
         const [newEvent] = await tx
           .insert(event)
           .values({
-            barId: existingBar.id,
+            barId: lockedBar.id,
             sportId: input.sportId,
             championship: input.championship,
             startsAt: new Date(input.startsAt),
