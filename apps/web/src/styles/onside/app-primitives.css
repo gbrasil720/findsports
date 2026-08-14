@@ -1,0 +1,355 @@
+/* ─── Typography helpers ─── */
+.onside-app .onside-display {
+  font-family: var(--onside-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.onside-app .onside-kicker {
+  margin: 0;
+  font-family: var(--onside-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+.onside-app .onside-kicker-acid {
+  color: var(--onside-acid);
+}
+
+.onside-app .onside-text-muted-on-ink {
+  color: var(--onside-muted-on-ink);
+}
+
+.onside-app .onside-live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--onside-live);
+  flex: none;
+}
+
+.onside-app .onside-live-dot.is-pulse {
+  animation: onside-pulse 1.4s ease-in-out infinite;
+}
+
+/* ─── Buttons ─── */
+.onside-app .onside-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  font-family: var(--onside-body);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+  text-decoration: none;
+  color: var(--onside-ink);
+  background: transparent;
+}
+
+.onside-app .onside-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.onside-app .onside-btn:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.onside-app .onside-btn-acid {
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+  border-color: var(--onside-ink);
+}
+
+.onside-app .onside-btn-ink {
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+  border-color: var(--onside-ink);
+}
+
+.onside-app .onside-btn-outline {
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  border-color: var(--onside-ink);
+}
+
+.onside-app .onside-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.onside-app .onside-btn-full {
+  width: 100%;
+}
+
+/* ─── Panels / cards ─── */
+.onside-app .onside-panel {
+  background: var(--onside-paper);
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+}
+
+.onside-app .onside-panel-ink {
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+  border: 1.5px solid var(--onside-ink);
+}
+
+.onside-app .onside-panel-stone {
+  background: var(--onside-stone);
+  border: 1.5px solid var(--onside-ink);
+}
+
+.onside-app .onside-panel-acid {
+  background: var(--onside-acid);
+  border: 1.5px solid var(--onside-ink);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-shadow {
+  box-shadow: 6px 6px 0 var(--onside-ink);
+}
+
+.onside-app .onside-shadow-acid {
+  box-shadow: 8px 8px 0 var(--onside-acid);
+}
+
+/* ─── Forms ─── */
+.onside-app .onside-label {
+  display: block;
+  font-family: var(--onside-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--onside-ink);
+  margin-bottom: 8px;
+}
+
+.onside-app .onside-input,
+.onside-app .onside-textarea,
+.onside-app .onside-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  font-size: 16px;
+  line-height: 1.4;
+  outline: none;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.onside-app .onside-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.onside-app .onside-input::placeholder,
+.onside-app .onside-textarea::placeholder {
+  color: var(--onside-muted);
+}
+
+.onside-app .onside-input:focus-visible,
+.onside-app .onside-textarea:focus-visible,
+.onside-app .onside-select:focus-visible {
+  border-color: var(--onside-live);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--onside-live) 25%, transparent);
+  outline: 3px solid var(--onside-live);
+  outline-offset: 2px;
+}
+
+.onside-app .onside-field-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--onside-live-text);
+}
+
+/* Input group override for auth fields */
+.onside-app .onside-input-group {
+  border: 1.5px solid var(--onside-ink) !important;
+  border-radius: 0 !important;
+  background: var(--onside-paper) !important;
+  min-height: 48px;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.onside-app .onside-input-group:focus-within {
+  border-color: var(--onside-live) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--onside-live) 25%, transparent) !important;
+}
+
+.onside-app .onside-input-control {
+  font-size: 16px !important;
+  min-height: 48px;
+  background: transparent !important;
+  color: var(--onside-ink) !important;
+}
+
+/* ─── Choice plates (role, sports, radius) ─── */
+.onside-app .onside-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 16px;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.onside-app .onside-choice[data-selected="true"],
+.onside-app .onside-choice[aria-pressed="true"],
+.onside-app .onside-choice.is-selected {
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+  box-shadow: 3px 3px 0 var(--onside-ink);
+}
+
+.onside-app .onside-choice-ink {
+  background: color-mix(in srgb, var(--onside-paper) 8%, transparent);
+  border-color: rgb(241 238 230 / 22%);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-choice-ink[data-selected="true"],
+.onside-app .onside-choice-ink[aria-pressed="true"],
+.onside-app .onside-choice-ink.is-selected {
+  background: var(--onside-acid);
+  border-color: var(--onside-acid);
+  color: var(--onside-ink);
+  box-shadow: 3px 3px 0 rgb(0 0 0 / 35%);
+}
+
+/* ─── Status badges ─── */
+.onside-app .onside-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--onside-ink);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.onside-app .onside-badge-live {
+  background: var(--onside-live);
+  border-color: var(--onside-live);
+  color: var(--onside-paper);
+  font-weight: 700;
+}
+
+.onside-app .onside-badge-acid {
+  background: var(--onside-acid);
+  border-color: var(--onside-ink);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-badge-ink {
+  background: var(--onside-ink);
+  border-color: var(--onside-ink);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-badge-stone {
+  background: var(--onside-stone);
+  border-color: var(--onside-line);
+  color: var(--onside-muted);
+}
+
+/* ─── Progress segments ─── */
+.onside-app .onside-progress {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.onside-app .onside-progress-seg {
+  flex: 1;
+  height: 6px;
+  background: var(--onside-stone);
+  border: 1px solid var(--onside-ink);
+}
+
+.onside-app .onside-progress-seg.is-done,
+.onside-app .onside-progress-seg.is-current {
+  background: var(--onside-acid);
+}
+
+/* ─── Callouts ─── */
+.onside-app .onside-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  padding: 16px 18px;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+}
+
+.onside-app .onside-callout-acid {
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-callout-stone {
+  background: var(--onside-stone);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-callout-warn {
+  background: #f5e6c8;
+  border-color: var(--onside-ink);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-callout-danger {
+  background: color-mix(in srgb, var(--onside-live) 12%, var(--onside-paper));
+  border-color: var(--onside-live);
+  color: var(--onside-ink);
+}

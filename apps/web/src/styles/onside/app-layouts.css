@@ -1,0 +1,277 @@
+/* ─── Brand mark ─── */
+.onside-app .onside-brand,
+.onside-app .onside-brand-link {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+}
+
+.onside-app .onside-brand-wordmark {
+  height: 28px;
+  width: auto;
+  max-width: min(148px, 40vw);
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+}
+
+@media (min-width: 768px) {
+  .onside-app .onside-brand-wordmark {
+    height: 32px;
+    max-width: min(168px, 42vw);
+  }
+}
+
+.onside-app .onside-brand-mark {
+  display: block;
+  object-fit: contain;
+  flex: none;
+}
+
+/* High-contrast wordmark on ink surfaces */
+.onside-app .onside-brand-on-ink .onside-brand-wordmark {
+  filter: invert(1) brightness(1.05);
+}
+
+/* ─── Skip link ─── */
+.onside-app .onside-skip-link {
+  position: fixed;
+  left: 12px;
+  top: calc(var(--banner-h, 0px) + 12px);
+  z-index: 1000;
+  transform: translateY(-200%);
+  background: var(--onside-acid);
+  border: 2px solid var(--onside-ink);
+  color: var(--onside-ink);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.onside-app .onside-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* ─── Shell ─── */
+.onside-app .onside-app-shell {
+  width: min(100% - (var(--onside-shell-gutter) * 2), var(--onside-max));
+  max-width: var(--onside-max);
+  margin-inline: auto;
+}
+
+.onside-app .onside-app-header {
+  position: sticky;
+  top: var(--banner-h, 0px);
+  z-index: 40;
+  border-bottom: 1px solid var(--onside-line);
+  background: var(--onside-paper);
+}
+
+@supports (backdrop-filter: blur(16px)) {
+  .onside-app .onside-app-header {
+    background: color-mix(in srgb, var(--onside-paper) 90%, transparent);
+    backdrop-filter: blur(16px);
+  }
+}
+
+.onside-app .onside-app-header-inner {
+  height: var(--onside-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.onside-app .onside-app-main {
+  padding-block: 32px 48px;
+}
+
+@media (min-width: 768px) {
+  .onside-app .onside-app-main {
+    padding-block: 40px 64px;
+  }
+}
+
+/* ─── Map chrome ─── */
+.onside-app .onside-map-frame {
+  position: relative;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--onside-stone);
+}
+
+.onside-app .onside-map-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 10px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-paper);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onside-app .onside-map-label.is-bottom {
+  top: auto;
+  bottom: 12px;
+}
+
+/* ─── Admin layout ─── */
+.onside-app .onside-admin-grid {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 1100px) {
+  .onside-app .onside-admin-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.onside-app .onside-admin-nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.onside-app .onside-admin-tablist {
+  display: flex;
+  gap: 8px;
+}
+
+@media (min-width: 1100px) {
+  .onside-app .onside-admin-nav {
+    flex-direction: column;
+    overflow: visible;
+    position: sticky;
+    top: calc(var(--banner-h, 0px) + var(--onside-header-h) + 16px);
+    border-right: 1.5px solid var(--onside-ink);
+    padding: 0 16px 0 0;
+  }
+
+  .onside-app .onside-admin-tablist {
+    flex-direction: column;
+  }
+}
+
+.onside-app .onside-admin-nav a,
+.onside-app .onside-admin-nav button {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--onside-ink);
+  font-family: var(--onside-body);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--onside-ink);
+  white-space: nowrap;
+  background: var(--onside-paper);
+  cursor: pointer;
+  scroll-margin-top: calc(var(--banner-h, 0px) + var(--onside-header-h) + 16px);
+}
+
+.onside-app .onside-admin-nav button.is-active,
+.onside-app .onside-admin-nav a[aria-current="page"] {
+  background: var(--onside-acid);
+}
+
+@media (min-width: 1100px) {
+  .onside-app .onside-admin-nav a,
+  .onside-app .onside-admin-nav button {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+  }
+}
+
+.onside-app [id^="admin-"] {
+  scroll-margin-top: calc(var(--banner-h, 0px) + var(--onside-header-h) + 16px);
+}
+
+/* ─── Event rows ─── */
+.onside-app .onside-event-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-paper);
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .onside-app .onside-event-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Stats ─── */
+.onside-app .onside-stat {
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-paper);
+  padding: 16px 18px;
+  min-width: 0;
+}
+
+.onside-app .onside-stat-value {
+  font-family: var(--onside-display);
+  font-size: 36px;
+  line-height: 0.95;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.onside-app .onside-stat-label {
+  margin-top: 8px;
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+/* ─── Dialog / modal surface ─── */
+.onside-app .onside-dialog {
+  border: 1.5px solid var(--onside-ink) !important;
+  border-radius: 0 !important;
+  background: var(--onside-paper) !important;
+  box-shadow: 8px 8px 0 var(--onside-ink) !important;
+  max-height: min(90dvh, 900px);
+}
+
+/* ─── Sticky filter offset ─── */
+.onside-app .onside-sticky-filters {
+  position: sticky;
+  top: calc(var(--banner-h, 0px) + var(--onside-header-h));
+  z-index: 20;
+  background: var(--onside-paper);
+}
+
+/* ─── Dropdown menu surface ─── */
+.onside-app .onside-menu {
+  border: 1.5px solid var(--onside-ink) !important;
+  border-radius: 0 !important;
+  background: var(--onside-paper) !important;
+  box-shadow: 6px 6px 0 var(--onside-ink) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
