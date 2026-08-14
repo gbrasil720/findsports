@@ -1,13 +1,10 @@
-import {
-  DrinkIcon,
-  MapPinIcon,
-  SearchingIcon,
-  Tick01Icon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Check from 'reicon-react/icons/Check'
+import Location from 'reicon-react/icons/Location'
+import Search from 'reicon-react/icons/Search'
+import Store from 'reicon-react/icons/Store'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -21,7 +18,7 @@ import { useTRPC } from '@/utils/trpc'
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
   head: () => ({
     meta: [
-      { title: 'Cadastre seu bar — FindSports' },
+      { title: 'Cadastre seu bar — Onside' },
       {
         name: 'description',
         content:
@@ -33,17 +30,18 @@ export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
   component: PubOnboarding
 })
 
-const STEPS = ['Boas-vindas', 'Seu estabelecimento', 'Pronto'] as const
+const STEPS = ['Boas-vindas', 'Seu estabelecimento', 'Revisão'] as const
 
 const WELCOME_FEATURES = [
-  { icon: DrinkIcon, text: 'Divulgue sua programação de jogos' },
-  { icon: SearchingIcon, text: 'Apareça pra torcedores perto de você' },
-  { icon: Tick01Icon, text: 'Lote nos dias de clássico' }
+  { icon: Store, text: 'Divulgue sua programação de jogos' },
+  { icon: Search, text: 'Apareça pra torcedores perto de você' },
+  { icon: Check, text: 'Lote nos dias de clássico' }
 ]
 
 function PubOnboarding() {
   const navigate = useNavigate()
   const trpc = useTRPC()
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
@@ -64,10 +62,13 @@ function PubOnboarding() {
     })
   )
 
-  // Dispara started uma única vez ao montar
   useEffect(() => {
     analytics.pubOnboardingStarted()
   }, [])
+
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: step === 0 })
+  }, [step])
 
   const handleFieldChange = (field: string, value: string) => {
     switch (field) {
@@ -113,12 +114,12 @@ function PubOnboarding() {
       setStep((s) => s + 1)
     } else {
       completeMutation.mutate({
-        name,
-        address,
-        neighborhood,
-        city,
-        phone: phone || undefined,
-        description: description || undefined
+        name: name.trim(),
+        address: address.trim(),
+        neighborhood: neighborhood.trim(),
+        city: city.trim() || undefined,
+        phone: phone.trim() || undefined,
+        description: description.trim() || undefined
       })
     }
   }
@@ -127,31 +128,37 @@ function PubOnboarding() {
 
   return (
     <OnboardingLayout variant="pub">
-      <OnboardingHeader label="Conta de bar" accent="blue" />
-      <StepProgress step={step} steps={STEPS} accent="blue" />
+      <OnboardingHeader label="Conta de bar" />
+      <StepProgress step={step} steps={STEPS} />
 
-      <OnboardingStep accent="blue">
+      <OnboardingStep>
         {step === 0 && (
           <WelcomeStep
             eyebrow="Seu bar no radar dos torcedores."
             title={
               <>
                 Vamos lotar sua casa nos{' '}
-                <span className="text-brand-blue">próximos clássicos</span>.
+                <span className="text-[var(--onside-acid)]">
+                  próximos clássicos
+                </span>
+                .
               </>
             }
             subtitle="Cadastre seu bar em 1 minuto. Torcedores da região já podem te encontrar."
             features={WELCOME_FEATURES}
-            accent="blue"
           />
         )}
 
         {step === 1 && (
           <div>
-            <h2 className="font-heading text-3xl font-bold mb-2">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
+            >
               Conta um pouco do seu bar.
             </h2>
-            <p className="text-white/70 mb-6">
+            <p className="onside-text-muted-on-ink mb-6">
               Essas informações aparecem para torcedores que buscam bares perto
               deles.
             </p>
@@ -168,34 +175,28 @@ function PubOnboarding() {
         )}
 
         {step === 2 && (
-          <div className="text-center py-6">
-            <div className="mx-auto mb-6 grid place-items-center size-20 rounded-full bg-brand-blue">
-              <HugeiconsIcon
-                icon={Tick01Icon}
-                size={40}
-                color="currentColor"
-                strokeWidth={1.5}
-              />
+          <div className="py-4 text-center md:py-6">
+            <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
+              <Check size={40} color="currentColor" aria-hidden="true" />
             </div>
-            <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight mb-3">
-              Bar cadastrado!
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
+            >
+              Pronto para escolher o plano
             </h2>
-            <p className="text-white/70 max-w-md mx-auto mb-8">
-              Seu bar já aparece pra torcedores da região. Agora cadastre os
-              jogos que você vai transmitir e comece a atrair clientes.
+            <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
+              Revise os dados do bar. Ao continuar, salvamos o cadastro e você
+              escolhe o plano.
             </p>
-            <div className="inline-flex flex-wrap gap-2 justify-center">
-              <span className="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold">
-                {name}
+            <div className="inline-flex flex-wrap justify-center gap-2">
+              <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+                {name.trim() || '…'}
               </span>
-              <span className="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold flex items-center gap-1">
-                <HugeiconsIcon
-                  icon={MapPinIcon}
-                  size={12}
-                  color="currentColor"
-                  strokeWidth={1.5}
-                />{' '}
-                {neighborhood}
+              <span className="onside-badge inline-flex items-center gap-1 border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+                <Location size={12} color="currentColor" aria-hidden="true" />
+                {neighborhood.trim() || '…'}
               </span>
             </div>
           </div>
@@ -203,7 +204,12 @@ function PubOnboarding() {
       </OnboardingStep>
 
       {error && (
-        <p className="text-center text-sm text-red-400 mt-4">{error}</p>
+        <p
+          className="mt-4 text-center text-[var(--onside-live-text)] text-sm"
+          role="alert"
+        >
+          {error}
+        </p>
       )}
 
       <OnboardingNavigation
@@ -213,8 +219,7 @@ function PubOnboarding() {
         isPending={completeMutation.isPending}
         onBack={back}
         onNext={next}
-        accent="blue"
-        lastLabel="Ir pro meu painel"
+        lastLabel="Escolher meu plano"
       />
     </OnboardingLayout>
   )
