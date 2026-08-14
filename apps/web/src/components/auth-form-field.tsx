@@ -10,16 +10,15 @@ import {
   InputGroupButton,
   InputGroupInput
 } from '@findsports_oficial/ui/components/input-group'
-import { EyeIcon, ViewOffSlashIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
-import type { FieldApi } from '@tanstack/react-form'
+import type { AnyFieldApi } from '@tanstack/form-core'
 import { useState } from 'react'
+import Eye from 'reicon-react/icons/Eye'
+import EyeSlash from 'reicon-react/icons/EyeSlash'
 
 interface AuthFormFieldProps {
   label: string
   type?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  field: FieldApi<any, any, any, any, any>
+  field: AnyFieldApi
 }
 
 export function AuthFormField({
@@ -52,19 +51,15 @@ export function AuthFormField({
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
-                <HugeiconsIcon
-                  icon={ViewOffSlashIcon}
+                <EyeSlash
                   size={14}
                   color="currentColor"
-                  strokeWidth={1.5}
                   className="text-muted-foreground"
                 />
               ) : (
-                <HugeiconsIcon
-                  icon={EyeIcon}
+                <Eye
                   size={14}
                   color="currentColor"
-                  strokeWidth={1.5}
                   className="text-muted-foreground"
                 />
               )}

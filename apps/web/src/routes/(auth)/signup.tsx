@@ -2,34 +2,31 @@ import {
   ToggleGroup,
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
-import {
-  DrinkIcon,
-  Fire02Icon,
-  Mail01Icon,
-  User02Icon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import Envelope from 'reicon-react/icons/Envelope'
+import Fire from 'reicon-react/icons/Fire'
+import Loader from 'reicon-react/icons/Loader'
+import Store from 'reicon-react/icons/Store'
+import User from 'reicon-react/icons/User'
 import { toast } from 'sonner'
 
 import { AuthBrandCopy } from '@/components/auth-brand-copy'
 import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
-import { Logo } from '@/components/landing/logo'
+import { OnsideBrand } from '@/components/brand/onside-brand'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 
 export const Route = createFileRoute('/(auth)/signup')({
   head: () => ({
     meta: [
-      { title: 'Criar conta — FindSports' },
+      { title: 'Criar conta — Onside' },
       {
         name: 'description',
-        content:
-          'Crie sua conta no FindSports e nunca mais perca o apito inicial.'
+        content: 'Crie sua conta no Onside e nunca mais perca o apito inicial.'
       },
       { name: 'robots', content: 'noindex' }
     ]
@@ -43,23 +40,48 @@ function SignupPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [role, setRole] = useState<'fan' | 'pub'>('fan')
+  const signupStartedRef = useRef(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
     onSubmit: async ({ value }) => {
-      if (value.password !== value.confirm) {
+      const name = value.name.trim()
+      const email = value.email.trim()
+      const password = value.password
+      const confirm = value.confirm
+
+      if (!name) {
+        toast.error('Informe seu nome completo.')
+        focusFirstInvalid()
+        return
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast.error('Informe um e-mail válido.')
+        focusFirstInvalid()
+        return
+      }
+      if (password !== confirm) {
         toast.error('As senhas não coincidem.')
+        focusFirstInvalid()
         return
       }
-      if (value.password.length < 8) {
+      if (password.length < 8) {
         toast.error('A senha deve ter pelo menos 8 caracteres.')
+        focusFirstInvalid()
         return
       }
+
+      if (!signupStartedRef.current) {
+        signupStartedRef.current = true
+        analytics.signupStarted()
+      }
+
       setIsLoading(true)
       const { error } = await authClient.signUp.email({
-        name: value.name,
-        email: value.email,
-        password: value.password,
+        name,
+        email,
+        password,
         role
       })
       setIsLoading(false)
@@ -73,26 +95,41 @@ function SignupPage() {
     }
   })
 
+  function focusFirstInvalid() {
+    const root = formRef.current
+    if (!root) return
+    const first = root.querySelector<HTMLElement>(
+      'input[aria-invalid="true"], input:invalid'
+    )
+    first?.focus()
+  }
+
   return (
-    <div className="flex min-h-dvh font-body">
-      <main className="flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:px-10 lg:px-16">
-        <Link to="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
-          <Logo className="size-9" />
-          <span className="font-bold font-heading text-xl tracking-tight">
-            FindSports
-          </span>
-        </Link>
+    <div className="onside-app flex min-h-dvh">
+      <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
+        <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
+          <Link to="/" aria-label="Onside — página inicial">
+            <OnsideBrand />
+          </Link>
+          <p className="mt-4 max-w-[28ch] text-sm text-[var(--onside-muted)]">
+            Entre no time e ache o bar certo pro jogo.
+          </p>
+        </div>
 
         <div className="w-full max-w-[420px]">
           <div className="mb-8">
-            <h1 className="mb-2 font-bold font-heading text-3xl tracking-tight sm:text-4xl">
-              ENTRE NO <span className="text-brand-orange">TIME TITULAR.</span>
+            <p className="onside-kicker mb-3">Criar conta</p>
+            <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
+              ENTRE NO{' '}
+              <span className="text-[var(--onside-live-text)]">
+                TIME TITULAR.
+              </span>
             </h1>
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-[var(--onside-muted)]">
               Já tem conta?{' '}
               <Link
                 to="/login"
-                className="font-semibold text-black underline underline-offset-2 transition-colors hover:text-brand-orange"
+                className="font-semibold text-[var(--onside-ink)] underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
               >
                 Entrar agora
               </Link>
@@ -100,58 +137,53 @@ function SignupPage() {
           </div>
 
           <form
+            ref={formRef}
             className="flex flex-col gap-4"
             noValidate
-            onFocus={() => analytics.signupStarted()}
             onSubmit={(e) => {
               e.preventDefault()
               form.handleSubmit()
             }}
           >
-            <div className="flex flex-col gap-1.5">
-              <span className="font-semibold text-xs text-zinc-700 uppercase tracking-wider">
-                Sou um
-              </span>
+            <fieldset className="flex flex-col gap-1.5 border-0 p-0">
+              <legend className="onside-label mb-0">Sou um</legend>
               <ToggleGroup
                 value={[role]}
                 onValueChange={(values) => {
                   if (values.length > 0)
                     setRole(values[values.length - 1] as 'fan' | 'pub')
                 }}
-                className="grid w-full grid-cols-2 rounded-xl bg-zinc-100 p-1"
+                className="grid w-full grid-cols-2 gap-3"
+                aria-label="Tipo de conta"
               >
                 <ToggleGroupItem
                   value="fan"
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-3 font-bold text-sm text-zinc-500 uppercase tracking-wider transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-orange aria-pressed:shadow-sm"
+                  className="onside-choice min-h-12 flex-row items-center justify-center gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
                 >
-                  <HugeiconsIcon
-                    icon={Fire02Icon}
-                    size={15}
-                    color="currentColor"
-                    strokeWidth={1.5}
-                  />
+                  <Fire size={15} color="currentColor" aria-hidden="true" />
                   Torcedor
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="pub"
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-3 font-bold text-sm text-zinc-500 uppercase tracking-wider transition-all hover:text-zinc-700 aria-pressed:bg-white aria-pressed:text-brand-blue aria-pressed:shadow-sm"
+                  className="onside-choice min-h-12 flex-row items-center justify-center gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
                 >
-                  <HugeiconsIcon
-                    icon={DrinkIcon}
-                    size={15}
-                    color="currentColor"
-                    strokeWidth={1.5}
-                  />
+                  <Store size={15} color="currentColor" aria-hidden="true" />
                   Dono de Bar
                 </ToggleGroupItem>
               </ToggleGroup>
-            </div>
+            </fieldset>
 
-            <form.Field name="name">
+            <form.Field
+              name="name"
+              validators={{
+                onBlur: ({ value }) =>
+                  value.trim() ? undefined : 'Informe seu nome completo.'
+              }}
+            >
               {(field) => (
                 <AuthInputField
                   label="Nome completo"
-                  icon={User02Icon}
+                  icon={User}
                   field={field}
                   id="name"
                   type="text"
@@ -163,14 +195,27 @@ function SignupPage() {
               )}
             </form.Field>
 
-            <form.Field name="email">
+            <form.Field
+              name="email"
+              validators={{
+                onBlur: ({ value }) => {
+                  const v = value.trim()
+                  if (!v) return 'Informe seu e-mail.'
+                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+                    return 'Informe um e-mail válido.'
+                  return undefined
+                }
+              }}
+            >
               {(field) => (
                 <AuthInputField
                   label="E-mail"
-                  icon={Mail01Icon}
+                  icon={Envelope}
                   field={field}
                   id="email"
                   type="email"
+                  inputMode="email"
+                  spellCheck={false}
                   placeholder="seu@email.com"
                   autoComplete="email"
                   maxLength={255}
@@ -179,7 +224,17 @@ function SignupPage() {
               )}
             </form.Field>
 
-            <form.Field name="password">
+            <form.Field
+              name="password"
+              validators={{
+                onBlur: ({ value }) => {
+                  if (!value) return 'Informe uma senha.'
+                  if (value.length < 8)
+                    return 'A senha deve ter pelo menos 8 caracteres.'
+                  return undefined
+                }
+              }}
+            >
               {(field) => (
                 <AuthPasswordField
                   label="Senha"
@@ -194,7 +249,17 @@ function SignupPage() {
               )}
             </form.Field>
 
-            <form.Field name="confirm">
+            <form.Field
+              name="confirm"
+              validators={{
+                onBlur: ({ value, fieldApi }) => {
+                  const password = fieldApi.form.getFieldValue('password')
+                  if (!value) return 'Confirme sua senha.'
+                  if (value !== password) return 'As senhas não coincidem.'
+                  return undefined
+                }
+              }}
+            >
               {(field) => (
                 <AuthPasswordField
                   label="Confirmar senha"
@@ -212,20 +277,26 @@ function SignupPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-2 w-full cursor-pointer rounded-xl bg-black py-4 font-bold text-sm text-white uppercase tracking-[0.2em] ring-offset-white transition-all duration-300 hover:bg-brand-orange hover:ring-4 hover:ring-brand-orange/50 hover:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-black disabled:hover:ring-0"
+              className="onside-btn onside-btn-acid onside-btn-full mt-2"
             >
-              {isLoading ? 'Entrando no time...' : 'Entrar no time'}
+              {isLoading ? (
+                <>
+                  <Loader
+                    size={16}
+                    color="currentColor"
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                  Criando conta…
+                </>
+              ) : (
+                'Entrar no time'
+              )}
             </button>
 
-            <p className="text-center text-xs text-zinc-400">
-              Ao criar conta você concorda com nossos{' '}
-              <a
-                href="#"
-                className="underline underline-offset-2 transition-colors hover:text-black"
-              >
-                Termos de Uso
-              </a>
-              .
+            <p className="text-center text-[var(--onside-muted)] text-xs">
+              Ao criar conta, você passa a usar o app Onside com o perfil
+              escolhido.
             </p>
           </form>
         </div>

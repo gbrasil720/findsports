@@ -3,16 +3,19 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from '@findsports_oficial/ui/components/input-group'
-import { HugeiconsIcon } from '@hugeicons/react'
 import type { AnyFieldApi } from '@tanstack/form-core'
+import type { ComponentType, SVGAttributes } from 'react'
 
 import { AUTH_INPUT_CLASS, AUTH_INPUT_GROUP_CLASS } from '@/lib/auth-styles'
 
-type HugeIcon = Parameters<typeof HugeiconsIcon>[0]['icon']
+type IconProps = SVGAttributes<SVGSVGElement> & {
+  size?: number | string
+  color?: string
+}
 
 interface AuthInputFieldProps {
   label: string
-  icon: HugeIcon
+  icon: ComponentType<IconProps>
   field: AnyFieldApi
   id?: string
   type?: string
@@ -20,38 +23,39 @@ interface AuthInputFieldProps {
   autoComplete?: string
   maxLength?: number
   required?: boolean
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
+  spellCheck?: boolean
 }
 
 export function AuthInputField({
   label,
-  icon,
+  icon: Icon,
   field,
   id,
   type,
   placeholder,
   autoComplete,
   maxLength,
-  required
+  required,
+  inputMode,
+  spellCheck
 }: AuthInputFieldProps) {
   const resolvedId = id ?? field.name
   const hasErrors = field.state.meta.errors.length > 0
+  const errorId = `${resolvedId}-error`
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label
-        htmlFor={resolvedId}
-        className="font-semibold text-xs text-zinc-700 uppercase tracking-wider"
-      >
+      <label htmlFor={resolvedId} className="onside-label mb-0">
         {label}
       </label>
       <InputGroup className={AUTH_INPUT_GROUP_CLASS}>
         <InputGroupAddon className="pl-4">
-          <HugeiconsIcon
-            icon={icon}
+          <Icon
             size={16}
             color="currentColor"
-            strokeWidth={1.5}
-            className="text-zinc-400"
+            className="text-[var(--onside-muted)]"
+            aria-hidden="true"
           />
         </InputGroupAddon>
         <InputGroupInput
@@ -62,14 +66,20 @@ export function AuthInputField({
           autoComplete={autoComplete}
           maxLength={maxLength}
           required={required}
+          inputMode={inputMode}
+          spellCheck={spellCheck}
           value={field.state.value}
           onBlur={field.handleBlur}
           onChange={(e) => field.handleChange(e.target.value)}
           className={AUTH_INPUT_CLASS}
+          aria-invalid={hasErrors || undefined}
+          aria-describedby={hasErrors ? errorId : undefined}
         />
       </InputGroup>
       {hasErrors && (
-        <p className="text-red-500 text-xs">{field.state.meta.errors[0]}</p>
+        <p id={errorId} className="onside-field-error" role="alert">
+          {field.state.meta.errors[0]}
+        </p>
       )}
     </div>
   )
