@@ -165,6 +165,42 @@ export function createAuth() {
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
+    rateLimit: {
+      // ESC-11: o padrão guarda o contador num Map em memória do processo.
+      // Em serverless cada instância tem o seu, e ele some entre invocações,
+      // então login e cadastro ficavam abertos a força bruta na prática.
+      // No Postgres o contador passa a ser compartilhado.
+      //
+      // As regras não foram mexidas: o better-auth já aplica 3 tentativas por
+      // 10s em sign-in, sign-up, troca de senha e de e-mail, e janelas mais
+      // longas nos envios de e-mail. Sobrescrever isso com uma regra própria
+      // SUBSTITUIRIA a padrão, e afrouxaria o que já estava certo.
+      //
+      // Ligado explicitamente: a proteção não deve depender de NODE_ENV.
+      enabled: true,
+      storage: 'database'
+    },
+    session: {
+      // ESC-02: sem isto, toda requisição tRPC, toda navegação SSR e toda
+      // rota REST fazia um SELECT em `session` + `user`. O cache guarda a
+      // sessão num cookie assinado, e a leitura passa a ser local.
+      //
+      // maxAge curto de propósito: enquanto o cookie é válido, mudanças
+      // feitas por um admin sobre OUTRO usuário (banir, trocar papel) não
+      // têm como invalidá-lo, então essa é a janela máxima de propagação.
+      // 60s já captura praticamente todas as rajadas de requisições de um
+      // carregamento de página, que é de onde vem o ganho.
+      //
+      // Mutações que o próprio usuário faz sobre a própria sessão são
+      // seguras: `authClient.updateUser` e a impersonação do plugin admin
+      // passam por `setSessionCookie`, que reescreve este cache. A exceção
+      // é o onboarding, que atualiza `user` direto pelo Drizzle — por isso
+      // as rotas de onboarding chamam `refreshSessionCache()` no sucesso.
+      cookieCache: {
+        enabled: true,
+        maxAge: 60
+      }
+    },
     plugins: [
       tanstackStartCookies(),
       admin({
