@@ -15,6 +15,8 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed:analytics": "bun run src/seed/analytics.ts",
+    "db:seed:analytics:clean": "bun run src/seed/analytics.ts --clean",
     "db:seed:sports": "bun --env-file=../../apps/web/.env run src/seed/sports.ts",
     "db:seed:teams": "bun --env-file=../../apps/web/.env run src/seed/teams.ts"
   },
@@ -23,10 +25,12 @@
     "@neondatabase/serverless": "^1.0.2",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
+    "pg": "8",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@findsports_oficial/config": "workspace:*",
+    "@types/pg": "^8.21.0",
     "drizzle-kit": "^0.31.8",
     "typescript": "catalog:"
   }
