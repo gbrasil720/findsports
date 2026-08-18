@@ -1,116 +1,72 @@
+import type {
+  event,
+  eventParticipants,
+  sport,
+  team
+} from '@findsports_oficial/db/schema/platform'
+import type { InferSelectModel } from 'drizzle-orm'
 import Calendar from 'reicon-react/icons/Calendar'
+import Clock from 'reicon-react/icons/Clock'
 
-type Participant = { team: { name: string } }
-
-type Event = {
-  id: string
-  championship: string
-  startsAt: string
-  sport: { name: string; slug: string }
-  participants: Participant[]
-  participantFreeText?: string | null
-}
-
-function describeParticipants(e: Event): string {
-  if (e.participants.length > 0)
-    return e.participants.map((p) => p.team.name).join(' × ')
-  return e.participantFreeText || e.championship
-}
-
-function formatEventTime(startsAt: string | Date): string {
-  const d = new Date(startsAt)
-  const today = new Date()
-  const tomorrow = new Date()
-  tomorrow.setDate(today.getDate() + 1)
-
-  const time = d.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-
-  if (d.toDateString() === today.toDateString()) return `Hoje · ${time}`
-  if (d.toDateString() === tomorrow.toDateString()) return `Amanhã · ${time}`
-  return `${d.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short'
-  })} · ${time}`
+type EventWithRelations = InferSelectModel<typeof event> & {
+  sport: InferSelectModel<typeof sport>
+  participants: (InferSelectModel<typeof eventParticipants> & {
+    team: InferSelectModel<typeof team>
+  })[]
 }
 
 type Props = {
-  liveEvent?: Event
-  upcomingEvents: Event[]
-  allEvents: Event[]
+  events: EventWithRelations[]
 }
 
-export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
+export function EventsList({ events }: Props) {
+  if (!events.length) return null
+
   return (
-    <section className="onside-panel p-6 md:p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="onside-display flex items-center gap-2 text-2xl">
-          <Calendar
-            size={20}
-            color="currentColor"
-            className="text-[var(--onside-live)]"
-            aria-hidden="true"
-          />
-          Próximos jogos transmitidos
-        </h2>
+    <section className="onside-panel p-6">
+      <h2 className="onside-display mb-4 text-xl">Próximos jogos</h2>
+      <div className="space-y-3">
+        {events.map((ev) => {
+          const teams = ev.participants
+            .map((p) => p.team?.name)
+            .filter(Boolean)
+            .join(' vs ')
+
+          return (
+            <div
+              key={ev.id}
+              className="onside-panel-inner flex items-center gap-4 p-4"
+            >
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--onside-stone)]">
+                <Calendar size={18} color="currentColor" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="onside-text-on-paper text-sm font-medium truncate">
+                  {teams || ev.participantFreeText || ev.championship}
+                </p>
+                <p className="onside-text-muted-on-paper text-xs">
+                  {ev.sport.name} — {ev.championship}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="flex items-center gap-1 font-[family-name:var(--onside-mono)] text-xs text-[var(--onside-muted)]">
+                  <Clock size={12} color="currentColor" aria-hidden="true" />
+                  {new Date(ev.startsAt).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'short'
+                  })}
+                </div>
+                <div className="font-[family-name:var(--onside-mono)] text-xs text-[var(--onside-muted)]">
+                  {new Date(ev.startsAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
-
-      {allEvents.length === 0 ? (
-        <p className="py-4 text-[var(--onside-muted)] text-sm">
-          Nenhum jogo cadastrado ainda.
-        </p>
-      ) : (
-        <ul className="divide-y divide-[var(--onside-line)]">
-          {liveEvent && (
-            <li
-              key={liveEvent.id}
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-4"
-            >
-              <span
-                className="onside-live-dot is-pulse shrink-0"
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <div className="mb-0.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live)] uppercase tracking-widest">
-                  {liveEvent.sport.name} · {liveEvent.championship}
-                </div>
-                <div className="truncate font-semibold">
-                  {describeParticipants(liveEvent)}
-                </div>
-              </div>
-              <span className="onside-badge onside-badge-live whitespace-nowrap">
-                Ao vivo
-              </span>
-            </li>
-          )}
-
-          {upcomingEvents.map((e) => (
-            <li
-              key={e.id}
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-4"
-            >
-              <span
-                className="size-2 shrink-0 bg-[var(--onside-ink)]"
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <div className="mb-0.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest">
-                  {e.sport.name} · {e.championship}
-                </div>
-                <div className="truncate font-semibold">
-                  {describeParticipants(e)}
-                </div>
-              </div>
-              <div className="whitespace-nowrap font-bold text-[var(--onside-muted)] text-xs tabular-nums">
-                {formatEventTime(e.startsAt)}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   )
 }

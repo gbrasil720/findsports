@@ -9,7 +9,6 @@ import Location from 'reicon-react/icons/Location'
 import Xmark from 'reicon-react/icons/Xmark'
 import { BarAvatar } from '@/components/admin/pub-avatar'
 import { PhoneInput } from '@/components/phone-input'
-import { analytics } from '@/lib/analytics'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -21,6 +20,8 @@ type Event = {
 }
 
 type Bar = {
+  /** Necessário para o upload direto validar o caminho (ESC-15). */
+  id: string
   name: string
   address?: string
   neighborhood?: string
@@ -75,11 +76,7 @@ export function PubHeroSection({
   )
 
   const handleSave = async () => {
-    const changedFields = (Object.keys(form) as (keyof EditForm)[]).filter(
-      (k) => form[k] !== initialForm[k]
-    )
     await onSave(form)
-    analytics.barProfileUpdated(changedFields)
     setEditing(false)
   }
 
@@ -89,7 +86,10 @@ export function PubHeroSection({
   }
 
   return (
-    <section className="onside-panel-ink relative mb-8 overflow-hidden text-[var(--onside-paper)]">
+    <section
+      id="admin-profile-editor"
+      className="onside-panel-ink relative mb-8 scroll-mt-6 overflow-hidden text-[var(--onside-paper)]"
+    >
       <div className="hidden" />
       <div className="relative grid items-start gap-6 p-6 md:grid-cols-[1fr_auto] md:p-10">
         <div className="min-w-0">
@@ -115,10 +115,10 @@ export function PubHeroSection({
           >
             {/* Avatar clicável */}
             <BarAvatar
+              barId={bar.id}
               name={bar.name}
               photoUrl={bar.photoUrl}
               onUploadSuccess={(url) => {
-                analytics.barPhotoUploaded()
                 onPhotoUpdate(url)
               }}
             />

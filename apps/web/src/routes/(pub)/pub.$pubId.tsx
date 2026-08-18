@@ -1,223 +1,219 @@
-/** biome-ignore-all lint/a11y/useValidAriaRole: AppShell role prop is product role, not ARIA */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import ArrowLeft from 'reicon-react/icons/ArrowLeft'
-import Loader from 'reicon-react/icons/Loader'
+import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
+import { useQuery } from '@tanstack/react-query'
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate
+} from '@tanstack/react-router'
+import type { inferRouterOutputs } from '@trpc/server'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
+import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
 import { BarHeroSection } from '@/components/pub/bar-hero-section'
 import { BarInfoSidebar } from '@/components/pub/bar-info-sidebar'
 import { EventsList } from '@/components/pub/events-list'
-import { getEventTemporalState } from '@/domain/events'
+import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(pub)/pub/$pubId')({
+  // A página exige login (o registro de analytics depende de um fã
+  // identificado), então não deve ser indexada: um resultado de busca que
+  // leva a um portão de login é ruim para quem chega e inútil para o bar.
   head: () => ({
-    meta: [
-      { title: 'Bar no Onside' },
-      {
-        name: 'description',
-        content:
-          'Veja a programação de jogos, horários e como chegar neste bar parceiro do Onside.'
-      }
-    ]
+    meta: [{ title: 'Bar — Onside' }, { name: 'robots', content: 'noindex' }]
   }),
-  component: BarPage
+  component: PubPage
 })
 
-type FavCache = { isFavorited: boolean }
+type RouterOutputs = inferRouterOutputs<AppRouter>
+type PubOutput = NonNullable<RouterOutputs['pubs']['getById']>
+type RawEvent = PubOutput['events'][number]
+type RawSport = RawEvent['sport']
+type RawParticipant = RawEvent['participants'][number]
+type RawTeam = NonNullable<RawParticipant['team']>
 
-function BarPage() {
+type NormalizedTeam = Omit<RawTeam, 'createdAt'> & { createdAt: Date }
+type NormalizedSport = Omit<RawSport, 'createdAt'> & { createdAt: Date }
+type NormalizedParticipant = Omit<RawParticipant, 'team'> & {
+  team: NormalizedTeam
+}
+type NormalizedEvent = Omit<
+  RawEvent,
+  'createdAt' | 'startsAt' | 'endsAt' | 'sport' | 'participants'
+> & {
+  createdAt: Date
+  startsAt: Date
+  endsAt: Date | null
+  sport: NormalizedSport
+  participants: NormalizedParticipant[]
+}
+
+type NormalizedPub = Omit<PubOutput, 'createdAt' | 'updatedAt' | 'events'> & {
+  createdAt: Date
+  updatedAt: Date
+  events: NormalizedEvent[]
+}
+
+/**
+ * Normalize tRPC-serialized dates (string → Date) so component Props
+ * (InferSelectModel) are satisfied without `as any`.
+ */
+function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
+  if (!raw) return undefined
+  return {
+    ...raw,
+    createdAt: new Date(raw.createdAt),
+    updatedAt: new Date(raw.updatedAt),
+    events: raw.events.map((ev) => ({
+      ...ev,
+      createdAt: new Date(ev.createdAt),
+      startsAt: new Date(ev.startsAt),
+      endsAt: ev.endsAt ? new Date(ev.endsAt) : null,
+      sport: {
+        ...ev.sport,
+        createdAt: new Date(ev.sport.createdAt)
+      },
+      participants: ev.participants.map((p) => ({
+        ...p,
+        team: { ...p.team, createdAt: new Date(p.team.createdAt) }
+      }))
+    }))
+  }
+}
+
+function PubPage() {
   const { pubId } = Route.useParams()
-  const trpc = useTRPC()
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
-
-  const { data: sessionData } = authClient.useSession()
-  const role = sessionData?.user?.role
-  const isFan = role === 'fan'
-  const isLoggedIn = Boolean(sessionData?.user)
-  const shellVariant = isFan
-    ? 'fan'
-    : role === 'pub' || role === 'admin'
-      ? 'pub'
-      : 'public'
-
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 60_000)
-    return () => clearInterval(interval)
-  }, [])
+  const { href } = useLocation()
+  const { data: session } = authClient.useSession()
+  const [eventId, setEventId] = useState<string | null>(null)
+  const trpc = useTRPC()
 
   const {
-    data: bar,
-    isLoading,
+    data: pub,
+    isLoading: isLoadingPub,
     isError
-  } = useQuery(trpc.pubs.getById.queryOptions({ id: pubId }))
+  } = useQuery({
+    ...trpc.pubs.getById.queryOptions({ id: pubId }),
+    enabled: Boolean(session)
+  })
 
+  // Normalize serialized dates to Date instances
+  const normalizedPub = useMemo(() => normalizePub(pub), [pub])
+
+  // Extract eventId from URL search params (stable — no re-run on navigation)
   useEffect(() => {
-    if (bar?.name) document.title = `${bar.name} — Onside`
-  }, [bar?.name])
+    const params = new URLSearchParams(href.split('?')[1])
+    const id = params.get('eventId')
+    if (id) setEventId(id)
+  }, [href])
 
-  const isFavQueryKey = trpc.pubs.isFavorited.queryKey({ barId: pubId })
-  const favListQueryKey = trpc.pubs.getFavorites.queryKey()
-
-  const { data: favData } = useQuery({
-    ...trpc.pubs.isFavorited.queryOptions({ barId: pubId }),
-    enabled: isFan
-  })
-  const isFavorited = favData?.isFavorited ?? false
-
-  const optimistic = async (next: boolean) => {
-    await queryClient.cancelQueries({ queryKey: isFavQueryKey })
-    const prev = queryClient.getQueryData<FavCache>(isFavQueryKey)
-    queryClient.setQueryData<FavCache>(isFavQueryKey, { isFavorited: next })
-    return { prev }
-  }
-
-  const rollback = (
-    _err: unknown,
-    _vars: unknown,
-    ctx: { prev?: FavCache } | undefined
-  ) => {
-    if (ctx?.prev !== undefined)
-      queryClient.setQueryData<FavCache>(isFavQueryKey, ctx.prev)
-  }
-
-  const settle = () => {
-    queryClient.invalidateQueries({ queryKey: isFavQueryKey })
-    queryClient.invalidateQueries({ queryKey: favListQueryKey })
-  }
-
-  const favoriteMutation = useMutation({
-    mutationFn: trpc.pubs.favorite.mutationOptions().mutationFn,
-    onMutate: () => optimistic(true),
-    onError: rollback,
-    onSettled: settle
-  })
-
-  const unfavoriteMutation = useMutation({
-    mutationFn: trpc.pubs.unfavorite.mutationOptions().mutationFn,
-    onMutate: () => optimistic(false),
-    onError: rollback,
-    onSettled: settle
-  })
-
-  if (isLoading) {
-    return (
-      <AppShell variant="public">
-        <div
-          className="flex items-center justify-center py-24 text-[var(--onside-muted)]"
-          aria-live="polite"
-        >
-          <Loader
-            size={24}
-            color="currentColor"
-            className="mr-2 animate-spin"
-            aria-hidden="true"
-          />
-          <span className="text-sm">Carregando…</span>
-        </div>
-      </AppShell>
-    )
-  }
-
-  if (isError || !bar) {
-    return (
-      <AppShell variant="public">
-        <div className="onside-panel py-16 text-center">
-          <p className="mb-3 font-semibold text-[var(--onside-muted)]">
-            Bar não encontrado ou removido.
-          </p>
-          <Link
-            to={isLoggedIn ? '/dashboard' : '/'}
-            className="font-bold text-[var(--onside-live-text)] text-sm hover:underline"
-          >
-            Voltar
-          </Link>
-        </div>
-      </AppShell>
-    )
-  }
-
-  const now = Date.now()
-  const liveEvent = bar.events.find(
-    (event) => getEventTemporalState(event.startsAt, now) === 'live'
-  )
-  const upcomingEvents = bar.events.filter(
-    (event) => getEventTemporalState(event.startsAt, now) === 'upcoming'
-  )
-
-  const handleDirections = () => {
-    const lat = parseFloat(bar.latitude)
-    const lng = parseFloat(bar.longitude)
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
-    const label = encodeURIComponent(bar.name)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    const url = isIOS
-      ? `maps://maps.apple.com/?daddr=${lat},${lng}&q=${label}`
-      : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-    window.open(url, '_blank')
-  }
-
-  const favoritePending =
-    favoriteMutation.isPending || unfavoriteMutation.isPending
-
-  const handleFavorite = () => {
-    if (!isLoggedIn) {
-      navigate({ to: '/login' })
-      return
+  // Track profile_view when pub data loads (only after auth, only on success)
+  useEffect(() => {
+    if (normalizedPub) {
+      trackCommercialEvent({
+        pubId,
+        type: 'profile_view',
+        sourceEventId: eventId ?? undefined
+      })
     }
-    if (!isFan) {
-      return
+  }, [normalizedPub, pubId, eventId])
+
+  // Redirect if pub not found (only after auth resolves)
+  useEffect(() => {
+    if (!isLoadingPub && !normalizedPub && isError) {
+      toast.error('Bar não encontrado')
+      navigate({ to: '/dashboard' })
     }
-    if (favoritePending) return
-    if (isFavorited) {
-      unfavoriteMutation.mutate({ barId: bar.id })
-    } else {
-      favoriteMutation.mutate({ barId: bar.id })
-    }
+  }, [isLoadingPub, normalizedPub, isError, navigate])
+
+  const handleOpenDirections = () => {
+    analytics.barIntent({ bar_id: pubId, action: 'directions' })
+    trackCommercialEvent({
+      pubId,
+      type: 'directions_opened',
+      sourceEventId: eventId ?? undefined
+    })
   }
+
+  const handlePhoneClick = () => {
+    analytics.barIntent({ bar_id: pubId, action: 'phone' })
+    trackCommercialEvent({
+      pubId,
+      type: 'phone_clicked',
+      sourceEventId: eventId ?? undefined
+    })
+  }
+
+  const handleWhatsAppClick = () => {
+    analytics.barIntent({ bar_id: pubId, action: 'whatsapp' })
+    trackCommercialEvent({
+      pubId,
+      type: 'whatsapp_opened',
+      sourceEventId: eventId ?? undefined
+    })
+  }
+
+  const isAuthed = Boolean(session)
 
   return (
-    <AppShell variant={shellVariant} userMeta={isFan ? bar.name : undefined}>
-      <Link
-        to={isLoggedIn && isFan ? '/dashboard' : '/'}
-        className="mb-4 inline-flex min-h-11 items-center gap-2 font-[family-name:var(--onside-mono)] text-[11px] font-bold text-[var(--onside-muted)] uppercase tracking-[0.12em] hover:text-[var(--onside-ink)]"
+    <div className="onside-app flex min-h-dvh">
+      {/* Auth gate dialog — shown when no session */}
+      {!isAuthed && <AuthRequiredDialog open />}
+
+      {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
+      <div
+        className="onside-content-grid flex w-full flex-col"
+        inert={!isAuthed}
+        aria-hidden={!isAuthed}
       >
-        <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-        Voltar
-      </Link>
+        <AppShell variant="pub">
+          <main className="onside-main">
+            <div className="onside-container">
+              <div className="mb-6 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.16em]">
+                <span className="onside-live-dot" aria-hidden="true" />
+                Perfil do bar
+              </div>
 
-      <BarHeroSection
-        bar={bar}
-        liveEvent={liveEvent}
-        isFavorited={isFavorited}
-        favoritePending={favoritePending}
-        favoriteDisabled={!isFan && isLoggedIn}
-        favoriteHint={
-          !isLoggedIn
-            ? 'Entre para favoritar'
-            : !isFan
-              ? 'Favoritos são exclusivos de torcedores'
-              : undefined
-        }
-        onDirections={handleDirections}
-        onFavorite={handleFavorite}
-      />
+              {isLoadingPub ? (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="min-w-0 flex-1">
+                      <Skeleton className="h-[220px] w-full rounded-[12px]" />
+                    </div>
+                    <div className="w-full shrink-0 basis-[320px]">
+                      <Skeleton className="h-[280px] w-full rounded-[12px]" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-[180px] w-full rounded-[12px]" />
+                </div>
+              ) : normalizedPub ? (
+                <>
+                  <div className="flex flex-col gap-6 lg:flex-row">
+                    <div className="min-w-0 flex-1">
+                      <BarHeroSection pub={normalizedPub} />
+                    </div>
+                    <div className="w-full shrink-0 basis-[320px]">
+                      <BarInfoSidebar
+                        pub={normalizedPub}
+                        onOpenDirections={handleOpenDirections}
+                        onPhoneClick={handlePhoneClick}
+                        onWhatsAppClick={handleWhatsAppClick}
+                      />
+                    </div>
+                  </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <div className="min-w-0 space-y-8">
-          <EventsList
-            liveEvent={liveEvent}
-            upcomingEvents={upcomingEvents}
-            allEvents={bar.events}
-          />
-        </div>
-
-        <BarInfoSidebar bar={bar} onDirections={handleDirections} />
+                  <EventsList events={normalizedPub.events} />
+                </>
+              ) : null}
+            </div>
+          </main>
+        </AppShell>
       </div>
-    </AppShell>
+    </div>
   )
 }

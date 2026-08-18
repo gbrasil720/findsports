@@ -7,6 +7,8 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import type {
+  AnalyticsOverviewState,
+  EventAnalyticsState,
   EventsState,
   PlanState,
   PolicyState
@@ -17,7 +19,10 @@ import {
   getAdminSectionFromHash,
   getAdminTabId
 } from '@/components/admin/admin-tabs'
+import { AnalyticsOverview } from '@/components/admin/analytics-overview'
 import { BarPreview } from '@/components/admin/bar-preview'
+import { ConversionReadiness } from '@/components/admin/conversion-readiness'
+import { EventPerformance } from '@/components/admin/event-performance'
 import { EventsManager } from '@/components/admin/events-manager'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { AppShell } from '@/components/app/app-shell'
@@ -78,6 +83,24 @@ function QueryError({
   )
 }
 
+/* ------------------------------------------------------------------ */
+/* Analytics date helpers                                              */
+/* ------------------------------------------------------------------ */
+
+function getAnalyticsDates() {
+  const to = new Date()
+  const from = new Date()
+  from.setDate(to.getDate() - 30)
+  return {
+    from: from.toISOString(),
+    to: to.toISOString()
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
+
 function PubDashboard() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -85,16 +108,11 @@ function PubDashboard() {
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>('admin-visao')
   const [profileError, setProfileError] = useState<string | null>(null)
-  const inactiveTracked = useRef(false)
   const limitTracked = useRef(false)
 
   useEffect(() => {
     const interval = setInterval(() => setTick((t) => t + 1), 60_000)
     return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    analytics.adminViewed()
   }, [])
 
   useEffect(() => {
@@ -115,6 +133,10 @@ function PubDashboard() {
       window.history.replaceState(null, '', nextHash)
     }
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Queries                                                             */
+  /* ------------------------------------------------------------------ */
 
   const {
     data: bar,
@@ -138,6 +160,9 @@ function PubDashboard() {
     refetch: refetchSub
   } = useQuery(trpc.pub.getMySubscription.queryOptions())
 
+  const canQueryEventAnalytics =
+    subFetched && !subError && subscription?.plan === 'elite'
+
   const {
     data: creationPolicy,
     isLoading: loadingPolicy,
@@ -145,6 +170,35 @@ function PubDashboard() {
     refetch: refetchPolicy
   } = useQuery(trpc.pub.getMyEventCreationPolicy.queryOptions())
 
+  /* Analytics queries */
+  const [analyticsDates] = useState(getAnalyticsDates)
+
+  const {
+    data: analyticsOverview,
+    isLoading: loadingAnalytics,
+    isError: analyticsError,
+    refetch: refetchAnalytics
+  } = useQuery(
+    trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions({
+      from: analyticsDates.from,
+      to: analyticsDates.to
+    })
+  )
+
+  const {
+    data: eventAnalytics,
+    isLoading: loadingEventAnalytics,
+    isError: eventAnalyticsError,
+    refetch: refetchEventAnalytics
+  } = useQuery({
+    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
+      from: analyticsDates.from,
+      to: analyticsDates.to
+    }),
+    enabled: canQueryEventAnalytics
+  })
+
+  /* Mutations */
   const updateMeMutation = useMutation(
     trpc.pub.updateMe.mutationOptions({
       onSuccess: () => {
@@ -159,6 +213,10 @@ function PubDashboard() {
     })
   )
 
+  /* ------------------------------------------------------------------ */
+  /* State machines                                                      */
+  /* ------------------------------------------------------------------ */
+
   const eventsState: EventsState = loadingEvents
     ? { status: 'loading' }
     : eventsError || !events
@@ -169,6 +227,7 @@ function PubDashboard() {
           }
         }
       : { status: 'ready', events }
+
   const policyState: PolicyState = loadingPolicy
     ? { status: 'loading' }
     : policyError || !creationPolicy
@@ -179,13 +238,53 @@ function PubDashboard() {
           }
         }
       : { status: 'ready', policy: creationPolicy }
+
   const planState: PlanState = loadingSub
     ? { status: 'loading' }
     : subError
       ? { status: 'error' }
       : { status: 'ready', plan: subscription?.plan ?? 'starter' }
 
+  /* Analytics overview state machine */
+  const analyticsOverviewState: AnalyticsOverviewState = loadingAnalytics
+    ? { status: 'loading' }
+    : analyticsError
+      ? {
+          status: 'error',
+          retry: () => {
+            void refetchAnalytics()
+          }
+        }
+      : analyticsOverview
+        ? { status: 'ready', data: analyticsOverview }
+        : { status: 'empty' }
+
+  /* Event analytics state machine */
+  const eventAnalyticsState: EventAnalyticsState = loadingSub
+    ? { status: 'loading' }
+    : !canQueryEventAnalytics
+      ? { status: 'empty' }
+      : loadingEventAnalytics
+        ? { status: 'loading' }
+        : eventAnalyticsError
+          ? {
+              status: 'error',
+              retry: () => {
+                void refetchEventAnalytics()
+              }
+            }
+          : eventAnalytics?.events && eventAnalytics.events.length > 0
+            ? { status: 'ready', items: eventAnalytics.events }
+            : { status: 'empty' }
+
+  /* ------------------------------------------------------------------ */
+  /* Derived                                                             */
+  /* ------------------------------------------------------------------ */
+
   const eventList = eventsState.status === 'ready' ? eventsState.events : []
+  const hasUpcomingEvent = eventList.some(
+    (e) => getEventTemporalState(e.startsAt) === 'upcoming'
+  )
   const liveEvent = eventList.find(
     (item) => getEventTemporalState(item.startsAt) === 'live'
   )
@@ -204,18 +303,39 @@ function PubDashboard() {
   const isAtLimit = limitedPolicy ? !limitedPolicy.canCreate : false
 
   useEffect(() => {
-    if (isInactive && !inactiveTracked.current) {
-      analytics.barInactiveWarningShown()
-      inactiveTracked.current = true
-    }
-  }, [isInactive])
-
-  useEffect(() => {
     if (isAtLimit && !limitTracked.current) {
       analytics.eventLimitReached()
       limitTracked.current = true
     }
   }, [isAtLimit])
+
+  /* ------------------------------------------------------------------ */
+  /* WhatsApp confirmation via updateMe                                  */
+  /* ------------------------------------------------------------------ */
+
+  const confirmWhatsAppMutation = useMutation(
+    trpc.pub.updateMe.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+      },
+      onError: (err) => {
+        setProfileError(err.message || 'Não foi possível confirmar o WhatsApp.')
+      }
+    })
+  )
+
+  const handleConfirmWhatsApp = async () => {
+    if (!bar?.phone) return
+    setProfileError(null)
+    await confirmWhatsAppMutation.mutateAsync({
+      phone: bar.phone,
+      phoneAcceptsWhatsapp: true
+    })
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Loading / Error                                                     */
+  /* ------------------------------------------------------------------ */
 
   if (loadingBar) {
     return (
@@ -255,6 +375,10 @@ function PubDashboard() {
     )
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Render                                                              */
+  /* ------------------------------------------------------------------ */
+
   return (
     <AppShell variant="pub" userMeta={bar.name}>
       <div className="mb-6 border-[var(--onside-ink)] border-b pb-4">
@@ -273,6 +397,9 @@ function PubDashboard() {
         <AdminTabs activeSection={activeSection} onChange={changeSection} />
 
         <div className="min-w-0">
+          {/* ============================================================ */}
+          {/* Tab: Visão Geral                                              */}
+          {/* ============================================================ */}
           <section
             id="admin-visao"
             role="tabpanel"
@@ -407,7 +534,7 @@ function PubDashboard() {
                 <div className="onside-stat-value tabular-nums">
                   {loadingEvents ? '…' : totalCount}
                 </div>
-                <div className="onside-stat-label">Transmissões</div>
+                <div className="onside-stat-label">Jogos na grade</div>
               </div>
               <div className="onside-stat">
                 <div className="onside-stat-value tabular-nums">
@@ -426,20 +553,36 @@ function PubDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Analytics Overview — real data */}
+            <AnalyticsOverview
+              overviewState={analyticsOverviewState}
+              onCreateEvent={() => changeSection('admin-grade')}
+            />
           </section>
 
+          {/* ============================================================ */}
+          {/* Tab: Grade                                                    */}
+          {/* ============================================================ */}
           <section
             id="admin-grade"
             role="tabpanel"
             aria-labelledby={getAdminTabId('admin-grade')}
             hidden={activeSection !== 'admin-grade'}
+            className="space-y-6"
           >
             <EventsManager
               eventsState={eventsState}
               policyState={policyState}
             />
+
+            {/* Event Performance — real data */}
+            <EventPerformance eventAnalyticsState={eventAnalyticsState} />
           </section>
 
+          {/* ============================================================ */}
+          {/* Tab: Meu Espaço                                               */}
+          {/* ============================================================ */}
           <section
             id="admin-espaco"
             role="tabpanel"
@@ -447,6 +590,20 @@ function PubDashboard() {
             hidden={activeSection !== 'admin-espaco'}
             className="space-y-6"
           >
+            {/* Conversion Readiness */}
+            <ConversionReadiness
+              bar={bar}
+              hasUpcomingEvent={hasUpcomingEvent}
+              isConfirmingWhatsApp={confirmWhatsAppMutation.isPending}
+              onConfirmWhatsApp={handleConfirmWhatsApp}
+              onEditProfile={() => {
+                document
+                  .getElementById('admin-profile-editor')
+                  ?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              onCreateEvent={() => changeSection('admin-grade')}
+            />
+
             <PubHeroSection
               bar={bar}
               liveEvent={liveEvent}
@@ -464,7 +621,12 @@ function PubDashboard() {
                   description: data.description || undefined
                 })
               }}
-              onPhotoUpdate={() => {
+              onPhotoUpdate={async (url: string) => {
+                // ESC-15: o arquivo agora sobe direto do navegador, então a
+                // rota de upload não grava mais nada. Quem persiste a URL é
+                // esta chamada — e o servidor confere que ela pertence ao
+                // armazenamento e à pasta deste bar antes de aceitar.
+                await updateMeMutation.mutateAsync({ photoUrl: url })
                 queryClient.invalidateQueries({
                   queryKey: trpc.pub.getMe.queryKey()
                 })

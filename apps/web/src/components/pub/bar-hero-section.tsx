@@ -1,279 +1,152 @@
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
-import { useState } from 'react'
-import Call from 'reicon-react/icons/Call'
-import Check from 'reicon-react/icons/Check'
-import Compass from 'reicon-react/icons/Compass'
-import Copy from 'reicon-react/icons/Copy'
-import Heart from 'reicon-react/icons/Heart'
-import Link from 'reicon-react/icons/Link'
+import type { bar } from '@findsports_oficial/db/schema/platform'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import type { InferSelectModel } from 'drizzle-orm'
+import { useEffect, useState } from 'react'
 import Location from 'reicon-react/icons/Location'
-import Share from 'reicon-react/icons/Share'
-import { formatStoredPhone } from '@/utils/format-phone'
+import Star from 'reicon-react/icons/Star'
+import { toast } from 'sonner'
+import { authClient } from '@/lib/auth-client'
+import { useTRPC } from '@/utils/trpc'
 
-type Participant = { team: { name: string } }
-
-type Event = {
-  id: string
-  championship: string
-  participants: Participant[]
-}
-
-type Bar = {
-  id: string
-  name: string
-  address: string
-  neighborhood: string
-  phone?: string | null
-  description?: string | null
-  photoUrl?: string | null
-}
+// `geo` é coluna derivada de uso exclusivo do índice espacial; a API não a envia.
+type Bar = Omit<InferSelectModel<typeof bar>, 'geo' | 'userId'>
 
 type Props = {
-  bar: Bar
-  liveEvent?: Event
-  isFavorited?: boolean
-  favoritePending?: boolean
-  favoriteDisabled?: boolean
-  favoriteHint?: string
-  onDirections: () => void
-  onFavorite: () => void
+  pub: Bar & {
+    events: (InferSelectModel<
+      typeof import('@findsports_oficial/db/schema/platform').event
+    > & {
+      sport: InferSelectModel<
+        typeof import('@findsports_oficial/db/schema/platform').sport
+      >
+      participants: {
+        team: InferSelectModel<
+          typeof import('@findsports_oficial/db/schema/platform').team
+        >
+      }[]
+    })[]
+  }
 }
 
-export function BarHeroSection({
-  bar,
-  liveEvent,
-  isFavorited = false,
-  favoritePending = false,
-  favoriteDisabled = false,
-  favoriteHint,
-  onDirections,
-  onFavorite
-}: Props) {
-  const [shareOpen, setShareOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [shareError, setShareError] = useState<string | null>(null)
+export function BarHeroSection({ pub }: Props) {
+  const { data: session } = authClient.useSession()
+  const [isFavorited, setIsFavorited] = useState(false)
+  const [favoritePending, setFavoritePending] = useState(false)
+  const trpc = useTRPC()
 
-  const initials = bar.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
+  const { data: favoriteData } = useQuery({
+    ...trpc.pubs.isFavorited.queryOptions({ barId: pub.id }),
+    enabled: Boolean(session)
+  })
 
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+  useEffect(() => {
+    if (favoriteData !== undefined) setIsFavorited(favoriteData.isFavorited)
+  }, [favoriteData])
 
-  const handleCopy = async () => {
-    setShareError(null)
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setShareError('Não foi possível copiar o link.')
-    }
-  }
-
-  const handleNativeShare = async () => {
-    setShareError(null)
-    try {
-      await navigator.share({ title: bar.name, url: shareUrl })
-    } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') {
-        setShareError('Não foi possível compartilhar.')
+  const toggleFavoriteMutation = useMutation(
+    trpc.pubs.favorite.mutationOptions({
+      onSuccess: () => {
+        toast.success('Adicionado aos favoritos')
+        setIsFavorited(true)
+      },
+      onError: (err) => {
+        toast.error(err.message || 'Erro ao favoritar')
       }
-    }
-  }
+    })
+  )
 
-  const handleShareClick = () => {
-    setShareOpen(true)
+  const unfavoriteMutation = useMutation(
+    trpc.pubs.unfavorite.mutationOptions({
+      onSuccess: () => {
+        toast.success('Removido dos favoritos')
+        setIsFavorited(false)
+      },
+      onError: (err) => {
+        toast.error(err.message || 'Erro ao remover favorito')
+      }
+    })
+  )
+
+  const handleToggleFavorite = async () => {
+    if (!session) {
+      toast.info('Faça login para favoritar.')
+      return
+    }
+    setFavoritePending(true)
+    try {
+      if (isFavorited) {
+        await unfavoriteMutation.mutateAsync({ barId: pub.id })
+      } else {
+        await toggleFavoriteMutation.mutateAsync({ barId: pub.id })
+      }
+    } catch {
+      // errors handled in mutation callbacks
+    } finally {
+      setFavoritePending(false)
+    }
   }
 
   return (
-    <>
-      <section className="onside-panel-ink relative mb-8 overflow-hidden">
-        {liveEvent && (
-          <div
-            className="h-1.5 w-full bg-[var(--onside-live)]"
+    <section className="onside-panel p-6 md:p-8">
+      <div className="mb-6 flex items-start justify-between">
+        <div className="min-w-0">
+          <h1 className="onside-display mb-1 text-3xl">{pub.name}</h1>
+          <p className="onside-text-muted-on-paper text-sm">
+            {pub.neighborhood}, {pub.city}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="onside-badge onside-badge-ghost ml-4 shrink-0"
+          onClick={handleToggleFavorite}
+          disabled={favoritePending}
+          aria-label={
+            isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'
+          }
+        >
+          <Star
+            size={16}
+            color="currentColor"
+            className="text-[var(--onside-muted)]"
             aria-hidden="true"
           />
-        )}
-        <div className="relative grid items-end gap-6 p-6 md:grid-cols-[1fr_auto] md:p-10">
-          <div className="flex items-start gap-5">
-            <div className="size-[88px] shrink-0 overflow-hidden border-2 border-[var(--onside-paper)] bg-[rgb(241_238_230_/_10%)] md:size-[112px]">
-              {bar.photoUrl ? (
-                <img
-                  src={bar.photoUrl}
-                  alt={bar.name}
-                  width={112}
-                  height={112}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="grid size-full place-items-center font-bold text-3xl text-[var(--onside-paper)]">
-                  {initials}
-                </div>
-              )}
-            </div>
+          <span className="ml-1.5 text-xs">
+            {isFavorited ? 'Favoritado' : 'Favoritar'}
+          </span>
+        </button>
+      </div>
 
-            <div className="min-w-0 flex-1">
-              {liveEvent && (
-                <div className="mb-3 inline-flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live)] uppercase tracking-[0.16em]">
-                  <span
-                    className="onside-live-dot is-pulse"
-                    aria-hidden="true"
-                  />
-                  Ao vivo ·{' '}
-                  {liveEvent.participants.length > 0
-                    ? liveEvent.participants.map((p) => p.team.name).join(' × ')
-                    : liveEvent.championship}
-                </div>
-              )}
-              <h1 className="onside-display mb-3 break-words text-4xl text-[var(--onside-paper)] md:text-5xl">
-                {bar.name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4 text-[color-mix(in_srgb,var(--onside-paper)_78%,transparent)] text-sm">
-                <span className="inline-flex items-center gap-1.5">
-                  <Location size={16} color="currentColor" aria-hidden="true" />
-                  {bar.address} · {bar.neighborhood}
-                </span>
-                {bar.phone && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Call size={16} color="currentColor" aria-hidden="true" />
-                    {formatStoredPhone(bar.phone)}
-                  </span>
-                )}
-              </div>
-              {bar.description && (
-                <p className="mt-3 max-w-lg text-[color-mix(in_srgb,var(--onside-paper)_65%,transparent)] text-sm">
-                  {bar.description}
-                </p>
-              )}
-            </div>
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="onside-panel-inner p-3">
+          <div className="mb-1 flex items-center gap-1.5 font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+            <Location size={12} color="currentColor" aria-hidden="true" />
+            <span>Endereço</span>
           </div>
-
-          <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:flex sm:flex-wrap">
-            <button
-              type="button"
-              onClick={onDirections}
-              className="onside-btn onside-btn-acid min-h-11"
-            >
-              <Compass size={16} color="currentColor" aria-hidden="true" />
-              Como chegar
-            </button>
-            <button
-              type="button"
-              onClick={onFavorite}
-              disabled={favoritePending || favoriteDisabled}
-              title={favoriteHint}
-              aria-label={
-                favoriteHint
-                  ? favoriteHint
-                  : isFavorited
-                    ? 'Remover dos favoritos'
-                    : 'Adicionar aos favoritos'
-              }
-              aria-pressed={isFavorited}
-              className={`grid min-h-11 min-w-11 place-items-center border border-[var(--onside-paper)] transition-colors disabled:opacity-50 ${
-                isFavorited
-                  ? 'bg-[var(--onside-live)] text-[var(--onside-paper)]'
-                  : 'bg-transparent text-[var(--onside-paper)] hover:bg-[rgb(241_238_230_/_12%)]'
-              }`}
-            >
-              <Heart
-                size={16}
-                color="currentColor"
-                fill={isFavorited ? 'currentColor' : 'none'}
-                aria-hidden="true"
-              />
-            </button>
-            <button
-              type="button"
-              onClick={handleShareClick}
-              aria-label="Compartilhar bar"
-              className="grid min-h-11 min-w-11 place-items-center border border-[var(--onside-paper)] text-[var(--onside-paper)] transition-colors hover:bg-[rgb(241_238_230_/_12%)]"
-            >
-              <Share size={16} color="currentColor" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-        <DialogContent className="onside-dialog max-w-[calc(100vw-2rem)] rounded-none border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] sm:max-w-lg">
-          <div className="mb-4 flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-                <Share size={18} color="currentColor" aria-hidden="true" />
-              </div>
-              <DialogTitle className="font-bold text-[var(--onside-ink)]">
-                Compartilhar bar
-              </DialogTitle>
-            </div>
-            <DialogClose className="min-h-11 min-w-11" />
-          </div>
-
-          <p className="mb-4 text-[var(--onside-muted)] text-sm">
-            Compartilhe{' '}
-            <span className="font-semibold text-[var(--onside-ink)]">
-              {bar.name}
-            </span>{' '}
-            com seus amigos.
+          <p className="onside-text-on-paper text-sm font-medium truncate">
+            {pub.address}
           </p>
-
-          {shareError ? (
-            <p
-              className="mb-3 text-sm text-[var(--onside-live-text)]"
-              role="alert"
-            >
-              {shareError}
-            </p>
-          ) : null}
-
-          <div className="mb-4 flex flex-col gap-2 border border-[var(--onside-ink)] bg-[var(--onside-stone)] px-4 py-3 sm:flex-row sm:items-center">
-            <Link
-              size={16}
-              color="currentColor"
-              className="shrink-0 text-[var(--onside-muted)]"
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1 break-all font-[family-name:var(--onside-mono)] text-[var(--onside-muted)] text-sm">
-              {shareUrl}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`inline-flex shrink-0 items-center gap-1.5 border border-[var(--onside-ink)] px-3 py-1.5 font-bold text-xs transition-colors ${
-                copied
-                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                  : 'bg-[var(--onside-paper)] text-[var(--onside-ink)]'
-              }`}
-            >
-              {copied ? (
-                <Check size={13} color="currentColor" aria-hidden="true" />
-              ) : (
-                <Copy size={13} color="currentColor" aria-hidden="true" />
-              )}
-              {copied ? 'Copiado!' : 'Copiar'}
-            </button>
+        </div>
+        <div className="onside-panel-inner p-3">
+          <div className="mb-1 font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+            <span>Bairro</span>
           </div>
+          <p className="onside-text-on-paper text-sm font-medium">
+            {pub.neighborhood}
+          </p>
+        </div>
+        <div className="onside-panel-inner p-3">
+          <div className="mb-1 font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+            <span>Cidade</span>
+          </div>
+          <p className="onside-text-on-paper text-sm font-medium">{pub.city}</p>
+        </div>
+      </div>
 
-          {typeof navigator !== 'undefined' && 'share' in navigator && (
-            <button
-              type="button"
-              onClick={handleNativeShare}
-              className="onside-btn onside-btn-ink onside-btn-full"
-            >
-              <Share size={16} color="currentColor" aria-hidden="true" />
-              Compartilhar via...
-            </button>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+      {pub.description && (
+        <p className="onside-text-on-paper text-sm leading-relaxed">
+          {pub.description}
+        </p>
+      )}
+    </section>
   )
 }

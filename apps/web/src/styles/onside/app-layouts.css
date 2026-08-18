@@ -250,12 +250,28 @@
 }
 
 /* ─── Dialog / modal surface ─── */
-.onside-app .onside-dialog {
+/* Dialogs portal outside `.onside-app`, so the surface must be self-contained. */
+.onside-dialog,
+.onside-app.onside-dialog {
+  min-height: 0;
   border: 1.5px solid var(--onside-ink) !important;
   border-radius: 0 !important;
   background: var(--onside-paper) !important;
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
   box-shadow: 8px 8px 0 var(--onside-ink) !important;
   max-height: min(90dvh, 900px);
+}
+
+/* ─── Hint popover surface ─── */
+/* Hints portal outside `.onside-app`, so the surface must be self-contained. */
+.onside-hint {
+  border: 1.5px solid var(--onside-ink) !important;
+  border-radius: 0 !important;
+  background: var(--onside-paper) !important;
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  box-shadow: 6px 6px 0 var(--onside-ink) !important;
 }
 
 /* ─── Sticky filter offset ─── */
