@@ -1,8 +1,8 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { commercialAnalyticsRouter } from './commercial-analytics'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
-
 import { waitlistRouter } from './waitlist'
 
 export const appRouter = router({
@@ -18,6 +18,7 @@ export const appRouter = router({
   waitlist: waitlistRouter,
   onboarding: onboardingRouter,
   pub: pubRouter,
-  pubs: pubsRouter
+  pubs: pubsRouter,
+  commercialAnalytics: commercialAnalyticsRouter
 })
 export type AppRouter = typeof appRouter

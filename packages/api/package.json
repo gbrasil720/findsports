@@ -5,6 +5,9 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./lib/commercial-analytics/types": {
+      "default": "./src/lib/commercial-analytics/types.ts"
+    },
     "./*": {
       "default": "./src/*.ts"
     }
