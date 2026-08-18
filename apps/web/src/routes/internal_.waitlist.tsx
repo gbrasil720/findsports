@@ -27,7 +27,7 @@ import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
 import { formatStoredPhone } from '@/utils/format-phone'
-import { useTRPC } from '@/utils/trpc'
+import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/internal_/waitlist')({
   head: () => ({
@@ -94,13 +94,32 @@ function AdminWaitlistPage() {
   const roleFilterId = useId()
 
   const trpc = useTRPC()
+  const trpcClient = useTRPCClient()
   const {
     data: subscribers = [],
     isLoading,
     isError,
     isFetching,
     refetch
-  } = useQuery(trpc.waitlist.getAll.queryOptions())
+  } = useQuery({
+    queryKey: trpc.waitlist.getAll.queryKey(),
+    // A resposta do servidor passou a ser paginada (ESC-09), mas a tela
+    // filtra, conta e exporta sobre a lista inteira. Percorremos as páginas
+    // aqui para preservar isso — o que muda é o tamanho de cada resposta,
+    // não o que a tela enxerga.
+    queryFn: async () => {
+      const todos: Awaited<
+        ReturnType<typeof trpcClient.waitlist.getAll.query>
+      >['entries'] = []
+      let cursor: string | undefined
+      do {
+        const pagina = await trpcClient.waitlist.getAll.query({ cursor })
+        todos.push(...pagina.entries)
+        cursor = pagina.nextCursor ?? undefined
+      } while (cursor)
+      return todos
+    }
+  })
 
   const filtered = subscribers.filter((s) => {
     const q = search.toLowerCase()

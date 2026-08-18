@@ -71,7 +71,7 @@ writeFileSync(
     '      res.setHeader(key, value)',
     '    }',
     '  }',
-    '  if (setCookies.length > 0) res.setHeader(\'set-cookie\', setCookies)',
+    "  if (setCookies.length > 0) res.setHeader('set-cookie', setCookies)",
     '  if (response.body) {',
     '    Readable.fromWeb(response.body).pipe(res)',
     '  } else {',
