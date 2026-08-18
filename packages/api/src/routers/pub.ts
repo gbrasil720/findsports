@@ -9,15 +9,64 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   getEventCreationPolicy,
   STARTER_EVENT_LIMIT
 } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
 
+/**
+ * Resolve the effective phoneAcceptsWhatsapp value given the input and
+ * the existing bar state.
+ *
+ * Rules (spec section 10.1):
+ * - phone change (existing non-empty → different input) → revoke to false
+ *   atomically, regardless of input value
+ * - confirm true only when bar already has a phone OR a non-empty phone
+ *   is sent in the same mutation (initial setup is allowed)
+ * - confirm false is always allowed
+ */
+export function resolvePhoneAcceptsWhatsapp(
+  inputPhone: string | undefined,
+  inputAccepts: boolean | undefined,
+  existingPhone: string | null
+): { value: boolean; changed: boolean } | null {
+  const hasExistingPhone = existingPhone != null && existingPhone.trim() !== ''
+  // "Phone change" = existing non-empty phone replaced with a different value
+  const phoneChanged =
+    hasExistingPhone && inputPhone !== undefined && inputPhone !== existingPhone
+
+  if (inputAccepts === undefined) {
+    // No explicit input — only revoke if phone changed
+    return phoneChanged ? { value: false, changed: true } : null
+  }
+
+  // Phone changed → revoke atomically, regardless of input value
+  if (phoneChanged) {
+    return { value: false, changed: true }
+  }
+
+  // Confirming true requires a phone number (existing or provided)
+  if (inputAccepts === true) {
+    const effectivePhone = inputPhone ?? existingPhone
+    if (!effectivePhone || effectivePhone.trim() === '') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message:
+          'Confirmação de WhatsApp requer telefone cadastrado. Envie um telefone junto com a confirmação.'
+      })
+    }
+  }
+
+  return { value: inputAccepts, changed: true }
+}
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
+    // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
+    columns: { geo: false },
     with: { subscription: true }
   })
 
@@ -51,6 +100,7 @@ export const pubRouter = router({
         name: z.string().min(2).max(100).optional(),
         description: z.string().max(500).optional(),
         phone: z.string().max(30).optional(),
+        phoneAcceptsWhatsapp: z.boolean().optional(),
         address: z.string().min(5).max(255).optional(),
         neighborhood: z.string().min(2).max(100).optional(),
         city: z.string().min(2).max(100).optional(),
@@ -68,6 +118,23 @@ export const pubRouter = router({
       }
 
       const existingBar = await getBarByUserId(userId)
+
+      // ESC-15: com o upload indo direto do navegador para o armazenamento,
+      // quem informa a URL da foto é o cliente. Aceitar qualquer string
+      // deixaria um bar apontar a própria foto para um endereço arbitrário.
+      if (input.photoUrl && !isOwnPhotoUrl(input.photoUrl, existingBar.id)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'URL de foto inválida.'
+        })
+      }
+
+      // Resolve phoneAcceptsWhatsapp with atomic revocation on phone change
+      const whatsappResolution = resolvePhoneAcceptsWhatsapp(
+        input.phone,
+        input.phoneAcceptsWhatsapp,
+        existingBar.phone
+      )
 
       let coordinates: { latitude: string; longitude: string } | undefined
       const addressChanged = input.address || input.neighborhood || input.city
@@ -100,12 +167,20 @@ export const pubRouter = router({
           ...(coordinates && {
             latitude: coordinates.latitude,
             longitude: coordinates.longitude
+          }),
+          // phoneAcceptsWhatsapp: resolved by helper (atomic revoke on phone change)
+          ...(whatsappResolution && {
+            phoneAcceptsWhatsapp: whatsappResolution.value
           })
         })
         .where(eq(bar.id, existingBar.id))
         .returning()
 
-      return updated
+      return {
+        ...updated,
+        phoneRevoked: whatsappResolution?.value === false,
+        phoneAcceptsWhatsappConfirmed: whatsappResolution?.value === true
+      }
     }),
 
   getMyEvents: protectedProcedure.query(async ({ ctx }) => {
