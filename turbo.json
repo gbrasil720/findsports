@@ -31,6 +31,14 @@
       "cache": false,
       "persistent": true
     },
+    "db:seed:analytics": {
+      "cache": false,
+      "env": ["NODE_ENV", "ANALYTICS_SEED_PUB_EMAIL"]
+    },
+    "db:seed:analytics:clean": {
+      "cache": false,
+      "env": ["NODE_ENV", "ANALYTICS_SEED_PUB_EMAIL"]
+    },
     "db:seed:sports": {
       "cache": false
     },

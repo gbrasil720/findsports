@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -109,3 +110,22 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id]
   })
 }))
+
+/**
+ * Contador de rate limit do better-auth (ESC-11).
+ *
+ * O armazenamento padrão é um `Map` em memória do processo. Em serverless
+ * cada instância tem o seu, e ele some entre invocações — o limite existia no
+ * papel e não no comportamento. Guardando no Postgres, o contador passa a ser
+ * compartilhado por todas as instâncias.
+ *
+ * Os nomes das colunas são ditados pelo better-auth: ele acessa o modelo
+ * `rateLimit` pelos campos `key`, `count` e `lastRequest`.
+ */
+export const rateLimit = pgTable('rate_limit', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  count: integer('count').notNull(),
+  // Milissegundos desde a época; o better-auth lê como número.
+  lastRequest: bigint('last_request', { mode: 'number' }).notNull()
+})

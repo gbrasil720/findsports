@@ -1,9 +1,520 @@
 {
-  "id": "f69c73a1-d694-4030-b517-f3ba2fb8bcd4",
-  "prevId": "451e496b-6d10-4de3-bfb2-e3cab4c534fa",
+  "id": "8d81ecbc-f7f4-421d-b350-de6a9507bf24",
+  "prevId": "a6d59a71-90f3-41d5-a7e1-91acb9eae32d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.bar_commercial_daily_rollup": {
+      "name": "bar_commercial_daily_rollup",
+      "schema": "",
+      "columns": {
+        "bar_id": {
+          "name": "bar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commercial_day": {
+          "name": "commercial_day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unique_visitors": {
+          "name": "unique_visitors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "interested_people": {
+          "name": "interested_people",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "high_intent_actions": {
+          "name": "high_intent_actions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "profile_views": {
+          "name": "profile_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "directions_opened": {
+          "name": "directions_opened",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "phone_clicked": {
+          "name": "phone_clicked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "whatsapp_opened": {
+          "name": "whatsapp_opened",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_finalized": {
+          "name": "is_finalized",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bar_commercial_daily_rollup_barId_commercialDay_idx": {
+          "name": "bar_commercial_daily_rollup_barId_commercialDay_idx",
+          "columns": [
+            {
+              "expression": "bar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "commercial_day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bar_commercial_daily_rollup_bar_id_bar_id_fk": {
+          "name": "bar_commercial_daily_rollup_bar_id_bar_id_fk",
+          "tableFrom": "bar_commercial_daily_rollup",
+          "tableTo": "bar",
+          "columnsFrom": ["bar_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bar_commercial_daily_rollup_pkey": {
+          "name": "bar_commercial_daily_rollup_pkey",
+          "nullsNotDistinct": false,
+          "columns": ["bar_id", "commercial_day"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bar_commercial_event": {
+      "name": "bar_commercial_event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bar_id": {
+          "name": "bar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "bar_commercial_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_event_id": {
+          "name": "source_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_event_championship": {
+          "name": "source_event_championship",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_event_starts_at": {
+          "name": "source_event_starts_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "commercial_day": {
+          "name": "commercial_day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bar_commercial_event_barId_occurredAt_idx": {
+          "name": "bar_commercial_event_barId_occurredAt_idx",
+          "columns": [
+            {
+              "expression": "bar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bar_commercial_event_barId_sourceEventId_occurredAt_idx": {
+          "name": "bar_commercial_event_barId_sourceEventId_occurredAt_idx",
+          "columns": [
+            {
+              "expression": "bar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "bar_commercial_event_actorUserId_occurredAt_idx": {
+          "name": "bar_commercial_event_actorUserId_occurredAt_idx",
+          "columns": [
+            {
+              "expression": "actor_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bar_commercial_event_bar_id_bar_id_fk": {
+          "name": "bar_commercial_event_bar_id_bar_id_fk",
+          "tableFrom": "bar_commercial_event",
+          "tableTo": "bar",
+          "columnsFrom": ["bar_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "bar_commercial_event_actor_user_id_user_id_fk": {
+          "name": "bar_commercial_event_actor_user_id_user_id_fk",
+          "tableFrom": "bar_commercial_event",
+          "tableTo": "user",
+          "columnsFrom": ["actor_user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "bar_commercial_event_source_event_id_event_id_fk": {
+          "name": "bar_commercial_event_source_event_id_event_id_fk",
+          "tableFrom": "bar_commercial_event",
+          "tableTo": "event",
+          "columnsFrom": ["source_event_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bar_commercial_event_dedup_key": {
+          "name": "bar_commercial_event_dedup_key",
+          "nullsNotDistinct": true,
+          "columns": [
+            "bar_id",
+            "actor_user_id",
+            "type",
+            "commercial_day",
+            "source_event_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bar_commercial_monthly_rollup": {
+      "name": "bar_commercial_monthly_rollup",
+      "schema": "",
+      "columns": {
+        "bar_id": {
+          "name": "bar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_month": {
+          "name": "period_month",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unique_visitors": {
+          "name": "unique_visitors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "interested_people": {
+          "name": "interested_people",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "high_intent_actions": {
+          "name": "high_intent_actions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "profile_views": {
+          "name": "profile_views",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "directions_opened": {
+          "name": "directions_opened",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "phone_clicked": {
+          "name": "phone_clicked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "whatsapp_opened": {
+          "name": "whatsapp_opened",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_finalized": {
+          "name": "is_finalized",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bar_commercial_monthly_rollup_barId_periodMonth_idx": {
+          "name": "bar_commercial_monthly_rollup_barId_periodMonth_idx",
+          "columns": [
+            {
+              "expression": "bar_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "bar_commercial_monthly_rollup_bar_id_bar_id_fk": {
+          "name": "bar_commercial_monthly_rollup_bar_id_bar_id_fk",
+          "tableFrom": "bar_commercial_monthly_rollup",
+          "tableTo": "bar",
+          "columnsFrom": ["bar_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bar_commercial_monthly_rollup_pkey": {
+          "name": "bar_commercial_monthly_rollup_pkey",
+          "nullsNotDistinct": false,
+          "columns": ["bar_id", "period_month"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rollup_checkpoint": {
+      "name": "rollup_checkpoint",
+      "schema": "",
+      "columns": {
+        "bar_id": {
+          "name": "bar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_processed_at": {
+          "name": "last_processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rollup_period_start": {
+          "name": "rollup_period_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rollup_period_end": {
+          "name": "rollup_period_end",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rollup_checkpoint_bar_id_bar_id_fk": {
+          "name": "rollup_checkpoint_bar_id_bar_id_fk",
+          "tableFrom": "rollup_checkpoint",
+          "tableTo": "bar",
+          "columnsFrom": ["bar_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rollup_checkpoint_barId_key": {
+          "name": "rollup_checkpoint_barId_key",
+          "nullsNotDistinct": false,
+          "columns": ["bar_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.account": {
       "name": "account",
       "schema": "",
@@ -426,6 +937,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "phone_accepts_whatsapp": {
+          "name": "phone_accepts_whatsapp",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "address": {
           "name": "address",
@@ -1042,14 +1560,21 @@
           "primaryKey": true,
           "notNull": true
         },
-        "name": {
-          "name": "name",
+        "email": {
+          "name": "email",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "email": {
-          "name": "email",
+        "role": {
+          "name": "role",
+          "type": "waitlist_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city": {
+          "name": "city",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1060,26 +1585,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "role": {
-          "name": "role",
-          "type": "waitlist_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
         "pub_name": {
           "name": "pub_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'N/A'"
-        },
-        "bairro": {
-          "name": "bairro",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'N/A'"
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -1089,14 +1599,30 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "city_idx": {
+          "name": "city_idx",
+          "columns": [
+            {
+              "expression": "city",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "waitlist_entries_email_unique": {
-          "name": "waitlist_entries_email_unique",
+        "waitlist_entries_email_role_city_unique": {
+          "name": "waitlist_entries_email_role_city_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": ["email", "role", "city"]
         }
       },
       "policies": {},
@@ -1105,6 +1631,16 @@
     }
   },
   "enums": {
+    "public.bar_commercial_event_type": {
+      "name": "bar_commercial_event_type",
+      "schema": "public",
+      "values": [
+        "profile_view",
+        "directions_opened",
+        "phone_clicked",
+        "whatsapp_opened"
+      ]
+    },
     "public.subscription_plan": {
       "name": "subscription_plan",
       "schema": "public",

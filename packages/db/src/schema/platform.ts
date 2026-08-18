@@ -1,6 +1,7 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
+  customType,
   index,
   numeric,
   pgEnum,
@@ -10,6 +11,16 @@ import {
   timestamp
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+
+/**
+ * PostGIS `geography(Point,4326)`. Requer a extensão `postgis` — criada na
+ * migration 0013, que não é expressável no schema do Drizzle.
+ */
+const geographyPoint = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return 'geography(Point,4326)'
+  }
+})
 
 export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'trialing',
@@ -25,6 +36,8 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', [
   'elite'
 ])
 
+export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
+
 export const bar = pgTable(
   'bar',
   {
@@ -38,11 +51,20 @@ export const bar = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     phone: text('phone'),
+    phoneAcceptsWhatsapp: boolean('phone_accepts_whatsapp')
+      .default(false)
+      .notNull(),
     address: text('address').notNull(),
     neighborhood: text('neighborhood').notNull(),
     city: text('city').notNull(),
     latitude: numeric('latitude', { precision: 10, scale: 8 }).notNull(),
     longitude: numeric('longitude', { precision: 11, scale: 8 }).notNull(),
+    // Derivada de latitude/longitude pelo próprio Postgres. Existe para que a
+    // busca por proximidade use `ST_DWithin` + índice GiST em vez de calcular
+    // haversine linha a linha (ESC-01).
+    geo: geographyPoint('geo').generatedAlwaysAs(
+      sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
+    ),
     photoUrl: text('photo_url'),
     isActive: boolean('is_active').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -51,7 +73,12 @@ export const bar = pgTable(
       .$onUpdate(() => new Date())
       .notNull()
   },
-  (table) => [index('bar_userId_idx').on(table.userId)]
+  (table) => [
+    index('bar_userId_idx').on(table.userId),
+    index('bar_isActive_idx').on(table.isActive),
+    // Índice parcial: a busca sempre filtra por bares ativos.
+    index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`)
+  ]
 )
 
 export const sport = pgTable('sport', {
@@ -103,7 +130,9 @@ export const event = pgTable(
   (table) => [
     index('event_barId_idx').on(table.barId),
     index('event_sportId_idx').on(table.sportId),
-    index('event_startsAt_idx').on(table.startsAt)
+    index('event_startsAt_idx').on(table.startsAt),
+    // Padrão real de acesso da busca: próximo jogo de um bar específico.
+    index('event_barId_startsAt_idx').on(table.barId, table.startsAt)
   ]
 )
 
@@ -117,7 +146,12 @@ export const eventParticipants = pgTable(
       .notNull()
       .references(() => team.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.eventId, table.teamId] })]
+  (table) => [
+    primaryKey({ columns: [table.eventId, table.teamId] }),
+    // A PK composta começa por event_id; buscar (ou cascatear) por time
+    // precisa deste.
+    index('event_participants_teamId_idx').on(table.teamId)
+  ]
 )
 
 export const userPreferenceSports = pgTable(
@@ -130,7 +164,11 @@ export const userPreferenceSports = pgTable(
       .notNull()
       .references(() => sport.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.userId, table.sportId] })]
+  (table) => [
+    primaryKey({ columns: [table.userId, table.sportId] }),
+    // Mesma razão: a PK composta começa por user_id.
+    index('user_preference_sports_sportId_idx').on(table.sportId)
+  ]
 )
 
 export const userFavoriteBars = pgTable(
@@ -144,7 +182,12 @@ export const userFavoriteBars = pgTable(
       .references(() => bar.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
-  (table) => [primaryKey({ columns: [table.userId, table.barId] })]
+  (table) => [
+    primaryKey({ columns: [table.userId, table.barId] }),
+    // A PK composta só serve para busca começando por user_id; listar quem
+    // favoritou um bar precisa deste.
+    index('user_favorite_bars_barId_idx').on(table.barId)
+  ]
 )
 
 export const subscription = pgTable('subscription', {
