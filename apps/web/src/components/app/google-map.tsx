@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-
 import {
   getRadiusZoom,
   isValidCoordinates,
@@ -17,6 +16,11 @@ import {
   type MapAccent
 } from './google-map-icons'
 import { MapCanvas, MapLoadError } from './google-map-status'
+import {
+  diffMarkerState,
+  type MarkerVisualState,
+  nenhumaMudanca
+} from './marker-diff'
 
 export type MapBar = {
   id: string
@@ -39,6 +43,8 @@ type Props = {
 type MarkerEntry = {
   marker: google.maps.Marker
   listeners: google.maps.MapsEventListener[]
+  /** Último estado aplicado, para não reescrever o que não mudou (ESC-16). */
+  estado?: MarkerVisualState
 }
 
 function getLoadError(error: unknown): string {
@@ -184,10 +190,30 @@ export function GoogleMap({
         }
         markersRef.current.set(bar.id, entry)
       }
-      entry.marker.setPosition({ lat: bar.lat, lng: bar.lng })
-      entry.marker.setTitle(bar.name)
-      entry.marker.setIcon(createPinIcon(runtime.api, bar.accent, large))
-      entry.marker.setZIndex(large ? 999 : 10)
+      // ESC-16: o efeito roda a cada mudança de hover. Sem comparar, os
+      // quatro setters seriam chamados em todos os pinos a cada movimento do
+      // mouse, quando no máximo dois mudam de aparência.
+      const estado: MarkerVisualState = {
+        lat: bar.lat,
+        lng: bar.lng,
+        name: bar.name,
+        accent: bar.accent,
+        large
+      }
+      const updates = diffMarkerState(entry.estado, estado)
+      if (!nenhumaMudanca(updates)) {
+        if (updates.position) {
+          entry.marker.setPosition({ lat: estado.lat, lng: estado.lng })
+        }
+        if (updates.title) entry.marker.setTitle(estado.name)
+        if (updates.icon) {
+          entry.marker.setIcon(
+            createPinIcon(runtime.api, estado.accent, estado.large)
+          )
+        }
+        if (updates.zIndex) entry.marker.setZIndex(estado.large ? 999 : 10)
+        entry.estado = estado
+      }
     }
 
     for (const [id, entry] of markersRef.current) {

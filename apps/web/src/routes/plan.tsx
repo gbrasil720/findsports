@@ -4,14 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
-import Fire from 'reicon-react/icons/Fire'
 import Loader from 'reicon-react/icons/Loader'
-import Star from 'reicon-react/icons/Star'
-import Trophy from 'reicon-react/icons/Trophy'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
-import { type Plan, PlanCard } from '@/components/pricing/plan-card'
+import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
+import { PLAN_CATALOG, PLAN_TIER_ORDER, type Plan } from '@/lib/plan-catalog'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -29,59 +27,6 @@ export const Route = createFileRoute('/plan')({
   component: PlanSelection
 })
 
-const PLANS: Plan[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    tagline: 'Pra começar a aparecer',
-    price: 'R$ 119',
-    period: '/mês',
-    icon: Fire,
-    features: [
-      'Perfil público do bar',
-      'Até 5 jogos por mês na agenda',
-      'Aparece nas buscas básicas',
-      'Suporte por e-mail'
-    ]
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    tagline: 'Pra lotar nos clássicos',
-    price: 'R$ 189',
-    period: '/mês',
-    icon: Star,
-    badge: 'Mais escolhido',
-    highlight: true,
-    features: [
-      'Tudo do Starter',
-      'Jogos ilimitados na agenda',
-      'Destaque na busca por time e liga',
-      'Pin destacado no mapa',
-      'Suporte prioritário'
-    ]
-  },
-  {
-    id: 'elite',
-    name: 'Elite',
-    tagline: 'Pra ser referência na cidade',
-    price: 'R$ 389',
-    period: '/mês',
-    icon: Trophy,
-    features: [
-      'Tudo do Pro',
-      'Topo da lista nos clássicos',
-      'Banner patrocinado na home'
-    ]
-  }
-]
-
-const PLAN_NAMES: Record<string, string> = {
-  starter: 'Starter',
-  pro: 'Pro',
-  elite: 'Elite'
-}
-
 function PlanSelection() {
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
@@ -96,10 +41,6 @@ function PlanSelection() {
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
-  useEffect(() => {
-    analytics.planPageViewed()
-  }, [])
-
   // Sync selection when subscription arrives, without overwriting user choice
   useEffect(() => {
     if (userTouched.current) return
@@ -112,11 +53,10 @@ function PlanSelection() {
   const handleSelectPlan = (planId: Plan['id']) => {
     userTouched.current = true
     setSelected(planId)
-    analytics.planSelected(planId as 'starter' | 'pro' | 'elite')
   }
 
   const handleCheckout = async () => {
-    analytics.checkoutStarted(selected as 'starter' | 'pro' | 'elite')
+    analytics.checkoutStarted(selected)
     setLoading(true)
     setError(null)
 
@@ -140,9 +80,7 @@ function PlanSelection() {
   }
 
   const isDowngrade =
-    currentPlan &&
-    PLANS.findIndex((p) => p.id === selected) <
-      PLANS.findIndex((p) => p.id === currentPlan)
+    currentPlan && PLAN_TIER_ORDER[selected] < PLAN_TIER_ORDER[currentPlan]
   const isSamePlan = selected === currentPlan
 
   return (
@@ -203,15 +141,17 @@ function PlanSelection() {
           />
           <p className="text-sm">
             Você está no plano{' '}
-            <span className="font-bold">{PLAN_NAMES[currentPlan]}</span>.
-            Selecione outro plano abaixo para fazer a troca.
+            <span className="font-bold">
+              {PLAN_CATALOG.find((p) => p.id === currentPlan)?.name}
+            </span>
+            . Selecione outro plano abaixo para fazer a troca.
           </p>
         </div>
       ) : null}
 
       <fieldset className="mb-10 grid gap-5 border-0 p-0 md:grid-cols-3">
         <legend className="sr-only">Planos disponíveis</legend>
-        {PLANS.map((plan) => (
+        {PLAN_CATALOG.map((plan) => (
           <PlanCard
             key={plan.id}
             plan={plan}
@@ -271,7 +211,7 @@ function PlanSelection() {
             ? 'Redirecionando…'
             : isSamePlan
               ? 'Plano atual'
-              : `Continuar com ${PLANS.find((p) => p.id === selected)?.name}`}
+              : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
           {!isSamePlan && !loading ? (
             <ArrowRight size={16} color="currentColor" aria-hidden="true" />
           ) : null}

@@ -1,22 +1,20 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import ExternalLink from 'reicon-react/icons/ArrowUpRight'
 import Check from 'reicon-react/icons/Check'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
-import Fire from 'reicon-react/icons/Fire'
 import Loader from 'reicon-react/icons/Loader'
-import Star from 'reicon-react/icons/Star'
-import Trophy from 'reicon-react/icons/Trophy'
 import { AppShell } from '@/components/app/app-shell'
 import { analytics } from '@/lib/analytics'
 import {
   getCustomerPortalUrl,
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
+import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/billing')({
@@ -28,42 +26,6 @@ export const Route = createFileRoute('/admin_/billing')({
   }),
   component: BillingPage
 })
-
-const PLAN_INFO = {
-  starter: {
-    name: 'Starter',
-    price: 'R$ 119',
-    icon: Fire,
-    features: [
-      'Perfil público do bar',
-      'Até 5 jogos por mês na agenda',
-      'Aparece nas buscas básicas',
-      'Suporte por e-mail'
-    ]
-  },
-  pro: {
-    name: 'Pro',
-    price: 'R$ 189',
-    icon: Star,
-    features: [
-      'Tudo do Starter',
-      'Jogos ilimitados na agenda',
-      'Destaque na busca por time e liga',
-      'Pin destacado no mapa',
-      'Suporte prioritário'
-    ]
-  },
-  elite: {
-    name: 'Elite',
-    price: 'R$ 389',
-    icon: Trophy,
-    features: [
-      'Tudo do Pro',
-      'Topo da lista nos clássicos',
-      'Banner patrocinado na home'
-    ]
-  }
-} as const
 
 function formatDate(date: string | Date | null): string {
   if (!date) return '—'
@@ -111,10 +73,6 @@ function BillingPage() {
   const [openingPortal, setOpeningPortal] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
-  useEffect(() => {
-    analytics.billingPageViewed()
-  }, [])
-
   const subscriptionQuery = useQuery(trpc.pub.getMySubscription.queryOptions())
   const subscription = subscriptionQuery.data
   const loadingSub = subscriptionQuery.isLoading
@@ -125,7 +83,6 @@ function BillingPage() {
   })
 
   const handleOpenPortal = async () => {
-    analytics.portalOpened()
     setOpeningPortal(true)
     setPortalError(null)
     try {
@@ -143,8 +100,7 @@ function BillingPage() {
   }
 
   const plan = subscription?.plan
-  const planInfo = plan ? PLAN_INFO[plan] : null
-  const PlanIcon = planInfo?.icon
+  const planInfo = plan ? getPlan(plan) : null
   const statusInfo = STATUS_LABEL[subscription?.status ?? '']
 
   return (
@@ -190,16 +146,18 @@ function BillingPage() {
                   Tentar novamente
                 </button>
               </div>
-            ) : planInfo && PlanIcon ? (
+            ) : planInfo ? (
               <div className="onside-panel-stone mb-4 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="grid size-10 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
-                      <PlanIcon
-                        size={20}
-                        color="currentColor"
-                        aria-hidden="true"
-                      />
+                      {planInfo.icon ? (
+                        <planInfo.icon
+                          size={20}
+                          color="currentColor"
+                          aria-hidden="true"
+                        />
+                      ) : null}
                     </div>
                     <div>
                       <div className="onside-display text-xl">
@@ -397,58 +355,51 @@ function BillingPage() {
 
         <aside className="space-y-4">
           <h3 className="onside-display text-2xl">Outros planos</h3>
-          {(
-            Object.entries(PLAN_INFO) as [
-              string,
-              (typeof PLAN_INFO)[keyof typeof PLAN_INFO]
-            ][]
-          )
-            .filter(([id]) => id !== plan)
-            .map(([id, info]) => {
-              const Icon = info.icon
-              return (
-                <div key={id} className="onside-panel p-5">
-                  <div className="mb-3 flex items-center gap-3">
-                    <div className="grid size-9 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-stone)]">
-                      <Icon size={16} color="currentColor" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold">{info.name}</div>
-                      <div className="text-xs text-[var(--onside-muted)]">
-                        {info.price}/mês
-                      </div>
+          {PLAN_CATALOG.filter((p) => p.id !== plan).map((info) => {
+            const Icon = info.icon
+            return (
+              <div key={info.id} className="onside-panel p-5">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="grid size-9 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-stone)]">
+                    <Icon size={16} color="currentColor" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold">{info.name}</div>
+                    <div className="text-xs text-[var(--onside-muted)]">
+                      {info.price}/mês
                     </div>
                   </div>
-                  <ul className="mb-4 space-y-1.5">
-                    {info.features.map((f) => (
-                      <li
-                        key={f}
-                        className="flex items-start gap-1.5 text-xs text-[var(--onside-ink)]"
-                      >
-                        <Check
-                          size={12}
-                          color="currentColor"
-                          className="mt-0.5 shrink-0"
-                          aria-hidden="true"
-                        />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    to="/plan"
-                    className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
-                  >
-                    Mudar para {info.name}
-                    <ArrowRight
-                      size={12}
-                      color="currentColor"
-                      aria-hidden="true"
-                    />
-                  </Link>
                 </div>
-              )
-            })}
+                <ul className="mb-4 space-y-1.5">
+                  {info.features.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-1.5 text-xs text-[var(--onside-ink)]"
+                    >
+                      <Check
+                        size={12}
+                        color="currentColor"
+                        className="mt-0.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/plan"
+                  className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
+                >
+                  Mudar para {info.name}
+                  <ArrowRight
+                    size={12}
+                    color="currentColor"
+                    aria-hidden="true"
+                  />
+                </Link>
+              </div>
+            )
+          })}
         </aside>
       </div>
     </AppShell>

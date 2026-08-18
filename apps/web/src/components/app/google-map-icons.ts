@@ -17,18 +17,40 @@ function pinSvg(color: string, large: boolean): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
+/**
+ * ESC-16: só existem seis pinos possíveis — três cores por dois tamanhos.
+ * Cada chamada montava o SVG, codificava a URL e alocava dois objetos do
+ * mapa; com o efeito de hover reaplicando o ícone em todos os pinos, isso se
+ * repetia por marcador a cada movimento do mouse.
+ *
+ * O objeto devolvido nunca é mutado — nem por nós, nem pela API do mapa —,
+ * então pode ser compartilhado entre marcadores.
+ */
+const cacheDeIcones = new Map<string, google.maps.Icon>()
+
 export function createPinIcon(
   maps: typeof google.maps,
   accent: MapAccent,
   large: boolean
 ): google.maps.Icon {
+  const chave = `${accent}|${large}`
+  const emCache = cacheDeIcones.get(chave)
+  if (emCache) return emCache
+
   const width = large ? 42 : 36
   const height = large ? 53 : 46
-  return {
+  const icone: google.maps.Icon = {
     url: pinSvg(COLORS[accent], large),
     scaledSize: new maps.Size(width, height),
     anchor: new maps.Point(width / 2, height)
   }
+  cacheDeIcones.set(chave, icone)
+  return icone
+}
+
+/** Só para os testes: o cache guarda objetos presos ao runtime do mapa. */
+export function limparCacheDeIcones() {
+  cacheDeIcones.clear()
 }
 
 export function createUserDotIcon(maps: typeof google.maps): google.maps.Icon {
