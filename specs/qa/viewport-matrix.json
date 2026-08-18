@@ -1,9 +1,6 @@
 [
   {
-    "viewport": [
-      320,
-      700
-    ],
+    "viewport": [320, 700],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -57,10 +54,7 @@
     ]
   },
   {
-    "viewport": [
-      320,
-      700
-    ],
+    "viewport": [320, 700],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -114,10 +108,7 @@
     ]
   },
   {
-    "viewport": [
-      320,
-      700
-    ],
+    "viewport": [320, 700],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -171,10 +162,7 @@
     ]
   },
   {
-    "viewport": [
-      320,
-      700
-    ],
+    "viewport": [320, 700],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -228,10 +216,7 @@
     ]
   },
   {
-    "viewport": [
-      320,
-      700
-    ],
+    "viewport": [320, 700],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
@@ -285,10 +270,7 @@
     ]
   },
   {
-    "viewport": [
-      375,
-      812
-    ],
+    "viewport": [375, 812],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -342,10 +324,7 @@
     ]
   },
   {
-    "viewport": [
-      375,
-      812
-    ],
+    "viewport": [375, 812],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -399,10 +378,7 @@
     ]
   },
   {
-    "viewport": [
-      375,
-      812
-    ],
+    "viewport": [375, 812],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -456,10 +432,7 @@
     ]
   },
   {
-    "viewport": [
-      375,
-      812
-    ],
+    "viewport": [375, 812],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -513,10 +486,7 @@
     ]
   },
   {
-    "viewport": [
-      375,
-      812
-    ],
+    "viewport": [375, 812],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
@@ -570,10 +540,7 @@
     ]
   },
   {
-    "viewport": [
-      760,
-      900
-    ],
+    "viewport": [760, 900],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -627,10 +594,7 @@
     ]
   },
   {
-    "viewport": [
-      760,
-      900
-    ],
+    "viewport": [760, 900],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -684,10 +648,7 @@
     ]
   },
   {
-    "viewport": [
-      760,
-      900
-    ],
+    "viewport": [760, 900],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -741,10 +702,7 @@
     ]
   },
   {
-    "viewport": [
-      760,
-      900
-    ],
+    "viewport": [760, 900],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -798,10 +756,7 @@
     ]
   },
   {
-    "viewport": [
-      760,
-      900
-    ],
+    "viewport": [760, 900],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
@@ -855,10 +810,7 @@
     ]
   },
   {
-    "viewport": [
-      1024,
-      768
-    ],
+    "viewport": [1024, 768],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -912,10 +864,7 @@
     ]
   },
   {
-    "viewport": [
-      1024,
-      768
-    ],
+    "viewport": [1024, 768],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -969,10 +918,7 @@
     ]
   },
   {
-    "viewport": [
-      1024,
-      768
-    ],
+    "viewport": [1024, 768],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -1026,10 +972,7 @@
     ]
   },
   {
-    "viewport": [
-      1024,
-      768
-    ],
+    "viewport": [1024, 768],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -1083,10 +1026,7 @@
     ]
   },
   {
-    "viewport": [
-      1024,
-      768
-    ],
+    "viewport": [1024, 768],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
@@ -1140,10 +1080,7 @@
     ]
   },
   {
-    "viewport": [
-      1100,
-      800
-    ],
+    "viewport": [1100, 800],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -1197,10 +1134,7 @@
     ]
   },
   {
-    "viewport": [
-      1100,
-      800
-    ],
+    "viewport": [1100, 800],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -1254,10 +1188,7 @@
     ]
   },
   {
-    "viewport": [
-      1100,
-      800
-    ],
+    "viewport": [1100, 800],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -1311,10 +1242,7 @@
     ]
   },
   {
-    "viewport": [
-      1100,
-      800
-    ],
+    "viewport": [1100, 800],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -1368,10 +1296,7 @@
     ]
   },
   {
-    "viewport": [
-      1100,
-      800
-    ],
+    "viewport": [1100, 800],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
@@ -1425,10 +1350,7 @@
     ]
   },
   {
-    "viewport": [
-      1440,
-      900
-    ],
+    "viewport": [1440, 900],
     "path": "/",
     "title": "Onside — Saiba onde assistir ao seu jogo",
     "iw": 1081,
@@ -1482,10 +1404,7 @@
     ]
   },
   {
-    "viewport": [
-      1440,
-      900
-    ],
+    "viewport": [1440, 900],
     "path": "/login",
     "title": "Entrar — Onside",
     "iw": 1081,
@@ -1539,10 +1458,7 @@
     ]
   },
   {
-    "viewport": [
-      1440,
-      900
-    ],
+    "viewport": [1440, 900],
     "path": "/signup",
     "title": "Criar conta — Onside",
     "iw": 1081,
@@ -1596,10 +1512,7 @@
     ]
   },
   {
-    "viewport": [
-      1440,
-      900
-    ],
+    "viewport": [1440, 900],
     "path": "/onboarding/fan",
     "title": "Configure sua conta de torcedor — Onside",
     "iw": 1081,
@@ -1653,10 +1566,7 @@
     ]
   },
   {
-    "viewport": [
-      1440,
-      900
-    ],
+    "viewport": [1440, 900],
     "path": "/onboarding/pub",
     "title": "Cadastre seu bar — Onside",
     "iw": 1081,
