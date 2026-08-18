@@ -14,6 +14,8 @@ import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
+import { refreshSessionCache } from '@/lib/auth-client'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
@@ -53,27 +55,32 @@ function FanOnboarding() {
   const [radius, setRadius] = useState<RadiusKm>(3)
   const [error, setError] = useState<string | null>(null)
 
-  const sportsQuery = useQuery(trpc.pubs.getSports.queryOptions())
+  const sportsQuery = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
   const sports = sportsQuery.data ?? []
 
   const completeMutation = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
-      onSuccess: () => {
-        analytics.fanOnboardingCompleted(
-          sports
+      onSuccess: async () => {
+        analytics.onboardingCompleted({
+          role: 'fan',
+          sports: sports
             .filter((s) => selectedSportIds.includes(s.id))
             .map((s) => s.slug),
-          radius
-        )
+          radius_km: radius
+        })
+        // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
+        // do better-auth; sem regravar o cache de sessão o guard da rota
+        // devolveria o usuário para cá. Se a releitura falhar, seguimos
+        // assim mesmo — o guard revalida no servidor.
+        await refreshSessionCache().catch(() => {})
         navigate({ to: '/dashboard' })
       },
       onError: (err) => setError(err.message)
     })
   )
-
-  useEffect(() => {
-    analytics.fanOnboardingStarted()
-  }, [])
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: step === 0 })
@@ -88,18 +95,6 @@ function FanOnboarding() {
 
   const next = () => {
     setError(null)
-
-    if (step === 0) analytics.fanOnboardingStepCompleted(1)
-    if (step === 1) {
-      analytics.fanOnboardingStepCompleted(2)
-      analytics.fanOnboardingSportsSelected(
-        sports.filter((s) => selectedSportIds.includes(s.id)).map((s) => s.slug)
-      )
-    }
-    if (step === 2) {
-      analytics.fanOnboardingStepCompleted(3)
-      analytics.fanOnboardingRadiusSelected(radius)
-    }
 
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)

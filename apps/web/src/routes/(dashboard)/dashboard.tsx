@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppShell } from '@/components/app/app-shell'
+import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import {
   DashboardResults,
@@ -27,6 +28,7 @@ import {
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard')({
@@ -61,17 +63,6 @@ function FanDashboard() {
   const [favoriteOverrides, setFavoriteOverrides] = useState<FavoriteOverrides>(
     {}
   )
-  const [, setTick] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => setTick((tick) => tick + 1), 60_000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    analytics.dashboardViewed()
-  }, [])
-
   const requestLocation = useCallback(() => {
     setLocationState('requesting')
     navigator.geolocation.getCurrentPosition(
@@ -109,7 +100,10 @@ function FanDashboard() {
       .catch(requestLocation)
   }, [requestLocation])
 
-  const sportsQuery = useQuery(trpc.pubs.getSports.queryOptions())
+  const sportsQuery = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
   const searchCenter = coords ?? SAO_PAULO_FALLBACK
   const primaryQuery = useQuery(
     trpc.pubs.search.queryOptions({
@@ -216,14 +210,9 @@ function FanDashboard() {
 
   const handleSportChange = (id: string | undefined) => {
     setSportId(id)
-    if (id) {
-      const sport = sports.find((item) => item.id === id)
-      analytics.searchFilterApplied('sport', sport?.name ?? id)
-    }
   }
   const handleRadiusChange = (value: RadiusKm) => {
     setRadiusKm(value)
-    analytics.searchFilterApplied('radius_km', value)
   }
   const reset = () => {
     setSportId(undefined)
@@ -254,9 +243,11 @@ function FanDashboard() {
   useEffect(() => {
     if (!primaryQuery.data) return
     analytics.searchPerformed({
-      sportId,
+      sport: sports.find((item) => item.id === sportId)?.slug,
+      championship: championship || undefined,
       radius_km: radiusKm,
-      results_count: primaryQuery.data.bars.length
+      results_count: primaryQuery.data.bars.length,
+      has_location: locationState === 'granted'
     })
   }, [primaryQuery.data])
 
@@ -300,10 +291,9 @@ function FanDashboard() {
   }
   const toggleFavorite = (barId: string) => {
     if (favoriteIds.has(barId)) {
-      analytics.barUnfavorited(barId)
       unfavoriteMutation.mutate({ barId })
     } else {
-      analytics.barFavorited(barId)
+      analytics.barIntent({ bar_id: barId, action: 'favorite' })
       favoriteMutation.mutate({ barId })
     }
   }
@@ -348,31 +338,38 @@ function FanDashboard() {
         </div>
       ) : null}
 
-      <DashboardResults
-        resultState={resultState}
-        bars={displayedBars}
-        mapBars={mapBars}
-        radiusKm={radiusKm}
-        hasActiveFilters={activeFilters.length > 0}
-        locationState={locationState}
-        coords={coords}
-        hoveredId={hoveredId}
-        favoriteIds={favoriteIds}
-        favoritePending={
-          favoriteMutation.isPending || unfavoriteMutation.isPending
-        }
-        onHover={setHoveredId}
-        onFavorite={toggleFavorite}
-        onRequestLocation={requestLocation}
-        onRadiusChange={handleRadiusChange}
-        onReset={reset}
-        onRetry={retryResults}
-        onSuggestion={applySuggestion}
-        onSelectMapBar={(barId) => {
-          analytics.barMapPinClicked(barId)
-          navigate({ to: '/pub/$pubId', params: { pubId: barId } })
-        }}
-      />
+      <MinuteTickProvider>
+        <DashboardResults
+          resultState={resultState}
+          bars={displayedBars}
+          mapBars={mapBars}
+          radiusKm={radiusKm}
+          hasActiveFilters={activeFilters.length > 0}
+          locationState={locationState}
+          coords={coords}
+          hoveredId={hoveredId}
+          favoriteIds={favoriteIds}
+          favoritePending={
+            favoriteMutation.isPending || unfavoriteMutation.isPending
+          }
+          onHover={setHoveredId}
+          onFavorite={toggleFavorite}
+          onRequestLocation={requestLocation}
+          onRadiusChange={handleRadiusChange}
+          onReset={reset}
+          onRetry={retryResults}
+          onSuggestion={applySuggestion}
+          onSelectMapBar={(barId) => {
+            const bar = displayedBars.find((item) => item.id === barId)
+            analytics.barOpened({
+              bar_id: barId,
+              source: 'map',
+              bar_plan: bar && 'plan' in bar ? bar.plan : undefined
+            })
+            navigate({ to: '/pub/$pubId', params: { pubId: barId } })
+          }}
+        />
+      </MinuteTickProvider>
     </AppShell>
   )
 }

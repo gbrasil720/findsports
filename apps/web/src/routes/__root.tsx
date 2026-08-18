@@ -15,12 +15,14 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
-import posthog from 'posthog-js'
 import type { CSSProperties } from 'react'
 import { useEffect, useRef } from 'react'
 import { ImpersonationBanner } from '../components/impersonation-banner'
+import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
+import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
 import { authClient } from '../lib/auth-client'
+import { initPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
@@ -128,6 +130,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       }
     ]
   }),
+  notFoundComponent: NotFoundPage,
   shellComponent: RootShell,
   component: RootDocument
 })
@@ -140,16 +143,7 @@ function PostHogProvider() {
   // Init — roda uma vez no cliente
   useEffect(() => {
     if (initialized.current) return
-    const projectKey = import.meta.env.VITE_POSTHOG_KEY
-    if (!projectKey) return
-
-    posthog.init(projectKey, {
-      api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
-      capture_pageview: false,
-      capture_pageleave: true,
-      persistence: 'localStorage+cookie'
-    })
-    initialized.current = true
+    initialized.current = initPostHog()
   }, [])
 
   // Identify — roda quando sessão muda
@@ -157,20 +151,21 @@ function PostHogProvider() {
     if (!initialized.current) return
 
     if (session?.user) {
-      posthog.identify(session.user.id, {
+      identifyUser({
+        id: session.user.id,
         email: session.user.email,
         name: session.user.name,
         role: session.user.role
       })
     } else {
-      posthog.reset()
+      resetAnalytics()
     }
   }, [session?.user?.id])
 
   // Pageview — roda quando rota muda
   useEffect(() => {
     if (!initialized.current) return
-    posthog.capture('$pageview', { $current_url: window.location.href })
+    capturePageview(pathname)
   }, [pathname])
 
   return null

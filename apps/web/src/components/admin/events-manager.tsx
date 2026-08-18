@@ -8,6 +8,7 @@ import {
   getEventTemporalState
 } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import type { EventsState, PolicyState } from './admin-model'
 import { EmptyEventsState } from './empty-events-state'
@@ -58,7 +59,10 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const [showModal, setShowModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  const { data: sports = [] } = useQuery(trpc.pubs.getSports.queryOptions())
+  const { data: sports = [] } = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
   const events = eventsState.status === 'ready' ? eventsState.events : []
   const blockReason = getCreateBlockReason(policyState)
   const createBlocked = blockReason !== null
@@ -125,18 +129,15 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         }
       )
     } else if (editingId) {
-      updateMutation.mutate(
-        {
-          eventId: editingId,
-          sportId: form.sportId,
-          championship: form.championship,
-          startsAt,
-          endsAt,
-          participantIds,
-          participantFreeText: form.participantFreeText || undefined
-        },
-        { onSuccess: () => analytics.eventUpdated(editingId) }
-      )
+      updateMutation.mutate({
+        eventId: editingId,
+        sportId: form.sportId,
+        championship: form.championship,
+        startsAt,
+        endsAt,
+        participantIds,
+        participantFreeText: form.participantFreeText || undefined
+      })
     }
   }
 
@@ -274,7 +275,6 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                 event={item}
                 onEdit={openEdit}
                 onDelete={(id) => {
-                  analytics.eventDeleted(id)
                   deleteMutation.mutate({ eventId: id })
                 }}
                 isDeleting={deleteMutation.isPending}

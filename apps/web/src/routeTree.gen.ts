@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as InternalRouteImport } from './routes/internal'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
@@ -22,6 +23,7 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
+import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
@@ -46,6 +48,11 @@ const InternalRoute = InternalRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -93,6 +100,11 @@ const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
   path: '/api/bar/photo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBarCommercialEventRoute = ApiBarCommercialEventRouteImport.update({
+  id: '/api/bar/commercial-event',
+  path: '/api/bar/commercial-event',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -122,6 +134,7 @@ const dashboardDashboardProfileRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
@@ -137,11 +150,13 @@ export interface FileRoutesByFullPath {
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
@@ -157,12 +172,14 @@ export interface FileRoutesByTo {
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
@@ -178,6 +195,7 @@ export interface FileRoutesById {
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
@@ -185,6 +203,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
     | '/admin'
     | '/internal'
     | '/plan'
@@ -200,11 +219,13 @@ export interface FileRouteTypes {
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
     | '/admin'
     | '/internal'
     | '/plan'
@@ -220,11 +241,13 @@ export interface FileRouteTypes {
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
   id:
     | '__root__'
     | '/'
+    | '/$'
     | '/admin'
     | '/internal'
     | '/plan'
@@ -240,12 +263,14 @@ export interface FileRouteTypes {
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   AdminRoute: typeof AdminRoute
   InternalRoute: typeof InternalRoute
   PlanRoute: typeof PlanRoute
@@ -261,6 +286,7 @@ export interface RootRouteChildren {
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
 }
@@ -293,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -358,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBarPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/bar/commercial-event': {
+      id: '/api/bar/commercial-event'
+      path: '/api/bar/commercial-event'
+      fullPath: '/api/bar/commercial-event'
+      preLoaderRoute: typeof ApiBarCommercialEventRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -398,6 +438,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   AdminRoute: AdminRoute,
   InternalRoute: InternalRoute,
   PlanRoute: PlanRoute,
@@ -413,6 +454,7 @@ const rootRouteChildren: RootRouteChildren = {
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
 }

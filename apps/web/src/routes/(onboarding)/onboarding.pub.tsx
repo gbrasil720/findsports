@@ -13,6 +13,7 @@ import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { analytics } from '@/lib/analytics'
+import { refreshSessionCache } from '@/lib/auth-client'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -54,17 +55,18 @@ function PubOnboarding() {
 
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
-      onSuccess: () => {
-        analytics.pubOnboardingCompleted()
+      onSuccess: async () => {
+        analytics.onboardingCompleted({ role: 'pub' })
+        // `onboardingCompleted` mudou no banco por fora do better-auth; sem
+        // regravar o cache de sessão o guard da rota devolveria o usuário
+        // para cá. Se a releitura falhar, seguimos assim mesmo — o guard
+        // revalida no servidor e o pior caso é ver o onboarding de novo.
+        await refreshSessionCache().catch(() => {})
         navigate({ to: '/plan' })
       },
       onError: (err) => setError(err.message)
     })
   )
-
-  useEffect(() => {
-    analytics.pubOnboardingStarted()
-  }, [])
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: step === 0 })
@@ -106,9 +108,6 @@ function PubOnboarding() {
 
   const next = () => {
     setError(null)
-
-    if (step === 0) analytics.pubOnboardingStepCompleted(1)
-    if (step === 1) analytics.pubOnboardingStepCompleted(2)
 
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)

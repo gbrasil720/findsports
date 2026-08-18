@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Loader from 'reicon-react/icons/Loader'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 const DIRECT_CONFRONTATION_SLUGS = new Set([
@@ -44,6 +45,7 @@ export function EventFormComponent({
 
   const { data: teams = [], isLoading: loadingTeams } = useQuery({
     ...trpc.pubs.getTeamsBySport.queryOptions({ sportId: form.sportId }),
+    ...CATALOG_QUERY,
     enabled: !!form.sportId
   })
   const selectedSport = sports.find((s) => s.id === form.sportId)
@@ -212,11 +214,11 @@ export function EventFormComponent({
         </p>
       )}
 
-      <div className="flex gap-2 justify-end pt-2">
+      <div className="flex justify-end gap-2 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 rounded-none text-sm font-bold text-[var(--onside-muted)] hover:bg-[var(--onside-stone)]"
+          className="onside-btn onside-btn-ghost min-h-11 px-4 text-xs"
         >
           Cancelar
         </button>
@@ -224,7 +226,7 @@ export function EventFormComponent({
           type="button"
           onClick={() => onSave(form)}
           disabled={!canSave || isSaving}
-          className="px-5 py-2 rounded-none text-sm font-bold bg-[var(--onside-acid)] text-[var(--onside-ink)] disabled:opacity-50"
+          className="onside-btn onside-btn-acid min-h-11 px-5 text-xs"
         >
           {isSaving ? 'Salvando…' : 'Salvar'}
         </button>

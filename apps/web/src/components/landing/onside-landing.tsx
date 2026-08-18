@@ -11,7 +11,8 @@ import Play from 'reicon-react/icons/Play'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
-import { analytics } from '../../lib/analytics'
+import { HIGHLIGHTS_QUERY } from '@/lib/query-cache'
+import { authClient } from '../../lib/auth-client'
 import { useTRPC } from '../../utils/trpc'
 import { OnsideAppDemo } from './onside-app-demo'
 import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
@@ -409,9 +410,11 @@ function formatTickerEvent(event: {
 function OnsideTicker() {
   const trpc = useTRPC()
   const [isPaused, setIsPaused] = useState(false)
+  const { data: session } = authClient.useSession()
   const { data: eliteEvents = [] } = useQuery({
     ...trpc.pubs.getEliteEvents.queryOptions(),
-    staleTime: 60_000
+    ...HIGHLIGHTS_QUERY,
+    enabled: !!session
   })
 
   const hasLiveEvents = eliteEvents.length > 0
@@ -670,22 +673,6 @@ function ProofList({
 }
 
 export function OnsideLanding() {
-  useEffect(() => {
-    function handleCtaClick(event: MouseEvent) {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      // Skip form controls — forms emit dedicated funnel events only
-      if (target.closest('form')) return
-      const ctaEl = target.closest('[data-cta]')
-      if (!(ctaEl instanceof HTMLElement)) return
-      const cta = ctaEl.dataset.cta
-      if (cta) analytics.landingCtaClicked(cta)
-    }
-
-    document.addEventListener('click', handleCtaClick)
-    return () => document.removeEventListener('click', handleCtaClick)
-  }, [])
-
   return (
     <div className="onside-page">
       <a className="onside-skip-link" href="#main">

@@ -6,15 +6,18 @@ import {
 } from '@findsports_oficial/ui/components/field'
 import { Input } from '@findsports_oficial/ui/components/input'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
 
-import {
-  analytics,
-  type WaitlistSubmitFailureCategory
-} from '../../lib/analytics'
+import { analytics } from '../../lib/analytics'
 import { useTRPCClient } from '../../utils/trpc'
+
+type WaitlistSubmitFailureCategory =
+  | 'conflict'
+  | 'network'
+  | 'server'
+  | 'unknown'
 
 type FanPayload = {
   role: 'fan'
@@ -73,39 +76,6 @@ function mapJoinError(error: Error) {
   return GENERIC_ERROR
 }
 
-function useFormViewed(role: 'fan' | 'pub') {
-  const formRef = useRef<HTMLFormElement>(null)
-  const viewedRef = useRef(false)
-
-  useEffect(() => {
-    const node = formRef.current
-    if (!node || viewedRef.current) return
-
-    if (typeof IntersectionObserver === 'undefined') {
-      viewedRef.current = true
-      analytics.waitlistFormViewed(role)
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (viewedRef.current) return
-        if (entries.some((entry) => entry.isIntersecting)) {
-          viewedRef.current = true
-          analytics.waitlistFormViewed(role)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.35 }
-    )
-
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [role])
-
-  return formRef
-}
-
 export function OnsideFanWaitlistForm() {
   const [city, setCity] = useState('')
   const [email, setEmail] = useState('')
@@ -116,8 +86,6 @@ export function OnsideFanWaitlistForm() {
   const [successCity, setSuccessCity] = useState<string | null>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const startedRef = useRef(false)
-  const formRef = useFormViewed('fan')
   const client = useTRPCClient()
 
   const { mutate, isPending } = useMutation({
@@ -128,16 +96,9 @@ export function OnsideFanWaitlistForm() {
       analytics.waitlistSubmitted('fan')
     },
     onError: (error: Error) => {
-      analytics.waitlistSubmitFailed('fan', classifyJoinError(error))
       setFormError(mapJoinError(error))
     }
   })
-
-  function markStarted() {
-    if (startedRef.current) return
-    startedRef.current = true
-    analytics.waitlistFormStarted('fan')
-  }
 
   function validate() {
     const next: Partial<Record<'city' | 'email', string>> = {}
@@ -152,10 +113,6 @@ export function OnsideFanWaitlistForm() {
     }
 
     setFieldErrors(next)
-
-    if (Object.keys(next).length > 0) {
-      analytics.waitlistValidationFailed('fan', Object.keys(next))
-    }
 
     if (next.city) {
       cityRef.current?.focus()
@@ -178,8 +135,6 @@ export function OnsideFanWaitlistForm() {
     setFormError(null)
     const payload = validate()
     if (!payload || isPending) return
-    // Funnel event only — no landing_cta_clicked (avoids double capture)
-    analytics.waitlistSubmitAttempted('fan')
     mutate(payload)
   }
 
@@ -202,7 +157,6 @@ export function OnsideFanWaitlistForm() {
 
   return (
     <form
-      ref={formRef}
       className="onside-waitlist-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}
@@ -224,7 +178,6 @@ export function OnsideFanWaitlistForm() {
             placeholder="Ex.: São Paulo"
             value={city}
             onChange={(event) => {
-              markStarted()
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
@@ -257,7 +210,6 @@ export function OnsideFanWaitlistForm() {
             placeholder="voce@email.com"
             value={email}
             onChange={(event) => {
-              markStarted()
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}
@@ -310,8 +262,6 @@ export function OnsideBarInterestForm() {
   const pubNameRef = useRef<HTMLInputElement>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const startedRef = useRef(false)
-  const formRef = useFormViewed('pub')
   const client = useTRPCClient()
 
   const { mutate, isPending } = useMutation({
@@ -322,16 +272,9 @@ export function OnsideBarInterestForm() {
       analytics.waitlistSubmitted('pub')
     },
     onError: (error: Error) => {
-      analytics.waitlistSubmitFailed('pub', classifyJoinError(error))
       setFormError(mapJoinError(error))
     }
   })
-
-  function markStarted() {
-    if (startedRef.current) return
-    startedRef.current = true
-    analytics.waitlistFormStarted('pub')
-  }
 
   function validate() {
     const next: Partial<Record<'pubName' | 'city' | 'email', string>> = {}
@@ -350,10 +293,6 @@ export function OnsideBarInterestForm() {
     }
 
     setFieldErrors(next)
-
-    if (Object.keys(next).length > 0) {
-      analytics.waitlistValidationFailed('pub', Object.keys(next))
-    }
 
     if (next.pubName) {
       pubNameRef.current?.focus()
@@ -381,8 +320,6 @@ export function OnsideBarInterestForm() {
     setFormError(null)
     const payload = validate()
     if (!payload || isPending) return
-    // Funnel event only — no landing_cta_clicked (avoids double capture)
-    analytics.waitlistSubmitAttempted('pub')
     mutate(payload)
   }
 
@@ -400,7 +337,6 @@ export function OnsideBarInterestForm() {
 
   return (
     <form
-      ref={formRef}
       className="onside-bar-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}
@@ -421,7 +357,6 @@ export function OnsideBarInterestForm() {
             placeholder="Nome do bar"
             value={pubName}
             onChange={(event) => {
-              markStarted()
               setPubName(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.pubName)}
@@ -448,7 +383,6 @@ export function OnsideBarInterestForm() {
             placeholder="Cidade"
             value={city}
             onChange={(event) => {
-              markStarted()
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
@@ -476,7 +410,6 @@ export function OnsideBarInterestForm() {
             placeholder="E-mail"
             value={email}
             onChange={(event) => {
-              markStarted()
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}

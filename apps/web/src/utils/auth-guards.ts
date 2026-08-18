@@ -25,17 +25,23 @@ export type AuthSession = {
   }
 } | null
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup']
+const AUTHENTICATED_PREFIXES = [
+  '/dashboard',
+  '/admin',
+  '/plan',
+  '/internal'
+] as const
 
-const isPublicRoute = (pathname: string) =>
-  PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/pub/')
+export function requiresAuthentication(pathname: string) {
+  return AUTHENTICATED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
 
 export function applyAuthGuards(session: AuthSession, pathname: string) {
-  if (
-    !session &&
-    !isPublicRoute(pathname) &&
-    !pathname.startsWith('/onboarding')
-  ) {
+  // Unknown URLs stay public so the 404 page can render for visitors.
+  // /onboarding remains reachable without a session — existing behavior.
+  if (!session && requiresAuthentication(pathname)) {
     throw redirect({ to: '/login' })
   }
 
@@ -59,7 +65,9 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
 
   // Não-admin tentando acessar área interna
   if (pathname.startsWith('/internal') && session.user.role !== 'admin') {
-    throw redirect({ to: session.user.role === 'pub' ? '/admin' : '/dashboard' })
+    throw redirect({
+      to: session.user.role === 'pub' ? '/admin' : '/dashboard'
+    })
   }
 
   // Fan tentando acessar área do bar

@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect } from 'react'
 import { OnsideLanding } from '@/components/landing/onside-landing'
 import '@/components/landing/onside.css'
-import { analytics } from '@/lib/analytics'
 import { OG_IMAGE_URL, SITE_URL } from '@/lib/site'
 
 const HOMEPAGE_SCHEMA = {
@@ -140,10 +138,6 @@ function StructuredData({ schema }: { schema: object }) {
 }
 
 function Landing() {
-  useEffect(() => {
-    analytics.landingViewed()
-  }, [])
-
   return (
     <>
       <StructuredData schema={HOMEPAGE_SCHEMA} />

@@ -34,6 +34,7 @@ function makeFavorite({
       latitude: '-23.55052000',
       longitude: '-46.63330800',
       photoUrl: null,
+      phoneAcceptsWhatsapp: false,
       isActive: true,
       createdAt: '2026-08-01T00:00:00.000Z',
       updatedAt: '2026-08-01T00:00:00.000Z',

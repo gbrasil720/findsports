@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
 import Star from 'reicon-react/icons/Star'
+import { useMinuteNow } from '@/components/app/minute-tick'
 import type { DiscoveryCardBar } from '@/domain/dashboard-selectors'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
@@ -82,7 +83,11 @@ export function BarCard({
   onFavorite
 }: Props) {
   const event = bar.nextEvent
-  const temporalState = event ? getEventTemporalState(event.startsAt) : null
+  // ESC-17: só este cartão re-renderiza na virada do minuto, e não a página.
+  const agora = useMinuteNow()
+  const temporalState = event
+    ? getEventTemporalState(event.startsAt, agora)
+    : null
   const live = temporalState === 'live'
   const upcoming = temporalState === 'upcoming'
   const extraEvents = (bar.event_count ?? 0) - 1
@@ -123,7 +128,13 @@ export function BarCard({
       <Link
         to="/pub/$pubId"
         params={{ pubId: bar.id }}
-        onClick={() => analytics.barCardClicked(bar.id, plan)}
+        onClick={() =>
+          analytics.barOpened({
+            bar_id: bar.id,
+            source: 'card',
+            bar_plan: plan
+          })
+        }
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onFocus={onFocus}

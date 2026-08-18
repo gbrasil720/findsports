@@ -3,7 +3,12 @@ import {
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useLocation,
+  useNavigate
+} from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
 import Fire from 'reicon-react/icons/Fire'
@@ -19,6 +24,7 @@ import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { getCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/signup')({
   head: () => ({
@@ -36,12 +42,14 @@ export const Route = createFileRoute('/(auth)/signup')({
 
 function SignupPage() {
   const navigate = useNavigate()
+  const { href } = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [role, setRole] = useState<'fan' | 'pub'>('fan')
-  const signupStartedRef = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
+
+  const callbackUrl = getCallbackUrl(href)
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
@@ -72,11 +80,6 @@ function SignupPage() {
         return
       }
 
-      if (!signupStartedRef.current) {
-        signupStartedRef.current = true
-        analytics.signupStarted()
-      }
-
       setIsLoading(true)
       const { error } = await authClient.signUp.email({
         name,
@@ -91,7 +94,7 @@ function SignupPage() {
       }
       analytics.signupCompleted(role)
       toast.success('Conta criada! Bem-vindo ao time.')
-      navigate({ to: '/dashboard' })
+      navigate({ to: callbackUrl })
     }
   })
 

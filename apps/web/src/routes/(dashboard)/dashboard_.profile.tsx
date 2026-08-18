@@ -33,8 +33,8 @@ import {
   SEARCH_RADII
 } from '@/domain/discovery'
 import { useSignOut } from '@/hooks/use-sign-out'
-import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
@@ -71,9 +71,6 @@ function ProfilePage() {
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null)
 
   useEffect(() => {
-    analytics.profileViewed()
-  }, [])
-  useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
       (position) =>
@@ -89,7 +86,10 @@ function ProfilePage() {
     queryKey: ['session'],
     queryFn: () => authClient.getSession()
   })
-  const sportsQuery = useQuery(trpc.pubs.getSports.queryOptions())
+  const sportsQuery = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
   const preferencesQuery = useQuery(trpc.pubs.getMyPreferences.queryOptions())
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
   const user = sessionQuery.data?.data?.user
@@ -165,14 +165,11 @@ function ProfilePage() {
 
   const handleTabChange = (nextTab: ProfileTab) => {
     setTab(nextTab)
-    if (nextTab === 'Favoritos') analytics.favoritesTabViewed()
-    if (nextTab === 'Configurações') analytics.settingsTabViewed()
   }
   const handleSaveName = async () => {
     if (!nameInput.trim()) return
     await authClient.updateUser({ name: nameInput.trim() })
     void queryClient.invalidateQueries({ queryKey: ['session'] })
-    analytics.profileNameUpdated()
     setEditingName(false)
   }
   const handleImageChange = async (
@@ -209,11 +206,6 @@ function ProfilePage() {
   }
   const saveSports = () => {
     if (selectedSportIds.length === 0) return
-    analytics.profileSportsUpdated(
-      sports
-        .filter((sport) => selectedSportIds.includes(sport.id))
-        .map((sport) => sport.slug)
-    )
     updatePreferences.mutate({ sportIds: selectedSportIds })
   }
   const saveRadius = async (radiusKm: RadiusKm) => {
@@ -222,7 +214,6 @@ function ProfilePage() {
     try {
       await authClient.updateUser({ searchRadiusKm: radiusKm })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
-      analytics.profileRadiusUpdated(radiusKm)
     } catch {
       setRadiusError('Não foi possível salvar o raio. Tente de novo.')
     } finally {

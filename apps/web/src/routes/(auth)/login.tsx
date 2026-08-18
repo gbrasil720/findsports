@@ -1,5 +1,10 @@
 import { useForm } from '@tanstack/react-form'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useLocation,
+  useNavigate
+} from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
@@ -9,8 +14,8 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
-import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { getCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
   head: () => ({
@@ -29,9 +34,12 @@ export const Route = createFileRoute('/(auth)/login')({
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { href } = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+
+  const callbackUrl = getCallbackUrl(href)
 
   const form = useForm({
     defaultValues: { email: '', password: '' },
@@ -55,9 +63,8 @@ function LoginPage() {
         )
         return
       }
-      analytics.signinCompleted()
       toast.success('Bem-vindo de volta!')
-      navigate({ to: '/dashboard' })
+      navigate({ to: callbackUrl })
     }
   })
 

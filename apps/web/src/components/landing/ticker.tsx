@@ -1,5 +1,7 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 import { useQuery } from '@tanstack/react-query'
+import { authClient } from '@/lib/auth-client'
+import { HIGHLIGHTS_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 const FALLBACK_ITEMS = [
@@ -32,10 +34,13 @@ function formatTickerItem(item: {
 
 export function Ticker() {
   const trpc = useTRPC()
+  const { data: session } = authClient.useSession()
 
-  const { data: eliteEvents = [] } = useQuery(
-    trpc.pubs.getEliteEvents.queryOptions()
-  )
+  const { data: eliteEvents = [] } = useQuery({
+    ...trpc.pubs.getEliteEvents.queryOptions(),
+    ...HIGHLIGHTS_QUERY,
+    enabled: Boolean(session)
+  })
 
   const items =
     eliteEvents.length > 0

@@ -4,8 +4,6 @@ import Menu from 'reicon-react/icons/Menu'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 
-import { analytics } from '../../lib/analytics'
-
 const ONSIDE_ICON_SRC = '/onside-icone-preto.png'
 
 export function OnsideAppDemo() {
@@ -15,9 +13,7 @@ export function OnsideAppDemo() {
   const isMap = view === 'map'
 
   function toggleView() {
-    const next = isMap ? 'list' : 'map'
-    setView(next)
-    analytics.demoViewChanged(next)
+    setView(isMap ? 'list' : 'map')
   }
 
   return (
