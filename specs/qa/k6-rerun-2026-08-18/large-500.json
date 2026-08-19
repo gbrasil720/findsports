@@ -1,0 +1,278 @@
+{
+  "root_group": {
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {
+      "setup": {
+        "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+        "groups": {},
+        "checks": {
+          "servidor local saudável": {
+            "path": "::setup::servidor local saudável",
+            "id": "c5f15ebe66fe25722bfef08875092854",
+            "passes": 1,
+            "fails": 0,
+            "name": "servidor local saudável"
+          },
+          "login local funcionou": {
+            "name": "login local funcionou",
+            "path": "::setup::login local funcionou",
+            "id": "35213938270c7640bb46411fbb1479b1",
+            "passes": 1,
+            "fails": 0
+          },
+          "cookie autenticou no tRPC": {
+            "path": "::setup::cookie autenticou no tRPC",
+            "id": "0fbe35437eb91318e0497369a85da26a",
+            "passes": 1,
+            "fails": 0,
+            "name": "cookie autenticou no tRPC"
+          }
+        },
+        "name": "setup",
+        "path": "::setup"
+      }
+    },
+    "checks": {
+      "pubs.search respondeu corretamente": {
+        "passes": 15917,
+        "fails": 0,
+        "name": "pubs.search respondeu corretamente",
+        "path": "::pubs.search respondeu corretamente",
+        "id": "fcd06f8e5d09593d1b68daa9a6c23ba7"
+      },
+      "pubs.getById respondeu corretamente": {
+        "name": "pubs.getById respondeu corretamente",
+        "path": "::pubs.getById respondeu corretamente",
+        "id": "8c38864fdfe01134f5d4f4868b927c87",
+        "passes": 5921,
+        "fails": 0
+      },
+      "pubs.searchByLocation respondeu corretamente": {
+        "passes": 8197,
+        "fails": 0,
+        "name": "pubs.searchByLocation respondeu corretamente",
+        "path": "::pubs.searchByLocation respondeu corretamente",
+        "id": "5614dd35d702e896d22a5b3549786145"
+      },
+      "landing respondeu 200": {
+        "name": "landing respondeu 200",
+        "path": "::landing respondeu 200",
+        "id": "7ad68177255220bb4ee4bd14d5e00322",
+        "passes": 2000,
+        "fails": 0
+      },
+      "pubs.getEliteEvents respondeu corretamente": {
+        "fails": 0,
+        "name": "pubs.getEliteEvents respondeu corretamente",
+        "path": "::pubs.getEliteEvents respondeu corretamente",
+        "id": "28c8862ca13fdca6fa27a04c28a188ff",
+        "passes": 3881
+      },
+      "pubs.getSports respondeu corretamente": {
+        "name": "pubs.getSports respondeu corretamente",
+        "path": "::pubs.getSports respondeu corretamente",
+        "id": "4475624aaaf45ecbad30580df2fcc92b",
+        "passes": 4026,
+        "fails": 0
+      }
+    },
+    "name": "",
+    "path": ""
+  },
+  "metrics": {
+    "http_reqs": {
+      "count": 39945,
+      "rate": 329.03858920046645
+    },
+    "http_req_connecting": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0.0056497353110527004,
+      "min": 0,
+      "med": 0,
+      "max": 4.144674
+    },
+    "waitlist_write_duration_ms": {
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "data_sent": {
+      "count": 53798638,
+      "rate": 443155.03688638384
+    },
+    "location_search_duration_ms": {
+      "p(90)": 322.3441672,
+      "p(95)": 410.6647819999998,
+      "avg": 158.13725156959845,
+      "min": 0.509914,
+      "med": 117.374682,
+      "max": 1148.656373,
+      "thresholds": {
+        "p(95)<300": true
+      }
+    },
+    "catalog_duration_ms": {
+      "p(95)": 144.48344549999987,
+      "avg": 37.29311475211142,
+      "min": 0.399006,
+      "med": 7.1423465,
+      "max": 1104.816384,
+      "p(90)": 79.19719
+    },
+    "http_req_waiting": {
+      "min": 0.369551,
+      "med": 86.960627,
+      "max": 1172.112336,
+      "p(90)": 310.3657038,
+      "p(95)": 385.09643079999967,
+      "avg": 134.95738670364224
+    },
+    "data_received": {
+      "count": 389296660,
+      "rate": 3206749.8757504984
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 39945,
+      "thresholds": {
+        "rate<0.01": false
+      },
+      "value": 0
+    },
+    "http_req_tls_handshaking": {
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0
+    },
+    "http_req_duration{expected_response:true}": {
+      "p(95)": 385.1259283999998,
+      "avg": 135.0214658878705,
+      "min": 0.386507,
+      "med": 87.041329,
+      "max": 1172.227118,
+      "p(90)": 310.4322646
+    },
+    "http_req_receiving": {
+      "p(90)": 0.0864552,
+      "p(95)": 0.1372153999999998,
+      "avg": 0.052936279609463247,
+      "min": 0.004291,
+      "med": 0.02933,
+      "max": 17.048531
+    },
+    "commercial_write_duration_ms": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "search_duration_ms": {
+      "avg": 180.50358902707828,
+      "min": 0.44721,
+      "med": 142.287557,
+      "max": 1172.227118,
+      "p(90)": 347.19644860000005,
+      "p(95)": 435.3143148,
+      "thresholds": {
+        "p(95)<300": true
+      }
+    },
+    "http_req_blocked": {
+      "max": 4.18288,
+      "p(90)": 0.005083,
+      "p(95)": 0.007708,
+      "avg": 0.009269002578545415,
+      "min": 0.000458,
+      "med": 0.002416
+    },
+    "iteration_duration": {
+      "p(95)": 1651.1541544999998,
+      "avg": 1134.1541251659833,
+      "min": 502.398269,
+      "med": 1128.81434,
+      "max": 2638.091838,
+      "p(90)": 1542.2514972000001
+    },
+    "http_req_duration": {
+      "max": 1172.227118,
+      "p(90)": 310.4322646,
+      "p(95)": 385.1259283999998,
+      "avg": 135.0214658878705,
+      "min": 0.386507,
+      "med": 87.041329
+    },
+    "vus_max": {
+      "min": 500,
+      "max": 500,
+      "value": 500
+    },
+    "featured_duration_ms": {
+      "p(90)": 84.5358,
+      "p(95)": 148.859517,
+      "avg": 38.439348214377745,
+      "min": 0.386507,
+      "med": 6.359728,
+      "max": 1076.658795
+    },
+    "iterations": {
+      "rate": 329.013877327451,
+      "count": 39942
+    },
+    "bar_profile_duration_ms": {
+      "med": 103.935914,
+      "max": 1146.667674,
+      "p(90)": 305.347315,
+      "p(95)": 404.729966,
+      "avg": 144.18241105657847,
+      "min": 1.232266,
+      "thresholds": {
+        "p(95)<300": true
+      }
+    },
+    "checks": {
+      "passes": 39945,
+      "fails": 0,
+      "value": 1
+    },
+    "http_req_sending": {
+      "p(90)": 0.015125,
+      "p(95)": 0.02083339999999999,
+      "avg": 0.011142904618850792,
+      "min": 0.001917,
+      "med": 0.007791,
+      "max": 8.321304
+    },
+    "home_duration_ms": {
+      "avg": 35.495128465500066,
+      "min": 12.574302,
+      "med": 24.16406,
+      "max": 586.845661,
+      "p(90)": 48.760827700000014,
+      "p(95)": 65.9520234
+    },
+    "vus": {
+      "min": 2,
+      "max": 500,
+      "value": 2
+    }
+  },
+  "setup_data": {
+    "cookieHeader": "better-auth.session_token=893jRN3SLoPOul9H8RXS7aO8iIvKmG1h.QgQy9YU6spX4JlDhwJNW9rtruZAmOVgLzFL2VQTeUrE%3D; better-auth.session_data=eyJzZXNzaW9uIjp7InNlc3Npb24iOnsiZXhwaXJlc0F0IjoiMjAyNi0wOC0yNVQxODozODoyMS45ODFaIiwidG9rZW4iOiI4OTNqUk4zU0xvUE91bDlIOFJYUzdhTzhpSXZLbUcxaCIsImNyZWF0ZWRBdCI6IjIwMjYtMDgtMThUMTg6Mzg6MjEuOTgxWiIsInVwZGF0ZWRBdCI6IjIwMjYtMDgtMThUMTg6Mzg6MjEuOTgxWiIsImlwQWRkcmVzcyI6IjEyNy4wLjAuMSIsInVzZXJBZ2VudCI6IkZpbmRTcG9ydHNMb2NhbExvYWRUZXN0LzEuMCIsInVzZXJJZCI6IjFycXNESWE5bVBUU0txSWRhWUc0elFjOEYwa2tOUGxTIiwiaW1wZXJzb25hdGVkQnkiOm51bGwsImlkIjoiWkx1NHNSTk10OWJvNk8xOFRyZGI1dnBzYVlnN1doOUMifSwidXNlciI6eyJuYW1lIjoiTG9hZCBGYW4iLCJlbWFpbCI6ImxvYWQtZmFuQGxvY2FsLmludmFsaWQiLCJlbWFpbFZlcmlmaWVkIjpmYWxzZSwiaW1hZ2UiOm51bGwsImNyZWF0ZWRBdCI6IjIwMjYtMDgtMThUMTg6Mjg6MjIuNjQ2WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDgtMThUMTg6Mjg6MjIuNjQ2WiIsInJvbGUiOiJmYW4iLCJiYW5uZWQiOmZhbHNlLCJiYW5SZWFzb24iOm51bGwsImJhbkV4cGlyZXMiOm51bGwsIm9uYm9hcmRpbmdDb21wbGV0ZWQiOnRydWUsInNlYXJjaFJhZGl1c0ttIjozLCJpZCI6IjFycXNESWE5bVBUU0txSWRhWUc0elFjOEYwa2tOUGxTIn0sInVwZGF0ZWRBdCI6MTc4NzA3ODMwMTk4NCwidmVyc2lvbiI6IjEifSwiZXhwaXJlc0F0IjoxNzg3MDc4MzYxOTg0LCJzaWduYXR1cmUiOiJiV19UMGdJdHRaT0hhVVFfMm5Ta2phT19iV2lMQlFKY0pLU3A2b0ZEOEdrIn0",
+    "runId": "msz0a2vf"
+  }
+}

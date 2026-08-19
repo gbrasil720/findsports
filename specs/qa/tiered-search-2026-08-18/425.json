@@ -1,0 +1,278 @@
+{
+  "root_group": {
+    "checks": {
+      "pubs.search respondeu corretamente": {
+        "name": "pubs.search respondeu corretamente",
+        "path": "::pubs.search respondeu corretamente",
+        "id": "fcd06f8e5d09593d1b68daa9a6c23ba7",
+        "passes": 15405,
+        "fails": 0
+      },
+      "pubs.searchByLocation respondeu corretamente": {
+        "name": "pubs.searchByLocation respondeu corretamente",
+        "path": "::pubs.searchByLocation respondeu corretamente",
+        "id": "5614dd35d702e896d22a5b3549786145",
+        "passes": 7696,
+        "fails": 0
+      },
+      "pubs.getById respondeu corretamente": {
+        "name": "pubs.getById respondeu corretamente",
+        "path": "::pubs.getById respondeu corretamente",
+        "id": "8c38864fdfe01134f5d4f4868b927c87",
+        "passes": 5548,
+        "fails": 0
+      },
+      "landing respondeu 200": {
+        "passes": 1808,
+        "fails": 0,
+        "name": "landing respondeu 200",
+        "path": "::landing respondeu 200",
+        "id": "7ad68177255220bb4ee4bd14d5e00322"
+      },
+      "pubs.getSports respondeu corretamente": {
+        "path": "::pubs.getSports respondeu corretamente",
+        "id": "4475624aaaf45ecbad30580df2fcc92b",
+        "passes": 3797,
+        "fails": 0,
+        "name": "pubs.getSports respondeu corretamente"
+      },
+      "pubs.getEliteEvents respondeu corretamente": {
+        "name": "pubs.getEliteEvents respondeu corretamente",
+        "path": "::pubs.getEliteEvents respondeu corretamente",
+        "id": "28c8862ca13fdca6fa27a04c28a188ff",
+        "passes": 3751,
+        "fails": 0
+      }
+    },
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {
+      "setup": {
+        "name": "setup",
+        "path": "::setup",
+        "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+        "groups": {},
+        "checks": {
+          "servidor local saudável": {
+            "name": "servidor local saudável",
+            "path": "::setup::servidor local saudável",
+            "id": "c5f15ebe66fe25722bfef08875092854",
+            "passes": 1,
+            "fails": 0
+          },
+          "login local funcionou": {
+            "id": "35213938270c7640bb46411fbb1479b1",
+            "passes": 1,
+            "fails": 0,
+            "name": "login local funcionou",
+            "path": "::setup::login local funcionou"
+          },
+          "cookie autenticou no tRPC": {
+            "fails": 0,
+            "name": "cookie autenticou no tRPC",
+            "path": "::setup::cookie autenticou no tRPC",
+            "id": "0fbe35437eb91318e0497369a85da26a",
+            "passes": 1
+          }
+        }
+      }
+    }
+  },
+  "metrics": {
+    "search_duration_ms": {
+      "avg": 12.180363292177905,
+      "min": 0.357983,
+      "med": 6.947714,
+      "max": 550.743,
+      "p(90)": 18.160045800000002,
+      "p(95)": 26.2817114,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "http_req_duration": {
+      "p(95)": 28.032900349999984,
+      "avg": 12.422503248815914,
+      "min": 0.338601,
+      "med": 6.940169,
+      "max": 559.612605,
+      "p(90)": 20.693753100000002
+    },
+    "http_req_duration{expected_response:true}": {
+      "avg": 12.422503248815914,
+      "min": 0.338601,
+      "med": 6.940169,
+      "max": 559.612605,
+      "p(90)": 20.693753100000002,
+      "p(95)": 28.032900349999984
+    },
+    "commercial_write_duration_ms": {
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "http_req_connecting": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0.004644662781519681,
+      "min": 0,
+      "med": 0,
+      "max": 1.825976
+    },
+    "http_req_blocked": {
+      "p(95)": 0.004501,
+      "avg": 0.007217546069248698,
+      "min": 0.0005,
+      "med": 0.001751,
+      "max": 1.868119,
+      "p(90)": 0.00321
+    },
+    "home_duration_ms": {
+      "avg": 12.322287184734499,
+      "min": 3.856414,
+      "med": 10.8910385,
+      "max": 270.261621,
+      "p(90)": 20.892561600000004,
+      "p(95)": 26.30157435
+    },
+    "iteration_duration": {
+      "p(90)": 1413.1930518000001,
+      "p(95)": 1463.8851387999998,
+      "avg": 1012.7693745386965,
+      "min": 502.156108,
+      "med": 1011.332084,
+      "max": 1999.303426
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 38008,
+      "thresholds": {
+        "rate<0.01": false
+      },
+      "value": 0
+    },
+    "vus_max": {
+      "value": 425,
+      "min": 425,
+      "max": 425
+    },
+    "data_sent": {
+      "count": 51500002,
+      "rate": 427012.81738809537
+    },
+    "http_req_sending": {
+      "avg": 0.007119934066512411,
+      "min": 0.001668,
+      "med": 0.005377,
+      "max": 2.258033,
+      "p(90)": 0.010463,
+      "p(95)": 0.014506
+    },
+    "featured_duration_ms": {
+      "max": 539.108274,
+      "p(90)": 11.380619,
+      "p(95)": 17.88773049999999,
+      "avg": 7.252152013862961,
+      "min": 0.352356,
+      "med": 1.951571
+    },
+    "location_search_duration_ms": {
+      "p(90)": 28.459677000000003,
+      "p(95)": 36.22411975,
+      "avg": 21.750054445556195,
+      "min": 0.47791,
+      "med": 16.3232815,
+      "max": 559.612605,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "iterations": {
+      "count": 38005,
+      "rate": 315.1188639727541
+    },
+    "http_reqs": {
+      "count": 38008,
+      "rate": 315.14373850483986
+    },
+    "data_received": {
+      "count": 367370395,
+      "rate": 3046055.55925857
+    },
+    "vus": {
+      "value": 13,
+      "min": 13,
+      "max": 425
+    },
+    "bar_profile_duration_ms": {
+      "avg": 8.068051362112476,
+      "min": 1.076161,
+      "med": 3.4545779999999997,
+      "max": 539.376011,
+      "p(90)": 13.5964728,
+      "p(95)": 20.394137899999997,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "http_req_tls_handshaking": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "max": 0
+    },
+    "waitlist_write_duration_ms": {
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "checks": {
+      "passes": 38008,
+      "fails": 0,
+      "value": 1
+    },
+    "http_req_receiving": {
+      "avg": 0.03271162876236585,
+      "min": 0.00371,
+      "med": 0.022634,
+      "max": 3.305432,
+      "p(90)": 0.06252629999999999,
+      "p(95)": 0.09235764999999993
+    },
+    "http_req_waiting": {
+      "avg": 12.38267168598721,
+      "min": 0.323095,
+      "med": 6.8985455,
+      "max": 559.525527,
+      "p(90)": 20.646337200000005,
+      "p(95)": 27.98858599999999
+    },
+    "catalog_duration_ms": {
+      "min": 0.338601,
+      "med": 1.972913,
+      "max": 524.75457,
+      "p(90)": 10.6116214,
+      "p(95)": 16.602799599999983,
+      "avg": 6.00993277850932
+    }
+  },
+  "setup_data": {
+    "cookieHeader": "better-auth.session_token=2vDUtXhQguumFUkT9GNZcZlMiYU9OMK2.nQHeSc%2BTRMWt9%2FXUBtOxKG1vaNShKEEcOOuCox1l0%2Bw%3D; better-auth.session_data=eyJzZXNzaW9uIjp7InNlc3Npb24iOnsiZXhwaXJlc0F0IjoiMjAyNi0wOC0yNVQxOTo1ODo0OS4zMzdaIiwidG9rZW4iOiIydkRVdFhoUWd1dW1GVWtUOUdOWmNabE1pWVU5T01LMiIsImNyZWF0ZWRBdCI6IjIwMjYtMDgtMThUMTk6NTg6NDkuMzM3WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDgtMThUMTk6NTg6NDkuMzM3WiIsImlwQWRkcmVzcyI6IjEyNy4wLjAuMSIsInVzZXJBZ2VudCI6IkZpbmRTcG9ydHNMb2NhbExvYWRUZXN0LzEuMCIsInVzZXJJZCI6IkdQUFRERlplaUlWZGQzSjRHdHplbnQ0M0pSNWFBQmNBIiwiaW1wZXJzb25hdGVkQnkiOm51bGwsImlkIjoieEhUTDhTM0dOSG83ZG9kTWtzeThRa1Nrc2E5WlZSajcifSwidXNlciI6eyJuYW1lIjoiTG9hZCBGYW4iLCJlbWFpbCI6ImxvYWQtZmFuQGxvY2FsLmludmFsaWQiLCJlbWFpbFZlcmlmaWVkIjp0cnVlLCJpbWFnZSI6bnVsbCwiY3JlYXRlZEF0IjoiMjAyNi0wOC0xOFQxOTo1NDowMi43ODhaIiwidXBkYXRlZEF0IjoiMjAyNi0wOC0xOFQxOTo1NDowMi43ODhaIiwicm9sZSI6ImZhbiIsImJhbm5lZCI6ZmFsc2UsImJhblJlYXNvbiI6bnVsbCwiYmFuRXhwaXJlcyI6bnVsbCwib25ib2FyZGluZ0NvbXBsZXRlZCI6dHJ1ZSwic2VhcmNoUmFkaXVzS20iOjMsImlkIjoiR1BQVERGWmVpSVZkZDNKNEd0emVudDQzSlI1YUFCY0EifSwidXBkYXRlZEF0IjoxNzg3MDgzMTI5MzM5LCJ2ZXJzaW9uIjoiMSJ9LCJleHBpcmVzQXQiOjE3ODcwODMxODkzMzksInNpZ25hdHVyZSI6ImFhaXlGNFNUc1FWeTNCT3NBQ0syd0M0TnYtMVFvU0FKQTBnNDBYT0xwVU0ifQ",
+    "runId": "msz35joi"
+  }
+}

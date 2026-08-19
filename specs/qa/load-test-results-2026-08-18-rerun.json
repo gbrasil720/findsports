@@ -1,0 +1,87 @@
+{
+  "date": "2026-08-18",
+  "kind": "rerun-after-search-rewrite",
+  "comparedTo": "specs/qa/load-test-results-2026-08-18.json",
+  "environment": {
+    "application": "Vite development server, one local Node.js process, in-memory TtlCache",
+    "database": "PostgreSQL 17 + PostGIS 3.5 in isolated Docker tmpfs (findsports_load_test:5433)",
+    "generator": "Grafana k6 in Docker",
+    "slo": { "p95Ms": 300, "maxErrorRate": 0.01 }
+  },
+  "dataset": {
+    "name": "large",
+    "accounts": 1100000,
+    "fans": 1000000,
+    "bars": 100000,
+    "events": 500000,
+    "sessions": 100000,
+    "favorites": 2000000,
+    "commercialEvents": 1000000,
+    "databaseBytes": 2610665139,
+    "nearbyBarsAt3Km": 6100,
+    "searchDatabaseExecutionMs": 30.993
+  },
+  "browseRuns": [
+    {
+      "vus": 250,
+      "requests": 22224,
+      "rps": 184.1,
+      "errors": 0,
+      "httpP95Ms": 44.3,
+      "searchP95Ms": 51.6,
+      "locationP95Ms": 34.0,
+      "passed": true
+    },
+    {
+      "vus": 350,
+      "requests": 31020,
+      "rps": 256.5,
+      "errors": 0,
+      "httpP95Ms": 49.6,
+      "searchP95Ms": 58.2,
+      "locationP95Ms": 37.0,
+      "passed": true
+    },
+    {
+      "vus": 425,
+      "requests": 37213,
+      "rps": 307.5,
+      "errors": 0,
+      "httpP95Ms": 80.6,
+      "searchP95Ms": 96.5,
+      "locationP95Ms": 73.5,
+      "passed": true
+    },
+    {
+      "vus": 500,
+      "requests": 39945,
+      "rps": 329.0,
+      "errors": 0,
+      "httpP95Ms": 385.1,
+      "searchP95Ms": 435.3,
+      "locationP95Ms": 410.7,
+      "passed": false
+    },
+    {
+      "vus": 600,
+      "requests": 43759,
+      "rps": 362.2,
+      "errors": 0,
+      "httpP95Ms": 545.4,
+      "searchP95Ms": 617.0,
+      "locationP95Ms": 572.7,
+      "passed": false
+    }
+  ],
+  "verdict": {
+    "conservativePlanningVus": 350,
+    "lastGreenVus": 425,
+    "firstFailVus": 500,
+    "notes": [
+      "Same SLO as the morning report: p95 < 300 ms and errors < 1%.",
+      "0% HTTP errors on every step; the ceiling is still latency, not crashes.",
+      "Search rewrite cut DB time from 42.8 ms to 31.0 ms on the same 6100-bar radius; MIN(starts_at) still runs per nearby bar.",
+      "Local in-memory cache helps repeated cells (min search ~0.5 ms). Production Hobby without Redis will not get that hit rate."
+    ]
+  }
+}

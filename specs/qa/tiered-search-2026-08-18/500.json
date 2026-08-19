@@ -1,0 +1,278 @@
+{
+  "metrics": {
+    "http_req_tls_handshaking": {
+      "med": 0,
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0
+    },
+    "featured_duration_ms": {
+      "avg": 17.25581485853326,
+      "min": 0.325269,
+      "med": 2.4095825,
+      "max": 857.253033,
+      "p(90)": 19.9121601,
+      "p(95)": 35.46543709999999
+    },
+    "data_sent": {
+      "count": 59339416,
+      "rate": 490447.40261251025
+    },
+    "home_duration_ms": {
+      "avg": 19.76551974136363,
+      "min": 5.89702,
+      "med": 13.1275575,
+      "max": 496.765016,
+      "p(90)": 25.556372700000004,
+      "p(95)": 33.1635851
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 44098,
+      "thresholds": {
+        "rate<0.01": false
+      },
+      "value": 0
+    },
+    "http_req_connecting": {
+      "avg": 0.004717151571499844,
+      "min": 0,
+      "med": 0,
+      "max": 1.978035,
+      "p(90)": 0,
+      "p(95)": 0
+    },
+    "search_duration_ms": {
+      "avg": 26.911679635552492,
+      "min": 0.431776,
+      "med": 8.058587,
+      "max": 874.209257,
+      "p(90)": 31.0941917,
+      "p(95)": 50.6577833,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "http_reqs": {
+      "count": 44098,
+      "rate": 364.4752681827283
+    },
+    "http_req_blocked": {
+      "p(90)": 0.003917,
+      "p(95)": 0.005959,
+      "avg": 0.007751415120866924,
+      "min": 0.0005,
+      "med": 0.001792,
+      "max": 8.97633
+    },
+    "bar_profile_duration_ms": {
+      "p(90)": 25.162499200000003,
+      "p(95)": 44.79955139999995,
+      "avg": 21.246734543130547,
+      "min": 1.071064,
+      "med": 3.934985,
+      "max": 853.203124,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "http_req_sending": {
+      "avg": 0.007838070774184639,
+      "min": 0.00175,
+      "med": 0.005833,
+      "max": 0.936556,
+      "p(90)": 0.012042,
+      "p(95)": 0.016667
+    },
+    "iteration_duration": {
+      "avg": 1027.4583323433199,
+      "min": 502.163839,
+      "med": 1025.915098,
+      "max": 2332.687691,
+      "p(90)": 1428.5956598,
+      "p(95)": 1478.7254302
+    },
+    "location_search_duration_ms": {
+      "avg": 36.835524170739944,
+      "min": 0.484029,
+      "med": 18.231885,
+      "max": 870.625459,
+      "p(90)": 41.7207166,
+      "p(95)": 62.76412719999998,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "commercial_write_duration_ms": {
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "waitlist_write_duration_ms": {
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "thresholds": {
+        "p(95)<300": false
+      }
+    },
+    "catalog_duration_ms": {
+      "avg": 20.611825215367265,
+      "min": 0.34377,
+      "med": 2.512984,
+      "max": 862.939041,
+      "p(90)": 21.661414800000003,
+      "p(95)": 39.047031399999966
+    },
+    "http_req_waiting": {
+      "avg": 26.05021608274778,
+      "min": 0.315769,
+      "med": 9.009227,
+      "max": 874.170464,
+      "p(90)": 31.689282200000005,
+      "p(95)": 49.94665384999998
+    },
+    "http_req_duration{expected_response:true}": {
+      "avg": 26.094364176107756,
+      "min": 0.325269,
+      "med": 9.0600845,
+      "max": 874.209257,
+      "p(90)": 31.730743099999998,
+      "p(95)": 49.97450269999988
+    },
+    "http_req_receiving": {
+      "avg": 0.036310022586057845,
+      "min": 0.003625,
+      "med": 0.023168,
+      "max": 8.060691,
+      "p(90)": 0.068921,
+      "p(95)": 0.10201299999999992
+    },
+    "data_received": {
+      "count": 428628846,
+      "rate": 3542668.910079898
+    },
+    "iterations": {
+      "count": 44095,
+      "rate": 364.4504728222914
+    },
+    "http_req_duration": {
+      "p(95)": 49.97450269999988,
+      "avg": 26.094364176107756,
+      "min": 0.325269,
+      "med": 9.0600845,
+      "max": 874.209257,
+      "p(90)": 31.730743099999998
+    },
+    "checks": {
+      "passes": 44098,
+      "fails": 0,
+      "value": 1
+    },
+    "vus": {
+      "min": 1,
+      "max": 500,
+      "value": 1
+    },
+    "vus_max": {
+      "value": 500,
+      "min": 500,
+      "max": 500
+    }
+  },
+  "setup_data": {
+    "cookieHeader": "better-auth.session_token=H6BMbcyuO7uAAE1C9NAHCk5F5pFvpjV9.0Axu7mbjCDOWv9NOpkvYKPb4OT5QQuYPlB0cNgVeqA0%3D; better-auth.session_data=eyJzZXNzaW9uIjp7InNlc3Npb24iOnsiZXhwaXJlc0F0IjoiMjAyNi0wOC0yNVQyMDowMTowNS42NDRaIiwidG9rZW4iOiJINkJNYmN5dU83dUFBRTFDOU5BSENrNUY1cEZ2cGpWOSIsImNyZWF0ZWRBdCI6IjIwMjYtMDgtMThUMjA6MDE6MDUuNjQ0WiIsInVwZGF0ZWRBdCI6IjIwMjYtMDgtMThUMjA6MDE6MDUuNjQ0WiIsImlwQWRkcmVzcyI6IjEyNy4wLjAuMSIsInVzZXJBZ2VudCI6IkZpbmRTcG9ydHNMb2NhbExvYWRUZXN0LzEuMCIsInVzZXJJZCI6IkdQUFRERlplaUlWZGQzSjRHdHplbnQ0M0pSNWFBQmNBIiwiaW1wZXJzb25hdGVkQnkiOm51bGwsImlkIjoiajN6WlIzaXFNZXR0QWREdzlVWVhkUmJjb0RSMmV4M1QifSwidXNlciI6eyJuYW1lIjoiTG9hZCBGYW4iLCJlbWFpbCI6ImxvYWQtZmFuQGxvY2FsLmludmFsaWQiLCJlbWFpbFZlcmlmaWVkIjp0cnVlLCJpbWFnZSI6bnVsbCwiY3JlYXRlZEF0IjoiMjAyNi0wOC0xOFQxOTo1NDowMi43ODhaIiwidXBkYXRlZEF0IjoiMjAyNi0wOC0xOFQxOTo1NDowMi43ODhaIiwicm9sZSI6ImZhbiIsImJhbm5lZCI6ZmFsc2UsImJhblJlYXNvbiI6bnVsbCwiYmFuRXhwaXJlcyI6bnVsbCwib25ib2FyZGluZ0NvbXBsZXRlZCI6dHJ1ZSwic2VhcmNoUmFkaXVzS20iOjMsImlkIjoiR1BQVERGWmVpSVZkZDNKNEd0emVudDQzSlI1YUFCY0EifSwidXBkYXRlZEF0IjoxNzg3MDgzMjY1NjQ2LCJ2ZXJzaW9uIjoiMSJ9LCJleHBpcmVzQXQiOjE3ODcwODMzMjU2NDYsInNpZ25hdHVyZSI6IjZmay1YTWJvRi02UlhzOUlNaDF6VTV3MGQ3UFVHYm1pa0MzMjhPZkxDeHcifQ",
+    "runId": "msz38gwd"
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {
+      "setup": {
+        "name": "setup",
+        "path": "::setup",
+        "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+        "groups": {},
+        "checks": {
+          "servidor local saudável": {
+            "fails": 0,
+            "name": "servidor local saudável",
+            "path": "::setup::servidor local saudável",
+            "id": "c5f15ebe66fe25722bfef08875092854",
+            "passes": 1
+          },
+          "login local funcionou": {
+            "id": "35213938270c7640bb46411fbb1479b1",
+            "passes": 1,
+            "fails": 0,
+            "name": "login local funcionou",
+            "path": "::setup::login local funcionou"
+          },
+          "cookie autenticou no tRPC": {
+            "id": "0fbe35437eb91318e0497369a85da26a",
+            "passes": 1,
+            "fails": 0,
+            "name": "cookie autenticou no tRPC",
+            "path": "::setup::cookie autenticou no tRPC"
+          }
+        }
+      }
+    },
+    "checks": {
+      "pubs.search respondeu corretamente": {
+        "path": "::pubs.search respondeu corretamente",
+        "id": "fcd06f8e5d09593d1b68daa9a6c23ba7",
+        "passes": 17484,
+        "fails": 0,
+        "name": "pubs.search respondeu corretamente"
+      },
+      "landing respondeu 200": {
+        "name": "landing respondeu 200",
+        "path": "::landing respondeu 200",
+        "id": "7ad68177255220bb4ee4bd14d5e00322",
+        "passes": 2200,
+        "fails": 0
+      },
+      "pubs.searchByLocation respondeu corretamente": {
+        "id": "5614dd35d702e896d22a5b3549786145",
+        "passes": 8879,
+        "fails": 0,
+        "name": "pubs.searchByLocation respondeu corretamente",
+        "path": "::pubs.searchByLocation respondeu corretamente"
+      },
+      "pubs.getSports respondeu corretamente": {
+        "name": "pubs.getSports respondeu corretamente",
+        "path": "::pubs.getSports respondeu corretamente",
+        "id": "4475624aaaf45ecbad30580df2fcc92b",
+        "passes": 4425,
+        "fails": 0
+      },
+      "pubs.getEliteEvents respondeu corretamente": {
+        "name": "pubs.getEliteEvents respondeu corretamente",
+        "path": "::pubs.getEliteEvents respondeu corretamente",
+        "id": "28c8862ca13fdca6fa27a04c28a188ff",
+        "passes": 4418,
+        "fails": 0
+      },
+      "pubs.getById respondeu corretamente": {
+        "passes": 6689,
+        "fails": 0,
+        "name": "pubs.getById respondeu corretamente",
+        "path": "::pubs.getById respondeu corretamente",
+        "id": "8c38864fdfe01134f5d4f4868b927c87"
+      }
+    },
+    "name": ""
+  }
+}

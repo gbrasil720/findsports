@@ -19,10 +19,10 @@ pendências sem medir, não tem como saber se ajudou.
 |---|---|---|---|
 | 1 | Cache compartilhado (Redis/KV) | ESC-08 | Provisionar serviço |
 | 2 | Cache de CDN nas páginas públicas | ESC-08 | Verificação exige CDN real |
-| 3 | Marcadores modernos do mapa | ESC-16 | Map ID no Google Cloud |
+| 3 | Marcadores modernos do mapa | ESC-16 | FEITO — falta só o estilo na nuvem |
 | 4 | Agrupamento de pinos | ESC-16 | Depende de rolagem infinita |
 | 5 | Rastreamento de erro (Sentry) | ESC-18 | Conta e credencial |
-| 6 | Executar o teste de carga | ESC-18 | k6 não instalado |
+| 6 | Executar o teste de carga | ESC-18 | **Concluído localmente em 2026-08-18** |
 | 7 | Páginas de bar na busca | ESC-20 | **Retirado** — privadas por desenho |
 | 8 | Agendar a retenção de analytics | ESC-10 | Decisão de dono |
 | 9 | Remover índices redundantes | ESC-12 | Mudança destrutiva |
@@ -182,76 +182,86 @@ sair, abrir em janela anônima e confirmar que o shell logado **não** aparece.
 
 ---
 
-## 3. Marcadores modernos do mapa (`AdvancedMarkerElement`) — ESC-16
+## 3. Marcadores modernos do mapa (`AdvancedMarkerElement`) — ESC-16 — FEITO
 
-### Por que não fiz
+Map ID `4ce83cba5247897baf0ede23` (`onside-web`, JavaScript, rasterização)
+criado no projeto `findsports-498415`. Publicado como
+`VITE_GOOGLE_MAPS_MAP_ID`.
 
-`google.maps.Marker` está depreciado. A API nova **só renderiza se o mapa tiver
-um Map ID**, criado no console do Google Cloud. Procurei no repositório inteiro:
-não existe nenhum configurado.
+O que mudou além do construtor:
 
-Migrar sem Map ID não daria erro — os pinos simplesmente **parariam de
-aparecer**. É o pior tipo de quebra: silenciosa.
+- **Hover saiu do barramento do mapa.** `AdvancedMarkerElement` não emite
+  `mouseover`/`mouseout` — ele É um `HTMLElement`. Os ouvintes agora são de
+  DOM, no próprio marcador, e são removidos por `removeEventListener`.
+- **Clique virou `gmp-click`**, com `gmpClickable: true`. Sem essa opção o
+  marcador também não entra na navegação por teclado.
+- **O ícone virou DOM, e DOM não se compartilha.** O cache de seis ícones
+  passou a guardar a marcação SVG, não o objeto: cada marcador tem o seu
+  elemento e só reescreve o conteúdo quando cor ou tamanho mudam. O arquivo
+  de ícones deixou de depender do runtime do mapa.
+- **O ponto do usuário compensa a âncora.** O ícone antigo ancorava no centro;
+  o `AdvancedMarkerElement` ancora pela base.
+- **Sem Map ID o mapa falha alto.** Era a falha silenciosa que travava esta
+  pendência; agora vira mensagem na tela em vez de mapa vazio.
+- **O caminho legado do carregador morreu.** Ele pegava construtores de
+  `google.maps` direto, para APIs sem `importLibrary` — nunca rodava, e não
+  teria como oferecer `AdvancedMarkerElement`.
 
-### Como fazer
+`marker-diff.ts` continuou valendo, como previsto: a decisão de "o que mudou"
+é independente da API.
 
-1. **Criar o Map ID.** Google Cloud Console → *Google Maps Platform* → *Map
-   Management* → *Create Map ID*. Tipo: **JavaScript**. Escolher um estilo (ou
-   o padrão). Copiar o identificador.
-2. **Publicar como variável de ambiente pública:**
-   `VITE_GOOGLE_MAPS_MAP_ID=...` no `.env` e no painel da Vercel.
-3. **Passar na criação do mapa** (`apps/web/src/components/app/google-map.tsx`):
-   `new runtime.Map(el, { mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID, ... })`
-4. **Trocar o construtor.** O loader já importa a biblioteca `marker`; expor
-   `AdvancedMarkerElement` em `GoogleMapsRuntime` e trocar em
-   `google-map.tsx`. Diferenças que quebram:
-   - não existe `setIcon`: o conteúdo é um elemento DOM (`content`)
-   - não existe `setPosition`: usa a propriedade `position`
-   - eventos: `gmp-click` em vez de `click`
-5. **`marker-diff.ts` continua valendo.** A decisão de "o que mudou" é
-   independente da API; só a aplicação muda.
+### Pendência: estilo na nuvem
 
-### Como testar
+Com `mapId` presente, a API **ignora** o `styles` definido em código. O mapa
+escondia POI e transporte por ali, e isso parou de valer.
 
-Não há como testar sem navegador. Roteiro manual:
+Recriar como estilo de nuvem, no console → *Estilos de mapa* → novo estilo →
+importar JSON → associar ao Map ID `onside-web`:
 
-1. `bun run dev:web`, abrir `/dashboard`, permitir localização.
-2. **Os pinos aparecem?** Se não, o Map ID está errado — é exatamente a falha
-   silenciosa.
-3. Passar o mouse pela lista: o pino correspondente deve crescer.
-4. Console do navegador sem avisos de depreciação.
-5. Ferramentas de desenvolvedor → *Performance*, gravar 10 s movendo o mouse
-   pela lista e comparar o tempo de script com a versão anterior.
+```json
+[
+  { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
+  { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] }
+]
+```
+
+Até isso ser feito, o mapa funciona e os pinos aparecem — só volta a mostrar
+ponto de interesse e transporte.
 
 ---
 
 ## 4. Agrupamento de pinos — ESC-16
 
-### Por que não fiz
+### Por que continua adiado
 
-A busca devolve no máximo 30 resultados. Agrupar abaixo disso não ajuda, e
-custaria uma dependência nova.
+`dashboard.tsx` pede `limit: 30`. Agrupar 30 pinos não melhora nada — o
+agrupador quase nunca dispara — e custa `@googlemaps/markerclusterer` (~14 kB
+gzip) mais o recálculo de clusters a cada movimento do mapa. Somando, é perda
+de desempenho para comprar zero.
 
-Faz sentido **junto** com a rolagem infinita que o ESC-05 preparou (o cursor
-keyset existe, mas nenhuma tela usa ainda). Antes disso, é dependência para um
-problema que ninguém tem.
+Faz sentido **junto** com a rolagem infinita que o ESC-05 preparou: o cursor
+keyset existe, nenhuma tela consome. Com centenas de pinos, o agrupamento
+passa a resolver um problema que existe.
 
-### Como fazer, quando fizer sentido
+### O que foi feito no lugar, pelo mesmo objetivo
 
-```bash
-bun add @googlemaps/markerclusterer -F web
-```
+O caminho quente do mapa é o hover, que dispara a cada movimento do mouse pela
+lista. Ele ficou mais barato do que era antes da migração para
+`AdvancedMarkerElement`:
 
-A biblioteca funciona com marcador legado **e** com o moderno, então não
-depende do item 3.
+- **Cor virou variável CSS.** Trocar cor é uma escrita de propriedade; o SVG
+  embutido herda a variável. Nada é percorrido nem reanalisado.
+- **Destaque virou `transform: scale`**, com `transform-origin: bottom center`
+  para a ponta não sair do endereço. Composto na GPU, sem recálculo de layout.
+- **A sombra saiu do `<filter>` do SVG e virou `drop-shadow` do CSS.** Trinta
+  pinos embutidos no mesmo documento significariam trinta `id="s"` repetidos,
+  todos resolvendo para o primeiro — inválido, e trabalho de CPU à toa.
 
-### Como testar
+Antes, cada mudança de hover reescrevia `innerHTML` e o SVG inteiro era
+reanalisado. O `marker-diff.ts` continua limitando isso a dois pinos por
+movimento; agora esses dois custam duas escritas de estilo.
 
-Popular o banco de desenvolvimento com centenas de bares (o script de
-`packages/db/src/seed/` serve de base), abrir o mapa afastado e conferir que os
-pinos viram grupos numerados, e que aproximar desagrupa.
-
----
 
 ## 5. Rastreamento de erro (Sentry) — ESC-18
 
@@ -294,7 +304,19 @@ aparece no painel do Sentry, e **remover a rota**. Depois provocar um
 
 ---
 
-## 6. Executar o teste de carga — ESC-18
+## 6. Executar o teste de carga — ESC-18 (**concluído localmente**)
+
+### Resultado
+
+O teste foi ampliado e executado com k6 via Docker contra um Postgres/PostGIS
+efêmero e isolado. Nenhuma carga foi enviada a produção nem ao Neon remoto.
+Foram cobertas navegação autenticada, busca, perfil, catálogos, landing,
+ingestão comercial e waitlist.
+
+O resumo completo, os datasets e os patamares aprovados/reprovados estão em
+[`RELATORIO-CAPACIDADE-APLICACAO.md`](RELATORIO-CAPACIDADE-APLICACAO.md). As
+métricas normalizadas estão em
+[`specs/qa/load-test-results-2026-08-18.json`](specs/qa/load-test-results-2026-08-18.json).
 
 ### O que existe
 
@@ -302,50 +324,21 @@ aparece no painel do Sentry, e **remover a rota**. Depois provocar um
 coordenadas variadas de propósito (ponto fixo esconderia o custo do índice
 espacial).
 
-### Por que não rodei
-
-k6 não está instalado nesta máquina. Verifiquei.
+O k6 continua sem instalação global, mas foi executado pela imagem oficial
+`grafana/k6`, o que torna o teste reproduzível sem alterar a máquina.
 
 ### Como fazer
 
-```bash
-brew install k6                        # macOS
-# ou: docker run --rm -i grafana/k6 run - < apps/web/scripts/load-test.k6.js
-
-bun run dev:web                        # em outro terminal
-BASE_URL=http://localhost:3001 \
-LOAD_EMAIL=seu@email LOAD_PASSWORD=suasenha \
-  k6 run apps/web/scripts/load-test.k6.js
-```
-
-**Antes de dar valor ao número, popule o banco.** Com 3 bares qualquer coisa é
-rápida. Um cenário realista tem alguns milhares:
-
-```sql
--- No banco de DESENVOLVIMENTO. Em transação, se quiser descartar depois.
-INSERT INTO "user" (id, name, email, email_verified, created_at, updated_at, role)
-SELECT 'carga-u-'||i, 'Carga '||i, 'carga-'||i||'@local.test', false, NOW(), NOW(), 'pub'
-FROM generate_series(1,2000) i;
-
-INSERT INTO bar (id, user_id, name, address, neighborhood, city, latitude, longitude, is_active, created_at, updated_at)
-SELECT 'carga-b-'||i, 'carga-u-'||i, 'Bar '||i, 'Rua '||i, 'Bairro', 'São Paulo',
-       (-23.55 + (random()-0.5)*0.2)::numeric(10,8),
-       (-46.63 + (random()-0.5)*0.2)::numeric(11,8),
-       true, NOW(), NOW()
-FROM generate_series(1,2000) i;
-
-INSERT INTO event (id, bar_id, sport_id, championship, starts_at, created_at)
-SELECT 'carga-e-'||i, 'carga-b-'||i, (SELECT id FROM sport LIMIT 1),
-       'Camp '||i, NOW() + (i||' minutes')::interval, NOW()
-FROM generate_series(1,2000) i;
-
-ANALYZE bar; ANALYZE event;
-```
+Use somente o fluxo isolado descrito em “Como repetir com segurança” no
+relatório. O resolver recusa banco remoto e banco com nome diferente de
+`findsports_load_test`; o k6 recusa URL de aplicação não local. Não volte a
+popular `findsports_dev` manualmente para este teste.
 
 ### Como ler o resultado
 
-O k6 falha sozinho se p95 passar de 300 ms. Se falhar, o próximo passo é
-`pg_stat_statements` (já instalada em produção) para ver qual consulta domina.
+O k6 falha sozinho se p95 passar de 300 ms ou erro chegar a 1%. Se falhar,
+compare o patamar anterior, o `EXPLAIN (ANALYZE, BUFFERS)` e
+`pg_stat_statements` no ambiente isolado para ver qual consulta domina.
 
 ---
 
