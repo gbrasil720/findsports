@@ -1,3 +1,4 @@
+import { STARTER_EVENT_LIMIT } from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
 // ---------------------------------------------------------------------------
@@ -54,7 +55,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Fire,
     features: [
       'Perfil do bar no Onside',
-      'Até 5 jogos por mês na agenda',
+      `Até ${STARTER_EVENT_LIMIT} jogos por mês na agenda`,
       'Aparece nas buscas básicas',
       'Suporte por e-mail',
       'Analytics essenciais dos últimos 30 dias',

@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom'
 
 import {
   buildGoogleMapsUrl,
+  hasGoogleMapsConfig,
   loadGoogleMaps,
   resetGoogleMapsLoader
 } from './google-maps-loader'
@@ -166,5 +167,23 @@ describe('Google Maps loader', () => {
     await expect(pending).rejects.toThrow('reiniciado')
     expect(document.querySelectorAll('script')).toHaveLength(0)
     expect(window.__onsideInitMap).toBeUndefined()
+  })
+})
+
+describe('hasGoogleMapsConfig', () => {
+  test('exige chave e Map ID', () => {
+    expect(hasGoogleMapsConfig({ apiKey: 'k', mapId: 'm' })).toBe(true)
+  })
+
+  test('recusa quando falta a chave', () => {
+    expect(hasGoogleMapsConfig({ apiKey: undefined, mapId: 'm' })).toBe(false)
+  })
+
+  test('recusa quando falta o Map ID — sem ele os pinos não renderizam', () => {
+    expect(hasGoogleMapsConfig({ apiKey: 'k', mapId: undefined })).toBe(false)
+  })
+
+  test('trata string em branco como ausente', () => {
+    expect(hasGoogleMapsConfig({ apiKey: '  ', mapId: 'm' })).toBe(false)
   })
 })

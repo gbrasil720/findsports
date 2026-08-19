@@ -33,6 +33,20 @@ export type GoogleMapsRuntime = {
 let loadPromise: Promise<GoogleMapsRuntime> | null = null
 let rejectActiveLoad: ((reason: Error) => void) | null = null
 
+/**
+ * O mapa só tem como funcionar com chave pública e Map ID — o segundo porque
+ * `AdvancedMarkerElement` não renderiza sem ele. Ambos são opcionais no
+ * esquema de env, então quem exibe um mapa precisa poder perguntar antes de
+ * montar o componente: sem isso, uma instalação sem chave mostra a caixa
+ * "Mapa indisponível" com um botão de tentar de novo que nunca vai dar certo.
+ */
+export function hasGoogleMapsConfig(config: {
+  apiKey?: string | undefined
+  mapId?: string | undefined
+}): boolean {
+  return Boolean(config.apiKey?.trim() && config.mapId?.trim())
+}
+
 export function buildGoogleMapsUrl({
   apiKey,
   channel
