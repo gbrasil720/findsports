@@ -3,6 +3,7 @@ import {
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
 import { useForm } from '@tanstack/react-form'
+import { useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   Link,
@@ -25,6 +26,7 @@ import { OnsideBrand } from '@/components/brand/onside-brand'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { getCallbackUrl } from '@/utils/callback-url'
+import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(auth)/signup')({
   head: () => ({
@@ -50,6 +52,15 @@ function SignupPage() {
   const formRef = useRef<HTMLFormElement>(null)
 
   const callbackUrl = getCallbackUrl(href)
+
+  // ESC-19: quem recusa é o portão no servidor (`api/auth/$`); isto só evita
+  // que a pessoa preencha o cadastro inteiro para levar um erro no fim.
+  // Enquanto carrega, o padrão é ABERTO: se a leitura falhar, esconder o
+  // aviso é melhor do que anunciar um bloqueio que talvez não exista.
+  const trpc = useTRPC()
+  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const portaoFechado =
+    configQuery.data?.['launch.waitlist_gate'].signup ?? false
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
@@ -138,6 +149,27 @@ function SignupPage() {
               </Link>
             </p>
           </div>
+
+          {portaoFechado ? (
+            <div
+              className="onside-callout onside-callout-warn mb-6"
+              role="status"
+            >
+              <p className="text-sm font-semibold">
+                A Onside está abrindo por convite.
+              </p>
+              <p className="text-sm">
+                Só quem já teve o acesso liberado consegue criar conta agora.{' '}
+                <Link
+                  to="/"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Entre na lista de espera
+                </Link>{' '}
+                e avisamos assim que for a sua vez.
+              </p>
+            </div>
+          ) : null}
 
           <form
             ref={formRef}

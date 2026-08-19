@@ -1,4 +1,5 @@
-import { useMutation } from '@tanstack/react-query'
+import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
@@ -53,6 +54,18 @@ function PubOnboarding() {
   const [description, setDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
+  // `onboarding.completePub`; aqui a tela só evita que o dono do bar preencha
+  // o cadastro inteiro para descobrir no fim que a cidade dele não abriu.
+  //
+  // Lista vazia — inclusive enquanto carrega, ou se a leitura falhar —
+  // significa "todas liberadas", que é o padrão da flag. Errar para o lado de
+  // deixar passar devolve a mensagem do servidor; errar para o outro
+  // bloquearia cadastro válido.
+  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const cidadesAbertas = configQuery.data?.['launch.pub_cities'] ?? []
+  const cidadePermitida = cidadeLiberada(city, cidadesAbertas)
+
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
       onSuccess: async () => {
@@ -101,7 +114,8 @@ function PubOnboarding() {
       return (
         name.trim().length > 1 &&
         neighborhood.trim().length > 1 &&
-        address.trim().length > 4
+        address.trim().length > 4 &&
+        cidadePermitida
       )
     return true
   })()
@@ -170,6 +184,21 @@ function PubOnboarding() {
               description={description}
               onChange={handleFieldChange}
             />
+
+            {!cidadePermitida ? (
+              <div
+                className="onside-callout onside-callout-warn mt-6"
+                role="status"
+              >
+                <p className="text-sm font-semibold">
+                  A Onside ainda não abriu em {city.trim() || 'sua cidade'}.
+                </p>
+                <p className="text-sm">
+                  Por enquanto atendemos: {cidadesAbertas.join(', ')}. Estamos
+                  abrindo cidade a cidade — assim que chegarmos aí, avisamos.
+                </p>
+              </div>
+            ) : null}
           </div>
         )}
 

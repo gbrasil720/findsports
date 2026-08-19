@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import Settings from 'reicon-react/icons/Settings'
+import SliderH from 'reicon-react/icons/SliderH'
 import Users from 'reicon-react/icons/Users'
 import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
@@ -76,6 +77,27 @@ function InternalHallPage() {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Impersone, bana, desbane e altere roles de usuários da plataforma.
+            </p>
+          </div>
+          <span className="onside-kicker text-[var(--onside-ink)]">
+            Acessar →
+          </span>
+        </Link>
+
+        <Link
+          to="/internal/flags"
+          className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"
+        >
+          <div className="grid size-14 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
+            <SliderH size={28} color="var(--onside-ink)" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="onside-display text-2xl tracking-tight">
+              Configuração
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
+              Desligue caminhos de código, ajuste limites e libere cobrança sem
+              deploy.
             </p>
           </div>
           <span className="onside-kicker text-[var(--onside-ink)]">

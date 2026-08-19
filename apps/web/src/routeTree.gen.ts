@@ -17,6 +17,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
+import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
@@ -68,6 +69,11 @@ const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
 const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
   id: '/internal_/manage-users',
   path: '/internal/manage-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalFlagsRoute = InternalFlagsRouteImport.update({
+  id: '/internal_/flags',
+  path: '/internal/flags',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof authSignupRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignupRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/(auth)/signup': typeof authSignupRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
+  '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard'
     | '/admin/billing'
+    | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
     | '/dashboard/profile'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard'
     | '/admin/billing'
+    | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
     | '/dashboard/profile'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/(auth)/signup'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
+    | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
     | '/(dashboard)/dashboard_/profile'
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   authSignupRoute: typeof authSignupRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
@@ -347,6 +360,13 @@ declare module '@tanstack/react-router' {
       path: '/internal/manage-users'
       fullPath: '/internal/manage-users'
       preLoaderRoute: typeof InternalManageUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internal_/flags': {
+      id: '/internal_/flags'
+      path: '/internal/flags'
+      fullPath: '/internal/flags'
+      preLoaderRoute: typeof InternalFlagsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/billing': {
@@ -447,6 +467,7 @@ const rootRouteChildren: RootRouteChildren = {
   authSignupRoute: authSignupRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
+  InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,

@@ -34,6 +34,17 @@ function PlanSelection() {
   const userTouched = useRef(false)
 
   const subscriptionQuery = useQuery(trpc.pub.getMySubscription.queryOptions())
+  // ESC-19: a contratação pode estar fechada. Quem decide é o servidor — ver
+  // `api/auth/$` — mas descobrir isso só depois do clique, num erro genérico,
+  // seria trabalhar contra o dono do bar. Aqui a tela avisa antes.
+  //
+  // O padrão enquanto carrega é LIBERADO, e isso é deliberado: se a leitura
+  // da configuração falhar, esconder o botão trancaria a contratação mesmo
+  // com ela aberta. Liberar na dúvida no máximo devolve o 503 do servidor,
+  // que a tela já mostra.
+  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const checkoutLiberado =
+    configQuery.data?.['billing.checkout_enabled'] ?? true
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.plan ?? null
   const hasActivePlan =
@@ -56,6 +67,13 @@ function PlanSelection() {
   }
 
   const handleCheckout = async () => {
+    if (!checkoutLiberado) {
+      setError(
+        'A contratação de planos está temporariamente indisponível. Tente novamente em instantes.'
+      )
+      return
+    }
+
     analytics.checkoutStarted(selected)
     setLoading(true)
     setError(null)
@@ -162,6 +180,21 @@ function PlanSelection() {
         ))}
       </fieldset>
 
+      {!checkoutLiberado && !configQuery.isLoading ? (
+        <div
+          className="onside-callout onside-callout-warn mx-auto mb-4 max-w-2xl"
+          role="status"
+        >
+          <p className="text-sm font-semibold">
+            A contratação de planos está temporariamente indisponível.
+          </p>
+          <p className="text-sm">
+            Estamos liberando os pagamentos aos poucos. Sua conta continua ativa
+            e você não perde nada esperando.
+          </p>
+        </div>
+      ) : null}
+
       {isDowngrade ? (
         <div
           className="onside-callout onside-callout-warn mx-auto mb-4 max-w-2xl"
@@ -195,8 +228,19 @@ function PlanSelection() {
         <button
           type="button"
           onClick={handleCheckout}
-          disabled={loading || isSamePlan || subscriptionQuery.isLoading}
-          title={isSamePlan ? 'Este já é seu plano atual' : undefined}
+          disabled={
+            loading ||
+            isSamePlan ||
+            subscriptionQuery.isLoading ||
+            !checkoutLiberado
+          }
+          title={
+            !checkoutLiberado
+              ? 'Contratação temporariamente indisponível'
+              : isSamePlan
+                ? 'Este já é seu plano atual'
+                : undefined
+          }
           className="onside-btn onside-btn-acid min-h-11"
         >
           {loading ? (

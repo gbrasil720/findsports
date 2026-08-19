@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow
 } from '@findsports_oficial/ui/components/table'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useId, useState } from 'react'
 import Export from 'reicon-react/icons/Export'
@@ -25,6 +25,7 @@ import Store from 'reicon-react/icons/Store'
 import Users from 'reicon-react/icons/Users'
 import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
+import { WaitlistAccessPanel } from '@/components/internal/waitlist-access-panel'
 import { getUser } from '@/functions/get-user'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
@@ -95,6 +96,29 @@ function AdminWaitlistPage() {
 
   const trpc = useTRPC()
   const trpcClient = useTRPCClient()
+  const queryClient = useQueryClient()
+
+  /**
+   * ESC-19: a aprovação é da PESSOA, não da linha. O portão de entrada
+   * consulta por e-mail, e a mesma pessoa pode ter várias inscrições
+   * (torcedor e bar, ou cidades diferentes) — por isso a mutação recebe o
+   * e-mail e marca todas as linhas dele de uma vez.
+   */
+  const aprovacao = useMutation(
+    trpc.waitlist.setApproval.mutationOptions({
+      onSuccess: async (resultado) => {
+        toast.success(
+          resultado.approved
+            ? `${resultado.email} liberado.`
+            : `Acesso de ${resultado.email} revogado.`
+        )
+        await queryClient.invalidateQueries({
+          queryKey: trpc.waitlist.getAll.queryKey()
+        })
+      },
+      onError: (erro) => toast.error(erro.message)
+    })
+  )
   const {
     data: subscribers = [],
     isLoading,
@@ -134,6 +158,17 @@ function AdminWaitlistPage() {
   const total = filtered.length
   const fanCount = filtered.filter((s) => s.role === 'fan').length
   const pubCount = filtered.filter((s) => s.role === 'pub').length
+
+  // Contagem sobre a lista INTEIRA, não sobre o filtro da busca: o painel
+  // decide se é seguro fechar a porta, e um filtro de texto na tela não pode
+  // mudar essa resposta.
+  const emailsLiberados = new Set(
+    subscribers.filter((s) => s.approvedAt).map((s) => s.email)
+  )
+  const emailsPendentes = new Set(
+    subscribers.filter((s) => !s.approvedAt).map((s) => s.email)
+  )
+  for (const email of emailsLiberados) emailsPendentes.delete(email)
 
   function escapeCsv(value: string) {
     return `"${value.replace(/"/g, '""')}"`
@@ -183,6 +218,11 @@ function AdminWaitlistPage() {
 
   return (
     <InternalShell title="Lista de Espera">
+      <WaitlistAccessPanel
+        liberados={emailsLiberados.size}
+        pendentes={emailsPendentes.size}
+      />
+
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-xl text-sm text-[var(--onside-muted)]">
           Todos os inscritos na lista de espera — torcedores e bares.
@@ -423,6 +463,9 @@ function AdminWaitlistPage() {
                     <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
                       Data de inscrição
                     </TableHead>
+                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                      Acesso
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -472,6 +515,35 @@ function AdminWaitlistPage() {
                         </TableCell>
                         <TableCell className="text-sm tabular-nums text-[var(--onside-muted)]">
                           {formatDate(s.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={
+                                s.approvedAt
+                                  ? 'onside-badge bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                                  : 'onside-badge onside-badge-stone'
+                              }
+                            >
+                              {s.approvedAt ? 'Liberado' : 'Pendente'}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={
+                                aprovacao.isPending &&
+                                aprovacao.variables?.email === s.email
+                              }
+                              onClick={() =>
+                                aprovacao.mutate({
+                                  email: s.email,
+                                  approved: !s.approvedAt
+                                })
+                              }
+                              className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+                            >
+                              {s.approvedAt ? 'Revogar' : 'Liberar'}
+                            </button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )
