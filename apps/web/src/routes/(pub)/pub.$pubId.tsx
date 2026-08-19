@@ -1,6 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   useLocation,
@@ -10,14 +10,27 @@ import type { inferRouterOutputs } from '@trpc/server'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
+import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
-import { BarHeroSection } from '@/components/pub/bar-hero-section'
-import { BarInfoSidebar } from '@/components/pub/bar-info-sidebar'
+import { BarAbout } from '@/components/pub/bar-about'
+import { BarActions } from '@/components/pub/bar-action-bar'
+import { BarCover } from '@/components/pub/bar-cover'
+import { BarLocationBlock } from '@/components/pub/bar-location-block'
 import { EventsList } from '@/components/pub/events-list'
-import { shellVariantForViewer } from '@/domain/viewer'
+import { HeroEventCard } from '@/components/pub/hero-event-card'
+import {
+  formatDayLabel,
+  formatEventTime,
+  formatMatchup,
+  type ProfileEvent,
+  resolveHeroEvent
+} from '@/domain/pub-profile'
+import { canFavoriteBars, shellVariantForViewer } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
+import { buildDirectionsUrl } from '@/lib/maps-link'
+import { buildWhatsAppLink } from '@/lib/whatsapp-link'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(pub)/pub/$pubId')({
@@ -32,55 +45,31 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
 type PubOutput = NonNullable<RouterOutputs['pubs']['getById']>
-type RawEvent = PubOutput['events'][number]
-type RawSport = RawEvent['sport']
-type RawParticipant = RawEvent['participants'][number]
-type RawTeam = NonNullable<RawParticipant['team']>
 
-type NormalizedTeam = Omit<RawTeam, 'createdAt'> & { createdAt: Date }
-type NormalizedSport = Omit<RawSport, 'createdAt'> & { createdAt: Date }
-type NormalizedParticipant = Omit<RawParticipant, 'team'> & {
-  team: NormalizedTeam
-}
-type NormalizedEvent = Omit<
-  RawEvent,
-  'createdAt' | 'startsAt' | 'endsAt' | 'sport' | 'participants'
-> & {
-  createdAt: Date
-  startsAt: Date
-  endsAt: Date | null
-  sport: NormalizedSport
-  participants: NormalizedParticipant[]
-}
-
-type NormalizedPub = Omit<PubOutput, 'createdAt' | 'updatedAt' | 'events'> & {
-  createdAt: Date
-  updatedAt: Date
-  events: NormalizedEvent[]
-}
+type NormalizedPub = Omit<PubOutput, 'events'> & { events: ProfileEvent[] }
 
 /**
- * Normalize tRPC-serialized dates (string → Date) so component Props
- * (InferSelectModel) are satisfied without `as any`.
+ * tRPC serializa `Date` como string. A normalização acontece uma vez, aqui,
+ * para que os componentes recebam `Date` e nenhum deles precise adivinhar o
+ * formato.
  */
 function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
   if (!raw) return undefined
+
   return {
     ...raw,
-    createdAt: new Date(raw.createdAt),
-    updatedAt: new Date(raw.updatedAt),
-    events: raw.events.map((ev) => ({
-      ...ev,
-      createdAt: new Date(ev.createdAt),
-      startsAt: new Date(ev.startsAt),
-      endsAt: ev.endsAt ? new Date(ev.endsAt) : null,
-      sport: {
-        ...ev.sport,
-        createdAt: new Date(ev.sport.createdAt)
-      },
-      participants: ev.participants.map((p) => ({
-        ...p,
-        team: { ...p.team, createdAt: new Date(p.team.createdAt) }
+    events: raw.events.map((event) => ({
+      id: event.id,
+      championship: event.championship,
+      startsAt: new Date(event.startsAt),
+      endsAt: event.endsAt ? new Date(event.endsAt) : null,
+      participantFreeText: event.participantFreeText,
+      sport: { name: event.sport.name, slug: event.sport.slug },
+      participants: event.participants.map((participant) => ({
+        team: {
+          name: participant.team.name,
+          logoUrl: participant.team.logoUrl
+        }
       }))
     }))
   }
@@ -92,6 +81,8 @@ function PubPage() {
   const { href } = useLocation()
   const { data: session } = authClient.useSession()
   const [eventId, setEventId] = useState<string | null>(null)
+  const [isFavorited, setIsFavorited] = useState(false)
+  const [favoritePending, setFavoritePending] = useState(false)
   const trpc = useTRPC()
 
   const {
@@ -103,7 +94,6 @@ function PubPage() {
     enabled: Boolean(session)
   })
 
-  // Normalize serialized dates to Date instances
   const normalizedPub = useMemo(() => normalizePub(pub), [pub])
 
   // Extract eventId from URL search params (stable — no re-run on navigation)
@@ -132,31 +122,98 @@ function PubPage() {
     }
   }, [isLoadingPub, normalizedPub, isError, navigate])
 
+  const canFavorite = canFavoriteBars(session?.user?.role)
+
+  const { data: favoriteData } = useQuery({
+    ...trpc.pubs.isFavorited.queryOptions({ barId: pubId }),
+    enabled: canFavorite && Boolean(normalizedPub)
+  })
+
+  useEffect(() => {
+    if (favoriteData !== undefined) setIsFavorited(favoriteData.isFavorited)
+  }, [favoriteData])
+
+  const favoriteMutation = useMutation(
+    trpc.pubs.favorite.mutationOptions({
+      onSuccess: () => {
+        toast.success('Adicionado aos favoritos')
+        setIsFavorited(true)
+      },
+      onError: (err) => toast.error(err.message || 'Erro ao favoritar')
+    })
+  )
+
+  const unfavoriteMutation = useMutation(
+    trpc.pubs.unfavorite.mutationOptions({
+      onSuccess: () => {
+        toast.success('Removido dos favoritos')
+        setIsFavorited(false)
+      },
+      onError: (err) => toast.error(err.message || 'Erro ao remover favorito')
+    })
+  )
+
+  const handleToggleFavorite = async () => {
+    if (!canFavorite) return
+    setFavoritePending(true)
+    try {
+      if (isFavorited) {
+        await unfavoriteMutation.mutateAsync({ barId: pubId })
+      } else {
+        await favoriteMutation.mutateAsync({ barId: pubId })
+      }
+    } catch {
+      // errors handled in mutation callbacks
+    } finally {
+      setFavoritePending(false)
+    }
+  }
+
+  const heroEvent = useMemo(
+    () =>
+      normalizedPub ? resolveHeroEvent(normalizedPub.events, eventId) : null,
+    [normalizedPub, eventId]
+  )
+
+  const whatsappUrl = normalizedPub
+    ? buildWhatsAppLink({
+        phone: normalizedPub.phone,
+        acceptsWhatsapp: normalizedPub.phoneAcceptsWhatsapp,
+        event: heroEvent
+          ? {
+              matchup: formatMatchup(heroEvent),
+              when: `${formatDayLabel(heroEvent.startsAt).toLowerCase()} às ${formatEventTime(heroEvent.startsAt)}`
+            }
+          : null
+      })
+    : null
+
+  const directionsUrl = normalizedPub
+    ? buildDirectionsUrl({
+        latitude: normalizedPub.latitude,
+        longitude: normalizedPub.longitude,
+        name: normalizedPub.name,
+        address: normalizedPub.address
+      })
+    : null
+
+  // O jogo de origem contextualiza toda ação comercial: o bar precisa saber
+  // qual jogo trouxe o contato, não só que houve contato.
+  const sourceEventId = heroEvent?.id ?? eventId ?? undefined
+
   const handleOpenDirections = () => {
     analytics.barIntent({ bar_id: pubId, action: 'directions' })
-    trackCommercialEvent({
-      pubId,
-      type: 'directions_opened',
-      sourceEventId: eventId ?? undefined
-    })
+    trackCommercialEvent({ pubId, type: 'directions_opened', sourceEventId })
   }
 
   const handlePhoneClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'phone' })
-    trackCommercialEvent({
-      pubId,
-      type: 'phone_clicked',
-      sourceEventId: eventId ?? undefined
-    })
+    trackCommercialEvent({ pubId, type: 'phone_clicked', sourceEventId })
   }
 
   const handleWhatsAppClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'whatsapp' })
-    trackCommercialEvent({
-      pubId,
-      type: 'whatsapp_opened',
-      sourceEventId: eventId ?? undefined
-    })
+    trackCommercialEvent({ pubId, type: 'whatsapp_opened', sourceEventId })
   }
 
   const isAuthed = Boolean(session)
@@ -164,60 +221,85 @@ function PubPage() {
   // torcedor não pode receber a navegação do painel do bar.
   const shellVariant = shellVariantForViewer(session?.user?.role)
 
+  const actions = {
+    whatsappUrl,
+    directionsUrl,
+    phone: normalizedPub?.phone ?? null,
+    onWhatsApp: handleWhatsAppClick,
+    onDirections: handleOpenDirections,
+    onPhone: handlePhoneClick
+  }
+
   return (
-    <div className="onside-app flex min-h-dvh">
-      {/* Auth gate dialog — shown when no session */}
-      {!isAuthed && <AuthRequiredDialog open />}
+    <MinuteTickProvider>
+      <div className="flex min-h-dvh">
+        {/* Auth gate dialog — shown when no session */}
+        {!isAuthed && <AuthRequiredDialog open />}
 
-      {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
-      <div
-        className="onside-content-grid flex w-full flex-col"
-        inert={!isAuthed}
-        aria-hidden={!isAuthed}
-      >
-        <AppShell variant={shellVariant}>
-          <main className="onside-main">
-            <div className="onside-container">
-              <div className="mb-6 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.16em]">
-                <span className="onside-live-dot" aria-hidden="true" />
-                Perfil do bar
+        {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
+        <div
+          className="flex w-full flex-col"
+          inert={!isAuthed}
+          aria-hidden={!isAuthed}
+        >
+          <AppShell variant={shellVariant}>
+            {isLoadingPub ? (
+              <div className="space-y-4">
+                <Skeleton className="h-[260px] w-full" />
+                <Skeleton className="h-[140px] w-full" />
+                <Skeleton className="h-[200px] w-full" />
               </div>
+            ) : normalizedPub ? (
+              <div className="onside-pub-page space-y-4 md:space-y-5">
+                <BarCover
+                  name={normalizedPub.name}
+                  neighborhood={normalizedPub.neighborhood}
+                  city={normalizedPub.city}
+                  photoUrl={normalizedPub.photoUrl}
+                  plan={normalizedPub.plan}
+                  canFavorite={canFavorite}
+                  isFavorited={isFavorited}
+                  favoritePending={favoritePending}
+                  onToggleFavorite={handleToggleFavorite}
+                />
 
-              {isLoadingPub ? (
-                <div className="space-y-6">
-                  <div className="flex flex-col gap-6 lg:flex-row">
-                    <div className="min-w-0 flex-1">
-                      <Skeleton className="h-[220px] w-full rounded-[12px]" />
-                    </div>
-                    <div className="w-full shrink-0 basis-[320px]">
-                      <Skeleton className="h-[280px] w-full rounded-[12px]" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-[180px] w-full rounded-[12px]" />
-                </div>
-              ) : normalizedPub ? (
-                <>
-                  <div className="flex flex-col gap-6 lg:flex-row">
-                    <div className="min-w-0 flex-1">
-                      <BarHeroSection pub={normalizedPub} />
-                    </div>
-                    <div className="w-full shrink-0 basis-[320px]">
-                      <BarInfoSidebar
-                        pub={normalizedPub}
-                        onOpenDirections={handleOpenDirections}
-                        onPhoneClick={handlePhoneClick}
-                        onWhatsAppClick={handleWhatsAppClick}
-                      />
-                    </div>
-                  </div>
+                {heroEvent && (
+                  <HeroEventCard
+                    event={heroEvent}
+                    fromSearch={Boolean(eventId) && heroEvent.id === eventId}
+                  />
+                )}
 
-                  <EventsList events={normalizedPub.events} />
-                </>
-              ) : null}
-            </div>
-          </main>
-        </AppShell>
+                <BarActions {...actions} variant="panel" />
+
+                <BarLocationBlock
+                  barId={normalizedPub.id}
+                  name={normalizedPub.name}
+                  address={normalizedPub.address}
+                  neighborhood={normalizedPub.neighborhood}
+                  city={normalizedPub.city}
+                  latitude={normalizedPub.latitude}
+                  longitude={normalizedPub.longitude}
+                  plan={normalizedPub.plan}
+                  directionsUrl={directionsUrl}
+                  onDirections={handleOpenDirections}
+                />
+
+                <EventsList
+                  events={normalizedPub.events}
+                  highlightedEventId={heroEvent?.id ?? null}
+                  whatsappUrl={whatsappUrl}
+                  onWhatsApp={handleWhatsAppClick}
+                />
+
+                <BarAbout description={normalizedPub.description} />
+
+                <BarActions {...actions} variant="bar" />
+              </div>
+            ) : null}
+          </AppShell>
+        </div>
       </div>
-    </div>
+    </MinuteTickProvider>
   )
 }
