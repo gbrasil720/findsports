@@ -10,6 +10,18 @@ import Trophy from 'reicon-react/icons/Trophy'
 
 export type PlanFeature = string
 
+/**
+ * O que o plano muda no perfil público do bar — a página que o torcedor abre.
+ *
+ * Fica separado de `features` porque tem uma regra própria: `soon` é promessa,
+ * e promessa precisa estar rotulada como tal na tela de contratação. Sem essa
+ * distinção, o dono paga esperando um cardápio que ainda não existe.
+ */
+export interface PlanProfilePerk {
+  label: string
+  status: 'live' | 'soon'
+}
+
 export interface PlanAnalytics {
   historyDays: number | null
   perGame: 'basic' | 'complete'
@@ -25,6 +37,7 @@ export interface Plan {
   period: string
   icon: React.ComponentType<{ size?: number | string; color?: string }>
   features: PlanFeature[]
+  profilePerks: PlanProfilePerk[]
   analytics: PlanAnalytics
   highlight?: boolean
   badge?: string
@@ -47,6 +60,11 @@ export const PLAN_CATALOG: Plan[] = [
       'Analytics essenciais dos últimos 30 dias',
       'Desempenho básico por jogo',
       'Comparação com período anterior'
+    ],
+    profilePerks: [
+      { label: 'Perfil completo com agenda e rota', status: 'live' },
+      { label: 'Contato direto por WhatsApp', status: 'live' },
+      { label: 'Foto de capa', status: 'live' }
     ],
     analytics: {
       historyDays: 30,
@@ -73,6 +91,13 @@ export const PLAN_CATALOG: Plan[] = [
       'Analytics completa por jogo',
       'Funil detalhado de rota, telefone e WhatsApp',
       'Comparação entre jogos'
+    ],
+    profilePerks: [
+      { label: 'Tudo do Starter', status: 'live' },
+      { label: 'Selo de bar verificado no perfil', status: 'live' },
+      { label: 'Capa em destaque, o dobro da altura', status: 'live' },
+      { label: 'Galeria de fotos do ambiente', status: 'soon' },
+      { label: 'Cardápio e promoções no perfil', status: 'soon' }
     ],
     analytics: {
       historyDays: 365,
@@ -101,6 +126,13 @@ export const PLAN_CATALOG: Plan[] = [
       'Funil detalhado de rota, telefone e WhatsApp',
       'Inteligência avançada',
       'Comparação avançada'
+    ],
+    profilePerks: [
+      { label: 'Tudo do Pro', status: 'live' },
+      { label: 'Selo Elite no topo do perfil', status: 'live' },
+      { label: 'Galeria de fotos do ambiente', status: 'soon' },
+      { label: 'Cardápio e promoções no perfil', status: 'soon' },
+      { label: 'Reserva de mesa pela plataforma', status: 'soon' }
     ],
     analytics: {
       historyDays: null,

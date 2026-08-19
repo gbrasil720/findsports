@@ -7,6 +7,7 @@ import {
   groupEventsByDay,
   type ProfileEvent
 } from '@/domain/pub-profile'
+import { OwnerNudge } from './owner-notice'
 
 type Props = {
   events: ProfileEvent[]
@@ -14,15 +15,41 @@ type Props = {
   highlightedEventId: string | null
   whatsappUrl: string | null
   onWhatsApp: () => void
+  isOwner: boolean
 }
 
 function EmptyAgenda({
   whatsappUrl,
-  onWhatsApp
+  onWhatsApp,
+  isOwner
 }: {
   whatsappUrl: string | null
   onWhatsApp: () => void
+  isOwner: boolean
 }) {
+  if (isOwner) {
+    return (
+      <div className="border-[1.5px] border-[var(--onside-line)] border-dashed p-6 text-center">
+        <p className="font-semibold text-[var(--onside-ink)] text-sm">
+          Sua agenda está vazia
+        </p>
+        <p className="mx-auto mt-1 max-w-[42ch] text-[var(--onside-muted)] text-sm">
+          É a agenda que faz o torcedor encontrar você na busca. Sem jogo
+          cadastrado, seu bar só aparece para quem já procurava pelo nome.
+        </p>
+        <OwnerNudge
+          action={{
+            label: 'Cadastrar jogo',
+            to: '/admin',
+            hash: 'admin-grade'
+          }}
+        >
+          O torcedor está vendo esta mesma seção vazia.
+        </OwnerNudge>
+      </div>
+    )
+  }
+
   return (
     <div className="border-[1.5px] border-[var(--onside-line)] border-dashed p-6 text-center">
       <p className="font-semibold text-[var(--onside-ink)] text-sm">
@@ -59,7 +86,8 @@ export function EventsList({
   events,
   highlightedEventId,
   whatsappUrl,
-  onWhatsApp
+  onWhatsApp,
+  isOwner
 }: Props) {
   const now = useMinuteNow()
   const rest = events.filter((event) => event.id !== highlightedEventId)
@@ -72,7 +100,11 @@ export function EventsList({
       </h2>
 
       {groups.length === 0 ? (
-        <EmptyAgenda whatsappUrl={whatsappUrl} onWhatsApp={onWhatsApp} />
+        <EmptyAgenda
+          whatsappUrl={whatsappUrl}
+          onWhatsApp={onWhatsApp}
+          isOwner={isOwner}
+        />
       ) : (
         <div className="space-y-5">
           {groups.map((group) => (

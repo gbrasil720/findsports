@@ -193,15 +193,16 @@ export const pubsRouter = router({
    */
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const now = new Date()
       const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
       const result = await db.query.bar.findFirst({
         where: eq(bar.id, input.id),
-        // `geo` só serve ao índice espacial; `userId` identifica o dono e não
-        // tem por que sair numa página pública.
-        columns: { geo: false, userId: false },
+        // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
+        // dono e descartado antes da resposta — quem visita não precisa saber
+        // qual conta é dona do bar.
+        columns: { geo: false },
         with: {
           events: {
             // Jogo ao vivo continua na página: o corte é o fim provável do
@@ -242,7 +243,12 @@ export const pubsRouter = router({
         })
       }
 
-      return result
+      // O dono vê a própria página com avisos que ninguém mais vê — o que
+      // falta preencher, e quanto isso custa em contatos. Quem decide é o
+      // servidor: o cliente não tem como comparar sem receber o `userId`.
+      const { userId, ...publicBar } = result
+
+      return { ...publicBar, isOwner: userId === ctx.session.user.id }
     }),
 
   favorite: protectedProcedure

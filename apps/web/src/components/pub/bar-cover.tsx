@@ -1,6 +1,7 @@
 import Star from 'reicon-react/icons/Star'
 import Verified from 'reicon-react/icons/Verified'
 import { getBarInitials, getPlanPresentation } from '@/domain/pub-profile'
+import { OwnerNudge } from './owner-notice'
 
 type Props = {
   name: string
@@ -12,6 +13,7 @@ type Props = {
   isFavorited: boolean
   favoritePending: boolean
   onToggleFavorite: () => void
+  isOwner: boolean
 }
 
 /**
@@ -31,7 +33,8 @@ export function BarCover({
   canFavorite,
   isFavorited,
   favoritePending,
-  onToggleFavorite
+  onToggleFavorite,
+  isOwner
 }: Props) {
   const presentation = getPlanPresentation(plan)
   const initials = getBarInitials(name)
@@ -97,6 +100,21 @@ export function BarCover({
           </button>
         )}
       </div>
+
+      {isOwner && !photoUrl && (
+        <div className="px-5 pb-5 md:px-6 md:pb-6">
+          <OwnerNudge
+            action={{
+              label: 'Adicionar foto',
+              to: '/admin',
+              hash: 'admin-espaco'
+            }}
+          >
+            Seu perfil está sem foto. É a primeira coisa que o torcedor vê ao
+            abrir a página.
+          </OwnerNudge>
+        </div>
+      )}
     </section>
   )
 }

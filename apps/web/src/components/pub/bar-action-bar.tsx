@@ -2,6 +2,7 @@ import Chat from 'reicon-react/icons/Chat'
 import Phone from 'reicon-react/icons/Phone'
 import Route from 'reicon-react/icons/Route'
 import { formatStoredPhone } from '@/utils/format-phone'
+import { OwnerNudge } from './owner-notice'
 
 export type BarActions = {
   whatsappUrl: string | null
@@ -30,8 +31,9 @@ export function BarActions({
   onWhatsApp,
   onDirections,
   onPhone,
-  variant
-}: BarActions & { variant: 'panel' | 'bar' }) {
+  variant,
+  isOwner
+}: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
   const primaryIsWhatsApp = Boolean(whatsappUrl)
   const isBar = variant === 'bar'
 
@@ -88,7 +90,21 @@ export function BarActions({
     </>
   )
 
-  if (!primary && !phone) return null
+  // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
+  // dono ainda precisa saber que a página chegou nesse estado.
+  if (!primary && !phone) {
+    return isOwner && !isBar ? (
+      <section className="onside-panel p-5 md:p-6">
+        <p className="onside-kicker mb-1">Garanta seu lugar</p>
+        <OwnerNudge
+          action={{ label: 'Completar', to: '/admin', hash: 'admin-espaco' }}
+        >
+          Seu perfil não tem nenhuma forma de contato. O torcedor chega até aqui
+          e não consegue falar com você.
+        </OwnerNudge>
+      </section>
+    ) : null
+  }
 
   if (isBar) {
     return (
@@ -108,11 +124,19 @@ export function BarActions({
         {primary}
         {secondaries}
       </div>
-      {!primaryIsWhatsApp && (
-        <p className="mt-3 text-[var(--onside-muted)] text-xs">
-          Esse bar ainda não liberou contato por WhatsApp.
-        </p>
-      )}
+      {!primaryIsWhatsApp &&
+        (isOwner ? (
+          <OwnerNudge
+            action={{ label: 'Liberar', to: '/admin', hash: 'admin-espaco' }}
+          >
+            Sem WhatsApp confirmado, você perde o contato que costuma virar mesa
+            reservada.
+          </OwnerNudge>
+        ) : (
+          <p className="mt-3 text-[var(--onside-muted)] text-xs">
+            Esse bar ainda não liberou contato por WhatsApp.
+          </p>
+        ))}
     </section>
   )
 }

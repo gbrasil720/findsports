@@ -1,9 +1,15 @@
 import type { ComponentType, SVGAttributes } from 'react'
 import Check from 'reicon-react/icons/Check'
+import Clock from 'reicon-react/icons/Clock'
 
 type IconProps = SVGAttributes<SVGSVGElement> & {
   size?: number | string
   color?: string
+}
+
+type ProfilePerk = {
+  label: string
+  status: 'live' | 'soon'
 }
 
 type Plan = {
@@ -14,6 +20,7 @@ type Plan = {
   period: string
   icon: ComponentType<IconProps>
   features: string[]
+  profilePerks?: ProfilePerk[]
   highlight?: boolean
   badge?: string
 }
@@ -100,6 +107,46 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
           </li>
         ))}
       </ul>
+
+      {plan.profilePerks && plan.profilePerks.length > 0 && (
+        <div className="mt-5 border-[var(--onside-ink)] border-t pt-4">
+          <p className="mb-2.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
+            No perfil que o torcedor vê
+          </p>
+          <ul className="space-y-2">
+            {plan.profilePerks.map((perk) => (
+              <li
+                key={perk.label}
+                className="flex items-start gap-2.5 text-sm text-[var(--onside-ink)]"
+              >
+                {perk.status === 'live' ? (
+                  <Check
+                    size={16}
+                    color="currentColor"
+                    className="mt-0.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Clock
+                    size={16}
+                    color="currentColor"
+                    className="mt-0.5 shrink-0 opacity-60"
+                    aria-hidden="true"
+                  />
+                )}
+                <span className={perk.status === 'soon' ? 'opacity-70' : ''}>
+                  {perk.label}
+                  {perk.status === 'soon' && (
+                    <span className="ml-1.5 font-[family-name:var(--onside-mono)] text-[9px] uppercase tracking-[0.12em]">
+                      Em breve
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-6 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
         {isSelected ? 'Selecionado' : isCurrent ? 'Seu plano' : 'Selecionar'}
