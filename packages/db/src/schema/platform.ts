@@ -66,6 +66,11 @@ export const bar = pgTable(
       sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
     ),
     photoUrl: text('photo_url'),
+    // Espelho de `subscription.plan`, mantido por trigger (ESC-09). A busca
+    // ordena por plano antes de qualquer outra chave; ler o plano da própria
+    // linha do bar evita um lookup em `subscription` por candidato do raio.
+    // `starter` é o mesmo default do `COALESCE` que existia na query.
+    plan: subscriptionPlanEnum('plan').default('starter').notNull(),
     isActive: boolean('is_active').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -77,7 +82,20 @@ export const bar = pgTable(
     index('bar_userId_idx').on(table.userId),
     index('bar_isActive_idx').on(table.isActive),
     // Índice parcial: a busca sempre filtra por bares ativos.
-    index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`)
+    index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`),
+    // ESC-09: `search` avalia os planos em camadas (elite, depois pro, depois
+    // starter) porque o plano é a primeira chave de ordenação. Um índice por
+    // plano deixa cada camada varrer só a sua fatia — a de elite tem 5% das
+    // linhas — em vez dos 100% de `bar_geo_active_idx`.
+    index('bar_geo_elite_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'elite'`),
+    index('bar_geo_pro_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'pro'`),
+    index('bar_geo_starter_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'starter'`)
   ]
 )
 

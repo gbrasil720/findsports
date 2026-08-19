@@ -120,6 +120,27 @@
       "when": 1787011200000,
       "tag": "0017_pg_stat_statements",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787097600000,
+      "tag": "0018_bar_plan_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787184000000,
+      "tag": "0019_app_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787270400000,
+      "tag": "0020_waitlist_approval",
+      "breakpoints": true
     }
   ]
 }
