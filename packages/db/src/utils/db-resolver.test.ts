@@ -10,6 +10,7 @@ describe('resolveDatabaseUrl', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv }
+    delete process.env.LOAD_TEST_DATABASE_URL
   })
 
   afterEach(() => {
@@ -82,6 +83,32 @@ describe('resolveDatabaseUrl', () => {
       'postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev'
     )
   })
+
+  it('accepts an explicit isolated load-test database on loopback', () => {
+    process.env.NODE_ENV = 'test'
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://load:secret@localhost:5433/findsports_load_test'
+
+    expect(resolveDatabaseUrl()).toBe(
+      'postgres://load:secret@localhost:5433/findsports_load_test'
+    )
+  })
+
+  it('rejects a remote load-test database', () => {
+    process.env.NODE_ENV = 'test'
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://load:secret@example.com:5432/findsports_load_test'
+
+    expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+  })
+
+  it('rejects a load-test URL targeting the normal development database', () => {
+    process.env.NODE_ENV = 'test'
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://load:secret@localhost:5432/findsports_dev'
+
+    expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+  })
 })
 
 describe('resolveAndValidateDatabaseUrl', () => {
@@ -89,6 +116,7 @@ describe('resolveAndValidateDatabaseUrl', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv }
+    delete process.env.LOAD_TEST_DATABASE_URL
   })
 
   afterEach(() => {

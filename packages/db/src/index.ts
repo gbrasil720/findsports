@@ -48,7 +48,8 @@ function warnIfNotPooledHost(url: string) {
 }
 
 export function createDb() {
-  const { url } = resolveAndValidateDatabaseUrl()
+  const { url, summary } = resolveAndValidateDatabaseUrl()
+  console.info(`[db] connecting (${process.env.NODE_ENV ?? 'unknown'}): ${summary}`)
 
   if (process.env.NODE_ENV !== 'production') {
     return createLocalDb(url)

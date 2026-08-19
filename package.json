@@ -24,6 +24,7 @@
     "build": "turbo build",
     "check-types": "turbo check-types",
     "dev:web": "turbo -F web dev",
+    "dev:load-test": "turbo run dev:load-test --filter=web",
     "build:vercel": "bun run db:migrate:deploy && turbo -F web build && bun apps/web/scripts/build-vercel.mjs",
     "db:push": "turbo -F @findsports_oficial/db db:push",
     "db:studio": "turbo -F @findsports_oficial/db db:studio",
@@ -32,6 +33,7 @@
     "db:migrate:deploy": "cd packages/db && bunx drizzle-kit migrate",
     "db:seed:analytics": "turbo -F @findsports_oficial/db db:seed:analytics",
     "db:seed:analytics:clean": "turbo -F @findsports_oficial/db db:seed:analytics:clean",
+    "db:seed:load-test": "turbo run db:seed:load-test --filter=@findsports_oficial/db",
     "db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
     "db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
     "check": "biome check --write ."

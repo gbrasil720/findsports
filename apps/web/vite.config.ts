@@ -8,6 +8,7 @@ export default defineConfig({
     port: 3001,
     allowedHosts: [
       'findsports.com.br',
+      'host.docker.internal',
       'nintendo-hyperlink-undamaged.ngrok-free.dev'
     ]
   },

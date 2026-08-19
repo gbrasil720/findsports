@@ -17,6 +17,11 @@
       "cache": false,
       "persistent": true
     },
+    "dev:load-test": {
+      "cache": false,
+      "persistent": true,
+      "env": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "CORS_ORIGIN"]
+    },
     "db:push": {
       "cache": false
     },
@@ -38,6 +43,10 @@
     "db:seed:analytics:clean": {
       "cache": false,
       "env": ["NODE_ENV", "ANALYTICS_SEED_PUB_EMAIL"]
+    },
+    "db:seed:load-test": {
+      "cache": false,
+      "env": ["NODE_ENV", "LOAD_TEST_DATABASE_URL"]
     },
     "db:seed:sports": {
       "cache": false

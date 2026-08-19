@@ -9,11 +9,17 @@ const LocalhostSchema = z.union([
 const DevDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
-  database: z.literal('findsports_dev')
+  database: z.enum(['findsports_dev', 'findsports_load_test'])
 })
 
 const DefaultDevUrl =
   'postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev'
+
+const LoadTestDatabaseConfig = z.object({
+  host: LocalhostSchema,
+  port: z.number().int().positive(),
+  database: z.literal('findsports_load_test')
+})
 
 const NeonHostPattern = /\.neon\.sql\./i
 
@@ -79,6 +85,25 @@ export function resolveDatabaseUrl(): string {
       )
     }
     return url
+  }
+
+  const loadTestUrl = process.env.LOAD_TEST_DATABASE_URL
+  if (loadTestUrl) {
+    let parsed: ReturnType<typeof parseUrl>
+    try {
+      parsed = parseUrl(loadTestUrl)
+    } catch {
+      throw new DatabaseUrlError('LOAD_TEST_DATABASE_URL must be a valid URL.')
+    }
+
+    const result = LoadTestDatabaseConfig.safeParse(parsed)
+    if (!result.success) {
+      throw new DatabaseUrlError(
+        'Refusing unsafe LOAD_TEST_DATABASE_URL. ' +
+          'Load tests require a loopback host and database=findsports_load_test.'
+      )
+    }
+    return loadTestUrl
   }
 
   // Development and test are intentionally pinned to the disposable Docker

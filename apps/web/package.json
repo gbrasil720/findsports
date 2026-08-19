@@ -7,7 +7,8 @@
     "build:vercel": "vite build && bun scripts/build-vercel.mjs",
     "check-types": "tsc --noEmit",
     "serve": "vite preview",
-    "dev": "vite dev"
+    "dev": "vite dev",
+    "dev:load-test": "NODE_ENV=test LOAD_TEST_DATABASE_URL=postgres://findsports_load_test:findsports_load_test_local@localhost:5433/findsports_load_test vite dev --port 3101 --strictPort --host 0.0.0.0"
   },
   "dependencies": {
     "@findsports_oficial/api": "workspace:*",
@@ -16,6 +17,7 @@
     "@findsports_oficial/ui": "workspace:*",
     "@hugeicons/core-free-icons": "^4.1.4",
     "@hugeicons/react": "^1.1.6",
+    "@t3-oss/env-core": "^0.13.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.99.0",
