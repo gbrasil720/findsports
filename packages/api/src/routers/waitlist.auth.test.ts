@@ -14,9 +14,10 @@ import { appRouter } from './index'
  * depender de infraestrutura.
  */
 function contextoCom(role: 'fan' | 'pub' | 'admin' | null): Context {
-  if (role === null) return { auth: null, session: null }
+  if (role === null) return { auth: null, session: null, clientIp: '127.0.0.1' }
   return {
     auth: null,
+    clientIp: '127.0.0.1',
     session: {
       session: { id: 's', userId: 'u', token: 't' },
       user: {

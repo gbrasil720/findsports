@@ -1,5 +1,9 @@
 import { auth } from '@findsports_oficial/auth'
 
+import { extrairIp } from './lib/client-ip'
+
+export { extrairIp } from './lib/client-ip'
+
 type Session = typeof auth.$Infer.Session & {
   user: typeof auth.$Infer.Session.user & {
     role: 'fan' | 'pub' | 'admin'
@@ -15,7 +19,8 @@ export async function createContext({ req }: { req: Request }) {
 
   return {
     auth: null,
-    session: session as Session | null
+    session: session as Session | null,
+    clientIp: extrairIp(req.headers)
   }
 }
 
