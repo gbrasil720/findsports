@@ -18,6 +18,7 @@ import { BarCover } from '@/components/pub/bar-cover'
 import { BarLocationBlock } from '@/components/pub/bar-location-block'
 import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
+import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
 import {
   formatDayLabel,
   formatEventTime,
@@ -217,6 +218,8 @@ function PubPage() {
   }
 
   const isAuthed = Boolean(session)
+  // Quem decide é o servidor: o cliente não recebe o `userId` do dono.
+  const isOwner = normalizedPub?.isOwner === true
   // O cabeçalho segue o papel de quem visita, não o tipo da página: o
   // torcedor não pode receber a navegação do painel do bar.
   const shellVariant = shellVariantForViewer(session?.user?.role)
@@ -251,6 +254,8 @@ function PubPage() {
               </div>
             ) : normalizedPub ? (
               <div className="onside-pub-page space-y-4 md:space-y-5">
+                {isOwner && <OwnerPreviewBanner />}
+
                 <BarCover
                   name={normalizedPub.name}
                   neighborhood={normalizedPub.neighborhood}
@@ -261,6 +266,7 @@ function PubPage() {
                   isFavorited={isFavorited}
                   favoritePending={favoritePending}
                   onToggleFavorite={handleToggleFavorite}
+                  isOwner={isOwner}
                 />
 
                 {heroEvent && (
@@ -270,7 +276,7 @@ function PubPage() {
                   />
                 )}
 
-                <BarActions {...actions} variant="panel" />
+                <BarActions {...actions} variant="panel" isOwner={isOwner} />
 
                 <BarLocationBlock
                   barId={normalizedPub.id}
@@ -290,11 +296,15 @@ function PubPage() {
                   highlightedEventId={heroEvent?.id ?? null}
                   whatsappUrl={whatsappUrl}
                   onWhatsApp={handleWhatsAppClick}
+                  isOwner={isOwner}
                 />
 
-                <BarAbout description={normalizedPub.description} />
+                <BarAbout
+                  description={normalizedPub.description}
+                  isOwner={isOwner}
+                />
 
-                <BarActions {...actions} variant="bar" />
+                <BarActions {...actions} variant="bar" isOwner={isOwner} />
               </div>
             ) : null}
           </AppShell>

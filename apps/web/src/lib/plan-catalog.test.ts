@@ -186,3 +186,36 @@ describe('Feature text consistency', () => {
     expect(elite.features).toContain('Inteligência avançada')
   })
 })
+
+describe('profilePerks', () => {
+  test('todo plano diz o que muda no perfil público', () => {
+    for (const plan of PLAN_CATALOG) {
+      expect(plan.profilePerks.length).toBeGreaterThan(0)
+    }
+  })
+
+  test('starter não promete nada que ainda não existe', () => {
+    const starter = getPlan('starter')
+    expect(starter.profilePerks.every((perk) => perk.status === 'live')).toBe(
+      true
+    )
+  })
+
+  test('pro e elite entregam algo hoje, não só promessa', () => {
+    for (const id of ['pro', 'elite'] as const) {
+      const live = getPlan(id).profilePerks.filter(
+        (perk) => perk.status === 'live'
+      )
+      expect(live.length).toBeGreaterThan(0)
+    }
+  })
+
+  test('o que ainda não existe está marcado como tal', () => {
+    const roadmap = PLAN_CATALOG.flatMap((plan) =>
+      plan.profilePerks.filter((perk) => perk.status === 'soon')
+    )
+    // Galeria, cardápio e reserva dependem de schema que ainda não existe.
+    expect(roadmap.length).toBeGreaterThan(0)
+    expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
+  })
+})
