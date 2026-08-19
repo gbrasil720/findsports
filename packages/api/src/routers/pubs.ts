@@ -11,6 +11,7 @@ import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
 import { getAppConfig } from '../lib/app-config'
+import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -193,6 +194,9 @@ export const pubsRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input }) => {
+      const now = new Date()
+      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+
       const result = await db.query.bar.findFirst({
         where: eq(bar.id, input.id),
         // `geo` só serve ao índice espacial; `userId` identifica o dono e não
@@ -200,7 +204,19 @@ export const pubsRouter = router({
         columns: { geo: false, userId: false },
         with: {
           events: {
-            where: (event, { gte }) => gte(event.startsAt, new Date()),
+            // Jogo ao vivo continua na página: o corte é o fim provável do
+            // jogo, não o início. Ver `event-profile-window.ts`.
+            //
+            // O predicado é montado com operadores do Drizzle, e não com SQL
+            // cru: `event.starts_at` é `timestamp` sem fuso, e comparar com
+            // `now()` (que é `timestamptz`) faria o Postgres converter usando
+            // o fuso da sessão — a janela mudaria de tamanho conforme o
+            // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
+            where: (event, { and, gte, isNotNull, isNull, or }) =>
+              or(
+                and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+              ),
             with: {
               sport: true,
               participants: {

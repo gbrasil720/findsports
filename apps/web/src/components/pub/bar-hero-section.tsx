@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Location from 'reicon-react/icons/Location'
 import Star from 'reicon-react/icons/Star'
 import { toast } from 'sonner'
+import { canFavoriteBars } from '@/domain/viewer'
 import { authClient } from '@/lib/auth-client'
 import { useTRPC } from '@/utils/trpc'
 
@@ -34,9 +35,13 @@ export function BarHeroSection({ pub }: Props) {
   const [favoritePending, setFavoritePending] = useState(false)
   const trpc = useTRPC()
 
+  // `pubs.favorite` só aceita torcedor; para os demais papéis o botão só
+  // poderia produzir um `FORBIDDEN`. Sem botão, não há consulta a fazer.
+  const canFavorite = canFavoriteBars(session?.user?.role)
+
   const { data: favoriteData } = useQuery({
     ...trpc.pubs.isFavorited.queryOptions({ barId: pub.id }),
-    enabled: Boolean(session)
+    enabled: canFavorite
   })
 
   useEffect(() => {
@@ -68,10 +73,7 @@ export function BarHeroSection({ pub }: Props) {
   )
 
   const handleToggleFavorite = async () => {
-    if (!session) {
-      toast.info('Faça login para favoritar.')
-      return
-    }
+    if (!canFavorite) return
     setFavoritePending(true)
     try {
       if (isFavorited) {
@@ -95,25 +97,27 @@ export function BarHeroSection({ pub }: Props) {
             {pub.neighborhood}, {pub.city}
           </p>
         </div>
-        <button
-          type="button"
-          className="onside-badge onside-badge-ghost ml-4 shrink-0"
-          onClick={handleToggleFavorite}
-          disabled={favoritePending}
-          aria-label={
-            isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'
-          }
-        >
-          <Star
-            size={16}
-            color="currentColor"
-            className="text-[var(--onside-muted)]"
-            aria-hidden="true"
-          />
-          <span className="ml-1.5 text-xs">
-            {isFavorited ? 'Favoritado' : 'Favoritar'}
-          </span>
-        </button>
+        {canFavorite && (
+          <button
+            type="button"
+            className="onside-badge onside-badge-ghost ml-4 shrink-0"
+            onClick={handleToggleFavorite}
+            disabled={favoritePending}
+            aria-label={
+              isFavorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'
+            }
+          >
+            <Star
+              size={16}
+              color="currentColor"
+              className="text-[var(--onside-muted)]"
+              aria-hidden="true"
+            />
+            <span className="ml-1.5 text-xs">
+              {isFavorited ? 'Favoritado' : 'Favoritar'}
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
