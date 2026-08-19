@@ -83,6 +83,7 @@ integrationTest(
 
       const caller = appRouter.createCaller({
         auth: null,
+        clientIp: '127.0.0.1',
         session: {
           session: {
             id: crypto.randomUUID(),
