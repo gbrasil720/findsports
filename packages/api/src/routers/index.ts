@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { appConfigRouter } from './app-config'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
@@ -15,6 +16,7 @@ export const appRouter = router({
       user: ctx.session.user
     }
   }),
+  appConfig: appConfigRouter,
   waitlist: waitlistRouter,
   onboarding: onboardingRouter,
   pub: pubRouter,

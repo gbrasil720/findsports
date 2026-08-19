@@ -8,6 +8,9 @@
     "./lib/commercial-analytics/types": {
       "default": "./src/lib/commercial-analytics/types.ts"
     },
+    "./lib/app-config": {
+      "default": "./src/lib/app-config/index.ts"
+    },
     "./*": {
       "default": "./src/*.ts"
     }
@@ -21,6 +24,7 @@
     "@findsports_oficial/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "@upstash/redis": "^1.35.3",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
