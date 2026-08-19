@@ -291,3 +291,40 @@
   padding: 0 !important;
   overflow: hidden;
 }
+
+/* ─── Barra de ação do perfil público (mobile) ─── */
+/*
+ * O CTA precisa estar ao alcance do polegar durante toda a rolagem: no
+ * celular, o torcedor está de pé, na rua ou no sofá decidindo agora. No
+ * desktop a barra some — lá o painel de ações fica visível no fluxo.
+ */
+.onside-app .onside-pub-actionbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 10px var(--onside-shell-gutter);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--onside-paper);
+  border-top: 1.5px solid var(--onside-ink);
+}
+
+.onside-app .onside-pub-actionbar > div > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/*
+ * Espaço para a barra não cobrir o fim do conteúdo — sem isso, a última
+ * seção fica permanentemente inalcançável.
+ */
+.onside-app .onside-pub-page {
+  padding-bottom: 96px;
+}
+
+@media (min-width: 768px) {
+  .onside-app .onside-pub-page {
+    padding-bottom: 0;
+  }
+}
