@@ -20,11 +20,10 @@ import Logout from 'reicon-react/icons/Logout'
 import Settings from 'reicon-react/icons/Settings'
 import User from 'reicon-react/icons/User'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import type { ShellVariant } from '@/domain/viewer'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { authClient } from '@/lib/auth-client'
 import { ProductFrame } from './product-frame'
-
-type ShellVariant = 'fan' | 'pub' | 'public'
 
 type Props = {
   variant: ShellVariant

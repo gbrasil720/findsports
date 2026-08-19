@@ -14,6 +14,7 @@ import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
 import { BarHeroSection } from '@/components/pub/bar-hero-section'
 import { BarInfoSidebar } from '@/components/pub/bar-info-sidebar'
 import { EventsList } from '@/components/pub/events-list'
+import { shellVariantForViewer } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
@@ -159,6 +160,9 @@ function PubPage() {
   }
 
   const isAuthed = Boolean(session)
+  // O cabeçalho segue o papel de quem visita, não o tipo da página: o
+  // torcedor não pode receber a navegação do painel do bar.
+  const shellVariant = shellVariantForViewer(session?.user?.role)
 
   return (
     <div className="onside-app flex min-h-dvh">
@@ -171,7 +175,7 @@ function PubPage() {
         inert={!isAuthed}
         aria-hidden={!isAuthed}
       >
-        <AppShell variant="pub">
+        <AppShell variant={shellVariant}>
           <main className="onside-main">
             <div className="onside-container">
               <div className="mb-6 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.16em]">
