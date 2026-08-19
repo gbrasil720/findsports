@@ -1,7 +1,11 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 
 import type { Context } from './context'
-import { montarLinhaDeLog, nivelDoLog } from './lib/observability'
+import {
+  deveRegistrar,
+  montarLinhaDeLog,
+  nivelDoLog
+} from './lib/observability'
 
 export const t = initTRPC.context<Context>().create()
 
@@ -28,11 +32,13 @@ const comRegistro = t.procedure.use(async ({ path, type, next }) => {
     errorCode: resultado.ok ? undefined : resultado.error.code
   }
 
-  const linha = JSON.stringify(montarLinhaDeLog(dados))
   const nivel = nivelDoLog(dados)
-  if (nivel === 'error') console.error(linha)
-  else if (nivel === 'warn') console.warn(linha)
-  else console.log(linha)
+  if (deveRegistrar(nivel)) {
+    const linha = JSON.stringify(montarLinhaDeLog(dados))
+    if (nivel === 'error') console.error(linha)
+    else if (nivel === 'warn') console.warn(linha)
+    else console.log(linha)
+  }
 
   return resultado
 })

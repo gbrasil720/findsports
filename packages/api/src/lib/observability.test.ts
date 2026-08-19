@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
+  deveRegistrar,
   LIMITE_LENTIDAO_MS,
   montarLinhaDeLog,
   nivelDoLog
@@ -93,5 +94,17 @@ describe('severidade do log (ESC-18)', () => {
       nivelDoLog({ ...base, ok: false, errorCode: 'INTERNAL_SERVER_ERROR' })
     ).toBe('error')
     expect(nivelDoLog({ ...base, ok: false })).toBe('error')
+  })
+})
+
+describe('amostragem de sucesso (ESC-18)', () => {
+  it('sempre registra warn e error', () => {
+    expect(deveRegistrar('warn', 0.99)).toBe(true)
+    expect(deveRegistrar('error', 0.99)).toBe(true)
+  })
+
+  it('sucesso rápido só entra na fração amostrada', () => {
+    expect(deveRegistrar('info', 0.09)).toBe(true)
+    expect(deveRegistrar('info', 0.1)).toBe(false)
   })
 })

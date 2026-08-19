@@ -80,3 +80,14 @@ export function nivelDoLog(
   }
   return 'error'
 }
+
+/** Fração de sucessos rápidos que vão para o log. Erro e lento ficam 100%. */
+export const TAXA_AMOSTRA_SUCESSO = 0.1
+
+export function deveRegistrar(
+  nivel: 'info' | 'warn' | 'error',
+  amostra = Math.random()
+): boolean {
+  if (nivel !== 'info') return true
+  return amostra < TAXA_AMOSTRA_SUCESSO
+}
