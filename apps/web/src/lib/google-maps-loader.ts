@@ -21,7 +21,12 @@ type MapsUrlOptions = {
 export type GoogleMapsRuntime = {
   api: typeof google.maps
   Map: typeof google.maps.Map
-  Marker: typeof google.maps.Marker
+  /**
+   * ESC-16: substitui `google.maps.Marker`, depreciado. Exige que o mapa
+   * tenha sido criado com um Map ID — sem ele o marcador não renderiza e não
+   * reclama.
+   */
+  AdvancedMarkerElement: typeof google.maps.marker.AdvancedMarkerElement
   Circle: typeof google.maps.Circle
 }
 
@@ -45,43 +50,39 @@ function getScript(): HTMLScriptElement | null {
   return document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
 }
 
+/**
+ * ESC-16: havia um caminho alternativo para APIs sem `importLibrary`, que
+ * pegava os construtores de `google.maps` direto. Ele nunca rodava — a URL
+ * montada aqui usa `loading: 'async'`, que é justamente o carregador em que
+ * `importLibrary` existe — e não teria como oferecer `AdvancedMarkerElement`,
+ * que só sai da biblioteca `marker`. Manter os dois caminhos significaria
+ * carregar um deles com um marcador depreciado e nenhuma forma de saber qual
+ * está em uso.
+ */
 async function getGoogleMapsRuntime(): Promise<GoogleMapsRuntime> {
   const maps = window.google?.maps
   if (!maps) throw new Error('Google Maps não foi inicializado')
-
-  if (typeof maps.importLibrary === 'function') {
-    const [mapsLibrary, markerLibrary] = await Promise.all([
-      maps.importLibrary('maps') as Promise<google.maps.MapsLibrary>,
-      maps.importLibrary('marker') as Promise<google.maps.MarkerLibrary>
-    ])
-    if (
-      typeof mapsLibrary.Map !== 'function' ||
-      typeof markerLibrary.Marker !== 'function' ||
-      typeof mapsLibrary.Circle !== 'function'
-    ) {
-      throw new Error('Google Maps carregou sem os construtores necessários')
-    }
-    return {
-      api: maps,
-      Map: mapsLibrary.Map,
-      Marker: markerLibrary.Marker,
-      Circle: mapsLibrary.Circle
-    }
+  if (typeof maps.importLibrary !== 'function') {
+    throw new Error('Google Maps carregou sem `importLibrary`')
   }
 
+  const [mapsLibrary, markerLibrary] = await Promise.all([
+    maps.importLibrary('maps') as Promise<google.maps.MapsLibrary>,
+    maps.importLibrary('marker') as Promise<google.maps.MarkerLibrary>
+  ])
   if (
-    typeof maps.Map !== 'function' ||
-    typeof maps.Marker !== 'function' ||
-    typeof maps.Circle !== 'function'
+    typeof mapsLibrary.Map !== 'function' ||
+    typeof markerLibrary.AdvancedMarkerElement !== 'function' ||
+    typeof mapsLibrary.Circle !== 'function'
   ) {
     throw new Error('Google Maps carregou sem os construtores necessários')
   }
 
   return {
     api: maps,
-    Map: maps.Map,
-    Marker: maps.Marker,
-    Circle: maps.Circle
+    Map: mapsLibrary.Map,
+    AdvancedMarkerElement: markerLibrary.AdvancedMarkerElement,
+    Circle: mapsLibrary.Circle
   }
 }
 

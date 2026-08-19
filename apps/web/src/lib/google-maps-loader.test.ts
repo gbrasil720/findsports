@@ -10,14 +10,19 @@ import {
 let dom: JSDOM
 
 class MapStub {}
-class MarkerStub {}
+/**
+ * ESC-16: o runtime passou a exigir `AdvancedMarkerElement` no lugar de
+ * `Marker`. O stub acompanha — se voltasse a oferecer `Marker`, o teste
+ * passaria enquanto o app carregaria com o marcador depreciado.
+ */
+class AdvancedMarkerElementStub {}
 class CircleStub {}
 
 function installGoogleMapsStub(): void {
   const maps = {
     importLibrary: async (name: string) =>
       name === 'marker'
-        ? { Marker: MarkerStub }
+        ? { AdvancedMarkerElement: AdvancedMarkerElementStub }
         : { Map: MapStub, Circle: CircleStub }
   }
   Object.defineProperty(window, 'google', {
@@ -67,7 +72,7 @@ describe('Google Maps loader', () => {
     window.__onsideInitMap?.()
     await expect(first).resolves.toMatchObject({
       Map: MapStub,
-      Marker: MarkerStub,
+      AdvancedMarkerElement: AdvancedMarkerElementStub,
       Circle: CircleStub
     })
     expect(window.__onsideInitMap).toBeUndefined()
@@ -78,7 +83,7 @@ describe('Google Maps loader', () => {
 
     await expect(loadGoogleMaps({ apiKey: 'key' })).resolves.toMatchObject({
       Map: MapStub,
-      Marker: MarkerStub,
+      AdvancedMarkerElement: AdvancedMarkerElementStub,
       Circle: CircleStub
     })
     expect(document.querySelectorAll('script')).toHaveLength(0)
@@ -101,7 +106,7 @@ describe('Google Maps loader', () => {
             if (!callbackReady)
               throw new Error('Google bootstrap ainda incompleto')
             return name === 'marker'
-              ? { Marker: MarkerStub }
+              ? { AdvancedMarkerElement: AdvancedMarkerElementStub }
               : { Map: MapStub, Circle: CircleStub }
           }
         }
@@ -127,7 +132,7 @@ describe('Google Maps loader', () => {
         maps: {
           importLibrary: async (name: string) =>
             name === 'marker'
-              ? { Marker: MarkerStub }
+              ? { AdvancedMarkerElement: AdvancedMarkerElementStub }
               : { Map: {}, Circle: CircleStub }
         }
       },

@@ -5,14 +5,16 @@ import {
   type RadiusKm,
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
+import { env } from '@/lib/env'
 import {
   type GoogleMapsRuntime,
   loadGoogleMaps,
   resetGoogleMapsLoader
 } from '@/lib/google-maps-loader'
 import {
-  createPinIcon,
-  createUserDotIcon,
+  aplicarPino,
+  criarConteudoDePino,
+  criarPontoDoUsuario,
   type MapAccent
 } from './google-map-icons'
 import { MapCanvas, MapLoadError } from './google-map-status'
@@ -41,8 +43,16 @@ type Props = {
 }
 
 type MarkerEntry = {
-  marker: google.maps.Marker
+  marker: google.maps.marker.AdvancedMarkerElement
+  /** O nó que recebe o SVG. Um por marcador — DOM não se compartilha. */
+  conteudo: HTMLElement
   listeners: google.maps.MapsEventListener[]
+  /**
+   * `AdvancedMarkerElement` não emite `mouseover`/`mouseout` pelo barramento
+   * do mapa: ele É um `HTMLElement`, então o hover vem do DOM e sai por
+   * `removeEventListener`, não por `listener.remove()`.
+   */
+  soltarHover: () => void
   /** Último estado aplicado, para não reescrever o que não mudou (ESC-16). */
   estado?: MarkerVisualState
 }
@@ -67,7 +77,7 @@ export function GoogleMap({
   const mapRef = useRef<google.maps.Map>(null)
   const runtimeRef = useRef<GoogleMapsRuntime>(null)
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
-  const userMarkerRef = useRef<google.maps.Marker>(null)
+  const userMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement>(null)
   const radiusCircleRef = useRef<google.maps.Circle>(null)
   const centerRef = useRef(center)
   const onHoverRef = useRef(onHover)
@@ -85,10 +95,25 @@ export function GoogleMap({
     let cancelled = false
     setError(null)
     setReady(false)
-    loadGoogleMaps({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_PUBLIC_KEY,
-      channel: import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID
-    })
+    // `channel` era `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID`, que não
+    // existe em `.env` nenhum — sempre chegou `undefined` no carregador.
+    // Resto de andaime do gerador; o parâmetro segue opcional em
+    // `loadGoogleMaps` para quem um dia quiser medir por canal.
+    // ESC-16: sem Map ID o `AdvancedMarkerElement` não renderiza — e não
+    // reclama. O mapa apareceria vazio, sem erro no console e sem nada
+    // apontando para a causa. Falhar aqui, alto, troca essa falha silenciosa
+    // por uma que se lê na tela.
+    const mapId = env.VITE_GOOGLE_MAPS_MAP_ID
+    if (!mapId) {
+      setError(
+        import.meta.env.DEV
+          ? 'Falta VITE_GOOGLE_MAPS_MAP_ID: sem Map ID os pinos não renderizam.'
+          : 'Mapa temporariamente indisponível'
+      )
+      return
+    }
+
+    loadGoogleMaps({ apiKey: env.VITE_GOOGLE_MAPS_PUBLIC_KEY })
       .then((runtime) => {
         if (cancelled || !containerRef.current) return
         runtimeRef.current = runtime
@@ -99,11 +124,11 @@ export function GoogleMap({
           zoomControl: true,
           gestureHandling: 'cooperative',
           clickableIcons: false,
-          styles: [
-            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-            { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] }
-          ]
+          // `styles` era usado para esconder POI e transporte. Com `mapId` a
+          // API ignora estilo definido em código — a estilização passa a vir
+          // da nuvem, presa ao próprio Map ID. O estilo equivalente está
+          // associado ao `onside-web` no console.
+          mapId
         })
         setReady(true)
       })
@@ -111,12 +136,13 @@ export function GoogleMap({
 
     return () => {
       cancelled = true
-      for (const { marker, listeners } of markersRef.current.values()) {
-        for (const listener of listeners) listener.remove()
-        marker.setMap(null)
+      for (const entry of markersRef.current.values()) {
+        for (const listener of entry.listeners) listener.remove()
+        entry.soltarHover()
+        entry.marker.map = null
       }
       markersRef.current.clear()
-      userMarkerRef.current?.setMap(null)
+      if (userMarkerRef.current) userMarkerRef.current.map = null
       radiusCircleRef.current?.setMap(null)
       const map = mapRef.current
       if (map && runtimeRef.current)
@@ -138,15 +164,15 @@ export function GoogleMap({
     }
 
     if (showUserLocation && center && isValidCoordinates(center)) {
-      userMarkerRef.current ??= new runtime.Marker({
-        icon: createUserDotIcon(runtime.api),
+      userMarkerRef.current ??= new runtime.AdvancedMarkerElement({
+        content: criarPontoDoUsuario(),
         zIndex: 1,
         title: 'Sua localização'
       })
-      userMarkerRef.current.setMap(map)
-      userMarkerRef.current.setPosition(center)
-    } else {
-      userMarkerRef.current?.setMap(null)
+      userMarkerRef.current.map = map
+      userMarkerRef.current.position = center
+    } else if (userMarkerRef.current) {
+      userMarkerRef.current.map = null
     }
 
     if (radiusKm && center && isValidCoordinates(center)) {
@@ -179,14 +205,34 @@ export function GoogleMap({
       const large = hoveredId === bar.id
       let entry = markersRef.current.get(bar.id)
       if (!entry) {
-        const marker = new runtime.Marker({ map })
+        const conteudo = criarConteudoDePino()
+        const marker = new runtime.AdvancedMarkerElement({
+          map,
+          content: conteudo,
+          // Sem isto o marcador não emite `gmp-click` nem entra na navegação
+          // por teclado.
+          gmpClickable: true
+        })
+
+        // Hover vem do DOM: `AdvancedMarkerElement` não publica
+        // `mouseover`/`mouseout` no barramento do mapa. Os ouvintes ficam no
+        // próprio marcador, que é um `HTMLElement`, e não no conteúdo —
+        // trocar o SVG por dentro não os derruba.
+        const entrou = () => onHoverRef.current?.(bar.id)
+        const saiu = () => onHoverRef.current?.(null)
+        marker.addEventListener('mouseenter', entrou)
+        marker.addEventListener('mouseleave', saiu)
+
         entry = {
           marker,
+          conteudo,
           listeners: [
-            marker.addListener('mouseover', () => onHoverRef.current?.(bar.id)),
-            marker.addListener('mouseout', () => onHoverRef.current?.(null)),
-            marker.addListener('click', () => onSelectRef.current?.(bar.id))
-          ]
+            marker.addListener('gmp-click', () => onSelectRef.current?.(bar.id))
+          ],
+          soltarHover: () => {
+            marker.removeEventListener('mouseenter', entrou)
+            marker.removeEventListener('mouseleave', saiu)
+          }
         }
         markersRef.current.set(bar.id, entry)
       }
@@ -203,15 +249,13 @@ export function GoogleMap({
       const updates = diffMarkerState(entry.estado, estado)
       if (!nenhumaMudanca(updates)) {
         if (updates.position) {
-          entry.marker.setPosition({ lat: estado.lat, lng: estado.lng })
+          entry.marker.position = { lat: estado.lat, lng: estado.lng }
         }
-        if (updates.title) entry.marker.setTitle(estado.name)
+        if (updates.title) entry.marker.title = estado.name
         if (updates.icon) {
-          entry.marker.setIcon(
-            createPinIcon(runtime.api, estado.accent, estado.large)
-          )
+          aplicarPino(entry.conteudo, estado.accent, estado.large)
         }
-        if (updates.zIndex) entry.marker.setZIndex(estado.large ? 999 : 10)
+        if (updates.zIndex) entry.marker.zIndex = estado.large ? 999 : 10
         entry.estado = estado
       }
     }
@@ -219,7 +263,8 @@ export function GoogleMap({
     for (const [id, entry] of markersRef.current) {
       if (seen.has(id)) continue
       for (const listener of entry.listeners) listener.remove()
-      entry.marker.setMap(null)
+      entry.soltarHover()
+      entry.marker.map = null
       markersRef.current.delete(id)
     }
   }, [bars, hoveredId, ready])
