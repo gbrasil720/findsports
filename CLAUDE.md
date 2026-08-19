@@ -33,7 +33,7 @@ Turborepo monorepo, `bun` package manager, Biome for lint/format (tabs, double q
 | `packages/api` | `@findsports_oficial/api` | tRPC router + context |
 | `packages/auth` | `@findsports_oficial/auth` | better-auth config |
 | `packages/db` | `@findsports_oficial/db` | Drizzle ORM + PostgreSQL schema |
-| `packages/env` | `@findsports_oficial/env/server` or `/web` | type-safe env vars (t3-oss) |
+| `packages/env` | `@findsports_oficial/env/server` | type-safe server env vars (t3-oss) |
 | `packages/ui` | `@findsports_oficial/ui/components/<name>` | shared shadcn/ui primitives |
 | `packages/config` | `@findsports_oficial/config` | shared TS/tooling config |
 
@@ -60,7 +60,11 @@ IDs use `crypto.randomUUID()` as default. Prefer `db:push` in development, migra
 
 Split by runtime boundary:
 - `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `NODE_ENV`
-- `packages/env/src/web.ts` — client-safe vars only
+- `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
+
+Client env lives in the app, not in `packages/env`: `import.meta.env` is only
+typed where Vite's types are, and the shared package needed an `any` cast to
+compile — which erased the boundary it existed to provide.
 
 Import from the correct boundary or you'll expose server secrets to the browser.
 
