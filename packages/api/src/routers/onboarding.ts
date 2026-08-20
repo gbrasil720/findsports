@@ -9,6 +9,11 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import {
+  AMENITIES,
+  MAX_SCREEN_COUNT,
+  normalizeAmenityIds
+} from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { cidadeLiberada } from '../lib/city-match'
 import { geocodeAddress } from '../lib/geocode-address'
@@ -22,7 +27,12 @@ export const onboardingRouter = router({
         city: z.string().min(2).max(100).default('São Paulo'),
         address: z.string().min(5).max(255),
         phone: z.string().max(30).optional(),
-        description: z.string().max(500).optional()
+        description: z.string().max(500).optional(),
+        // Ids desconhecidos são descartados por `normalizeAmenityIds`, não
+        // recusados: um cliente desatualizado não pode derrubar o cadastro
+        // inteiro do bar por causa de uma característica aposentada.
+        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -78,6 +88,8 @@ export const onboardingRouter = router({
             address: input.address,
             phone: input.phone ?? null,
             description: input.description ?? null,
+            amenities: normalizeAmenityIds(input.amenities ?? []),
+            screenCount: input.screenCount ?? null,
             latitude,
             longitude,
             isActive: false

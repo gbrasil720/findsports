@@ -6,13 +6,9 @@ type Props = {
   neighborhood: string
   city: string
   phone: string
-  description: string
   onChange: (field: string, value: string) => void
   errors?: Partial<
-    Record<
-      'name' | 'address' | 'neighborhood' | 'city' | 'phone' | 'description',
-      string
-    >
+    Record<'name' | 'address' | 'neighborhood' | 'city' | 'phone', string>
   >
 }
 
@@ -27,7 +23,6 @@ export function PubInfoForm({
   neighborhood,
   city,
   phone,
-  description,
   onChange,
   errors = {}
 }: Props) {
@@ -151,35 +146,6 @@ export function PubInfoForm({
         {errors.phone ? (
           <p id="pub-phone-error" className="onside-field-error" role="alert">
             {errors.phone}
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <label htmlFor="pub-description" className={labelClass}>
-          Descrição
-        </label>
-        <textarea
-          id="pub-description"
-          name="description"
-          value={description}
-          onChange={(e) => onChange('description', e.target.value)}
-          placeholder="Ex: Bar esportivo com 4 TVs e transmissão de todos os jogos"
-          rows={3}
-          maxLength={500}
-          aria-invalid={errors.description ? true : undefined}
-          aria-describedby={
-            errors.description ? 'pub-description-error' : undefined
-          }
-          className="onside-textarea border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]"
-        />
-        {errors.description ? (
-          <p
-            id="pub-description-error"
-            className="onside-field-error"
-            role="alert"
-          >
-            {errors.description}
           </p>
         ) : null}
       </div>

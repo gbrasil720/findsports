@@ -35,6 +35,8 @@ function makeFavorite({
       longitude: '-46.63330800',
       photoUrl: null,
       phoneAcceptsWhatsapp: false,
+      amenities: [],
+      screenCount: null,
       plan: 'starter',
       isActive: true,
       createdAt: '2026-08-01T00:00:00.000Z',

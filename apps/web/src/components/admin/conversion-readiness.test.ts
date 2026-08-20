@@ -10,7 +10,8 @@ const completeBar = {
   neighborhood: 'Centro',
   city: 'São Paulo',
   phone: '5511999999999',
-  phoneAcceptsWhatsapp: true
+  phoneAcceptsWhatsapp: true,
+  amenities: [1, 2, 8]
 } as AdminBar
 
 describe('buildReadiness', () => {
@@ -19,6 +20,18 @@ describe('buildReadiness', () => {
 
     expect(readiness.score).toBe(readiness.total)
     expect(readiness.checks.every((check) => check.done)).toBe(true)
+  })
+
+  test('só considera as características prontas a partir de três marcadas', () => {
+    const duas = buildReadiness({ ...completeBar, amenities: [1, 2] }, true)
+    const tres = buildReadiness({ ...completeBar, amenities: [1, 2, 8] }, true)
+
+    expect(duas.checks.find((check) => check.key === 'amenities')?.done).toBe(
+      false
+    )
+    expect(tres.checks.find((check) => check.key === 'amenities')?.done).toBe(
+      true
+    )
   })
 
   test('requires a valid phone before WhatsApp can be considered active', () => {

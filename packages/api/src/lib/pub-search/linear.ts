@@ -45,10 +45,12 @@ export async function executarBuscaLinear(
     sportFilter,
     champFilter,
     dateFilter,
-    champBarFilter
+    champBarFilter,
+    amenityFilter
   } = montarFiltrosBusca(input)
 
   const champBarFilterN = champBarFilter(sql`n.name`)
+  const amenityFilterB = amenityFilter(sql`b`)
 
   const planRankSql = sql`CASE n.plan WHEN 'elite' THEN 1 WHEN 'pro' THEN 2 ELSE 3 END`
   const keyset = cursor ? decodeCursor(cursor, searchCursorSchema) : null
@@ -74,6 +76,7 @@ export async function executarBuscaLinear(
       LEFT JOIN subscription s ON s.bar_id = b.id
       WHERE b.is_active
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
+        ${amenityFilterB}
     )
     SELECT
       n.*,

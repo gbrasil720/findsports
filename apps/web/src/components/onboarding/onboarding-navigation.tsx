@@ -10,6 +10,12 @@ type Props = {
   onBack: () => void
   onNext: () => void
   lastLabel?: string
+  /**
+   * Sobrescreve o rótulo do botão no passo atual. Existe para o passo
+   * opcional do bar: sem nada marcado, "Continuar" esconde que dá para
+   * seguir sem preencher, e o dono trava tentando adivinhar o obrigatório.
+   */
+  nextLabel?: string
 }
 
 export function OnboardingNavigation({
@@ -19,13 +25,14 @@ export function OnboardingNavigation({
   isPending,
   onBack,
   onNext,
-  lastLabel = 'Entrar no app'
+  lastLabel = 'Entrar no app',
+  nextLabel
 }: Props) {
   const getNextLabel = () => {
     if (isPending) return 'Salvando…'
     if (step === 0) return 'Começar'
     if (step === totalSteps - 1) return lastLabel
-    return 'Continuar'
+    return nextLabel ?? 'Continuar'
   }
 
   return (

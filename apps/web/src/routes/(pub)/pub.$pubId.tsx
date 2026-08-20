@@ -12,13 +12,14 @@ import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
 import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
-import { BarAbout } from '@/components/pub/bar-about'
 import { BarActions } from '@/components/pub/bar-action-bar'
+import { BarCharacteristics } from '@/components/pub/bar-characteristics'
 import { BarCover } from '@/components/pub/bar-cover'
 import { BarLocationBlock } from '@/components/pub/bar-location-block'
 import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
+import { buildBarFacts } from '@/domain/bar-facts'
 import {
   formatDayLabel,
   formatEventTime,
@@ -176,6 +177,20 @@ function PubPage() {
     [normalizedPub, eventId]
   )
 
+  // Os fatos derivados saem do que a resposta já traz — a agenda e a data de
+  // cadastro. Nenhuma query a mais para a seção de características não ficar
+  // dependente do que o dono digitou.
+  const barFacts = useMemo(
+    () =>
+      normalizedPub
+        ? buildBarFacts({
+            events: normalizedPub.events,
+            createdAt: normalizedPub.createdAt
+          })
+        : [],
+    [normalizedPub]
+  )
+
   const whatsappUrl = normalizedPub
     ? buildWhatsAppLink({
         phone: normalizedPub.phone,
@@ -299,8 +314,11 @@ function PubPage() {
                   isOwner={isOwner}
                 />
 
-                <BarAbout
+                <BarCharacteristics
+                  amenities={normalizedPub.amenities}
+                  screenCount={normalizedPub.screenCount}
                   description={normalizedPub.description}
+                  facts={barFacts}
                   isOwner={isOwner}
                 />
 

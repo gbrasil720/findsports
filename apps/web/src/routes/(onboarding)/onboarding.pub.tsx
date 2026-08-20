@@ -1,3 +1,4 @@
+import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -10,6 +11,7 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
 import { OnboardingStep } from '@/components/onboarding/onboarding-step'
+import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
@@ -32,7 +34,12 @@ export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
   component: PubOnboarding
 })
 
-const STEPS = ['Boas-vindas', 'Seu estabelecimento', 'Revisão'] as const
+const STEPS = [
+  'Boas-vindas',
+  'Seu estabelecimento',
+  'O que seu bar oferece',
+  'Revisão'
+] as const
 
 const WELCOME_FEATURES = [
   { icon: Store, text: 'Divulgue sua programação de jogos' },
@@ -52,6 +59,8 @@ function PubOnboarding() {
   const [city, setCity] = useState('São Paulo')
   const [phone, setPhone] = useState('')
   const [description, setDescription] = useState('')
+  const [amenities, setAmenities] = useState<number[]>([])
+  const [screenCount, setScreenCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
@@ -102,10 +111,15 @@ function PubOnboarding() {
       case 'phone':
         setPhone(value)
         break
-      case 'description':
-        setDescription(value)
-        break
     }
+  }
+
+  const toggleAmenity = (id: number) => {
+    setAmenities((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    )
   }
 
   const canAdvance = (() => {
@@ -132,7 +146,9 @@ function PubOnboarding() {
         neighborhood: neighborhood.trim(),
         city: city.trim() || undefined,
         phone: phone.trim() || undefined,
-        description: description.trim() || undefined
+        description: description.trim() || undefined,
+        amenities: amenities.length > 0 ? amenities : undefined,
+        screenCount: screenCount ?? undefined
       })
     }
   }
@@ -181,7 +197,6 @@ function PubOnboarding() {
               neighborhood={neighborhood}
               city={city}
               phone={phone}
-              description={description}
               onChange={handleFieldChange}
             />
 
@@ -203,6 +218,31 @@ function PubOnboarding() {
         )}
 
         {step === 2 && (
+          <div>
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
+            >
+              O que o torcedor encontra aí?
+            </h2>
+            <p className="onside-text-muted-on-ink mb-6">
+              Marque o que o seu bar tem. É isso que aparece no seu perfil e o
+              que o torcedor usa para filtrar a busca. Dá para pular e preencher
+              depois.
+            </p>
+            <PubAmenitiesStep
+              amenities={amenities}
+              onToggleAmenity={toggleAmenity}
+              screenCount={screenCount}
+              onScreenCountChange={setScreenCount}
+              description={description}
+              onDescriptionChange={setDescription}
+            />
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="py-4 text-center md:py-6">
             <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
               <Check size={40} color="currentColor" aria-hidden="true" />
@@ -226,6 +266,19 @@ function PubOnboarding() {
                 <Location size={12} color="currentColor" aria-hidden="true" />
                 {neighborhood.trim() || '…'}
               </span>
+              {amenities.map((id) => {
+                const amenity = findAmenity(id)
+                if (!amenity) return null
+
+                return (
+                  <span
+                    key={amenity.id}
+                    className="onside-badge border-[var(--onside-acid)] bg-[color-mix(in_srgb,var(--onside-acid)_18%,transparent)] text-[var(--onside-paper)]"
+                  >
+                    {amenity.label}
+                  </span>
+                )
+              })}
             </div>
           </div>
         )}
@@ -247,6 +300,11 @@ function PubOnboarding() {
         isPending={completeMutation.isPending}
         onBack={back}
         onNext={next}
+        nextLabel={
+          step === 2 && amenities.length === 0 && !description.trim()
+            ? 'Pular'
+            : undefined
+        }
         lastLabel="Escolher meu plano"
       />
     </OnboardingLayout>

@@ -9,6 +9,7 @@ import Location from 'reicon-react/icons/Location'
 import Xmark from 'reicon-react/icons/Xmark'
 import { BarAvatar } from '@/components/admin/pub-avatar'
 import { PhoneInput } from '@/components/phone-input'
+import { AmenityChecklist } from '@/components/pub-profile/amenity-checklist'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -30,6 +31,8 @@ type Bar = {
   description?: string | null
   photoUrl?: string | null
   isActive?: boolean
+  amenities?: number[]
+  screenCount?: number | null
 }
 
 type EditForm = {
@@ -39,6 +42,8 @@ type EditForm = {
   city: string
   phone: string
   description: string
+  amenities: number[]
+  screenCount: number | null
 }
 
 type Props = {
@@ -67,13 +72,31 @@ export function PubHeroSection({
     neighborhood: bar.neighborhood ?? '',
     city: bar.city ?? '',
     phone: bar.phone ?? '',
-    description: bar.description ?? ''
+    description: bar.description ?? '',
+    amenities: bar.amenities ?? [],
+    screenCount: bar.screenCount ?? null
   }
   const [form, setForm] = useState<EditForm>(initialForm)
 
-  const isDirty = (Object.keys(form) as (keyof EditForm)[]).some(
-    (k) => form[k] !== initialForm[k]
-  )
+  const toggleAmenity = (id: number) => {
+    setForm((prev) => ({
+      ...prev,
+      amenities: prev.amenities.includes(id)
+        ? prev.amenities.filter((item) => item !== id)
+        : [...prev.amenities, id]
+    }))
+  }
+
+  // `amenities` é array e escapa da comparação por identidade que serve aos
+  // outros campos: a lista é recriada a cada toggle, então comparar por
+  // referência marcaria como sujo até um marcar-e-desmarcar que voltou ao
+  // início.
+  const isDirty =
+    (Object.keys(form) as (keyof EditForm)[]).some(
+      (k) => k !== 'amenities' && form[k] !== initialForm[k]
+    ) ||
+    form.amenities.length !== initialForm.amenities.length ||
+    form.amenities.some((id) => !initialForm.amenities.includes(id))
 
   const handleSave = async () => {
     await onSave(form)
@@ -182,10 +205,22 @@ export function PubHeroSection({
                     onChange={(e) =>
                       setForm({ ...form, description: e.target.value })
                     }
-                    placeholder="Descrição do bar (opcional)"
+                    placeholder="Algo que o checklist não cobre (opcional)"
                     rows={2}
                     className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)] resize-none"
                   />
+
+                  <div className="border-[rgb(241_238_230_/_18%)] border-t pt-4">
+                    <AmenityChecklist
+                      idPrefix="admin"
+                      selected={form.amenities}
+                      onToggle={toggleAmenity}
+                      screenCount={form.screenCount}
+                      onScreenCountChange={(value) =>
+                        setForm((prev) => ({ ...prev, screenCount: value }))
+                      }
+                    />
+                  </div>
                 </div>
               ) : (
                 <>

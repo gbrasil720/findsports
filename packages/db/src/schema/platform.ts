@@ -3,10 +3,12 @@ import {
   boolean,
   customType,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp
 } from 'drizzle-orm/pg-core'
@@ -66,6 +68,14 @@ export const bar = pgTable(
       sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
     ),
     photoUrl: text('photo_url'),
+    // Ids do vocabulário de `packages/api/src/lib/amenities.ts`. Array em vez
+    // de tabela de junção porque o filtro da busca é `@>` — contém todos, que
+    // é exatamente o AND que a tela oferece — e o índice GIN entra no mesmo
+    // BitmapAnd dos índices GiST de geo, cortando candidatos antes do LATERAL
+    // que calcula o próximo jogo. Migration 0021 registra a medição.
+    amenities: integer('amenities').array().default(sql`'{}'`).notNull(),
+    // Só exibição. A busca não filtra por número de telas.
+    screenCount: smallint('screen_count'),
     // Espelho de `subscription.plan`, mantido por trigger (ESC-09). A busca
     // ordena por plano antes de qualquer outra chave; ler o plano da própria
     // linha do bar evita um lookup em `subscription` por candidato do raio.
@@ -80,6 +90,10 @@ export const bar = pgTable(
   },
   (table) => [
     index('bar_userId_idx').on(table.userId),
+    // Casado com `amenities @> ARRAY[...]`. Não é parcial em `is_active`
+    // porque quem traz esse predicado é o índice de geo do outro lado do
+    // BitmapAnd, que já é parcial.
+    index('bar_amenities_gin_idx').using('gin', table.amenities),
     index('bar_isActive_idx').on(table.isActive),
     // Índice parcial: a busca sempre filtra por bares ativos.
     index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`),

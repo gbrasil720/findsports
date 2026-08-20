@@ -22,6 +22,8 @@ export type SearchInput = {
   sportId?: string
   championship?: string
   date?: string
+  /** Ids do vocabulário de `../amenities`, já normalizados pelo roteador. */
+  amenities?: number[]
   cursor?: string
   limit: number
 }
@@ -104,12 +106,31 @@ export type FiltrosBusca = {
    * pelo chamador; nunca como texto interpolado.
    */
   champBarFilter: (nomeDoBar: SQL) => SQL
+  /**
+   * Características do bar, com semântica de E: o bar precisa ter todas as
+   * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
+   * uma tabela de junção — ver migration 0021.
+   *
+   * O alias da tabela do bar muda entre os dois caminhos, então entra como
+   * fragmento montado pelo chamador, igual ao filtro de campeonato.
+   */
+  amenityFilter: (barAlias: SQL) => SQL
 }
 
 export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
-  const { lat, lng, radiusKm, sportId, championship, date } = input
+  const { lat, lng, radiusKm, sportId, championship, date, amenities } = input
 
   const padraoCampeonato = championship ? `%${championship.toLowerCase()}%` : ''
+
+  // Cada id vai como parâmetro ligado, nunca interpolado no texto do SQL —
+  // mesma regra do campeonato, ainda que aqui a entrada já esteja reduzida a
+  // números conhecidos pela normalização no roteador.
+  const listaAmenidades = amenities?.length
+    ? sql.join(
+        amenities.map((id) => sql`${id}`),
+        sql`, `
+      )
+    : null
 
   return {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
@@ -122,6 +143,10 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
     champBarFilter: (nomeDoBar) =>
       championship
         ? sql`AND (LOWER(e.championship) LIKE ${padraoCampeonato} OR LOWER(${nomeDoBar}) LIKE ${padraoCampeonato})`
+        : sql``,
+    amenityFilter: (barAlias) =>
+      listaAmenidades
+        ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
         : sql``
   }
 }

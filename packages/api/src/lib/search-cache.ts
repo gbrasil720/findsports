@@ -24,6 +24,12 @@ export type ChaveBuscaInput = {
   sportId?: string
   championship?: string
   date?: string
+  /**
+   * Já normalizada pelo roteador — sem repetido, sem id desconhecido e
+   * ORDENADA. A ordem importa aqui: `[1,4]` e `[4,1]` são o mesmo filtro, e
+   * sem ordenar virariam duas entradas para o mesmo resultado.
+   */
+  amenities?: number[]
   cursor?: string
   limit: number
 }
@@ -45,6 +51,7 @@ export function chaveBusca(input: ChaveBuscaInput): string {
     input.sportId ?? '',
     (input.championship ?? '').toLowerCase(),
     input.date ?? '',
+    (input.amenities ?? []).join(','),
     input.cursor ?? '',
     input.limit
   ].join('|')

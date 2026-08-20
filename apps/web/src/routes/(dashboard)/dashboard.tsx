@@ -1,3 +1,4 @@
+import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -57,6 +58,7 @@ function FanDashboard() {
   const [sportId, setSportId] = useState<string>()
   const [championship, setChampionship] = useState('')
   const [radiusKm, setRadiusKm] = useState<RadiusKm>(DEFAULT_RADIUS_KM)
+  const [amenities, setAmenities] = useState<number[]>([])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [gamesTodayOnly, setGamesTodayOnly] = useState(false)
@@ -111,6 +113,7 @@ function FanDashboard() {
       radiusKm,
       sportId,
       championship: championship || undefined,
+      amenities: amenities.length > 0 ? amenities : undefined,
       limit: 30
     })
   )
@@ -220,6 +223,14 @@ function FanDashboard() {
     setRadiusKm(DEFAULT_RADIUS_KM)
     setFavoritesOnly(false)
     setGamesTodayOnly(false)
+    setAmenities([])
+  }
+  const toggleAmenity = (id: number) => {
+    setAmenities((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    )
   }
   const applySuggestion = (kind: SuggestionKind) => {
     if (kind === 'brasileirao') {
@@ -283,6 +294,15 @@ function FanDashboard() {
       clear: () => setGamesTodayOnly(false)
     })
   }
+  for (const id of amenities) {
+    const amenity = findAmenity(id)
+    if (!amenity) continue
+
+    activeFilters.push({
+      label: amenity.label,
+      clear: () => setAmenities((current) => current.filter((it) => it !== id))
+    })
+  }
 
   const retryResults = () => {
     if (resultState.status !== 'error') return
@@ -311,6 +331,8 @@ function FanDashboard() {
         onSportChange={handleSportChange}
         radiusKm={radiusKm}
         onRadiusChange={handleRadiusChange}
+        amenities={amenities}
+        onToggleAmenity={toggleAmenity}
         sportsState={sportsState}
         activeFilters={activeFilters}
         onReset={reset}

@@ -141,6 +141,13 @@
       "when": 1787270400000,
       "tag": "0020_waitlist_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787356800000,
+      "tag": "0021_bar_amenities",
+      "breakpoints": true
     }
   ]
 }

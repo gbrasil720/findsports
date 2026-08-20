@@ -618,7 +618,9 @@ function PubDashboard() {
                   neighborhood: data.neighborhood || undefined,
                   city: data.city || undefined,
                   phone: data.phone || undefined,
-                  description: data.description || undefined
+                  description: data.description || undefined,
+                  amenities: data.amenities,
+                  screenCount: data.screenCount
                 })
               }}
               onPhotoUpdate={async (url: string) => {

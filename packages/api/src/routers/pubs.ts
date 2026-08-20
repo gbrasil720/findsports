@@ -10,6 +10,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
@@ -162,6 +163,7 @@ export const pubsRouter = router({
         sportId: z.string().uuid().optional(),
         championship: z.string().optional(),
         date: z.string().date().optional(),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
       })
@@ -169,9 +171,20 @@ export const pubsRouter = router({
     .query(async ({ input }) => {
       const emCamadas = await getAppConfig('search.tiered_plan_query')
       const executar = emCamadas ? executarBuscaEmCamadas : executarBuscaLinear
+
+      // A normalização acontece aqui, antes do cache: ela descarta id
+      // desconhecido e ORDENA, e é a ordem que faz `[1,4]` e `[4,1]` caírem
+      // na mesma entrada em vez de recalcularem o mesmo resultado duas vezes.
+      const normalizado = {
+        ...input,
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
+      }
+
       return cacheBusca.get(
-        chaveBusca({ ...input, modo: emCamadas ? 'camadas' : 'linear' }),
-        () => executar(input)
+        chaveBusca({ ...normalizado, modo: emCamadas ? 'camadas' : 'linear' }),
+        () => executar(normalizado)
       )
     }),
 

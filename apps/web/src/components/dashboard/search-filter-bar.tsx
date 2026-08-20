@@ -1,4 +1,10 @@
+import {
+  AMENITIES,
+  AMENITY_GROUPS,
+  MAX_AMENITY_FILTER
+} from '@findsports_oficial/api/lib/amenities'
 import { useState } from 'react'
+import AngleDown from 'reicon-react/icons/AngleDown'
 import Crosshairs from 'reicon-react/icons/Crosshairs'
 import Loader from 'reicon-react/icons/Loader'
 import Search from 'reicon-react/icons/Search'
@@ -28,6 +34,8 @@ type Props = {
   onSportChange: (value: string | undefined) => void
   radiusKm: RadiusKm
   onRadiusChange: (value: RadiusKm) => void
+  amenities: number[]
+  onToggleAmenity: (id: number) => void
   sportsState: SportsState
   activeFilters: ActiveFilter[]
   onReset: () => void
@@ -45,6 +53,8 @@ export function SearchFilterBar({
   onSportChange,
   radiusKm,
   onRadiusChange,
+  amenities,
+  onToggleAmenity,
   sportsState,
   activeFilters,
   onReset,
@@ -52,6 +62,10 @@ export function SearchFilterBar({
   onRequestLocation
 }: Props) {
   const [focused, setFocused] = useState(false)
+  // Fechado por padrão: são onze opções, e a busca por jogo — que é o caminho
+  // de quase todo mundo — não precisa delas.
+  const [amenitiesOpen, setAmenitiesOpen] = useState(false)
+  const atAmenityLimit = amenities.length >= MAX_AMENITY_FILTER
   const locationBusy = locationState === 'requesting'
   const locationGranted = locationState === 'granted'
 
@@ -253,6 +267,72 @@ export function SearchFilterBar({
             </div>
           </div>
         </fieldset>
+      </div>
+
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={() => setAmenitiesOpen((open) => !open)}
+          aria-expanded={amenitiesOpen}
+          aria-controls="amenity-filters"
+          className="inline-flex min-h-11 items-center gap-2 font-bold text-[var(--onside-ink)] text-xs uppercase tracking-[0.08em]"
+        >
+          <AngleDown
+            size={14}
+            color="currentColor"
+            className={`transition-transform ${amenitiesOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+          O que o bar tem
+          {amenities.length > 0 ? (
+            <span className="border border-[var(--onside-ink)] bg-[var(--onside-acid)] px-1.5 py-0.5 text-[10px] tabular-nums">
+              {amenities.length}
+            </span>
+          ) : null}
+        </button>
+
+        <div id="amenity-filters" hidden={!amenitiesOpen} className="mt-2">
+          <div className="space-y-3">
+            {AMENITY_GROUPS.map((group) => (
+              <fieldset key={group.key} className="min-w-0">
+                <legend className="onside-kicker mb-1.5">{group.label}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {AMENITIES.filter(
+                    (amenity) => amenity.group === group.key
+                  ).map((amenity) => {
+                    const selected = amenities.includes(amenity.id)
+
+                    return (
+                      <button
+                        key={amenity.id}
+                        type="button"
+                        onClick={() => onToggleAmenity(amenity.id)}
+                        aria-pressed={selected}
+                        // O limite não é estético: cada característica a mais
+                        // estreita o resultado, e a busca aceita no máximo
+                        // `MAX_AMENITY_FILTER`.
+                        disabled={!selected && atAmenityLimit}
+                        className={`${chipBase} ${
+                          selected
+                            ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                            : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)] disabled:opacity-40 disabled:hover:bg-[var(--onside-paper)]'
+                        }`}
+                      >
+                        {amenity.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </fieldset>
+            ))}
+          </div>
+
+          {atAmenityLimit ? (
+            <p className="mt-2 text-[var(--onside-muted)] text-xs">
+              Máximo de {MAX_AMENITY_FILTER} características por busca.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {activeFilters.length > 0 ? (

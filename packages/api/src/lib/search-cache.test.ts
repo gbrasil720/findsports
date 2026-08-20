@@ -23,6 +23,27 @@ describe('chave de cache da busca', () => {
     expect(a).toBe(b)
   })
 
+  it('trata listas de características equivalentes como a mesma chave', () => {
+    const base = {
+      modo: MODO,
+      lat: -23.55,
+      lng: -46.63,
+      radiusKm: 3,
+      limit: 20
+    }
+
+    // O roteador normaliza antes de montar a chave; esta asserção trava a
+    // outra ponta: chaves iguais para listas iguais, chaves distintas para
+    // filtros distintos.
+    expect(chaveBusca({ ...base, amenities: [1, 4] })).toBe(
+      chaveBusca({ ...base, amenities: [1, 4] })
+    )
+    expect(chaveBusca({ ...base, amenities: [1, 4] })).not.toBe(
+      chaveBusca({ ...base, amenities: [1] })
+    )
+    expect(chaveBusca({ ...base, amenities: [1] })).not.toBe(chaveBusca(base))
+  })
+
   it('não mistura raios, filtros nem página', () => {
     const base = {
       modo: MODO,

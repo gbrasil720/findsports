@@ -6,6 +6,9 @@ import PhoneChat from 'reicon-react/icons/PhoneChat'
 import { formatStoredPhone } from '@/utils/format-phone'
 import type { AdminBar, ProfileReadiness } from './admin-model'
 
+/** Abaixo disso a seção pública ainda parece um cadastro pela metade. */
+const MIN_AMENITIES_FOR_READY = 3
+
 type ReadinessItem = ProfileReadiness['checks'][number] & {
   description: string
 }
@@ -33,10 +36,14 @@ export function buildReadiness(
       done: (bar.name?.length ?? 0) >= 2
     },
     {
-      key: 'description',
-      label: 'Descrição',
-      description: 'Mostre rapidamente por que vale assistir aí.',
-      done: (bar.description?.length ?? 0) >= 10
+      key: 'amenities',
+      label: 'Características do bar',
+      // Trocou a antiga checagem de descrição. O perfil do bar não é mais uma
+      // caixa de texto: quem enche a seção pública, e quem alimenta o filtro
+      // da busca, é o que o dono marcou. Cobrar descrição aqui apontaria para
+      // a alavanca errada.
+      description: 'Marque pelo menos 3 — é o que o torcedor usa para filtrar.',
+      done: (bar.amenities?.length ?? 0) >= MIN_AMENITIES_FOR_READY
     },
     {
       key: 'address',
@@ -253,6 +260,9 @@ export function ConversionReadiness({
     }
     if (check.key === 'whatsapp' && (bar.phone?.length ?? 0) >= 10) {
       return { label: 'Ativar', onClick: onConfirmWhatsApp }
+    }
+    if (check.key === 'amenities') {
+      return { label: 'Marcar', onClick: onEditProfile }
     }
     return { label: 'Completar', onClick: onEditProfile }
   }

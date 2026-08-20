@@ -9,6 +9,11 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import {
+  AMENITIES,
+  MAX_SCREEN_COUNT,
+  normalizeAmenityIds
+} from '../lib/amenities'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   getEventCreationPolicy,
@@ -104,7 +109,19 @@ export const pubRouter = router({
         address: z.string().min(5).max(255).optional(),
         neighborhood: z.string().min(2).max(100).optional(),
         city: z.string().min(2).max(100).optional(),
-        photoUrl: z.string().url().optional()
+        photoUrl: z.string().url().optional(),
+        // Lista completa, não incremental: o formulário manda o estado final
+        // das características. Array vazio desmarca tudo, e `undefined` não
+        // toca no que já está gravado — a foto e a descrição seguem a mesma
+        // convenção nesta mutation.
+        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        screenCount: z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_SCREEN_COUNT)
+          .nullable()
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -164,6 +181,12 @@ export const pubRouter = router({
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
           ...(input.city && { city: input.city }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
+          ...(input.amenities !== undefined && {
+            amenities: normalizeAmenityIds(input.amenities)
+          }),
+          ...(input.screenCount !== undefined && {
+            screenCount: input.screenCount
+          }),
           ...(coordinates && {
             latitude: coordinates.latitude,
             longitude: coordinates.longitude

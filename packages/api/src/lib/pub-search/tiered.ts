@@ -58,11 +58,13 @@ export async function executarBuscaEmCamadas(
     sportFilter,
     champFilter,
     dateFilter,
-    champBarFilter
+    champBarFilter,
+    amenityFilter
   } = montarFiltrosBusca(input)
 
   const champBarFilterB = champBarFilter(sql`b.name`)
   const champBarFilterR = champBarFilter(sql`r.name`)
+  const amenityFilterB = amenityFilter(sql`b`)
 
   const keyset = cursor ? decodeCursor(cursor, searchCursorSchema) : null
 
@@ -114,6 +116,7 @@ export async function executarBuscaEmCamadas(
       WHERE b.is_active
         AND b.plan = ${tier.plan}
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
+        ${amenityFilterB}
         ${tierKeyset}
       ORDER BY agg.next_event_at ASC, distance_km ASC, b.id ASC
       LIMIT ${limit}
