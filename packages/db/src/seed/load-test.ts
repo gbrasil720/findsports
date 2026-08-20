@@ -248,7 +248,28 @@ try {
           '30000000-0000-4000-8000-' || lpad(bar_i::text, 12, '0'),
           '00000000-0000-4000-8000-000000000001',
           'Campeonato ' || (event_i % 20),
-          NOW() + ((event_i * 60 + (bar_i % 60)) || ' minutes')::interval,
+          -- Faixa de -7 a +14 dias em torno do momento do seed.
+          --
+          -- A fórmula anterior era \`NOW() + (event_i * 60 + bar_i % 60)
+          -- minutos\`, que com o padrão de 5 jogos por bar colocava a agenda
+          -- inteira nas 6 horas seguintes ao seed. Passada essa janela, a
+          -- base continuava carregada mas \`starts_at >= NOW()\` não casava
+          -- com nada — e a busca, cujo custo real é o LATERAL que procura o
+          -- próximo jogo de cada candidato, passava a medir uma varredura
+          -- que descarta tudo. Sem erro e sem lista vazia visível: só um
+          -- número de benchmark que parece plausível e não é.
+          --
+          -- Medido no mesmo banco, mesma query, mesma origem: 20,4 ms e
+          -- 21.468 buffers com a agenda vencida, contra 2,1 ms e 1.789
+          -- buffers com jogos de verdade no futuro.
+          --
+          -- Os multiplicadores primos espalham sem \`random()\`, então o
+          -- seed continua determinístico. A fatia no passado importa porque
+          -- a busca filtra por data: uma base só com jogo futuro esconde o
+          -- custo desse filtro.
+          NOW()
+            + (((bar_i * 7 + event_i * 13) % 30240) || ' minutes')::interval
+            - INTERVAL '7 days',
           'Participantes ' || event_i,
           NOW()
         FROM generate_series(1, $1::integer) AS bar_i
