@@ -44,6 +44,7 @@ if (!['browse', 'commercial-write', 'waitlist-write'].includes(WORKLOAD)) {
 const searchDuration = new Trend('search_duration_ms', true)
 const locationDuration = new Trend('location_search_duration_ms', true)
 const profileDuration = new Trend('bar_profile_duration_ms', true)
+const recommendationDuration = new Trend('recommendation_duration_ms', true)
 const catalogDuration = new Trend('catalog_duration_ms', true)
 const featuredDuration = new Trend('featured_duration_ms', true)
 const homeDuration = new Trend('home_duration_ms', true)
@@ -60,6 +61,7 @@ export const options = {
     search_duration_ms: [`p(95)<${P95_MS}`],
     location_search_duration_ms: [`p(95)<${P95_MS}`],
     bar_profile_duration_ms: [`p(95)<${P95_MS}`],
+    recommendation_duration_ms: [`p(95)<${P95_MS}`],
     commercial_write_duration_ms: [`p(95)<${P95_MS}`],
     waitlist_write_duration_ms: [`p(95)<${P95_MS}`],
     http_req_failed: ['rate<0.01']
@@ -181,7 +183,7 @@ export default function (data) {
   }
 
   const roll = Math.random()
-  if (roll < 0.4) {
+  if (roll < 0.35) {
     const lat = -23.55 + (Math.random() - 0.5) * 0.12
     const lng = -46.63 + (Math.random() - 0.5) * 0.12
     getTrpc(
@@ -192,7 +194,7 @@ export default function (data) {
       data.cookieHeader,
       (response) => responseOk(response) && response.body.includes('"bars"')
     )
-  } else if (roll < 0.6) {
+  } else if (roll < 0.5) {
     const lat = -23.55 + (Math.random() - 0.5) * 0.12
     const lng = -46.63 + (Math.random() - 0.5) * 0.12
     getTrpc(
@@ -203,7 +205,7 @@ export default function (data) {
       data.cookieHeader,
       (response) => responseOk(response) && response.body.includes('"bars"')
     )
-  } else if (roll < 0.75) {
+  } else if (roll < 0.65) {
     getTrpc(
       'pubs.getById',
       { id: BAR_ID },
@@ -211,7 +213,19 @@ export default function (data) {
       'GET /api/trpc/pubs.getById',
       data.cookieHeader
     )
-  } else if (roll < 0.85) {
+  } else if (roll < 0.8) {
+    const lat = -23.55 + (Math.random() - 0.5) * 0.12
+    const lng = -46.63 + (Math.random() - 0.5) * 0.12
+    getTrpc(
+      'recommendations.get',
+      { lat, lng },
+      recommendationDuration,
+      'GET /api/trpc/recommendations.get',
+      data.cookieHeader,
+      (response) =>
+        responseOk(response) && response.body.includes('"recommendations"')
+    )
+  } else if (roll < 0.88) {
     getTrpc(
       'pubs.getSports',
       undefined,
@@ -219,7 +233,7 @@ export default function (data) {
       'GET /api/trpc/pubs.getSports',
       data.cookieHeader
     )
-  } else if (roll < 0.95) {
+  } else if (roll < 0.96) {
     getTrpc(
       'pubs.getEliteEvents',
       undefined,

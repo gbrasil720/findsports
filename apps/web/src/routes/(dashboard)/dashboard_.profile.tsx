@@ -20,7 +20,6 @@ import {
   getCompletionScore,
   getProfileInitials,
   groupFavoritesByCity,
-  selectNearbyUnfavoritedBars,
   selectUpcomingFavoriteEvents,
   sortAndFilterFavorites
 } from '@/components/profile/profile-selectors'
@@ -53,6 +52,7 @@ function ProfilePage() {
   const signOut = useSignOut('/login')
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const impressionRunIdRef = useRef<string | null>(null)
   const [tab, setTab] = useState<ProfileTab>('Visão geral')
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
@@ -99,20 +99,61 @@ function ProfilePage() {
   const userRadius =
     SEARCH_RADII.find((radius) => radius === user?.searchRadiusKm) ??
     DEFAULT_RADIUS_KM
-  const nearbyQuery = useQuery({
-    ...trpc.pubs.search.queryOptions({
+  const recommendationsQuery = useQuery({
+    ...trpc.recommendations.get.queryOptions({
       ...(coords ?? SAO_PAULO_FALLBACK),
-      radiusKm: userRadius,
-      limit: 4
+      radiusKm: userRadius
     }),
     enabled: tab === 'Visão geral'
   })
+
+  const recordImpressions = useMutation(
+    trpc.recommendations.recordImpressions.mutationOptions()
+  )
+  const recordRecommendationOpen = useMutation(
+    trpc.recommendations.recordOpen.mutationOptions()
+  )
+  const dismissRecommendation = useMutation(
+    trpc.recommendations.dismiss.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: trpc.recommendations.get.queryKey()
+        })
+    })
+  )
+  const resetRecommendations = useMutation(
+    trpc.recommendations.reset.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: trpc.recommendations.get.queryKey()
+        })
+    })
+  )
+
+  useEffect(() => {
+    const result = recommendationsQuery.data
+    if (!result || result.recommendations.length === 0) return
+    if (impressionRunIdRef.current === result.runId) return
+    impressionRunIdRef.current = result.runId
+    recordImpressions.mutate({
+      runId: result.runId,
+      items: result.recommendations.map((recommendation, index) => ({
+        barId: recommendation.bar.id,
+        position: index + 1,
+        reason: recommendation.reason,
+        expandedRadius: recommendation.isExpandedRadius
+      }))
+    })
+  }, [recommendationsQuery.data, recordImpressions.mutate])
 
   const updatePreferences = useMutation(
     trpc.pubs.updateMyPreferences.mutationOptions({
       onSuccess: () => {
         void queryClient.invalidateQueries({
           queryKey: trpc.pubs.getMyPreferences.queryKey()
+        })
+        void queryClient.invalidateQueries({
+          queryKey: trpc.recommendations.get.queryKey()
         })
         setEditingSports(false)
       }
@@ -136,8 +177,12 @@ function ProfilePage() {
           queryClient.setQueryData(favoritesQueryKey, context.previous)
         }
       },
-      onSettled: () =>
-        queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
+      onSettled: () => {
+        void queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
+        void queryClient.invalidateQueries({
+          queryKey: trpc.recommendations.get.queryKey()
+        })
+      }
     })
   )
 
@@ -148,10 +193,6 @@ function ProfilePage() {
   const upcomingEvents = useMemo(
     () => selectUpcomingFavoriteEvents(favorites),
     [favorites]
-  )
-  const nearbyBars = useMemo(
-    () => selectNearbyUnfavoritedBars(nearbyQuery.data?.bars ?? [], favorites),
-    [nearbyQuery.data, favorites]
   )
   const sortedFavorites = useMemo(
     () => sortAndFilterFavorites(favorites, sortBy, filterWithEvents),
@@ -214,6 +255,9 @@ function ProfilePage() {
     try {
       await authClient.updateUser({ searchRadiusKm: radiusKm })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
+      void queryClient.invalidateQueries({
+        queryKey: trpc.recommendations.get.queryKey()
+      })
     } catch {
       setRadiusError('Não foi possível salvar o raio. Tente de novo.')
     } finally {
@@ -281,7 +325,22 @@ function ProfilePage() {
           radiusKm={user?.searchRadiusKm ?? 3}
           loadingFavorites={favoritesQuery.isLoading}
           upcomingEvents={upcomingEvents}
-          nearbyBars={nearbyBars}
+          recommendations={recommendationsQuery.data?.recommendations ?? []}
+          loadingRecommendations={recommendationsQuery.isLoading}
+          recommendationsError={recommendationsQuery.isError}
+          dismissingRecommendation={dismissRecommendation.isPending}
+          onRetryRecommendations={() => void recommendationsQuery.refetch()}
+          onOpenRecommendation={(barId) => {
+            const runId = recommendationsQuery.data?.runId
+            if (runId) {
+              sessionStorage.setItem(`onside:recommendation:${barId}`, runId)
+              recordRecommendationOpen.mutate({ runId, barId })
+            }
+          }}
+          onDismissRecommendation={(barId) => {
+            const runId = recommendationsQuery.data?.runId
+            if (runId) dismissRecommendation.mutate({ runId, barId })
+          }}
           onSelectTab={setTab}
         />
       ) : null}
@@ -322,11 +381,25 @@ function ProfilePage() {
           sportsError={updatePreferences.error?.message ?? null}
           savingRadius={savingRadius}
           radiusError={radiusError}
+          resettingRecommendations={resetRecommendations.isPending}
+          recommendationsReset={resetRecommendations.isSuccess}
+          recommendationsResetError={
+            resetRecommendations.error?.message ?? null
+          }
           onStartEditingSports={openEditSports}
           onCancelEditingSports={() => setEditingSports(false)}
           onToggleSport={toggleSport}
           onSaveSports={saveSports}
           onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
+          onResetRecommendations={() => {
+            if (
+              window.confirm(
+                'Recomeçar somente suas sugestões personalizadas? Seus esportes, raio, favoritos e avaliações serão preservados.'
+              )
+            ) {
+              resetRecommendations.mutate()
+            }
+          }}
           onLogout={() => void signOut()}
         />
       ) : null}

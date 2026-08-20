@@ -15,6 +15,7 @@ export interface CommercialEventPayload {
   pubId: string
   type: CommercialEventType
   sourceEventId?: string
+  recommendationRunId?: string
 }
 
 const UUID_RE =
@@ -31,6 +32,12 @@ export function trackCommercialEvent(payload: CommercialEventPayload): void {
   }
   if (payload.sourceEventId && UUID_RE.test(payload.sourceEventId)) {
     body.sourceEventId = payload.sourceEventId
+  }
+  if (
+    payload.recommendationRunId &&
+    UUID_RE.test(payload.recommendationRunId)
+  ) {
+    body.recommendationRunId = payload.recommendationRunId
   }
 
   fetch('/api/bar/commercial-event', {

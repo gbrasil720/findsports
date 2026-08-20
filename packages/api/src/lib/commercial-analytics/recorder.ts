@@ -1,4 +1,5 @@
 import { db, sql } from '@findsports_oficial/db'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import type { Context } from '../../context'
 import type { CommercialEventType } from './types'
@@ -95,6 +96,7 @@ interface RecordEventInput {
   pubId: string
   type: CommercialEventType
   sourceEventId?: string
+  recommendationRunId?: string
 }
 
 /**
@@ -289,6 +291,36 @@ export async function recordCommercialEvent(
 
   // Passou nas validações mas não inseriu = deduplicação diária.
   const recorded = outcome.inserted_count > 0
+
+  const recommendationConversionType =
+    eventType === 'directions_opened' ||
+    eventType === 'phone_clicked' ||
+    eventType === 'whatsapp_opened'
+      ? eventType
+      : null
+
+  if (input.recommendationRunId && recommendationConversionType) {
+    try {
+      await db
+        .insert(recommendationEvent)
+        .values({
+          actorUserId,
+          barId: pubId,
+          runId: input.recommendationRunId,
+          type: recommendationConversionType
+        })
+        .onConflictDoNothing()
+    } catch {
+      // A atribuição é telemetria secundária. Uma falha nela não pode
+      // transformar uma ação comercial já registrada em erro para o fã.
+      console.warn(
+        JSON.stringify({
+          event: 'recommendation_attribution_failed',
+          conversionType: recommendationConversionType
+        })
+      )
+    }
+  }
 
   return { recorded, deduplicated: !recorded }
 }

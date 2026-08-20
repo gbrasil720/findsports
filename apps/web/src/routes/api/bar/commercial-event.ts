@@ -29,14 +29,19 @@ export const Route = createFileRoute('/api/bar/commercial-event')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { pubId?: string; type?: string; sourceEventId?: string }
+        let body: {
+          pubId?: string
+          type?: string
+          sourceEventId?: string
+          recommendationRunId?: string
+        }
         try {
           body = await request.json()
         } catch {
           return Response.json({ error: 'Corpo inválido.' }, { status: 400 })
         }
 
-        const { pubId, type, sourceEventId } = body
+        const { pubId, type, sourceEventId, recommendationRunId } = body
 
         if (!pubId || !type) {
           return Response.json(
@@ -58,7 +63,8 @@ export const Route = createFileRoute('/api/bar/commercial-event')({
           await recordCommercialEvent(ctx, {
             pubId,
             type,
-            sourceEventId: sourceEventId ?? undefined
+            sourceEventId: sourceEventId ?? undefined,
+            recommendationRunId: recommendationRunId ?? undefined
           })
           return Response.json({ ok: true })
         } catch (err) {

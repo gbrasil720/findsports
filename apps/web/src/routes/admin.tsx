@@ -26,6 +26,7 @@ import { EventPerformance } from '@/components/admin/event-performance'
 import { EventsManager } from '@/components/admin/events-manager'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { RatingsPanel } from '@/components/admin/ratings-panel'
+import { RecommendationQualityStatus } from '@/components/admin/recommendation-quality-status'
 import { AppShell } from '@/components/app/app-shell'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
@@ -159,6 +160,13 @@ function PubDashboard() {
     isError: ratingsError,
     refetch: refetchRatings
   } = useQuery(trpc.pub.getMyRatings.queryOptions())
+
+  const {
+    data: recommendationQualityStatus,
+    isLoading: loadingRecommendationQuality,
+    isError: recommendationQualityError,
+    refetch: refetchRecommendationQuality
+  } = useQuery(trpc.recommendations.getMyBarQualityStatus.queryOptions())
 
   const {
     data: subscription,
@@ -479,6 +487,15 @@ function PubDashboard() {
                 </Link>
               </div>
             )}
+
+            <RecommendationQualityStatus
+              status={recommendationQualityStatus}
+              loading={loadingRecommendationQuality}
+              error={recommendationQualityError}
+              onRetry={() => {
+                void refetchRecommendationQuality()
+              }}
+            />
 
             {isStarter && !isInactive && eventsRemaining !== null && (
               <div

@@ -1,4 +1,5 @@
 import Check from 'reicon-react/icons/Check'
+import Compass from 'reicon-react/icons/Compass'
 import Edit from 'reicon-react/icons/Edit'
 import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
@@ -18,11 +19,15 @@ type Props = {
   sportsError: string | null
   savingRadius: boolean
   radiusError: string | null
+  resettingRecommendations: boolean
+  recommendationsReset: boolean
+  recommendationsResetError: string | null
   onStartEditingSports: () => void
   onCancelEditingSports: () => void
   onToggleSport: (sportId: string) => void
   onSaveSports: () => void
   onRadiusChange: (radiusKm: RadiusKm) => void
+  onResetRecommendations: () => void
   onLogout: () => void
 }
 
@@ -118,6 +123,44 @@ export function ProfileSettings(props: Props) {
         {props.savingRadius ? (
           <p className="mt-2 text-[10px] text-[var(--onside-muted)]">
             Salvando…
+          </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
+        <h3 className="mb-1 flex items-center gap-2 font-bold text-lg">
+          <Compass
+            size={20}
+            color="currentColor"
+            className="text-[var(--onside-live)]"
+          />
+          Sugestões personalizadas
+        </h3>
+        <p className="mb-4 max-w-2xl text-[var(--onside-muted)] text-xs leading-relaxed">
+          Recomece o histórico usado nas sugestões sem alterar seus esportes,
+          raio, favoritos, avaliações ou onboarding.
+        </p>
+        <button
+          type="button"
+          disabled={props.resettingRecommendations}
+          onClick={props.onResetRecommendations}
+          className="min-h-11 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-4 py-2 font-bold text-sm hover:bg-[var(--onside-stone)] disabled:opacity-50"
+        >
+          {props.resettingRecommendations
+            ? 'Recomeçando…'
+            : 'Recomeçar minhas sugestões'}
+        </button>
+        {props.recommendationsReset ? (
+          <p className="mt-2 text-xs" role="status">
+            Sugestões recomeçadas. Seus dados do perfil foram preservados.
+          </p>
+        ) : null}
+        {props.recommendationsResetError ? (
+          <p
+            className="mt-2 text-[var(--onside-live-text)] text-xs"
+            role="alert"
+          >
+            {props.recommendationsResetError}
           </p>
         ) : null}
       </section>

@@ -1,18 +1,18 @@
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
-import Compass from 'reicon-react/icons/Compass'
 import Fire from 'reicon-react/icons/Fire'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
 import Medal from 'reicon-react/icons/Medal'
 import { formatProfileEventDate } from './profile-formatters'
 import type {
+  BarRecommendation,
   CompletionItem,
   FavoriteEvent,
-  NearbyBar,
   ProfileTab
 } from './profile-model'
+import { ProfileRecommendations } from './profile-recommendations'
 
 type Props = {
   completionItems: CompletionItem[]
@@ -22,7 +22,13 @@ type Props = {
   radiusKm: number
   loadingFavorites: boolean
   upcomingEvents: FavoriteEvent[]
-  nearbyBars: NearbyBar[]
+  recommendations: BarRecommendation[]
+  loadingRecommendations: boolean
+  recommendationsError: boolean
+  dismissingRecommendation: boolean
+  onRetryRecommendations: () => void
+  onOpenRecommendation: (barId: string) => void
+  onDismissRecommendation: (barId: string) => void
   onSelectTab: (tab: ProfileTab) => void
 }
 
@@ -34,7 +40,13 @@ export function ProfileOverview({
   radiusKm,
   loadingFavorites,
   upcomingEvents,
-  nearbyBars,
+  recommendations,
+  loadingRecommendations,
+  recommendationsError,
+  dismissingRecommendation,
+  onRetryRecommendations,
+  onOpenRecommendation,
+  onDismissRecommendation,
   onSelectTab
 }: Props) {
   const completedItems = completionItems.filter((item) => item.done).length
@@ -204,53 +216,15 @@ export function ProfileOverview({
         />
       )}
 
-      {nearbyBars.length > 0 ? (
-        <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-bold text-lg">
-              <Compass
-                size={18}
-                color="currentColor"
-                className="text-[var(--onside-live)]"
-              />
-              Perto de você
-            </h2>
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-1 font-bold text-[var(--onside-muted)] text-xs hover:text-[var(--onside-ink)]"
-            >
-              Ver mais <ArrowRight size={12} color="currentColor" />
-            </Link>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {nearbyBars.map((bar) => (
-              <Link
-                key={bar.id}
-                to="/pub/$pubId"
-                params={{ pubId: bar.id }}
-                className="group block rounded-none bg-[var(--onside-stone)] p-4 transition-colors hover:bg-[var(--onside-stone)]"
-              >
-                <div className="mb-1 truncate font-bold text-sm transition-colors group-hover:text-[var(--onside-live-text)]">
-                  {bar.name}
-                </div>
-                <div className="mb-2 flex items-center gap-1 text-[var(--onside-muted)] text-xs">
-                  <Location size={11} color="currentColor" />
-                  {bar.neighborhood} ·{' '}
-                  {bar.distance_km < 1
-                    ? `${Math.round(bar.distance_km * 1000)} m`
-                    : `${bar.distance_km.toFixed(1)} km`}
-                </div>
-                {bar.event_count > 0 ? (
-                  <div className="font-bold text-[10px] text-[var(--onside-live)] uppercase tracking-widest">
-                    {bar.event_count} jogo{bar.event_count !== 1 ? 's' : ''}{' '}
-                    agendado{bar.event_count !== 1 ? 's' : ''}
-                  </div>
-                ) : null}
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <ProfileRecommendations
+        recommendations={recommendations}
+        loading={loadingRecommendations}
+        error={recommendationsError}
+        dismissing={dismissingRecommendation}
+        onRetry={onRetryRecommendations}
+        onOpen={onOpenRecommendation}
+        onDismiss={onDismissRecommendation}
+      />
     </div>
   )
 }

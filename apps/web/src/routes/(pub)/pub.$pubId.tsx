@@ -85,6 +85,9 @@ function PubPage() {
   const [eventId, setEventId] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(false)
   const [favoritePending, setFavoritePending] = useState(false)
+  const [recommendationRunId, setRecommendationRunId] = useState<string | null>(
+    null
+  )
   const trpc = useTRPC()
 
   const {
@@ -104,6 +107,12 @@ function PubPage() {
     const id = params.get('eventId')
     if (id) setEventId(id)
   }, [href])
+
+  useEffect(() => {
+    const storageKey = `onside:recommendation:${pubId}`
+    setRecommendationRunId(sessionStorage.getItem(storageKey))
+    sessionStorage.removeItem(storageKey)
+  }, [pubId])
 
   // Track profile_view when pub data loads (only after auth, only on success)
   useEffect(() => {
@@ -160,9 +169,15 @@ function PubPage() {
     setFavoritePending(true)
     try {
       if (isFavorited) {
-        await unfavoriteMutation.mutateAsync({ barId: pubId })
+        await unfavoriteMutation.mutateAsync({
+          barId: pubId,
+          recommendationRunId: recommendationRunId ?? undefined
+        })
       } else {
-        await favoriteMutation.mutateAsync({ barId: pubId })
+        await favoriteMutation.mutateAsync({
+          barId: pubId,
+          recommendationRunId: recommendationRunId ?? undefined
+        })
       }
     } catch {
       // errors handled in mutation callbacks
@@ -220,17 +235,32 @@ function PubPage() {
 
   const handleOpenDirections = () => {
     analytics.barIntent({ bar_id: pubId, action: 'directions' })
-    trackCommercialEvent({ pubId, type: 'directions_opened', sourceEventId })
+    trackCommercialEvent({
+      pubId,
+      type: 'directions_opened',
+      sourceEventId,
+      recommendationRunId: recommendationRunId ?? undefined
+    })
   }
 
   const handlePhoneClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'phone' })
-    trackCommercialEvent({ pubId, type: 'phone_clicked', sourceEventId })
+    trackCommercialEvent({
+      pubId,
+      type: 'phone_clicked',
+      sourceEventId,
+      recommendationRunId: recommendationRunId ?? undefined
+    })
   }
 
   const handleWhatsAppClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'whatsapp' })
-    trackCommercialEvent({ pubId, type: 'whatsapp_opened', sourceEventId })
+    trackCommercialEvent({
+      pubId,
+      type: 'whatsapp_opened',
+      sourceEventId,
+      recommendationRunId: recommendationRunId ?? undefined
+    })
   }
 
   const isAuthed = Boolean(session)

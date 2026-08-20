@@ -28,7 +28,8 @@ export const commercialAnalyticsRouter = router({
       z.object({
         pubId: z.string().uuid(),
         type: z.enum(COMMERCIAL_EVENT_TYPES),
-        sourceEventId: z.string().uuid().optional()
+        sourceEventId: z.string().uuid().optional(),
+        recommendationRunId: z.string().uuid().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {

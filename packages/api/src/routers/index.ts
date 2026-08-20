@@ -5,6 +5,7 @@ import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
 import { ratingsRouter } from './ratings'
+import { recommendationsRouter } from './recommendations'
 import { waitlistRouter } from './waitlist'
 
 export const appRouter = router({
@@ -22,6 +23,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   pub: pubRouter,
   pubs: pubsRouter,
+  recommendations: recommendationsRouter,
   commercialAnalytics: commercialAnalyticsRouter,
   ratings: ratingsRouter
 })

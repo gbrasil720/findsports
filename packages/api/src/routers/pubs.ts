@@ -6,6 +6,7 @@ import {
   userFavoriteBars,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -313,7 +314,12 @@ export const pubsRouter = router({
     }),
 
   favorite: protectedProcedure
-    .input(z.object({ barId: z.string().uuid() }))
+    .input(
+      z.object({
+        barId: z.string().uuid(),
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
@@ -324,16 +330,42 @@ export const pubsRouter = router({
         })
       }
 
-      await db
+      const inserted = await db
         .insert(userFavoriteBars)
         .values({ userId, barId: input.barId })
         .onConflictDoNothing()
+        .returning({ barId: userFavoriteBars.barId })
+
+      if (inserted.length > 0 && input.recommendationRunId) {
+        try {
+          await db
+            .insert(recommendationEvent)
+            .values({
+              actorUserId: userId,
+              barId: input.barId,
+              runId: input.recommendationRunId,
+              type: 'favorite'
+            })
+            .onConflictDoNothing()
+        } catch {
+          console.warn(
+            JSON.stringify({
+              event: 'recommendation_favorite_attribution_failed'
+            })
+          )
+        }
+      }
 
       return { success: true }
     }),
 
   unfavorite: protectedProcedure
-    .input(z.object({ barId: z.string().uuid() }))
+    .input(
+      z.object({
+        barId: z.string().uuid(),
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
@@ -344,11 +376,23 @@ export const pubsRouter = router({
         })
       }
 
-      await db
-        .delete(userFavoriteBars)
-        .where(
-          sql`${userFavoriteBars.userId} = ${userId} AND ${userFavoriteBars.barId} = ${input.barId}`
-        )
+      await db.transaction(async (tx) => {
+        const removed = await tx
+          .delete(userFavoriteBars)
+          .where(
+            sql`${userFavoriteBars.userId} = ${userId} AND ${userFavoriteBars.barId} = ${input.barId}`
+          )
+          .returning({ barId: userFavoriteBars.barId })
+
+        if (removed.length > 0) {
+          await tx.insert(recommendationEvent).values({
+            actorUserId: userId,
+            barId: input.barId,
+            runId: input.recommendationRunId,
+            type: 'unfavorite'
+          })
+        }
+      })
 
       return { success: true }
     }),

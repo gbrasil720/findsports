@@ -55,6 +55,29 @@ describe('commercial-tracking', () => {
     expect(body.sourceEventId).toBeUndefined()
   })
 
+  it('includes a valid recommendation run for conversion attribution', () => {
+    const runId = '019d1234-5678-7000-8000-000000000001'
+    trackCommercialEvent({
+      pubId: 'pub-1',
+      type: 'directions_opened',
+      recommendationRunId: runId
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.recommendationRunId).toBe(runId)
+  })
+
+  it('strips an invalid recommendation run', () => {
+    trackCommercialEvent({
+      pubId: 'pub-1',
+      type: 'directions_opened',
+      recommendationRunId: 'not-a-run'
+    })
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.recommendationRunId).toBeUndefined()
+  })
+
   it('strips empty sourceEventId', () => {
     trackCommercialEvent({
       pubId: 'pub-1',
