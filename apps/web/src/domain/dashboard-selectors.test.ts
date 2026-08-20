@@ -23,6 +23,7 @@ function makeBar(id: string, startsAt?: string): SearchBar {
     longitude: '-46.6',
     photo_url: null,
     created_at: '2026-08-01T00:00:00.000Z',
+    rating: null,
     distance_km: 1,
     plan: 'starter',
     event_count: startsAt ? 1 : 0,

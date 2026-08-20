@@ -2,6 +2,7 @@ import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
 import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
@@ -9,9 +10,11 @@ import {
   DashboardResults,
   type SuggestionKind
 } from '@/components/dashboard/dashboard-results'
+import { PendingRatingCard } from '@/components/dashboard/pending-rating-card'
 import {
   type ActiveFilter,
-  SearchFilterBar
+  SearchFilterBar,
+  type SearchSort
 } from '@/components/dashboard/search-filter-bar'
 import {
   deriveDiscoveryResultState,
@@ -59,6 +62,7 @@ function FanDashboard() {
   const [championship, setChampionship] = useState('')
   const [radiusKm, setRadiusKm] = useState<RadiusKm>(DEFAULT_RADIUS_KM)
   const [amenities, setAmenities] = useState<number[]>([])
+  const [sort, setSort] = useState<SearchSort>('relevance')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [gamesTodayOnly, setGamesTodayOnly] = useState(false)
@@ -106,6 +110,13 @@ function FanDashboard() {
     ...trpc.pubs.getSports.queryOptions(),
     ...CATALOG_QUERY
   })
+
+  // A ordenação por nota só existe quando a nota é pública. Falha de leitura
+  // cai no lado conservador — sem o controle — porque um botão que ordena
+  // por um número que ninguém vê confunde mais do que ajuda.
+  const appConfigQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const canSortByRating =
+    appConfigQuery.data?.['rating.public_display'] === true
   const searchCenter = coords ?? SAO_PAULO_FALLBACK
   const primaryQuery = useQuery(
     trpc.pubs.search.queryOptions({
@@ -114,6 +125,7 @@ function FanDashboard() {
       sportId,
       championship: championship || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
+      sort,
       limit: 30
     })
   )
@@ -127,6 +139,24 @@ function FanDashboard() {
     enabled: primaryEmpty
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
+
+  // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
+  // busca — o card some e a tela segue fazendo o trabalho principal.
+  const pendingRatingsQuery = useQuery({
+    ...trpc.ratings.getPending.queryOptions(),
+    retry: false
+  })
+  const submitRatingMutation = useMutation(
+    trpc.ratings.submit.mutationOptions({
+      onSuccess: () => {
+        toast.success('Obrigado! Sua resposta ajuda outros torcedores.')
+        queryClient.invalidateQueries({
+          queryKey: trpc.ratings.getPending.queryKey()
+        })
+      },
+      onError: (err) => toast.error(err.message || 'Erro ao avaliar')
+    })
+  )
 
   const resultState = useMemo(
     () =>
@@ -224,6 +254,7 @@ function FanDashboard() {
     setFavoritesOnly(false)
     setGamesTodayOnly(false)
     setAmenities([])
+    setSort('relevance')
   }
   const toggleAmenity = (id: number) => {
     setAmenities((current) =>
@@ -324,6 +355,13 @@ function FanDashboard() {
         count={displayedBars.length}
         locationState={locationState}
       />
+      {pendingRatingsQuery.data && pendingRatingsQuery.data.length > 0 ? (
+        <PendingRatingCard
+          pending={pendingRatingsQuery.data}
+          isPending={submitRatingMutation.isPending}
+          onAnswer={(answer) => submitRatingMutation.mutate(answer)}
+        />
+      ) : null}
       <SearchFilterBar
         championship={championship}
         onChampionshipChange={setChampionship}
@@ -333,6 +371,9 @@ function FanDashboard() {
         onRadiusChange={handleRadiusChange}
         amenities={amenities}
         onToggleAmenity={toggleAmenity}
+        sort={sort}
+        onSortChange={setSort}
+        canSortByRating={canSortByRating}
         sportsState={sportsState}
         activeFilters={activeFilters}
         onReset={reset}

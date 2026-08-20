@@ -12,9 +12,8 @@ import type { ProfileEvent } from './pub-profile'
  *
  * Tudo aqui é derivado do que `pubs.getById` já devolve. Nenhuma query nova.
  *
- * O tipo é uma lista de `Fact` de propósito: quando a nota geral existir, ela
- * entra como mais um produtor de `Fact` — sem mexer no layout, e sem deixar
- * um campo morto no código enquanto não existe.
+ * O tipo é uma lista de `Fact` de propósito, e a nota do bar entrou por aí:
+ * é só mais um produtor de `Fact`, sem mexer no layout.
  */
 export type Fact = {
   key: string
@@ -97,11 +96,26 @@ function formatMonthYear(date: Date): string {
 export function buildBarFacts(input: {
   events: ProfileEvent[]
   createdAt: string | Date | null
+  /**
+   * Já filtrada pelo servidor: vem `null` quando o bar não atingiu o piso
+   * público ou quando a exibição está desligada. A tela não decide isso.
+   */
+  rating: { positive: number; total: number; percentage: number } | null
   now?: Date | number
 }): Fact[] {
   const now = input.now ?? Date.now()
   const nowMs = typeof now === 'number' ? now : now.getTime()
   const facts: Fact[] = []
+
+  // Primeiro fato da lista quando existe: é a única linha do painel que vem
+  // de outros torcedores, e não do próprio bar.
+  if (input.rating) {
+    facts.push({
+      key: 'rating',
+      label: 'Voltariam pra ver jogo',
+      value: `${input.rating.percentage}% de ${input.rating.total}`
+    })
+  }
 
   const sports = distinctSports(input.events)
   if (sports.length > 0) {

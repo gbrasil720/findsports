@@ -70,6 +70,8 @@ export async function executarBuscaLinear(
         b.longitude,
         b.photo_url,
         b.created_at,
+        b.rating_count,
+        b.rating_positive,
         COALESCE(s.plan, 'starter') AS plan,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km
       FROM bar b

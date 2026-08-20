@@ -17,8 +17,10 @@ import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
+  executarBuscaPorNota,
   type SearchPage
 } from '../lib/pub-search'
+import { hasPublicRating, ratingPercentage } from '../lib/rating'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
 
@@ -164,28 +166,58 @@ export const pubsRouter = router({
         championship: z.string().optional(),
         date: z.string().date().optional(),
         amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
+        sort: z.enum(['relevance', 'rating']).default('relevance'),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
       })
     )
     .query(async ({ input }) => {
       const emCamadas = await getAppConfig('search.tiered_plan_query')
-      const executar = emCamadas ? executarBuscaEmCamadas : executarBuscaLinear
+
+      // Ordenar por nota só existe quando a nota é pública. Com a exibição
+      // desligada, o modo cai para a ordem padrão em vez de dar erro: quem
+      // guardou um link com `sort=rating` continua vendo uma lista, e não
+      // uma tela quebrada por uma flag que ele não sabe que existe.
+      const notaPublica = await getAppConfig('rating.public_display')
+      const porNota = input.sort === 'rating' && notaPublica
+
+      const executar = porNota
+        ? executarBuscaPorNota
+        : emCamadas
+          ? executarBuscaEmCamadas
+          : executarBuscaLinear
 
       // A normalização acontece aqui, antes do cache: ela descarta id
       // desconhecido e ORDENA, e é a ordem que faz `[1,4]` e `[4,1]` caírem
       // na mesma entrada em vez de recalcularem o mesmo resultado duas vezes.
       const normalizado = {
         ...input,
+        sort: porNota ? ('rating' as const) : ('relevance' as const),
         amenities: input.amenities?.length
           ? normalizeAmenityIds(input.amenities)
           : undefined
       }
 
-      return cacheBusca.get(
-        chaveBusca({ ...normalizado, modo: emCamadas ? 'camadas' : 'linear' }),
+      const pagina = await cacheBusca.get(
+        chaveBusca({
+          ...normalizado,
+          modo: porNota ? 'nota' : emCamadas ? 'camadas' : 'linear'
+        }),
         () => executar(normalizado)
       )
+
+      // A nota é retirada DEPOIS do cache, não dentro dele: a flag pode virar
+      // a qualquer momento e o cache tem TTL próprio. Filtrar antes deixaria
+      // páginas já guardadas continuarem entregando nota por até um TTL
+      // depois de a exibição ser desligada — e desligar exibição costuma ser
+      // a reação a um problema, ou seja, exatamente a hora em que a demora
+      // não é aceitável.
+      if (notaPublica) return pagina
+
+      return {
+        ...pagina,
+        bars: pagina.bars.map((achado) => ({ ...achado, rating: null }))
+      }
     }),
 
   /**
@@ -259,9 +291,25 @@ export const pubsRouter = router({
       // O dono vê a própria página com avisos que ninguém mais vê — o que
       // falta preencher, e quanto isso custa em contatos. Quem decide é o
       // servidor: o cliente não tem como comparar sem receber o `userId`.
-      const { userId, ...publicBar } = result
+      //
+      // A nota sai daqui já resolvida: o cliente recebe `null` quando a
+      // exibição está desligada ou quando o bar não atingiu o piso, e nunca
+      // recebe os contadores crus. Deixar a decisão na tela significaria
+      // mandar pela rede o número que a regra existe para não mostrar.
+      const { userId, ratingCount, ratingPositive, ratingScore, ...publicBar } =
+        result
 
-      return { ...publicBar, isOwner: userId === ctx.session.user.id }
+      const notaPublica = await getAppConfig('rating.public_display')
+      const rating =
+        notaPublica && hasPublicRating(ratingCount)
+          ? {
+              positive: ratingPositive,
+              total: ratingCount,
+              percentage: ratingPercentage(ratingPositive, ratingCount)
+            }
+          : null
+
+      return { ...publicBar, rating, isOwner: userId === ctx.session.user.id }
     }),
 
   favorite: protectedProcedure

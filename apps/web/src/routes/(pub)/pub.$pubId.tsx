@@ -185,7 +185,8 @@ function PubPage() {
       normalizedPub
         ? buildBarFacts({
             events: normalizedPub.events,
-            createdAt: normalizedPub.createdAt
+            createdAt: normalizedPub.createdAt,
+            rating: normalizedPub.rating
           })
         : [],
     [normalizedPub]

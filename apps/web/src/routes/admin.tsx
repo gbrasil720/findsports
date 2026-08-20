@@ -25,6 +25,7 @@ import { ConversionReadiness } from '@/components/admin/conversion-readiness'
 import { EventPerformance } from '@/components/admin/event-performance'
 import { EventsManager } from '@/components/admin/events-manager'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
+import { RatingsPanel } from '@/components/admin/ratings-panel'
 import { AppShell } from '@/components/app/app-shell'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
@@ -151,6 +152,13 @@ function PubDashboard() {
     isError: eventsError,
     refetch: refetchEvents
   } = useQuery(trpc.pub.getMyEvents.queryOptions())
+
+  const {
+    data: ratings,
+    isLoading: loadingRatings,
+    isError: ratingsError,
+    refetch: refetchRatings
+  } = useQuery(trpc.pub.getMyRatings.queryOptions())
 
   const {
     data: subscription,
@@ -633,6 +641,21 @@ function PubDashboard() {
                   queryKey: trpc.pub.getMe.queryKey()
                 })
               }}
+            />
+
+            <RatingsPanel
+              state={
+                loadingRatings
+                  ? { status: 'loading' }
+                  : ratingsError || !ratings
+                    ? {
+                        status: 'error',
+                        retry: () => {
+                          void refetchRatings()
+                        }
+                      }
+                    : { status: 'ready', ratings }
+              }
             />
 
             <BarPreview

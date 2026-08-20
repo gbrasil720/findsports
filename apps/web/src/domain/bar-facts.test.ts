@@ -20,7 +20,35 @@ function makeEvent(overrides: Partial<ProfileEvent> = {}): ProfileEvent {
 
 describe('buildBarFacts', () => {
   it('sem agenda e sem cadastro, não inventa fato', () => {
-    expect(buildBarFacts({ events: [], createdAt: null, now: NOW })).toEqual([])
+    expect(
+      buildBarFacts({ events: [], createdAt: null, rating: null, now: NOW })
+    ).toEqual([])
+  })
+
+  it('põe a nota como primeiro fato, quando o servidor mandou uma', () => {
+    const facts = buildBarFacts({
+      events: [],
+      createdAt: null,
+      rating: { positive: 7, total: 10, percentage: 70 },
+      now: NOW
+    })
+
+    expect(facts[0]).toEqual({
+      key: 'rating',
+      label: 'Voltariam pra ver jogo',
+      value: '70% de 10'
+    })
+  })
+
+  it('não inventa nota quando o servidor mandou null', () => {
+    const facts = buildBarFacts({
+      events: [makeEvent()],
+      createdAt: null,
+      rating: null,
+      now: NOW
+    })
+
+    expect(facts.some((fact) => fact.key === 'rating')).toBe(false)
   })
 
   it('lista os esportes sem repetir', () => {
@@ -31,6 +59,7 @@ describe('buildBarFacts', () => {
         makeEvent({ sport: { name: 'Basquete', slug: 'basquete' } })
       ],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -48,6 +77,7 @@ describe('buildBarFacts', () => {
         makeEvent({ championship: 'Libertadores' })
       ],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -63,6 +93,7 @@ describe('buildBarFacts', () => {
         makeEvent({ championship: 'BRASILEIRÃO' })
       ],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -79,6 +110,7 @@ describe('buildBarFacts', () => {
         makeEvent({ startsAt: new Date(NOW.getTime() + 20 * 86_400_000) })
       ],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -89,6 +121,7 @@ describe('buildBarFacts', () => {
     const facts = buildBarFacts({
       events: [makeEvent()],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -101,6 +134,7 @@ describe('buildBarFacts', () => {
         makeEvent({ startsAt: new Date(NOW.getTime() + 30 * 86_400_000) })
       ],
       createdAt: null,
+      rating: null,
       now: NOW
     })
 
@@ -111,6 +145,7 @@ describe('buildBarFacts', () => {
     const facts = buildBarFacts({
       events: [],
       createdAt: '2026-03-04T00:00:00.000Z',
+      rating: null,
       now: NOW
     })
 
@@ -121,6 +156,7 @@ describe('buildBarFacts', () => {
     const facts = buildBarFacts({
       events: [],
       createdAt: 'nada disso',
+      rating: null,
       now: NOW
     })
 

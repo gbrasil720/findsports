@@ -162,6 +162,31 @@ export const APP_CONFIG_DEFINITIONS = {
    * fluxo — a busca dele é por GPS e raio — então não há o que comparar, e
    * inventar uma comparação daria um bloqueio que erra.
    */
+  /**
+   * Libera a exibição PÚBLICA da nota do bar.
+   *
+   * A coleta de avaliações não depende desta chave — ela roda desde o
+   * primeiro dia, e o dono vê tudo no painel. O que a chave controla é
+   * apenas o que o torcedor enxerga no perfil e o modo "melhor avaliados"
+   * na busca.
+   *
+   * Nasce desligada de propósito. Nota precisa de volume: com poucas
+   * avaliações, ligar a exibição só produziria perfis anunciando "—" e uma
+   * ordenação que ordena ruído. Ligar é decisão de quando a base chegou lá,
+   * não de quando o código ficou pronto.
+   *
+   * O piso por bar (`RATING_PUBLIC_FLOOR`) continua valendo por cima desta
+   * chave: mesmo ligada, bar com poucas avaliações não mostra nota.
+   */
+  'rating.public_display': definir({
+    schema: z.boolean(),
+    padrao: false,
+    publico: true,
+    descricao:
+      'Exibe a nota do bar para o torcedor e libera o modo "melhor ' +
+      'avaliados" na busca. A coleta de avaliações independe desta chave.'
+  }),
+
   'launch.pub_cities': definir({
     schema: z.array(z.string().trim().min(2).max(100)).max(500),
     padrao: [] as string[],

@@ -229,6 +229,16 @@ export function BarCard({
                 +{extraEvents} {extraEvents === 1 ? 'jogo' : 'jogos'}
               </span>
             ) : null}
+            {/* Vem `null` de bar sem amostra suficiente — o servidor já
+                aplicou o piso, a tela não decide isso. */}
+            {bar.rating ? (
+              <span
+                className="onside-badge shrink-0 border-[var(--onside-ink)] bg-[var(--onside-acid)] text-[var(--onside-ink)] tabular-nums"
+                title={`${bar.rating.positive} de ${bar.rating.total} torcedores voltariam`}
+              >
+                {bar.rating.percentage}% voltariam
+              </span>
+            ) : null}
           </div>
         </div>
       </Link>

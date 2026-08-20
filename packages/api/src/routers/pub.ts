@@ -1,4 +1,4 @@
-import { db, eq } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
   event,
@@ -20,6 +20,11 @@ import {
   STARTER_EVENT_LIMIT
 } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from '../lib/rating'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -205,6 +210,66 @@ export const pubRouter = router({
         phoneAcceptsWhatsappConfirmed: whatsappResolution?.value === true
       }
     }),
+
+  /**
+   * As avaliações do próprio bar, cruas.
+   *
+   * O piso público (`RATING_PUBLIC_FLOOR`) e a flag de exibição NÃO se
+   * aplicam aqui: eles existem para proteger o bar de ter uma amostra
+   * minúscula exibida ao torcedor, não para esconder do dono o que estão
+   * dizendo do espaço dele. Ele vê desde a primeira.
+   *
+   * Não devolve quem avaliou. A resposta é binária e a base é pequena — um
+   * nome ao lado de um "não voltaria" transformaria avaliação em conflito
+   * pessoal, e o dono tem o telefone dessa pessoa.
+   */
+  getMyRatings: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+
+    const rows = await db.execute(sql`
+      SELECT
+        r.would_return,
+        r.created_at,
+        e.championship,
+        e.starts_at
+      FROM bar_rating r
+      JOIN event e ON e.id = r.event_id
+      WHERE r.bar_id = ${existingBar.id}
+      ORDER BY r.created_at DESC
+      LIMIT 50
+    `)
+
+    const total = existingBar.ratingCount
+    const positive = existingBar.ratingPositive
+
+    return {
+      total,
+      positive,
+      percentage: ratingPercentage(positive, total),
+      isPublic: hasPublicRating(total),
+      floor: RATING_PUBLIC_FLOOR,
+      recent: (
+        rows.rows as {
+          would_return: boolean
+          created_at: string
+          championship: string
+          starts_at: string
+        }[]
+      ).map((row) => ({
+        wouldReturn: row.would_return,
+        createdAt: row.created_at,
+        championship: row.championship,
+        startsAt: row.starts_at
+      }))
+    }
+  }),
 
   getMyEvents: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id

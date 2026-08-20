@@ -27,6 +27,13 @@ const RADIUS_LABELS: Record<RadiusKm, string> = {
 
 export type ActiveFilter = { label: string; clear: () => void }
 
+export type SearchSort = 'relevance' | 'rating'
+
+const SORT_LABELS: Record<SearchSort, string> = {
+  relevance: 'Mais relevantes',
+  rating: 'Melhor avaliados'
+}
+
 type Props = {
   championship: string
   onChampionshipChange: (value: string) => void
@@ -36,6 +43,14 @@ type Props = {
   onRadiusChange: (value: RadiusKm) => void
   amenities: number[]
   onToggleAmenity: (id: number) => void
+  sort: SearchSort
+  onSortChange: (value: SearchSort) => void
+  /**
+   * Sai da flag `rating.public_display`. Com a nota desligada não existe o
+   * que ordenar, e o controle não é renderizado — em vez de aparecer e não
+   * fazer nada.
+   */
+  canSortByRating: boolean
   sportsState: SportsState
   activeFilters: ActiveFilter[]
   onReset: () => void
@@ -55,6 +70,9 @@ export function SearchFilterBar({
   onRadiusChange,
   amenities,
   onToggleAmenity,
+  sort,
+  onSortChange,
+  canSortByRating,
   sportsState,
   activeFilters,
   onReset,
@@ -229,6 +247,31 @@ export function SearchFilterBar({
           className="hidden h-10 w-px shrink-0 self-center bg-[var(--onside-ink)] lg:mx-4 lg:block"
           aria-hidden="true"
         />
+
+        {canSortByRating ? (
+          <fieldset className="shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <legend className="onside-kicker m-0 shrink-0 pr-1">Ordem</legend>
+              <div className="flex flex-wrap gap-2">
+                {(['relevance', 'rating'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => onSortChange(option)}
+                    aria-pressed={sort === option}
+                    className={`${chipBase} ${
+                      sort === option
+                        ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                        : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
+                    }`}
+                  >
+                    {SORT_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </fieldset>
+        ) : null}
 
         <fieldset className="shrink-0">
           <div className="flex flex-wrap items-center gap-2">

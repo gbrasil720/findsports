@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   customType,
+  doublePrecision,
   index,
   integer,
   numeric,
@@ -13,6 +14,7 @@ import {
   timestamp
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+import { barRating } from './rating'
 
 /**
  * PostGIS `geography(Point,4326)`. Requer a extensão `postgis` — criada na
@@ -76,6 +78,18 @@ export const bar = pgTable(
     amenities: integer('amenities').array().default(sql`'{}'`).notNull(),
     // Só exibição. A busca não filtra por número de telas.
     screenCount: smallint('screen_count'),
+    // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
+    // (migration 0022). A busca precisa ordenar por nota sem agregar por
+    // candidato — que é o mesmo motivo de `plan` viver aqui.
+    ratingCount: integer('rating_count').default(0).notNull(),
+    ratingPositive: integer('rating_positive').default(0).notNull(),
+    // Limite inferior de Wilson, DERIVADO pelo próprio Postgres a partir dos
+    // dois contadores acima. Coluna gerada, não trigger: a fórmula é
+    // aritmética imutável, então não há o que dessincronizar. A mesma conta
+    // vive em `packages/api/src/lib/rating.ts` para o cliente exibir.
+    ratingScore: doublePrecision('rating_score').generatedAlwaysAs(
+      sql`CASE WHEN rating_count <= 0 THEN 0 ELSE (((rating_positive::double precision / rating_count) + (1.96 * 1.96) / (2 * rating_count)) - 1.96 * sqrt((((rating_positive::double precision / rating_count) * (1 - rating_positive::double precision / rating_count)) + (1.96 * 1.96) / (4 * rating_count)) / rating_count)) / (1 + (1.96 * 1.96) / rating_count) END`
+    ),
     // Espelho de `subscription.plan`, mantido por trigger (ESC-09). A busca
     // ordena por plano antes de qualquer outra chave; ler o plano da própria
     // linha do bar evita um lookup em `subscription` por candidato do raio.
@@ -94,6 +108,12 @@ export const bar = pgTable(
     // porque quem traz esse predicado é o índice de geo do outro lado do
     // BitmapAnd, que já é parcial.
     index('bar_amenities_gin_idx').using('gin', table.amenities),
+    // Ordenação do modo "melhor avaliados". Parcial em `rating_count > 0` e
+    // não no piso público: subir o piso é editar `RATING_PUBLIC_FLOOR`, sem
+    // migration.
+    index('bar_rating_score_idx')
+      .on(table.ratingScore.desc(), table.id)
+      .where(sql`is_active AND rating_count > 0`),
     index('bar_isActive_idx').on(table.isActive),
     // Índice parcial: a busca sempre filtra por bares ativos.
     index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`),
@@ -249,7 +269,8 @@ export const barRelations = relations(bar, ({ one, many }) => ({
     fields: [bar.id],
     references: [subscription.barId]
   }),
-  favoritedBy: many(userFavoriteBars)
+  favoritedBy: many(userFavoriteBars),
+  ratings: many(barRating)
 }))
 
 export const sportRelations = relations(sport, ({ many }) => ({

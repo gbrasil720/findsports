@@ -14,7 +14,7 @@
  * chave não distinguisse, desligar o caminho suspeito continuaria servindo,
  * por até um TTL, exatamente as páginas que ele produziu.
  */
-export type ModoBusca = 'camadas' | 'linear'
+export type ModoBusca = 'camadas' | 'linear' | 'nota'
 
 export type ChaveBuscaInput = {
   modo: ModoBusca

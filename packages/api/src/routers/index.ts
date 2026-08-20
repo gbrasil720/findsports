@@ -4,6 +4,7 @@ import { commercialAnalyticsRouter } from './commercial-analytics'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
+import { ratingsRouter } from './ratings'
 import { waitlistRouter } from './waitlist'
 
 export const appRouter = router({
@@ -21,6 +22,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   pub: pubRouter,
   pubs: pubsRouter,
-  commercialAnalytics: commercialAnalyticsRouter
+  commercialAnalytics: commercialAnalyticsRouter,
+  ratings: ratingsRouter
 })
 export type AppRouter = typeof appRouter

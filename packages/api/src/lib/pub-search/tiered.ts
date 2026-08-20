@@ -101,6 +101,8 @@ export async function executarBuscaEmCamadas(
         b.photo_url,
         b.created_at,
         b.plan,
+        b.rating_count,
+        b.rating_positive,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
         to_char(agg.next_event_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_next_event_at
       FROM bar b

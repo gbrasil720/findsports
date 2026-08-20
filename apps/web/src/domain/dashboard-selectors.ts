@@ -22,7 +22,12 @@ export type DiscoveryCardBar = Pick<
   | 'photo_url'
   | 'distance_km'
 > &
-  Partial<Pick<SearchBar, 'created_at' | 'plan' | 'event_count' | 'nextEvent'>>
+  Partial<
+    Pick<
+      SearchBar,
+      'created_at' | 'plan' | 'event_count' | 'nextEvent' | 'rating'
+    >
+  >
 export type Favorite = RouterOutputs['pubs']['getFavorites'][number]
 export type Sport = RouterOutputs['pubs']['getSports'][number]
 

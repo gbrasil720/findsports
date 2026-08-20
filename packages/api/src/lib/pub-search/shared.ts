@@ -2,6 +2,7 @@ import { type SQL, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { encodeCursor } from '../keyset-cursor'
+import { hasPublicRating, ratingPercentage } from '../rating'
 
 /**
  * Peças comuns aos dois caminhos de `pubs.search` (ESC-19).
@@ -24,9 +25,17 @@ export type SearchInput = {
   date?: string
   /** Ids do vocabulário de `../amenities`, já normalizados pelo roteador. */
   amenities?: number[]
+  /**
+   * `relevance` é a ordem de sempre — plano, próximo jogo, distância. Só o
+   * torcedor pode pedir `rating`, e é nesse pedido explícito que o plano sai
+   * da frente.
+   */
+  sort?: SearchSort
   cursor?: string
   limit: number
 }
+
+export type SearchSort = 'relevance' | 'rating'
 
 export type SearchBar = {
   id: string
@@ -40,6 +49,12 @@ export type SearchBar = {
   distance_km: number
   plan: 'starter' | 'pro' | 'elite'
   event_count: number
+  /**
+   * Nota pública do bar, ou `null` quando ele ainda não tem amostra
+   * suficiente. Quem decide é o servidor, com `RATING_PUBLIC_FLOOR` — o
+   * cliente nunca recebe contagem parcial para exibir por conta própria.
+   */
+  rating: { positive: number; total: number; percentage: number } | null
   nextEvent:
     | {
         id: string
@@ -63,6 +78,25 @@ export const searchCursorSchema = z.object({
 })
 
 /**
+ * Cursor do modo "melhor avaliados": grupo (com nota pública ou sem), nota
+ * negada, plano, próximo jogo, distância, id.
+ *
+ * Formato próprio, e deliberadamente incompatível com `searchCursorSchema`:
+ * as chaves de ordenação são outras. Trocar de modo no meio da paginação
+ * recomeça a lista — continuar de onde parou numa ordem diferente não
+ * significa nada, e a validação do cursor recusa o formato errado em vez de
+ * paginar torto.
+ */
+export const ratingCursorSchema = z.object({
+  b: z.number(),
+  s: z.number(),
+  p: z.number(),
+  e: z.string(),
+  d: z.number(),
+  i: z.string()
+})
+
+/**
  * Uma linha crua da busca, no formato que os DOIS caminhos produzem.
  *
  * Os caminhos divergem só na forma de chegar às linhas; a partir daqui a
@@ -79,6 +113,10 @@ export type LinhaBusca = {
   photo_url: string | null
   created_at: string
   plan: 'starter' | 'pro' | 'elite'
+  rating_count?: string | number | null
+  rating_positive?: string | number | null
+  cursor_bucket?: number
+  cursor_sort_score?: number
   event_count: string | number
   distance_km: number
   cursor_plan_rank: number
@@ -153,7 +191,8 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
 
 export function montarPaginaBusca(
   rows: LinhaBusca[],
-  limit: number
+  limit: number,
+  sort: SearchSort = 'relevance'
 ): SearchPage {
   const bars: SearchBar[] = rows.map((row) => ({
     id: row.id,
@@ -167,6 +206,16 @@ export function montarPaginaBusca(
     distance_km: row.distance_km,
     plan: row.plan,
     event_count: Number(row.event_count),
+    // O piso é aplicado AQUI, e não na tela: o cliente nunca recebe a
+    // contagem de um bar que ainda não tem nota pública, então não tem como
+    // exibi-la por engano nem inferi-la.
+    rating: (() => {
+      const total = Number(row.rating_count ?? 0)
+      const positive = Number(row.rating_positive ?? 0)
+      if (!hasPublicRating(total)) return null
+
+      return { positive, total, percentage: ratingPercentage(positive, total) }
+    })(),
     nextEvent: row.next_event_id
       ? {
           id: row.next_event_id,
@@ -186,15 +235,26 @@ export function montarPaginaBusca(
 
   const last = rows.length === limit ? rows[rows.length - 1] : undefined
 
+  if (!last) return { bars, nextCursor: null }
+
   return {
     bars,
-    nextCursor: last
-      ? encodeCursor({
-          p: Number(last.cursor_plan_rank),
-          e: last.cursor_next_event_at,
-          d: last.distance_km,
-          i: last.id
-        })
-      : null
+    nextCursor: encodeCursor(
+      sort === 'rating'
+        ? {
+            b: Number(last.cursor_bucket),
+            s: Number(last.cursor_sort_score),
+            p: Number(last.cursor_plan_rank),
+            e: last.cursor_next_event_at,
+            d: last.distance_km,
+            i: last.id
+          }
+        : {
+            p: Number(last.cursor_plan_rank),
+            e: last.cursor_next_event_at,
+            d: last.distance_km,
+            i: last.id
+          }
+    )
   }
 }
