@@ -20,6 +20,7 @@ export const user = pgTable('user', {
     .default('fan'),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   searchRadiusKm: integer('search_radius_km').default(3).notNull(),
+  twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   // better-auth admin plugin fields
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),
@@ -129,3 +130,17 @@ export const rateLimit = pgTable('rate_limit', {
   // Milissegundos desde a época; o better-auth lê como número.
   lastRequest: bigint('last_request', { mode: 'number' }).notNull()
 })
+
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: text('id').primaryKey(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').default(true).notNull()
+  },
+  (table) => [index('two_factor_userId_idx').on(table.userId)]
+)

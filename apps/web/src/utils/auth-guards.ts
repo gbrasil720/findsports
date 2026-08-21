@@ -22,6 +22,7 @@ export type AuthSession = {
     role: 'fan' | 'pub' | 'admin'
     onboardingCompleted: boolean
     searchRadiusKm: number
+    twoFactorEnabled: boolean
   }
 } | null
 

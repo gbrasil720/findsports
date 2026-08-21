@@ -15,7 +15,8 @@ function context(role: 'fan' | 'pub' | 'admin' | null): Context {
         id: 'user',
         role,
         onboardingCompleted: true,
-        searchRadiusKm: 3
+        searchRadiusKm: 3,
+        twoFactorEnabled: false
       }
     }
   } as unknown as Context

@@ -3,8 +3,8 @@ import Compass from 'reicon-react/icons/Compass'
 import Edit from 'reicon-react/icons/Edit'
 import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
-import Logout from 'reicon-react/icons/Logout'
 import Medal from 'reicon-react/icons/Medal'
+import { AccountSettings } from '@/components/account/account-settings'
 import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import type { Preference, ProfileUser, Sport } from './profile-model'
 
@@ -28,7 +28,6 @@ type Props = {
   onSaveSports: () => void
   onRadiusChange: (radiusKm: RadiusKm) => void
   onResetRecommendations: () => void
-  onLogout: () => void
 }
 
 export function ProfileSettings(props: Props) {
@@ -165,29 +164,7 @@ export function ProfileSettings(props: Props) {
         ) : null}
       </section>
 
-      <section className="overflow-hidden rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
-        <button
-          type="button"
-          onClick={props.onLogout}
-          className="group flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))]"
-        >
-          <div className="grid size-10 place-items-center rounded-none bg-[var(--onside-stone)] transition-colors group-hover:bg-[color-mix(in_srgb,var(--onside-live)_16%,var(--onside-paper))]">
-            <Logout
-              size={16}
-              color="currentColor"
-              className="transition-colors group-hover:text-[var(--onside-live-text)]"
-            />
-          </div>
-          <div className="flex-1">
-            <div className="font-bold text-sm transition-colors group-hover:text-[var(--onside-live-text)]">
-              Sair
-            </div>
-            <div className="text-[var(--onside-muted)] text-xs">
-              Encerrar a sessão neste dispositivo
-            </div>
-          </div>
-        </button>
-      </section>
+      <AccountSettings surface="fan" />
     </div>
   )
 }

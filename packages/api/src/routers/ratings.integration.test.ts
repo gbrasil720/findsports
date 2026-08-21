@@ -72,6 +72,7 @@ function sessionFor(userId: string, role: 'fan' | 'pub', now: Date) {
         banned: false,
         onboardingCompleted: true,
         searchRadiusKm: 3,
+        twoFactorEnabled: false,
         createdAt: now,
         updatedAt: now
       }

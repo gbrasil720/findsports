@@ -1,3 +1,10 @@
+export function getSafeCallbackUrl(url: string, fallback = '/dashboard') {
+  if (!url.startsWith('/') || url.startsWith('//') || url.includes('\\')) {
+    return fallback
+  }
+  return url
+}
+
 export function getCallbackUrl(locationHref: string): string {
   const params = new URLSearchParams(locationHref.split('?')[1])
   const url = params.get('callbackUrl')

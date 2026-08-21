@@ -24,7 +24,8 @@ function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
       updatedAt: new Date('2026-01-01'),
       role,
       onboardingCompleted,
-      searchRadiusKm: 5
+      searchRadiusKm: 5,
+      twoFactorEnabled: false
     }
   } satisfies NonNullable<AuthSession>
 }

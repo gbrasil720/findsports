@@ -13,14 +13,17 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@dodopayments/better-auth": "^1.6.3",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
     "better-auth": "catalog:",
+    "dodopayments": "^2.37.0",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@findsports_oficial/config": "workspace:*",
+    "@types/bun": "^1.3.14",
     "typescript": "catalog:"
   }
 }

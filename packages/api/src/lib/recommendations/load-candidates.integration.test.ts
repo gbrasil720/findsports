@@ -60,7 +60,8 @@ integrationTest(
         emailVerified: true,
         role: 'fan',
         onboardingCompleted: true,
-        searchRadiusKm: 3
+        searchRadiusKm: 3,
+        twoFactorEnabled: false
       },
       ...ownerIds.map((id) => ({
         id,

@@ -82,3 +82,35 @@ Marco que faz o algoritmo ignorar comportamento anterior e limpar rejeições
 específicas de recomendação. Preserva onboarding, esportes, raio, favoritos,
 avaliações, conta e métricas comerciais.
 
+## Configurações de conta
+
+Capacidades compartilhadas de segurança da conta — e-mail somente leitura,
+senha, sessões, 2FA, saída e exclusão — apresentadas dentro da experiência
+específica do torcedor ou do bar. Não é uma terceira página genérica.
+
+## Sessão
+
+Acesso autenticado persistido pelo Better Auth para um navegador. Pode ser a
+sessão atual, encerrada pela ação de sair, ou outra sessão revogável pela tela
+de configurações.
+
+## Dispositivo confiável
+
+Navegador dispensado do desafio de segundo fator por até 30 dias após escolha
+explícita no login. É um cookie local e não uma sessão administrável.
+
+## Segundo fator TOTP
+
+Código temporário gerado por aplicativo autenticador. Só passa a proteger a
+conta depois que o primeiro código for validado durante a ativação.
+
+## Código de recuperação
+
+Código de uso único entregue na ativação ou regeneração do 2FA. É a única
+recuperação autônoma quando o autenticador não está disponível.
+
+## Encerramento efetivo de assinatura
+
+Momento em que uma assinatura externa já não possui período contratado
+vigente. Uma solicitação de cancelamento ainda dentro do período pago não é
+encerramento efetivo e não autoriza excluir a conta do bar.

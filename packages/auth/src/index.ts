@@ -11,10 +11,13 @@ import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { APIError } from 'better-auth/api'
 import { admin } from 'better-auth/plugins'
+import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
 import { z } from 'zod'
+import { getBarAccountDeletionBlock } from './account-deletion-policy'
 
 export const dodoClient = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
@@ -128,6 +131,7 @@ export function createAuth() {
   const db = createHttpDb()
 
   return betterAuth({
+    appName: 'Onside',
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: schema
@@ -142,6 +146,26 @@ export function createAuth() {
       requireEmailVerification: false
     },
     user: {
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (accountUser) => {
+          const accountBar = await db.query.bar.findFirst({
+            where: eq(bar.userId, accountUser.id),
+            with: { subscription: true }
+          })
+          const block = getBarAccountDeletionBlock(
+            accountBar?.subscription ?? null
+          )
+          if (block) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                block === 'period-active'
+                  ? 'A assinatura foi cancelada, mas o período contratado ainda está vigente.'
+                  : 'Encerre a assinatura vigente antes de excluir a conta do bar.'
+            })
+          }
+        }
+      },
       additionalFields: {
         role: {
           type: 'string',
@@ -203,6 +227,7 @@ export function createAuth() {
     },
     plugins: [
       tanstackStartCookies(),
+      twoFactor({ issuer: 'Onside' }),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'

@@ -1,3 +1,4 @@
+import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
 import { db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
@@ -546,5 +547,23 @@ export const pubRouter = router({
     const existingBar = await getBarByUserId(userId)
 
     return existingBar.subscription ?? null
+  }),
+
+  getAccountDeletionEligibility: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const block = getBarAccountDeletionBlock(existingBar.subscription ?? null)
+
+    return {
+      allowed: block === null,
+      block,
+      currentPeriodEnd: existingBar.subscription?.currentPeriodEnd ?? null
+    }
   })
 })

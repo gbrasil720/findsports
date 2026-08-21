@@ -162,6 +162,13 @@
       "when": 1787529600000,
       "tag": "0023_aspiring_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787321334777,
+      "tag": "0024_redundant_jackpot",
+      "breakpoints": true
     }
   ]
 }

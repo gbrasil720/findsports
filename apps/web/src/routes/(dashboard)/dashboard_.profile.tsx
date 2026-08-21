@@ -31,7 +31,6 @@ import {
   SAO_PAULO_FALLBACK,
   SEARCH_RADII
 } from '@/domain/discovery'
-import { useSignOut } from '@/hooks/use-sign-out'
 import { authClient } from '@/lib/auth-client'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
@@ -49,7 +48,6 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
 function ProfilePage() {
   const trpc = useTRPC()
   const navigate = useNavigate()
-  const signOut = useSignOut('/login')
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const impressionRunIdRef = useRef<string | null>(null)
@@ -400,7 +398,6 @@ function ProfilePage() {
               resetRecommendations.mutate()
             }
           }}
-          onLogout={() => void signOut()}
         />
       ) : null}
     </AppShell>

@@ -15,6 +15,10 @@ import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { authClient } from '@/lib/auth-client'
+import {
+  createTwoFactorChallenge,
+  TWO_FACTOR_CHALLENGE_KEY
+} from '@/lib/two-factor-challenge'
 import { getCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
@@ -52,7 +56,7 @@ function LoginPage() {
         return
       }
       setIsLoading(true)
-      const { error } = await authClient.signIn.email({
+      const { data, error } = await authClient.signIn.email({
         email,
         password
       })
@@ -61,6 +65,14 @@ function LoginPage() {
         toast.error(
           error.message ?? 'Credenciais inválidas. Verifique e tente novamente.'
         )
+        return
+      }
+      if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
+        sessionStorage.setItem(
+          TWO_FACTOR_CHALLENGE_KEY,
+          JSON.stringify(createTwoFactorChallenge(callbackUrl))
+        )
+        navigate({ to: '/two-factor' })
         return
       }
       toast.success('Bem-vindo de volta!')

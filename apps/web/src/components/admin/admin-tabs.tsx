@@ -4,7 +4,8 @@ import { type KeyboardEvent, useRef } from 'react'
 export const ADMIN_SECTIONS = [
   { id: 'admin-visao', label: 'Visão geral' },
   { id: 'admin-grade', label: 'Minha grade' },
-  { id: 'admin-espaco', label: 'Meu espaço' }
+  { id: 'admin-espaco', label: 'Meu espaço' },
+  { id: 'admin-configuracoes', label: 'Configurações' }
 ] as const
 
 export type AdminSectionId = (typeof ADMIN_SECTIONS)[number]['id']

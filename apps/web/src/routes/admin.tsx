@@ -6,6 +6,7 @@ import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
+import { AccountSettings } from '@/components/account/account-settings'
 import type {
   AnalyticsOverviewState,
   EventAnalyticsState,
@@ -688,6 +689,24 @@ function PubDashboard() {
               eventsState={eventsState}
               planState={planState}
             />
+          </section>
+
+          {/* ============================================================ */}
+          {/* Tab: Configurações                                            */}
+          {/* ============================================================ */}
+          <section
+            id="admin-configuracoes"
+            role="tabpanel"
+            aria-labelledby={getAdminTabId('admin-configuracoes')}
+            hidden={activeSection !== 'admin-configuracoes'}
+          >
+            <div className="mb-6">
+              <h2 className="onside-display text-2xl">Configurações</h2>
+              <p className="mt-1 text-sm text-[var(--onside-muted)]">
+                Gerencie a segurança da conta responsável por este bar.
+              </p>
+            </div>
+            <AccountSettings surface="pub" />
           </section>
         </div>
       </div>

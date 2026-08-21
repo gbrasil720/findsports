@@ -20,6 +20,7 @@ import { Route as InternalManageUsersRouteImport } from './routes/internal_.mana
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
+import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
@@ -86,6 +87,11 @@ const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const authTwoFactorRoute = authTwoFactorRouteImport.update({
+  id: '/(auth)/two-factor',
+  path: '/two-factor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const authSignupRoute = authSignupRouteImport.update({
   id: '/(auth)/signup',
   path: '/signup',
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/two-factor': typeof authTwoFactorRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/two-factor': typeof authTwoFactorRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
+  '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/internal_/flags': typeof InternalFlagsRoute
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/two-factor'
     | '/dashboard'
     | '/admin/billing'
     | '/internal/flags'
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/two-factor'
     | '/dashboard'
     | '/admin/billing'
     | '/internal/flags'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/(auth)/login'
     | '/(auth)/signup'
+    | '/(auth)/two-factor'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/internal_/flags'
@@ -289,6 +301,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
+  authTwoFactorRoute: typeof authTwoFactorRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(auth)/two-factor': {
+      id: '/(auth)/two-factor'
+      path: '/two-factor'
+      fullPath: '/two-factor'
+      preLoaderRoute: typeof authTwoFactorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/signup': {
       id: '/(auth)/signup'
       path: '/signup'
@@ -465,6 +485,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
+  authTwoFactorRoute: authTwoFactorRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   InternalFlagsRoute: InternalFlagsRoute,

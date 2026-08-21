@@ -180,6 +180,7 @@ integrationTest(
             banned: false,
             onboardingCompleted: true,
             searchRadiusKm: 3,
+            twoFactorEnabled: false,
             createdAt: now,
             updatedAt: now
           }
