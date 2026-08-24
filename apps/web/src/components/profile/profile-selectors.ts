@@ -4,7 +4,6 @@ import type {
   Favorite,
   FavoriteEvent,
   FavoriteSort,
-  NearbyBar,
   Preference,
   ProfileUser
 } from './profile-model'
@@ -51,15 +50,6 @@ export function selectUpcomingFavoriteEvents(
         new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()
     )
     .slice(0, limit)
-}
-
-export function selectNearbyUnfavoritedBars(
-  bars: NearbyBar[],
-  favorites: Favorite[],
-  limit = 3
-): NearbyBar[] {
-  const favoriteIds = new Set(favorites.map((favorite) => favorite.bar.id))
-  return bars.filter((bar) => !favoriteIds.has(bar.id)).slice(0, limit)
 }
 
 export function sortAndFilterFavorites(

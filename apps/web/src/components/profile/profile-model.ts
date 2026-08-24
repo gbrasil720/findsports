@@ -21,7 +21,6 @@ export type FavoriteEvent = Favorite['bar']['events'][number] & {
 }
 export type Preference = RouterOutputs['pubs']['getMyPreferences'][number]
 export type Sport = RouterOutputs['pubs']['getSports'][number]
-export type NearbyBar = RouterOutputs['pubs']['search']['bars'][number]
 export type RecommendationResult = RouterOutputs['recommendations']['get']
 export type BarRecommendation = RecommendationResult['recommendations'][number]
 

@@ -49,37 +49,3 @@ export function trackCommercialEvent(payload: CommercialEventPayload): void {
     // Silently fail — tracking is best-effort
   })
 }
-
-/**
- * Track a profile view event.
- */
-export function trackProfileView(pubId: string): void {
-  trackCommercialEvent({ pubId, type: 'profile_view' })
-}
-
-/**
- * Track a directions opened event.
- */
-export function trackDirectionsOpened(
-  pubId: string,
-  sourceEventId?: string
-): void {
-  trackCommercialEvent({ pubId, type: 'directions_opened', sourceEventId })
-}
-
-/**
- * Track a phone clicked event.
- */
-export function trackPhoneClicked(pubId: string, sourceEventId?: string): void {
-  trackCommercialEvent({ pubId, type: 'phone_clicked', sourceEventId })
-}
-
-/**
- * Track a WhatsApp opened event.
- */
-export function trackWhatsappOpened(
-  pubId: string,
-  sourceEventId?: string
-): void {
-  trackCommercialEvent({ pubId, type: 'whatsapp_opened', sourceEventId })
-}
