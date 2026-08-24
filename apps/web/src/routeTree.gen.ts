@@ -20,6 +20,7 @@ import { Route as InternalManageUsersRouteImport } from './routes/internal_.mana
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
+import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
@@ -85,6 +86,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
 const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   id: '/(dashboard)/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
+  id: '/(auth)/verify-email',
+  path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authTwoFactorRoute = authTwoFactorRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
+  '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
+  '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(auth)/two-factor': typeof authTwoFactorRoute
+  '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/internal_/flags': typeof InternalFlagsRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/two-factor'
+    | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
     | '/internal/flags'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/two-factor'
+    | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
     | '/internal/flags'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/(auth)/two-factor'
+    | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/internal_/flags'
@@ -302,6 +314,7 @@ export interface RootRouteChildren {
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
   authTwoFactorRoute: typeof authTwoFactorRoute
+  authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(auth)/verify-email': {
+      id: '/(auth)/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof authVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/two-factor': {
       id: '/(auth)/two-factor'
       path: '/two-factor'
@@ -486,6 +506,7 @@ const rootRouteChildren: RootRouteChildren = {
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
   authTwoFactorRoute: authTwoFactorRoute,
+  authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   InternalFlagsRoute: InternalFlagsRoute,

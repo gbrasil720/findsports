@@ -53,6 +53,12 @@ export const protectedProcedure = comRegistro.use(({ ctx, next }) => {
       cause: 'No session'
     })
   }
+  if (!ctx.session.user.emailVerified) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Confirme seu e-mail para continuar.'
+    })
+  }
   return next({
     ctx: {
       ...ctx,

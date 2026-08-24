@@ -4,7 +4,8 @@ import { isOwnPhotoPathname, isOwnPhotoUrl, photoPathname } from './blob-photo'
 
 const BAR = 'bar-123'
 const OUTRO = 'bar-999'
-const HOST = 'https://loja123.public.blob.vercel-storage.com'
+const HOST = 'https://loja-123.public.blob.vercel-storage.com'
+const STORE_ID = 'loja-123'
 
 describe('caminho da foto (ESC-15)', () => {
   it('aceita o caminho do próprio bar', () => {
@@ -35,28 +36,37 @@ describe('caminho da foto (ESC-15)', () => {
 
 describe('URL da foto (ESC-15)', () => {
   it('aceita URL do nosso armazenamento na pasta do bar', () => {
-    expect(isOwnPhotoUrl(`${HOST}/bars/${BAR}/photo`, BAR)).toBe(true)
+    expect(isOwnPhotoUrl(`${HOST}/bars/${BAR}/photo`, BAR, STORE_ID)).toBe(true)
   })
 
-  it('aceita sufixo acrescentado pelo armazenamento', () => {
-    expect(isOwnPhotoUrl(`${HOST}/bars/${BAR}/photo-A1b2C3`, BAR)).toBe(true)
+  it('recusa sufixo acrescentado ao caminho exato', () => {
+    expect(
+      isOwnPhotoUrl(`${HOST}/bars/${BAR}/photo-A1b2C3`, BAR, STORE_ID)
+    ).toBe(false)
   })
 
   it('recusa URL de outro bar', () => {
-    expect(isOwnPhotoUrl(`${HOST}/bars/${OUTRO}/photo`, BAR)).toBe(false)
-  })
-
-  it('recusa host que não é o do armazenamento', () => {
-    expect(isOwnPhotoUrl(`https://exemplo.com/bars/${BAR}/photo`, BAR)).toBe(
+    expect(isOwnPhotoUrl(`${HOST}/bars/${OUTRO}/photo`, BAR, STORE_ID)).toBe(
       false
     )
+  })
+
+  it('recusa outra loja, mesmo com o caminho idêntico', () => {
+    expect(
+      isOwnPhotoUrl(
+        `https://outra.public.blob.vercel-storage.com/bars/${BAR}/photo`,
+        BAR,
+        STORE_ID
+      )
+    ).toBe(false)
   })
 
   it('recusa host que apenas contém o sufixo no meio', () => {
     expect(
       isOwnPhotoUrl(
         `https://x.public.blob.vercel-storage.com.exemplo.com/bars/${BAR}/photo`,
-        BAR
+        BAR,
+        STORE_ID
       )
     ).toBe(false)
   })
@@ -64,19 +74,31 @@ describe('URL da foto (ESC-15)', () => {
   it('recusa http sem TLS', () => {
     expect(
       isOwnPhotoUrl(
-        `http://loja123.public.blob.vercel-storage.com/bars/${BAR}/photo`,
-        BAR
+        `http://loja-123.public.blob.vercel-storage.com/bars/${BAR}/photo`,
+        BAR,
+        STORE_ID
       )
     ).toBe(false)
   })
 
   it('recusa string que não é URL', () => {
-    expect(isOwnPhotoUrl('não é uma url', BAR)).toBe(false)
-    expect(isOwnPhotoUrl('', BAR)).toBe(false)
+    expect(isOwnPhotoUrl('não é uma url', BAR, STORE_ID)).toBe(false)
+    expect(isOwnPhotoUrl('', BAR, STORE_ID)).toBe(false)
   })
 
   it('recusa javascript: e data:', () => {
-    expect(isOwnPhotoUrl('javascript:alert(1)', BAR)).toBe(false)
-    expect(isOwnPhotoUrl('data:image/png;base64,AAA', BAR)).toBe(false)
+    expect(isOwnPhotoUrl('javascript:alert(1)', BAR, STORE_ID)).toBe(false)
+    expect(isOwnPhotoUrl('data:image/png;base64,AAA', BAR, STORE_ID)).toBe(
+      false
+    )
+  })
+
+  it('recusa porta alternativa e configuração ausente', () => {
+    expect(isOwnPhotoUrl(`${HOST}:444/bars/${BAR}/photo`, BAR, STORE_ID)).toBe(
+      false
+    )
+    expect(isOwnPhotoUrl(`${HOST}/bars/${BAR}/photo`, BAR, undefined)).toBe(
+      false
+    )
   })
 })

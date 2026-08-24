@@ -169,6 +169,13 @@
       "when": 1787321334777,
       "tag": "0024_redundant_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787583623607,
+      "tag": "0025_left_sage",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
   sport,
@@ -21,6 +21,7 @@ import {
   executarBuscaPorNota,
   type SearchPage
 } from '../lib/pub-search'
+import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
@@ -244,11 +245,17 @@ export const pubsRouter = router({
       const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
       const result = await db.query.bar.findFirst({
-        where: eq(bar.id, input.id),
+        where: and(eq(bar.id, input.id), eq(bar.isActive, true)),
         // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
         // dono e descartado antes da resposta — quem visita não precisa saber
         // qual conta é dona do bar.
-        columns: { geo: false },
+        columns: {
+          ...PUBLIC_BAR_COLUMNS,
+          plan: true,
+          userId: true,
+          ratingCount: true,
+          ratingPositive: true
+        },
         with: {
           events: {
             // Jogo ao vivo continua na página: o corte é o fim provável do
@@ -282,13 +289,6 @@ export const pubsRouter = router({
         })
       }
 
-      if (!result.isActive) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Bar não encontrado.'
-        })
-      }
-
       // O dono vê a própria página com avisos que ninguém mais vê — o que
       // falta preencher, e quanto isso custa em contatos. Quem decide é o
       // servidor: o cliente não tem como comparar sem receber o `userId`.
@@ -297,8 +297,7 @@ export const pubsRouter = router({
       // exibição está desligada ou quando o bar não atingiu o piso, e nunca
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
-      const { userId, ratingCount, ratingPositive, ratingScore, ...publicBar } =
-        result
+      const { userId, ratingCount, ratingPositive, ...publicBar } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
       const rating =
@@ -327,6 +326,17 @@ export const pubsRouter = router({
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Apenas torcedores podem favoritar bares.'
+        })
+      }
+
+      const visibleBar = await db.query.bar.findFirst({
+        where: and(eq(bar.id, input.barId), eq(bar.isActive, true)),
+        columns: { id: true }
+      })
+      if (!visibleBar) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Bar não encontrado.'
         })
       }
 
@@ -417,11 +427,15 @@ export const pubsRouter = router({
       })
     }
 
-    return db.query.userFavoriteBars.findMany({
-      where: eq(userFavoriteBars.userId, userId),
+    const favorites = await db.query.userFavoriteBars.findMany({
+      where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
+        SELECT 1 FROM "bar" AS active_bar
+        WHERE active_bar.id = ${userFavoriteBars.barId}
+          AND active_bar.is_active = true
+      )`,
       with: {
         bar: {
-          columns: { geo: false },
+          columns: PUBLIC_BAR_COLUMNS,
           with: {
             events: {
               where: (event, { gte }) => gte(event.startsAt, new Date()),
@@ -436,6 +450,8 @@ export const pubsRouter = router({
         }
       }
     })
+
+    return favorites
   }),
 
   getMyPreferences: protectedProcedure.query(async ({ ctx }) => {

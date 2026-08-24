@@ -9,6 +9,15 @@ import { bar } from '@findsports_oficial/db/schema/platform'
 import { createFileRoute } from '@tanstack/react-router'
 import { type HandleUploadBody, handleUpload } from '@vercel/blob/client'
 
+class PhotoRouteError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message)
+  }
+}
+
 /**
  * ESC-15: esta rota recebia o arquivo inteiro.
  *
@@ -29,30 +38,51 @@ export const Route = createFileRoute('/api/bar/photo')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const body = (await request.json()) as HandleUploadBody
-
         try {
+          let body: HandleUploadBody
+          try {
+            body = (await request.json()) as HandleUploadBody
+          } catch {
+            return Response.json({ error: 'Corpo inválido.' }, { status: 400 })
+          }
+
+          const session = await auth.api.getSession({
+            headers: request.headers
+          })
+          if (!session) throw new PhotoRouteError(401, 'Não autorizado.')
+          if (!session.user.emailVerified) {
+            throw new PhotoRouteError(
+              403,
+              'Confirme seu e-mail para continuar.'
+            )
+          }
+          if (session.user.role !== 'pub') {
+            throw new PhotoRouteError(
+              403,
+              'Apenas bares podem fazer upload de foto.'
+            )
+          }
+
+          const existingBar = await db.query.bar.findFirst({
+            where: eq(bar.userId, session.user.id),
+            columns: { id: true }
+          })
+          if (!existingBar) {
+            throw new PhotoRouteError(404, 'Bar não encontrado.')
+          }
+          if (
+            body.type === 'blob.generate-client-token' &&
+            !isOwnPhotoPathname(body.payload.pathname, existingBar.id)
+          ) {
+            throw new PhotoRouteError(400, 'Caminho não permitido.')
+          }
+
           const resultado = await handleUpload({
             request,
             body,
             onBeforeGenerateToken: async (pathname) => {
-              const session = await auth.api.getSession({
-                headers: request.headers
-              })
-
-              if (!session) throw new Error('Não autorizado.')
-              if (session.user.role !== 'pub') {
-                throw new Error('Apenas bares podem fazer upload de foto.')
-              }
-
-              const existingBar = await db.query.bar.findFirst({
-                where: eq(bar.userId, session.user.id),
-                columns: { id: true }
-              })
-              if (!existingBar) throw new Error('Bar não encontrado.')
-
               if (!isOwnPhotoPathname(pathname, existingBar.id)) {
-                throw new Error('Caminho de upload não permitido.')
+                throw new PhotoRouteError(400, 'Caminho não permitido.')
               }
 
               // O teto e os formatos passam a ser aplicados pelo próprio
@@ -69,9 +99,14 @@ export const Route = createFileRoute('/api/bar/photo')({
 
           return Response.json(resultado)
         } catch (err) {
-          const message =
-            err instanceof Error ? err.message : 'Erro ao autorizar upload.'
-          return Response.json({ error: message }, { status: 400 })
+          if (err instanceof PhotoRouteError) {
+            return Response.json({ error: err.message }, { status: err.status })
+          }
+          console.error(JSON.stringify({ event: 'bar_photo_route_failed' }))
+          return Response.json(
+            { error: 'Não foi possível autorizar o upload.' },
+            { status: 500 }
+          )
         }
       }
     }

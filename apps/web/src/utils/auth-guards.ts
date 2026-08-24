@@ -48,6 +48,10 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
 
   if (!session) return
 
+  // O callback precisa finalizar o login e, para bares, consumir o rascunho
+  // do onboarding antes que o guard encaminhe para a rota seguinte.
+  if (pathname.startsWith('/verify-email')) return
+
   if (!session.user.onboardingCompleted) {
     const onboardingRoute =
       session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan'

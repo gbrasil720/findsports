@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
-import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { useTRPC } from '@/utils/trpc'
@@ -82,7 +81,7 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
   const configQuery = useQuery(trpc.appConfig.list.queryOptions())
   const portao = configQuery.data?.find(
     (entrada) => entrada.key === 'launch.waitlist_gate'
-  )?.valor as { signup: boolean; signin: boolean } | undefined
+  )?.valor as { signup: boolean } | undefined
 
   async function recarregarConfig() {
     await queryClient.invalidateQueries({
@@ -114,11 +113,11 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
     })
   )
 
-  function alternar(campo: 'signup' | 'signin', proximo: boolean) {
+  function alternar(proximo: boolean) {
     if (!portao) return
     salvarPortao.mutate({
       key: 'launch.waitlist_gate',
-      value: { ...portao, [campo]: proximo }
+      value: { signup: proximo }
     })
   }
 
@@ -146,42 +145,15 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
         </div>
       ) : portao ? (
         <>
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-col gap-4">
             <Interruptor
               titulo="Cadastro"
-              descricao="Fechado, só e-mail liberado cria conta. Quem já tem conta não é afetado."
+              descricao="Fechado, só e-mail liberado cria conta. Login de contas existentes nunca é afetado. O modo invite-only do deploy continua soberano."
               fechado={portao.signup}
               desabilitado={salvando}
-              onToggle={(proximo) => alternar('signup', proximo)}
-            />
-            <Interruptor
-              titulo="Login"
-              descricao="Fechado, conta existente sem liberação também para de entrar. Admin nunca é barrado."
-              fechado={portao.signin}
-              desabilitado={salvando}
-              onToggle={(proximo) => alternar('signin', proximo)}
+              onToggle={alternar}
             />
           </div>
-
-          {portao.signin && pendentes > 0 ? (
-            <div
-              className="onside-callout onside-callout-warn mt-4"
-              role="alert"
-            >
-              <CircleInfo
-                size={18}
-                color="currentColor"
-                className="shrink-0"
-                aria-hidden="true"
-              />
-              <p className="text-sm">
-                O login está fechado e há <strong>{pendentes}</strong>{' '}
-                {pendentes === 1 ? 'inscrito' : 'inscritos'} sem liberação. Quem
-                já tinha conta e não está liberado perdeu o acesso agora — só
-                administradores continuam entrando.
-              </p>
-            </div>
-          ) : null}
 
           <p className="mt-4 text-xs text-[var(--onside-muted)]">
             Mudanças valem na hora aqui, e em até 60 segundos nas outras

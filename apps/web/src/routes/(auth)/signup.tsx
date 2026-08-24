@@ -28,6 +28,8 @@ import { authClient } from '@/lib/auth-client'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
+const PENDING_VERIFICATION_KEY = 'onside:pending-verification'
+
 export const Route = createFileRoute('/(auth)/signup')({
   head: () => ({
     meta: [
@@ -96,7 +98,8 @@ function SignupPage() {
         name,
         email,
         password,
-        role
+        role,
+        callbackURL: '/verify-email?confirmed=1'
       })
       setIsLoading(false)
       if (error) {
@@ -104,8 +107,12 @@ function SignupPage() {
         return
       }
       analytics.signupCompleted(role)
-      toast.success('Conta criada! Bem-vindo ao time.')
-      navigate({ to: callbackUrl })
+      sessionStorage.setItem(
+        PENDING_VERIFICATION_KEY,
+        JSON.stringify({ email, role, callbackUrl })
+      )
+      toast.success('Enviamos um link de confirmação para o seu e-mail.')
+      navigate({ to: role === 'pub' ? '/onboarding/pub' : '/verify-email' })
     }
   })
 

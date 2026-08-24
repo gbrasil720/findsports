@@ -57,9 +57,8 @@ export const Route = createFileRoute('/api/bar/commercial-event')({
           )
         }
 
-        const ctx = await createContext({ req: request })
-
         try {
+          const ctx = await createContext({ req: request })
           await recordCommercialEvent(ctx, {
             pubId,
             type,
@@ -75,9 +74,13 @@ export const Route = createFileRoute('/api/bar/commercial-event')({
             )
           }
 
-          const message =
-            err instanceof Error ? err.message : 'Erro desconhecido'
-          return Response.json({ error: message }, { status: 400 })
+          console.error(
+            JSON.stringify({ event: 'commercial_event_route_failed' })
+          )
+          return Response.json(
+            { error: 'Não foi possível registrar o evento.' },
+            { status: 500 }
+          )
         }
       }
     }

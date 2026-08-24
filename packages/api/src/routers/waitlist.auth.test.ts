@@ -22,6 +22,7 @@ function contextoCom(role: 'fan' | 'pub' | 'admin' | null): Context {
       session: { id: 's', userId: 'u', token: 't' },
       user: {
         id: 'u',
+        emailVerified: true,
         role,
         onboardingCompleted: true,
         searchRadiusKm: 3,

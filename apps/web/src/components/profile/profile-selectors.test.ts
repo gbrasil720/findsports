@@ -24,7 +24,6 @@ function makeFavorite({
     createdAt: '2026-08-01T00:00:00.000Z',
     bar: {
       id,
-      userId: `owner-${id}`,
       name,
       description: null,
       phone: null,
@@ -37,11 +36,6 @@ function makeFavorite({
       phoneAcceptsWhatsapp: false,
       amenities: [],
       screenCount: null,
-      ratingCount: 0,
-      ratingPositive: 0,
-      ratingScore: 0,
-      plan: 'starter',
-      isActive: true,
       createdAt: '2026-08-01T00:00:00.000Z',
       updatedAt: '2026-08-01T00:00:00.000Z',
       events: eventStarts.map((startsAt, index) => ({

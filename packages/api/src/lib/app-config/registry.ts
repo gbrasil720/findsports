@@ -130,25 +130,23 @@ export const APP_CONFIG_DEFINITIONS = {
    * Portão de entrada pela lista de espera.
    *
    * A plataforma abre por convite: só e-mail com `approved_at` preenchido em
-   * `waitlist_entries` entra. Os dois lados são separados de propósito —
-   * fechar o cadastro e deixar o login aberto é o estado normal de um beta
-   * fechado que já tem gente dentro.
+   * `waitlist_entries` cria conta. Login nunca depende da waitlist.
    *
    * Nasce desligado dos dois lados, porque ligado é que é a mudança.
    *
-   * Administrador nunca é barrado no login. Sem essa isenção, ligar o portão
-   * por engano trancaria o painel que o desliga — ver `lib/waitlist-gate`.
+   * `LAUNCH_ADMISSION_MODE=invite-only` é o limite de segurança do deploy:
+   * este controle pode fechar um deploy `open`, mas não abrir um deploy que
+   * declarou convite obrigatório.
    */
   'launch.waitlist_gate': definir({
     schema: z.object({
-      signup: z.boolean(),
-      signin: z.boolean()
+      signup: z.boolean()
     }),
-    padrao: { signup: false, signin: false },
+    padrao: { signup: false },
     publico: true,
     descricao:
-      'Exige aprovação na lista de espera para criar conta (signup) e para ' +
-      'entrar (signin). Admin nunca é barrado no login.'
+      'Fecha cadastro por aprovação em um deploy open. O modo invite-only ' +
+      'do deploy não pode ser aberto por esta configuração.'
   }),
 
   /**

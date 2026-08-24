@@ -16,6 +16,7 @@
     "@dodopayments/better-auth": "^1.6.3",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
+    "@vercel/functions": "^3.9.5",
     "better-auth": "catalog:",
     "dodopayments": "^2.37.0",
     "dotenv": "catalog:",

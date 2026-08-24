@@ -17,6 +17,11 @@ import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
+import {
+  PUB_ONBOARDING_DRAFT_KEY,
+  type PubOnboardingDraft,
+  serializePubOnboardingDraft
+} from '@/lib/pub-onboarding-draft'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -51,6 +56,9 @@ function PubOnboarding() {
   const navigate = useNavigate()
   const trpc = useTRPC()
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const session = Route.useRouteContext({
+    select: (context) => context.session
+  })
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
@@ -140,7 +148,7 @@ function PubOnboarding() {
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
     } else {
-      completeMutation.mutate({
+      const draft: PubOnboardingDraft = {
         name: name.trim(),
         address: address.trim(),
         neighborhood: neighborhood.trim(),
@@ -149,7 +157,16 @@ function PubOnboarding() {
         description: description.trim() || undefined,
         amenities: amenities.length > 0 ? amenities : undefined,
         screenCount: screenCount ?? undefined
-      })
+      }
+      if (session?.user.emailVerified) {
+        completeMutation.mutate(draft)
+        return
+      }
+      localStorage.setItem(
+        PUB_ONBOARDING_DRAFT_KEY,
+        serializePubOnboardingDraft(draft)
+      )
+      navigate({ to: '/verify-email' })
     }
   }
 

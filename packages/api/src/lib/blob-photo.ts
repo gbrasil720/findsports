@@ -20,9 +20,6 @@ export const PHOTO_CONTENT_TYPES = [
   'image/webp'
 ] as const
 
-/** Host público do Vercel Blob; o subdomínio varia por loja. */
-const BLOB_HOST_SUFFIX = '.public.blob.vercel-storage.com'
-
 export function photoPathname(barId: string): string {
   return `bars/${barId}/photo`
 }
@@ -45,7 +42,12 @@ export function isOwnPhotoPathname(pathname: string, barId: string): boolean {
  * de subir o arquivo, aceitar qualquer string deixaria um bar apontar a
  * própria foto para um endereço arbitrário na internet.
  */
-export function isOwnPhotoUrl(url: string, barId: string): boolean {
+export function isOwnPhotoUrl(
+  url: string,
+  barId: string,
+  storeId: string | undefined
+): boolean {
+  if (!storeId) return false
   let parsed: URL
   try {
     parsed = new URL(url)
@@ -54,9 +56,13 @@ export function isOwnPhotoUrl(url: string, barId: string): boolean {
   }
 
   if (parsed.protocol !== 'https:') return false
-  if (!parsed.hostname.endsWith(BLOB_HOST_SUFFIX)) return false
+  if (parsed.port) return false
+  if (
+    parsed.hostname !==
+    `${storeId.toLowerCase()}.public.blob.vercel-storage.com`
+  ) {
+    return false
+  }
 
-  // O caminho pode ganhar sufixo do armazenamento; o que precisa bater é a
-  // pasta do bar.
-  return parsed.pathname.startsWith(`/${photoPathname(barId)}`)
+  return parsed.pathname === `/${photoPathname(barId)}`
 }

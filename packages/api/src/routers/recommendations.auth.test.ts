@@ -4,7 +4,10 @@ import { TRPCError } from '@trpc/server'
 import type { Context } from '../context'
 import { appRouter } from './index'
 
-function context(role: 'fan' | 'pub' | 'admin' | null): Context {
+function context(
+  role: 'fan' | 'pub' | 'admin' | null,
+  emailVerified = true
+): Context {
   if (role === null) return { auth: null, session: null, clientIp: '127.0.0.1' }
   return {
     auth: null,
@@ -13,6 +16,7 @@ function context(role: 'fan' | 'pub' | 'admin' | null): Context {
       session: { id: 'session', userId: 'user', token: 'token' },
       user: {
         id: 'user',
+        emailVerified,
         role,
         onboardingCompleted: true,
         searchRadiusKm: 3,
@@ -41,6 +45,14 @@ describe('recommendations authorization', () => {
     await expectCode(
       () => caller.recommendations.get({ lat: -23.55, lng: -46.63 }),
       'UNAUTHORIZED'
+    )
+  })
+
+  test('rejects an unverified session before router-specific work', async () => {
+    const caller = appRouter.createCaller(context('fan', false))
+    await expectCode(
+      () => caller.recommendations.get({ lat: -23.55, lng: -46.63 }),
+      'FORBIDDEN'
     )
   })
 

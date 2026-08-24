@@ -8,9 +8,11 @@ import {
   consultarEntrada,
   decidirEntrada,
   emailDaRequisicao,
+  respostaAdmissaoIndisponivel,
   respostaPortaoFechado
 } from '@findsports_oficial/api/lib/waitlist-gate'
 import { auth } from '@findsports_oficial/auth'
+import { env } from '@findsports_oficial/env/server'
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
@@ -32,9 +34,8 @@ async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   if (!acao) return null
 
   const portao = await getAppConfig('launch.waitlist_gate')
-  // Desligado dos dois lados é o padrão. Sair antes evita ler o corpo e
-  // consultar o banco no caminho de login por nada.
-  if (!portao.signup && !portao.signin) return null
+  const fechado = env.LAUNCH_ADMISSION_MODE === 'invite-only' || portao.signup
+  if (!fechado) return null
 
   // O corpo só pode ser lido uma vez, e a requisição original ainda vai para
   // o `better-auth`. Por isso o clone.
@@ -43,9 +44,18 @@ async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   // logo em seguida, com a mensagem de validação dele.
   if (!email) return null
 
-  const { aprovado, papelExistente } = await consultarEntrada(email)
-  const decisao = decidirEntrada({ acao, portao, aprovado, papelExistente })
-  return decisao.permitido ? null : respostaPortaoFechado(decisao.motivo)
+  try {
+    const { aprovado } = await consultarEntrada(email)
+    const decisao = decidirEntrada({
+      modo: env.LAUNCH_ADMISSION_MODE,
+      fechadoEmRuntime: portao.signup,
+      aprovado
+    })
+    return decisao.permitido ? null : respostaPortaoFechado(decisao.motivo)
+  } catch {
+    console.error(JSON.stringify({ event: 'admission_check_failed_closed' }))
+    return respostaAdmissaoIndisponivel()
+  }
 }
 
 async function despachar(request: Request): Promise<Response> {

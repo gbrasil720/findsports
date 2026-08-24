@@ -6,6 +6,7 @@ import {
   eventParticipants,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -145,7 +146,10 @@ export const pubRouter = router({
       // ESC-15: com o upload indo direto do navegador para o armazenamento,
       // quem informa a URL da foto é o cliente. Aceitar qualquer string
       // deixaria um bar apontar a própria foto para um endereço arbitrário.
-      if (input.photoUrl && !isOwnPhotoUrl(input.photoUrl, existingBar.id)) {
+      if (
+        input.photoUrl &&
+        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env.BLOB_STORE_ID)
+      ) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'URL de foto inválida.'

@@ -46,6 +46,7 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/login')).toBe(false)
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
+    expect(requiresAuthentication('/verify-email')).toBe(false)
     expect(requiresAuthentication('/onboarding/fan')).toBe(false)
     expect(requiresAuthentication('/pagina-que-nao-existe')).toBe(false)
     expect(requiresAuthentication('/api/trpc/pubs.list')).toBe(false)
@@ -68,5 +69,24 @@ describe('applyAuthGuards', () => {
 
   test('sends unfinished fans to fan onboarding', () => {
     expect(() => applyAuthGuards(session('fan', false), '/dashboard')).toThrow()
+  })
+
+  test('keeps verification reachable before onboarding finishes', () => {
+    expect(() =>
+      applyAuthGuards(session('pub', false), '/verify-email')
+    ).not.toThrow()
+  })
+
+  test('separa as superfícies de fan, bar e admin por papel', () => {
+    expect(() => applyAuthGuards(session('fan'), '/admin')).toThrow()
+    expect(() => applyAuthGuards(session('fan'), '/plan')).toThrow()
+    expect(() => applyAuthGuards(session('fan'), '/internal')).toThrow()
+    expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
+    expect(() => applyAuthGuards(session('pub'), '/internal')).toThrow()
+    expect(() => applyAuthGuards(session('admin'), '/internal')).not.toThrow()
+  })
+
+  test('mantém o perfil público do bar acessível a qualquer papel', () => {
+    expect(() => applyAuthGuards(session('fan'), '/pub/bar-123')).not.toThrow()
   })
 })
