@@ -4,6 +4,9 @@ import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  optimizeDeps: {
+    include: ['input-otp']
+  },
   server: {
     port: 3001,
     allowedHosts: [

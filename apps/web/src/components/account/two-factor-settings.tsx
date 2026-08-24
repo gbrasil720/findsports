@@ -8,15 +8,24 @@ import {
 } from '@findsports_oficial/ui/components/field'
 import { Input } from '@findsports_oficial/ui/components/input'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
-import { useState } from 'react'
-import QRCode from 'react-qr-code'
+import { useRef, useState } from 'react'
+import QRCodeModule from 'react-qr-code'
 import Copy from 'reicon-react/icons/Copy'
 import Download from 'reicon-react/icons/Download'
 import Shield from 'reicon-react/icons/Shield'
 import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
+import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
 import { AccountActionRow } from './account-action-row'
+
+const qrCodeModule = QRCodeModule as unknown
+const QRCode =
+  typeof qrCodeModule === 'object' &&
+  qrCodeModule !== null &&
+  'default' in qrCodeModule
+    ? (qrCodeModule.default as typeof QRCodeModule)
+    : QRCodeModule
 
 type DialogMode = 'enable' | 'regenerate' | 'disable' | null
 type EnablePhase = 'password' | 'scan' | 'codes'
@@ -80,6 +89,7 @@ function EnableTwoFactorDialog({
   const [acknowledged, setAcknowledged] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const verifyingRef = useRef(false)
 
   const resetAndClose = () => {
     setPhase('password')
@@ -107,20 +117,35 @@ function EnableTwoFactorDialog({
     setPhase('scan')
   }
 
-  const verify = async (event: React.FormEvent) => {
-    event.preventDefault()
+  const verifyCode = async (nextCode: string) => {
+    const normalizedCode = nextCode.trim()
+    if (normalizedCode.length !== 6 || verifyingRef.current) return
+
+    verifyingRef.current = true
     setSaving(true)
     setError(null)
-    const result = await authClient.twoFactor.verifyTotp({
-      code: code.trim(),
-      trustDevice: false
-    })
-    setSaving(false)
-    if (result.error) {
-      setError(result.error.message ?? 'Código inválido. Tente o código atual.')
-      return
+    try {
+      const result = await authClient.twoFactor.verifyTotp({
+        code: normalizedCode,
+        trustDevice: false
+      })
+      if (result.error) {
+        setCode('')
+        setError(
+          result.error.message ?? 'Código inválido. Tente o código atual.'
+        )
+        return
+      }
+      setPhase('codes')
+    } finally {
+      verifyingRef.current = false
+      setSaving(false)
     }
-    setPhase('codes')
+  }
+
+  const verify = (event: React.FormEvent) => {
+    event.preventDefault()
+    void verifyCode(code)
   }
 
   let secret = ''
@@ -181,24 +206,21 @@ function EnableTwoFactorDialog({
             <p className="font-bold text-[10px] uppercase tracking-[0.1em]">
               Chave manual
             </p>
-            <code className="mt-2 block break-all text-sm">{secret}</code>
+            <code className="mt-2 block overflow-x-auto whitespace-nowrap font-[family-name:var(--onside-mono)] text-xs">
+              {secret}
+            </code>
           </div>
           <Field data-invalid={Boolean(error)}>
             <FieldLabel htmlFor="two-factor-code">
               Código de 6 dígitos
             </FieldLabel>
-            <Input
+            <TwoFactorCodeInput
               id="two-factor-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              aria-invalid={Boolean(error)}
+              invalid={Boolean(error)}
               value={code}
-              onChange={(event) =>
-                setCode(event.target.value.replace(/\D/g, ''))
-              }
-              required
+              onChange={setCode}
+              onComplete={(value) => void verifyCode(value)}
+              disabled={saving}
             />
             <FieldError>{error}</FieldError>
           </Field>

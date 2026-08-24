@@ -17,6 +17,7 @@ import Key from 'reicon-react/icons/Key'
 import Shield from 'reicon-react/icons/Shield'
 import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
 import {
   isTwoFactorChallengeCurrent,
@@ -162,23 +163,27 @@ function TwoFactorPage() {
                     ? 'Código de 6 dígitos'
                     : 'Código de recuperação'}
                 </FieldLabel>
-                <Input
-                  id="two-factor-login-code"
-                  inputMode={method === 'totp' ? 'numeric' : 'text'}
-                  autoComplete="one-time-code"
-                  maxLength={method === 'totp' ? 6 : undefined}
-                  aria-invalid={Boolean(error)}
-                  value={code}
-                  onChange={(event) =>
-                    setCode(
-                      method === 'totp'
-                        ? event.target.value.replace(/\D/g, '')
-                        : event.target.value
-                    )
-                  }
-                  required
-                  autoFocus
-                />
+                {method === 'totp' ? (
+                  <TwoFactorCodeInput
+                    id="two-factor-login-code"
+                    value={code}
+                    onChange={setCode}
+                    invalid={Boolean(error)}
+                    autoFocus
+                    disabled={submitting}
+                  />
+                ) : (
+                  <Input
+                    id="two-factor-login-code"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    aria-invalid={Boolean(error)}
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    required
+                    autoFocus
+                  />
+                )}
                 <FieldError>{error}</FieldError>
               </Field>
 
@@ -196,7 +201,10 @@ function TwoFactorPage() {
               <Button
                 type="submit"
                 size="lg"
-                disabled={submitting || !code.trim()}
+                disabled={
+                  submitting ||
+                  (method === 'totp' ? code.length !== 6 : !code.trim())
+                }
               >
                 {submitting ? <Spinner data-icon="inline-start" /> : null}
                 {submitting ? 'Confirmando…' : 'Confirmar e entrar'}
