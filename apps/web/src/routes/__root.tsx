@@ -17,6 +17,7 @@ import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { Analytics } from '@vercel/analytics/react'
 import type { CSSProperties } from 'react'
 import { useEffect, useRef } from 'react'
+import { MinuteTickProvider } from '../components/app/minute-tick'
 import { ImpersonationBanner } from '../components/impersonation-banner'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
@@ -184,21 +185,23 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <div
-          className="min-h-dvh w-full"
-          style={
-            {
-              '--banner-h': impersonatedBy
-                ? 'var(--onside-banner-h, 2.75rem)'
-                : '0px',
-              paddingTop: 'var(--banner-h)'
-            } as CSSProperties
-          }
-        >
-          <PostHogProvider />
-          <ImpersonationBanner />
-          <Outlet />
-        </div>
+        <MinuteTickProvider>
+          <div
+            className="min-h-dvh w-full"
+            style={
+              {
+                '--banner-h': impersonatedBy
+                  ? 'var(--onside-banner-h, 2.75rem)'
+                  : '0px',
+                paddingTop: 'var(--banner-h)'
+              } as CSSProperties
+            }
+          >
+            <PostHogProvider />
+            <ImpersonationBanner />
+            <Outlet />
+          </div>
+        </MinuteTickProvider>
         <Toaster richColors />
         {isDev ? (
           <>

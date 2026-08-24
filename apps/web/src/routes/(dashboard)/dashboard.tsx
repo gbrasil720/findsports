@@ -4,7 +4,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
-import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import {
   DashboardResults,
@@ -401,38 +400,36 @@ function FanDashboard() {
         </div>
       ) : null}
 
-      <MinuteTickProvider>
-        <DashboardResults
-          resultState={resultState}
-          bars={displayedBars}
-          mapBars={mapBars}
-          radiusKm={radiusKm}
-          hasActiveFilters={activeFilters.length > 0}
-          locationState={locationState}
-          coords={coords}
-          hoveredId={hoveredId}
-          favoriteIds={favoriteIds}
-          favoritePending={
-            favoriteMutation.isPending || unfavoriteMutation.isPending
-          }
-          onHover={setHoveredId}
-          onFavorite={toggleFavorite}
-          onRequestLocation={requestLocation}
-          onRadiusChange={handleRadiusChange}
-          onReset={reset}
-          onRetry={retryResults}
-          onSuggestion={applySuggestion}
-          onSelectMapBar={(barId) => {
-            const bar = displayedBars.find((item) => item.id === barId)
-            analytics.barOpened({
-              bar_id: barId,
-              source: 'map',
-              bar_plan: bar && 'plan' in bar ? bar.plan : undefined
-            })
-            navigate({ to: '/pub/$pubId', params: { pubId: barId } })
-          }}
-        />
-      </MinuteTickProvider>
+      <DashboardResults
+        resultState={resultState}
+        bars={displayedBars}
+        mapBars={mapBars}
+        radiusKm={radiusKm}
+        hasActiveFilters={activeFilters.length > 0}
+        locationState={locationState}
+        coords={coords}
+        hoveredId={hoveredId}
+        favoriteIds={favoriteIds}
+        favoritePending={
+          favoriteMutation.isPending || unfavoriteMutation.isPending
+        }
+        onHover={setHoveredId}
+        onFavorite={toggleFavorite}
+        onRequestLocation={requestLocation}
+        onRadiusChange={handleRadiusChange}
+        onReset={reset}
+        onRetry={retryResults}
+        onSuggestion={applySuggestion}
+        onSelectMapBar={(barId) => {
+          const bar = displayedBars.find((item) => item.id === barId)
+          analytics.barOpened({
+            bar_id: barId,
+            source: 'map',
+            bar_plan: bar && 'plan' in bar ? bar.plan : undefined
+          })
+          navigate({ to: '/pub/$pubId', params: { pubId: barId } })
+        }}
+      />
     </AppShell>
   )
 }

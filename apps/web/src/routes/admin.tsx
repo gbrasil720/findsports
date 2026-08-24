@@ -29,6 +29,7 @@ import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { RatingsPanel } from '@/components/admin/ratings-panel'
 import { RecommendationQualityStatus } from '@/components/admin/recommendation-quality-status'
 import { AppShell } from '@/components/app/app-shell'
+import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
@@ -107,16 +108,11 @@ function getAnalyticsDates() {
 function PubDashboard() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
-  const [, setTick] = useState(0)
+  const now = useMinuteNow()
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>('admin-visao')
   const [profileError, setProfileError] = useState<string | null>(null)
   const limitTracked = useRef(false)
-
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 60_000)
-    return () => clearInterval(interval)
-  }, [])
 
   useEffect(() => {
     const syncSectionFromHash = () => {
@@ -300,10 +296,10 @@ function PubDashboard() {
 
   const eventList = eventsState.status === 'ready' ? eventsState.events : []
   const hasUpcomingEvent = eventList.some(
-    (e) => getEventTemporalState(e.startsAt) === 'upcoming'
+    (e) => getEventTemporalState(e.startsAt, now) === 'upcoming'
   )
   const liveEvent = eventList.find(
-    (item) => getEventTemporalState(item.startsAt) === 'live'
+    (item) => getEventTemporalState(item.startsAt, now) === 'live'
   )
   const totalCount = eventList.length
   const isInactive = bar ? !bar.isActive : false

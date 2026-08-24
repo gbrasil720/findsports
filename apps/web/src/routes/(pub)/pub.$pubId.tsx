@@ -10,7 +10,6 @@ import type { inferRouterOutputs } from '@trpc/server'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
-import { MinuteTickProvider } from '@/components/app/minute-tick'
 import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
 import { BarActions } from '@/components/pub/bar-action-bar'
 import { BarCharacteristics } from '@/components/pub/bar-characteristics'
@@ -280,85 +279,83 @@ function PubPage() {
   }
 
   return (
-    <MinuteTickProvider>
-      <div className="flex min-h-dvh">
-        {/* Auth gate dialog — shown when no session */}
-        {!isAuthed && <AuthRequiredDialog open />}
+    <div className="flex min-h-dvh">
+      {/* Auth gate dialog — shown when no session */}
+      {!isAuthed && <AuthRequiredDialog open />}
 
-        {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
-        <div
-          className="flex w-full flex-col"
-          inert={!isAuthed}
-          aria-hidden={!isAuthed}
-        >
-          <AppShell variant={shellVariant}>
-            {isLoadingPub ? (
-              <div className="space-y-4">
-                <Skeleton className="h-[260px] w-full" />
-                <Skeleton className="h-[140px] w-full" />
-                <Skeleton className="h-[200px] w-full" />
-              </div>
-            ) : normalizedPub ? (
-              <div className="onside-pub-page space-y-4 md:space-y-5">
-                {isOwner && <OwnerPreviewBanner />}
+      {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
+      <div
+        className="flex w-full flex-col"
+        inert={!isAuthed}
+        aria-hidden={!isAuthed}
+      >
+        <AppShell variant={shellVariant}>
+          {isLoadingPub ? (
+            <div className="space-y-4">
+              <Skeleton className="h-[260px] w-full" />
+              <Skeleton className="h-[140px] w-full" />
+              <Skeleton className="h-[200px] w-full" />
+            </div>
+          ) : normalizedPub ? (
+            <div className="onside-pub-page space-y-4 md:space-y-5">
+              {isOwner && <OwnerPreviewBanner />}
 
-                <BarCover
-                  name={normalizedPub.name}
-                  neighborhood={normalizedPub.neighborhood}
-                  city={normalizedPub.city}
-                  photoUrl={normalizedPub.photoUrl}
-                  plan={normalizedPub.plan}
-                  canFavorite={canFavorite}
-                  isFavorited={isFavorited}
-                  favoritePending={favoritePending}
-                  onToggleFavorite={handleToggleFavorite}
-                  isOwner={isOwner}
+              <BarCover
+                name={normalizedPub.name}
+                neighborhood={normalizedPub.neighborhood}
+                city={normalizedPub.city}
+                photoUrl={normalizedPub.photoUrl}
+                plan={normalizedPub.plan}
+                canFavorite={canFavorite}
+                isFavorited={isFavorited}
+                favoritePending={favoritePending}
+                onToggleFavorite={handleToggleFavorite}
+                isOwner={isOwner}
+              />
+
+              {heroEvent && (
+                <HeroEventCard
+                  event={heroEvent}
+                  fromSearch={Boolean(eventId) && heroEvent.id === eventId}
                 />
+              )}
 
-                {heroEvent && (
-                  <HeroEventCard
-                    event={heroEvent}
-                    fromSearch={Boolean(eventId) && heroEvent.id === eventId}
-                  />
-                )}
+              <BarActions {...actions} variant="panel" isOwner={isOwner} />
 
-                <BarActions {...actions} variant="panel" isOwner={isOwner} />
+              <BarLocationBlock
+                barId={normalizedPub.id}
+                name={normalizedPub.name}
+                address={normalizedPub.address}
+                neighborhood={normalizedPub.neighborhood}
+                city={normalizedPub.city}
+                latitude={normalizedPub.latitude}
+                longitude={normalizedPub.longitude}
+                plan={normalizedPub.plan}
+                directionsUrl={directionsUrl}
+                onDirections={handleOpenDirections}
+              />
 
-                <BarLocationBlock
-                  barId={normalizedPub.id}
-                  name={normalizedPub.name}
-                  address={normalizedPub.address}
-                  neighborhood={normalizedPub.neighborhood}
-                  city={normalizedPub.city}
-                  latitude={normalizedPub.latitude}
-                  longitude={normalizedPub.longitude}
-                  plan={normalizedPub.plan}
-                  directionsUrl={directionsUrl}
-                  onDirections={handleOpenDirections}
-                />
+              <EventsList
+                events={normalizedPub.events}
+                highlightedEventId={heroEvent?.id ?? null}
+                whatsappUrl={whatsappUrl}
+                onWhatsApp={handleWhatsAppClick}
+                isOwner={isOwner}
+              />
 
-                <EventsList
-                  events={normalizedPub.events}
-                  highlightedEventId={heroEvent?.id ?? null}
-                  whatsappUrl={whatsappUrl}
-                  onWhatsApp={handleWhatsAppClick}
-                  isOwner={isOwner}
-                />
+              <BarCharacteristics
+                amenities={normalizedPub.amenities}
+                screenCount={normalizedPub.screenCount}
+                description={normalizedPub.description}
+                facts={barFacts}
+                isOwner={isOwner}
+              />
 
-                <BarCharacteristics
-                  amenities={normalizedPub.amenities}
-                  screenCount={normalizedPub.screenCount}
-                  description={normalizedPub.description}
-                  facts={barFacts}
-                  isOwner={isOwner}
-                />
-
-                <BarActions {...actions} variant="bar" isOwner={isOwner} />
-              </div>
-            ) : null}
-          </AppShell>
-        </div>
+              <BarActions {...actions} variant="bar" isOwner={isOwner} />
+            </div>
+          ) : null}
+        </AppShell>
       </div>
-    </MinuteTickProvider>
+    </div>
   )
 }
