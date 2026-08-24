@@ -444,8 +444,3 @@ export function OnsideBarInterestForm() {
     </form>
   )
 }
-
-/** @deprecated Prefer OnsideFanWaitlistForm / OnsideBarInterestForm */
-export function OnsideWaitlist() {
-  return <OnsideFanWaitlistForm />
-}
