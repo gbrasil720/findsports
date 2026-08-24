@@ -1,9 +1,14 @@
 import { db, sql } from '@findsports_oficial/db'
 
-import type {
-  RecommendationCandidate,
-  RecommendationIntentAction,
-  RecommendationIntentKind
+import {
+  DAY_MS,
+  jaccard,
+  RECOMMENDATION_INTENT_KINDS,
+  RECOMMENDATION_QUALITY_WINDOW_DAYS,
+  RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS,
+  type RecommendationCandidate,
+  type RecommendationIntentAction,
+  type RecommendationIntentKind
 } from './ranking'
 
 type CandidateRow = {
@@ -46,28 +51,18 @@ function numeric(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function jaccard(first: number[], second: number[]): number {
-  const a = new Set(first)
-  const b = new Set(second)
-  const union = new Set([...a, ...b])
-  if (union.size === 0) return 0
-  let intersection = 0
-  for (const value of a) if (b.has(value)) intersection += 1
-  return intersection / union.size
-}
+const VALID_INTENT_KINDS = new Set<RecommendationIntentKind>(
+  RECOMMENDATION_INTENT_KINDS
+)
 
 function parseIntentActions(
   actions: CandidateRow['intent_actions']
 ): RecommendationIntentAction[] {
   if (!Array.isArray(actions)) return []
-  const validKinds = new Set<RecommendationIntentKind>([
-    'positive_rating',
-    'high_intent',
-    'game_view',
-    'direct_view'
-  ])
   return actions.flatMap((action) => {
-    if (!validKinds.has(action.kind as RecommendationIntentKind)) return []
+    if (!VALID_INTENT_KINDS.has(action.kind as RecommendationIntentKind)) {
+      return []
+    }
     const occurredAt = new Date(action.occurredAt)
     if (Number.isNaN(occurredAt.getTime())) return []
     return [
@@ -86,8 +81,12 @@ export async function loadRecommendationCandidates(input: {
   radiusKm: number
   now: Date
 }): Promise<RecommendationCandidate[]> {
-  const sixtyDaysAgo = new Date(input.now.getTime() - 60 * 86_400_000)
-  const thirtyDaysAgo = new Date(input.now.getTime() - 30 * 86_400_000)
+  const sixtyDaysAgo = new Date(
+    input.now.getTime() - RECOMMENDATION_QUALITY_WINDOW_DAYS * DAY_MS
+  )
+  const thirtyDaysAgo = new Date(
+    input.now.getTime() - RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS * DAY_MS
+  )
   const expandedRadiusMeters = input.radiusKm * 1.5 * 1000
 
   const results = await db.execute(sql`

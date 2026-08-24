@@ -25,12 +25,7 @@ import {
 } from '@/components/profile/profile-selectors'
 import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
-import {
-  DEFAULT_RADIUS_KM,
-  type RadiusKm,
-  SAO_PAULO_FALLBACK,
-  SEARCH_RADII
-} from '@/domain/discovery'
+import { type RadiusKm, SAO_PAULO_FALLBACK } from '@/domain/discovery'
 import { authClient } from '@/lib/auth-client'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
@@ -94,14 +89,8 @@ function ProfilePage() {
   const favorites = favoritesQuery.data ?? []
   const preferences = preferencesQuery.data ?? []
   const sports = sportsQuery.data ?? []
-  const userRadius =
-    SEARCH_RADII.find((radius) => radius === user?.searchRadiusKm) ??
-    DEFAULT_RADIUS_KM
   const recommendationsQuery = useQuery({
-    ...trpc.recommendations.get.queryOptions({
-      ...(coords ?? SAO_PAULO_FALLBACK),
-      radiusKm: userRadius
-    }),
+    ...trpc.recommendations.get.queryOptions(coords ?? SAO_PAULO_FALLBACK),
     enabled: tab === 'Visão geral'
   })
 

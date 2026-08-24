@@ -10,14 +10,17 @@ import { protectedProcedure, router } from '../index'
 import { loadRecommendationCandidates } from '../lib/recommendations/load-candidates'
 import {
   isQualityProtected,
+  RECOMMENDATION_QUALITY_MIN_POSITIVE_RATE,
+  RECOMMENDATION_QUALITY_MIN_SAMPLE,
+  RECOMMENDATION_QUALITY_WINDOW_DAYS,
+  RECOMMENDATION_REASONS,
   rankRecommendations,
   type ScoredRecommendation
 } from '../lib/recommendations/ranking'
 
 const coordinatesSchema = z.object({
   lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-  radiusKm: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
+  lng: z.number().min(-180).max(180)
 })
 
 const runEventSchema = z.object({
@@ -105,14 +108,7 @@ export const recommendationsRouter = router({
             z.object({
               barId: z.string().uuid(),
               position: z.number().int().min(1).max(3),
-              reason: z.enum([
-                'recent_interest',
-                'preferred_sport',
-                'similar_experience',
-                'well_rated',
-                'nearby',
-                'explore'
-              ]),
+              reason: z.enum(RECOMMENDATION_REASONS),
               expandedRadius: z.boolean()
             })
           )
@@ -226,7 +222,7 @@ export const recommendationsRouter = router({
       FROM bar b
       LEFT JOIN bar_rating r
         ON r.bar_id = b.id
-        AND r.updated_at >= NOW() - INTERVAL '60 days'
+        AND r.updated_at >= NOW() - ${RECOMMENDATION_QUALITY_WINDOW_DAYS} * INTERVAL '1 day'
       WHERE b.user_id = ${ctx.session.user.id}
       GROUP BY b.id, b.is_active
     `)
@@ -255,9 +251,9 @@ export const recommendationsRouter = router({
         recentRatingCount === 0
           ? null
           : Math.round((recentRatingPositive / recentRatingCount) * 100),
-      minimumSample: 10,
-      minimumPositivePercentage: 30,
-      windowDays: 60
+      minimumSample: RECOMMENDATION_QUALITY_MIN_SAMPLE,
+      minimumPositivePercentage: RECOMMENDATION_QUALITY_MIN_POSITIVE_RATE * 100,
+      windowDays: RECOMMENDATION_QUALITY_WINDOW_DAYS
     }
   })
 })

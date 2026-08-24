@@ -39,8 +39,7 @@ describe('recommendations authorization', () => {
   test('requires a session', async () => {
     const caller = appRouter.createCaller(context(null))
     await expectCode(
-      () =>
-        caller.recommendations.get({ lat: -23.55, lng: -46.63, radiusKm: 3 }),
+      () => caller.recommendations.get({ lat: -23.55, lng: -46.63 }),
       'UNAUTHORIZED'
     )
   })
@@ -49,12 +48,7 @@ describe('recommendations authorization', () => {
     for (const role of ['pub', 'admin'] as const) {
       const caller = appRouter.createCaller(context(role))
       await expectCode(
-        () =>
-          caller.recommendations.get({
-            lat: -23.55,
-            lng: -46.63,
-            radiusKm: 3
-          }),
+        () => caller.recommendations.get({ lat: -23.55, lng: -46.63 }),
         'FORBIDDEN'
       )
       await expectCode(() => caller.recommendations.reset(), 'FORBIDDEN')

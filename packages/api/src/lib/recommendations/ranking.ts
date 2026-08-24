@@ -1,16 +1,27 @@
+export const RECOMMENDATION_INTENT_KINDS = [
+  'positive_rating',
+  'high_intent',
+  'game_view',
+  'direct_view'
+] as const
 export type RecommendationIntentKind =
-  | 'positive_rating'
-  | 'high_intent'
-  | 'game_view'
-  | 'direct_view'
+  (typeof RECOMMENDATION_INTENT_KINDS)[number]
 
-export type RecommendationReason =
-  | 'recent_interest'
-  | 'preferred_sport'
-  | 'similar_experience'
-  | 'well_rated'
-  | 'nearby'
-  | 'explore'
+export const RECOMMENDATION_REASONS = [
+  'recent_interest',
+  'preferred_sport',
+  'similar_experience',
+  'well_rated',
+  'nearby',
+  'explore'
+] as const
+export type RecommendationReason = (typeof RECOMMENDATION_REASONS)[number]
+
+export const DAY_MS = 86_400_000
+export const RECOMMENDATION_QUALITY_WINDOW_DAYS = 60
+export const RECOMMENDATION_QUALITY_MIN_SAMPLE = 10
+export const RECOMMENDATION_QUALITY_MIN_POSITIVE_RATE = 0.3
+export const RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS = 30
 
 export type RecommendationIntentAction = {
   kind: RecommendationIntentKind
@@ -72,7 +83,6 @@ export type ScoredRecommendation = {
 
 type RankingContext = { now: Date; radiusKm: number }
 
-const DAY_MS = 86_400_000
 const INTENT_POINTS: Record<RecommendationIntentKind, number> = {
   positive_rating: 30,
   high_intent: 25,
@@ -107,7 +117,9 @@ export function isQualityProtected(
   recentRatingPositive: number
 ): boolean {
   return (
-    recentRatingCount >= 10 && recentRatingPositive / recentRatingCount < 0.3
+    recentRatingCount >= RECOMMENDATION_QUALITY_MIN_SAMPLE &&
+    recentRatingPositive / recentRatingCount <
+      RECOMMENDATION_QUALITY_MIN_POSITIVE_RATE
   )
 }
 
@@ -203,7 +215,7 @@ export function scoreRecommendationCandidate(
   }
 }
 
-function jaccard<T>(first: T[], second: T[]): number {
+export function jaccard<T>(first: T[], second: T[]): number {
   const a = new Set(first)
   const b = new Set(second)
   const union = new Set([...a, ...b])
