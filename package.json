@@ -38,16 +38,6 @@
     "db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
     "check": "biome check --write ."
   },
-  "dependencies": {
-    "@dodopayments/better-auth": "^1.6.3",
-    "@findsports_oficial/env": "workspace:*",
-    "@vercel/blob": "^2.4.0",
-    "dodopayments": "^2.37.0",
-    "dotenv": "catalog:",
-    "posthog-js": "^1.387.0",
-    "reicon-react": "^1.1.302",
-    "zod": "catalog:"
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",
     "@findsports_oficial/config": "workspace:*",
