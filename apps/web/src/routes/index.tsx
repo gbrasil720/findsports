@@ -1,6 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { OnsideLanding } from '@/components/landing/onside-landing'
-import '@/components/landing/onside.css'
 import { OG_IMAGE_URL, SITE_URL } from '@/lib/site'
 
 const HOMEPAGE_SCHEMA = {

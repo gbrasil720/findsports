@@ -1,9 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
-import './not-found-page.css'
 
-const BROKEN_MARK_SRC = '/onside-icone-preto-broken.png'
+const BROKEN_MARK_SRC = '/onside-icone-preto-broken.webp'
 const YEAR = new Date().getFullYear()
 
 export function NotFoundPage() {
@@ -66,10 +65,9 @@ export function NotFoundPage() {
             <img
               src={BROKEN_MARK_SRC}
               alt=""
-              width={1420}
-              height={1108}
+              width={1200}
+              height={936}
               decoding="async"
-              fetchPriority="high"
             />
           </div>
         </main>

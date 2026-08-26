@@ -32,8 +32,9 @@ export const Route = createFileRoute('/$')({
       },
       {
         rel: 'preload',
-        href: '/onside-icone-preto-broken.png',
-        as: 'image'
+        href: '/onside-icone-preto-broken.webp',
+        as: 'image',
+        type: 'image/webp'
       }
     ]
   }),

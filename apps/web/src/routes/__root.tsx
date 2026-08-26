@@ -14,15 +14,12 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
-import { Analytics } from '@vercel/analytics/react'
 import type { CSSProperties } from 'react'
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { MinuteTickProvider } from '../components/app/minute-tick'
-import { ImpersonationBanner } from '../components/impersonation-banner'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
 import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
-import { authClient } from '../lib/auth-client'
 import { initPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
@@ -31,6 +28,7 @@ import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
+  session?: AuthSession
 }
 
 const getSession = createServerFn()
@@ -136,20 +134,47 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootDocument
 })
 
+const ImpersonationBanner = lazy(() =>
+  import('../components/impersonation-banner').then((module) => ({
+    default: module.ImpersonationBanner
+  }))
+)
+
+function DeferredVercelAnalytics() {
+  const [Analytics, setAnalytics] = useState<
+    typeof import('@vercel/analytics/react').Analytics | null
+  >(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void import('@vercel/analytics/react').then((module) => {
+      if (!cancelled) setAnalytics(() => module.Analytics)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return Analytics ? <Analytics /> : null
+}
+
 function PostHogProvider() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const initialized = useRef(false)
+  const [ready, setReady] = useState(false)
 
-  // Init — roda uma vez no cliente
   useEffect(() => {
-    if (initialized.current) return
-    initialized.current = initPostHog()
+    let cancelled = false
+    void initPostHog().then((ok) => {
+      if (!cancelled) setReady(ok)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Identify — roda quando sessão muda
   useEffect(() => {
-    if (!initialized.current) return
+    if (!ready) return
 
     if (session?.user) {
       identifyUser({
@@ -161,19 +186,18 @@ function PostHogProvider() {
     } else {
       resetAnalytics()
     }
-  }, [session?.user?.id])
+  }, [ready, session?.user?.id])
 
-  // Pageview — roda quando rota muda
   useEffect(() => {
-    if (!initialized.current) return
+    if (!ready) return
     capturePageview(pathname)
-  }, [pathname])
+  }, [ready, pathname])
 
   return null
 }
 
 function RootDocument() {
-  const { data: session } = authClient.useSession()
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonatedBy = (
     session?.session as { impersonatedBy?: string | null } | undefined
   )?.impersonatedBy
@@ -198,7 +222,11 @@ function RootDocument() {
             }
           >
             <PostHogProvider />
-            <ImpersonationBanner />
+            {impersonatedBy ? (
+              <Suspense fallback={null}>
+                <ImpersonationBanner />
+              </Suspense>
+            ) : null}
             <Outlet />
           </div>
         </MinuteTickProvider>
@@ -212,7 +240,7 @@ function RootDocument() {
             />
           </>
         ) : null}
-        <Analytics />
+        <DeferredVercelAnalytics />
         <Scripts />
       </body>
     </html>

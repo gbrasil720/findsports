@@ -1,7 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 
-import './index.css'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { createTRPCClient, httpBatchLink } from '@trpc/client'

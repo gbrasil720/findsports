@@ -1,5 +1,5 @@
-import posthog from 'posthog-js'
 import { getPageSurface } from './page-surface'
+import { withPosthog } from './posthog'
 
 export type UserRole = 'fan' | 'pub'
 export type BarPlan = 'starter' | 'pro' | 'elite'
@@ -12,33 +12,57 @@ export type { PageSurface } from './page-surface'
  * Pageviews stay on `$pageview` (with `surface`). Autocapture is off.
  */
 export const analytics = {
-  identifyWaitlist: (waitlistId: string) =>
-    posthog.identify(`waitlist:${waitlistId}`),
+  identifyWaitlist: (waitlistId: string) => {
+    void withPosthog((posthog) => posthog.identify(`waitlist:${waitlistId}`))
+  },
 
-  waitlistSubmitted: (role: UserRole) =>
-    posthog.capture('waitlist_submitted', { role }),
+  waitlistSubmitted: (role: UserRole) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_submitted', { role })
+    )
+  },
 
-  waitlistConfirmed: () => posthog.capture('waitlist_confirmed'),
+  waitlistConfirmed: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_confirmed'))
+  },
 
-  waitlistCancelled: () => posthog.capture('waitlist_cancelled'),
+  waitlistCancelled: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_cancelled'))
+  },
 
-  waitlistInviteSent: () => posthog.capture('waitlist_invite_sent'),
+  waitlistInviteSent: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_invite_sent'))
+  },
 
-  waitlistInviteOpened: () => posthog.capture('waitlist_invite_opened'),
+  waitlistInviteOpened: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_invite_opened'))
+  },
 
-  waitlistActivated: () => posthog.capture('waitlist_activated'),
+  waitlistActivated: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_activated'))
+  },
 
-  launchNoticeSent: (sent: number, failed: number) =>
-    posthog.capture('waitlist_launch_notice_sent', { sent, failed }),
+  launchNoticeSent: (sent: number, failed: number) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_launch_notice_sent', { sent, failed })
+    )
+  },
 
-  launchSignupCompleted: () =>
-    posthog.capture('waitlist_launch_signup_completed'),
+  launchSignupCompleted: () => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_launch_signup_completed')
+    )
+  },
 
-  launchNoticeOpened: () => posthog.capture('waitlist_launch_opened'),
+  launchNoticeOpened: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_launch_opened'))
+  },
 
   signupCompleted: (role: UserRole) => {
-    posthog.capture('signup_completed', { role })
-    posthog.setPersonProperties({ role })
+    void withPosthog((posthog) => {
+      posthog.capture('signup_completed', { role })
+      posthog.setPersonProperties({ role })
+    })
   },
 
   onboardingCompleted: (params: {
@@ -47,18 +71,20 @@ export const analytics = {
     radius_km?: number
   }) => {
     const sportsCount = params.sports?.length
-    posthog.capture('onboarding_completed', {
-      role: params.role,
-      sports: params.sports,
-      sports_count: sportsCount,
-      radius_km: params.radius_km
-    })
-    posthog.setPersonProperties({
-      role: params.role,
-      onboarding_completed: true,
-      ...(params.sports ? { sports: params.sports } : {}),
-      ...(sportsCount != null ? { sports_count: sportsCount } : {}),
-      ...(params.radius_km != null ? { radius_km: params.radius_km } : {})
+    void withPosthog((posthog) => {
+      posthog.capture('onboarding_completed', {
+        role: params.role,
+        sports: params.sports,
+        sports_count: sportsCount,
+        radius_km: params.radius_km
+      })
+      posthog.setPersonProperties({
+        role: params.role,
+        onboarding_completed: true,
+        ...(params.sports ? { sports: params.sports } : {}),
+        ...(sportsCount != null ? { sports_count: sportsCount } : {}),
+        ...(params.radius_km != null ? { radius_km: params.radius_km } : {})
+      })
     })
   },
 
@@ -68,38 +94,53 @@ export const analytics = {
     radius_km: number
     results_count: number
     has_location: boolean
-  }) => posthog.capture('search_performed', params),
+  }) => {
+    void withPosthog((posthog) => posthog.capture('search_performed', params))
+  },
 
   barOpened: (params: {
     bar_id: string
     source: BarOpenSource
     bar_plan?: BarPlan
-  }) => posthog.capture('bar_opened', params),
+  }) => {
+    void withPosthog((posthog) => posthog.capture('bar_opened', params))
+  },
 
-  barIntent: (params: { bar_id: string; action: BarIntentAction }) =>
-    posthog.capture('bar_intent', params),
+  barIntent: (params: { bar_id: string; action: BarIntentAction }) => {
+    void withPosthog((posthog) => posthog.capture('bar_intent', params))
+  },
 
   eventCreated: (params: {
     championship: string
     sport: string
     has_teams: boolean
-  }) => posthog.capture('event_created', params),
+  }) => {
+    void withPosthog((posthog) => posthog.capture('event_created', params))
+  },
 
-  eventLimitReached: () => posthog.capture('event_limit_reached'),
+  eventLimitReached: () => {
+    void withPosthog((posthog) => posthog.capture('event_limit_reached'))
+  },
 
-  checkoutStarted: (plan: BarPlan) =>
-    posthog.capture('checkout_started', { plan }),
+  checkoutStarted: (plan: BarPlan) => {
+    void withPosthog((posthog) => posthog.capture('checkout_started', { plan }))
+  },
 
-  upgradeClicked: (current_plan: string, target_plan: string) =>
-    posthog.capture('upgrade_clicked', { current_plan, target_plan })
+  upgradeClicked: (current_plan: string, target_plan: string) => {
+    void withPosthog((posthog) =>
+      posthog.capture('upgrade_clicked', { current_plan, target_plan })
+    )
+  }
 }
 
 export function capturePageview(pathname: string) {
   if (typeof window === 'undefined') return
-  posthog.capture('$pageview', {
-    $current_url: window.location.href,
-    surface: getPageSurface(pathname)
-  })
+  void withPosthog((posthog) =>
+    posthog.capture('$pageview', {
+      $current_url: window.location.href,
+      surface: getPageSurface(pathname)
+    })
+  )
 }
 
 export function identifyUser(user: {
@@ -108,17 +149,19 @@ export function identifyUser(user: {
   name?: string | null
   role?: string | null
 }) {
-  const previousId = posthog.get_distinct_id()
-  if (previousId.startsWith('waitlist:') && previousId !== user.id) {
-    posthog.alias(user.id, previousId)
-  }
-  posthog.identify(user.id, {
-    email: user.email,
-    name: user.name,
-    role: user.role
+  void withPosthog((posthog) => {
+    const previousId = posthog.get_distinct_id()
+    if (previousId.startsWith('waitlist:') && previousId !== user.id) {
+      posthog.alias(user.id, previousId)
+    }
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+      role: user.role
+    })
   })
 }
 
 export function resetAnalytics() {
-  posthog.reset()
+  void withPosthog((posthog) => posthog.reset())
 }

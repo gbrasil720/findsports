@@ -95,9 +95,18 @@ function renderHook<T>(hook: () => T) {
   }
 }
 
+async function flush() {
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+}
+
 async function montarFlag(nome: string, padrao: boolean) {
   const { usePostHogFlag } = await import('./posthog-flag')
-  return renderHook(() => usePostHogFlag(nome, padrao))
+  const hook = renderHook(() => usePostHogFlag(nome, padrao))
+  await flush()
+  return hook
 }
 
 describe('flag do PostHog no cliente', () => {
@@ -162,6 +171,7 @@ describe('variante do PostHog no cliente', () => {
     const { result } = renderHook(() =>
       usePostHogVariant('landing.hero', 'controle')
     )
+    await flush()
     expect(result.current).toBe('agressivo')
   })
 
@@ -178,6 +188,7 @@ describe('variante do PostHog no cliente', () => {
     const { result } = renderHook(() =>
       usePostHogVariant('landing.hero', 'controle')
     )
+    await flush()
     expect(result.current).toBe('controle')
   })
 })

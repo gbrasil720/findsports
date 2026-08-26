@@ -1,5 +1,5 @@
-import posthog from 'posthog-js'
 import { useCallback, useSyncExternalStore } from 'react'
+import { getPosthog, loadPosthog } from './posthog'
 
 /**
  * Flags do PostHog, no cliente.
@@ -35,13 +35,23 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 function assinar(callback: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
-  // `onFeatureFlags` devolve o cancelamento; sem chamá-lo, cada componente
-  // desmontado deixaria um ouvinte vivo.
-  return posthog.onFeatureFlags(callback)
+  let unsubscribe: (() => void) | undefined
+  let cancelled = false
+  void loadPosthog().then((posthog) => {
+    if (cancelled || !posthog) return
+    // `onFeatureFlags` devolve o cancelamento; sem chamá-lo, cada componente
+    // desmontado deixaria um ouvinte vivo.
+    unsubscribe = posthog.onFeatureFlags(callback)
+    callback()
+  })
+  return () => {
+    cancelled = true
+    unsubscribe?.()
+  }
 }
 
 function carregado(): boolean {
-  return typeof window !== 'undefined' && posthog.__loaded === true
+  return getPosthog()?.__loaded === true
 }
 
 /**
@@ -51,7 +61,7 @@ function carregado(): boolean {
 export function usePostHogFlag(nome: string, padrao: boolean): boolean {
   const snapshot = useCallback(() => {
     if (!carregado()) return padrao
-    return posthog.isFeatureEnabled(nome) ?? padrao
+    return getPosthog()?.isFeatureEnabled(nome) ?? padrao
   }, [nome, padrao])
 
   const noServidor = useCallback(() => padrao, [padrao])
@@ -70,7 +80,7 @@ export function usePostHogFlag(nome: string, padrao: boolean): boolean {
 export function usePostHogVariant(nome: string, padrao: string): string {
   const snapshot = useCallback(() => {
     if (!carregado()) return padrao
-    const valor = posthog.getFeatureFlag(nome)
+    const valor = getPosthog()?.getFeatureFlag(nome)
     return typeof valor === 'string' ? valor : padrao
   }, [nome, padrao])
 

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useRouteContext } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState } from 'react'
 import Add from 'reicon-react/icons/Add'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
@@ -12,7 +13,6 @@ import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
 import { HIGHLIGHTS_QUERY } from '@/lib/query-cache'
-import { authClient } from '../../lib/auth-client'
 import { useTRPC } from '../../utils/trpc'
 import { OnsideAppDemo } from './onside-app-demo'
 import {
@@ -246,7 +246,10 @@ function formatTickerEvent(event: {
 function OnsideTicker() {
   const trpc = useTRPC()
   const [isPaused, setIsPaused] = useState(false)
-  const { data: session } = authClient.useSession()
+  const session = useRouteContext({
+    from: '__root__',
+    select: (ctx) => ctx.session
+  })
   const { data: eliteEvents = [] } = useQuery({
     ...trpc.pubs.getEliteEvents.queryOptions(),
     ...HIGHLIGHTS_QUERY,
@@ -700,16 +703,19 @@ export function OnsideLanding() {
         </section>
 
         <section className="onside-community">
-          {/* biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline */}
-          <img
-            className="onside-community-photo"
-            src="/hero-bar.jpg"
-            alt="Torcedores assistindo a uma partida em um bar com vários telões"
-            width={1280}
-            height={1024}
-            loading="lazy"
-            decoding="async"
-          />
+          <picture>
+            <source srcSet="/hero-bar.webp" type="image/webp" />
+            {/* biome-ignore lint/performance/noImgElement: landing uses static public asset without Next image pipeline */}
+            <img
+              className="onside-community-photo"
+              src="/hero-bar.jpg"
+              alt="Torcedores assistindo a uma partida em um bar com vários telões"
+              width={1280}
+              height={1024}
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
           <div className="onside-community-overlay" aria-hidden="true" />
           <div className="onside-shell onside-community-content">
             <p className="onside-section-kicker">O JOGO É AQUI</p>
