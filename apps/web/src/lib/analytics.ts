@@ -73,8 +73,6 @@ export const analytics = {
     posthog.capture('upgrade_clicked', { current_plan, target_plan })
 }
 
-export { getPageSurface } from './page-surface'
-
 export function capturePageview(pathname: string) {
   if (typeof window === 'undefined') return
   posthog.capture('$pageview', {
