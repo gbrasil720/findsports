@@ -2,8 +2,6 @@ import { auth } from '@findsports_oficial/auth'
 
 import { extrairIp } from './lib/client-ip'
 
-export { extrairIp } from './lib/client-ip'
-
 type Session = typeof auth.$Infer.Session & {
   user: typeof auth.$Infer.Session.user & {
     role: 'fan' | 'pub' | 'admin'

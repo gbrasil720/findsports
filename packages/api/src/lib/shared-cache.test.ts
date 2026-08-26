@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 
-import { createSharedCache, temCacheCompartilhado } from './shared-cache'
+import { createSharedCache } from './shared-cache'
 
 describe('cache compartilhado', () => {
   it('sem credencial Redis usa memória e se comporta como TtlCache', async () => {
-    expect(temCacheCompartilhado()).toBe(false)
     const cache = createSharedCache<number>({
       prefix: 'teste',
       ttlMs: 60_000

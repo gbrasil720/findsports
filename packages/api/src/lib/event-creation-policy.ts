@@ -3,8 +3,6 @@ import { event } from '@findsports_oficial/db/schema/platform'
 import { and, count, eq, gte } from 'drizzle-orm'
 import { STARTER_EVENT_LIMIT } from './plan-limits'
 
-export { STARTER_EVENT_LIMIT }
-
 const FALLBACK_PERIOD_MS = 30 * 24 * 60 * 60 * 1000
 
 export type SubscriptionPlan = 'starter' | 'pro' | 'elite'

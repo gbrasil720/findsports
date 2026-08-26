@@ -70,8 +70,6 @@ export const AMENITIES: readonly Amenity[] = [
   }
 ] as const
 
-export const AMENITY_IDS: readonly number[] = AMENITIES.map((a) => a.id)
-
 /** Quantas características a busca aceita de uma vez. */
 export const MAX_AMENITY_FILTER = 6
 

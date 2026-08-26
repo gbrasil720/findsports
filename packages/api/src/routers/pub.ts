@@ -17,11 +17,9 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
-import {
-  getEventCreationPolicy,
-  STARTER_EVENT_LIMIT
-} from '../lib/event-creation-policy'
+import { getEventCreationPolicy } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
+import { STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,

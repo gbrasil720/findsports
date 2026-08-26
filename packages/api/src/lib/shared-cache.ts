@@ -29,10 +29,6 @@ function credenciaisRedis() {
   return { url, token }
 }
 
-export function temCacheCompartilhado() {
-  return credenciaisRedis() !== null
-}
-
 let redisPromise: Promise<RedisClient | null> | null = null
 
 function redisOpcional() {
