@@ -162,7 +162,7 @@ describe('leitura da configuração (ESC-19)', () => {
     expect(publico['billing.checkout_enabled']).toBe(true)
     expect(publico['launch.pub_cities']).toEqual(['Recife'])
     expect(publico['launch.waitlist_gate']).toEqual({
-      signup: false
+      signup: process.env.LAUNCH_ADMISSION_MODE !== 'open'
     })
 
     // As internas não saem — nem as que têm valor gravado.

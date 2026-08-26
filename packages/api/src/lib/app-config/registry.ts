@@ -129,24 +129,21 @@ export const APP_CONFIG_DEFINITIONS = {
   /**
    * Portão de entrada pela lista de espera.
    *
-   * A plataforma abre por convite: só e-mail com `approved_at` preenchido em
-   * `waitlist_entries` cria conta. Login nunca depende da waitlist.
+   * A plataforma começa por convite. Fechado, novos acessos dependem de
+   * aprovação; aberto, cadastro e login admitem a conta de forma persistente.
    *
-   * Nasce desligado dos dois lados, porque ligado é que é a mudança.
-   *
-   * `LAUNCH_ADMISSION_MODE=invite-only` é o limite de segurança do deploy:
-   * este controle pode fechar um deploy `open`, mas não abrir um deploy que
-   * declarou convite obrigatório.
+   * A configuração persistida é soberana. O ambiente define apenas o padrão
+   * inicial usado antes da primeira alteração pelo painel.
    */
   'launch.waitlist_gate': definir({
     schema: z.object({
       signup: z.boolean()
     }),
-    padrao: { signup: false },
+    padrao: { signup: process.env.LAUNCH_ADMISSION_MODE !== 'open' },
     publico: true,
     descricao:
-      'Fecha cadastro por aprovação em um deploy open. O modo invite-only ' +
-      'do deploy não pode ser aberto por esta configuração.'
+      'Fecha o cadastro por aprovação. O painel pode abrir ou fechar o modo ' +
+      'global sem novo deploy.'
   }),
 
   /**

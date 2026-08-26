@@ -10,7 +10,7 @@ import {
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
 import Fire from 'reicon-react/icons/Fire'
 import Loader from 'reicon-react/icons/Loader'
@@ -47,6 +47,20 @@ export const Route = createFileRoute('/(auth)/signup')({
 function SignupPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
+  const source = new URL(href, 'https://onside.local').searchParams.get(
+    'source'
+  )
+  const waitlistId = new URL(href, 'https://onside.local').searchParams.get(
+    'wid'
+  )
+  const launchTracked = useRef(false)
+  useEffect(() => {
+    if (source !== 'waitlist_launch' || !waitlistId || launchTracked.current)
+      return
+    launchTracked.current = true
+    analytics.identifyWaitlist(waitlistId)
+    analytics.launchNoticeOpened()
+  }, [source, waitlistId])
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -107,6 +121,7 @@ function SignupPage() {
         return
       }
       analytics.signupCompleted(role)
+      if (source === 'waitlist_launch') analytics.launchSignupCompleted()
       sessionStorage.setItem(
         PENDING_VERIFICATION_KEY,
         JSON.stringify({ email, role, callbackUrl })

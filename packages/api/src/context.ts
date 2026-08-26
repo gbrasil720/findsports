@@ -2,10 +2,11 @@ import { auth } from '@findsports_oficial/auth'
 
 import { extrairIp } from './lib/client-ip'
 
-type Session = typeof auth.$Infer.Session & {
-  user: typeof auth.$Infer.Session.user & {
+type Session = Omit<typeof auth.$Infer.Session, 'user'> & {
+  user: Omit<typeof auth.$Infer.Session.user, 'admittedAt'> & {
     role: 'fan' | 'pub' | 'admin'
     onboardingCompleted: boolean
+    admittedAt?: Date | null
     searchRadiusKm: number
   }
 }

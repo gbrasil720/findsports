@@ -59,6 +59,15 @@ export const protectedProcedure = comRegistro.use(({ ctx, next }) => {
       message: 'Confirme seu e-mail para continuar.'
     })
   }
+  if (
+    ctx.session.user.role !== 'admin' &&
+    ctx.session.user.admittedAt === null
+  ) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Seu acesso à Onside ainda está pendente.'
+    })
+  }
   return next({
     ctx: {
       ...ctx,

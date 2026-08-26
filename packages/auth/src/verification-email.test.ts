@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   createVerificationEmail,
+  sendEmailWithResend,
   sendVerificationEmailWithResend
 } from './verification-email'
 
@@ -52,5 +53,25 @@ describe('e-mail de verificação Onside', () => {
       to: ['ana@example.com']
     })
     expect(JSON.stringify(body)).not.toContain('re_test')
+  })
+
+  it('repassa a chave idempotente para campanhas', async () => {
+    let request: Request | undefined
+    await sendEmailWithResend({
+      apiKey: 're_test',
+      fromEmail: 'contato@onside.app',
+      to: 'ana@example.com',
+      subject: 'Onside aberta',
+      html: '<p>Olá</p>',
+      text: 'Olá',
+      idempotencyKey: 'waitlist-launch-entry-1',
+      fetcher: async (input, init) => {
+        request = new Request(input, init)
+        return new Response('{}', { status: 200 })
+      }
+    })
+    expect(request?.headers.get('idempotency-key')).toBe(
+      'waitlist-launch-entry-1'
+    )
   })
 })

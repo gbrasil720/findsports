@@ -55,25 +55,41 @@ export async function sendVerificationEmailWithResend(input: {
   logoUrl: string
   fetcher?: EmailFetcher
 }): Promise<void> {
+  const email = createVerificationEmail(input)
+  await sendEmailWithResend({ ...input, ...email })
+}
+
+export async function sendEmailWithResend(input: {
+  apiKey: string | undefined
+  fromEmail: string | undefined
+  to: string
+  subject: string
+  html: string
+  text: string
+  idempotencyKey?: string
+  fetcher?: EmailFetcher
+}): Promise<void> {
   if (!input.apiKey || !input.fromEmail) {
-    throw new Error('Resend não configurado para verificação de e-mail.')
+    throw new Error('Resend não configurado para envio de e-mail.')
   }
 
-  const email = createVerificationEmail(input)
   const response = await (input.fetcher ?? fetch)(
     'https://api.resend.com/emails',
     {
       method: 'POST',
       headers: {
         authorization: `Bearer ${input.apiKey}`,
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        ...(input.idempotencyKey
+          ? { 'idempotency-key': input.idempotencyKey }
+          : {})
       },
       body: JSON.stringify({
         from: `Onside <${input.fromEmail}>`,
         to: [input.to],
-        subject: email.subject,
-        html: email.html,
-        text: email.text
+        subject: input.subject,
+        html: input.html,
+        text: input.text
       })
     }
   )

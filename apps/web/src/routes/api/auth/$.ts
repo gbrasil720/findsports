@@ -5,14 +5,15 @@ import {
 } from '@findsports_oficial/api/lib/billing-gate'
 import {
   acaoDeEntrada,
+  admitirConta,
   consultarEntrada,
   decidirEntrada,
+  ehLoginEmail,
   emailDaRequisicao,
   respostaAdmissaoIndisponivel,
   respostaPortaoFechado
 } from '@findsports_oficial/api/lib/waitlist-gate'
 import { auth } from '@findsports_oficial/auth'
-import { env } from '@findsports_oficial/env/server'
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
@@ -34,7 +35,7 @@ async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   if (!acao) return null
 
   const portao = await getAppConfig('launch.waitlist_gate')
-  const fechado = env.LAUNCH_ADMISSION_MODE === 'invite-only' || portao.signup
+  const fechado = portao.signup
   if (!fechado) return null
 
   // O corpo só pode ser lido uma vez, e a requisição original ainda vai para
@@ -47,7 +48,6 @@ async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   try {
     const { aprovado } = await consultarEntrada(email)
     const decisao = decidirEntrada({
-      modo: env.LAUNCH_ADMISSION_MODE,
       fechadoEmRuntime: portao.signup,
       aprovado
     })
@@ -64,10 +64,22 @@ async function despachar(request: Request): Promise<Response> {
     if (!liberado) return respostaCheckoutIndisponivel()
   }
 
+  const acao = acaoDeEntrada(request.url)
+  const loginEmail = ehLoginEmail(request.url)
+  const email =
+    acao || loginEmail ? await emailDaRequisicao(request.clone()) : null
   const barrado = await portaoDaWaitlist(request)
   if (barrado) return barrado
 
-  return auth.handler(request)
+  const response = await auth.handler(request)
+  if (acao === 'signup' && email && response.ok) {
+    await admitirConta(email)
+  }
+  if (loginEmail && email && response.ok) {
+    const portao = await getAppConfig('launch.waitlist_gate')
+    if (!portao.signup) await admitirConta(email)
+  }
+  return response
 }
 
 export const Route = createFileRoute('/api/auth/$')({

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
+import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
 /**
@@ -20,6 +21,9 @@ import { useTRPC } from '@/utils/trpc'
 type Props = {
   liberados: number
   pendentes: number
+  convitesAtivos: number
+  convitesExpirados: number
+  ativados: number
 }
 
 function Interruptor({
@@ -71,7 +75,13 @@ function Interruptor({
   )
 }
 
-export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
+export function WaitlistAccessPanel({
+  liberados,
+  pendentes,
+  convitesAtivos,
+  convitesExpirados,
+  ativados
+}: Props) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const emailId = useId()
@@ -79,9 +89,11 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
   const [papel, setPapel] = useState<'fan' | 'pub'>('pub')
 
   const configQuery = useQuery(trpc.appConfig.list.queryOptions())
-  const portao = configQuery.data?.find(
+  const portaoEntry = configQuery.data?.find(
     (entrada) => entrada.key === 'launch.waitlist_gate'
-  )?.valor as { signup: boolean } | undefined
+  )
+  const portao = portaoEntry?.valor as { signup: boolean } | undefined
+  const campaignQuery = useQuery(trpc.waitlist.campaignPreview.queryOptions())
 
   async function recarregarConfig() {
     await queryClient.invalidateQueries({
@@ -99,6 +111,7 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
   const convidar = useMutation(
     trpc.waitlist.invite.mutationOptions({
       onSuccess: async (resultado) => {
+        analytics.waitlistInviteSent()
         toast.success(
           resultado.criado
             ? `${resultado.email} liberado por convite.`
@@ -109,12 +122,40 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
           queryKey: trpc.waitlist.getAll.queryKey()
         })
       },
+      onError: async (erro) => {
+        toast.error(erro.message)
+        await queryClient.invalidateQueries({
+          queryKey: trpc.waitlist.getAll.queryKey()
+        })
+      }
+    })
+  )
+
+  const enviarCampanha = useMutation(
+    trpc.waitlist.sendLaunchNotice.mutationOptions({
+      onSuccess: async (resultado) => {
+        analytics.launchNoticeSent(resultado.sent, resultado.failed)
+        toast.success(
+          `${resultado.sent} enviados · ${resultado.failed} falharam.`
+        )
+        await queryClient.invalidateQueries({
+          queryKey: trpc.waitlist.campaignPreview.queryKey()
+        })
+      },
       onError: (erro) => toast.error(erro.message)
     })
   )
 
   function alternar(proximo: boolean) {
     if (!portao) return
+    const acao = proximo ? 'fechar' : 'abrir'
+    if (
+      !window.confirm(
+        `Deseja ${acao} o cadastro para fãs e bares? Essa ação não envia e-mails.`
+      )
+    ) {
+      return
+    }
     salvarPortao.mutate({
       key: 'launch.waitlist_gate',
       value: { signup: proximo }
@@ -129,7 +170,8 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="onside-display text-xl">Acesso à plataforma</h2>
         <p className="font-mono text-[11px] text-[var(--onside-muted)]">
-          {liberados} liberados · {pendentes} pendentes
+          {liberados} liberados · {pendentes} pendentes · {convitesAtivos}{' '}
+          convites ativos · {convitesExpirados} expirados · {ativados} ativados
         </p>
       </header>
 
@@ -148,7 +190,7 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
           <div className="flex flex-col gap-4">
             <Interruptor
               titulo="Cadastro"
-              descricao="Fechado, só e-mail liberado cria conta. Login de contas existentes nunca é afetado. O modo invite-only do deploy continua soberano."
+              descricao="Fechado, só um convite ativa acesso. Aberto, fãs e bares podem criar conta normalmente. Contas já admitidas nunca perdem acesso ao fechar de novo."
               fechado={portao.signup}
               desabilitado={salvando}
               onToggle={alternar}
@@ -159,6 +201,13 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
             Mudanças valem na hora aqui, e em até 60 segundos nas outras
             instâncias — é o cache que evita uma consulta por requisição.
           </p>
+          {portaoEntry?.updatedAt ? (
+            <p className="mt-2 font-mono text-[11px] text-[var(--onside-muted)]">
+              Última alteração:{' '}
+              {new Date(portaoEntry.updatedAt).toLocaleString('pt-BR')} por{' '}
+              {portaoEntry.updatedBy ?? 'admin'}
+            </p>
+          ) : null}
         </>
       ) : (
         <p className="text-sm text-[var(--onside-live-text)]">
@@ -221,6 +270,37 @@ export function WaitlistAccessPanel({ liberados, pendentes }: Props) {
             Liberar
           </button>
         </form>
+      </div>
+
+      <div className="mt-6 border-[var(--onside-line)] border-t pt-5">
+        <p className="onside-kicker text-[var(--onside-ink)]">
+          Aviso de abertura
+        </p>
+        <p className="mt-2 text-xs text-[var(--onside-muted)]">
+          {campaignQuery.data?.eligible ?? 0} elegíveis ·{' '}
+          {campaignQuery.data?.sent ?? 0} já enviados ·{' '}
+          {campaignQuery.data?.failed ?? 0} falhas
+        </p>
+        <button
+          type="button"
+          disabled={
+            enviarCampanha.isPending ||
+            !campaignQuery.data?.eligible ||
+            portao?.signup !== false
+          }
+          onClick={() => {
+            if (
+              window.confirm(
+                `Enviar o aviso genérico para ${campaignQuery.data?.eligible ?? 0} pessoas elegíveis?`
+              )
+            ) {
+              enviarCampanha.mutate()
+            }
+          }}
+          className="onside-btn onside-btn-acid mt-3 min-h-11 text-xs disabled:opacity-40"
+        >
+          {enviarCampanha.isPending ? 'Enviando…' : 'Enviar aviso de abertura'}
+        </button>
       </div>
     </section>
   )

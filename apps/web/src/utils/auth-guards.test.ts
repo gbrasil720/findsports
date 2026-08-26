@@ -5,7 +5,11 @@ import {
   requiresAuthentication
 } from './auth-guards'
 
-function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
+function session(
+  role: 'fan' | 'pub' | 'admin',
+  onboardingCompleted = true,
+  admittedAt: Date | null | undefined = undefined
+) {
   return {
     session: {
       id: 's1',
@@ -23,6 +27,7 @@ function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
       role,
+      admittedAt,
       onboardingCompleted,
       searchRadiusKm: 5,
       twoFactorEnabled: false
@@ -74,6 +79,15 @@ describe('applyAuthGuards', () => {
   test('keeps verification reachable before onboarding finishes', () => {
     expect(() =>
       applyAuthGuards(session('pub', false), '/verify-email')
+    ).not.toThrow()
+  })
+
+  test('sends an existing unapproved account to the pending access screen', () => {
+    expect(() =>
+      applyAuthGuards(session('fan', true, null), '/dashboard')
+    ).toThrow()
+    expect(() =>
+      applyAuthGuards(session('fan', true, null), '/access-pending')
     ).not.toThrow()
   })
 

@@ -258,6 +258,11 @@ export function createAuth() {
           defaultValue: false,
           input: false
         },
+        admittedAt: {
+          type: 'date',
+          required: false,
+          input: false
+        },
         searchRadiusKm: {
           type: 'number',
           required: false,

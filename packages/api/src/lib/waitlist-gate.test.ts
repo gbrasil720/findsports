@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   acaoDeEntrada,
   decidirEntrada,
+  ehLoginEmail,
   emailDaRequisicao,
   respostaAdmissaoIndisponivel,
   respostaPortaoFechado
@@ -21,33 +22,31 @@ describe('admissão da waitlist', () => {
     ]) {
       expect(acaoDeEntrada(`https://onside.app${path}`)).toBeNull()
     }
+    expect(ehLoginEmail('https://onside.app/api/auth/sign-in/email')).toBe(true)
+    expect(ehLoginEmail('/api/auth/sign-up/email')).toBe(false)
   })
 
-  it('open permite, runtime pode fechar e invite-only não pode ser aberto', () => {
+  it('o painel persistido abre ou fecha sem depender de novo deploy', () => {
     expect(
       decidirEntrada({
-        modo: 'open',
         fechadoEmRuntime: false,
         aprovado: false
       })
     ).toEqual({ permitido: true })
     expect(
       decidirEntrada({
-        modo: 'open',
         fechadoEmRuntime: true,
         aprovado: false
       }).permitido
     ).toBe(false)
     expect(
       decidirEntrada({
-        modo: 'invite-only',
         fechadoEmRuntime: false,
         aprovado: false
-      }).permitido
-    ).toBe(false)
+      })
+    ).toEqual({ permitido: true })
     expect(
       decidirEntrada({
-        modo: 'invite-only',
         fechadoEmRuntime: false,
         aprovado: true
       })

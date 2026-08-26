@@ -13,12 +13,6 @@ import Check from 'reicon-react/icons/Check'
 import { analytics } from '../../lib/analytics'
 import { useTRPCClient } from '../../utils/trpc'
 
-type WaitlistSubmitFailureCategory =
-  | 'conflict'
-  | 'network'
-  | 'server'
-  | 'unknown'
-
 type FanPayload = {
   role: 'fan'
   city: string
@@ -36,43 +30,12 @@ type PubPayload = {
 
 const GENERIC_ERROR =
   'Não foi possível registrar agora. Verifique sua conexão e tente novamente.'
-const CONFLICT_ERROR =
-  'Este e-mail já está cadastrado para esta cidade. Se precisar de ajuda, fale com a gente.'
 
 function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-function classifyJoinError(error: Error): WaitlistSubmitFailureCategory {
-  const message = error.message.toLowerCase()
-  if (
-    message.includes('já cadastrado') ||
-    message.includes('conflict') ||
-    message.includes('already')
-  ) {
-    return 'conflict'
-  }
-  if (
-    message.includes('network') ||
-    message.includes('fetch') ||
-    message.includes('failed to fetch') ||
-    message.includes('timeout')
-  ) {
-    return 'network'
-  }
-  if (
-    message.includes('500') ||
-    message.includes('502') ||
-    message.includes('503') ||
-    message.includes('internal')
-  ) {
-    return 'server'
-  }
-  return 'unknown'
-}
-
-function mapJoinError(error: Error) {
-  if (classifyJoinError(error) === 'conflict') return CONFLICT_ERROR
+function mapJoinError() {
   return GENERIC_ERROR
 }
 
@@ -90,13 +53,14 @@ export function OnsideFanWaitlistForm() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: FanPayload) => client.waitlist.join.mutate(data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      analytics.identifyWaitlist(data.waitlistId)
       setSuccessCity(variables.city)
       setFormError(null)
       analytics.waitlistSubmitted('fan')
     },
-    onError: (error: Error) => {
-      setFormError(mapJoinError(error))
+    onError: () => {
+      setFormError(mapJoinError())
     }
   })
 
@@ -145,10 +109,10 @@ export function OnsideFanWaitlistForm() {
           <Check size={22} aria-hidden="true" focusable="false" />
         </span>
         <div>
-          <b>Cidade registrada: {successCity}.</b>
+          <b>Confira seu e-mail.</b>
           <small>
-            Vamos avisar pelo e-mail informado quando a Onside avançar por
-            perto.
+            Enviamos um link para confirmar sua entrada ou atualização na
+            waitlist de {successCity}.
           </small>
         </div>
       </div>
@@ -266,13 +230,14 @@ export function OnsideBarInterestForm() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: PubPayload) => client.waitlist.join.mutate(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      analytics.identifyWaitlist(data.waitlistId)
       setSuccess(true)
       setFormError(null)
       analytics.waitlistSubmitted('pub')
     },
-    onError: (error: Error) => {
-      setFormError(mapJoinError(error))
+    onError: () => {
+      setFormError(mapJoinError())
     }
   })
 
@@ -326,10 +291,10 @@ export function OnsideBarInterestForm() {
   if (success) {
     return (
       <div className="onside-bar-form-success" role="status" aria-live="polite">
-        <b>Interesse recebido.</b>
+        <b>Confira seu e-mail.</b>
         <small>
-          Vamos entrar em contato pelo e-mail informado quando o piloto avançar
-          na sua cidade.
+          Enviamos um link para confirmar sua entrada ou atualização na
+          waitlist.
         </small>
       </div>
     )

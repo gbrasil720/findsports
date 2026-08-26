@@ -29,7 +29,7 @@ import {
 } from './onside-landing-content'
 import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
 
-function OnsideHeader() {
+function OnsideHeader({ publicSignup }: { publicSignup: boolean }) {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuId = useId()
@@ -101,10 +101,10 @@ function OnsideHeader() {
 
         <a
           className="onside-nav-cta"
-          href="#lista"
+          href={publicSignup ? '/signup' : '#lista'}
           data-cta="nav_city_waitlist"
         >
-          Levar a Onside à minha cidade{' '}
+          {publicSignup ? 'Criar conta' : 'Levar a Onside à minha cidade'}{' '}
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
           </span>
@@ -158,10 +158,10 @@ function OnsideHeader() {
           ))}
           <a
             className="onside-button onside-button-acid"
-            href="#lista"
+            href={publicSignup ? '/signup' : '#lista'}
             data-cta="nav_city_waitlist"
           >
-            Levar a Onside à minha cidade
+            {publicSignup ? 'Criar conta' : 'Levar a Onside à minha cidade'}
           </a>
         </div>
       ) : null}
@@ -509,13 +509,22 @@ function ProofList({
 }
 
 export function OnsideLanding() {
+  const trpc = useTRPC()
+  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const publicSignup =
+    configQuery.data?.['launch.waitlist_gate']?.signup === false
+  const primaryHref = publicSignup ? '/signup' : '#lista'
+  const primaryLabel = publicSignup
+    ? 'Criar conta'
+    : 'Levar a Onside à minha cidade'
+
   return (
     <div className="onside-page">
       <a className="onside-skip-link" href="#main">
         Pular para o conteúdo
       </a>
 
-      <OnsideHeader />
+      <OnsideHeader publicSignup={publicSignup} />
 
       <main id="main">
         <section className="onside-hero" id="top">
@@ -543,10 +552,10 @@ export function OnsideLanding() {
               <div className="onside-hero-actions">
                 <a
                   className="onside-button onside-button-acid"
-                  href="#lista"
+                  href={primaryHref}
                   data-cta="hero_city_waitlist"
                 >
-                  Levar a Onside à minha cidade{' '}
+                  {primaryLabel}{' '}
                   <span className="onside-inline-icon" aria-hidden="true">
                     <ArrowRight
                       size={16}
@@ -575,7 +584,7 @@ export function OnsideLanding() {
                 items={[
                   'Grátis para torcedores',
                   'Sem newsletter',
-                  '1 e-mail no lançamento'
+                  'Confirmação e convite por e-mail'
                 ]}
               />
             </div>
@@ -715,10 +724,10 @@ export function OnsideLanding() {
             </p>
             <a
               className="onside-button onside-button-acid"
-              href="#lista"
+              href={primaryHref}
               data-cta="community_city_waitlist"
             >
-              Levar a Onside à minha cidade{' '}
+              {primaryLabel}{' '}
               <span className="onside-inline-icon" aria-hidden="true">
                 <ArrowRight size={16} aria-hidden="true" focusable="false" />
               </span>
@@ -730,28 +739,42 @@ export function OnsideLanding() {
           <div className="onside-shell onside-waitlist-grid">
             <div className="onside-waitlist-copy">
               <p className="onside-section-kicker onside-acid-text">
-                AJUDE A ONSIDE A CHEGAR
+                {publicSignup
+                  ? 'A ONSIDE ESTÁ ABERTA'
+                  : 'AJUDE A ONSIDE A CHEGAR'}
               </p>
               <h2>
-                LEVE A ONSIDE
-                <br />À SUA <em>CIDADE.</em>
+                {publicSignup ? 'ENTRE EM CAMPO' : 'LEVE A ONSIDE'}
+                <br />
+                {publicSignup ? (
+                  <em>AGORA.</em>
+                ) : (
+                  <>
+                    À SUA <em>CIDADE.</em>
+                  </>
+                )}
               </h2>
               <p>
-                As primeiras cidades serão escolhidas pela demanda de torcedores
-                e pela adesão de bares. Seu cadastro conta na demanda da sua
-                cidade e você recebe um e-mail quando houver lançamento por
-                perto.
+                {publicSignup
+                  ? 'Crie sua conta para encontrar onde assistir e participar da comunidade Onside.'
+                  : 'As primeiras cidades serão escolhidas pela demanda de torcedores e pela adesão de bares. Confirme seu cadastro para entrar na waitlist.'}
               </p>
               <ProofList
                 className="onside-waitlist-facts"
                 items={[
                   'Grátis para torcedores',
                   'Sem newsletter',
-                  '1 e-mail no lançamento'
+                  'Controle pelo próprio e-mail'
                 ]}
               />
             </div>
-            <OnsideFanWaitlistForm />
+            {publicSignup ? (
+              <a className="onside-button onside-button-acid" href="/signup">
+                Criar conta
+              </a>
+            ) : (
+              <OnsideFanWaitlistForm />
+            )}
           </div>
         </section>
 
@@ -784,10 +807,12 @@ export function OnsideLanding() {
               </div>
               <a
                 className="onside-button onside-button-ink"
-                href="#bar-form"
+                href={publicSignup ? '/signup' : '#bar-form'}
                 data-cta="bars_register_interest"
               >
-                Quero participar do piloto{' '}
+                {publicSignup
+                  ? 'Criar conta do bar'
+                  : 'Quero participar do piloto'}{' '}
                 <span className="onside-inline-icon" aria-hidden="true">
                   <ArrowUpRight
                     size={16}
@@ -807,7 +832,13 @@ export function OnsideLanding() {
               <p className="onside-section-kicker">VOCÊ TEM UM BAR?</p>
               <h2>CONTE SOBRE SEU BAR.</h2>
             </div>
-            <OnsideBarInterestForm />
+            {publicSignup ? (
+              <a className="onside-button onside-button-acid" href="/signup">
+                Criar conta do bar
+              </a>
+            ) : (
+              <OnsideBarInterestForm />
+            )}
           </div>
         </section>
 
@@ -848,17 +879,17 @@ export function OnsideLanding() {
             </h2>
             <a
               className="onside-button onside-button-ink"
-              href="#lista"
+              href={primaryHref}
               data-cta="final_city_waitlist"
             >
-              Levar a Onside à minha cidade{' '}
+              {primaryLabel}{' '}
               <span className="onside-inline-icon" aria-hidden="true">
                 <ArrowRight size={16} aria-hidden="true" focusable="false" />
               </span>
             </a>
             <ProofList
               className="onside-final-proof"
-              items={['Grátis', 'Sem newsletter', '1 e-mail no lançamento']}
+              items={['Grátis', 'Sem newsletter', 'Acesso pelo seu e-mail']}
             />
           </div>
         </section>

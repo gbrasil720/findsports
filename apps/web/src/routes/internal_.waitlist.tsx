@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
 import { WaitlistAccessPanel } from '@/components/internal/waitlist-access-panel'
 import { getUser } from '@/functions/get-user'
+import { analytics } from '@/lib/analytics'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
@@ -107,6 +108,7 @@ function AdminWaitlistPage() {
   const aprovacao = useMutation(
     trpc.waitlist.setApproval.mutationOptions({
       onSuccess: async (resultado) => {
+        if (resultado.approved) analytics.waitlistInviteSent()
         toast.success(
           resultado.approved
             ? `${resultado.email} liberado.`
@@ -116,7 +118,12 @@ function AdminWaitlistPage() {
           queryKey: trpc.waitlist.getAll.queryKey()
         })
       },
-      onError: (erro) => toast.error(erro.message)
+      onError: async (erro) => {
+        toast.error(erro.message)
+        await queryClient.invalidateQueries({
+          queryKey: trpc.waitlist.getAll.queryKey()
+        })
+      }
     })
   )
   const {
@@ -166,9 +173,27 @@ function AdminWaitlistPage() {
     subscribers.filter((s) => s.approvedAt).map((s) => s.email)
   )
   const emailsPendentes = new Set(
-    subscribers.filter((s) => !s.approvedAt).map((s) => s.email)
+    subscribers
+      .filter((s) => !s.approvedAt && s.confirmedAt && !s.cancelledAt)
+      .map((s) => s.email)
   )
   for (const email of emailsLiberados) emailsPendentes.delete(email)
+  const agora = Date.now()
+  const convitesAtivos = subscribers.filter(
+    (s) =>
+      s.approvedAt &&
+      !s.activatedAt &&
+      s.inviteExpiresAt &&
+      new Date(s.inviteExpiresAt).getTime() > agora
+  ).length
+  const convitesExpirados = subscribers.filter(
+    (s) =>
+      s.approvedAt &&
+      !s.activatedAt &&
+      s.inviteExpiresAt &&
+      new Date(s.inviteExpiresAt).getTime() <= agora
+  ).length
+  const ativados = subscribers.filter((s) => s.activatedAt).length
 
   function escapeCsv(value: string) {
     return `"${value.replace(/"/g, '""')}"`
@@ -221,6 +246,9 @@ function AdminWaitlistPage() {
       <WaitlistAccessPanel
         liberados={emailsLiberados.size}
         pendentes={emailsPendentes.size}
+        convitesAtivos={convitesAtivos}
+        convitesExpirados={convitesExpirados}
+        ativados={ativados}
       />
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -381,6 +409,12 @@ function AdminWaitlistPage() {
           <ul className="mb-4 space-y-3 md:hidden" aria-label="Inscritos">
             {filtered.map((s) => {
               const label = entryLabel(s)
+              const conviteExpirado = Boolean(
+                s.approvedAt &&
+                  !s.activatedAt &&
+                  s.inviteExpiresAt &&
+                  new Date(s.inviteExpiresAt).getTime() <= Date.now()
+              )
               return (
                 <li key={s.id} className="onside-panel p-4">
                   <div className="mb-3 flex items-start gap-3">
@@ -399,6 +433,11 @@ function AdminWaitlistPage() {
                       <span className="onside-badge onside-badge-stone mt-1">
                         {roleLabel(s.role)}
                       </span>
+                      {s.accountExists && !s.approvedAt ? (
+                        <span className="onside-badge onside-badge-stone mt-1 ml-1">
+                          Conta existente — acesso pendente
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <dl className="space-y-1.5 text-sm">
@@ -428,6 +467,35 @@ function AdminWaitlistPage() {
                       <dt className="text-[var(--onside-muted)]">Inscrição</dt>
                       <dd className="text-right tabular-nums">
                         {formatDate(s.createdAt)}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <dt className="text-[var(--onside-muted)]">Acesso</dt>
+                      <dd>
+                        <button
+                          type="button"
+                          disabled={
+                            Boolean(
+                              s.activatedAt || s.cancelledAt || !s.confirmedAt
+                            ) || aprovacao.isPending
+                          }
+                          onClick={() =>
+                            aprovacao.mutate({
+                              email: s.email,
+                              approved:
+                                s.inviteError || conviteExpirado
+                                  ? true
+                                  : !s.approvedAt
+                            })
+                          }
+                          className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+                        >
+                          {s.approvedAt
+                            ? s.inviteError || conviteExpirado
+                              ? 'Reenviar convite'
+                              : 'Revogar'
+                            : 'Aprovar e convidar'}
+                        </button>
                       </dd>
                     </div>
                   </dl>
@@ -471,6 +539,12 @@ function AdminWaitlistPage() {
                 <TableBody>
                   {filtered.map((s) => {
                     const label = entryLabel(s)
+                    const conviteExpirado = Boolean(
+                      s.approvedAt &&
+                        !s.activatedAt &&
+                        s.inviteExpiresAt &&
+                        new Date(s.inviteExpiresAt).getTime() <= Date.now()
+                    )
                     return (
                       <TableRow
                         key={s.id}
@@ -525,23 +599,49 @@ function AdminWaitlistPage() {
                                   : 'onside-badge onside-badge-stone'
                               }
                             >
-                              {s.approvedAt ? 'Liberado' : 'Pendente'}
+                              {s.activatedAt
+                                ? 'Conta ativada'
+                                : s.accountExists && !s.approvedAt
+                                  ? 'Conta existente — acesso pendente'
+                                  : s.cancelledAt
+                                    ? 'Saiu da lista'
+                                    : !s.confirmedAt
+                                      ? 'Aguardando confirmação'
+                                      : s.approvedAt
+                                        ? s.inviteError
+                                          ? 'Aprovado — falha no envio'
+                                          : conviteExpirado
+                                            ? 'Convite expirado'
+                                            : 'Convite enviado'
+                                        : 'Pendente'}
                             </span>
                             <button
                               type="button"
                               disabled={
-                                aprovacao.isPending &&
-                                aprovacao.variables?.email === s.email
+                                Boolean(
+                                  s.activatedAt ||
+                                    s.cancelledAt ||
+                                    !s.confirmedAt
+                                ) ||
+                                (aprovacao.isPending &&
+                                  aprovacao.variables?.email === s.email)
                               }
                               onClick={() =>
                                 aprovacao.mutate({
                                   email: s.email,
-                                  approved: !s.approvedAt
+                                  approved:
+                                    s.inviteError || conviteExpirado
+                                      ? true
+                                      : !s.approvedAt
                                 })
                               }
                               className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
                             >
-                              {s.approvedAt ? 'Revogar' : 'Liberar'}
+                              {s.approvedAt
+                                ? s.inviteError || conviteExpirado
+                                  ? 'Reenviar'
+                                  : 'Revogar'
+                                : 'Aprovar e convidar'}
                             </button>
                           </div>
                         </TableCell>

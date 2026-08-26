@@ -12,8 +12,29 @@ export type { PageSurface } from './page-surface'
  * Pageviews stay on `$pageview` (with `surface`). Autocapture is off.
  */
 export const analytics = {
+  identifyWaitlist: (waitlistId: string) =>
+    posthog.identify(`waitlist:${waitlistId}`),
+
   waitlistSubmitted: (role: UserRole) =>
     posthog.capture('waitlist_submitted', { role }),
+
+  waitlistConfirmed: () => posthog.capture('waitlist_confirmed'),
+
+  waitlistCancelled: () => posthog.capture('waitlist_cancelled'),
+
+  waitlistInviteSent: () => posthog.capture('waitlist_invite_sent'),
+
+  waitlistInviteOpened: () => posthog.capture('waitlist_invite_opened'),
+
+  waitlistActivated: () => posthog.capture('waitlist_activated'),
+
+  launchNoticeSent: (sent: number, failed: number) =>
+    posthog.capture('waitlist_launch_notice_sent', { sent, failed }),
+
+  launchSignupCompleted: () =>
+    posthog.capture('waitlist_launch_signup_completed'),
+
+  launchNoticeOpened: () => posthog.capture('waitlist_launch_opened'),
 
   signupCompleted: (role: UserRole) => {
     posthog.capture('signup_completed', { role })
@@ -87,6 +108,10 @@ export function identifyUser(user: {
   name?: string | null
   role?: string | null
 }) {
+  const previousId = posthog.get_distinct_id()
+  if (previousId.startsWith('waitlist:') && previousId !== user.id) {
+    posthog.alias(user.id, previousId)
+  }
   posthog.identify(user.id, {
     email: user.email,
     name: user.name,

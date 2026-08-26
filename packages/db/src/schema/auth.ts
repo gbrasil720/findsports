@@ -20,6 +20,7 @@ export const user = pgTable('user', {
     .notNull()
     .default('fan'),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
+  admittedAt: timestamp('admitted_at'),
   searchRadiusKm: integer('search_radius_km').default(3).notNull(),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   // better-auth admin plugin fields

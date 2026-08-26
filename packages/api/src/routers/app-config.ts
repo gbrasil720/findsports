@@ -1,4 +1,3 @@
-import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -76,11 +75,7 @@ export const appConfigRouter = router({
     const config = await appConfigStore.getPublic()
     return {
       ...config,
-      'launch.waitlist_gate': {
-        signup:
-          env.LAUNCH_ADMISSION_MODE === 'invite-only' ||
-          config['launch.waitlist_gate'].signup
-      }
+      'launch.waitlist_gate': config['launch.waitlist_gate']
     }
   })
 })

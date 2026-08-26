@@ -21,6 +21,7 @@ export type AuthSession = {
     updatedAt: Date
     role: 'fan' | 'pub' | 'admin'
     onboardingCompleted: boolean
+    admittedAt?: Date | null
     searchRadiusKm: number
     twoFactorEnabled: boolean
   }
@@ -51,6 +52,29 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
   // O callback precisa finalizar o login e, para bares, consumir o rascunho
   // do onboarding antes que o guard encaminhe para a rota seguinte.
   if (pathname.startsWith('/verify-email')) return
+
+  if (
+    session.user.role !== 'admin' &&
+    session.user.admittedAt === null &&
+    !pathname.startsWith('/access-pending')
+  ) {
+    throw redirect({ to: '/access-pending' })
+  }
+
+  if (
+    session.user.admittedAt !== null &&
+    pathname.startsWith('/access-pending')
+  ) {
+    throw redirect({
+      to: session.user.onboardingCompleted
+        ? session.user.role === 'pub'
+          ? '/admin'
+          : '/dashboard'
+        : session.user.role === 'pub'
+          ? '/onboarding/pub'
+          : '/onboarding/fan'
+    })
+  }
 
   if (!session.user.onboardingCompleted) {
     const onboardingRoute =
