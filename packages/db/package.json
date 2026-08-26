@@ -22,7 +22,6 @@
     "db:seed:teams": "bun --env-file=../../apps/web/.env run src/seed/teams.ts"
   },
   "dependencies": {
-    "@findsports_oficial/env": "workspace:*",
     "@neondatabase/serverless": "^1.0.2",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",

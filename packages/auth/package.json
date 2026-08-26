@@ -19,7 +19,6 @@
     "@vercel/functions": "^3.9.5",
     "better-auth": "catalog:",
     "dodopayments": "^2.37.0",
-    "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

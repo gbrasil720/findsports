@@ -22,10 +22,8 @@
     "@findsports_oficial/auth": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
-    "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@upstash/redis": "^1.35.3",
-    "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
   },

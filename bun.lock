@@ -65,10 +65,8 @@
         "@findsports_oficial/auth": "workspace:*",
         "@findsports_oficial/db": "workspace:*",
         "@findsports_oficial/env": "workspace:*",
-        "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
         "@upstash/redis": "^1.35.3",
-        "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "zod": "catalog:",
       },
@@ -87,7 +85,6 @@
         "@vercel/functions": "^3.9.5",
         "better-auth": "catalog:",
         "dodopayments": "^2.37.0",
-        "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -103,7 +100,6 @@
     "packages/db": {
       "name": "@findsports_oficial/db",
       "dependencies": {
-        "@findsports_oficial/env": "workspace:*",
         "@neondatabase/serverless": "^1.0.2",
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
@@ -142,7 +138,6 @@
         "lucide-react": "^0.546.0",
         "next-themes": "catalog:",
         "react": "^19.2.3",
-        "react-dom": "^19.2.3",
         "shadcn": "^3.6.2",
         "sonner": "^2.0.5",
         "tailwind-merge": "^3.3.1",
