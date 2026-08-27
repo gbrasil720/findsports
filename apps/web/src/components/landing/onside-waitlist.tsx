@@ -200,7 +200,7 @@ export function OnsideFanWaitlistForm() {
         disabled={isPending}
         className="onside-button onside-button-acid onside-full-button"
       >
-        {isPending ? 'Registrando…' : 'Quero na minha cidade'}
+        {isPending ? 'Registrando…' : 'Quero a Onside na minha cidade'}
         {!isPending ? (
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowRight size={16} aria-hidden="true" focusable="false" />

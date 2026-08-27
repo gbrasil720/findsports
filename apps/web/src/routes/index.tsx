@@ -9,7 +9,7 @@ const HOMEPAGE_SCHEMA = {
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'Web',
   description:
-    'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.',
+    'A Onside vai ajudar torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Cadastre sua cidade para ser avisado no lançamento.',
   url: SITE_URL,
   inLanguage: 'pt-BR',
   audience: {
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/')({
       {
         name: 'description',
         content:
-          'A Onside vai reunir bares que confirmaram a transmissão do seu jogo. Compare o ambiente e cadastre sua cidade para ajudar a definir o primeiro lançamento.'
+          'A Onside vai ajudar torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Cadastre sua cidade para ser avisado no lançamento.'
       },
       {
         name: 'theme-color',
@@ -45,7 +45,7 @@ export const Route = createFileRoute('/')({
       {
         property: 'og:description',
         content:
-          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar a Onside a chegar até você.'
+          'Compare bares por jogo, infraestrutura, preço médio e distância. Cadastre sua cidade para ajudar a Onside a chegar até você.'
       },
       {
         property: 'og:type',
@@ -87,7 +87,7 @@ export const Route = createFileRoute('/')({
       {
         name: 'twitter:description',
         content:
-          'Compare bares por jogo, distância, lotação, som, telões e torcida. Cadastre sua cidade para ajudar a Onside a chegar até você.'
+          'Compare bares por jogo, infraestrutura, preço médio e distância. Cadastre sua cidade para ajudar a Onside a chegar até você.'
       },
       {
         name: 'twitter:image',
