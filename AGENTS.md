@@ -1,6 +1,12 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Instruções para qualquer agente trabalhando neste repositório — Claude Code, Codex,
+Cursor, Gemini CLI, Grok. Este é o arquivo canônico; os demais apenas apontam para cá.
+
+A CLI do Grok lê este arquivo nativamente, e também `CLAUDE.md` por compatibilidade.
+Se a sua ferramenta lê outro arquivo de regras (`.cursorrules`, `GEMINI.md`,
+`.clinerules`, `.github/copilot-instructions.md`), crie-o apontando para cá em vez de
+copiar o conteúdo — duas cópias divergem na primeira edição.
 
 ## Commands
 
@@ -84,6 +90,19 @@ Import shared components: `import { Button } from "@findsports_oficial/ui/compon
 ### Routing
 
 TanStack Router file-based routing — `routeTree.gen.ts` is auto-generated, never edit manually. Route context carries `trpc` (TRPCOptionsProxy) and `queryClient`.
+
+## Linear
+
+Este repositório é rastreado no Linear (workspace `onside-sh`, time `ONS`), via
+`orca linear`. **Antes de criar ou atualizar qualquer ticket, leia `docs/linear.md`** —
+ele define a taxonomia obrigatória (Type, Area, project), a estrutura da descrição, e a
+diferença entre `Done` e `Shipped`.
+
+Regra que vale em toda tarefa, mesmo sem o usuário pedir: ao terminar, rode a varredura
+da seção 1 de `docs/linear.md` e **pergunte** sobre cada achado — defeito fora do escopo,
+correção sem ticket, bloqueio, ticket existente que ficou desatualizado, decisão de
+implementação tomada. Uma pergunta só, no fim, listando os itens. Não crie nem edite
+ticket sem resposta do usuário.
 
 ## Product context
 
