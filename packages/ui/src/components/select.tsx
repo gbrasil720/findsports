@@ -48,15 +48,16 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={
-          <ChevronDown
-            size={16}
-            color="currentColor"
-            className="pointer-events-none size-4 text-muted-foreground"
-          />
-        }
-      />
+      {/*
+        O ícone vai como children, não como `render`. `Select.Icon` traz
+        `children: '▼'` nos props padrão; com `render`, esse children chega
+        no `...rest` do ícone — que já monta o `<svg>` com
+        `dangerouslySetInnerHTML` — e o React quebra a página inteira com
+        "Can only set one of `children` or `props.dangerouslySetInnerHTML`".
+      */}
+      <SelectPrimitive.Icon className="pointer-events-none flex text-muted-foreground">
+        <ChevronDown size={16} color="currentColor" className="size-4" />
+      </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
 }
