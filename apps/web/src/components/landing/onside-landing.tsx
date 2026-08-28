@@ -26,7 +26,7 @@ import {
   TICKER_BENEFITS,
   type TickerLiveItem
 } from './onside-landing-content'
-import { OnsideFanWaitlistForm } from './onside-waitlist'
+import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
 
 function OnsideHeader() {
   const [scrolled, setScrolled] = useState(false)
@@ -734,6 +734,16 @@ export function OnsideLanding() {
           </div>
         </section>
 
+        <section className="onside-bar-mini-form" id="bar-form">
+          <div className="onside-shell onside-bar-form-inner">
+            <div>
+              <p className="onside-section-kicker">VOCÊ TEM UM BAR?</p>
+              <h2>ENTRE NA WAITLIST.</h2>
+            </div>
+            <OnsideBarInterestForm />
+          </div>
+        </section>
+
         <section className="onside-faq onside-section-pad" id="duvidas">
           <div className="onside-shell onside-faq-grid">
             <div>
@@ -795,6 +805,7 @@ export function OnsideLanding() {
           <p>Feito por quem prefere a mesa ao sofá.</p>
           <div className="onside-footer-links">
             <a href="#lista">Waitlist</a>
+            <a href="#bar-form">Para bares</a>
             <a href="#duvidas">Dúvidas</a>
             <a href="mailto:contato@onside.sh">Contato</a>
           </div>

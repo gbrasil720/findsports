@@ -396,7 +396,7 @@ export function OnsideBarInterestForm() {
       ) : null}
 
       <Button type="submit" disabled={isPending} className="onside-bar-submit">
-        {isPending ? 'Cadastrando…' : 'Cadastrar meu bar no piloto'}
+        {isPending ? 'Cadastrando…' : 'Cadastrar meu bar na waitlist'}
         {!isPending ? (
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowRight size={16} aria-hidden="true" focusable="false" />
