@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
+import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
@@ -66,8 +68,12 @@ function ActivateInvitePage() {
   }
 
   return (
-    <main className="onside-shell flex min-h-screen items-center justify-center px-4 py-12">
-      <section className="onside-panel w-full max-w-lg p-6 sm:p-8">
+    <OnboardingLayout>
+      <OnboardingHeader label="Ativação de convite" />
+      <main
+        className="onside-panel onside-shadow-acid mx-auto w-full max-w-lg p-6 sm:p-8"
+        aria-busy={invite.isPending || pending}
+      >
         <p className="onside-kicker">Convite Onside</p>
         <h1 className="onside-display mt-3 text-4xl">Ative sua conta</h1>
         <p className="mt-3 text-sm text-[var(--onside-muted)]">
@@ -75,60 +81,82 @@ function ActivateInvitePage() {
           entrar.
         </p>
         <form onSubmit={submit} className="mt-6 grid gap-4">
-          <label className="grid gap-1 text-sm font-bold">
-            E-mail do convite
+          <div>
+            <label htmlFor="invite-email" className="onside-label">
+              E-mail do convite
+            </label>
             <input
+              id="invite-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              spellCheck={false}
               value={invite.data?.email ?? ''}
               disabled
-              className="min-h-11 border border-[var(--onside-ink)] bg-black/5 px-3"
+              className="onside-input bg-[var(--onside-stone)]"
             />
-          </label>
-          <label className="grid gap-1 text-sm font-bold">
-            Nome completo
+          </div>
+          <div>
+            <label htmlFor="invite-name" className="onside-label">
+              Nome completo
+            </label>
             <input
+              id="invite-name"
               name="name"
+              autoComplete="name"
               required
               minLength={2}
               maxLength={100}
-              className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+              className="onside-input"
             />
-          </label>
-          <label className="grid gap-1 text-sm font-bold">
-            Senha
+          </div>
+          <div>
+            <label htmlFor="invite-password" className="onside-label">
+              Senha
+            </label>
             <input
+              id="invite-password"
               name="password"
               type="password"
+              autoComplete="new-password"
               required
               minLength={8}
               maxLength={128}
-              className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+              className="onside-input"
             />
-          </label>
-          <label className="grid gap-1 text-sm font-bold">
-            Confirmar senha
+          </div>
+          <div>
+            <label
+              htmlFor="invite-password-confirmation"
+              className="onside-label"
+            >
+              Confirmar senha
+            </label>
             <input
+              id="invite-password-confirmation"
               name="passwordConfirmation"
               type="password"
+              autoComplete="new-password"
               required
               minLength={8}
               maxLength={128}
-              className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+              className="onside-input"
             />
-          </label>
+          </div>
           {error || invite.error ? (
-            <p role="alert" className="text-sm text-[var(--onside-live-text)]">
+            <p role="alert" className="onside-field-error">
               {error || invite.error?.message}
             </p>
           ) : null}
           <button
             disabled={pending || !invite.data}
-            className="onside-btn onside-btn-acid min-h-11 disabled:opacity-40"
+            className="onside-btn onside-btn-acid onside-btn-full"
             type="submit"
           >
             {pending ? 'Ativando…' : 'Criar senha e entrar'}
           </button>
         </form>
-      </section>
-    </main>
+      </main>
+    </OnboardingLayout>
   )
 }

@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
+import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
@@ -28,8 +30,13 @@ function ConfirmWaitlistPage() {
   }, [mutate, token])
 
   return (
-    <main className="onside-shell flex min-h-screen items-center justify-center px-4">
-      <section className="onside-panel max-w-xl p-8 text-center">
+    <OnboardingLayout>
+      <OnboardingHeader label="Confirmação de e-mail" />
+      <main
+        className="onside-panel onside-shadow-acid mx-auto max-w-xl p-6 text-center sm:p-8"
+        aria-busy={confirm.isPending}
+        aria-live="polite"
+      >
         <p className="onside-kicker">Waitlist Onside</p>
         <h1 className="onside-display mt-3 text-4xl">
           {confirm.isSuccess
@@ -48,7 +55,7 @@ function ConfirmWaitlistPage() {
         <Link to="/" className="onside-btn onside-btn-acid mt-6 inline-flex">
           Voltar ao início
         </Link>
-      </section>
-    </main>
+      </main>
+    </OnboardingLayout>
   )
 }

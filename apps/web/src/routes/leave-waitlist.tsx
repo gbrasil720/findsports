@@ -1,5 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
+import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
@@ -19,31 +21,41 @@ function LeaveWaitlistPage() {
     })
   )
   return (
-    <main className="onside-shell flex min-h-screen items-center justify-center px-4">
-      <section className="onside-panel max-w-xl p-8 text-center">
+    <OnboardingLayout>
+      <OnboardingHeader label="Lista de espera" />
+      <main
+        className="onside-panel onside-shadow-acid mx-auto max-w-xl p-6 text-center sm:p-8"
+        aria-busy={leave.isPending}
+        aria-live="polite"
+      >
         <p className="onside-kicker">Waitlist Onside</p>
         <h1 className="onside-display mt-3 text-4xl">
           {leave.isSuccess ? 'Você saiu da lista' : 'Sair da waitlist?'}
         </h1>
         {leave.isError ? (
-          <p className="mt-4 text-[var(--onside-live-text)]">
+          <p
+            role="alert"
+            className="mt-4 text-sm text-[var(--onside-live-text)]"
+          >
             {leave.error.message}
           </p>
         ) : null}
-        {!leave.isSuccess ? (
-          <button
-            type="button"
-            disabled={leave.isPending || !token}
-            onClick={() => leave.mutate({ token })}
-            className="onside-btn onside-btn-acid mt-6 min-h-11 disabled:opacity-40"
-          >
-            {leave.isPending ? 'Saindo…' : 'Confirmar saída'}
-          </button>
-        ) : null}
-        <Link to="/" className="onside-btn onside-btn-outline mt-6 inline-flex">
-          Voltar ao início
-        </Link>
-      </section>
-    </main>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          {!leave.isSuccess ? (
+            <button
+              type="button"
+              disabled={leave.isPending || !token}
+              onClick={() => leave.mutate({ token })}
+              className="onside-btn onside-btn-acid"
+            >
+              {leave.isPending ? 'Saindo…' : 'Confirmar saída'}
+            </button>
+          ) : null}
+          <Link to="/" className="onside-btn onside-btn-outline inline-flex">
+            Voltar ao início
+          </Link>
+        </div>
+      </main>
+    </OnboardingLayout>
   )
 }

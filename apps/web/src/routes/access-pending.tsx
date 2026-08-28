@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
+import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
+import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
 import { useTRPC } from '@/utils/trpc'
 
@@ -45,8 +47,13 @@ function AccessPendingPage() {
   }
 
   return (
-    <main className="onside-shell flex min-h-screen items-center justify-center px-4 py-12">
-      <section className="onside-panel w-full max-w-xl p-6 sm:p-8">
+    <OnboardingLayout>
+      <OnboardingHeader label="Acesso antecipado" />
+      <main
+        className="onside-panel onside-shadow-acid mx-auto w-full max-w-xl p-6 sm:p-8"
+        aria-busy={join.isPending}
+        aria-live="polite"
+      >
         <p className="onside-kicker">Acesso antecipado</p>
         <h1 className="onside-display mt-3 text-4xl">
           Seu acesso ainda está pendente
@@ -64,63 +71,81 @@ function AccessPendingPage() {
               e-mail, a inscrição vale na hora.
             </p>
             <form onSubmit={submit} className="mt-6 grid gap-4">
-              <label className="grid gap-1 text-sm font-bold">
-                E-mail
+              <div>
+                <label htmlFor="pending-email" className="onside-label">
+                  E-mail
+                </label>
                 <input
+                  id="pending-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
                   value={session?.user.email ?? ''}
                   disabled
-                  className="min-h-11 border border-[var(--onside-ink)] bg-black/5 px-3"
+                  className="onside-input bg-[var(--onside-stone)]"
                 />
-              </label>
+              </div>
               {role === 'pub' ? (
-                <label className="grid gap-1 text-sm font-bold">
-                  Nome do bar
+                <div>
+                  <label htmlFor="pending-pub-name" className="onside-label">
+                    Nome do bar
+                  </label>
                   <input
+                    id="pending-pub-name"
                     name="pubName"
+                    autoComplete="organization"
                     required
                     minLength={2}
                     maxLength={100}
-                    className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+                    className="onside-input"
                   />
-                </label>
+                </div>
               ) : null}
-              <label className="grid gap-1 text-sm font-bold">
-                Cidade
+              <div>
+                <label htmlFor="pending-city" className="onside-label">
+                  Cidade
+                </label>
                 <input
+                  id="pending-city"
                   name="city"
+                  autoComplete="address-level2"
                   required
                   minLength={2}
                   maxLength={100}
-                  className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+                  className="onside-input"
                 />
-              </label>
-              <label className="grid gap-1 text-sm font-bold">
-                Telefone opcional
+              </div>
+              <div>
+                <label htmlFor="pending-phone" className="onside-label">
+                  Telefone opcional
+                </label>
                 <input
+                  id="pending-phone"
                   name="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   maxLength={30}
-                  className="min-h-11 border border-[var(--onside-ink)] bg-transparent px-3"
+                  className="onside-input"
                 />
-              </label>
+              </div>
               {join.error ? (
-                <p
-                  role="alert"
-                  className="text-sm text-[var(--onside-live-text)]"
-                >
+                <p role="alert" className="onside-field-error">
                   {join.error.message}
                 </p>
               ) : null}
               <button
                 type="submit"
                 disabled={join.isPending}
-                className="onside-btn onside-btn-acid min-h-11 disabled:opacity-40"
+                className="onside-btn onside-btn-acid onside-btn-full"
               >
                 {join.isPending ? 'Entrando…' : 'Entrar na waitlist'}
               </button>
             </form>
           </>
         )}
-      </section>
-    </main>
+      </main>
+    </OnboardingLayout>
   )
 }
