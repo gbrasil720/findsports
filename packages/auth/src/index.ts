@@ -220,7 +220,8 @@ export function createAuth() {
           logoUrl: new URL(
             '/onside-wordmark-paper.png',
             env.BETTER_AUTH_URL
-          ).toString()
+          ).toString(),
+          heroImageUrl: new URL('/og-image.jpg', env.BETTER_AUTH_URL).toString()
         })
       }
     },
