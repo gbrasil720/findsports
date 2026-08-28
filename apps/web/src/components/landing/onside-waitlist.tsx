@@ -47,6 +47,7 @@ export function OnsideFanWaitlistForm() {
   >({})
   const [formError, setFormError] = useState<string | null>(null)
   const [successCity, setSuccessCity] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const client = useTRPCClient()
@@ -56,6 +57,9 @@ export function OnsideFanWaitlistForm() {
     onSuccess: (data, variables) => {
       analytics.identifyWaitlist(data.waitlistId)
       setSuccessCity(variables.city)
+      setPreviewUrl(
+        data.status === 'confirmation_sent' ? (data.previewUrl ?? null) : null
+      )
       setFormError(null)
       analytics.waitlistSubmitted('fan')
     },
@@ -114,6 +118,11 @@ export function OnsideFanWaitlistForm() {
             Enviamos um link para confirmar sua entrada ou atualização na
             waitlist de {successCity}.
           </small>
+          {previewUrl ? (
+            <small>
+              <a href={previewUrl}>Confirmar inscrição (ambiente local)</a>
+            </small>
+          ) : null}
         </div>
       </div>
     )
@@ -223,6 +232,7 @@ export function OnsideBarInterestForm() {
   >({})
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const pubNameRef = useRef<HTMLInputElement>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
@@ -233,6 +243,9 @@ export function OnsideBarInterestForm() {
     onSuccess: (data) => {
       analytics.identifyWaitlist(data.waitlistId)
       setSuccess(true)
+      setPreviewUrl(
+        data.status === 'confirmation_sent' ? (data.previewUrl ?? null) : null
+      )
       setFormError(null)
       analytics.waitlistSubmitted('pub')
     },
@@ -296,6 +309,11 @@ export function OnsideBarInterestForm() {
           Enviamos um link para confirmar sua entrada ou atualização na
           waitlist.
         </small>
+        {previewUrl ? (
+          <small>
+            <a href={previewUrl}>Confirmar inscrição (ambiente local)</a>
+          </small>
+        ) : null}
       </div>
     )
   }

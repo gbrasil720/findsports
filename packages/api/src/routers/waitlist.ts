@@ -35,6 +35,14 @@ function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+function emailPersistError(delivered: boolean) {
+  return delivered ? null : 'Resend não configurado para envio de e-mail.'
+}
+
+function localPreviewUrl(delivered: boolean, url: string) {
+  return !delivered && process.env.NODE_ENV !== 'production' ? url : undefined
+}
+
 async function incrementarWaitlist(
   key: string,
   limite: JanelaLimite
@@ -139,7 +147,7 @@ async function approveAndInvite(input: { email: string; adminId: string }) {
   }
 
   try {
-    await sendWaitlistEmail({
+    const sent = await sendWaitlistEmail({
       kind: row.accountExists ? 'approved-existing' : 'invite',
       to: input.email,
       url: row.accountExists
@@ -150,7 +158,7 @@ async function approveAndInvite(input: { email: string; adminId: string }) {
     await persistEmailResult({
       email: input.email,
       kind: 'invite',
-      error: null
+      error: emailPersistError(sent.delivered)
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha no envio.'
@@ -371,13 +379,20 @@ export const waitlistRouter = router({
           confirmation_error = NULL
         RETURNING id
       `)
+      const confirmUrl = waitlistUrl('/confirm-waitlist', confirmation.token)
+      let delivered = false
       try {
-        await sendWaitlistEmail({
+        const sent = await sendWaitlistEmail({
           kind: 'confirm',
           to: email,
-          url: waitlistUrl('/confirm-waitlist', confirmation.token)
+          url: confirmUrl
         })
-        await persistEmailResult({ email, kind: 'confirmation', error: null })
+        delivered = sent.delivered
+        await persistEmailResult({
+          email,
+          kind: 'confirmation',
+          error: emailPersistError(sent.delivered)
+        })
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Falha no envio.'
@@ -393,7 +408,8 @@ export const waitlistRouter = router({
       }
       return {
         status: 'confirmation_sent' as const,
-        waitlistId: (enrollment.rows[0] as { id: string }).id
+        waitlistId: (enrollment.rows[0] as { id: string }).id,
+        previewUrl: localPreviewUrl(delivered, confirmUrl)
       }
     }),
 
@@ -518,7 +534,7 @@ export const waitlistRouter = router({
     let failed = 0
     for (const candidate of claimed.rows as { id: string; email: string }[]) {
       try {
-        await sendWaitlistEmail({
+        const envio = await sendWaitlistEmail({
           kind: 'launch',
           to: candidate.email,
           url: waitlistUrl(
@@ -526,6 +542,9 @@ export const waitlistRouter = router({
           ),
           idempotencyKey: `waitlist-launch-${candidate.id}`
         })
+        if (!envio.delivered && process.env.NODE_ENV === 'production') {
+          throw new Error('Resend não configurado para envio de e-mail.')
+        }
         await db.execute(sql`
           UPDATE waitlist_entries SET
             launch_notice_sent_at = NOW(), launch_notice_claimed_at = NULL,
