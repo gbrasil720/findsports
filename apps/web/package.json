@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:vercel": "vite build && bun scripts/build-vercel.mjs",
+    "build:vercel": "bun --cwd ../.. run db:migrate:deploy && vite build && bun scripts/build-vercel.mjs",
     "check-types": "tsc --noEmit",
     "serve": "vite preview",
     "dev": "vite dev",

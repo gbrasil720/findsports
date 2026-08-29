@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd ../.. && bun run db:migrate:deploy && bun --cwd apps/web run build:vercel",
+  "buildCommand": "bun run build:vercel",
   "installCommand": "cd ../.. && bun install",
   "framework": null,
   "regions": ["iad1"]
