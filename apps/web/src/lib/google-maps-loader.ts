@@ -5,6 +5,8 @@ declare global {
   interface Window {
     google?: typeof google
     __onsideInitMap?: () => void
+    /** Ver `instalarAvisoDeChaveRecusada`. */
+    gm_authFailure?: () => void
   }
 }
 
@@ -32,6 +34,46 @@ export type GoogleMapsRuntime = {
 
 let loadPromise: Promise<GoogleMapsRuntime> | null = null
 let rejectActiveLoad: ((reason: Error) => void) | null = null
+let chaveRecusada = false
+const ouvintesDeChaveRecusada = new Set<() => void>()
+
+/**
+ * Chave recusada não chega pela promessa do carregador.
+ *
+ * `RefererNotAllowedMapError`, `InvalidKeyMapError` e faturamento desligado
+ * acontecem DEPOIS de o script carregar e de o `Map` ser construído: do nosso
+ * lado tudo deu certo, e a API resolve sozinha pintando um aviso cinza em
+ * inglês — "Oops! Something went wrong." — por cima do contêiner, além de
+ * deixar o mapa num estado degradado em que `getDiv()` passa a devolver
+ * `undefined` (é daí que vinha o `getRootNode` derrubando a rota).
+ *
+ * O único aviso que a API dá é chamar `window.gm_authFailure`. É preciso
+ * definir antes de o script rodar, e é global — não dá para saber qual mapa
+ * falhou, porque a chave é uma só para todos.
+ *
+ * O estado é permanente de propósito: chave recusada não melhora sozinha, e
+ * recarregar o mapa só repinta o aviso cinza.
+ */
+function instalarAvisoDeChaveRecusada(): void {
+  if (typeof window === 'undefined') return
+  if (window.gm_authFailure) return
+  window.gm_authFailure = () => {
+    chaveRecusada = true
+    for (const ouvinte of ouvintesDeChaveRecusada) ouvinte()
+  }
+}
+
+export function isChaveDoMapaRecusada(): boolean {
+  return chaveRecusada
+}
+
+/** Devolve o cancelador, para o componente soltar ao desmontar. */
+export function aoRecusarChaveDoMapa(ouvinte: () => void): () => void {
+  ouvintesDeChaveRecusada.add(ouvinte)
+  return () => {
+    ouvintesDeChaveRecusada.delete(ouvinte)
+  }
+}
 
 /**
  * O mapa só tem como funcionar com chave pública e Map ID — o segundo porque
@@ -104,6 +146,7 @@ export function loadGoogleMaps({ apiKey, channel = '' }: LoadOptions) {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Google Maps requer um navegador'))
   }
+  instalarAvisoDeChaveRecusada()
   if (loadPromise) return loadPromise
   if (window.google?.maps) {
     loadPromise = getGoogleMapsRuntime().catch((reason: unknown) => {
@@ -177,7 +220,10 @@ export function resetGoogleMapsLoader(): void {
   rejectActiveLoad?.(new Error('Carregamento do Google Maps reiniciado'))
   rejectActiveLoad = null
   loadPromise = null
+  chaveRecusada = false
+  ouvintesDeChaveRecusada.clear()
   delete window.__onsideInitMap
+  delete window.gm_authFailure
   const script = getScript()
   if (script) {
     script.onload = null

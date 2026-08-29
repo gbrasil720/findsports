@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { JSDOM } from 'jsdom'
 
 import {
+  aoRecusarChaveDoMapa,
   buildGoogleMapsUrl,
   hasGoogleMapsConfig,
+  isChaveDoMapaRecusada,
   loadGoogleMaps,
   resetGoogleMapsLoader
 } from './google-maps-loader'
@@ -185,5 +187,34 @@ describe('hasGoogleMapsConfig', () => {
 
   test('trata string em branco como ausente', () => {
     expect(hasGoogleMapsConfig({ apiKey: '  ', mapId: 'm' })).toBe(false)
+  })
+})
+
+describe('chave recusada', () => {
+  test('o carregador instala `gm_authFailure` antes de o script rodar', () => {
+    installGoogleMapsStub()
+    void loadGoogleMaps({ apiKey: 'k' })
+    expect(typeof window.gm_authFailure).toBe('function')
+  })
+
+  test('a recusa vira estado permanente e avisa quem estiver inscrito', async () => {
+    installGoogleMapsStub()
+    let avisos = 0
+    const soltar = aoRecusarChaveDoMapa(() => {
+      avisos += 1
+    })
+    await loadGoogleMaps({ apiKey: 'k' })
+
+    // Antes da recusa nada indica problema: o script carregou e o runtime
+    // resolveu. É exatamente por isso que a promessa não serve de sinal.
+    expect(isChaveDoMapaRecusada()).toBe(false)
+
+    window.gm_authFailure?.()
+    expect(isChaveDoMapaRecusada()).toBe(true)
+    expect(avisos).toBe(1)
+
+    soltar()
+    window.gm_authFailure?.()
+    expect(avisos).toBe(1)
   })
 })

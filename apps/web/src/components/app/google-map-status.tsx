@@ -1,11 +1,16 @@
 import { Component, type ReactNode, type Ref } from 'react'
 
+/**
+ * `onRetry` é opcional porque nem toda falha é passageira: chave recusada e
+ * Map ID ausente não melhoram por insistir. Botão que nunca vai dar certo é
+ * pior que botão nenhum — some.
+ */
 export function MapLoadError({
   message,
   onRetry
 }: {
   message: string
-  onRetry: () => void
+  onRetry?: () => void
 }) {
   return (
     <div className="absolute inset-0 grid place-items-center bg-[var(--onside-stone)] p-6 text-center">
@@ -14,13 +19,15 @@ export function MapLoadError({
           Mapa indisponível
         </div>
         <div className="mt-1 text-[var(--onside-muted)] text-xs">{message}</div>
-        <button
-          type="button"
-          className="onside-btn onside-btn-outline mt-4 min-h-11"
-          onClick={onRetry}
-        >
-          Tentar novamente
-        </button>
+        {onRetry ? (
+          <button
+            type="button"
+            className="onside-btn onside-btn-outline mt-4 min-h-11"
+            onClick={onRetry}
+          >
+            Tentar novamente
+          </button>
+        ) : null}
       </div>
     </div>
   )

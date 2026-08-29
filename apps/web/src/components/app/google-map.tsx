@@ -7,7 +7,9 @@ import {
 } from '@/domain/discovery'
 import { env } from '@/lib/env'
 import {
+  aoRecusarChaveDoMapa,
   type GoogleMapsRuntime,
+  isChaveDoMapaRecusada,
   loadGoogleMaps,
   resetGoogleMapsLoader
 } from '@/lib/google-maps-loader'
@@ -65,6 +67,25 @@ type MarkerEntry = {
  * quem está na tela (`Cannot read properties of undefined…`, em inglês). O
  * texto real vai para o console, onde é útil.
  */
+/**
+ * Nem toda falha do mapa é passageira. `retriable` decide se a caixa de erro
+ * mostra o botão de tentar de novo — ver `MapLoadError`.
+ */
+type MapError = { message: string; retriable: boolean }
+
+/**
+ * Chave recusada: referrer fora da lista da chave, chave inválida ou
+ * faturamento desligado no projeto do Google Cloud. Nada disso se resolve no
+ * navegador, então a mensagem para quem está na tela é a genérica, e quem
+ * desenvolve recebe o nome do problema.
+ */
+const CHAVE_RECUSADA: MapError = {
+  message: import.meta.env.DEV
+    ? 'Chave do Google Maps recusada (referrer, chave inválida ou faturamento). Ver o console.'
+    : 'Mapa temporariamente indisponível',
+  retriable: false
+}
+
 function reportarFalhaDoMapa(reason: unknown): string {
   console.error('Erro do Google Maps isolado no componente:', reason)
   return 'Mapa temporariamente indisponível'
@@ -111,7 +132,7 @@ function MapaDoGoogle({
   const centerRef = useRef(center)
   const onHoverRef = useRef(onHover)
   const onSelectRef = useRef(onSelect)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<MapError | null>(null)
   const [ready, setReady] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
 
@@ -124,6 +145,12 @@ function MapaDoGoogle({
     let cancelled = false
     setError(null)
     setReady(false)
+    // A recusa é global e permanente: montar outro mapa só repinta o aviso
+    // cinza da API por cima do contêiner.
+    if (isChaveDoMapaRecusada()) {
+      setError(CHAVE_RECUSADA)
+      return
+    }
     // `channel` era `VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID`, que não
     // existe em `.env` nenhum — sempre chegou `undefined` no carregador.
     // Resto de andaime do gerador; o parâmetro segue opcional em
@@ -134,11 +161,12 @@ function MapaDoGoogle({
     // por uma que se lê na tela.
     const mapId = env.VITE_GOOGLE_MAPS_MAP_ID
     if (!mapId) {
-      setError(
-        import.meta.env.DEV
+      setError({
+        message: import.meta.env.DEV
           ? 'Falta VITE_GOOGLE_MAPS_MAP_ID: sem Map ID os pinos não renderizam.'
-          : 'Mapa temporariamente indisponível'
-      )
+          : 'Mapa temporariamente indisponível',
+        retriable: false
+      })
       return
     }
 
@@ -161,7 +189,9 @@ function MapaDoGoogle({
         })
         setReady(true)
       })
-      .catch((reason: unknown) => setError(getLoadError(reason)))
+      .catch((reason: unknown) =>
+        setError({ message: getLoadError(reason), retriable: true })
+      )
 
     return () => {
       cancelled = true
@@ -244,7 +274,7 @@ function MapaDoGoogle({
     } catch (reason) {
       // Degradar para o cartão de erro custa o mapa. Deixar subir custa a
       // rota inteira.
-      setError(reportarFalhaDoMapa(reason))
+      setError({ message: reportarFalhaDoMapa(reason), retriable: true })
     }
   }, [center, radiusKm, ready, showUserLocation])
 
@@ -328,18 +358,28 @@ function MapaDoGoogle({
         markersRef.current.delete(id)
       }
     } catch (reason) {
-      setError(reportarFalhaDoMapa(reason))
+      setError({ message: reportarFalhaDoMapa(reason), retriable: true })
     }
   }, [bars, hoveredId, ready])
+
+  // A recusa costuma chegar depois de o `Map` já existir: o script carregou, o
+  // construtor rodou, e só então a API descobre que a chave não vale para este
+  // referrer. Sem isto, o usuário fica com o aviso cinza em inglês que a
+  // própria API pinta dentro do contêiner.
+  useEffect(() => aoRecusarChaveDoMapa(() => setError(CHAVE_RECUSADA)), [])
 
   if (error) {
     return (
       <MapLoadError
-        message={error}
-        onRetry={() => {
-          resetGoogleMapsLoader()
-          setRetryKey((key) => key + 1)
-        }}
+        message={error.message}
+        onRetry={
+          error.retriable
+            ? () => {
+                resetGoogleMapsLoader()
+                setRetryKey((key) => key + 1)
+              }
+            : undefined
+        }
       />
     )
   }
