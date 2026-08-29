@@ -1,5 +1,4 @@
-import { Tick01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import Check from 'reicon-react/icons/Check'
 
 interface AuthBrandCopyProps {
   role: 'fan' | 'pub'
@@ -7,13 +6,12 @@ interface AuthBrandCopyProps {
 
 const COPY = {
   fan: {
-    badge: '● Acesso antecipado',
-    badgeColor: 'text-brand-blue',
+    badge: 'Acesso antecipado',
     title: (
       <>
         NUNCA MAIS
         <br />
-        <span className="text-brand-blue">PERCA UM GOL.</span>
+        <span className="text-[var(--onside-acid)]">PERCA UM GOL.</span>
       </>
     ),
     description:
@@ -22,17 +20,15 @@ const COPY = {
       'Encontre bares com seu jogo ao vivo',
       'Saiba se o bar está cheio antes de sair de casa',
       'Notificações antes do apito'
-    ],
-    checkColor: 'bg-brand-orange/20 text-brand-orange'
+    ]
   },
   pub: {
-    badge: '● Acesso antecipado',
-    badgeColor: 'text-brand-blue',
+    badge: 'Acesso antecipado',
     title: (
       <>
         LOTE O SEU BAR
         <br />
-        <span className="text-brand-blue">EM TODO JOGO.</span>
+        <span className="text-[var(--onside-acid)]">EM TODO JOGO.</span>
       </>
     ),
     description:
@@ -41,8 +37,7 @@ const COPY = {
       'Apareça na busca de torcedores',
       'Atualize quais jogos você está exibindo',
       'Receba clientes nos horários certos'
-    ],
-    checkColor: 'bg-brand-blue/20 text-brand-blue'
+    ]
   }
 } as const
 
@@ -51,32 +46,27 @@ export function AuthBrandCopy({ role }: AuthBrandCopyProps) {
 
   return (
     <>
-      <div
-        className={`mb-3 font-mono text-[10px] uppercase tracking-[0.3em] ${c.badgeColor}`}
-      >
+      <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
+        <span className="onside-live-dot" aria-hidden="true" />
         {c.badge}
       </div>
-      <h2 className="mb-6 font-bold font-heading text-4xl text-white leading-[0.9] tracking-tight xl:text-5xl">
+      <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
         {c.title}
       </h2>
-      <p className="max-w-xs text-base text-zinc-400 leading-relaxed">
+      <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
         {c.description}
       </p>
       <ul className="mt-10 flex flex-col gap-3">
         {c.benefits.map((item) => (
           <li
             key={item}
-            className="flex items-center gap-3 text-sm text-zinc-400"
+            className="onside-text-muted-on-ink grid grid-cols-[20px_1fr] items-start gap-3 text-sm"
           >
             <span
-              className={`flex size-5 shrink-0 items-center justify-center rounded-full ${c.checkColor}`}
+              className="mt-0.5 flex size-5 shrink-0 items-center justify-center border border-[var(--onside-acid)] bg-[var(--onside-acid)] text-[var(--onside-ink)]"
+              aria-hidden="true"
             >
-              <HugeiconsIcon
-                icon={Tick01Icon}
-                size={12}
-                color="currentColor"
-                strokeWidth={2}
-              />
+              <Check size={12} color="currentColor" />
             </span>
             {item}
           </li>

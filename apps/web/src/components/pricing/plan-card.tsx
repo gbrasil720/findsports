@@ -1,5 +1,16 @@
-import { Tick01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
+import type { ComponentType, SVGAttributes } from 'react'
+import Check from 'reicon-react/icons/Check'
+import Clock from 'reicon-react/icons/Clock'
+
+type IconProps = SVGAttributes<SVGSVGElement> & {
+  size?: number | string
+  color?: string
+}
+
+type ProfilePerk = {
+  label: string
+  status: 'live' | 'soon'
+}
 
 type Plan = {
   id: 'starter' | 'pro' | 'elite'
@@ -7,8 +18,9 @@ type Plan = {
   tagline: string
   price: string
   period: string
-  icon: IconSvgElement
+  icon: ComponentType<IconProps>
   features: string[]
+  profilePerks?: ProfilePerk[]
   highlight?: boolean
   badge?: string
 }
@@ -21,121 +33,125 @@ type Props = {
 }
 
 export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
+  const Icon = plan.icon
+
   return (
-    <button
-      key={plan.id}
-      type="button"
-      onClick={() => onSelect(plan.id)}
-      className={`relative text-left rounded-3xl p-7 transition-all backdrop-blur-md ring-1 ${
+    <label
+      className={`relative block min-h-11 w-full cursor-pointer border-[1.5px] border-[var(--onside-ink)] p-6 text-left transition-[transform,box-shadow,background] duration-150 focus-within:ring-[3px] focus-within:ring-[var(--onside-live)] ${
         isSelected
-          ? 'bg-white/[0.08] ring-brand-blue scale-[1.02] shadow-[0_0_0_4px_rgba(22,104,255,0.15)]'
-          : isCurrent
-            ? 'bg-white/[0.05] ring-white/20'
-            : 'bg-white/[0.03] ring-white/10 hover:bg-white/[0.06] hover:ring-white/20'
-      } ${plan.highlight ? 'md:-translate-y-2' : ''}`}
+          ? 'bg-[var(--onside-acid)] shadow-[6px_6px_0_var(--onside-ink)]'
+          : 'bg-[var(--onside-paper)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--onside-ink)]'
+      } ${plan.highlight && !isSelected ? 'ring-2 ring-[var(--onside-ink)]' : ''}`}
     >
-      {/* Badge "Plano atual" */}
-      {isCurrent && (
-        <span className="absolute -top-3 left-7 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white">
+      <input
+        type="radio"
+        name="onside-plan"
+        value={plan.id}
+        checked={isSelected}
+        onChange={() => onSelect(plan.id)}
+        className="sr-only"
+        aria-label={`${plan.name}, ${plan.price}${plan.period}. ${plan.tagline}`}
+      />
+      {isCurrent ? (
+        <span className="onside-badge onside-badge-ink absolute -top-3 left-5">
           Plano atual
         </span>
-      )}
+      ) : null}
 
-      {/* Badge personalizado (ex: Mais escolhido) — só aparece se não for plano atual */}
-      {plan.badge && !isCurrent && (
-        <span className="absolute -top-3 left-7 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-orange text-white">
+      {plan.badge && !isCurrent ? (
+        <span className="onside-badge onside-badge-acid absolute -top-3 left-5">
           {plan.badge}
         </span>
-      )}
+      ) : null}
 
-      <div className="flex items-center gap-3 mb-5">
+      <div className="mb-5 flex items-center gap-3">
         <div
-          className={`size-11 rounded-2xl grid place-items-center ${
+          className={`grid size-11 place-items-center border border-[var(--onside-ink)] ${
             isSelected
-              ? 'bg-brand-blue text-white'
-              : isCurrent
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : 'bg-white/5 text-white/70'
+              ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+              : 'bg-[var(--onside-stone)] text-[var(--onside-ink)]'
           }`}
         >
-          <HugeiconsIcon
-            icon={plan.icon}
-            size={20}
-            color="currentColor"
-            strokeWidth={1.5}
-          />
+          <Icon size={20} color="currentColor" aria-hidden="true" />
         </div>
-        <div>
-          <div className="font-heading text-xl font-bold leading-none">
+        <div className="min-w-0">
+          <div className="onside-display text-2xl leading-none">
             {plan.name}
           </div>
-          <div className="text-xs text-white/60 mt-1">{plan.tagline}</div>
+          <div className="mt-1 text-xs text-[var(--onside-muted)]">
+            {plan.tagline}
+          </div>
         </div>
       </div>
 
       <div className="mb-6 flex items-baseline gap-1">
-        <span className="font-heading text-4xl font-bold">{plan.price}</span>
-        <span className="text-sm text-white/50">{plan.period}</span>
+        <span className="onside-display text-4xl">{plan.price}</span>
+        <span className="text-sm text-[var(--onside-muted)]">
+          {plan.period}
+        </span>
       </div>
 
       <ul className="space-y-2.5">
         {plan.features.map((f) => (
           <li
             key={f}
-            className="flex items-start gap-2.5 text-sm text-white/80"
+            className="flex items-start gap-2.5 text-sm text-[var(--onside-ink)]"
           >
-            <HugeiconsIcon
-              icon={Tick01Icon}
+            <Check
               size={16}
               color="currentColor"
-              strokeWidth={1.5}
-              className={`mt-0.5 shrink-0 ${
-                isSelected
-                  ? 'text-brand-blue'
-                  : isCurrent
-                    ? 'text-emerald-400'
-                    : 'text-white/40'
-              }`}
+              className="mt-0.5 shrink-0"
+              aria-hidden="true"
             />
             <span>{f}</span>
           </li>
         ))}
       </ul>
 
-      <div
-        className={`mt-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
-          isSelected
-            ? 'text-brand-blue'
-            : isCurrent
-              ? 'text-emerald-400'
-              : 'text-white/40'
-        }`}
-      >
-        {isSelected ? (
-          <>
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              size={14}
-              color="currentColor"
-              strokeWidth={1.5}
-            />
-            Selecionado
-          </>
-        ) : isCurrent ? (
-          <>
-            <HugeiconsIcon
-              icon={Tick01Icon}
-              size={14}
-              color="currentColor"
-              strokeWidth={1.5}
-            />
-            Seu plano
-          </>
-        ) : (
-          'Selecionar'
-        )}
+      {plan.profilePerks && plan.profilePerks.length > 0 && (
+        <div className="mt-5 border-[var(--onside-ink)] border-t pt-4">
+          <p className="mb-2.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
+            No perfil que o torcedor vê
+          </p>
+          <ul className="space-y-2">
+            {plan.profilePerks.map((perk) => (
+              <li
+                key={perk.label}
+                className="flex items-start gap-2.5 text-sm text-[var(--onside-ink)]"
+              >
+                {perk.status === 'live' ? (
+                  <Check
+                    size={16}
+                    color="currentColor"
+                    className="mt-0.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Clock
+                    size={16}
+                    color="currentColor"
+                    className="mt-0.5 shrink-0 opacity-60"
+                    aria-hidden="true"
+                  />
+                )}
+                <span className={perk.status === 'soon' ? 'opacity-70' : ''}>
+                  {perk.label}
+                  {perk.status === 'soon' && (
+                    <span className="ml-1.5 font-[family-name:var(--onside-mono)] text-[9px] uppercase tracking-[0.12em]">
+                      Em breve
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-6 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
+        {isSelected ? 'Selecionado' : isCurrent ? 'Seu plano' : 'Selecionar'}
       </div>
-    </button>
+    </label>
   )
 }
 

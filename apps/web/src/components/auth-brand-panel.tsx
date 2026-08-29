@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
-import { Logo } from '@/components/landing/logo'
+import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
 
 interface AuthBrandPanelProps {
   variant: 'login' | 'signup'
@@ -9,40 +9,42 @@ interface AuthBrandPanelProps {
 }
 
 export function AuthBrandPanel({ variant, children }: AuthBrandPanelProps) {
-  const blob1 =
-    variant === 'login'
-      ? 'pointer-events-none absolute -top-32 -left-32 size-96 rounded-full bg-brand-orange/20 blur-3xl'
-      : 'pointer-events-none absolute -top-32 -right-32 size-96 rounded-full bg-brand-blue/20 blur-3xl'
-
-  const blob2 =
-    variant === 'login'
-      ? 'pointer-events-none absolute -right-24 bottom-24 size-72 rounded-full bg-brand-blue/15 blur-3xl'
-      : 'pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-brand-orange/15 blur-3xl'
-
   return (
-    <aside className="relative hidden w-[42%] flex-col justify-between overflow-hidden bg-zinc-950 p-12 lg:flex">
-      <div className={blob1} />
-      <div className={blob2} />
+    <aside className="relative hidden w-[42%] flex-col justify-between overflow-hidden border-[var(--onside-ink)] border-r bg-[var(--onside-ink)] p-12 text-[var(--onside-paper)] lg:flex xl:w-[44%]">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
         style={{
           backgroundImage:
-            'radial-gradient(circle, #ffffff 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
+            'radial-gradient(circle, #f1eee6 1px, transparent 1px)',
+          backgroundSize: '22px 22px'
         }}
+        aria-hidden="true"
+      />
+      <div
+        className={`pointer-events-none absolute size-48 border border-[var(--onside-acid)] opacity-30 ${
+          variant === 'login' ? '-top-8 -right-8' : '-bottom-8 -left-8'
+        }`}
+        aria-hidden="true"
+      />
+      <OnsideMark
+        className={`pointer-events-none absolute opacity-[0.08] ${
+          variant === 'login' ? 'right-8 bottom-24' : 'top-28 right-10'
+        }`}
+        size={160}
       />
 
-      <Link to="/" className="relative flex w-fit items-center gap-3">
-        <Logo className="size-10" />
-        <span className="font-bold font-heading text-white text-xl tracking-tight">
-          FindSports
-        </span>
+      <Link
+        to="/"
+        className="relative w-fit"
+        aria-label="Onside — página inicial"
+      >
+        <OnsideBrand onInk />
       </Link>
 
-      <div className="relative">{children}</div>
+      <div className="relative max-w-[22rem]">{children}</div>
 
-      <p className="relative text-xs text-zinc-600 uppercase tracking-widest">
-        © 2026 FindSports · Brasil
+      <p className="onside-text-muted-on-ink relative font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.16em]">
+        © 2026 Onside · Brasil
       </p>
     </aside>
   )

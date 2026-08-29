@@ -11,17 +11,27 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
 import { Route as InternalRouteImport } from './routes/internal'
+import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
+import { Route as AccessPendingRouteImport } from './routes/access-pending'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
+import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
+import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
+import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
+import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
@@ -38,14 +48,39 @@ const PlanRoute = PlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LeaveWaitlistRoute = LeaveWaitlistRouteImport.update({
+  id: '/leave-waitlist',
+  path: '/leave-waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InternalRoute = InternalRouteImport.update({
   id: '/internal',
   path: '/internal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfirmWaitlistRoute = ConfirmWaitlistRouteImport.update({
+  id: '/confirm-waitlist',
+  path: '/confirm-waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivateInviteRoute = ActivateInviteRouteImport.update({
+  id: '/activate-invite',
+  path: '/activate-invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessPendingRoute = AccessPendingRouteImport.update({
+  id: '/access-pending',
+  path: '/access-pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -63,6 +98,11 @@ const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
   path: '/internal/manage-users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalFlagsRoute = InternalFlagsRouteImport.update({
+  id: '/internal_/flags',
+  path: '/internal/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
   id: '/admin_/billing',
   path: '/admin/billing',
@@ -71,6 +111,16 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
 const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   id: '/(dashboard)/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
+  id: '/(auth)/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authTwoFactorRoute = authTwoFactorRouteImport.update({
+  id: '/(auth)/two-factor',
+  path: '/two-factor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authSignupRoute = authSignupRouteImport.update({
@@ -83,6 +133,11 @@ const authLoginRoute = authLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
+  id: '/api/waitlist/activate',
+  path: '/api/waitlist/activate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -91,6 +146,11 @@ const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
 const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
   id: '/api/bar/photo',
   path: '/api/bar/photo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBarCommercialEventRoute = ApiBarCommercialEventRouteImport.update({
+  id: '/api/bar/commercial-event',
+  path: '/api/bar/commercial-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -122,14 +182,22 @@ const dashboardDashboardProfileRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/access-pending': typeof AccessPendingRoute
+  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
+  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/two-factor': typeof authTwoFactorRoute
+  '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -137,19 +205,29 @@ export interface FileRoutesByFullPath {
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/access-pending': typeof AccessPendingRoute
+  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
+  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/two-factor': typeof authTwoFactorRoute
+  '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -157,20 +235,30 @@ export interface FileRoutesByTo {
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/access-pending': typeof AccessPendingRoute
+  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
+  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
+  '/(auth)/two-factor': typeof authTwoFactorRoute
+  '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
+  '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
@@ -178,21 +266,31 @@ export interface FileRoutesById {
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
+    | '/access-pending'
+    | '/activate-invite'
     | '/admin'
+    | '/confirm-waitlist'
     | '/internal'
+    | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/two-factor'
+    | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
     | '/dashboard/profile'
@@ -200,19 +298,29 @@ export interface FileRouteTypes {
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/waitlist/activate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
+    | '/access-pending'
+    | '/activate-invite'
     | '/admin'
+    | '/confirm-waitlist'
     | '/internal'
+    | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
     | '/login'
     | '/signup'
+    | '/two-factor'
+    | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
     | '/dashboard/profile'
@@ -220,19 +328,29 @@ export interface FileRouteTypes {
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/waitlist/activate'
   id:
     | '__root__'
     | '/'
+    | '/$'
+    | '/access-pending'
+    | '/activate-invite'
     | '/admin'
+    | '/confirm-waitlist'
     | '/internal'
+    | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
     | '/(auth)/login'
     | '/(auth)/signup'
+    | '/(auth)/two-factor'
+    | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
+    | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
     | '/(dashboard)/dashboard_/profile'
@@ -240,20 +358,30 @@ export interface FileRouteTypes {
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
     | '/api/auth/$'
+    | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/waitlist/activate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
+  AccessPendingRoute: typeof AccessPendingRoute
+  ActivateInviteRoute: typeof ActivateInviteRoute
   AdminRoute: typeof AdminRoute
+  ConfirmWaitlistRoute: typeof ConfirmWaitlistRoute
   InternalRoute: typeof InternalRoute
+  LeaveWaitlistRoute: typeof LeaveWaitlistRoute
   PlanRoute: typeof PlanRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
+  authTwoFactorRoute: typeof authTwoFactorRoute
+  authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
@@ -261,8 +389,10 @@ export interface RootRouteChildren {
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  ApiWaitlistActivateRoute: typeof ApiWaitlistActivateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -281,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/leave-waitlist': {
+      id: '/leave-waitlist'
+      path: '/leave-waitlist'
+      fullPath: '/leave-waitlist'
+      preLoaderRoute: typeof LeaveWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/internal': {
       id: '/internal'
       path: '/internal'
@@ -288,11 +425,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/confirm-waitlist': {
+      id: '/confirm-waitlist'
+      path: '/confirm-waitlist'
+      fullPath: '/confirm-waitlist'
+      preLoaderRoute: typeof ConfirmWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activate-invite': {
+      id: '/activate-invite'
+      path: '/activate-invite'
+      fullPath: '/activate-invite'
+      preLoaderRoute: typeof ActivateInviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-pending': {
+      id: '/access-pending'
+      path: '/access-pending'
+      fullPath: '/access-pending'
+      preLoaderRoute: typeof AccessPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -316,6 +481,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalManageUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal_/flags': {
+      id: '/internal_/flags'
+      path: '/internal/flags'
+      fullPath: '/internal/flags'
+      preLoaderRoute: typeof InternalFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/billing': {
       id: '/admin_/billing'
       path: '/admin/billing'
@@ -328,6 +500,20 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof dashboardDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/verify-email': {
+      id: '/(auth)/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof authVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/two-factor': {
+      id: '/(auth)/two-factor'
+      path: '/two-factor'
+      fullPath: '/two-factor'
+      preLoaderRoute: typeof authTwoFactorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/signup': {
@@ -344,6 +530,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/waitlist/activate': {
+      id: '/api/waitlist/activate'
+      path: '/api/waitlist/activate'
+      fullPath: '/api/waitlist/activate'
+      preLoaderRoute: typeof ApiWaitlistActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -356,6 +549,13 @@ declare module '@tanstack/react-router' {
       path: '/api/bar/photo'
       fullPath: '/api/bar/photo'
       preLoaderRoute: typeof ApiBarPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bar/commercial-event': {
+      id: '/api/bar/commercial-event'
+      path: '/api/bar/commercial-event'
+      fullPath: '/api/bar/commercial-event'
+      preLoaderRoute: typeof ApiBarCommercialEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -398,14 +598,22 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
+  AccessPendingRoute: AccessPendingRoute,
+  ActivateInviteRoute: ActivateInviteRoute,
   AdminRoute: AdminRoute,
+  ConfirmWaitlistRoute: ConfirmWaitlistRoute,
   InternalRoute: InternalRoute,
+  LeaveWaitlistRoute: LeaveWaitlistRoute,
   PlanRoute: PlanRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
+  authTwoFactorRoute: authTwoFactorRoute,
+  authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
+  InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
@@ -413,8 +621,10 @@ const rootRouteChildren: RootRouteChildren = {
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  ApiWaitlistActivateRoute: ApiWaitlistActivateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

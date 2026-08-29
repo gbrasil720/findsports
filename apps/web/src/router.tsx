@@ -1,7 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 
-import './index.css'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { createTRPCClient, httpBatchLink } from '@trpc/client'
@@ -9,6 +8,7 @@ import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { toast } from 'sonner'
 
 import { Loader } from './components/loader'
+import { NotFoundPage } from './components/not-found/not-found-page'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
@@ -52,7 +52,7 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 0,
     context: { trpc, queryClient },
     defaultPendingComponent: () => <Loader />,
-    defaultNotFoundComponent: () => <div>Not Found</div>,
+    defaultNotFoundComponent: NotFoundPage,
     Wrap: ({ children }) => (
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {children}

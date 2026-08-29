@@ -1,179 +1,167 @@
-import posthog from 'posthog-js'
+import { getPageSurface } from './page-surface'
+import { withPosthog } from './posthog'
 
-export type LandingCtaId =
-  | 'nav_city_waitlist'
-  | 'hero_city_waitlist'
-  | 'hero_bar_interest'
-  | 'community_city_waitlist'
-  | 'bars_register_interest'
-  | 'final_city_waitlist'
-  | 'demo_view_map'
-  | 'demo_view_list'
+export type UserRole = 'fan' | 'pub'
+export type BarPlan = 'starter' | 'pro' | 'elite'
+export type BarOpenSource = 'card' | 'map'
+export type BarIntentAction = 'directions' | 'whatsapp' | 'phone' | 'favorite'
+export type { PageSurface } from './page-surface'
 
-export type WaitlistRole = 'fan' | 'pub'
-
-export type WaitlistSubmitFailureCategory =
-  | 'conflict'
-  | 'network'
-  | 'server'
-  | 'unknown'
-
-export type DemoView = 'list' | 'map'
-
+/**
+ * Product analytics — only events that answer an internal usage question.
+ * Pageviews stay on `$pageview` (with `surface`). Autocapture is off.
+ */
 export const analytics = {
-  // Landing
-  landingViewed: () => posthog.capture('landing_viewed'),
+  identifyWaitlist: (waitlistId: string) => {
+    void withPosthog((posthog) => posthog.identify(`waitlist:${waitlistId}`))
+  },
 
-  landingCtaClicked: (cta: LandingCtaId | string) =>
-    posthog.capture('landing_cta_clicked', { cta }),
+  waitlistSubmitted: (role: UserRole) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_submitted', { role })
+    )
+  },
 
-  demoViewChanged: (view: DemoView) =>
-    posthog.capture('demo_view_changed', { view }),
+  waitlistConfirmed: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_confirmed'))
+  },
 
-  // Waitlist funnel (no PII — field names only, never values)
-  waitlistFormViewed: (role: WaitlistRole) =>
-    posthog.capture('waitlist_form_viewed', { role }),
+  waitlistCancelled: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_cancelled'))
+  },
 
-  waitlistFormStarted: (role: WaitlistRole) =>
-    posthog.capture('waitlist_form_started', { role }),
+  waitlistInviteSent: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_invite_sent'))
+  },
 
-  waitlistSubmitAttempted: (role: WaitlistRole) =>
-    posthog.capture('waitlist_submit_attempted', { role }),
+  waitlistInviteOpened: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_invite_opened'))
+  },
 
-  waitlistValidationFailed: (role: WaitlistRole, fields: string[]) =>
-    posthog.capture('waitlist_validation_failed', { role, fields }),
+  waitlistActivated: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_activated'))
+  },
 
-  waitlistSubmitFailed: (
-    role: WaitlistRole,
-    category: WaitlistSubmitFailureCategory
-  ) => posthog.capture('waitlist_submit_failed', { role, category }),
+  launchNoticeSent: (sent: number, failed: number) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_launch_notice_sent', { sent, failed })
+    )
+  },
 
-  waitlistSubmitted: (role: WaitlistRole) =>
-    posthog.capture('waitlist_submitted', { role }),
+  launchSignupCompleted: () => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_launch_signup_completed')
+    )
+  },
 
-  // Auth
-  signupStarted: () => posthog.capture('signup_started'),
+  launchNoticeOpened: () => {
+    void withPosthog((posthog) => posthog.capture('waitlist_launch_opened'))
+  },
 
-  signupCompleted: (role: 'fan' | 'pub') =>
-    posthog.capture('signup_completed', { role }),
+  signupCompleted: (role: UserRole) => {
+    void withPosthog((posthog) => {
+      posthog.capture('signup_completed', { role })
+      posthog.setPersonProperties({ role })
+    })
+  },
 
-  signinCompleted: () => posthog.capture('signin_completed'),
-
-  signout: () => posthog.capture('signout'),
-
-  // Onboarding Fan
-  fanOnboardingStarted: () => posthog.capture('fan_onboarding_started'),
-
-  fanOnboardingStepCompleted: (step: number) =>
-    posthog.capture('fan_onboarding_step_completed', { step }),
-
-  fanOnboardingSportsSelected: (sports: string[]) =>
-    posthog.capture('fan_onboarding_sports_selected', {
-      sports,
-      count: sports.length
-    }),
-
-  fanOnboardingRadiusSelected: (radius_km: number) =>
-    posthog.capture('fan_onboarding_radius_selected', { radius_km }),
-
-  fanOnboardingCompleted: (sports: string[], radius_km: number) =>
-    posthog.capture('fan_onboarding_completed', { sports, radius_km }),
-
-  // Onboarding Bar
-  pubOnboardingStarted: () => posthog.capture('pub_onboarding_started'),
-
-  pubOnboardingStepCompleted: (step: number) =>
-    posthog.capture('pub_onboarding_step_completed', { step }),
-
-  pubOnboardingCompleted: () => posthog.capture('pub_onboarding_completed'),
-
-  planPageViewed: () => posthog.capture('plan_page_viewed'),
-
-  planSelected: (plan: 'starter' | 'pro' | 'elite') =>
-    posthog.capture('plan_selected', { plan }),
-
-  checkoutStarted: (plan: 'starter' | 'pro' | 'elite') =>
-    posthog.capture('checkout_started', { plan }),
-
-  // Dashboard Fan
-  dashboardViewed: () => posthog.capture('dashboard_viewed'),
+  onboardingCompleted: (params: {
+    role: UserRole
+    sports?: string[]
+    radius_km?: number
+  }) => {
+    const sportsCount = params.sports?.length
+    void withPosthog((posthog) => {
+      posthog.capture('onboarding_completed', {
+        role: params.role,
+        sports: params.sports,
+        sports_count: sportsCount,
+        radius_km: params.radius_km
+      })
+      posthog.setPersonProperties({
+        role: params.role,
+        onboarding_completed: true,
+        ...(params.sports ? { sports: params.sports } : {}),
+        ...(sportsCount != null ? { sports_count: sportsCount } : {}),
+        ...(params.radius_km != null ? { radius_km: params.radius_km } : {})
+      })
+    })
+  },
 
   searchPerformed: (params: {
-    query?: string
-    sportId?: string
-    radius_km?: number
+    sport?: string
+    championship?: string
+    radius_km: number
     results_count: number
-  }) => posthog.capture('search_performed', params),
+    has_location: boolean
+  }) => {
+    void withPosthog((posthog) => posthog.capture('search_performed', params))
+  },
 
-  searchFilterApplied: (filter_type: string, value: unknown) =>
-    posthog.capture('search_filter_applied', { filter_type, value }),
+  barOpened: (params: {
+    bar_id: string
+    source: BarOpenSource
+    bar_plan?: BarPlan
+  }) => {
+    void withPosthog((posthog) => posthog.capture('bar_opened', params))
+  },
 
-  barCardClicked: (bar_id: string, bar_plan: 'starter' | 'pro' | 'elite') =>
-    posthog.capture('bar_card_clicked', { bar_id, bar_plan }),
-
-  barMapPinClicked: (bar_id: string) =>
-    posthog.capture('bar_map_pin_clicked', { bar_id }),
-
-  barFavorited: (bar_id: string) =>
-    posthog.capture('bar_favorited', { bar_id }),
-
-  barUnfavorited: (bar_id: string) =>
-    posthog.capture('bar_unfavorited', { bar_id }),
-
-  directionsOpened: (bar_id: string) =>
-    posthog.capture('directions_opened', { bar_id }),
-
-  barShared: (bar_id: string) => posthog.capture('bar_shared', { bar_id }),
-
-  // Perfil Fan
-  profileViewed: () => posthog.capture('profile_viewed'),
-
-  profileNameUpdated: () => posthog.capture('profile_name_updated'),
-
-  profileSportsUpdated: (sports: string[]) =>
-    posthog.capture('profile_sports_updated', { sports, count: sports.length }),
-
-  profileRadiusUpdated: (radius_km: number) =>
-    posthog.capture('profile_radius_updated', { radius_km }),
-
-  favoritesTabViewed: () => posthog.capture('favorites_tab_viewed'),
-
-  settingsTabViewed: () => posthog.capture('settings_tab_viewed'),
-
-  // Painel Bar
-  adminViewed: () => posthog.capture('admin_viewed'),
+  barIntent: (params: { bar_id: string; action: BarIntentAction }) => {
+    void withPosthog((posthog) => posthog.capture('bar_intent', params))
+  },
 
   eventCreated: (params: {
     championship: string
     sport: string
     has_teams: boolean
-  }) => posthog.capture('event_created', params),
+  }) => {
+    void withPosthog((posthog) => posthog.capture('event_created', params))
+  },
 
-  eventUpdated: (event_id: string) =>
-    posthog.capture('event_updated', { event_id }),
+  eventLimitReached: () => {
+    void withPosthog((posthog) => posthog.capture('event_limit_reached'))
+  },
 
-  eventDeleted: (event_id: string) =>
-    posthog.capture('event_deleted', { event_id }),
+  checkoutStarted: (plan: BarPlan) => {
+    void withPosthog((posthog) => posthog.capture('checkout_started', { plan }))
+  },
 
-  barProfileUpdated: (fields: string[]) =>
-    posthog.capture('bar_profile_updated', { fields }),
+  upgradeClicked: (current_plan: string, target_plan: string) => {
+    void withPosthog((posthog) =>
+      posthog.capture('upgrade_clicked', { current_plan, target_plan })
+    )
+  }
+}
 
-  barPhotoUploaded: () => posthog.capture('bar_photo_uploaded'),
+export function capturePageview(pathname: string) {
+  if (typeof window === 'undefined') return
+  void withPosthog((posthog) =>
+    posthog.capture('$pageview', {
+      $current_url: window.location.href,
+      surface: getPageSurface(pathname)
+    })
+  )
+}
 
-  previewSectionViewed: () => posthog.capture('preview_section_viewed'),
+export function identifyUser(user: {
+  id: string
+  email?: string | null
+  name?: string | null
+  role?: string | null
+}) {
+  void withPosthog((posthog) => {
+    const previousId = posthog.get_distinct_id()
+    if (previousId.startsWith('waitlist:') && previousId !== user.id) {
+      posthog.alias(user.id, previousId)
+    }
+    posthog.identify(user.id, {
+      email: user.email,
+      name: user.name,
+      role: user.role
+    })
+  })
+}
 
-  billingPageViewed: () => posthog.capture('billing_page_viewed'),
-
-  portalOpened: () => posthog.capture('portal_opened'),
-
-  upgradeClicked: (current_plan: string, target_plan: string) =>
-    posthog.capture('upgrade_clicked', { current_plan, target_plan }),
-
-  // Erros e edge cases
-  eventLimitReached: () => posthog.capture('event_limit_reached'),
-
-  barInactiveWarningShown: () => posthog.capture('bar_inactive_warning_shown'),
-
-  geocodingFailed: (address: string) =>
-    posthog.capture('geocoding_failed', { address })
+export function resetAnalytics() {
+  void withPosthog((posthog) => posthog.reset())
 }

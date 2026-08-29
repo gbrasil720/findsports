@@ -4,17 +4,29 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
-import { createDb, db, eq } from '@findsports_oficial/db'
+import { and, createHttpDb, db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
+import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import {
+  APIError,
+  createAuthMiddleware,
+  getSessionFromCtx
+} from 'better-auth/api'
 import { admin } from 'better-auth/plugins'
+import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
+import { isNull } from 'drizzle-orm'
 import { z } from 'zod'
+import { getBarAccountDeletionBlock } from './account-deletion-policy'
+import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import { buildTrustedOrigins } from './trusted-origins'
+import { sendVerificationEmailWithResend } from './verification-email'
 
 export const dodoClient = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
@@ -28,11 +40,36 @@ const PLAN_BY_PRODUCT: Record<string, 'starter' | 'pro' | 'elite'> = {
 }
 
 // Busca o bar pelo email do customer no payload
-async function getBarByCustomerEmail(email: string) {
-  const foundUser = await db.query.user.findFirst({
-    where: eq(user.email, email)
-  })
-  if (!foundUser) return null
+async function getBarByCustomer(
+  email: string,
+  dodoCustomerId: string | undefined
+) {
+  let foundUser = dodoCustomerId
+    ? await db.query.user.findFirst({
+        where: eq(user.dodoCustomerId, dodoCustomerId)
+      })
+    : null
+  if (!foundUser) {
+    const byEmail = await db.query.user.findFirst({
+      where: eq(user.email, email)
+    })
+    if (!byEmail?.emailVerified) return null
+    if (
+      dodoCustomerId &&
+      byEmail?.dodoCustomerId &&
+      byEmail.dodoCustomerId !== dodoCustomerId
+    ) {
+      return null
+    }
+    foundUser = byEmail
+    if (foundUser && dodoCustomerId && !foundUser.dodoCustomerId) {
+      await db
+        .update(user)
+        .set({ dodoCustomerId })
+        .where(and(eq(user.id, foundUser.id), isNull(user.dodoCustomerId)))
+    }
+  }
+  if (!foundUser?.emailVerified) return null
 
   return db.query.bar.findFirst({
     where: eq(bar.userId, foundUser.id)
@@ -42,13 +79,14 @@ async function getBarByCustomerEmail(email: string) {
 async function handleSubscriptionActivated(payload: any) {
   const data = payload.data ?? payload
   const email = data?.customer?.email
+  const customerId = data?.customer?.customer_id ?? data?.customer_id
   const dodoSubId = data?.subscription_id
   const productId = data?.product_id
   const plan = productId ? PLAN_BY_PRODUCT[productId] : 'starter'
 
   if (!email || !dodoSubId) return
 
-  const foundBar = await getBarByCustomerEmail(email)
+  const foundBar = await getBarByCustomer(email, customerId)
   if (!foundBar) return
 
   // Verifica se já existe subscription para esse bar
@@ -125,23 +163,89 @@ async function handleSubscriptionCancelled(payload: any) {
 }
 
 export function createAuth() {
-  const db = createDb()
+  const db = createHttpDb()
 
   return betterAuth({
+    appName: 'Onside',
+    advanced: { backgroundTasks: { handler: waitUntil } },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (!requiresPubBillingAccess(ctx.path)) return
+        const session = await getSessionFromCtx(ctx)
+        if (!canAccessPubBilling(session?.user ?? null)) {
+          throw new APIError('FORBIDDEN', {
+            message:
+              'Apenas bares com e-mail verificado podem acessar cobrança.'
+          })
+        }
+      })
+    },
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: schema
     }),
-    trustedOrigins: [
-      env.CORS_ORIGIN,
-      'https://nintendo-hyperlink-undamaged.ngrok-free.dev'
-    ],
+    trustedOrigins: buildTrustedOrigins({
+      baseUrl: env.BETTER_AUTH_URL,
+      nodeEnv: env.NODE_ENV,
+      developmentOrigin: env.AUTH_DEV_TRUSTED_ORIGIN
+    }),
     emailAndPassword: {
       enabled: true,
-      autoSignIn: true,
-      requireEmailVerification: false
+      autoSignIn: false,
+      requireEmailVerification: true,
+      customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
+        ...coreFields,
+        role: 'fan',
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        twoFactorEnabled: false,
+        dodoCustomerId: null,
+        ...additionalFields,
+        id
+      })
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      expiresIn: 60 * 60,
+      sendVerificationEmail: async ({ user, url }) => {
+        await sendVerificationEmailWithResend({
+          apiKey: env.RESEND_API_KEY,
+          fromEmail: env.RESEND_FROM_EMAIL,
+          to: user.email,
+          name: user.name,
+          verificationUrl: url,
+          logoUrl: new URL(
+            '/onside-wordmark-paper.png',
+            env.BETTER_AUTH_URL
+          ).toString(),
+          heroImageUrl: new URL('/og-image.jpg', env.BETTER_AUTH_URL).toString()
+        })
+      }
     },
     user: {
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (accountUser) => {
+          const accountBar = await db.query.bar.findFirst({
+            where: eq(bar.userId, accountUser.id),
+            with: { subscription: true }
+          })
+          const block = getBarAccountDeletionBlock(
+            accountBar?.subscription ?? null
+          )
+          if (block) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                block === 'period-active'
+                  ? 'A assinatura foi cancelada, mas o período contratado ainda está vigente.'
+                  : 'Encerre a assinatura vigente antes de excluir a conta do bar.'
+            })
+          }
+        }
+      },
       additionalFields: {
         role: {
           type: 'string',
@@ -155,6 +259,11 @@ export function createAuth() {
           defaultValue: false,
           input: false
         },
+        admittedAt: {
+          type: 'date',
+          required: false,
+          input: false
+        },
         searchRadiusKm: {
           type: 'number',
           required: false,
@@ -165,8 +274,45 @@ export function createAuth() {
     },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
+    rateLimit: {
+      // ESC-11: o padrão guarda o contador num Map em memória do processo.
+      // Em serverless cada instância tem o seu, e ele some entre invocações,
+      // então login e cadastro ficavam abertos a força bruta na prática.
+      // No Postgres o contador passa a ser compartilhado.
+      //
+      // As regras não foram mexidas: o better-auth já aplica 3 tentativas por
+      // 10s em sign-in, sign-up, troca de senha e de e-mail, e janelas mais
+      // longas nos envios de e-mail. Sobrescrever isso com uma regra própria
+      // SUBSTITUIRIA a padrão, e afrouxaria o que já estava certo.
+      //
+      // Ligado explicitamente: a proteção não deve depender de NODE_ENV.
+      enabled: true,
+      storage: 'database'
+    },
+    session: {
+      // ESC-02: sem isto, toda requisição tRPC, toda navegação SSR e toda
+      // rota REST fazia um SELECT em `session` + `user`. O cache guarda a
+      // sessão num cookie assinado, e a leitura passa a ser local.
+      //
+      // maxAge curto de propósito: enquanto o cookie é válido, mudanças
+      // feitas por um admin sobre OUTRO usuário (banir, trocar papel) não
+      // têm como invalidá-lo, então essa é a janela máxima de propagação.
+      // 60s já captura praticamente todas as rajadas de requisições de um
+      // carregamento de página, que é de onde vem o ganho.
+      //
+      // Mutações que o próprio usuário faz sobre a própria sessão são
+      // seguras: `authClient.updateUser` e a impersonação do plugin admin
+      // passam por `setSessionCookie`, que reescreve este cache. A exceção
+      // é o onboarding, que atualiza `user` direto pelo Drizzle — por isso
+      // as rotas de onboarding chamam `refreshSessionCache()` no sucesso.
+      cookieCache: {
+        enabled: true,
+        maxAge: 60
+      }
+    },
     plugins: [
       tanstackStartCookies(),
+      twoFactor({ issuer: 'Onside' }),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'

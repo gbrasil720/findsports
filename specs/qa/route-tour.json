@@ -1,0 +1,145 @@
+[
+  {
+    "path": "/",
+    "goto": {
+      "url": "http://127.0.0.1:3001/",
+      "title": "Onside — Saiba onde assistir ao seu jogo"
+    },
+    "eval": {
+      "result": "{\"path\":\"/\",\"title\":\"Onside — Saiba onde assistir ao seu jogo\",\"h1\":\"SAIBA ONDE SEU JOGOVAI PASSAR. ANTESDE SAIR DE CASA.\",\"onside\":false,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":true,\"text\":\"Pular para o conteúdo A ONSIDE ESTÁ CHEGANDO SAIBA ONDE SEU JOGO VAI PASSAR. ANTES DE SAIR DE CASA. A Onside vai reunir bares que confirmaram a transmissão e mostrar distância, lotação, som, telões e perfil da torcida. Cadastre sua cidade para ajudar a definir o primeiro lançamento. LEVAR A ONSIDE À MINHA CIDADE QUERO PARTICIPAR COM MEU BAR GRÁTIS PARA TORCEDORES SEM NEWSLETTER\"}",
+      "origin": "http://127.0.0.1:3001/"
+    }
+  },
+  {
+    "path": "/login",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/signup",
+    "goto": {
+      "url": "http://127.0.0.1:3001/signup",
+      "title": "Criar conta — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/signup\",\"title\":\"Criar conta — Onside\",\"h1\":\"ENTRE NO TIME TITULAR.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"CRIAR CONTA ENTRE NO TIME TITULAR. Já tem conta? Entrar agora SOU UM TORCEDOR DONO DE BAR NOME COMPLETO E-MAIL SENHA CONFIRMAR SENHA ENTRAR NO TIME Ao criar conta, você passa a usar o app Onside com o perfil escolhido. ACESSO ANTECIPADO NUNCA MAIS PERCA UM GOL. Cadastre-se e descubra qual bar está passando o seu jogo favorito, em tempo real. Encontre bares com seu jogo ao vivo \"}",
+      "origin": "http://127.0.0.1:3001/signup"
+    }
+  },
+  {
+    "path": "/onboarding/fan",
+    "goto": {
+      "url": "http://127.0.0.1:3001/onboarding/fan",
+      "title": "Configure sua conta de torcedor — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/onboarding/fan\",\"title\":\"Configure sua conta de torcedor — Onside\",\"h1\":\"Vamos achar os melhores bares pro seu jogo.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":true,\"text\":\"Ir para o conteúdo CONTA DE TORCEDOR Progresso: passo 1 de 4 — Boas-vindas PASSO 1 DE 4 BOAS-VINDAS É TORCEDOR? CHEGOU NO LUGAR CERTO. VAMOS ACHAR OS MELHORES BARES PRO SEU JOGO. Em 2 passos a gente calibra sua busca: esportes favoritos e raio de localização. Veja jogos ao vivo perto de você Bares dentro do seu raio Leve a galera junto VOLTAR COMEÇAR\"}",
+      "origin": "http://127.0.0.1:3001/onboarding/fan"
+    }
+  },
+  {
+    "path": "/onboarding/pub",
+    "goto": {
+      "url": "http://127.0.0.1:3001/onboarding/pub",
+      "title": "Cadastre seu bar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/onboarding/pub\",\"title\":\"Cadastre seu bar — Onside\",\"h1\":\"Vamos lotar sua casa nos próximos clássicos.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":true,\"text\":\"Ir para o conteúdo CONTA DE BAR Progresso: passo 1 de 3 — Boas-vindas PASSO 1 DE 3 BOAS-VINDAS SEU BAR NO RADAR DOS TORCEDORES. VAMOS LOTAR SUA CASA NOS PRÓXIMOS CLÁSSICOS. Cadastre seu bar em 1 minuto. Torcedores da região já podem te encontrar. Divulgue sua programação de jogos Apareça pra torcedores perto de você Lote nos dias de clássico VOLTAR COMEÇAR - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/onboarding/pub"
+    }
+  },
+  {
+    "path": "/dashboard",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/dashboard/profile",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/plan",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/admin",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/admin/billing",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/internal",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/internal/waitlist",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  },
+  {
+    "path": "/internal/manage-users",
+    "goto": {
+      "url": "http://127.0.0.1:3001/login",
+      "title": "Entrar — Onside"
+    },
+    "eval": {
+      "result": "{\"path\":\"/login\",\"title\":\"Entrar — Onside\",\"h1\":\"DE VOLTA AO JOGO.\",\"onside\":true,\"findS\":false,\"sw\":1081,\"cw\":1081,\"hasSkip\":false,\"text\":\"ÁREA EXCLUSIVA O JOGO COMEÇA AQUI. Entre na sua conta e faça parte do maior mapa de bares esportivos do Brasil. © 2026 ONSIDE · BRASIL ENTRAR DE VOLTA AO JOGO. Não tem conta? Cadastre-se grátis E-MAIL SENHA ACESSAR MINHA CONTA Ao entrar, você acessa o app Onside com sua conta. - TanStack Router\"}",
+      "origin": "http://127.0.0.1:3001/login"
+    }
+  }
+]

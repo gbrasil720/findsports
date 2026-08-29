@@ -1,11 +1,13 @@
 import { cn } from '@findsports_oficial/ui/lib/utils'
-import { Loader2Icon } from 'lucide-react'
+import Loader from 'reicon-react/icons/Loader'
 
 function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
   return (
-    <Loader2Icon
+    <Loader
       role="status"
       aria-label="Loading"
+      size={16}
+      color="currentColor"
       className={cn('size-4 animate-spin', className)}
       {...props}
     />

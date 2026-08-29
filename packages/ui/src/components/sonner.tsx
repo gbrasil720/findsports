@@ -1,28 +1,31 @@
 'use client'
 
-import {
-  CircleCheckIcon,
-  InfoIcon,
-  Loader2Icon,
-  OctagonXIcon,
-  TriangleAlertIcon
-} from 'lucide-react'
-import { useTheme } from 'next-themes'
+import AlertTriangle from 'reicon-react/icons/AlertTriangle'
+import Check from 'reicon-react/icons/Check'
+import CircleInfo from 'reicon-react/icons/CircleInfo'
+import Loader from 'reicon-react/icons/Loader'
+import Xmark from 'reicon-react/icons/Xmark'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme()
-
+const Toaster = ({ theme = 'light', ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme={theme}
       className="toaster group"
       icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />
+        success: <Check size={16} color="currentColor" className="size-4" />,
+        info: <CircleInfo size={16} color="currentColor" className="size-4" />,
+        warning: (
+          <AlertTriangle size={16} color="currentColor" className="size-4" />
+        ),
+        error: <Xmark size={16} color="currentColor" className="size-4" />,
+        loading: (
+          <Loader
+            size={16}
+            color="currentColor"
+            className="size-4 animate-spin"
+          />
+        )
       }}
       style={
         {

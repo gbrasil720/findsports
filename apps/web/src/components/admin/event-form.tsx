@@ -1,7 +1,8 @@
-import { LoaderPinwheelIcon, Tick01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import Check from 'reicon-react/icons/Check'
+import Loader from 'reicon-react/icons/Loader'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 const DIRECT_CONFRONTATION_SLUGS = new Set([
@@ -44,6 +45,7 @@ export function EventFormComponent({
 
   const { data: teams = [], isLoading: loadingTeams } = useQuery({
     ...trpc.pubs.getTeamsBySport.queryOptions({ sportId: form.sportId }),
+    ...CATALOG_QUERY,
     enabled: !!form.sportId
   })
   const selectedSport = sports.find((s) => s.id === form.sportId)
@@ -76,15 +78,13 @@ export function EventFormComponent({
     form.sportId && form.championship && form.startsAt && endsAtValid
 
   return (
-    <div className="space-y-4 max-h-[70dvh] overflow-y-auto pr-1">
+    <div className="max-h-[70dvh] space-y-4 overflow-y-auto overscroll-contain pr-1">
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Esporte *
-        </span>
+        <span className="onside-label mb-1.5 block">Esporte *</span>
         <select
           value={form.sportId}
           onChange={(e) => handleSportChange(e.target.value)}
-          className="admin-input"
+          className="onside-select font-semibold"
         >
           <option value="">Selecione um esporte</option>
           {sports.map((s) => (
@@ -96,42 +96,36 @@ export function EventFormComponent({
       </label>
 
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Campeonato *
-        </span>
+        <span className="onside-label mb-1.5 block">Campeonato *</span>
         <input
           value={form.championship}
           onChange={(e) => setForm({ ...form, championship: e.target.value })}
-          className="admin-input"
+          className="onside-input font-semibold"
           placeholder="Ex: Brasileirão Série A, Copa do Mundo..."
         />
       </label>
 
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Data e horário *
-        </span>
+        <span className="onside-label mb-1.5 block">Data e horário *</span>
         <input
           type="datetime-local"
           value={form.startsAt}
           onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-          className="admin-input"
+          className="onside-input font-semibold"
         />
       </label>
 
       <label className="block">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5 block">
-          Horário de término
-        </span>
+        <span className="onside-label mb-1.5 block">Horário de término</span>
         <input
           type="datetime-local"
           value={form.endsAt}
           min={form.startsAt || undefined}
           onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
-          className="admin-input"
+          className="onside-input font-semibold"
         />
         {form.endsAt && form.startsAt && form.endsAt <= form.startsAt && (
-          <p className="text-xs text-red-500 mt-1">
+          <p className="text-xs text-[var(--onside-live-text)] mt-1">
             Término deve ser posterior ao início.
           </p>
         )}
@@ -139,19 +133,13 @@ export function EventFormComponent({
 
       {form.sportId && (
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--onside-muted)] mb-2 block">
             Times / participantes
           </span>
 
           {loadingTeams ? (
-            <div className="flex items-center gap-2 text-zinc-400 text-sm py-2">
-              <HugeiconsIcon
-                icon={LoaderPinwheelIcon}
-                size={16}
-                color="currentColor"
-                strokeWidth={1.5}
-                className="animate-spin"
-              />{' '}
+            <div className="flex items-center gap-2 text-[var(--onside-muted)] text-sm py-2">
+              <Loader size={16} color="currentColor" className="animate-spin" />{' '}
               Carregando times...
             </div>
           ) : teams.length > 0 ? (
@@ -168,29 +156,22 @@ export function EventFormComponent({
                       type="button"
                       onClick={() => !disabled && toggleTeam(t.id)}
                       disabled={disabled}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
                         selected
-                          ? 'bg-brand-blue text-white'
+                          ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
                           : disabled
-                            ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed opacity-50'
-                            : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                            ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
+                            : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
                       }`}
                     >
-                      {selected && (
-                        <HugeiconsIcon
-                          icon={Tick01Icon}
-                          size={12}
-                          color="currentColor"
-                          strokeWidth={1.5}
-                        />
-                      )}
+                      {selected && <Check size={12} color="currentColor" />}
                       {t.name}
                     </button>
                   )
                 })}
               </div>
               {!hasFreeText && (
-                <p className="text-[10px] text-zinc-400 mb-2">
+                <p className="text-[10px] text-[var(--onside-muted)] mb-2">
                   {form.participantIds.length}
                   {hasLimit ? '/2' : ''} selecionado
                   {form.participantIds.length !== 1 ? 's' : ''}
@@ -210,14 +191,14 @@ export function EventFormComponent({
                 participantIds: participantFreeText ? [] : prev.participantIds
               }))
             }}
-            className="admin-input"
+            className="onside-input font-semibold"
             placeholder={
               teams.length > 0
                 ? 'Ou digite algo diferente... (ex: outros, classificatória)'
                 : 'Ex: Max Verstappen, Flamengo × Palmeiras...'
             }
           />
-          <p className="text-[10px] text-zinc-400 mt-1">
+          <p className="text-[10px] text-[var(--onside-muted)] mt-1">
             {teams.length > 0
               ? hasFreeText
                 ? 'Escreveu texto livre — chips de times desabilitados. Limpe o campo para voltar a selecioná-los.'
@@ -227,13 +208,17 @@ export function EventFormComponent({
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && (
+        <p className="text-xs text-[var(--onside-live-text)]" role="alert">
+          {error}
+        </p>
+      )}
 
-      <div className="flex gap-2 justify-end pt-2">
+      <div className="flex justify-end gap-2 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 rounded-full text-sm font-bold text-zinc-600 hover:bg-zinc-100"
+          className="onside-btn onside-btn-ghost min-h-11 px-4 text-xs"
         >
           Cancelar
         </button>
@@ -241,9 +226,9 @@ export function EventFormComponent({
           type="button"
           onClick={() => onSave(form)}
           disabled={!canSave || isSaving}
-          className="px-5 py-2 rounded-full text-sm font-bold bg-brand-blue text-white disabled:opacity-50"
+          className="onside-btn onside-btn-acid min-h-11 px-5 text-xs"
         >
-          {isSaving ? 'Salvando...' : 'Salvar'}
+          {isSaving ? 'Salvando…' : 'Salvar'}
         </button>
       </div>
     </div>

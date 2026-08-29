@@ -1,3 +1,4 @@
+import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
 import { db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
@@ -5,17 +6,77 @@ import {
   eventParticipants,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
+import {
+  AMENITIES,
+  MAX_SCREEN_COUNT,
+  normalizeAmenityIds
+} from '../lib/amenities'
+import { isOwnPhotoUrl } from '../lib/blob-photo'
+import { getEventCreationPolicy } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
+import { STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from '../lib/rating'
 
-const STARTER_EVENT_LIMIT = 5
+/**
+ * Resolve the effective phoneAcceptsWhatsapp value given the input and
+ * the existing bar state.
+ *
+ * Rules (spec section 10.1):
+ * - phone change (existing non-empty → different input) → revoke to false
+ *   atomically, regardless of input value
+ * - confirm true only when bar already has a phone OR a non-empty phone
+ *   is sent in the same mutation (initial setup is allowed)
+ * - confirm false is always allowed
+ */
+export function resolvePhoneAcceptsWhatsapp(
+  inputPhone: string | undefined,
+  inputAccepts: boolean | undefined,
+  existingPhone: string | null
+): { value: boolean; changed: boolean } | null {
+  const hasExistingPhone = existingPhone != null && existingPhone.trim() !== ''
+  // "Phone change" = existing non-empty phone replaced with a different value
+  const phoneChanged =
+    hasExistingPhone && inputPhone !== undefined && inputPhone !== existingPhone
+
+  if (inputAccepts === undefined) {
+    // No explicit input — only revoke if phone changed
+    return phoneChanged ? { value: false, changed: true } : null
+  }
+
+  // Phone changed → revoke atomically, regardless of input value
+  if (phoneChanged) {
+    return { value: false, changed: true }
+  }
+
+  // Confirming true requires a phone number (existing or provided)
+  if (inputAccepts === true) {
+    const effectivePhone = inputPhone ?? existingPhone
+    if (!effectivePhone || effectivePhone.trim() === '') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message:
+          'Confirmação de WhatsApp requer telefone cadastrado. Envie um telefone junto com a confirmação.'
+      })
+    }
+  }
+
+  return { value: inputAccepts, changed: true }
+}
 
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
+    // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
+    columns: { geo: false },
     with: { subscription: true }
   })
 
@@ -27,31 +88,6 @@ async function getBarByUserId(userId: string) {
   }
 
   return result
-}
-
-// Conta eventos criados no período de billing atual
-async function countEventsInCurrentPeriod(
-  barId: string,
-  currentPeriodEnd: Date | null
-): Promise<number> {
-  // Calcula o início do período subtraindo 1 mês do currentPeriodEnd
-  const periodStart = currentPeriodEnd ? new Date(currentPeriodEnd) : new Date()
-
-  if (currentPeriodEnd) {
-    periodStart.setMonth(periodStart.getMonth() - 1)
-  } else {
-    // Fallback: últimos 30 dias
-    periodStart.setDate(periodStart.getDate() - 30)
-  }
-
-  const result = await db.execute(sql`
-    SELECT COUNT(*) as count
-    FROM event
-    WHERE bar_id = ${barId}
-    AND created_at >= ${periodStart.toISOString()}
-  `)
-
-  return Number((result.rows[0] as any)?.count ?? 0)
 }
 
 export const pubRouter = router({
@@ -74,10 +110,23 @@ export const pubRouter = router({
         name: z.string().min(2).max(100).optional(),
         description: z.string().max(500).optional(),
         phone: z.string().max(30).optional(),
+        phoneAcceptsWhatsapp: z.boolean().optional(),
         address: z.string().min(5).max(255).optional(),
         neighborhood: z.string().min(2).max(100).optional(),
         city: z.string().min(2).max(100).optional(),
-        photoUrl: z.string().url().optional()
+        photoUrl: z.string().url().optional(),
+        // Lista completa, não incremental: o formulário manda o estado final
+        // das características. Array vazio desmarca tudo, e `undefined` não
+        // toca no que já está gravado — a foto e a descrição seguem a mesma
+        // convenção nesta mutation.
+        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        screenCount: z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_SCREEN_COUNT)
+          .nullable()
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -91,6 +140,26 @@ export const pubRouter = router({
       }
 
       const existingBar = await getBarByUserId(userId)
+
+      // ESC-15: com o upload indo direto do navegador para o armazenamento,
+      // quem informa a URL da foto é o cliente. Aceitar qualquer string
+      // deixaria um bar apontar a própria foto para um endereço arbitrário.
+      if (
+        input.photoUrl &&
+        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env.BLOB_STORE_ID)
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'URL de foto inválida.'
+        })
+      }
+
+      // Resolve phoneAcceptsWhatsapp with atomic revocation on phone change
+      const whatsappResolution = resolvePhoneAcceptsWhatsapp(
+        input.phone,
+        input.phoneAcceptsWhatsapp,
+        existingBar.phone
+      )
 
       let coordinates: { latitude: string; longitude: string } | undefined
       const addressChanged = input.address || input.neighborhood || input.city
@@ -120,16 +189,90 @@ export const pubRouter = router({
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
           ...(input.city && { city: input.city }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
+          ...(input.amenities !== undefined && {
+            amenities: normalizeAmenityIds(input.amenities)
+          }),
+          ...(input.screenCount !== undefined && {
+            screenCount: input.screenCount
+          }),
           ...(coordinates && {
             latitude: coordinates.latitude,
             longitude: coordinates.longitude
+          }),
+          // phoneAcceptsWhatsapp: resolved by helper (atomic revoke on phone change)
+          ...(whatsappResolution && {
+            phoneAcceptsWhatsapp: whatsappResolution.value
           })
         })
         .where(eq(bar.id, existingBar.id))
         .returning()
 
-      return updated
+      return {
+        ...updated,
+        phoneRevoked: whatsappResolution?.value === false,
+        phoneAcceptsWhatsappConfirmed: whatsappResolution?.value === true
+      }
     }),
+
+  /**
+   * As avaliações do próprio bar, cruas.
+   *
+   * O piso público (`RATING_PUBLIC_FLOOR`) e a flag de exibição NÃO se
+   * aplicam aqui: eles existem para proteger o bar de ter uma amostra
+   * minúscula exibida ao torcedor, não para esconder do dono o que estão
+   * dizendo do espaço dele. Ele vê desde a primeira.
+   *
+   * Não devolve quem avaliou. A resposta é binária e a base é pequena — um
+   * nome ao lado de um "não voltaria" transformaria avaliação em conflito
+   * pessoal, e o dono tem o telefone dessa pessoa.
+   */
+  getMyRatings: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+
+    const rows = await db.execute(sql`
+      SELECT
+        r.would_return,
+        r.created_at,
+        e.championship,
+        e.starts_at
+      FROM bar_rating r
+      JOIN event e ON e.id = r.event_id
+      WHERE r.bar_id = ${existingBar.id}
+      ORDER BY r.created_at DESC
+      LIMIT 50
+    `)
+
+    const total = existingBar.ratingCount
+    const positive = existingBar.ratingPositive
+
+    return {
+      total,
+      positive,
+      percentage: ratingPercentage(positive, total),
+      isPublic: hasPublicRating(total),
+      floor: RATING_PUBLIC_FLOOR,
+      recent: (
+        rows.rows as {
+          would_return: boolean
+          created_at: string
+          championship: string
+          starts_at: string
+        }[]
+      ).map((row) => ({
+        wouldReturn: row.would_return,
+        createdAt: row.created_at,
+        championship: row.championship,
+        startsAt: row.starts_at
+      }))
+    }
+  }),
 
   getMyEvents: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
@@ -153,6 +296,20 @@ export const pubRouter = router({
       },
       orderBy: (event, { asc }) => [asc(event.startsAt)]
     })
+  }),
+
+  getMyEventCreationPolicy: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(userId)
+    return getEventCreationPolicy(db, existingBar)
   }),
 
   createEvent: protectedProcedure
@@ -188,36 +345,49 @@ export const pubRouter = router({
         }
       }
 
-      const existingBar = await getBarByUserId(userId)
+      await db.transaction(async (tx) => {
+        const [lockedBar] = await tx
+          .select()
+          .from(bar)
+          .where(eq(bar.userId, userId))
+          .for('update')
+          .limit(1)
 
-      if (!existingBar.isActive) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message:
-            'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+        if (!lockedBar) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Bar não encontrado para este usuário.'
+          })
+        }
+
+        const existingSubscription = await tx.query.subscription.findFirst({
+          where: eq(subscription.barId, lockedBar.id)
         })
-      }
+        const policy = await getEventCreationPolicy(tx, {
+          id: lockedBar.id,
+          isActive: lockedBar.isActive,
+          subscription: existingSubscription ?? null
+        })
 
-      // Verifica limite do plano Starter
-      const plan = existingBar.subscription?.plan ?? 'starter'
-      if (plan === 'starter') {
-        const count = await countEventsInCurrentPeriod(
-          existingBar.id,
-          existingBar.subscription?.currentPeriodEnd ?? null
-        )
-        if (count >= STARTER_EVENT_LIMIT) {
+        if (policy.status === 'inactive') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message:
+              'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+          })
+        }
+
+        if (policy.status === 'limited' && !policy.canCreate) {
           throw new TRPCError({
             code: 'FORBIDDEN',
             message: `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
           })
         }
-      }
 
-      await db.transaction(async (tx) => {
         const [newEvent] = await tx
           .insert(event)
           .values({
-            barId: existingBar.id,
+            barId: lockedBar.id,
             sportId: input.sportId,
             championship: input.championship,
             startsAt: new Date(input.startsAt),
@@ -379,5 +549,23 @@ export const pubRouter = router({
     const existingBar = await getBarByUserId(userId)
 
     return existingBar.subscription ?? null
+  }),
+
+  getAccountDeletionEligibility: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== 'pub') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas contas de bar podem acessar este recurso.'
+      })
+    }
+
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const block = getBarAccountDeletionBlock(existingBar.subscription ?? null)
+
+    return {
+      allowed: block === null,
+      block,
+      currentPeriodEnd: existingBar.subscription?.currentPeriodEnd ?? null
+    }
   })
 })

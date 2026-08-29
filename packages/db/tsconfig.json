@@ -1,6 +1,7 @@
 {
   "extends": "@findsports_oficial/config/tsconfig.base.json",
   "compilerOptions": {
+    "types": ["bun-types"],
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

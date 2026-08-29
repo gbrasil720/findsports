@@ -1,108 +1,151 @@
-import { CalendarsIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import Chat from 'reicon-react/icons/Chat'
+import { useMinuteNow } from '@/components/app/minute-tick'
+import { getEventTemporalState } from '@/domain/events'
+import {
+  formatEventTime,
+  formatMatchup,
+  groupEventsByDay,
+  type ProfileEvent
+} from '@/domain/pub-profile'
+import { OwnerNudge } from './owner-notice'
 
-type Participant = { team: { name: string } }
-
-type Event = {
-  id: string
-  championship: string
-  startsAt: string
-  sport: { name: string; slug: string }
-  participants: Participant[]
-  participantFreeText?: string | null
+type Props = {
+  events: ProfileEvent[]
+  /** O jogo já mostrado no topo — não se repete na agenda. */
+  highlightedEventId: string | null
+  whatsappUrl: string | null
+  onWhatsApp: () => void
+  isOwner: boolean
 }
 
-function describeParticipants(e: Event): string {
-  if (e.participants.length > 0)
-    return e.participants.map((p) => p.team.name).join(' × ')
-  return e.participantFreeText || e.championship
-}
+function EmptyAgenda({
+  whatsappUrl,
+  onWhatsApp,
+  isOwner
+}: {
+  whatsappUrl: string | null
+  onWhatsApp: () => void
+  isOwner: boolean
+}) {
+  if (isOwner) {
+    return (
+      <div className="border-[1.5px] border-[var(--onside-line)] border-dashed p-6 text-center">
+        <p className="font-semibold text-[var(--onside-ink)] text-sm">
+          Sua agenda está vazia
+        </p>
+        <p className="mx-auto mt-1 max-w-[42ch] text-[var(--onside-muted)] text-sm">
+          É a agenda que faz o torcedor encontrar você na busca. Sem jogo
+          cadastrado, seu bar só aparece para quem já procurava pelo nome.
+        </p>
+        <OwnerNudge
+          action={{
+            label: 'Cadastrar jogo',
+            to: '/admin',
+            hash: 'admin-grade'
+          }}
+        >
+          O torcedor está vendo esta mesma seção vazia.
+        </OwnerNudge>
+      </div>
+    )
+  }
 
-function formatEventTime(startsAt: string | Date): string {
-  const d = new Date(startsAt)
-  const today = new Date()
-  const tomorrow = new Date()
-  tomorrow.setDate(today.getDate() + 1)
-
-  const time = d.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-
-  if (d.toDateString() === today.toDateString()) return `Hoje · ${time}`
-  if (d.toDateString() === tomorrow.toDateString()) return `Amanhã · ${time}`
   return (
-    d.toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short'
-    }) + ` · ${time}`
+    <div className="border-[1.5px] border-[var(--onside-line)] border-dashed p-6 text-center">
+      <p className="font-semibold text-[var(--onside-ink)] text-sm">
+        Esse bar ainda não cadastrou jogos
+      </p>
+      <p className="mx-auto mt-1 max-w-[42ch] text-[var(--onside-muted)] text-sm">
+        A programação pode existir sem estar no Onside. Pergunte direto ao bar o
+        que vai passar.
+      </p>
+      {whatsappUrl && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onWhatsApp}
+          className="onside-btn onside-btn-ink mt-4 min-h-12 justify-center px-5 text-sm"
+        >
+          <Chat size={16} color="currentColor" aria-hidden="true" />
+          <span className="ml-2">Perguntar no WhatsApp</span>
+        </a>
+      )}
+    </div>
   )
 }
 
-type Props = {
-  liveEvent?: Event
-  upcomingEvents: Event[]
-  allEvents: Event[]
-}
+/**
+ * A agenda do bar, agrupada por dia.
+ *
+ * Antes a seção sumia inteira quando não havia jogo (`if (!events.length)
+ * return null`) — o buraco que deixava a página parecendo inacabada. Agora a
+ * ausência de agenda também é uma resposta, e leva a uma conversa.
+ */
+export function EventsList({
+  events,
+  highlightedEventId,
+  whatsappUrl,
+  onWhatsApp,
+  isOwner
+}: Props) {
+  const now = useMinuteNow()
+  const rest = events.filter((event) => event.id !== highlightedEventId)
+  const groups = groupEventsByDay(rest, new Date(now))
 
-export function EventsList({ liveEvent, upcomingEvents, allEvents }: Props) {
   return (
-    <section className="bg-white rounded-2xl ring-1 ring-black/5 p-6 md:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-          <HugeiconsIcon
-            icon={CalendarsIcon}
-            size={20}
-            color="currentColor"
-            strokeWidth={1.5}
-            className="text-brand-blue"
-          />
-          Próximos jogos transmitidos
-        </h2>
-      </div>
+    <section className="onside-panel p-5 md:p-6">
+      <h2 className="onside-display mb-4 text-2xl">
+        {highlightedEventId ? 'Também vai passar' : 'Programação'}
+      </h2>
 
-      {allEvents.length === 0 ? (
-        <p className="text-sm text-zinc-500 py-4">
-          Nenhum jogo cadastrado ainda.
-        </p>
+      {groups.length === 0 ? (
+        <EmptyAgenda
+          whatsappUrl={whatsappUrl}
+          onWhatsApp={onWhatsApp}
+          isOwner={isOwner}
+        />
       ) : (
-        <ul className="divide-y divide-zinc-100">
-          {liveEvent && (
-            <li key={liveEvent.id} className="py-4 flex items-center gap-4">
-              <span className="size-2 rounded-full bg-brand-orange animate-pulse shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange mb-0.5">
-                  {liveEvent.sport.name} · {liveEvent.championship}
-                </div>
-                <div className="font-semibold truncate">
-                  {describeParticipants(liveEvent)}
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-orange whitespace-nowrap">
-                <span className="size-1.5 rounded-full bg-brand-orange animate-pulse" />
-                Ao vivo
-              </span>
-            </li>
-          )}
+        <div className="space-y-5">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <p className="onside-kicker mb-2">{group.label}</p>
+              <ul className="space-y-2">
+                {group.events.map((event) => {
+                  const live =
+                    getEventTemporalState(event.startsAt, now) === 'live'
 
-          {upcomingEvents.map((e) => (
-            <li key={e.id} className="py-4 flex items-center gap-4">
-              <span className="size-2 rounded-full bg-zinc-300 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-brand-orange mb-0.5">
-                  {e.sport.name} · {e.championship}
-                </div>
-                <div className="font-semibold truncate">
-                  {describeParticipants(e)}
-                </div>
-              </div>
-              <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">
-                {formatEventTime(e.startsAt)}
-              </div>
-            </li>
+                  return (
+                    <li key={event.id} className="onside-event-row">
+                      <span className="font-[family-name:var(--onside-mono)] text-sm font-bold tabular-nums">
+                        {formatEventTime(event.startsAt)}
+                      </span>
+
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-[var(--onside-ink)] text-sm">
+                          {formatMatchup(event)}
+                        </span>
+                        <span className="block truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                          {event.sport.name} · {event.championship}
+                        </span>
+                      </span>
+
+                      {live && (
+                        <span className="onside-badge onside-badge-live justify-self-start sm:justify-self-end">
+                          <span
+                            className="onside-live-dot"
+                            aria-hidden="true"
+                          />
+                          Ao vivo
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   )

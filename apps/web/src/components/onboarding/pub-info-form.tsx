@@ -6,9 +6,16 @@ type Props = {
   neighborhood: string
   city: string
   phone: string
-  description: string
   onChange: (field: string, value: string) => void
+  errors?: Partial<
+    Record<'name' | 'address' | 'neighborhood' | 'city' | 'phone', string>
+  >
 }
+
+const fieldClass =
+  'onside-input border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]'
+const labelClass =
+  'onside-label text-[color-mix(in_srgb,var(--onside-paper)_70%,transparent)]'
 
 export function PubInfoForm({
   name,
@@ -16,79 +23,132 @@ export function PubInfoForm({
   neighborhood,
   city,
   phone,
-  description,
-  onChange
+  onChange,
+  errors = {}
 }: Props) {
   return (
-    <div className="space-y-4 max-w-md">
-      <label className="block">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
+    <div className="max-w-xl space-y-4">
+      <div>
+        <label htmlFor="pub-name" className={labelClass}>
           Nome do estabelecimento *
-        </span>
+        </label>
         <input
+          id="pub-name"
+          name="name"
           value={name}
           onChange={(e) => onChange('name', e.target.value)}
           placeholder="Ex: Bar do Zé"
-          className="w-full bg-white/5 ring-1 ring-white/10 focus:ring-brand-blue/60 rounded-xl px-4 py-3 outline-none transition"
+          autoComplete="organization"
+          required
+          maxLength={120}
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? 'pub-name-error' : undefined}
+          className={fieldClass}
         />
-      </label>
-      <label className="block">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
+        {errors.name ? (
+          <p id="pub-name-error" className="onside-field-error" role="alert">
+            {errors.name}
+          </p>
+        ) : null}
+      </div>
+
+      <div>
+        <label htmlFor="pub-address" className={labelClass}>
           Endereço *
-        </span>
+        </label>
         <input
+          id="pub-address"
+          name="address"
           value={address}
           onChange={(e) => onChange('address', e.target.value)}
           placeholder="Ex: Rua Aspicuelta, 123"
-          className="w-full bg-white/5 ring-1 ring-white/10 focus:ring-brand-blue/60 rounded-xl px-4 py-3 outline-none transition"
+          autoComplete="address-line1"
+          required
+          maxLength={200}
+          aria-invalid={errors.address ? true : undefined}
+          aria-describedby={errors.address ? 'pub-address-error' : undefined}
+          className={fieldClass}
         />
-      </label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
+        {errors.address ? (
+          <p id="pub-address-error" className="onside-field-error" role="alert">
+            {errors.address}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <label htmlFor="pub-neighborhood" className={labelClass}>
             Bairro *
-          </span>
+          </label>
           <input
+            id="pub-neighborhood"
+            name="neighborhood"
             value={neighborhood}
             onChange={(e) => onChange('neighborhood', e.target.value)}
             placeholder="Ex: Vila Madalena"
-            className="w-full bg-white/5 ring-1 ring-white/10 focus:ring-brand-blue/60 rounded-xl px-4 py-3 outline-none transition"
+            autoComplete="address-level3"
+            required
+            maxLength={100}
+            aria-invalid={errors.neighborhood ? true : undefined}
+            aria-describedby={
+              errors.neighborhood ? 'pub-neighborhood-error' : undefined
+            }
+            className={fieldClass}
           />
-        </label>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
+          {errors.neighborhood ? (
+            <p
+              id="pub-neighborhood-error"
+              className="onside-field-error"
+              role="alert"
+            >
+              {errors.neighborhood}
+            </p>
+          ) : null}
+        </div>
+        <div className="min-w-0">
+          <label htmlFor="pub-city" className={labelClass}>
             Cidade
-          </span>
+          </label>
           <input
+            id="pub-city"
+            name="city"
             value={city}
             onChange={(e) => onChange('city', e.target.value)}
             placeholder="São Paulo"
-            className="w-full bg-white/5 ring-1 ring-white/10 focus:ring-brand-blue/60 rounded-xl px-4 py-3 outline-none transition"
+            autoComplete="address-level2"
+            maxLength={100}
+            aria-invalid={errors.city ? true : undefined}
+            aria-describedby={errors.city ? 'pub-city-error' : undefined}
+            className={fieldClass}
           />
-        </label>
+          {errors.city ? (
+            <p id="pub-city-error" className="onside-field-error" role="alert">
+              {errors.city}
+            </p>
+          ) : null}
+        </div>
       </div>
-      <label className="block">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
+
+      <div>
+        <label htmlFor="pub-phone" className={labelClass}>
           Telefone
-        </span>
+        </label>
         <PhoneInput
+          id="pub-phone"
+          name="phone"
           defaultValue={phone}
           onChange={(p) => onChange('phone', p)}
           variant="onboarding"
+          invalid={Boolean(errors.phone)}
+          describedBy={errors.phone ? 'pub-phone-error' : undefined}
         />
-      </label>
-      <label className="block">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/60 mb-2 block">
-          Descrição
-        </span>
-        <textarea
-          value={description}
-          onChange={(e) => onChange('description', e.target.value)}
-          placeholder="Ex: Bar esportivo com 4 TVs e transmissão de todos os jogos"
-          rows={3}
-          className="w-full bg-white/5 ring-1 ring-white/10 focus:ring-brand-blue/60 rounded-xl px-4 py-3 outline-none transition resize-none"
-        />
-      </label>
+        {errors.phone ? (
+          <p id="pub-phone-error" className="onside-field-error" role="alert">
+            {errors.phone}
+          </p>
+        ) : null}
+      </div>
     </div>
   )
 }

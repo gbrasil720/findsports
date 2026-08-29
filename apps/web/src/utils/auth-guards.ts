@@ -21,25 +21,60 @@ export type AuthSession = {
     updatedAt: Date
     role: 'fan' | 'pub' | 'admin'
     onboardingCompleted: boolean
+    admittedAt?: Date | null
     searchRadiusKm: number
+    twoFactorEnabled: boolean
   }
 } | null
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup']
+const AUTHENTICATED_PREFIXES = [
+  '/dashboard',
+  '/admin',
+  '/plan',
+  '/internal'
+] as const
 
-const isPublicRoute = (pathname: string) =>
-  PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/pub/')
+export function requiresAuthentication(pathname: string) {
+  return AUTHENTICATED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
 
 export function applyAuthGuards(session: AuthSession, pathname: string) {
-  if (
-    !session &&
-    !isPublicRoute(pathname) &&
-    !pathname.startsWith('/onboarding')
-  ) {
+  // Unknown URLs stay public so the 404 page can render for visitors.
+  // /onboarding remains reachable without a session — existing behavior.
+  if (!session && requiresAuthentication(pathname)) {
     throw redirect({ to: '/login' })
   }
 
   if (!session) return
+
+  // O callback precisa finalizar o login e, para bares, consumir o rascunho
+  // do onboarding antes que o guard encaminhe para a rota seguinte.
+  if (pathname.startsWith('/verify-email')) return
+
+  if (
+    session.user.role !== 'admin' &&
+    session.user.admittedAt === null &&
+    !pathname.startsWith('/access-pending')
+  ) {
+    throw redirect({ to: '/access-pending' })
+  }
+
+  if (
+    session.user.admittedAt !== null &&
+    pathname.startsWith('/access-pending')
+  ) {
+    throw redirect({
+      to: session.user.onboardingCompleted
+        ? session.user.role === 'pub'
+          ? '/admin'
+          : '/dashboard'
+        : session.user.role === 'pub'
+          ? '/onboarding/pub'
+          : '/onboarding/fan'
+    })
+  }
 
   if (!session.user.onboardingCompleted) {
     const onboardingRoute =
@@ -59,7 +94,9 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
 
   // Não-admin tentando acessar área interna
   if (pathname.startsWith('/internal') && session.user.role !== 'admin') {
-    throw redirect({ to: session.user.role === 'pub' ? '/admin' : '/dashboard' })
+    throw redirect({
+      to: session.user.role === 'pub' ? '/admin' : '/dashboard'
+    })
   }
 
   // Fan tentando acessar área do bar

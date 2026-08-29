@@ -1,15 +1,30 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
+  customType,
+  doublePrecision,
   index,
+  integer,
   numeric,
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+import { barRating } from './rating'
+
+/**
+ * PostGIS `geography(Point,4326)`. Requer a extensão `postgis` — criada na
+ * migration 0013, que não é expressável no schema do Drizzle.
+ */
+const geographyPoint = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return 'geography(Point,4326)'
+  }
+})
 
 export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'trialing',
@@ -25,6 +40,8 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', [
   'elite'
 ])
 
+export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
+
 export const bar = pgTable(
   'bar',
   {
@@ -38,12 +55,46 @@ export const bar = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     phone: text('phone'),
+    phoneAcceptsWhatsapp: boolean('phone_accepts_whatsapp')
+      .default(false)
+      .notNull(),
     address: text('address').notNull(),
     neighborhood: text('neighborhood').notNull(),
     city: text('city').notNull(),
     latitude: numeric('latitude', { precision: 10, scale: 8 }).notNull(),
     longitude: numeric('longitude', { precision: 11, scale: 8 }).notNull(),
+    // Derivada de latitude/longitude pelo próprio Postgres. Existe para que a
+    // busca por proximidade use `ST_DWithin` + índice GiST em vez de calcular
+    // haversine linha a linha (ESC-01).
+    geo: geographyPoint('geo').generatedAlwaysAs(
+      sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
+    ),
     photoUrl: text('photo_url'),
+    // Ids do vocabulário de `packages/api/src/lib/amenities.ts`. Array em vez
+    // de tabela de junção porque o filtro da busca é `@>` — contém todos, que
+    // é exatamente o AND que a tela oferece — e o índice GIN entra no mesmo
+    // BitmapAnd dos índices GiST de geo, cortando candidatos antes do LATERAL
+    // que calcula o próximo jogo. Migration 0021 registra a medição.
+    amenities: integer('amenities').array().default(sql`'{}'`).notNull(),
+    // Só exibição. A busca não filtra por número de telas.
+    screenCount: smallint('screen_count'),
+    // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
+    // (migration 0022). A busca precisa ordenar por nota sem agregar por
+    // candidato — que é o mesmo motivo de `plan` viver aqui.
+    ratingCount: integer('rating_count').default(0).notNull(),
+    ratingPositive: integer('rating_positive').default(0).notNull(),
+    // Limite inferior de Wilson, DERIVADO pelo próprio Postgres a partir dos
+    // dois contadores acima. Coluna gerada, não trigger: a fórmula é
+    // aritmética imutável, então não há o que dessincronizar. A mesma conta
+    // vive em `packages/api/src/lib/rating.ts` para o cliente exibir.
+    ratingScore: doublePrecision('rating_score').generatedAlwaysAs(
+      sql`CASE WHEN rating_count <= 0 THEN 0 ELSE (((rating_positive::double precision / rating_count) + (1.96 * 1.96) / (2 * rating_count)) - 1.96 * sqrt((((rating_positive::double precision / rating_count) * (1 - rating_positive::double precision / rating_count)) + (1.96 * 1.96) / (4 * rating_count)) / rating_count)) / (1 + (1.96 * 1.96) / rating_count) END`
+    ),
+    // Espelho de `subscription.plan`, mantido por trigger (ESC-09). A busca
+    // ordena por plano antes de qualquer outra chave; ler o plano da própria
+    // linha do bar evita um lookup em `subscription` por candidato do raio.
+    // `starter` é o mesmo default do `COALESCE` que existia na query.
+    plan: subscriptionPlanEnum('plan').default('starter').notNull(),
     isActive: boolean('is_active').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -51,7 +102,35 @@ export const bar = pgTable(
       .$onUpdate(() => new Date())
       .notNull()
   },
-  (table) => [index('bar_userId_idx').on(table.userId)]
+  (table) => [
+    index('bar_userId_idx').on(table.userId),
+    // Casado com `amenities @> ARRAY[...]`. Não é parcial em `is_active`
+    // porque quem traz esse predicado é o índice de geo do outro lado do
+    // BitmapAnd, que já é parcial.
+    index('bar_amenities_gin_idx').using('gin', table.amenities),
+    // Ordenação do modo "melhor avaliados". Parcial em `rating_count > 0` e
+    // não no piso público: subir o piso é editar `RATING_PUBLIC_FLOOR`, sem
+    // migration.
+    index('bar_rating_score_idx')
+      .on(table.ratingScore.desc(), table.id)
+      .where(sql`is_active AND rating_count > 0`),
+    index('bar_isActive_idx').on(table.isActive),
+    // Índice parcial: a busca sempre filtra por bares ativos.
+    index('bar_geo_active_idx').using('gist', table.geo).where(sql`is_active`),
+    // ESC-09: `search` avalia os planos em camadas (elite, depois pro, depois
+    // starter) porque o plano é a primeira chave de ordenação. Um índice por
+    // plano deixa cada camada varrer só a sua fatia — a de elite tem 5% das
+    // linhas — em vez dos 100% de `bar_geo_active_idx`.
+    index('bar_geo_elite_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'elite'`),
+    index('bar_geo_pro_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'pro'`),
+    index('bar_geo_starter_idx')
+      .using('gist', table.geo)
+      .where(sql`is_active AND plan = 'starter'`)
+  ]
 )
 
 export const sport = pgTable('sport', {
@@ -103,7 +182,9 @@ export const event = pgTable(
   (table) => [
     index('event_barId_idx').on(table.barId),
     index('event_sportId_idx').on(table.sportId),
-    index('event_startsAt_idx').on(table.startsAt)
+    index('event_startsAt_idx').on(table.startsAt),
+    // Padrão real de acesso da busca: próximo jogo de um bar específico.
+    index('event_barId_startsAt_idx').on(table.barId, table.startsAt)
   ]
 )
 
@@ -117,7 +198,12 @@ export const eventParticipants = pgTable(
       .notNull()
       .references(() => team.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.eventId, table.teamId] })]
+  (table) => [
+    primaryKey({ columns: [table.eventId, table.teamId] }),
+    // A PK composta começa por event_id; buscar (ou cascatear) por time
+    // precisa deste.
+    index('event_participants_teamId_idx').on(table.teamId)
+  ]
 )
 
 export const userPreferenceSports = pgTable(
@@ -130,7 +216,11 @@ export const userPreferenceSports = pgTable(
       .notNull()
       .references(() => sport.id, { onDelete: 'cascade' })
   },
-  (table) => [primaryKey({ columns: [table.userId, table.sportId] })]
+  (table) => [
+    primaryKey({ columns: [table.userId, table.sportId] }),
+    // Mesma razão: a PK composta começa por user_id.
+    index('user_preference_sports_sportId_idx').on(table.sportId)
+  ]
 )
 
 export const userFavoriteBars = pgTable(
@@ -144,7 +234,12 @@ export const userFavoriteBars = pgTable(
       .references(() => bar.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
-  (table) => [primaryKey({ columns: [table.userId, table.barId] })]
+  (table) => [
+    primaryKey({ columns: [table.userId, table.barId] }),
+    // A PK composta só serve para busca começando por user_id; listar quem
+    // favoritou um bar precisa deste.
+    index('user_favorite_bars_barId_idx').on(table.barId)
+  ]
 )
 
 export const subscription = pgTable('subscription', {
@@ -174,7 +269,8 @@ export const barRelations = relations(bar, ({ one, many }) => ({
     fields: [bar.id],
     references: [subscription.barId]
   }),
-  favoritedBy: many(userFavoriteBars)
+  favoritedBy: many(userFavoriteBars),
+  ratings: many(barRating)
 }))
 
 export const sportRelations = relations(sport, ({ many }) => ({

@@ -1,41 +1,11 @@
-import { FavouriteIcon, MapPinIcon, StarIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { Link } from '@tanstack/react-router'
+import Heart from 'reicon-react/icons/Heart'
+import Location from 'reicon-react/icons/Location'
+import Star from 'reicon-react/icons/Star'
+import { useMinuteNow } from '@/components/app/minute-tick'
+import type { DiscoveryCardBar } from '@/domain/dashboard-selectors'
+import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
-
-type ApiEvent = {
-  id: string
-  championship: string
-  startsAt: string
-  sport: { name: string; slug: string }
-  participants: { team: { name: string; logoUrl?: string | null } }[]
-  participantFreeText?: string | null
-}
-
-type Bar = {
-  id: string
-  name: string
-  neighborhood: string
-  distance_km: number
-  latitude: string
-  longitude: string
-  photo_url?: string | null
-  created_at?: string
-  event_count?: number
-  plan?: 'starter' | 'pro' | 'elite'
-  nextEvent?: ApiEvent
-}
-
-function isLive(startsAt: string | Date): boolean {
-  const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
-  const start = new Date(startsAt).getTime()
-  const now = Date.now()
-  return now >= start && now <= start + LIVE_WINDOW_MS
-}
-
-function isUpcoming(startsAt: string | Date): boolean {
-  return new Date(startsAt).getTime() > Date.now()
-}
 
 function formatStartsAt(startsAt: string | Date): string {
   return new Date(startsAt).toLocaleTimeString('pt-BR', {
@@ -65,22 +35,11 @@ function isNew(createdAt?: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < 30 * 24 * 60 * 60 * 1000
 }
 
-const SPORT_COLORS: Record<string, string> = {
-  futebol: 'bg-emerald-500',
-  basketball: 'bg-orange-500',
-  volei: 'bg-yellow-500',
-  tenis: 'bg-lime-500',
-  mma: 'bg-red-500',
-  formula1: 'bg-red-600',
-  formula_1: 'bg-red-600'
-}
-
-function SportBadge({ slug, name }: { slug: string; name: string }) {
-  const color = SPORT_COLORS[slug] ?? 'bg-brand-blue'
+function SportBadge({ name }: { slug: string; name: string }) {
   const initials = name.slice(0, 2).toUpperCase()
   return (
     <span
-      className={`inline-flex items-center justify-center size-4 rounded-full text-[8px] font-bold text-white shrink-0 ${color}`}
+      className="inline-flex size-4 shrink-0 items-center justify-center border border-[var(--onside-ink)] bg-[var(--onside-ink)] font-[family-name:var(--onside-mono)] text-[8px] font-bold text-[var(--onside-paper)]"
       title={name}
     >
       {initials}
@@ -90,28 +49,25 @@ function SportBadge({ slug, name }: { slug: string; name: string }) {
 
 const PLAN_CONFIG = {
   elite: {
-    ring: 'ring-amber-400/60',
-    ringHover: 'hover:ring-amber-400/80',
-    ringHovered: 'ring-amber-400 shadow-lg shadow-amber-100',
-    badge: 'bg-amber-400 text-black',
+    badge: 'bg-[var(--onside-acid)] text-[var(--onside-ink)]',
     label: 'Elite'
   },
   pro: {
-    ring: 'ring-brand-blue/30',
-    ringHover: 'hover:ring-brand-blue/50',
-    ringHovered: 'ring-brand-blue/60 shadow-lg shadow-blue-50',
-    badge: 'bg-brand-blue text-white',
+    badge: 'bg-[var(--onside-ink)] text-[var(--onside-paper)]',
     label: 'Pro'
   },
   starter: null
 } as const
 
 type Props = {
-  bar: Bar
+  bar: DiscoveryCardBar
   isHovered: boolean
   isFavorite: boolean
+  favoritePending?: boolean
   onMouseEnter: () => void
   onMouseLeave: () => void
+  onFocus: () => void
+  onBlur: () => void
   onFavorite: (barId: string) => void
 }
 
@@ -119,17 +75,31 @@ export function BarCard({
   bar,
   isHovered,
   isFavorite,
+  favoritePending = false,
   onMouseEnter,
   onMouseLeave,
+  onFocus,
+  onBlur,
   onFavorite
 }: Props) {
   const event = bar.nextEvent
-  const live = event ? isLive(event.startsAt) : false
-  const upcoming = event ? isUpcoming(event.startsAt) : false
+  // ESC-17: só este cartão re-renderiza na virada do minuto, e não a página.
+  const agora = useMinuteNow()
+  const temporalState = event
+    ? getEventTemporalState(event.startsAt, agora)
+    : null
+  const live = temporalState === 'live'
+  const upcoming = temporalState === 'upcoming'
   const extraEvents = (bar.event_count ?? 0) - 1
   const newBar = isNew(bar.created_at)
   const plan = bar.plan ?? 'starter'
   const planConfig = PLAN_CONFIG[plan]
+  const participantsLabel =
+    event && (event.participants.length > 0 || event.participantFreeText)
+      ? event.participants.length > 0
+        ? event.participants.map((p) => p.team.name).join(' × ')
+        : (event.participantFreeText ?? '')
+      : null
 
   const initials = bar.name
     .split(' ')
@@ -138,142 +108,167 @@ export function BarCard({
     .slice(0, 2)
     .toUpperCase()
 
-  const ringClass = isHovered
-    ? planConfig
-      ? planConfig.ringHovered
-      : 'ring-brand-orange/50 shadow-lg'
-    : live
-      ? 'ring-brand-orange/30 hover:ring-brand-orange/50'
-      : planConfig
-        ? `${planConfig.ring} ${planConfig.ringHover}`
-        : 'ring-black/5 hover:ring-brand-orange/30'
-
   return (
-    <Link
-      to="/pub/$pubId"
-      params={{ pubId: bar.id }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      onClick={() => analytics.barCardClicked(bar.id, plan)}
-      className={`group relative bg-white rounded-2xl ring-1 transition-all p-4 grid grid-cols-[auto_1fr_auto] gap-4 items-center ${ringClass}`}
+    <div
+      className={`group relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 transition-[transform,box-shadow] duration-150 sm:gap-4 ${
+        isHovered
+          ? '-translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_var(--onside-ink)]'
+          : 'shadow-none'
+      }`}
     >
-      {planConfig && (
+      {planConfig ? (
         <span
-          className={`absolute top-3 right-14 inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${planConfig.badge}`}
+          className={`absolute top-2 left-2 z-[1] inline-flex max-w-[calc(100%-4.5rem)] items-center gap-1 truncate px-2 py-0.5 font-[family-name:var(--onside-mono)] text-[9px] font-bold uppercase tracking-wider sm:left-auto sm:right-14 sm:top-3 sm:max-w-none ${planConfig.badge}`}
         >
-          <HugeiconsIcon
-            icon={StarIcon}
-            size={9}
-            color="currentColor"
-            strokeWidth={2}
-          />
+          <Star size={9} color="currentColor" aria-hidden="true" />
           {planConfig.label}
         </span>
-      )}
+      ) : null}
 
-      <div
-        className={`size-16 rounded-2xl text-white grid place-items-center font-heading font-bold text-xl shrink-0 overflow-hidden ${
-          live
-            ? 'bg-brand-orange'
-            : plan === 'elite'
-              ? 'bg-gradient-to-br from-amber-400 to-amber-600'
-              : plan === 'pro'
-                ? 'bg-gradient-to-br from-brand-blue to-blue-700'
-                : 'bg-zinc-800'
-        }`}
+      <Link
+        to="/pub/$pubId"
+        params={{ pubId: bar.id }}
+        onClick={() =>
+          analytics.barOpened({
+            bar_id: bar.id,
+            source: 'card',
+            bar_plan: plan
+          })
+        }
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        className="col-span-2 grid min-w-0 grid-cols-[auto_1fr] items-center gap-3 outline-offset-2 sm:gap-4"
+        aria-label={`Ver ${bar.name}`}
       >
-        {bar.photo_url ? (
-          <img
-            src={bar.photo_url}
-            alt={bar.name}
-            className="size-full object-cover"
-          />
-        ) : (
-          initials
-        )}
-      </div>
-
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          {event ? (
-            live ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-brand-orange">
-                <span className="size-1.5 rounded-full bg-brand-orange animate-pulse" />
-                Ao vivo
-              </span>
-            ) : upcoming ? (
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                {formatDate(event.startsAt)} às {formatStartsAt(event.startsAt)}
-              </span>
-            ) : null
-          ) : (
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-              Sem eventos programados
-            </span>
-          )}
-          {newBar && (
-            <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-              Novo
-            </span>
-          )}
-        </div>
-
-        <h3 className="font-heading text-lg font-bold leading-tight mb-1 group-hover:text-brand-orange transition-colors truncate">
-          {bar.name}
-        </h3>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1 text-sm font-bold text-zinc-700">
-            <HugeiconsIcon
-              icon={MapPinIcon}
-              size={14}
-              color="currentColor"
-              strokeWidth={1.5}
+        <div
+          className={`grid size-16 shrink-0 place-items-center overflow-hidden font-bold text-xl text-[var(--onside-paper)] ${
+            live
+              ? 'bg-[var(--onside-live)]'
+              : plan === 'elite'
+                ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                : 'bg-[var(--onside-ink)]'
+          } ${planConfig ? 'mt-4 sm:mt-0' : ''}`}
+        >
+          {bar.photo_url ? (
+            <img
+              src={bar.photo_url}
+              alt=""
+              width={64}
+              height={64}
+              className="size-full object-cover"
             />
-            {bar.distance_km.toFixed(1)} km
-          </span>
-          <span className="text-xs text-zinc-400">{bar.neighborhood}</span>
-          {event && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500 truncate">
-              <SportBadge slug={event.sport.slug} name={event.sport.name} />
-              <span className="truncate">{event.championship}</span>
-            </span>
-          )}
-          {event && (event.participants.length > 0 || event.participantFreeText) && (
-            <span className="text-xs text-zinc-400 truncate">
-              {event.participants.length > 0
-                ? event.participants.map((p) => p.team.name).join(' × ')
-                : event.participantFreeText}
-            </span>
-          )}
-          {extraEvents > 0 && (
-            <span className="inline-flex items-center text-[10px] font-bold text-brand-blue bg-brand-blue/10 px-2 py-0.5 rounded-full shrink-0">
-              +{extraEvents} {extraEvents === 1 ? 'jogo' : 'jogos'}
-            </span>
+          ) : (
+            initials
           )}
         </div>
-      </div>
+
+        <div className={`min-w-0 ${planConfig ? 'mt-4 sm:mt-0' : ''}`}>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            {event ? (
+              live ? (
+                <span className="inline-flex items-center gap-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live-text)] uppercase tracking-widest">
+                  <span
+                    className="onside-live-dot is-pulse"
+                    aria-hidden="true"
+                  />
+                  Ao vivo
+                </span>
+              ) : upcoming ? (
+                <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest tabular-nums">
+                  {formatDate(event.startsAt)} às{' '}
+                  {formatStartsAt(event.startsAt)}
+                </span>
+              ) : null
+            ) : (
+              <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest">
+                Sem eventos programados
+              </span>
+            )}
+            {newBar ? (
+              <span className="onside-badge-acid onside-badge">Novo</span>
+            ) : null}
+          </div>
+
+          <h3
+            className="mb-1 truncate font-bold text-lg leading-tight"
+            title={bar.name}
+          >
+            {bar.name}
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1 font-bold text-sm tabular-nums">
+              <Location size={14} color="currentColor" aria-hidden="true" />
+              {Number.isFinite(bar.distance_km)
+                ? `${bar.distance_km.toFixed(1)} km`
+                : '—'}
+            </span>
+            <span className="text-[var(--onside-muted)] text-xs">
+              {bar.neighborhood}
+            </span>
+            {event ? (
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--onside-muted)] text-xs">
+                <SportBadge slug={event.sport.slug} name={event.sport.name} />
+                <span className="truncate" title={event.championship}>
+                  {event.championship}
+                </span>
+              </span>
+            ) : null}
+            {participantsLabel ? (
+              <span
+                className="truncate text-[var(--onside-muted)] text-xs"
+                title={participantsLabel}
+              >
+                {participantsLabel}
+              </span>
+            ) : null}
+            {extraEvents > 0 ? (
+              <span className="onside-badge shrink-0 border-[var(--onside-ink)] bg-[var(--onside-stone)] text-[var(--onside-ink)]">
+                +{extraEvents} {extraEvents === 1 ? 'jogo' : 'jogos'}
+              </span>
+            ) : null}
+            {/* Vem `null` de bar sem amostra suficiente — o servidor já
+                aplicou o piso, a tela não decide isso. */}
+            {bar.rating ? (
+              <span
+                className="onside-badge shrink-0 border-[var(--onside-ink)] bg-[var(--onside-acid)] text-[var(--onside-ink)] tabular-nums"
+                title={`${bar.rating.positive} de ${bar.rating.total} torcedores voltariam`}
+              >
+                {bar.rating.percentage}% voltariam
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </Link>
 
       <button
         type="button"
-        onClick={(e) => {
-          e.preventDefault()
-          onFavorite(bar.id)
-        }}
-        className={`p-3 rounded-full grid place-items-center shrink-0 transition-colors min-h-[44px] min-w-[44px] ${
+        disabled={favoritePending}
+        aria-label={
+          isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'
+        }
+        aria-pressed={isFavorite}
+        aria-busy={favoritePending || undefined}
+        onClick={() => onFavorite(bar.id)}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        className={`col-start-3 row-start-1 grid min-h-11 min-w-11 shrink-0 place-self-start place-items-center border border-[var(--onside-ink)] transition-colors disabled:opacity-50 ${
           isFavorite
-            ? 'bg-red-50 text-red-500 hover:bg-red-100'
-            : 'bg-zinc-100 hover:bg-brand-orange/10 hover:text-brand-orange'
+            ? 'bg-[var(--onside-live)] text-[var(--onside-paper)]'
+            : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
         }`}
       >
-        <HugeiconsIcon
-          icon={FavouriteIcon}
+        <Heart
           size={16}
           color="currentColor"
-          strokeWidth={1.5}
-          fill={isFavorite ? 'currentColor' : 'none'}
+          weight={isFavorite ? 'Filled' : 'Outline'}
+          aria-hidden="true"
         />
       </button>
-    </Link>
+    </div>
   )
 }

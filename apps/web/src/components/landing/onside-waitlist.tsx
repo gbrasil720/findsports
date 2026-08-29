@@ -6,14 +6,11 @@ import {
 } from '@findsports_oficial/ui/components/field'
 import { Input } from '@findsports_oficial/ui/components/input'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
 
-import {
-  analytics,
-  type WaitlistSubmitFailureCategory
-} from '../../lib/analytics'
+import { analytics } from '../../lib/analytics'
 import { useTRPCClient } from '../../utils/trpc'
 
 type FanPayload = {
@@ -33,77 +30,13 @@ type PubPayload = {
 
 const GENERIC_ERROR =
   'Não foi possível registrar agora. Verifique sua conexão e tente novamente.'
-const CONFLICT_ERROR =
-  'Este e-mail já está cadastrado para esta cidade. Se precisar de ajuda, fale com a gente.'
 
 function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-function classifyJoinError(error: Error): WaitlistSubmitFailureCategory {
-  const message = error.message.toLowerCase()
-  if (
-    message.includes('já cadastrado') ||
-    message.includes('conflict') ||
-    message.includes('already')
-  ) {
-    return 'conflict'
-  }
-  if (
-    message.includes('network') ||
-    message.includes('fetch') ||
-    message.includes('failed to fetch') ||
-    message.includes('timeout')
-  ) {
-    return 'network'
-  }
-  if (
-    message.includes('500') ||
-    message.includes('502') ||
-    message.includes('503') ||
-    message.includes('internal')
-  ) {
-    return 'server'
-  }
-  return 'unknown'
-}
-
-function mapJoinError(error: Error) {
-  if (classifyJoinError(error) === 'conflict') return CONFLICT_ERROR
+function mapJoinError() {
   return GENERIC_ERROR
-}
-
-function useFormViewed(role: 'fan' | 'pub') {
-  const formRef = useRef<HTMLFormElement>(null)
-  const viewedRef = useRef(false)
-
-  useEffect(() => {
-    const node = formRef.current
-    if (!node || viewedRef.current) return
-
-    if (typeof IntersectionObserver === 'undefined') {
-      viewedRef.current = true
-      analytics.waitlistFormViewed(role)
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (viewedRef.current) return
-        if (entries.some((entry) => entry.isIntersecting)) {
-          viewedRef.current = true
-          analytics.waitlistFormViewed(role)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.35 }
-    )
-
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [role])
-
-  return formRef
 }
 
 export function OnsideFanWaitlistForm() {
@@ -114,30 +47,26 @@ export function OnsideFanWaitlistForm() {
   >({})
   const [formError, setFormError] = useState<string | null>(null)
   const [successCity, setSuccessCity] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const startedRef = useRef(false)
-  const formRef = useFormViewed('fan')
   const client = useTRPCClient()
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: FanPayload) => client.waitlist.join.mutate(data),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      analytics.identifyWaitlist(data.waitlistId)
       setSuccessCity(variables.city)
+      setPreviewUrl(
+        data.status === 'confirmation_sent' ? (data.previewUrl ?? null) : null
+      )
       setFormError(null)
       analytics.waitlistSubmitted('fan')
     },
-    onError: (error: Error) => {
-      analytics.waitlistSubmitFailed('fan', classifyJoinError(error))
-      setFormError(mapJoinError(error))
+    onError: () => {
+      setFormError(mapJoinError())
     }
   })
-
-  function markStarted() {
-    if (startedRef.current) return
-    startedRef.current = true
-    analytics.waitlistFormStarted('fan')
-  }
 
   function validate() {
     const next: Partial<Record<'city' | 'email', string>> = {}
@@ -152,10 +81,6 @@ export function OnsideFanWaitlistForm() {
     }
 
     setFieldErrors(next)
-
-    if (Object.keys(next).length > 0) {
-      analytics.waitlistValidationFailed('fan', Object.keys(next))
-    }
 
     if (next.city) {
       cityRef.current?.focus()
@@ -178,8 +103,6 @@ export function OnsideFanWaitlistForm() {
     setFormError(null)
     const payload = validate()
     if (!payload || isPending) return
-    // Funnel event only — no landing_cta_clicked (avoids double capture)
-    analytics.waitlistSubmitAttempted('fan')
     mutate(payload)
   }
 
@@ -190,11 +113,16 @@ export function OnsideFanWaitlistForm() {
           <Check size={22} aria-hidden="true" focusable="false" />
         </span>
         <div>
-          <b>Cidade registrada: {successCity}.</b>
+          <b>Confira seu e-mail.</b>
           <small>
-            Vamos avisar pelo e-mail informado quando a Onside avançar por
-            perto.
+            Enviamos um link para confirmar sua entrada ou atualização na
+            waitlist de {successCity}.
           </small>
+          {previewUrl ? (
+            <small>
+              <a href={previewUrl}>Confirmar inscrição (ambiente local)</a>
+            </small>
+          ) : null}
         </div>
       </div>
     )
@@ -202,7 +130,6 @@ export function OnsideFanWaitlistForm() {
 
   return (
     <form
-      ref={formRef}
       className="onside-waitlist-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}
@@ -224,7 +151,6 @@ export function OnsideFanWaitlistForm() {
             placeholder="Ex.: São Paulo"
             value={city}
             onChange={(event) => {
-              markStarted()
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
@@ -257,7 +183,6 @@ export function OnsideFanWaitlistForm() {
             placeholder="voce@email.com"
             value={email}
             onChange={(event) => {
-              markStarted()
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}
@@ -284,7 +209,7 @@ export function OnsideFanWaitlistForm() {
         disabled={isPending}
         className="onside-button onside-button-acid onside-full-button"
       >
-        {isPending ? 'Registrando…' : 'Quero na minha cidade'}
+        {isPending ? 'Registrando…' : 'Quero a Onside na minha cidade'}
         {!isPending ? (
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowRight size={16} aria-hidden="true" focusable="false" />
@@ -307,31 +232,27 @@ export function OnsideBarInterestForm() {
   >({})
   const [formError, setFormError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const pubNameRef = useRef<HTMLInputElement>(null)
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const startedRef = useRef(false)
-  const formRef = useFormViewed('pub')
   const client = useTRPCClient()
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: PubPayload) => client.waitlist.join.mutate(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      analytics.identifyWaitlist(data.waitlistId)
       setSuccess(true)
+      setPreviewUrl(
+        data.status === 'confirmation_sent' ? (data.previewUrl ?? null) : null
+      )
       setFormError(null)
       analytics.waitlistSubmitted('pub')
     },
-    onError: (error: Error) => {
-      analytics.waitlistSubmitFailed('pub', classifyJoinError(error))
-      setFormError(mapJoinError(error))
+    onError: () => {
+      setFormError(mapJoinError())
     }
   })
-
-  function markStarted() {
-    if (startedRef.current) return
-    startedRef.current = true
-    analytics.waitlistFormStarted('pub')
-  }
 
   function validate() {
     const next: Partial<Record<'pubName' | 'city' | 'email', string>> = {}
@@ -350,10 +271,6 @@ export function OnsideBarInterestForm() {
     }
 
     setFieldErrors(next)
-
-    if (Object.keys(next).length > 0) {
-      analytics.waitlistValidationFailed('pub', Object.keys(next))
-    }
 
     if (next.pubName) {
       pubNameRef.current?.focus()
@@ -381,26 +298,28 @@ export function OnsideBarInterestForm() {
     setFormError(null)
     const payload = validate()
     if (!payload || isPending) return
-    // Funnel event only — no landing_cta_clicked (avoids double capture)
-    analytics.waitlistSubmitAttempted('pub')
     mutate(payload)
   }
 
   if (success) {
     return (
       <div className="onside-bar-form-success" role="status" aria-live="polite">
-        <b>Interesse recebido.</b>
+        <b>Confira seu e-mail.</b>
         <small>
-          Vamos entrar em contato pelo e-mail informado quando o piloto avançar
-          na sua cidade.
+          Enviamos um link para confirmar sua entrada ou atualização na
+          waitlist.
         </small>
+        {previewUrl ? (
+          <small>
+            <a href={previewUrl}>Confirmar inscrição (ambiente local)</a>
+          </small>
+        ) : null}
       </div>
     )
   }
 
   return (
     <form
-      ref={formRef}
       className="onside-bar-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}
@@ -421,7 +340,6 @@ export function OnsideBarInterestForm() {
             placeholder="Nome do bar"
             value={pubName}
             onChange={(event) => {
-              markStarted()
               setPubName(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.pubName)}
@@ -448,7 +366,6 @@ export function OnsideBarInterestForm() {
             placeholder="Cidade"
             value={city}
             onChange={(event) => {
-              markStarted()
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
@@ -476,7 +393,6 @@ export function OnsideBarInterestForm() {
             placeholder="E-mail"
             value={email}
             onChange={(event) => {
-              markStarted()
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}
@@ -498,7 +414,7 @@ export function OnsideBarInterestForm() {
       ) : null}
 
       <Button type="submit" disabled={isPending} className="onside-bar-submit">
-        {isPending ? 'Cadastrando…' : 'Cadastrar meu bar no piloto'}
+        {isPending ? 'Cadastrando…' : 'Cadastrar meu bar na waitlist'}
         {!isPending ? (
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowRight size={16} aria-hidden="true" focusable="false" />
@@ -510,9 +426,4 @@ export function OnsideBarInterestForm() {
       </p>
     </form>
   )
-}
-
-/** @deprecated Prefer OnsideFanWaitlistForm / OnsideBarInterestForm */
-export function OnsideWaitlist() {
-  return <OnsideFanWaitlistForm />
 }

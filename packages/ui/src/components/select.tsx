@@ -2,8 +2,10 @@
 
 import { Select as SelectPrimitive } from '@base-ui/react/select'
 import { cn } from '@findsports_oficial/ui/lib/utils'
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 import type * as React from 'react'
+import Check from 'reicon-react/icons/Check'
+import ChevronDown from 'reicon-react/icons/ChevronDown'
+import ChevronUp from 'reicon-react/icons/ChevronUp'
 
 const Select = SelectPrimitive.Root
 
@@ -46,11 +48,16 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
-        }
-      />
+      {/*
+        O ícone vai como children, não como `render`. `Select.Icon` traz
+        `children: '▼'` nos props padrão; com `render`, esse children chega
+        no `...rest` do ícone — que já monta o `<svg>` com
+        `dangerouslySetInnerHTML` — e o React quebra a página inteira com
+        "Can only set one of `children` or `props.dangerouslySetInnerHTML`".
+      */}
+      <SelectPrimitive.Icon className="pointer-events-none flex text-muted-foreground">
+        <ChevronDown size={16} color="currentColor" className="size-4" />
+      </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
 }
@@ -132,7 +139,7 @@ function SelectItem({
           <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
         }
       >
-        <CheckIcon className="pointer-events-none" />
+        <Check size={16} color="currentColor" className="pointer-events-none" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   )
@@ -164,7 +171,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon />
+      <ChevronUp size={16} color="currentColor" />
     </SelectPrimitive.ScrollUpArrow>
   )
 }
@@ -182,7 +189,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ChevronDownIcon />
+      <ChevronDown size={16} color="currentColor" />
     </SelectPrimitive.ScrollDownArrow>
   )
 }

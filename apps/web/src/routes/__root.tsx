@@ -14,13 +14,13 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
-import { Analytics } from '@vercel/analytics/react'
-import posthog from 'posthog-js'
 import type { CSSProperties } from 'react'
-import { useEffect, useRef } from 'react'
-import { ImpersonationBanner } from '../components/impersonation-banner'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { MinuteTickProvider } from '../components/app/minute-tick'
+import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
-import { authClient } from '../lib/auth-client'
+import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
+import { initPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
@@ -28,6 +28,7 @@ import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
+  session?: AuthSession
 }
 
 const getSession = createServerFn()
@@ -35,6 +36,9 @@ const getSession = createServerFn()
   .handler(({ context }) => {
     return context.session
   })
+
+const ONSIDE_DESCRIPTION =
+  'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location }) => {
@@ -46,19 +50,18 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'FindSports — Ache o bar que está passando seu jogo' },
+      { title: 'Onside — Ache o bar que está passando seu jogo' },
       {
         name: 'description',
-        content:
-          'FindSports conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
+        content: ONSIDE_DESCRIPTION
       },
-      { name: 'author', content: 'FindSports' },
-      { name: 'theme-color', content: '#FF5A1F' },
-      { property: 'og:site_name', content: 'FindSports' },
+      { name: 'author', content: 'Onside' },
+      { name: 'theme-color', content: '#12120F' },
+      { property: 'og:site_name', content: 'Onside' },
       { property: 'og:type', content: 'website' },
       {
         property: 'og:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — Ache o bar que está passando seu jogo'
       },
       {
         property: 'og:description',
@@ -75,7 +78,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { name: 'twitter:card', content: 'summary_large_image' },
       {
         name: 'twitter:title',
-        content: 'FindSports — Ache o bar que está passando seu jogo'
+        content: 'Onside — Ache o bar que está passando seu jogo'
       },
       {
         name: 'twitter:description',
@@ -123,70 +126,82 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         rel: 'apple-touch-icon',
         href: '/apple-touch-icon.png?v=3',
         sizes: '180x180'
-      },
-      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
-        crossOrigin: 'anonymous'
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap'
       }
     ]
   }),
+  notFoundComponent: NotFoundPage,
   shellComponent: RootShell,
   component: RootDocument
 })
 
+const ImpersonationBanner = lazy(() =>
+  import('../components/impersonation-banner').then((module) => ({
+    default: module.ImpersonationBanner
+  }))
+)
+
+function DeferredVercelAnalytics() {
+  const [Analytics, setAnalytics] = useState<
+    typeof import('@vercel/analytics/react').Analytics | null
+  >(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void import('@vercel/analytics/react').then((module) => {
+      if (!cancelled) setAnalytics(() => module.Analytics)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return Analytics ? <Analytics /> : null
+}
+
 function PostHogProvider() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const initialized = useRef(false)
+  const [ready, setReady] = useState(false)
 
-  // Init — roda uma vez no cliente
   useEffect(() => {
-    if (initialized.current) return
-    initialized.current = true
-
-    posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
-      api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://eu.i.posthog.com',
-      capture_pageview: false,
-      capture_pageleave: true,
-      persistence: 'localStorage+cookie'
+    let cancelled = false
+    void initPostHog().then((ok) => {
+      if (!cancelled) setReady(ok)
     })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Identify — roda quando sessão muda
   useEffect(() => {
-    if (!initialized.current) return
+    if (!ready) return
 
     if (session?.user) {
-      posthog.identify(session.user.id, {
+      identifyUser({
+        id: session.user.id,
         email: session.user.email,
         name: session.user.name,
         role: session.user.role
       })
     } else {
-      posthog.reset()
+      resetAnalytics()
     }
-  }, [session?.user?.id])
+  }, [ready, session?.user?.id])
 
-  // Pageview — roda quando rota muda
   useEffect(() => {
-    if (!initialized.current) return
-    posthog.capture('$pageview', { $current_url: window.location.href })
-  }, [pathname])
+    if (!ready) return
+    capturePageview(pathname)
+  }, [ready, pathname])
 
   return null
 }
 
 function RootDocument() {
-  const { data: session } = authClient.useSession()
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonatedBy = (
     session?.session as { impersonatedBy?: string | null } | undefined
   )?.impersonatedBy
+  const isDev = import.meta.env.DEV
 
   return (
     <html lang="pt-BR">
@@ -194,22 +209,38 @@ function RootDocument() {
         <HeadContent />
       </head>
       <body>
-        <div
-          className={`min-h-svh w-full ${impersonatedBy ? 'pt-11' : ''}`}
-          style={
-            {
-              '--banner-h': impersonatedBy ? '2.75rem' : '0px'
-            } as CSSProperties
-          }
-        >
-          <PostHogProvider />
-          <Outlet />
-        </div>
+        <MinuteTickProvider>
+          <div
+            className="min-h-dvh w-full"
+            style={
+              {
+                '--banner-h': impersonatedBy
+                  ? 'var(--onside-banner-h, 2.75rem)'
+                  : '0px',
+                paddingTop: 'var(--banner-h)'
+              } as CSSProperties
+            }
+          >
+            <PostHogProvider />
+            {impersonatedBy ? (
+              <Suspense fallback={null}>
+                <ImpersonationBanner />
+              </Suspense>
+            ) : null}
+            <Outlet />
+          </div>
+        </MinuteTickProvider>
         <Toaster richColors />
-        <ImpersonationBanner />
-        <TanStackRouterDevtools position="bottom-left" />
-        <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
-        <Analytics />
+        {isDev ? (
+          <>
+            <TanStackRouterDevtools position="bottom-left" />
+            <ReactQueryDevtools
+              position="bottom"
+              buttonPosition="bottom-right"
+            />
+          </>
+        ) : null}
+        <DeferredVercelAnalytics />
         <Scripts />
       </body>
     </html>

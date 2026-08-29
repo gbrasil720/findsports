@@ -1,30 +1,21 @@
 import { Link } from '@tanstack/react-router'
-import { Logo } from '@/components/landing/logo'
-
-type Accent = 'orange' | 'blue'
-
-const ACCENT_DOT: Record<Accent, string> = {
-  orange: 'bg-brand-orange',
-  blue: 'bg-brand-blue'
-}
+import { OnsideBrand } from '@/components/brand/onside-brand'
 
 type Props = {
   label: string
-  accent: Accent
   mb?: string
 }
 
-export function OnboardingHeader({ label, accent, mb = 'mb-10' }: Props) {
+export function OnboardingHeader({ label, mb = 'mb-8' }: Props) {
   return (
-    <div className={`flex items-center justify-between ${mb}`}>
-      <Link to="/" className="inline-flex items-center gap-2.5">
-        <Logo className="size-9" />
-        <span className="font-heading text-xl font-bold tracking-tight">
-          FindSports
-        </span>
+    <div
+      className={`flex items-center justify-between gap-4 border-[var(--onside-line)] border-b pb-5 ${mb}`}
+    >
+      <Link to="/" className="inline-flex" aria-label="Onside — página inicial">
+        <OnsideBrand />
       </Link>
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-white/70">
-        <span className={`size-2 rounded-full ${ACCENT_DOT[accent]}`} />
+      <div className="flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-[0.16em]">
+        <span className="onside-live-dot" aria-hidden="true" />
         {label}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
   bar,
   sport,
@@ -6,13 +6,157 @@ import {
   userFavoriteBars,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, publicProcedure, router } from '../index'
+import { protectedProcedure, router } from '../index'
+import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
+import { getAppConfig } from '../lib/app-config'
+import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
+import {
+  executarBuscaEmCamadas,
+  executarBuscaLinear,
+  executarBuscaPorNota,
+  type SearchPage
+} from '../lib/pub-search'
+import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
+import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
+import { createSharedCache } from '../lib/shared-cache'
+
+/**
+ * ESC-08: catálogos e buscas são iguais para todo mundo. Sem KV o cache
+ * vive na instância; com Upstash/Vercel KV as instâncias passam a
+ * compartilhar. Nada derivado de sessão entra aqui.
+ */
+const CATALOGO_TTL_MS = 5 * 60_000
+/** Jogos em destaque e busca dependem de NOW(); janela curta. */
+const BUSCA_TTL_MS = 60_000
+
+const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
+  prefix: 'pubs.sports',
+  ttlMs: CATALOGO_TTL_MS
+})
+const cacheTimes = createSharedCache<(typeof team.$inferSelect)[]>({
+  prefix: 'pubs.teams',
+  ttlMs: CATALOGO_TTL_MS,
+  maxEntries: 50
+})
+const cacheDestaques = createSharedCache<Record<string, unknown>[]>({
+  prefix: 'pubs.elite',
+  ttlMs: BUSCA_TTL_MS
+})
+const cacheBusca = createSharedCache<SearchPage>({
+  prefix: 'pubs.search',
+  ttlMs: BUSCA_TTL_MS,
+  maxEntries: 200
+})
+const cacheLocal = createSharedCache<LocationPage>({
+  prefix: 'pubs.location',
+  ttlMs: BUSCA_TTL_MS,
+  maxEntries: 200
+})
+
+/** Última tupla de ordenação de `searchByLocation`: distância e id. */
+const locationCursorSchema = z.object({
+  d: z.number(),
+  i: z.string()
+})
+
+type LocationBar = {
+  id: string
+  name: string
+  neighborhood: string
+  city: string
+  latitude: string
+  longitude: string
+  photo_url: string | null
+  created_at: string
+  distance_km: number
+}
+
+type LocationPage = { bars: LocationBar[]; nextCursor: string | null }
+
+type LocationInput = {
+  lat: number
+  lng: number
+  radiusKm: 1 | 3 | 5 | 10
+  cursor?: string
+  limit: number
+}
+
+async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
+  const { lat, lng, radiusKm, cursor, limit } = input
+  const origin = sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+  const radiusMeters = radiusKm * 1000
+
+  // ESC-05: a chave de paginação usa o mesmo operador `<->` da ordenação,
+  // e não `ST_Distance`, para não abrir mão da varredura ordenada pelo
+  // índice GiST. `id` desempata bares equidistantes.
+  const keyset = cursor ? decodeCursor(cursor, locationCursorSchema) : null
+  const keysetFilter = keyset
+    ? sql`AND (b.geo <-> ${origin}, b.id) > (${keyset.d}::float8, ${keyset.i}::text)`
+    : sql``
+
+  const results = await db.execute(sql`
+    SELECT
+      b.id,
+      b.name,
+      b.neighborhood,
+      b.city,
+      b.latitude,
+      b.longitude,
+      b.photo_url,
+      b.created_at,
+      ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
+      b.geo <-> ${origin} AS cursor_dist
+    FROM bar b
+    WHERE b.is_active
+      AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
+      ${keysetFilter}
+    ORDER BY b.geo <-> ${origin}, b.id
+    LIMIT ${limit}
+  `)
+
+  type RawLocationRow = {
+    id: string
+    name: string
+    neighborhood: string
+    city: string
+    latitude: string
+    longitude: string
+    photo_url: string | null
+    created_at: string
+    distance_km: number
+    cursor_dist: number
+  }
+
+  const rows = results.rows as RawLocationRow[]
+
+  const bars = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    neighborhood: row.neighborhood,
+    city: row.city,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    photo_url: row.photo_url,
+    created_at: row.created_at,
+    distance_km: row.distance_km
+  }))
+
+  const last = rows.length === limit ? rows[rows.length - 1] : undefined
+
+  return {
+    bars,
+    nextCursor: last ? encodeCursor({ d: last.cursor_dist, i: last.id }) : null
+  }
+}
 
 export const pubsRouter = router({
-  search: publicProcedure
+  search: protectedProcedure
     .input(
       z.object({
         lat: z.number(),
@@ -23,186 +167,110 @@ export const pubsRouter = router({
         sportId: z.string().uuid().optional(),
         championship: z.string().optional(),
         date: z.string().date().optional(),
-        cursor: z.number().default(0),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
+        sort: z.enum(['relevance', 'rating']).default('relevance'),
+        cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
       })
     )
     .query(async ({ input }) => {
-      const { lat, lng, radiusKm, sportId, championship, date, cursor, limit } =
-        input
+      const emCamadas = await getAppConfig('search.tiered_plan_query')
 
-      const uLat = sql.raw(String(lat))
-      const uLng = sql.raw(String(lng))
-      const uRadius = sql.raw(String(radiusKm))
+      // Ordenar por nota só existe quando a nota é pública. Com a exibição
+      // desligada, o modo cai para a ordem padrão em vez de dar erro: quem
+      // guardou um link com `sort=rating` continua vendo uma lista, e não
+      // uma tela quebrada por uma flag que ele não sabe que existe.
+      const notaPublica = await getAppConfig('rating.public_display')
+      const porNota = input.sort === 'rating' && notaPublica
 
-      const sportFilter = sportId ? sql`AND e.sport_id = ${sportId}` : sql``
-      const champFilter = championship
-        ? sql`AND LOWER(e.championship) LIKE ${'%' + championship.toLowerCase() + '%'}`
-        : sql``
-      const champBarFilter = championship
-        ? sql`AND (LOWER(e.championship) LIKE ${'%' + championship.toLowerCase() + '%'} OR LOWER(b.name) LIKE ${'%' + championship.toLowerCase() + '%'})`
-        : sql``
-      const dateFilter = date ? sql`AND DATE(e.starts_at) = ${date}` : sql``
+      const executar = porNota
+        ? executarBuscaPorNota
+        : emCamadas
+          ? executarBuscaEmCamadas
+          : executarBuscaLinear
 
-      const results = await db.execute(sql`
-        WITH bar_events AS (
-          SELECT
-            b.id,
-            b.name,
-            b.description,
-            b.address,
-            b.neighborhood,
-            b.city,
-            b.latitude,
-            b.longitude,
-            b.photo_url,
-            b.created_at,
-            COALESCE(s.plan, 'starter') AS plan,
-            COUNT(DISTINCT e.id) AS event_count,
-            MIN(e.starts_at) AS next_event_at,
-            (6371 * acos(LEAST(1, GREATEST(-1,
-              cos(radians(${uLat})) * cos(radians(b.latitude::float)) *
-              cos(radians(b.longitude::float) - radians(${uLng})) +
-              sin(radians(${uLat})) * sin(radians(b.latitude::float))
-            )))) AS distance_km
-          FROM bar b
-          LEFT JOIN subscription s ON s.bar_id = b.id
-          INNER JOIN event e ON e.bar_id = b.id
-          LEFT JOIN event_participants ep ON ep.event_id = e.id
-          WHERE
-            b.is_active = true
-            AND e.starts_at >= NOW()
-            ${sportFilter}
-            ${champBarFilter}
-            ${dateFilter}
-          GROUP BY b.id, b.name, b.description, b.address, b.neighborhood, b.city, b.latitude, b.longitude, b.photo_url, b.created_at, s.plan
-        ),
-        bar_next_event AS (
-          SELECT DISTINCT ON (x.bar_id)
-            x.bar_id,
-            x.next_event_id,
-            x.next_championship,
-            x.next_event_starts_at,
-            x.next_sport_name,
-            x.next_sport_slug,
-            x.next_participant_free_text,
-            x.next_participants
-          FROM (
-            SELECT
-              e.bar_id,
-              e.id AS next_event_id,
-              e.championship AS next_championship,
-              e.starts_at AS next_event_starts_at,
-              s.name AS next_sport_name,
-              s.slug AS next_sport_slug,
-              e.participant_free_text AS next_participant_free_text,
-              COALESCE(
-                json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) FILTER (WHERE t.id IS NOT NULL),
-                '[]'::json
-              ) AS next_participants
-            FROM event e
-            JOIN sport s ON s.id = e.sport_id
-            LEFT JOIN event_participants ep ON ep.event_id = e.id
-            LEFT JOIN team t ON t.id = ep.team_id
-            WHERE e.starts_at >= NOW()
-              ${sportFilter}
-              ${champFilter}
-              ${dateFilter}
-            GROUP BY e.id, e.bar_id, e.championship, e.starts_at, s.name, s.slug, e.participant_free_text
-          ) x
-          ORDER BY x.bar_id, x.next_event_starts_at ASC
-        )
-        SELECT
-          be.*,
-          bne.next_event_id,
-          bne.next_championship,
-          bne.next_event_starts_at,
-          bne.next_sport_name,
-          bne.next_sport_slug,
-          bne.next_participant_free_text,
-          bne.next_participants
-        FROM bar_events be
-        LEFT JOIN bar_next_event bne ON bne.bar_id = be.id
-        WHERE be.distance_km <= ${uRadius}
-        ORDER BY
-          CASE be.plan
-            WHEN 'elite' THEN 1
-            WHEN 'pro' THEN 2
-            ELSE 3
-          END ASC,
-          be.next_event_at ASC,
-          be.distance_km ASC
-        LIMIT ${limit}
-        OFFSET ${cursor}
-      `)
-
-      type RawRow = {
-        id: string
-        name: string
-        description: string | null
-        address: string | null
-        neighborhood: string
-        city: string
-        latitude: string
-        longitude: string
-        photo_url: string | null
-        created_at: string
-        plan: 'starter' | 'pro' | 'elite'
-        event_count: string
-        next_event_at: string | null
-        distance_km: number
-        next_event_id: string | null
-        next_championship: string | null
-        next_event_starts_at: string | null
-        next_sport_name: string | null
-        next_sport_slug: string | null
-        next_participant_free_text: string | null
-        next_participants: { name: string; logoUrl: string | null }[]
+      // A normalização acontece aqui, antes do cache: ela descarta id
+      // desconhecido e ORDENA, e é a ordem que faz `[1,4]` e `[4,1]` caírem
+      // na mesma entrada em vez de recalcularem o mesmo resultado duas vezes.
+      const normalizado = {
+        ...input,
+        sort: porNota ? ('rating' as const) : ('relevance' as const),
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
       }
 
-      const bars = (results.rows as RawRow[]).map((row) => ({
-        id: row.id,
-        name: row.name,
-        neighborhood: row.neighborhood,
-        city: row.city,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        photo_url: row.photo_url,
-        created_at: row.created_at,
-        distance_km: row.distance_km,
-        plan: row.plan,
-        event_count: Number(row.event_count),
-        nextEvent: row.next_event_id
-          ? {
-              id: row.next_event_id,
-              championship: row.next_championship ?? '',
-              startsAt: row.next_event_starts_at ?? '',
-              sport: {
-                name: row.next_sport_name ?? '',
-                slug: row.next_sport_slug ?? ''
-              },
-              participants: row.next_participants.map((p) => ({
-                team: { name: p.name, logoUrl: p.logoUrl }
-              })),
-              participantFreeText: row.next_participant_free_text
-            }
-          : undefined
-      }))
+      const pagina = await cacheBusca.get(
+        chaveBusca({
+          ...normalizado,
+          modo: porNota ? 'nota' : emCamadas ? 'camadas' : 'linear'
+        }),
+        () => executar(normalizado)
+      )
+
+      // A nota é retirada DEPOIS do cache, não dentro dele: a flag pode virar
+      // a qualquer momento e o cache tem TTL próprio. Filtrar antes deixaria
+      // páginas já guardadas continuarem entregando nota por até um TTL
+      // depois de a exibição ser desligada — e desligar exibição costuma ser
+      // a reação a um problema, ou seja, exatamente a hora em que a demora
+      // não é aceitável.
+      if (notaPublica) return pagina
 
       return {
-        bars,
-        nextCursor: results.rows.length === limit ? cursor + limit : null
+        ...pagina,
+        bars: pagina.bars.map((achado) => ({ ...achado, rating: null }))
       }
     }),
 
-  getById: publicProcedure
+  /**
+   * Perfil de um bar, para quem tem conta.
+   *
+   * Exige sessão de propósito, e isso NÃO é acidente de implementação: a
+   * página só registra evento comercial quando há um fã identificado
+   * (`actor_user_id` é obrigatório e sustenta a deduplicação diária e as
+   * contagens de visitantes únicos e interessados). Visitante anônimo é
+   * impossível de atribuir — abrir a página para ele deixaria passar tráfego
+   * que nunca apareceria no painel que o bar paga para ver.
+   *
+   * O portão de login está especificado na própria tela, que renderiza o
+   * diálogo de autenticação e marca o conteúdo como inerte sem sessão.
+   *
+   * `user_id` do dono e a coluna derivada `geo` ficam de fora da resposta, e
+   * um bar inativo responde como inexistente.
+   */
+  getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const now = new Date()
+      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+
       const result = await db.query.bar.findFirst({
-        where: eq(bar.id, input.id),
+        where: and(eq(bar.id, input.id), eq(bar.isActive, true)),
+        // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
+        // dono e descartado antes da resposta — quem visita não precisa saber
+        // qual conta é dona do bar.
+        columns: {
+          ...PUBLIC_BAR_COLUMNS,
+          plan: true,
+          userId: true,
+          ratingCount: true,
+          ratingPositive: true
+        },
         with: {
           events: {
-            where: (event, { gte }) => gte(event.startsAt, new Date()),
+            // Jogo ao vivo continua na página: o corte é o fim provável do
+            // jogo, não o início. Ver `event-profile-window.ts`.
+            //
+            // O predicado é montado com operadores do Drizzle, e não com SQL
+            // cru: `event.starts_at` é `timestamp` sem fuso, e comparar com
+            // `now()` (que é `timestamptz`) faria o Postgres converter usando
+            // o fuso da sessão — a janela mudaria de tamanho conforme o
+            // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
+            where: (event, { and, gte, isNotNull, isNull, or }) =>
+              or(
+                and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+              ),
             with: {
               sport: true,
               participants: {
@@ -221,38 +289,93 @@ export const pubsRouter = router({
         })
       }
 
-      if (!result.isActive) {
+      // O dono vê a própria página com avisos que ninguém mais vê — o que
+      // falta preencher, e quanto isso custa em contatos. Quem decide é o
+      // servidor: o cliente não tem como comparar sem receber o `userId`.
+      //
+      // A nota sai daqui já resolvida: o cliente recebe `null` quando a
+      // exibição está desligada ou quando o bar não atingiu o piso, e nunca
+      // recebe os contadores crus. Deixar a decisão na tela significaria
+      // mandar pela rede o número que a regra existe para não mostrar.
+      const { userId, ratingCount, ratingPositive, ...publicBar } = result
+
+      const notaPublica = await getAppConfig('rating.public_display')
+      const rating =
+        notaPublica && hasPublicRating(ratingCount)
+          ? {
+              positive: ratingPositive,
+              total: ratingCount,
+              percentage: ratingPercentage(ratingPositive, ratingCount)
+            }
+          : null
+
+      return { ...publicBar, rating, isOwner: userId === ctx.session.user.id }
+    }),
+
+  favorite: protectedProcedure
+    .input(
+      z.object({
+        barId: z.string().uuid(),
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+
+      if (ctx.session.user.role !== 'fan') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas torcedores podem favoritar bares.'
+        })
+      }
+
+      const visibleBar = await db.query.bar.findFirst({
+        where: and(eq(bar.id, input.barId), eq(bar.isActive, true)),
+        columns: { id: true }
+      })
+      if (!visibleBar) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Bar não encontrado.'
         })
       }
 
-      return result
-    }),
-
-  favorite: protectedProcedure
-    .input(z.object({ barId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores podem favoritar bares.'
-        })
-      }
-
-      await db
+      const inserted = await db
         .insert(userFavoriteBars)
         .values({ userId, barId: input.barId })
         .onConflictDoNothing()
+        .returning({ barId: userFavoriteBars.barId })
+
+      if (inserted.length > 0 && input.recommendationRunId) {
+        try {
+          await db
+            .insert(recommendationEvent)
+            .values({
+              actorUserId: userId,
+              barId: input.barId,
+              runId: input.recommendationRunId,
+              type: 'favorite'
+            })
+            .onConflictDoNothing()
+        } catch {
+          console.warn(
+            JSON.stringify({
+              event: 'recommendation_favorite_attribution_failed'
+            })
+          )
+        }
+      }
 
       return { success: true }
     }),
 
   unfavorite: protectedProcedure
-    .input(z.object({ barId: z.string().uuid() }))
+    .input(
+      z.object({
+        barId: z.string().uuid(),
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
@@ -263,11 +386,23 @@ export const pubsRouter = router({
         })
       }
 
-      await db
-        .delete(userFavoriteBars)
-        .where(
-          sql`${userFavoriteBars.userId} = ${userId} AND ${userFavoriteBars.barId} = ${input.barId}`
-        )
+      await db.transaction(async (tx) => {
+        const removed = await tx
+          .delete(userFavoriteBars)
+          .where(
+            sql`${userFavoriteBars.userId} = ${userId} AND ${userFavoriteBars.barId} = ${input.barId}`
+          )
+          .returning({ barId: userFavoriteBars.barId })
+
+        if (removed.length > 0) {
+          await tx.insert(recommendationEvent).values({
+            actorUserId: userId,
+            barId: input.barId,
+            runId: input.recommendationRunId,
+            type: 'unfavorite'
+          })
+        }
+      })
 
       return { success: true }
     }),
@@ -292,10 +427,15 @@ export const pubsRouter = router({
       })
     }
 
-    return db.query.userFavoriteBars.findMany({
-      where: eq(userFavoriteBars.userId, userId),
+    const favorites = await db.query.userFavoriteBars.findMany({
+      where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
+        SELECT 1 FROM "bar" AS active_bar
+        WHERE active_bar.id = ${userFavoriteBars.barId}
+          AND active_bar.is_active = true
+      )`,
       with: {
         bar: {
+          columns: PUBLIC_BAR_COLUMNS,
           with: {
             events: {
               where: (event, { gte }) => gte(event.startsAt, new Date()),
@@ -310,6 +450,8 @@ export const pubsRouter = router({
         }
       }
     })
+
+    return favorites
   }),
 
   getMyPreferences: protectedProcedure.query(async ({ ctx }) => {
@@ -359,7 +501,7 @@ export const pubsRouter = router({
       return { success: true }
     }),
 
-  searchByLocation: publicProcedure
+  searchByLocation: protectedProcedure
     .input(
       z.object({
         lat: z.number(),
@@ -367,62 +509,34 @@ export const pubsRouter = router({
         radiusKm: z
           .union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
           .default(5),
-        cursor: z.number().default(0),
+        cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
       })
     )
     .query(async ({ input }) => {
-      const { lat, lng, radiusKm, cursor, limit } = input
-      const uLat = sql.raw(String(lat))
-      const uLng = sql.raw(String(lng))
-      const uRadius = sql.raw(String(radiusKm))
-
-      const results = await db.execute(sql`
-        SELECT * FROM (
-          SELECT
-            b.id,
-            b.name,
-            b.neighborhood,
-            b.city,
-            b.latitude,
-            b.longitude,
-            b.photo_url,
-            b.created_at,
-            (6371 * acos(LEAST(1, GREATEST(-1,
-              cos(radians(${uLat})) * cos(radians(b.latitude::float)) *
-              cos(radians(b.longitude::float) - radians(${uLng})) +
-              sin(radians(${uLat})) * sin(radians(b.latitude::float))
-            )))) AS distance_km
-          FROM bar b
-          WHERE b.is_active = true
-        ) ranked
-        WHERE distance_km <= ${uRadius}
-        ORDER BY distance_km ASC
-        LIMIT ${limit}
-        OFFSET ${cursor}
-      `)
-
-      return {
-        bars: results.rows,
-        nextCursor: results.rows.length === limit ? cursor + limit : null
-      }
+      return cacheLocal.get(chaveBuscaLocal(input), () =>
+        executarBuscaLocal(input)
+      )
     }),
 
-  getSports: publicProcedure.query(async () => {
-    return db.select().from(sport)
+  getSports: protectedProcedure.query(async () => {
+    return cacheEsportes.get('todos', () => db.select().from(sport))
   }),
 
-  getTeamsBySport: publicProcedure
+  getTeamsBySport: protectedProcedure
     .input(z.object({ sportId: z.string().uuid() }))
     .query(async ({ input }) => {
-      return db
-        .select()
-        .from(team)
-        .where(eq(team.sportId, input.sportId))
-        .orderBy(team.name)
+      return cacheTimes.get(input.sportId, () =>
+        db
+          .select()
+          .from(team)
+          .where(eq(team.sportId, input.sportId))
+          .orderBy(team.name)
+      )
     }),
-  getEliteEvents: publicProcedure.query(async () => {
-    const results = await db.execute(sql`
+  getEliteEvents: protectedProcedure.query(async () => {
+    return cacheDestaques.get('todos', async () => {
+      const results = await db.execute(sql`
         SELECT
           b.name AS bar_name,
           e.championship,
@@ -433,14 +547,14 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         JOIN sport s ON s.id = e.sport_id
-        JOIN subscription sub ON sub.bar_id = b.id
         WHERE
           b.is_active = true
-          AND sub.plan = 'elite'
+          AND b.plan = 'elite'
           AND e.starts_at >= NOW()
         ORDER BY e.starts_at ASC
         LIMIT 10
       `)
-    return results.rows
+      return results.rows as Record<string, unknown>[]
+    })
   })
 })

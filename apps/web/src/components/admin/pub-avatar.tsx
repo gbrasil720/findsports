@@ -1,14 +1,26 @@
-import { Camera02Icon, Loading01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import {
+  PHOTO_CONTENT_TYPES,
+  PHOTO_MAX_BYTES,
+  photoPathname
+} from '@findsports_oficial/api/lib/blob-photo'
+import { upload } from '@vercel/blob/client'
 import { useRef, useState } from 'react'
+import Camera from 'reicon-react/icons/Camera'
+import Loader from 'reicon-react/icons/Loader'
+
+const ALLOWED_TYPES: readonly string[] = PHOTO_CONTENT_TYPES
+const MAX_BYTES = PHOTO_MAX_BYTES
 
 type Props = {
+  /** Necessário para o servidor validar o caminho do upload (ESC-15). */
+  barId: string
   name: string
   photoUrl?: string | null
   onUploadSuccess: (url: string) => void
 }
 
-export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
+export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
+  const pathname = photoPathname(barId)
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -27,24 +39,34 @@ export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
     setError(null)
     setUploading(true)
 
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
+    // ESC-15: o arquivo vai do navegador direto para o armazenamento. A rota
+    // só autoriza e devolve um token de curta duração — os bytes não passam
+    // mais pela função serverless.
+    //
+    // Formato e tamanho continuam validados no servidor, ao emitir o token;
+    // esta checagem aqui é só para o usuário receber o erro na hora, sem
+    // esperar o envio.
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError('Formato inválido. Use JPG, PNG ou WebP.')
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_BYTES) {
+      setError('Arquivo muito grande. Máximo 5MB.')
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
 
-      const res = await fetch('/api/bar/photo', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+    try {
+      const blob = await upload(pathname, file, {
+        access: 'public',
+        handleUploadUrl: '/api/bar/photo',
+        contentType: file.type
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? 'Erro ao fazer upload.')
-        return
-      }
-
-      onUploadSuccess(data.url)
+      onUploadSuccess(blob.url)
     } catch (error) {
       setError('Erro ao fazer upload. Tente novamente.')
       console.error(error)
@@ -61,7 +83,7 @@ export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="relative size-24 rounded-3xl ring-4 ring-white/30 overflow-hidden group shrink-0 disabled:opacity-70"
+        className="relative size-24 rounded-none ring-4 ring-white/30 overflow-hidden group shrink-0 disabled:opacity-70"
         title="Clique para trocar a foto"
       >
         {photoUrl ? (
@@ -73,28 +95,20 @@ export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
         )}
 
         {/* Overlay ao hover */}
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
+        <div className="absolute inset-0 bg-[rgb(18_18_15_/_55%)] opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
           {uploading ? (
-            <HugeiconsIcon
-              icon={Loading01Icon}
-              size={24}
-              color="white"
-              strokeWidth={1.5}
-              className="animate-spin"
-            />
+            <Loader size={24} color="white" className="animate-spin" />
           ) : (
-            <HugeiconsIcon
-              icon={Camera02Icon}
-              size={24}
-              color="white"
-              strokeWidth={1.5}
-            />
+            <Camera size={24} color="white" />
           )}
         </div>
       </button>
 
       {error && (
-        <p className="text-[10px] text-red-400 max-w-[120px] text-center">
+        <p
+          className="text-[10px] text-[var(--onside-live-text)] max-w-[120px] text-center"
+          role="alert"
+        >
           {error}
         </p>
       )}

@@ -1,25 +1,20 @@
-import { CalendarsIcon, PlusSignIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import Calendar from 'reicon-react/icons/Calendar'
+import Plus from 'reicon-react/icons/Plus'
+import {
+  compareEventStartsAscending,
+  compareEventStartsDescending,
+  getEventTemporalState
+} from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
+import type { EventsState, PolicyState } from './admin-model'
 import { EmptyEventsState } from './empty-events-state'
 import { type EventForm, EventFormComponent } from './event-form'
 import { EventListItem } from './event-list-item'
 import { Modal } from './modal'
-
-const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
-
-function isLive(startsAt: string | Date): boolean {
-  const start = new Date(startsAt).getTime()
-  const now = Date.now()
-  return now >= start && now <= start + LIVE_WINDOW_MS
-}
-
-function isPast(startsAt: string | Date): boolean {
-  return new Date(startsAt).getTime() + LIVE_WINDOW_MS < Date.now()
-}
 
 function toISOWithTimezone(datetimeLocal: string): string {
   return new Date(datetimeLocal).toISOString()
@@ -40,29 +35,57 @@ const EMPTY_FORM: EventForm = {
   participantFreeText: ''
 }
 
-export function EventsManager() {
+type ManagerProps = {
+  eventsState: EventsState
+  policyState: PolicyState
+}
+
+export function getCreateBlockReason(policyState: PolicyState): string | null {
+  if (policyState.status === 'loading') return 'Verificando disponibilidade…'
+  if (policyState.status === 'error') {
+    return 'Não foi possível verificar a disponibilidade.'
+  }
+  if (policyState.policy.status === 'inactive') {
+    return 'Ative um plano para adicionar eventos.'
+  }
+  if (!policyState.policy.canCreate) return 'Limite do plano atingido.'
+  return null
+}
+
+export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
-
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  const { data: events = [], isLoading } = useQuery(
-    trpc.pub.getMyEvents.queryOptions()
-  )
-  const { data: sports = [] } = useQuery(trpc.pubs.getSports.queryOptions())
+  const { data: sports = [] } = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
+  const events = eventsState.status === 'ready' ? eventsState.events : []
+  const blockReason = getCreateBlockReason(policyState)
+  const createBlocked = blockReason !== null
 
-  const invalidate = () =>
+  const invalidateEvents = () =>
     queryClient.invalidateQueries({ queryKey: trpc.pub.getMyEvents.queryKey() })
+  const invalidateEventsAndPolicy = () =>
+    Promise.all([
+      invalidateEvents(),
+      queryClient.invalidateQueries({
+        queryKey: trpc.pub.getMyEventCreationPolicy.queryKey()
+      })
+    ])
 
   const deleteMutation = useMutation(
-    trpc.pub.deleteEvent.mutationOptions({ onSuccess: invalidate })
+    trpc.pub.deleteEvent.mutationOptions({
+      onSuccess: invalidateEventsAndPolicy
+    })
   )
   const createMutation = useMutation(
     trpc.pub.createEvent.mutationOptions({
       onSuccess: () => {
-        invalidate()
+        void invalidateEventsAndPolicy()
         setShowModal(false)
       }
     })
@@ -70,7 +93,7 @@ export function EventsManager() {
   const updateMutation = useMutation(
     trpc.pub.updateEvent.mutationOptions({
       onSuccess: () => {
-        invalidate()
+        void invalidateEvents()
         setShowModal(false)
         setEditingId(null)
       }
@@ -96,7 +119,7 @@ export function EventsManager() {
         },
         {
           onSuccess: () => {
-            const sport = sports.find((s) => s.id === form.sportId)
+            const sport = sports.find((item) => item.id === form.sportId)
             analytics.eventCreated({
               championship: form.championship,
               sport: sport?.name ?? form.sportId,
@@ -106,26 +129,20 @@ export function EventsManager() {
         }
       )
     } else if (editingId) {
-      updateMutation.mutate(
-        {
-          eventId: editingId,
-          sportId: form.sportId,
-          championship: form.championship,
-          startsAt,
-          endsAt,
-          participantIds,
-          participantFreeText: form.participantFreeText || undefined
-        },
-        {
-          onSuccess: () => {
-            analytics.eventUpdated(editingId)
-          }
-        }
-      )
+      updateMutation.mutate({
+        eventId: editingId,
+        sportId: form.sportId,
+        championship: form.championship,
+        startsAt,
+        endsAt,
+        participantIds,
+        participantFreeText: form.participantFreeText || undefined
+      })
     }
   }
 
   const openCreate = () => {
+    if (createBlocked) return
     setIsCreating(true)
     setEditingId(null)
     setShowModal(true)
@@ -143,88 +160,121 @@ export function EventsManager() {
     setIsCreating(false)
   }
 
+  const liveEvents = events.filter(
+    (item) => getEventTemporalState(item.startsAt) === 'live'
+  )
+  const upcomingEvents = events
+    .filter((item) => getEventTemporalState(item.startsAt) === 'upcoming')
+    .sort(compareEventStartsAscending)
+  const pastEvents = events
+    .filter((item) => getEventTemporalState(item.startsAt) === 'past')
+    .sort(compareEventStartsDescending)
+  const sortedEvents = [...liveEvents, ...upcomingEvents, ...pastEvents]
   const isSaving = createMutation.isPending || updateMutation.isPending
-
-  const liveEvs = events.filter((e) => isLive(e.startsAt))
-  const upcomingEvs = events
-    .filter((e) => !isLive(e.startsAt) && !isPast(e.startsAt))
-    .sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-    )
-  const pastEvs = events
-    .filter((e) => isPast(e.startsAt))
-    .sort(
-      (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime()
-    )
-  const sortedEvents = [...liveEvs, ...upcomingEvs, ...pastEvs]
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-heading text-2xl font-bold flex items-center gap-2">
-            <HugeiconsIcon
-              icon={CalendarsIcon}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="onside-display flex items-center gap-2 text-2xl">
+            <Calendar
               size={20}
               color="currentColor"
-              strokeWidth={1.5}
-              className="text-brand-blue"
-            />{' '}
-            Agenda de jogos
+              className="text-[var(--onside-live)]"
+              aria-hidden="true"
+            />
+            Minha grade
           </h2>
-          {!isLoading && events.length > 0 && (
-            <p className="text-sm text-zinc-500 mt-0.5">
-              {liveEvs.length > 0 && (
-                <span className="text-brand-orange font-semibold">
-                  {liveEvs.length} ao vivo ·{' '}
+          {eventsState.status === 'ready' && events.length > 0 ? (
+            <p className="mt-0.5 text-[var(--onside-muted)] text-sm">
+              {liveEvents.length > 0 ? (
+                <span className="font-semibold text-[var(--onside-live)]">
+                  {liveEvents.length} ao vivo ·{' '}
                 </span>
-              )}
-              {upcomingEvs.length} próximo{upcomingEvs.length !== 1 ? 's' : ''}
-              {pastEvs.length > 0 && (
-                <span className="text-zinc-400">
+              ) : null}
+              {upcomingEvents.length} próximo
+              {upcomingEvents.length !== 1 ? 's' : ''}
+              {pastEvents.length > 0 ? (
+                <span>
                   {' '}
-                  · {pastEvs.length} passado{pastEvs.length !== 1 ? 's' : ''}
+                  · {pastEvents.length} passado
+                  {pastEvents.length !== 1 ? 's' : ''}
                 </span>
-              )}
+              ) : null}
             </p>
-          )}
+          ) : null}
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="bg-black text-white text-xs font-bold px-4 py-3 rounded-full inline-flex items-center gap-2 hover:bg-brand-blue transition-colors min-h-[44px]"
-        >
-          <HugeiconsIcon
-            icon={PlusSignIcon}
-            size={16}
-            color="currentColor"
-            strokeWidth={1.5}
-          />{' '}
-          Novo evento
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={createBlocked}
+            title={blockReason ?? undefined}
+            className="onside-btn onside-btn-acid min-h-11"
+          >
+            <Plus size={16} color="currentColor" aria-hidden="true" />
+            Novo evento
+          </button>
+          {blockReason ? (
+            <p className="max-w-[16rem] text-right text-xs text-[var(--onside-live-text)]">
+              {blockReason}{' '}
+              {policyState.status === 'ready' &&
+              policyState.policy.status === 'limited' ? (
+                <a
+                  href="/plan"
+                  className="font-bold underline underline-offset-2"
+                >
+                  Fazer upgrade
+                </a>
+              ) : null}
+              {policyState.status === 'error' ? (
+                <button
+                  type="button"
+                  onClick={policyState.retry}
+                  className="font-bold underline underline-offset-2"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <section>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
+        {eventsState.status === 'loading' ? (
+          <div className="space-y-2" aria-busy="true">
+            {[1, 2, 3].map((item) => (
               <div
-                key={i}
-                className="h-[76px] rounded-xl bg-zinc-100 animate-pulse"
+                key={item}
+                className="h-[76px] animate-pulse border border-[var(--onside-ink)] bg-[var(--onside-stone)]"
               />
             ))}
           </div>
+        ) : eventsState.status === 'error' ? (
+          <div className="onside-callout onside-callout-danger" role="alert">
+            <p className="text-sm">Não foi possível carregar a grade.</p>
+            <button
+              type="button"
+              onClick={eventsState.retry}
+              className="font-bold text-sm underline underline-offset-2"
+            >
+              Tentar novamente
+            </button>
+          </div>
         ) : sortedEvents.length === 0 ? (
-          <EmptyEventsState onCreate={openCreate} />
+          <EmptyEventsState
+            onCreate={openCreate}
+            createDisabled={createBlocked}
+          />
         ) : (
           <ul className="space-y-2">
-            {sortedEvents.map((e) => (
+            {sortedEvents.map((item) => (
               <EventListItem
-                key={e.id}
-                event={e}
+                key={item.id}
+                event={item}
                 onEdit={openEdit}
                 onDelete={(id) => {
-                  analytics.eventDeleted(id)
                   deleteMutation.mutate({ eventId: id })
                 }}
                 isDeleting={deleteMutation.isPending}
@@ -250,9 +300,8 @@ export function EventsManager() {
                     ? toDatetimeLocal(editingEvent.endsAt)
                     : '',
                   participantIds:
-                    editingEvent.participants?.map(
-                      (p: { team: { id: string } }) => p.team.id
-                    ) ?? [],
+                    editingEvent.participants?.map((item) => item.team.id) ??
+                    [],
                   participantFreeText: editingEvent.participantFreeText ?? ''
                 }
               : EMPTY_FORM

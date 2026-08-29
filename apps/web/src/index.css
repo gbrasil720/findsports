@@ -1,18 +1,5 @@
 @import "@findsports_oficial/ui/globals.css";
+@import "./styles/onside/app.css";
+@import "./components/landing/onside.css";
+@import "./components/not-found/not-found-page.css";
 @source "./**/*.{ts,tsx}";
-
-@layer components {
-  .admin-input {
-    width: 100%;
-    padding: 0.625rem 0.75rem;
-    border-radius: 0.5rem;
-    background: #fafafa;
-    font-size: 0.875rem;
-    font-weight: 600;
-    outline: none;
-  }
-
-  .admin-input:focus {
-    box-shadow: 0 0 0 2px rgba(30, 107, 255, 0.3);
-  }
-}

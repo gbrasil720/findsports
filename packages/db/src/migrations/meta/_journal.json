@@ -78,6 +78,111 @@
       "when": 1786023665332,
       "tag": "0011_reconcile_waitlist_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786718742627,
+      "tag": "0012_faulty_quicksilver",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786982400000,
+      "tag": "0013_postgis_bar_geo",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786993200000,
+      "tag": "0014_analytics_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787004000000,
+      "tag": "0015_rate_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787007600000,
+      "tag": "0016_foreign_key_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787011200000,
+      "tag": "0017_pg_stat_statements",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787097600000,
+      "tag": "0018_bar_plan_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787184000000,
+      "tag": "0019_app_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787270400000,
+      "tag": "0020_waitlist_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787356800000,
+      "tag": "0021_bar_amenities",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1787443200000,
+      "tag": "0022_bar_rating",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787529600000,
+      "tag": "0023_aspiring_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787529600001,
+      "tag": "0024_redundant_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1787583623607,
+      "tag": "0025_left_sage",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1787769697735,
+      "tag": "0026_waitlist_activation",
+      "breakpoints": true
     }
   ]
 }

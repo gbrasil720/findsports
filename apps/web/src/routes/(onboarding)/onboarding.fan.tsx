@@ -1,18 +1,9 @@
-import {
-  Car01Icon,
-  FireIcon,
-  MapPinIcon,
-  MedalFirstPlaceIcon,
-  RadioButtonIcon,
-  TargetDollarIcon,
-  Tick01Icon,
-  VolleyballIcon,
-  WeightIcon
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Check from 'reicon-react/icons/Check'
+import Fire from 'reicon-react/icons/Fire'
+import Location from 'reicon-react/icons/Location'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -21,13 +12,16 @@ import { RadiusSelector } from '@/components/onboarding/radius-selector'
 import { SportSelector } from '@/components/onboarding/sport-selector'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
+import { refreshSessionCache } from '@/lib/auth-client'
+import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
   head: () => ({
     meta: [
-      { title: 'Configure sua conta de torcedor — FindSports' },
+      { title: 'Configure sua conta de torcedor — Onside' },
       {
         name: 'description',
         content:
@@ -39,62 +33,58 @@ export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
   component: FanOnboarding
 })
 
-const SPORT_ICONS: Record<string, IconSvgElement> = {
-  futebol: MedalFirstPlaceIcon,
-  basquete: RadioButtonIcon,
-  volei: VolleyballIcon,
-  'futebol-americano': WeightIcon,
-  'formula-1': Car01Icon,
-  'mma-ufc': TargetDollarIcon
-}
-
 const STEPS = [
   'Boas-vindas',
   'Seus esportes',
   'Onde você assiste',
-  'Pronto'
+  'Revisão'
 ] as const
-const RADIUS_OPTIONS = [1, 3, 5, 10] as const
-type RadiusKm = (typeof RADIUS_OPTIONS)[number]
-
 const WELCOME_FEATURES = [
-  { icon: FireIcon, text: 'Veja jogos ao vivo perto de você' },
-  { icon: MapPinIcon, text: 'Bares dentro do seu raio' },
-  { icon: Tick01Icon, text: 'Leve a galera junto' }
+  { icon: Fire, text: 'Veja jogos ao vivo perto de você' },
+  { icon: Location, text: 'Bares dentro do seu raio' },
+  { icon: Check, text: 'Leve a galera junto' }
 ]
 
 function FanOnboarding() {
   const navigate = useNavigate()
   const trpc = useTRPC()
+  const headingRef = useRef<HTMLHeadingElement>(null)
 
   const [step, setStep] = useState(0)
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
   const [radius, setRadius] = useState<RadiusKm>(3)
   const [error, setError] = useState<string | null>(null)
 
-  const { data: sports = [], isLoading: loadingSports } = useQuery(
-    trpc.pubs.getSports.queryOptions()
-  )
+  const sportsQuery = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    ...CATALOG_QUERY
+  })
+  const sports = sportsQuery.data ?? []
 
   const completeMutation = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
-      onSuccess: () => {
-        analytics.fanOnboardingCompleted(
-          sports
+      onSuccess: async () => {
+        analytics.onboardingCompleted({
+          role: 'fan',
+          sports: sports
             .filter((s) => selectedSportIds.includes(s.id))
             .map((s) => s.slug),
-          radius
-        )
+          radius_km: radius
+        })
+        // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
+        // do better-auth; sem regravar o cache de sessão o guard da rota
+        // devolveria o usuário para cá. Se a releitura falhar, seguimos
+        // assim mesmo — o guard revalida no servidor.
+        await refreshSessionCache().catch(() => {})
         navigate({ to: '/dashboard' })
       },
       onError: (err) => setError(err.message)
     })
   )
 
-  // Dispara started uma única vez ao montar
   useEffect(() => {
-    analytics.fanOnboardingStarted()
-  }, [])
+    headingRef.current?.focus({ preventScroll: step === 0 })
+  }, [step])
 
   const canAdvance = (() => {
     if (step === 0) return true
@@ -105,19 +95,6 @@ function FanOnboarding() {
 
   const next = () => {
     setError(null)
-
-    // Evento por step
-    if (step === 0) analytics.fanOnboardingStepCompleted(1)
-    if (step === 1) {
-      analytics.fanOnboardingStepCompleted(2)
-      analytics.fanOnboardingSportsSelected(
-        sports.filter((s) => selectedSportIds.includes(s.id)).map((s) => s.slug)
-      )
-    }
-    if (step === 2) {
-      analytics.fanOnboardingStepCompleted(3)
-      analytics.fanOnboardingRadiusSelected(radius)
-    }
 
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
@@ -138,42 +115,48 @@ function FanOnboarding() {
 
   return (
     <OnboardingLayout variant="fan">
-      <OnboardingHeader label="Conta de torcedor" accent="orange" />
-      <StepProgress step={step} steps={STEPS} accent="orange" />
+      <OnboardingHeader label="Conta de torcedor" />
+      <StepProgress step={step} steps={STEPS} />
 
-      <OnboardingStep accent="orange">
+      <OnboardingStep>
         {step === 0 && (
           <WelcomeStep
             eyebrow="É torcedor? Chegou no lugar certo."
             title={
               <>
                 Vamos achar os{' '}
-                <span className="text-brand-orange">melhores bares</span> pro
-                seu jogo.
+                <span className="text-[var(--onside-acid)]">
+                  melhores bares
+                </span>{' '}
+                pro seu jogo.
               </>
             }
             subtitle="Em 2 passos a gente calibra sua busca: esportes favoritos e raio de localização."
             features={WELCOME_FEATURES}
-            accent="orange"
           />
         )}
 
         {step === 1 && (
           <div>
-            <h2 className="font-heading text-3xl font-bold mb-2">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
+            >
               Quais esportes você curte?
             </h2>
-            <p className="text-white/70 mb-6">
+            <p className="onside-text-muted-on-ink mb-6">
               Marque tudo que você acompanha — a gente filtra os bares pra você.
             </p>
             <SportSelector
               sports={sports}
               selectedIds={selectedSportIds}
               onToggle={toggleSport}
-              isLoading={loadingSports}
-              iconMap={SPORT_ICONS}
+              isLoading={sportsQuery.isLoading}
+              isError={sportsQuery.isError}
+              onRetry={() => sportsQuery.refetch()}
             />
-            <p className="text-xs text-white/40 mt-6">
+            <p className="onside-text-muted-on-ink mt-6 text-xs">
               {selectedSportIds.length} selecionado
               {selectedSportIds.length === 1 ? '' : 's'} — escolha pelo menos 1.
             </p>
@@ -182,49 +165,52 @@ function FanOnboarding() {
 
         {step === 2 && (
           <div>
-            <h2 className="font-heading text-3xl font-bold mb-2">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
+            >
               Quão longe você topa ir?
             </h2>
-            <p className="text-white/70 mb-6">
+            <p className="onside-text-muted-on-ink mb-6">
               A distância define quais bares aparecem pra você.
             </p>
             <RadiusSelector
               value={radius}
-              options={RADIUS_OPTIONS}
-              onChange={(km) => setRadius(km as RadiusKm)}
+              options={SEARCH_RADII}
+              onChange={setRadius}
             />
           </div>
         )}
 
         {step === 3 && (
-          <div className="text-center py-6">
-            <div className="mx-auto mb-6 grid place-items-center size-20 rounded-full bg-brand-orange">
-              <HugeiconsIcon
-                icon={Tick01Icon}
-                size={40}
-                color="currentColor"
-                strokeWidth={1.5}
-              />
+          <div className="py-4 text-center md:py-6">
+            <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
+              <Check size={40} color="currentColor" aria-hidden="true" />
             </div>
-            <h2 className="font-heading text-4xl md:text-5xl font-bold leading-tight mb-3">
-              Tudo pronto, torcedor!
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
+            >
+              Pronto para salvar
             </h2>
-            <p className="text-white/70 max-w-md mx-auto mb-8">
-              Seu feed já tá calibrado. Bora ver quais bares estão com jogo
-              agora.
+            <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
+              Confira sua seleção. Ao continuar, salvamos preferências e abrimos
+              o mapa de bares.
             </p>
-            <div className="inline-flex flex-wrap gap-2 justify-center">
+            <div className="inline-flex flex-wrap justify-center gap-2">
               {sports
                 .filter((s) => selectedSportIds.includes(s.id))
                 .map((s) => (
                   <span
                     key={s.id}
-                    className="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold"
+                    className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]"
                   >
                     {s.name}
                   </span>
                 ))}
-              <span className="px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold">
+              <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
                 {radius} km
               </span>
             </div>
@@ -233,7 +219,12 @@ function FanOnboarding() {
       </OnboardingStep>
 
       {error && (
-        <p className="text-center text-sm text-red-400 mt-4">{error}</p>
+        <p
+          className="mt-4 text-center text-[var(--onside-live-text)] text-sm"
+          role="alert"
+        >
+          {error}
+        </p>
       )}
 
       <OnboardingNavigation
@@ -243,8 +234,7 @@ function FanOnboarding() {
         isPending={completeMutation.isPending}
         onBack={back}
         onNext={next}
-        accent="orange"
-        lastLabel="Encontrar bares perto de mim"
+        lastLabel="Salvar e encontrar bares"
       />
     </OnboardingLayout>
   )

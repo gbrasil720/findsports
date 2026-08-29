@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -14,11 +15,14 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
+  dodoCustomerId: text('dodo_customer_id').unique(),
   role: text('role', { enum: ['fan', 'pub', 'admin'] })
     .notNull()
     .default('fan'),
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
+  admittedAt: timestamp('admitted_at'),
   searchRadiusKm: integer('search_radius_km').default(3).notNull(),
+  twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   // better-auth admin plugin fields
   banned: boolean('banned').default(false),
   banReason: text('ban_reason'),
@@ -109,3 +113,36 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id]
   })
 }))
+
+/**
+ * Contador de rate limit do better-auth (ESC-11).
+ *
+ * O armazenamento padrão é um `Map` em memória do processo. Em serverless
+ * cada instância tem o seu, e ele some entre invocações — o limite existia no
+ * papel e não no comportamento. Guardando no Postgres, o contador passa a ser
+ * compartilhado por todas as instâncias.
+ *
+ * Os nomes das colunas são ditados pelo better-auth: ele acessa o modelo
+ * `rateLimit` pelos campos `key`, `count` e `lastRequest`.
+ */
+export const rateLimit = pgTable('rate_limit', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  count: integer('count').notNull(),
+  // Milissegundos desde a época; o better-auth lê como número.
+  lastRequest: bigint('last_request', { mode: 'number' }).notNull()
+})
+
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: text('id').primaryKey(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').default(true).notNull()
+  },
+  (table) => [index('two_factor_userId_idx').on(table.userId)]
+)

@@ -1,0 +1,227 @@
+{
+  "date": "2026-08-18",
+  "environment": {
+    "application": "Vite development server, one local Node.js process",
+    "database": "PostgreSQL 17.10 + PostGIS 3.5.4 in isolated Docker tmpfs",
+    "databaseMaxConnections": 100,
+    "generator": "Grafana k6 in Docker",
+    "slo": {
+      "p95Ms": 300,
+      "maxErrorRate": 0.01
+    }
+  },
+  "datasets": {
+    "baseline": {
+      "accounts": 12000,
+      "fans": 10000,
+      "bars": 2000,
+      "events": 10000,
+      "sessions": 2000,
+      "favorites": 20000,
+      "commercialEvents": 10000,
+      "databaseBytes": 51025587
+    },
+    "medium": {
+      "accounts": 120000,
+      "fans": 100000,
+      "bars": 20000,
+      "events": 100000,
+      "sessions": 20000,
+      "favorites": 200000,
+      "commercialEvents": 100000,
+      "databaseBytes": 318407183
+    },
+    "large": {
+      "accounts": 1100000,
+      "fans": 1000000,
+      "bars": 100000,
+      "events": 500000,
+      "sessions": 100000,
+      "favorites": 2000000,
+      "commercialEvents": 1000000,
+      "databaseBytes": 2610788019
+    }
+  },
+  "browseRuns": [
+    {
+      "dataset": "baseline",
+      "vus": 25,
+      "requests": 995,
+      "rps": 19.7,
+      "errors": 0,
+      "httpP95Ms": 28.3,
+      "searchP95Ms": 14.9,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 100,
+      "requests": 3026,
+      "rps": 74.7,
+      "errors": 0,
+      "httpP95Ms": 29.6,
+      "searchP95Ms": 28.6,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 500,
+      "requests": 15159,
+      "rps": 369.3,
+      "errors": 0,
+      "httpP95Ms": 18.1,
+      "searchP95Ms": 18.9,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 1000,
+      "requests": 30191,
+      "rps": 732.3,
+      "errors": 0,
+      "httpP95Ms": 34.0,
+      "searchP95Ms": 38.1,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 1250,
+      "requests": 37768,
+      "rps": 912.3,
+      "errors": 0,
+      "httpP95Ms": 38.0,
+      "searchP95Ms": 44.0,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 1400,
+      "requests": 42177,
+      "rps": 1018.1,
+      "errors": 0,
+      "httpP95Ms": 55.4,
+      "searchP95Ms": 63.8,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 1600,
+      "requests": 47455,
+      "rps": 1144.2,
+      "errors": 0,
+      "httpP95Ms": 133.6,
+      "searchP95Ms": 152.0,
+      "passed": true
+    },
+    {
+      "dataset": "baseline",
+      "vus": 1800,
+      "requests": 50873,
+      "rps": 1233.5,
+      "errors": 0,
+      "httpP95Ms": 329.8,
+      "searchP95Ms": 367.8,
+      "passed": false
+    },
+    {
+      "dataset": "baseline",
+      "vus": 2000,
+      "requests": 52343,
+      "rps": 1263.1,
+      "errors": 0,
+      "httpP95Ms": 677.6,
+      "searchP95Ms": 825.3,
+      "passed": false
+    },
+    {
+      "dataset": "medium",
+      "vus": 100,
+      "requests": 3015,
+      "rps": 73.7,
+      "errors": 0,
+      "httpP95Ms": 29.9,
+      "searchP95Ms": 35.0,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "vus": 25,
+      "requests": 749,
+      "rps": 18.5,
+      "errors": 0,
+      "httpP95Ms": 65.6,
+      "searchP95Ms": 71.6,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "vus": 100,
+      "requests": 2980,
+      "rps": 72.9,
+      "errors": 0,
+      "httpP95Ms": 58.6,
+      "searchP95Ms": 66.1,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "vus": 250,
+      "requests": 7409,
+      "rps": 181.6,
+      "errors": 0,
+      "httpP95Ms": 76.6,
+      "searchP95Ms": 87.3,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "vus": 350,
+      "requests": 10226,
+      "rps": 248.3,
+      "errors": 0,
+      "httpP95Ms": 112.9,
+      "searchP95Ms": 137.6,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "vus": 425,
+      "requests": 11394,
+      "rps": 276.9,
+      "errors": 0,
+      "httpP95Ms": 338.5,
+      "searchP95Ms": 373.3,
+      "passed": false
+    }
+  ],
+  "writeRuns": [
+    {
+      "dataset": "large",
+      "workload": "commercial-write",
+      "vus": 100,
+      "requests": 3032,
+      "rps": 73.6,
+      "errors": 0,
+      "p95Ms": 7.7,
+      "passed": true
+    },
+    {
+      "dataset": "large",
+      "workload": "waitlist-write",
+      "vus": 100,
+      "requests": 3040,
+      "rps": 74.4,
+      "errors": 0,
+      "p95Ms": 5.3,
+      "passed": true
+    }
+  ],
+  "additionalEvidence": {
+    "commercialWriteAttemptsAcross25And100VuRuns": 3790,
+    "commercialRowsActuallyInserted": 3732,
+    "waitlistRowsActuallyInserted": 3039,
+    "badLoginStatuses": [401, 401, 401, 429, 429, 429, 429, 429],
+    "largeDatasetNearbyBarsAt3Km": 6100,
+    "largeDatasetSearchDatabaseExecutionMs": 42.752
+  }
+}

@@ -1,41 +1,32 @@
-import { CalendarsIcon, PlusSignIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import Calendar from 'reicon-react/icons/Calendar'
+import Plus from 'reicon-react/icons/Plus'
 
 type Props = {
   onCreate: () => void
+  createDisabled?: boolean
 }
 
-export function EmptyEventsState({ onCreate }: Props) {
+export function EmptyEventsState({ onCreate, createDisabled = false }: Props) {
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-black/5 p-12 flex flex-col items-center gap-4 text-center">
-      <div className="size-16 rounded-2xl bg-zinc-100 flex items-center justify-center">
-        <HugeiconsIcon
-          icon={CalendarsIcon}
-          size={28}
-          color="currentColor"
-          strokeWidth={1.5}
-          className="text-zinc-400"
-        />
+    <div className="onside-panel-acid flex flex-col items-center gap-4 p-12 text-center">
+      <div className="grid size-16 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
+        <Calendar size={28} color="currentColor" aria-hidden="true" />
       </div>
       <div>
-        <p className="font-heading font-bold text-zinc-900 mb-1">
+        <p className="onside-display mb-1 text-2xl text-[var(--onside-ink)]">
           Nenhum jogo cadastrado
         </p>
-        <p className="text-sm text-zinc-500 max-w-xs">
+        <p className="max-w-xs text-[var(--onside-ink)] text-sm opacity-80">
           Adicione jogos para começar a aparecer nas buscas dos torcedores.
         </p>
       </div>
       <button
         type="button"
         onClick={onCreate}
-        className="inline-flex items-center gap-2 bg-black text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-brand-blue transition-colors"
+        disabled={createDisabled}
+        className="onside-btn onside-btn-ink"
       >
-        <HugeiconsIcon
-          icon={PlusSignIcon}
-          size={16}
-          color="currentColor"
-          strokeWidth={1.5}
-        />{' '}
+        <Plus size={16} color="currentColor" aria-hidden="true" />
         Adicionar primeiro jogo
       </button>
     </div>

@@ -1,0 +1,45 @@
+@keyframes onside-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-app .onside-btn:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--onside-ink);
+  }
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .onside-app .onside-live-dot.is-pulse,
+  .onside-app .animate-spin,
+  .onside-app .animate-pulse {
+    animation: none !important;
+  }
+
+  .onside-app .onside-btn,
+  .onside-app .onside-choice,
+  .onside-app .onside-input,
+  .onside-app .onside-textarea,
+  .onside-app .onside-select,
+  .onside-app .onside-progress-seg,
+  .onside-app a,
+  .onside-app button,
+  .onside-app [class*="transition"] {
+    transition: none !important;
+  }
+
+  .onside-app .onside-btn:hover:not(:disabled),
+  .onside-app .onside-choice:hover:not(:disabled) {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}

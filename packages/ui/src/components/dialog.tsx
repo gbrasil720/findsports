@@ -2,7 +2,7 @@
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { cn } from '@findsports_oficial/ui/lib/utils'
-import { X } from 'lucide-react'
+import Xmark from 'reicon-react/icons/Xmark'
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -93,7 +93,7 @@ function DialogClose({
       )}
       {...props}
     >
-      {children ?? <X className="size-4" />}
+      {children ?? <Xmark size={16} color="currentColor" className="size-4" />}
     </DialogPrimitive.Close>
   )
 }

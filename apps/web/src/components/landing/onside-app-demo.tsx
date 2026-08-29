@@ -4,8 +4,6 @@ import Menu from 'reicon-react/icons/Menu'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 
-import { analytics } from '../../lib/analytics'
-
 const ONSIDE_ICON_SRC = '/onside-icone-preto.png'
 
 export function OnsideAppDemo() {
@@ -15,16 +13,14 @@ export function OnsideAppDemo() {
   const isMap = view === 'map'
 
   function toggleView() {
-    const next = isMap ? 'list' : 'map'
-    setView(next)
-    analytics.demoViewChanged(next)
+    setView(isMap ? 'list' : 'map')
   }
 
   return (
     <figure className="onside-product-stage">
       <div className="onside-demo-visual">
         <div className="onside-demo-preview-badge">
-          Prévia do produto · ainda não disponível
+          Prévia do dashboard · ainda não disponível
         </div>
 
         <div className="onside-stage-glow" aria-hidden="true" />
@@ -57,7 +53,7 @@ export function OnsideAppDemo() {
               <span className="onside-inline-icon">
                 <Search size={14} aria-hidden="true" focusable="false" />
               </span>
-              <strong>Flamengo x Palmeiras</strong>
+              <strong>Onde você assiste hoje?</strong>
               <kbd>
                 <Xmark size={12} aria-hidden="true" focusable="false" />
               </kbd>
@@ -85,7 +81,7 @@ export function OnsideAppDemo() {
             </div>
 
             <div className="onside-results-head">
-              <strong>3 lugares na prévia</strong>
+              <strong>Bares na prévia</strong>
               <button
                 type="button"
                 data-view-toggle
@@ -120,7 +116,7 @@ export function OnsideAppDemo() {
                     </div>
                     <p>Pinheiros · aberto até 01:00</p>
                     <div className="onside-venue-tags">
-                      <span>80% cheio</span>
+                      <span>Preço médio $$</span>
                       <span>Som no jogo</span>
                       <span>3 telões</span>
                     </div>
@@ -174,7 +170,7 @@ export function OnsideAppDemo() {
                 </span>
                 <div className="onside-map-sheet">
                   <strong>Bar do Zé</strong>
-                  <span>1,2 km · 80% cheio · som no jogo</span>
+                  <span>1,2 km · preço médio $$ · som no jogo</span>
                 </div>
               </div>
             </div>
@@ -209,7 +205,7 @@ export function OnsideAppDemo() {
       </div>
 
       <figcaption className="onside-demo-caption">
-        Exemplo de como a Onside pretende mostrar partidas e bares no piloto.
+        Exemplo de como o dashboard da Onside pretende mostrar partidas e bares.
       </figcaption>
     </figure>
   )

@@ -5,22 +5,31 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./lib/commercial-analytics/types": {
+      "default": "./src/lib/commercial-analytics/types.ts"
+    },
+    "./lib/app-config": {
+      "default": "./src/lib/app-config/index.ts"
+    },
     "./*": {
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
   "dependencies": {
     "@findsports_oficial/auth": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
-    "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
-    "dotenv": "catalog:",
+    "@upstash/redis": "^1.35.3",
+    "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@findsports_oficial/config": "workspace:*",
+    "@types/bun": "^1.3.14",
     "typescript": "catalog:"
   }
 }

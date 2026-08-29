@@ -4,7 +4,7 @@ import {
   pgTable,
   text,
   timestamp,
-  unique
+  uniqueIndex
 } from 'drizzle-orm/pg-core'
 
 export const waitlistRoleEnum = pgEnum('waitlist_role', ['fan', 'pub'])
@@ -20,10 +20,42 @@ export const waitlistEntries = pgTable(
     city: text('city').notNull(),
     phone: text('phone'),
     pubName: text('pub_name'),
-    createdAt: timestamp('created_at').defaultNow().notNull()
+    pendingRole: waitlistRoleEnum('pending_role'),
+    pendingCity: text('pending_city'),
+    pendingPhone: text('pending_phone'),
+    pendingPubName: text('pending_pub_name'),
+    confirmationTokenHash: text('confirmation_token_hash'),
+    confirmationExpiresAt: timestamp('confirmation_expires_at'),
+    confirmationSentAt: timestamp('confirmation_sent_at'),
+    confirmationError: text('confirmation_error'),
+    confirmedAt: timestamp('confirmed_at'),
+    leaveTokenHash: text('leave_token_hash'),
+    cancelledAt: timestamp('cancelled_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    /**
+     * Liberação para entrar na plataforma (ESC-19).
+     *
+     * Nulo é o estado normal de quem se cadastrou: estar na lista não é estar
+     * aprovado. O portão de login lê esta coluna, e não a existência da
+     * linha — senão qualquer pessoa se aprovaria preenchendo o formulário
+     * público.
+     */
+    approvedAt: timestamp('approved_at'),
+    /** Id do admin que liberou. Texto solto: apagar o admin não pode
+     *  desaprovar ninguém. */
+    approvedBy: text('approved_by'),
+    inviteTokenHash: text('invite_token_hash'),
+    inviteExpiresAt: timestamp('invite_expires_at'),
+    inviteClaimedAt: timestamp('invite_claimed_at'),
+    inviteSentAt: timestamp('invite_sent_at'),
+    inviteError: text('invite_error'),
+    activatedAt: timestamp('activated_at'),
+    launchNoticeClaimedAt: timestamp('launch_notice_claimed_at'),
+    launchNoticeSentAt: timestamp('launch_notice_sent_at'),
+    launchNoticeError: text('launch_notice_error')
   },
   (table) => ({
-    emailRoleCityUnique: unique().on(table.email, table.role, table.city),
+    emailUnique: uniqueIndex('waitlist_entries_email_unique').on(table.email),
     cityIdx: index('city_idx').on(table.city)
   })
 )

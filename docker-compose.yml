@@ -1,0 +1,50 @@
+services:
+  db:
+    # PostGIS é obrigatório: a busca por proximidade usa ST_DWithin + índice
+    # GiST (migration 0013). Mesma major do Postgres anterior (17), então o
+    # volume existente continua válido. Rode `bun run db:migrate` depois de
+    # trocar a imagem para criar a extensão no banco de desenvolvimento.
+    # `postgis/postgis` não publica arm64; esta é a build multi-arquitetura
+    # mantida pelo mesmo autor, mesma base alpine do Postgres anterior.
+    image: imresamu/postgis:17-3.5-alpine
+    container_name: findsports_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: findsports_dev
+      POSTGRES_USER: findsports_dev
+      POSTGRES_PASSWORD: findsports_dev_local
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - findsports_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U findsports_dev -d findsports_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-load-test:
+    profiles: ['load-test']
+    image: imresamu/postgis:17-3.5-alpine
+    container_name: findsports_load_test
+    restart: 'no'
+    environment:
+      POSTGRES_DB: findsports_load_test
+      POSTGRES_USER: findsports_load_test
+      POSTGRES_PASSWORD: findsports_load_test_local
+    ports:
+      - '127.0.0.1:5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U findsports_load_test -d findsports_load_test'
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  findsports_dev_data:
