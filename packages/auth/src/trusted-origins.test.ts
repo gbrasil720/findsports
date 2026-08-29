@@ -2,14 +2,14 @@ import { describe, expect, it } from 'bun:test'
 import { buildTrustedOrigins } from './trusted-origins'
 
 describe('origens confiáveis do auth', () => {
-  it('confia somente na origem canônica em produção', () => {
+  it('confia na origem canônica e no par www em produção', () => {
     expect(
       buildTrustedOrigins({
-        baseUrl: 'https://onside.app/api/auth',
+        baseUrl: 'https://onside.sh/api/auth',
         nodeEnv: 'production',
         developmentOrigin: 'https://tunnel.ngrok-free.dev'
       })
-    ).toEqual(['https://onside.app'])
+    ).toEqual(['https://onside.sh', 'https://www.onside.sh'])
   })
 
   it('aceita um túnel HTTPS exato somente em desenvolvimento', () => {
