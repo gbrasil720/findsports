@@ -17,7 +17,8 @@ import {
   criarPontoDoUsuario,
   type MapAccent
 } from './google-map-icons'
-import { MapCanvas, MapLoadError } from './google-map-status'
+import { MapBoundary, MapCanvas, MapLoadError } from './google-map-status'
+import { isMapaVivo } from './map-liveness'
 import {
   diffMarkerState,
   type MarkerVisualState,
@@ -57,6 +58,18 @@ type MarkerEntry = {
   estado?: MarkerVisualState
 }
 
+/**
+ * Falha ao conversar com o mapa já carregado.
+ *
+ * Diferente do carregamento, aqui a mensagem do SDK não serve de nada para
+ * quem está na tela (`Cannot read properties of undefined…`, em inglês). O
+ * texto real vai para o console, onde é útil.
+ */
+function reportarFalhaDoMapa(reason: unknown): string {
+  console.error('Erro do Google Maps isolado no componente:', reason)
+  return 'Mapa temporariamente indisponível'
+}
+
 function getLoadError(error: unknown): string {
   if (error instanceof Error && !error.message.includes('key')) {
     return error.message
@@ -64,7 +77,23 @@ function getLoadError(error: unknown): string {
   return 'Mapa temporariamente indisponível'
 }
 
-export function GoogleMap({
+/**
+ * O mapa vive atrás de uma fronteira de erro própria — ver `MapBoundary`.
+ *
+ * Toda conversa com o SDK do Google acontece dentro de efeitos, e erro em
+ * efeito sobe pelo commit do React até a fronteira de erro da rota se ninguém
+ * pegar antes. Sem esta fronteira, um pino que o SDK recusa apaga a tela
+ * inteira.
+ */
+export function GoogleMap(props: Props) {
+  return (
+    <MapBoundary>
+      <MapaDoGoogle {...props} />
+    </MapBoundary>
+  )
+}
+
+function MapaDoGoogle({
   bars,
   center,
   showUserLocation = false,
@@ -136,17 +165,33 @@ export function GoogleMap({
 
     return () => {
       cancelled = true
-      for (const entry of markersRef.current.values()) {
-        for (const listener of entry.listeners) listener.remove()
-        entry.soltarHover()
-        entry.marker.map = null
+      // A limpeza roda na fase passiva, ou seja, DEPOIS de o React já ter
+      // tirado o contêiner do documento. Tudo aqui fala com um mapa que só
+      // existe na memória, então nada pode lançar: um erro nesta função sobe
+      // pelo commit e derruba a tela para a qual estamos navegando.
+      try {
+        for (const entry of markersRef.current.values()) {
+          for (const listener of entry.listeners) listener.remove()
+          entry.soltarHover()
+          entry.marker.map = null
+        }
+        markersRef.current.clear()
+        if (userMarkerRef.current) userMarkerRef.current.map = null
+        radiusCircleRef.current?.setMap(null)
+        const map = mapRef.current
+        if (map && runtimeRef.current)
+          runtimeRef.current.api.event.clearInstanceListeners(map)
+        // O SDK não tem `destroy()`: o que ele montou dentro do contêiner (e
+        // os observadores presos a esses nós) só some quando o contêiner some.
+        // Esvaziar aqui evita que a instância antiga continue reagindo a
+        // resize e mutação de um `<div>` que ninguém mais vê.
+        if (containerRef.current) containerRef.current.replaceChildren()
+      } catch (reason) {
+        console.error('Falha ao desmontar o mapa:', reason)
       }
+      // Fora do `try`: se a desmontagem parar no meio, as refs ainda precisam
+      // ficar limpas, senão a próxima montagem herda pinos de um mapa morto.
       markersRef.current.clear()
-      if (userMarkerRef.current) userMarkerRef.current.map = null
-      radiusCircleRef.current?.setMap(null)
-      const map = mapRef.current
-      if (map && runtimeRef.current)
-        runtimeRef.current.api.event.clearInstanceListeners(map)
       mapRef.current = null
       runtimeRef.current = null
       userMarkerRef.current = null
@@ -157,115 +202,133 @@ export function GoogleMap({
   useEffect(() => {
     const map = mapRef.current
     const runtime = runtimeRef.current
-    if (!ready || !map || !runtime) return
-    if (center && isValidCoordinates(center)) {
-      map.panTo(center)
-      if (radiusKm) map.setZoom(getRadiusZoom(radiusKm))
-    }
+    // `isMapaVivo` é a guarda que faltava: `ready` e `mapRef.current` dizem que
+    // um dia existiu um mapa, não que ele ainda está na tela. Ver
+    // `map-liveness.ts` para o porquê de o SDK estourar sem ela.
+    if (!ready || !map || !runtime || !isMapaVivo(map)) return
 
-    if (showUserLocation && center && isValidCoordinates(center)) {
-      userMarkerRef.current ??= new runtime.AdvancedMarkerElement({
-        content: criarPontoDoUsuario(),
-        zIndex: 1,
-        title: 'Sua localização'
-      })
-      userMarkerRef.current.map = map
-      userMarkerRef.current.position = center
-    } else if (userMarkerRef.current) {
-      userMarkerRef.current.map = null
-    }
+    try {
+      if (center && isValidCoordinates(center)) {
+        map.panTo(center)
+        if (radiusKm) map.setZoom(getRadiusZoom(radiusKm))
+      }
 
-    if (radiusKm && center && isValidCoordinates(center)) {
-      radiusCircleRef.current ??= new runtime.Circle({
-        fillColor: '#C9F135',
-        fillOpacity: 0.18,
-        strokeColor: '#C9F135',
-        strokeOpacity: 0.55,
-        strokeWeight: 1.5,
-        clickable: false,
-        zIndex: 0
-      })
-      radiusCircleRef.current.setMap(map)
-      radiusCircleRef.current.setCenter(center)
-      radiusCircleRef.current.setRadius(radiusKm * 1000)
-    } else {
-      radiusCircleRef.current?.setMap(null)
+      if (showUserLocation && center && isValidCoordinates(center)) {
+        userMarkerRef.current ??= new runtime.AdvancedMarkerElement({
+          content: criarPontoDoUsuario(),
+          zIndex: 1,
+          title: 'Sua localização'
+        })
+        userMarkerRef.current.map = map
+        userMarkerRef.current.position = center
+      } else if (userMarkerRef.current) {
+        userMarkerRef.current.map = null
+      }
+
+      if (radiusKm && center && isValidCoordinates(center)) {
+        radiusCircleRef.current ??= new runtime.Circle({
+          fillColor: '#C9F135',
+          fillOpacity: 0.18,
+          strokeColor: '#C9F135',
+          strokeOpacity: 0.55,
+          strokeWeight: 1.5,
+          clickable: false,
+          zIndex: 0
+        })
+        radiusCircleRef.current.setMap(map)
+        radiusCircleRef.current.setCenter(center)
+        radiusCircleRef.current.setRadius(radiusKm * 1000)
+      } else {
+        radiusCircleRef.current?.setMap(null)
+      }
+    } catch (reason) {
+      // Degradar para o cartão de erro custa o mapa. Deixar subir custa a
+      // rota inteira.
+      setError(reportarFalhaDoMapa(reason))
     }
   }, [center, radiusKm, ready, showUserLocation])
 
   useEffect(() => {
     const map = mapRef.current
     const runtime = runtimeRef.current
-    if (!ready || !map || !runtime) return
+    // Mesma guarda do efeito de câmera: sem ela, `marker.map = map` num mapa
+    // já desfeito estoura dentro do commit do React.
+    if (!ready || !map || !runtime || !isMapaVivo(map)) return
     const seen = new Set<string>()
 
-    for (const bar of bars) {
-      if (!isValidCoordinates(bar)) continue
-      seen.add(bar.id)
-      const large = hoveredId === bar.id
-      let entry = markersRef.current.get(bar.id)
-      if (!entry) {
-        const conteudo = criarConteudoDePino()
-        const marker = new runtime.AdvancedMarkerElement({
-          map,
-          content: conteudo,
-          // Sem isto o marcador não emite `gmp-click` nem entra na navegação
-          // por teclado.
-          gmpClickable: true
-        })
+    try {
+      for (const bar of bars) {
+        if (!isValidCoordinates(bar)) continue
+        seen.add(bar.id)
+        const large = hoveredId === bar.id
+        let entry = markersRef.current.get(bar.id)
+        if (!entry) {
+          const conteudo = criarConteudoDePino()
+          const marker = new runtime.AdvancedMarkerElement({
+            map,
+            content: conteudo,
+            // Sem isto o marcador não emite `gmp-click` nem entra na navegação
+            // por teclado.
+            gmpClickable: true
+          })
 
-        // Hover vem do DOM: `AdvancedMarkerElement` não publica
-        // `mouseover`/`mouseout` no barramento do mapa. Os ouvintes ficam no
-        // próprio marcador, que é um `HTMLElement`, e não no conteúdo —
-        // trocar o SVG por dentro não os derruba.
-        const entrou = () => onHoverRef.current?.(bar.id)
-        const saiu = () => onHoverRef.current?.(null)
-        marker.addEventListener('mouseenter', entrou)
-        marker.addEventListener('mouseleave', saiu)
+          // Hover vem do DOM: `AdvancedMarkerElement` não publica
+          // `mouseover`/`mouseout` no barramento do mapa. Os ouvintes ficam no
+          // próprio marcador, que é um `HTMLElement`, e não no conteúdo —
+          // trocar o SVG por dentro não os derruba.
+          const entrou = () => onHoverRef.current?.(bar.id)
+          const saiu = () => onHoverRef.current?.(null)
+          marker.addEventListener('mouseenter', entrou)
+          marker.addEventListener('mouseleave', saiu)
 
-        entry = {
-          marker,
-          conteudo,
-          listeners: [
-            marker.addListener('gmp-click', () => onSelectRef.current?.(bar.id))
-          ],
-          soltarHover: () => {
-            marker.removeEventListener('mouseenter', entrou)
-            marker.removeEventListener('mouseleave', saiu)
+          entry = {
+            marker,
+            conteudo,
+            listeners: [
+              marker.addListener('gmp-click', () =>
+                onSelectRef.current?.(bar.id)
+              )
+            ],
+            soltarHover: () => {
+              marker.removeEventListener('mouseenter', entrou)
+              marker.removeEventListener('mouseleave', saiu)
+            }
           }
+          markersRef.current.set(bar.id, entry)
         }
-        markersRef.current.set(bar.id, entry)
-      }
-      // ESC-16: o efeito roda a cada mudança de hover. Sem comparar, os
-      // quatro setters seriam chamados em todos os pinos a cada movimento do
-      // mouse, quando no máximo dois mudam de aparência.
-      const estado: MarkerVisualState = {
-        lat: bar.lat,
-        lng: bar.lng,
-        name: bar.name,
-        accent: bar.accent,
-        large
-      }
-      const updates = diffMarkerState(entry.estado, estado)
-      if (!nenhumaMudanca(updates)) {
-        if (updates.position) {
-          entry.marker.position = { lat: estado.lat, lng: estado.lng }
+        // ESC-16: o efeito roda a cada mudança de hover. Sem comparar, os
+        // quatro setters seriam chamados em todos os pinos a cada movimento do
+        // mouse, quando no máximo dois mudam de aparência.
+        const estado: MarkerVisualState = {
+          lat: bar.lat,
+          lng: bar.lng,
+          name: bar.name,
+          accent: bar.accent,
+          large
         }
-        if (updates.title) entry.marker.title = estado.name
-        if (updates.icon) {
-          aplicarPino(entry.conteudo, estado.accent, estado.large)
+        const updates = diffMarkerState(entry.estado, estado)
+        if (!nenhumaMudanca(updates)) {
+          if (updates.position) {
+            entry.marker.position = { lat: estado.lat, lng: estado.lng }
+          }
+          if (updates.title) entry.marker.title = estado.name
+          if (updates.icon) {
+            aplicarPino(entry.conteudo, estado.accent, estado.large)
+          }
+          if (updates.zIndex) entry.marker.zIndex = estado.large ? 999 : 10
+          entry.estado = estado
         }
-        if (updates.zIndex) entry.marker.zIndex = estado.large ? 999 : 10
-        entry.estado = estado
       }
-    }
 
-    for (const [id, entry] of markersRef.current) {
-      if (seen.has(id)) continue
-      for (const listener of entry.listeners) listener.remove()
-      entry.soltarHover()
-      entry.marker.map = null
-      markersRef.current.delete(id)
+      for (const [id, entry] of markersRef.current) {
+        if (seen.has(id)) continue
+        for (const listener of entry.listeners) listener.remove()
+        entry.soltarHover()
+        entry.marker.map = null
+        markersRef.current.delete(id)
+      }
+    } catch (reason) {
+      setError(reportarFalhaDoMapa(reason))
     }
   }, [bars, hoveredId, ready])
 
