@@ -1,5 +1,7 @@
+import { avatarPathname } from '@findsports_oficial/api/lib/blob-avatar'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { upload } from '@vercel/blob/client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import Loader from 'reicon-react/icons/Loader'
@@ -210,9 +212,19 @@ function ProfilePage() {
       setImageError('Imagem muito grande. Máximo 5 MB.')
       return
     }
+    if (!user?.id) {
+      setImageError('Entre na conta para alterar a foto.')
+      return
+    }
     setUploadingImage(true)
     try {
-      await authClient.updateUser({ image: await compressProfileImage(file) })
+      const compressed = await compressProfileImage(file)
+      const blob = await upload(avatarPathname(user.id), compressed, {
+        access: 'public',
+        handleUploadUrl: '/api/user/avatar',
+        contentType: 'image/jpeg'
+      })
+      await authClient.updateUser({ image: blob.url })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
     } catch {
       setImageError('Erro ao processar imagem. Tente novamente.')

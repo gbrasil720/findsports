@@ -25,8 +25,15 @@ import { isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import { isSafeUserImage } from './session-image'
 import { buildTrustedOrigins } from './trusted-origins'
 import { sendVerificationEmailWithResend } from './verification-email'
+
+function cookieDomainFor(baseUrl: string): string | undefined {
+  const host = new URL(baseUrl).hostname.replace(/^www\./, '')
+  if (host === 'onside.sh' || host === 'findsports.com.br') return host
+  return undefined
+}
 
 export const dodoClient = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
@@ -164,12 +171,32 @@ async function handleSubscriptionCancelled(payload: any) {
 
 export function createAuth() {
   const db = createHttpDb()
+  const cookieDomain = cookieDomainFor(env.BETTER_AUTH_URL)
 
   return betterAuth({
     appName: 'Onside',
-    advanced: { backgroundTasks: { handler: waitUntil } },
+    advanced: {
+      backgroundTasks: { handler: waitUntil },
+      ...(cookieDomain
+        ? {
+            crossSubDomainCookies: {
+              enabled: true,
+              domain: cookieDomain
+            }
+          }
+        : {})
+    },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === '/update-user') {
+          const image = (ctx.body as { image?: unknown } | undefined)?.image
+          if (image !== undefined && !isSafeUserImage(image)) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                'A foto precisa ser uma URL https curta, não um arquivo embutido.'
+            })
+          }
+        }
         if (!requiresPubBillingAccess(ctx.path)) return
         const session = await getSessionFromCtx(ctx)
         if (!canAccessPubBilling(session?.user ?? null)) {
@@ -307,7 +334,10 @@ export function createAuth() {
       // as rotas de onboarding chamam `refreshSessionCache()` no sucesso.
       cookieCache: {
         enabled: true,
-        maxAge: 60
+        maxAge: 60,
+        // v2: fotos deixam de ir no cookie (eram data URL de ~25 KB e
+        // estouravam o header na Vercel — 494 REQUEST_HEADER_TOO_LARGE).
+        version: '2'
       }
     },
     plugins: [

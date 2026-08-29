@@ -1,4 +1,4 @@
-export function compressProfileImage(file: File): Promise<string> {
+export function compressProfileImage(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -31,7 +31,21 @@ export function compressProfileImage(file: File): Promise<string> {
           size,
           size
         )
-        resolve(canvas.toDataURL('image/jpeg', 0.85))
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to compress image'))
+              return
+            }
+            resolve(
+              new File([blob], 'avatar.jpg', {
+                type: 'image/jpeg'
+              })
+            )
+          },
+          'image/jpeg',
+          0.85
+        )
       }
       image.onerror = reject
       image.src = reader.result

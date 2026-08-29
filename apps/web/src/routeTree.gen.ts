@@ -29,6 +29,7 @@ import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
+import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
 import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
@@ -138,6 +139,11 @@ const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
   path: '/api/waitlist/activate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUserAvatarRoute = ApiUserAvatarRouteImport.update({
+  id: '/api/user/avatar',
+  path: '/api/user/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesByTo {
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesById {
@@ -269,6 +277,7 @@ export interface FileRoutesById {
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
+  '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRouteTypes {
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/user/avatar'
     | '/api/waitlist/activate'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/user/avatar'
     | '/api/waitlist/activate'
   id:
     | '__root__'
@@ -361,6 +372,7 @@ export interface FileRouteTypes {
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
     | '/api/trpc/$'
+    | '/api/user/avatar'
     | '/api/waitlist/activate'
   fileRoutesById: FileRoutesById
 }
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
+  ApiUserAvatarRoute: typeof ApiUserAvatarRoute
   ApiWaitlistActivateRoute: typeof ApiWaitlistActivateRoute
 }
 
@@ -537,6 +550,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWaitlistActivateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/user/avatar': {
+      id: '/api/user/avatar'
+      path: '/api/user/avatar'
+      fullPath: '/api/user/avatar'
+      preLoaderRoute: typeof ApiUserAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -624,6 +644,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
+  ApiUserAvatarRoute: ApiUserAvatarRoute,
   ApiWaitlistActivateRoute: ApiWaitlistActivateRoute,
 }
 export const routeTree = rootRouteImport
