@@ -122,6 +122,7 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 | `landing` | Página pública, copy, SEO, performance de first paint |
 | `admin` | Painéis `/internal/*`, gestão de usuários, flags |
 | `infra` | Banco, migrations, deploy, ambiente, variáveis |
+| `app` | App autenticado: `/dashboard`, perfil, página do bar, mapa |
 | `dx` | Testes, CI, tipos, lint, ferramentas de desenvolvimento |
 
 ### `Flags` — opcional, quantos couberem
@@ -145,6 +146,7 @@ Todo ticket entra em um project. Nenhum órfão.
 | `Conversão & copy` | Landing, copy aprovada, funil de cadastro |
 | `Qualidade & CI` | Suíte de testes, tipos, lint, pipeline |
 | `Release: merge para master` | Levar o acumulado do branch para master e produção |
+| `Monetização` | Planos, cobrança, funil de preço para bares |
 
 Se o ticket não cabe em nenhum, **pergunte** antes de criar project novo.
 
@@ -161,12 +163,12 @@ O GitHub está conectado: abrir PR com o branch que o Linear gera move para
 **In Review**, e o merge move para **Done**. Use o nome de branch do próprio ticket
 (campo `branchName`, tem botão de copiar na UI) — sem isso a automação não liga.
 
-**`Done` não significa no ar.** Hoje `master` está parado em 06/08/2026 e todo o
-trabalho vive em branches. Um ticket em `Done` está mergeado no branch de integração;
-só vira **`Shipped`** quando está em `master` e servindo em produção.
+**`Done` não significa no ar.** Um ticket em `Done` está mergeado no branch de
+integração; só vira **`Shipped`** quando está em `master` e servindo em produção.
+Boa parte do trabalho vive em branches, e `master` costuma estar atrás.
 
-Consequência para você: ao descrever impacto, verifique se o código sequer existe em
-produção antes de escrever "usuários estão sofrendo com isso".
+Consequência para você: não presuma a distância entre o branch e `master`. Meça antes
+de descrever impacto — o código pode nem existir em produção.
 
 ```bash
 git log -1 --format='%h %ad' --date=short master
