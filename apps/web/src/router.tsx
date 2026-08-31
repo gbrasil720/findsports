@@ -12,40 +12,40 @@ import { NotFoundPage } from './components/not-found/not-found-page'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
-export const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error, query) => {
-      toast.error(error.message, {
-        action: {
-          label: 'retry',
-          onClick: query.invalidate
-        }
-      })
-    }
-  }),
-  defaultOptions: { queries: { staleTime: 60 * 1000 } }
-})
-
-const trpcClient = createTRPCClient<AppRouter>({
-  links: [
-    httpBatchLink({
-      url: '/api/trpc',
-      fetch(url, options) {
-        return fetch(url, {
-          ...options,
-          credentials: 'include'
+export const getRouter = () => {
+  const queryClient = new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        toast.error(error.message, {
+          action: {
+            label: 'retry',
+            onClick: query.invalidate
+          }
         })
       }
-    })
-  ]
-})
+    }),
+    defaultOptions: { queries: { staleTime: 60 * 1000 } }
+  })
 
-const trpc = createTRPCOptionsProxy({
-  client: trpcClient,
-  queryClient: queryClient
-})
+  const trpcClient = createTRPCClient<AppRouter>({
+    links: [
+      httpBatchLink({
+        url: '/api/trpc',
+        fetch(url, options) {
+          return fetch(url, {
+            ...options,
+            credentials: 'include'
+          })
+        }
+      })
+    ]
+  })
 
-export const getRouter = () => {
+  const trpc = createTRPCOptionsProxy({
+    client: trpcClient,
+    queryClient
+  })
+
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
