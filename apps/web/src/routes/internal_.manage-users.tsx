@@ -239,11 +239,7 @@ function ManageUsersPage() {
   return (
     <InternalShell title="Gerenciar usuários" kicker="Admin interno">
       <div className="space-y-6">
-        {/* Title */}
         <div>
-          <h1 className="font-bold font-heading text-2xl tracking-tight">
-            Gerenciar Usuários
-          </h1>
           <p className="mt-1 text-muted-foreground text-sm">
             Impersone, bana e altere roles de usuários da plataforma.
           </p>
