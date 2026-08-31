@@ -47,7 +47,9 @@ function ConfirmWaitlistPage() {
         </h1>
         <p className="mt-4 text-[var(--onside-muted)]">
           {confirm.isSuccess
-            ? 'Pronto. Você receberá um e-mail especial quando seu acesso for liberado.'
+            ? confirm.data.emailSent
+              ? 'Pronto. Você receberá um e-mail especial quando seu acesso for liberado.'
+              : 'Sua inscrição está confirmada. O e-mail de boas-vindas não saiu agora — pode reabrir este link mais tarde para tentar de novo. Sua vaga não depende dele.'
             : confirm.isError
               ? confirm.error.message
               : 'Só um instante.'}
