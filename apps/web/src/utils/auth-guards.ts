@@ -109,6 +109,11 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
     throw redirect({ to: '/admin' })
   }
 
+  // Admin tentando acessar área do fan
+  if (session.user.role === 'admin' && pathname.startsWith('/dashboard')) {
+    throw redirect({ to: '/internal' })
+  }
+
   // /plan é exclusivo para pub — fan vai pro dashboard, não autenticado vai pro sign-in
   if (pathname.startsWith('/plan') && session.user.role !== 'pub') {
     throw redirect({ to: '/dashboard' })
