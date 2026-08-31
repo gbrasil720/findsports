@@ -95,6 +95,52 @@ async function persistEmailResult(input: {
   `)
 }
 
+async function persistJoinedResult(input: {
+  id: string
+  error: string | null
+}) {
+  await db.execute(sql`
+    UPDATE waitlist_entries SET
+      joined_claimed_at = NULL,
+      joined_sent_at = ${input.error ? null : new Date()},
+      joined_error = ${input.error}
+    WHERE id = ${input.id}
+  `)
+}
+
+/**
+ * Entrega o e-mail `joined` sem deixar a falha desfazer a inscrição (ONS-46).
+ *
+ * A confirmação já está persistida quando esta função roda. Uma exceção aqui
+ * transformaria um estado real ("está na lista") em erro de tela, então o
+ * resultado do envio vira estado — `joined_sent_at` ou `joined_error` — e o
+ * chamador devolve sucesso. O retry é reabrir o mesmo link de confirmação, que
+ * só reenvia enquanto `joined_sent_at` for nulo.
+ */
+async function deliverJoinedEmail(input: {
+  id: string
+  email: string
+  leave: { token: string; hash: string }
+}): Promise<boolean> {
+  try {
+    const sent = await sendWaitlistEmail({
+      kind: 'joined',
+      to: input.email,
+      url: waitlistUrl('/leave-waitlist', input.leave.token),
+      idempotencyKey: `waitlist-joined-${input.id}-${input.leave.hash.slice(0, 16)}`
+    })
+    await persistJoinedResult({
+      id: input.id,
+      error: emailPersistError(sent.delivered)
+    })
+    return sent.delivered
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Falha no envio.'
+    await persistJoinedResult({ id: input.id, error: message })
+    return false
+  }
+}
+
 async function approveAndInvite(input: { email: string; adminId: string }) {
   const token = await createWaitlistToken()
   const result = await db.execute(sql`
@@ -336,26 +382,28 @@ export const waitlistRouter = router({
         const leave = await createWaitlistToken()
         const enrollment = await db.execute(sql`
           INSERT INTO waitlist_entries
-            (id, email, role, city, phone, pub_name, confirmed_at, leave_token_hash)
+            (id, email, role, city, phone, pub_name, confirmed_at,
+             leave_token_hash, joined_claimed_at)
           VALUES (
             ${crypto.randomUUID()}, ${email}, ${input.role}::waitlist_role,
-            ${city}, ${phone}, ${pubName}, NOW(), ${leave.hash}
+            ${city}, ${phone}, ${pubName}, NOW(), ${leave.hash}, NOW()
           )
           ON CONFLICT (email) DO UPDATE SET
             role = EXCLUDED.role, city = EXCLUDED.city, phone = EXCLUDED.phone,
             pub_name = EXCLUDED.pub_name, confirmed_at = NOW(),
-            leave_token_hash = EXCLUDED.leave_token_hash, cancelled_at = NULL
+            leave_token_hash = EXCLUDED.leave_token_hash, cancelled_at = NULL,
+            joined_claimed_at = NOW(), joined_sent_at = NULL, joined_error = NULL
           RETURNING id
         `)
-        await sendWaitlistEmail({
-          kind: 'joined',
-          to: email,
-          url: waitlistUrl('/leave-waitlist', leave.token)
+        // A sessão já provou a posse do e-mail: a inscrição vale mesmo que o
+        // aviso não saia. A falha fica registrada em `joined_error`.
+        const waitlistId = (enrollment.rows[0] as { id: string }).id
+        const emailSent = await deliverJoinedEmail({
+          id: waitlistId,
+          email,
+          leave
         })
-        return {
-          status: 'confirmed' as const,
-          waitlistId: (enrollment.rows[0] as { id: string }).id
-        }
+        return { status: 'confirmed' as const, waitlistId, emailSent }
       }
 
       const confirmation = await createWaitlistToken()
@@ -375,6 +423,9 @@ export const waitlistRouter = router({
           pending_pub_name = EXCLUDED.pending_pub_name,
           confirmation_token_hash = EXCLUDED.confirmation_token_hash,
           confirmation_expires_at = EXCLUDED.confirmation_expires_at,
+          -- Token novo, confirmação nova: sem isto o link recém-enviado
+          -- nasceria já marcado como usado por uma inscrição anterior.
+          confirmation_consumed_at = NULL,
           confirmation_sent_at = NULL,
           confirmation_error = NULL
         RETURNING id
@@ -418,30 +469,83 @@ export const waitlistRouter = router({
     .mutation(async ({ input }) => {
       const hash = await hashWaitlistToken(input.token)
       const leave = await createWaitlistToken()
-      const result = await db.execute(sql`
+
+      // Primeira confirmação. O hash do token permanece na linha: é ele que
+      // identifica o link depois do uso. Quem fecha a porta é
+      // `confirmation_consumed_at`, e a validade só é exigida aqui.
+      const confirmacao = await db.execute(sql`
         UPDATE waitlist_entries SET
           role = pending_role, city = pending_city, phone = pending_phone,
           pub_name = pending_pub_name, confirmed_at = NOW(), cancelled_at = NULL,
+          confirmation_consumed_at = NOW(),
           leave_token_hash = ${leave.hash}, pending_role = NULL,
           pending_city = NULL, pending_phone = NULL, pending_pub_name = NULL,
-          confirmation_token_hash = NULL, confirmation_expires_at = NULL
+          joined_claimed_at = NOW(), joined_sent_at = NULL, joined_error = NULL
         WHERE confirmation_token_hash = ${hash}
+          AND confirmation_consumed_at IS NULL
           AND confirmation_expires_at > NOW()
         RETURNING id, email
       `)
-      const row = result.rows[0] as { id: string; email: string } | undefined
+      let row = confirmacao.rows[0] as { id: string; email: string } | undefined
+
+      // Reabertura do link depois de uma entrega falha: a inscrição já está
+      // confirmada, então só o envio é retomado. `joined_sent_at IS NULL`
+      // impede reenviar o que já chegou; a reserva de 10 minutos evita dois
+      // envios em paralelo.
       if (!row) {
+        const reenvio = await db.execute(sql`
+          UPDATE waitlist_entries SET
+            leave_token_hash = ${leave.hash},
+            joined_claimed_at = NOW(), joined_error = NULL
+          WHERE confirmation_token_hash = ${hash}
+            AND confirmation_consumed_at IS NOT NULL
+            AND confirmed_at IS NOT NULL
+            AND cancelled_at IS NULL
+            AND joined_sent_at IS NULL
+            AND (
+              joined_claimed_at IS NULL OR
+              joined_claimed_at < NOW() - INTERVAL '10 minutes'
+            )
+          RETURNING id, email
+        `)
+        row = reenvio.rows[0] as { id: string; email: string } | undefined
+      }
+
+      if (row) {
+        const emailSent = await deliverJoinedEmail({
+          id: row.id,
+          email: row.email,
+          leave
+        })
+        return { confirmed: true, waitlistId: row.id, emailSent }
+      }
+
+      // Nada a enviar: ou a mensagem já foi entregue, ou há um envio em curso.
+      // Continua sendo uma confirmação válida — o link não pode dizer o
+      // contrário do que está no banco.
+      const existente = await db.execute(sql`
+        SELECT id, joined_sent_at IS NOT NULL AS "emailSent"
+        FROM waitlist_entries
+        WHERE confirmation_token_hash = ${hash}
+          AND confirmation_consumed_at IS NOT NULL
+          AND confirmed_at IS NOT NULL
+          AND cancelled_at IS NULL
+        LIMIT 1
+      `)
+      const confirmada = existente.rows[0] as
+        | { id: string; emailSent: boolean }
+        | undefined
+      if (!confirmada) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Link inválido ou expirado.'
         })
       }
-      await sendWaitlistEmail({
-        kind: 'joined',
-        to: row.email,
-        url: waitlistUrl('/leave-waitlist', leave.token)
-      })
-      return { confirmed: true, waitlistId: row.id }
+      return {
+        confirmed: true,
+        waitlistId: confirmada.id,
+        emailSent: confirmada.emailSent
+      }
     }),
 
   leave: publicProcedure

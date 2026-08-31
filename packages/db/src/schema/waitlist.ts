@@ -28,8 +28,22 @@ export const waitlistEntries = pgTable(
     confirmationExpiresAt: timestamp('confirmation_expires_at'),
     confirmationSentAt: timestamp('confirmation_sent_at'),
     confirmationError: text('confirmation_error'),
+    /**
+     * Quando o link de confirmação foi usado (ONS-46).
+     *
+     * O hash do token continua na linha depois do uso: é ele que torna
+     * reabrir o mesmo link idempotente. Quem decide se a confirmação já
+     * aconteceu é esta coluna, não a ausência do hash — apagar o hash no
+     * `UPDATE` era o que fazia uma falha de e-mail transformar uma inscrição
+     * confirmada em "Link inválido ou expirado".
+     */
+    confirmationConsumedAt: timestamp('confirmation_consumed_at'),
     confirmedAt: timestamp('confirmed_at'),
     leaveTokenHash: text('leave_token_hash'),
+    /** Envio do e-mail `joined`: estado próprio, separado da confirmação. */
+    joinedClaimedAt: timestamp('joined_claimed_at'),
+    joinedSentAt: timestamp('joined_sent_at'),
+    joinedError: text('joined_error'),
     cancelledAt: timestamp('cancelled_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     /**
