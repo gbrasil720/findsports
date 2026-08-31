@@ -98,6 +98,15 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
     expect(() => applyAuthGuards(session('pub'), '/internal')).toThrow()
     expect(() => applyAuthGuards(session('admin'), '/internal')).not.toThrow()
+
+    try {
+      applyAuthGuards(session('admin'), '/dashboard/profile')
+      throw new Error('admin deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/internal'
+      )
+    }
   })
 
   test('mantém o perfil público do bar acessível a qualquer papel', () => {
