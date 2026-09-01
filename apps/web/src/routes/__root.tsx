@@ -204,46 +204,37 @@ function RootDocument() {
   const isDev = import.meta.env.DEV
 
   return (
-    <html lang="pt-BR">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <MinuteTickProvider>
-          <div
-            className="min-h-dvh w-full"
-            style={
-              {
-                '--banner-h': impersonatedBy
-                  ? 'var(--onside-banner-h, 2.75rem)'
-                  : '0px',
-                paddingTop: 'var(--banner-h)'
-              } as CSSProperties
-            }
-          >
-            <PostHogProvider />
-            {impersonatedBy ? (
-              <Suspense fallback={null}>
-                <ImpersonationBanner />
-              </Suspense>
-            ) : null}
-            <Outlet />
-          </div>
-        </MinuteTickProvider>
-        <Toaster richColors />
-        {isDev ? (
-          <>
-            <TanStackRouterDevtools position="bottom-left" />
-            <ReactQueryDevtools
-              position="bottom"
-              buttonPosition="bottom-right"
-            />
-          </>
-        ) : null}
-        <DeferredVercelAnalytics />
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <MinuteTickProvider>
+        <div
+          className="min-h-dvh w-full"
+          style={
+            {
+              '--banner-h': impersonatedBy
+                ? 'var(--onside-banner-h, 2.75rem)'
+                : '0px',
+              paddingTop: 'var(--banner-h)'
+            } as CSSProperties
+          }
+        >
+          <PostHogProvider />
+          {impersonatedBy ? (
+            <Suspense fallback={null}>
+              <ImpersonationBanner />
+            </Suspense>
+          ) : null}
+          <Outlet />
+        </div>
+      </MinuteTickProvider>
+      <Toaster richColors />
+      {isDev ? (
+        <>
+          <TanStackRouterDevtools position="bottom-left" />
+          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        </>
+      ) : null}
+      <DeferredVercelAnalytics />
+    </>
   )
 }
 
