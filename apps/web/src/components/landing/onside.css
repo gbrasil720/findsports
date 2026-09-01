@@ -67,7 +67,9 @@
   font-family: var(--onside-display);
   font-weight: 400;
   letter-spacing: -0.025em;
-  line-height: 0.91;
+  /* Anton accented caps reach 1.101em above the baseline; 1.15 keeps them
+     clear of the previous line without losing the tight display rhythm. */
+  line-height: 1.15;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -1327,7 +1329,7 @@
   font-size: 47px;
   font-weight: 400;
   text-transform: uppercase;
-  line-height: 0.95;
+  line-height: 1.15;
 }
 
 .onside-page .onside-journey-copy p {
@@ -1432,7 +1434,7 @@
   font-family: var(--onside-display);
   font-size: 48px;
   font-weight: 400;
-  line-height: 0.98;
+  line-height: 1.15;
   text-transform: uppercase;
 }
 
@@ -1658,7 +1660,7 @@
   font-family: var(--onside-display);
   font-weight: 400;
   text-transform: uppercase;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .onside-page .onside-dash-add {
@@ -2204,7 +2206,7 @@
 .onside-page .onside-final-cta h2 {
   margin: 0 0 35px;
   font-size: clamp(75px, 8vw, 124px);
-  line-height: 0.95;
+  line-height: 1.15;
   /* Absorb Anton glyph overflow so it does not cover the kicker above */
   padding-top: 0.08em;
 }
@@ -2743,7 +2745,7 @@
 
   .onside-page .onside-final-cta h2 {
     font-size: clamp(48px, 13.5vw, 72px);
-    line-height: 0.96;
+    line-height: 1.15;
     padding-top: 0.12em;
   }
 
