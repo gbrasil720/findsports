@@ -26,7 +26,9 @@ export function AuthRequiredDialog({ open }: Props) {
         if (!isOpen) return
       }}
     >
-      <DialogContent className="onside-panel max-w-sm p-0 [&>button]:hidden">
+      {/* Portals mount outside `.onside-app`; keep both classes so tokens and
+          primitives (`onside-display`, `onside-btn…`) still resolve here. */}
+      <DialogContent className="onside-app onside-dialog max-w-[calc(100vw-2rem)] p-0 sm:max-w-sm [&>button]:hidden">
         <DialogTitle className="sr-only">Autenticação obrigatória</DialogTitle>
 
         <div className="flex flex-col items-center text-center px-6 pt-8 pb-6">
@@ -40,7 +42,7 @@ export function AuthRequiredDialog({ open }: Props) {
           </div>
 
           <h2 className="onside-display mb-2 text-2xl">Acesso exclusivo</h2>
-          <p className="onside-text-muted-on-paper mb-6 max-w-[260px] text-sm leading-relaxed">
+          <p className="mb-6 max-w-[260px] text-sm leading-relaxed text-[var(--onside-muted)]">
             Entre na sua conta ou crie uma para ver o perfil do bar, jogos e
             como chegar.
           </p>
@@ -49,14 +51,14 @@ export function AuthRequiredDialog({ open }: Props) {
             <Link
               to="/login"
               search={{ callbackUrl }}
-              className="onside-btn onside-btn-acid inline-flex w-full items-center justify-center gap-2 px-4 py-3 text-sm"
+              className="onside-btn onside-btn-acid onside-btn-full"
             >
               Entrar
             </Link>
             <Link
               to="/signup"
               search={{ callbackUrl }}
-              className="onside-btn onside-btn-ghost inline-flex w-full items-center justify-center gap-2 px-4 py-3 text-sm"
+              className="onside-btn onside-btn-ghost onside-btn-full"
             >
               Criar conta grátis
             </Link>
