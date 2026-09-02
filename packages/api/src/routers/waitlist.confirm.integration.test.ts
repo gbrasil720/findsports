@@ -12,6 +12,9 @@ import type { Context } from '../context'
  * O que estes casos travam: confirmar é idempotente, uma entrega falha não
  * derruba a confirmação, reabrir o link reenvia — e, uma vez entregue, não
  * reenvia mais.
+ *
+ * ONS-26 acrescentou a recusa com causa: expirado, cancelado e inexistente
+ * deixam de sair pela mesma frase.
  */
 function isClearlyDisposableDatabase(url: string | undefined): boolean {
   if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
@@ -155,7 +158,80 @@ integrationTest('token desconhecido continua sendo recusado', async () => {
   const caller = appRouter.createCaller(contextoPublico)
   const desconhecido = await createWaitlistToken()
 
-  await expect(
-    caller.waitlist.confirm({ token: desconhecido.token })
-  ).rejects.toThrow('Link inválido ou expirado.')
+  const recusa = await caller.waitlist.confirm({ token: desconhecido.token })
+  expect(recusa.confirmed).toBe(false)
+  expect(recusa.confirmed === false && recusa.reason).toBe('invalid')
 })
+
+/**
+ * ONS-26: recusar sem dizer a causa mandava para a página inicial quem só
+ * precisava refazer o formulário — e chamava de link morto o link expirado.
+ */
+integrationTest('link expirado se separa de link inexistente', async () => {
+  mockarEnvioDeEmail()
+  const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
+    import('@findsports_oficial/db'),
+    import('./index'),
+    import('../lib/waitlist-workflow')
+  ])
+
+  const email = `expirado-${crypto.randomUUID()}@integration.invalid`
+  const confirmation = await createWaitlistToken()
+  await db.insert(waitlistEntries).values({
+    email,
+    role: 'fan',
+    city: 'Cidade antiga',
+    pendingRole: 'fan',
+    pendingCity: 'Cidade nova',
+    confirmationTokenHash: confirmation.hash,
+    confirmationExpiresAt: new Date(Date.now() - 60 * 1000)
+  })
+
+  const caller = appRouter.createCaller(contextoPublico)
+  try {
+    const recusa = await caller.waitlist.confirm({ token: confirmation.token })
+    expect(recusa.confirmed).toBe(false)
+    expect(recusa.confirmed === false && recusa.reason).toBe('expired')
+    // A recusa não confirma: a inscrição segue pendente.
+    expect((await lerInscrição(email)).confirmedAt).toBeNull()
+  } finally {
+    await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+  }
+})
+
+integrationTest(
+  'quem saiu da lista ouve isso, não "link inválido"',
+  async () => {
+    mockarEnvioDeEmail()
+    const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('./index'),
+      import('../lib/waitlist-workflow')
+    ])
+
+    const email = `cancelado-${crypto.randomUUID()}@integration.invalid`
+    const confirmation = await createWaitlistToken()
+    const agora = new Date()
+    await db.insert(waitlistEntries).values({
+      email,
+      role: 'fan',
+      city: 'Cidade nova',
+      confirmationTokenHash: confirmation.hash,
+      confirmationExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      confirmationConsumedAt: agora,
+      confirmedAt: agora,
+      cancelledAt: agora
+    })
+
+    const caller = appRouter.createCaller(contextoPublico)
+    try {
+      const recusa = await caller.waitlist.confirm({
+        token: confirmation.token
+      })
+      expect(recusa.confirmed).toBe(false)
+      expect(recusa.confirmed === false && recusa.reason).toBe('cancelled')
+    } finally {
+      await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+    }
+  }
+)
