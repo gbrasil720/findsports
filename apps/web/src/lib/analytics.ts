@@ -1,3 +1,4 @@
+import type { WaitlistConfirmFailure } from '@/domain/waitlist-confirmation'
 import { getPageSurface } from './page-surface'
 import { withPosthog } from './posthog'
 
@@ -24,6 +25,17 @@ export const analytics = {
 
   waitlistConfirmed: () => {
     void withPosthog((posthog) => posthog.capture('waitlist_confirmed'))
+  },
+
+  /**
+   * Por que a tela de confirmação não confirmou. Sem isto não dá para
+   * dimensionar o caso mais provável (link expirado) contra o mais barulhento
+   * (queda de rede).
+   */
+  waitlistConfirmFailed: (reason: WaitlistConfirmFailure) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_confirm_failed', { reason })
+    )
   },
 
   waitlistCancelled: () => {

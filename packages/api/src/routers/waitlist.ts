@@ -17,6 +17,19 @@ import {
   normalizeWaitlistEmail
 } from '../lib/waitlist-workflow'
 
+/**
+ * Por que `confirm` recusou. Sai como resultado, não como erro: erro na
+ * mutation passa a significar só falha de transporte, e a tela pode separar
+ * "o link não vale" de "não deu para tentar agora".
+ */
+export type WaitlistConfirmRefusal =
+  /** TTL de 24h estourou antes do clique — refazer o formulário reenvia. */
+  | 'expired'
+  /** Confirmou e depois saiu da lista pelo link de saída. */
+  | 'cancelled'
+  /** Hash desconhecido: link truncado, adulterado ou de outro ambiente. */
+  | 'invalid'
+
 const CIDADE_DE_CONVITE = 'Convite direto'
 const waitlistCursorSchema = z.object({ c: z.string(), i: z.string() })
 const tokenSchema = z.string().min(32).max(256)
@@ -517,35 +530,53 @@ export const waitlistRouter = router({
           email: row.email,
           leave
         })
-        return { confirmed: true, waitlistId: row.id, emailSent }
+        return { confirmed: true as const, waitlistId: row.id, emailSent }
       }
 
-      // Nada a enviar: ou a mensagem já foi entregue, ou há um envio em curso.
-      // Continua sendo uma confirmação válida — o link não pode dizer o
-      // contrário do que está no banco.
+      // Nada a enviar: ou a mensagem já foi entregue, ou há um envio em curso,
+      // ou o link não vale. Uma leitura só pelo hash decide entre as duas
+      // coisas — e, na recusa, qual das três causas foi. Recusar sem dizer a
+      // causa manda para a página inicial quem só precisava recarregar.
       const existente = await db.execute(sql`
-        SELECT id, joined_sent_at IS NOT NULL AS "emailSent"
+        SELECT
+          id,
+          joined_sent_at IS NOT NULL AS "emailSent",
+          confirmation_consumed_at IS NOT NULL AS "consumido",
+          confirmed_at IS NOT NULL AS "confirmado",
+          cancelled_at IS NOT NULL AS "cancelado",
+          confirmation_expires_at <= NOW() AS "expirado"
         FROM waitlist_entries
         WHERE confirmation_token_hash = ${hash}
-          AND confirmation_consumed_at IS NOT NULL
-          AND confirmed_at IS NOT NULL
-          AND cancelled_at IS NULL
         LIMIT 1
       `)
-      const confirmada = existente.rows[0] as
-        | { id: string; emailSent: boolean }
+      const linha = existente.rows[0] as
+        | {
+            id: string
+            emailSent: boolean
+            consumido: boolean
+            confirmado: boolean
+            cancelado: boolean
+            expirado: boolean | null
+          }
         | undefined
-      if (!confirmada) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Link inválido ou expirado.'
-        })
+      if (linha?.consumido && linha.confirmado && !linha.cancelado) {
+        // Confirmação válida: o link não pode dizer o contrário do banco.
+        return {
+          confirmed: true as const,
+          waitlistId: linha.id,
+          emailSent: linha.emailSent
+        }
       }
-      return {
-        confirmed: true,
-        waitlistId: confirmada.id,
-        emailSent: confirmada.emailSent
-      }
+      // O hash é o único segredo, então só quem o tem chega até aqui: dizer a
+      // causa não revela nada sobre e-mail que não esteja no próprio link.
+      const reason: WaitlistConfirmRefusal = !linha
+        ? 'invalid'
+        : linha.cancelado
+          ? 'cancelled'
+          : !linha.consumido && linha.expirado
+            ? 'expired'
+            : 'invalid'
+      return { confirmed: false as const, reason }
     }),
 
   leave: publicProcedure
