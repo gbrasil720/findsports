@@ -147,7 +147,7 @@ export function PhoneInput({
             aria-hidden="true"
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="onside-menu max-h-60 w-72 overflow-y-auto">
+        <DropdownMenuContent className="onside-menu max-h-60 w-72 overflow-y-auto p-0">
           <DropdownMenuGroup>
             {COUNTRIES.map((country) => (
               <DropdownMenuItem

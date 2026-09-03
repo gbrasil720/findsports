@@ -31,6 +31,9 @@ type Props = {
   children: ReactNode
 }
 
+const accountMenuItemClass =
+  'w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm'
+
 export function AppShell({ variant, userMeta, children }: Props) {
   const signOut = useSignOut()
   const { data: session, isPending } = authClient.useSession()
@@ -149,13 +152,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
             <DropdownMenuGroup className="py-1">
               {variant === 'fan' ? (
                 <DropdownMenuItem
-                  className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
-                  render={
-                    <Link
-                      to="/dashboard/profile"
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
-                    />
-                  }
+                  className={accountMenuItemClass}
+                  render={<Link to="/dashboard/profile" />}
                 >
                   <User
                     size={16}
@@ -170,13 +168,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
               {variant === 'pub' ? (
                 <>
                   <DropdownMenuItem
-                    className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
-                    render={
-                      <Link
-                        to="/admin"
-                        className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
-                      />
-                    }
+                    className={accountMenuItemClass}
+                    render={<Link to="/admin" />}
                   >
                     <Settings
                       size={16}
@@ -187,13 +180,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
                     Painel do bar
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
-                    render={
-                      <Link
-                        to="/admin/billing"
-                        className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
-                      />
-                    }
+                    className={accountMenuItemClass}
+                    render={<Link to="/admin/billing" />}
                   >
                     <CreditCard
                       size={16}
@@ -208,13 +196,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
 
               {variant === 'public' && hasUser ? (
                 <DropdownMenuItem
-                  className="rounded-none px-0 py-0 focus:bg-[var(--onside-stone)]"
-                  render={
-                    <Link
-                      to="/dashboard"
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm"
-                    />
-                  }
+                  className={accountMenuItemClass}
+                  render={<Link to="/dashboard" />}
                 >
                   <User
                     size={16}
@@ -232,9 +215,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 <DropdownMenuSeparator className="my-0 bg-[var(--onside-line)]" />
                 <DropdownMenuGroup className="py-1">
                   <DropdownMenuItem
-                    variant="destructive"
                     onClick={() => void signOut()}
-                    className="flex items-center gap-2.5 rounded-none px-4 py-2.5 font-medium text-sm focus:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))]"
+                    className="onside-menu-destructive w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-[var(--onside-live-text)] text-sm"
                   >
                     <Logout size={16} color="currentColor" aria-hidden="true" />
                     Sair

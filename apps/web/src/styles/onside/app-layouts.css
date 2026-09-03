@@ -283,13 +283,25 @@
 }
 
 /* ─── Dropdown menu surface ─── */
-.onside-app .onside-menu {
-  border: 1.5px solid var(--onside-ink) !important;
-  border-radius: 0 !important;
-  background: var(--onside-paper) !important;
-  box-shadow: 6px 6px 0 var(--onside-ink) !important;
-  padding: 0 !important;
-  overflow: hidden;
+.onside-menu {
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  box-shadow: 6px 6px 0 var(--onside-ink);
+  transition-duration: 150ms;
+}
+
+.onside-menu
+  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]) {
+  background: var(--onside-stone);
+  color: var(--onside-ink);
+}
+
+.onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]) {
+  background: color-mix(in srgb, var(--onside-live) 10%, var(--onside-paper));
+  color: var(--onside-live-text);
 }
 
 /* ─── Barra de ação do perfil público (mobile) ─── */
