@@ -5,6 +5,15 @@ import { hashWaitlistToken } from './waitlist-workflow'
 
 export class InvalidWaitlistInviteError extends Error {}
 
+/**
+ * O hash do convite permanece na linha depois da ativação (ONS-25).
+ *
+ * Quem fecha a porta é `activated_at`, exigido nulo logo abaixo — apagar o
+ * hash não acrescentava trava nenhuma, só apagava a identidade do link. Sem
+ * ele, reabrir o convite depois de ativar a conta caía em "não encontrado", e
+ * a pessoa com conta funcionando lia que o convite era inválido em vez de ser
+ * mandada para o login. Mesmo raciocínio de `confirmation_token_hash` (ONS-46).
+ */
 export async function activateWaitlistInvite(input: {
   token: string
   name: string
@@ -37,8 +46,7 @@ export async function activateWaitlistInvite(input: {
         WHERE lower(email) = ${row.email}
       `)
       await tx.execute(sql`
-        UPDATE waitlist_entries SET
-          activated_at = NOW(), invite_token_hash = NULL
+        UPDATE waitlist_entries SET activated_at = NOW()
         WHERE email = ${row.email}
       `)
       return { email: row.email, existingAccount: true }
@@ -60,8 +68,7 @@ export async function activateWaitlistInvite(input: {
       )
     `)
     await tx.execute(sql`
-      UPDATE waitlist_entries SET
-        activated_at = NOW(), invite_token_hash = NULL
+      UPDATE waitlist_entries SET activated_at = NOW()
       WHERE email = ${row.email}
     `)
     return { email: row.email, existingAccount: false }

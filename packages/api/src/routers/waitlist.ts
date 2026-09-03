@@ -7,6 +7,10 @@ import { getAppConfig } from '../lib/app-config'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { sendWaitlistEmail, waitlistUrl } from '../lib/waitlist-email'
 import {
+  deriveWaitlistInviteStatus,
+  type WaitlistInviteStatus
+} from '../lib/waitlist-invite-status'
+import {
   consumirLimitesWaitlist,
   type DecisaoRateLimit,
   type JanelaLimite
@@ -82,6 +86,69 @@ async function incrementarWaitlist(
     allowed: count <= limite.max,
     retryAfterMs: count <= limite.max ? 0 : limite.windowMs,
     count
+  }
+}
+
+type LinhaDeConvite = {
+  id: string
+  email: string
+  cancelled: boolean
+  activated: boolean
+  approved: boolean
+  inviteFresh: boolean
+}
+
+export type DetalhesDoConvite =
+  | { status: 'valid'; id: string; email: string }
+  | { status: Exclude<WaitlistInviteStatus, 'valid'> }
+
+/**
+ * Busca só pelo hash: os predicados de estado saem do WHERE e viram colunas.
+ * Uma linha filtrada é uma linha perdida, e era isso que apagava o motivo.
+ * A comparação de prazo fica no banco para não depender de fuso nem de como
+ * cada driver devolve `timestamp`.
+ */
+async function lerConvitePorHash(hash: string) {
+  const result = await db.execute(sql`
+    SELECT id, email,
+      cancelled_at IS NOT NULL AS "cancelled",
+      activated_at IS NOT NULL AS "activated",
+      approved_at IS NOT NULL AS "approved",
+      (invite_expires_at IS NOT NULL AND invite_expires_at > NOW())
+        AS "inviteFresh"
+    FROM waitlist_entries
+    WHERE invite_token_hash = ${hash}
+    LIMIT 1
+  `)
+  return result.rows[0] as LinhaDeConvite | undefined
+}
+
+/**
+ * Freio do reenvio público. Chaves próprias: gastar o orçamento do formulário
+ * da waitlist aqui faria uma pessoa reenviando o próprio convite bloquear as
+ * inscrições do mesmo IP. A janela por convite é a de e-mail — o alvo é o
+ * mesmo, uma inscrição —, e usá-la pelo hash evita ter de descobrir o e-mail
+ * antes de saber se o link existe.
+ */
+async function limitarReenvioDeConvite(args: { ip: string; hash: string }) {
+  const limites = await getAppConfig('waitlist.rate_limit')
+  if (!limites.enabled) return
+  const porConvite = await incrementarWaitlist(
+    `waitlist:invite-resend:${args.hash}`,
+    limites.email
+  )
+  const decisao =
+    porConvite.allowed && args.ip && args.ip !== 'unknown'
+      ? await incrementarWaitlist(
+          `waitlist:invite-resend-ip:${args.ip}`,
+          limites.ip
+        )
+      : porConvite
+  if (!decisao.allowed) {
+    throw new TRPCError({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Muitas tentativas. Tente de novo em alguns minutos.'
+    })
   }
 }
 
@@ -583,10 +650,14 @@ export const waitlistRouter = router({
     .input(z.object({ token: tokenSchema }))
     .mutation(async ({ input }) => {
       const hash = await hashWaitlistToken(input.token)
+      // `invite_expires_at = NULL` já invalida o convite pendente, e
+      // `cancelled_at` barra tanto a ativação quanto o reenvio. O hash fica
+      // para que reabrir o convite antigo diga "você saiu da lista" em vez de
+      // "link inválido" (ONS-25).
       const result = await db.execute(sql`
         UPDATE waitlist_entries SET
           cancelled_at = NOW(), approved_at = NULL, approved_by = NULL,
-          invite_token_hash = NULL, invite_expires_at = NULL
+          invite_expires_at = NULL
         WHERE leave_token_hash = ${hash} AND cancelled_at IS NULL
         RETURNING id
       `)
@@ -596,28 +667,108 @@ export const waitlistRouter = router({
       return { cancelled: true }
     }),
 
+  /**
+   * Estado do convite, não sucesso-ou-erro (ONS-25).
+   *
+   * Convite inutilizável deixou de ser exceção: é resposta normal, com o
+   * motivo dentro. O que sobra em `error` passa a ser só falha de verdade —
+   * rede, banco —, e a tela pode distinguir "seu link expirou" de "não
+   * conseguimos carregar".
+   */
   inviteDetails: publicProcedure
     .input(z.object({ token: tokenSchema }))
-    .query(async ({ input }) => {
-      const hash = await hashWaitlistToken(input.token)
+    .query(async ({ input }): Promise<DetalhesDoConvite> => {
+      const row = await lerConvitePorHash(await hashWaitlistToken(input.token))
+      // Hash que não existe não rende detalhe nenhum: `not_found` e ponto.
+      // Diferenciar "nunca existiu" de "foi apagado" transformaria a rota num
+      // oráculo de quem está na lista.
+      if (!row) return { status: 'not_found' }
+      const status = deriveWaitlistInviteStatus(row)
+      // E-mail e id só saem no caso `valid`, como antes. Estado terminal não
+      // precisa deles para renderizar a saída correspondente.
+      return status === 'valid'
+        ? { status, id: row.id, email: row.email }
+        : { status }
+    }),
+
+  /**
+   * Reemissão pedida pela própria pessoa (ONS-25).
+   *
+   * Recebe o convite expirado, nunca o e-mail: com e-mail na entrada, a rota
+   * pública viraria um teste de "esse endereço está na waitlist?". Quem
+   * apresenta o hash já provou posse do link, e o convite novo vai para o
+   * mesmo endereço da inscrição — não há endereço a escolher.
+   */
+  resendInvite: publicProcedure
+    .input(z.object({ token: tokenSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const hashAntigo = await hashWaitlistToken(input.token)
+      await limitarReenvioDeConvite({ ip: ctx.clientIp, hash: hashAntigo })
+
+      const token = await createWaitlistToken()
+      // Os predicados são os mesmos que `approveAndInvite` já aceitava para
+      // reemitir: aprovado, não cancelado, sem conta ativada, e prazo
+      // vencido. Reenviar não aprova ninguém — só renova o prazo de quem já
+      // tinha sido aprovado por um admin.
       const result = await db.execute(sql`
-        SELECT id, email
-        FROM waitlist_entries
-        WHERE invite_token_hash = ${hash}
-          AND invite_expires_at > NOW()
+        UPDATE waitlist_entries SET
+          invite_token_hash = ${token.hash},
+          invite_expires_at = NOW() + INTERVAL '7 days',
+          invite_claimed_at = NOW(), invite_sent_at = NULL, invite_error = NULL
+        WHERE invite_token_hash = ${hashAntigo}
+          AND invite_expires_at <= NOW()
           AND activated_at IS NULL
           AND approved_at IS NOT NULL
           AND cancelled_at IS NULL
-        LIMIT 1
+        RETURNING id, email
       `)
       const row = result.rows[0] as { id: string; email: string } | undefined
       if (!row) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'Convite inválido ou expirado.'
+          message: 'Este link não pode gerar um convite novo.'
         })
       }
-      return row
+
+      const inviteUrl = waitlistUrl('/activate-invite', token.token)
+      try {
+        const sent = await sendWaitlistEmail({
+          kind: 'invite',
+          to: row.email,
+          url: inviteUrl,
+          idempotencyKey: `waitlist-invite-${row.email}-${token.hash.slice(0, 16)}`
+        })
+        await persistEmailResult({
+          email: row.email,
+          kind: 'invite',
+          error: emailPersistError(sent.delivered)
+        })
+        return {
+          sent: true as const,
+          previewUrl: localPreviewUrl(sent.delivered, inviteUrl)
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Falha no envio.'
+        // Desfaz a troca de token. Sem isto, uma falha de envio deixaria a
+        // pessoa segurando um link que não existe mais no banco: o convite
+        // novo nunca chegou, e o antigo já não casa com hash nenhum — o botão
+        // "Reenviar" passaria a responder "este link não pode gerar um convite
+        // novo", que é o beco sem saída que este ticket veio fechar. O prazo
+        // volta para o passado porque era lá que ele estava.
+        await db.execute(sql`
+          UPDATE waitlist_entries SET
+            invite_token_hash = ${hashAntigo},
+            invite_expires_at = NOW() - INTERVAL '1 second',
+            invite_claimed_at = NULL, invite_sent_at = NULL,
+            invite_error = ${message}
+          WHERE id = ${row.id}
+        `)
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Não foi possível enviar o convite. Tente de novo.'
+        })
+      }
     }),
 
   campaignPreview: adminProcedure.query(async () => {
