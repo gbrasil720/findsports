@@ -2,4 +2,5 @@
 @import "./styles/onside/app.css";
 @import "./components/landing/onside.css";
 @import "./components/not-found/not-found-page.css";
+@import "./components/onboarding/invite-state-page.css";
 @source "./**/*.{ts,tsx}";

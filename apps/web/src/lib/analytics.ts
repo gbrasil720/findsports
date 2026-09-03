@@ -6,6 +6,13 @@ export type UserRole = 'fan' | 'pub'
 export type BarPlan = 'starter' | 'pro' | 'elite'
 export type BarOpenSource = 'card' | 'map'
 export type BarIntentAction = 'directions' | 'whatsapp' | 'phone' | 'favorite'
+/** Motivos pelos quais um convite não serve — espelha o status do servidor. */
+export type WaitlistInviteStatus =
+  | 'expired'
+  | 'activated'
+  | 'not_approved'
+  | 'cancelled'
+  | 'not_found'
 export type { PageSurface } from './page-surface'
 
 /**
@@ -48,6 +55,18 @@ export const analytics = {
 
   waitlistInviteOpened: () => {
     void withPosthog((posthog) => posthog.capture('waitlist_invite_opened'))
+  },
+
+  /**
+   * Convite aberto e inutilizável (ONS-25). `waitlist_invite_opened` só
+   * dispara para convite válido, então até aqui a frequência de cada beco sem
+   * saída era invisível. O `status` é o que responde "quantos expiraram?"
+   * contra "quantos já tinham conta?".
+   */
+  waitlistInviteUnusable: (status: WaitlistInviteStatus) => {
+    void withPosthog((posthog) =>
+      posthog.capture('waitlist_invite_unusable', { status })
+    )
   },
 
   waitlistActivated: () => {
