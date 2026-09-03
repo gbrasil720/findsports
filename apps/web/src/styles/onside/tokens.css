@@ -101,7 +101,7 @@
 }
 
 /* ─── Root tokens & base ─── */
-:where(.onside-page, .onside-app, .onside-dialog, .onside-hint) {
+:where(.onside-page, .onside-app, .onside-dialog, .onside-hint, .onside-menu) {
   --onside-ink: #12120f;
   --onside-paper: #f1eee6;
   --onside-acid: #c9f135;
