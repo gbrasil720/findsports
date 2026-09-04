@@ -133,6 +133,24 @@ describe('applyAuthGuards', () => {
     }
   })
 
+  test('mantém a landing quando a intenção pública está explícita', () => {
+    expect(() =>
+      applyAuthGuards(session('fan'), '/', { public: '1' })
+    ).not.toThrow()
+    expect(() =>
+      applyAuthGuards(session('pub'), '/', { public: '1' })
+    ).not.toThrow()
+  })
+
+  test('o marcador público não ignora as guardas de acesso', () => {
+    expect(() =>
+      applyAuthGuards(session('fan', true, null), '/', { public: '1' })
+    ).toThrow()
+    expect(() =>
+      applyAuthGuards(session('fan', false), '/', { public: '1' })
+    ).toThrow()
+  })
+
   test('mantém admin pronto na landing', () => {
     expect(() => applyAuthGuards(session('admin'), '/')).not.toThrow()
   })

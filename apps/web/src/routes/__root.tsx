@@ -43,7 +43,7 @@ const ONSIDE_DESCRIPTION =
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location }) => {
     const session = await getSession()
-    applyAuthGuards(session as AuthSession, location.pathname)
+    applyAuthGuards(session as AuthSession, location.pathname, location.search)
     return { session }
   },
   head: () => ({

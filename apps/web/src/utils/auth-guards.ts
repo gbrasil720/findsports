@@ -40,7 +40,11 @@ export function requiresAuthentication(pathname: string) {
   )
 }
 
-export function applyAuthGuards(session: AuthSession, pathname: string) {
+export function applyAuthGuards(
+  session: AuthSession,
+  pathname: string,
+  search: Record<string, unknown> = {}
+) {
   // Unknown URLs stay public so the 404 page can render for visitors.
   // /onboarding remains reachable without a session — existing behavior.
   if (!session && requiresAuthentication(pathname)) {
@@ -94,7 +98,7 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
 
   // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
   // Admin permanece na landing.
-  if (pathname === '/') {
+  if (pathname === '/' && search.public !== '1') {
     if (session.user.role === 'fan') {
       throw redirect({ to: '/dashboard' })
     }
