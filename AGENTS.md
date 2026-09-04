@@ -93,10 +93,11 @@ TanStack Router file-based routing — `routeTree.gen.ts` is auto-generated, nev
 
 ## Linear
 
-Este repositório é rastreado no Linear (workspace `onside-sh`, time `ONS`), via
-`orca linear`. **Antes de criar ou atualizar qualquer ticket, leia `docs/linear.md`** —
-ele define a taxonomia obrigatória (Type, Area, project), a estrutura da descrição, e a
-diferença entre `Done` e `Shipped`.
+Este repositório é rastreado no Linear (workspace `onside-sh`, time `WEB`), via
+`orca linear`. Existe também o time `PRO`, para decisão de produto que não vira commit
+aqui. **Antes de criar ou atualizar qualquer ticket, leia `docs/linear.md`** — ele define
+em qual time abrir, a taxonomia obrigatória (Type, Area, project), a estrutura da
+descrição, e a diferença entre `Done` e `Shipped`.
 
 Regra que vale em toda tarefa, mesmo sem o usuário pedir: ao terminar, rode a varredura
 da seção 1 de `docs/linear.md` e **pergunte** sobre cada achado — defeito fora do escopo,

@@ -1,9 +1,21 @@
 # Linear — como abrir e atualizar tickets (Onside)
 
-Guia para agentes trabalhando neste repositório. Workspace `onside-sh`, time único **ONS**.
+Guia para agentes trabalhando neste repositório. Workspace `onside-sh`, dois times.
 
 Toda interação com o Linear passa pelo CLI da Orca: `orca linear <comando>`. Rode
 `orca linear --help` para a superfície exata da sua versão — não invente flags.
+
+## 0. Em qual time abrir
+
+| Time | Chave | O que vive lá |
+|---|---|---|
+| **Web** | `WEB` | Todo trabalho deste repositório: código, bug, infra, deploy, conteúdo. **É o padrão.** |
+| **Product** | `PRO` | Decisões de produto que não viram commit aqui: stack do app mobile, escopo de plataforma, fases de teste |
+
+Na dúvida, `WEB`. Se o ticket não tem arquivo para citar na seção Causa, provavelmente é `PRO`.
+
+Os dois times compartilham o mesmo conjunto de labels. Os projects da seção 5 pertencem
+todos ao time `WEB`.
 
 ---
 
@@ -20,8 +32,8 @@ Gatilhos que exigem uma pergunta explícita:
 | Corrigiu um defeito que não tinha ticket | "Abro ticket retroativo para registrar essa correção?" |
 | Encontrou um defeito **fora** do escopo pedido | "Achei X. Abro ticket separado?" |
 | Ficou bloqueado por algo que não é seu escopo | "Isso está bloqueado por Y. Abro ticket para Y e marco a relação?" |
-| Trabalhou a partir de um ticket existente | "Comento o resultado no ONS-NN e movo o status?" |
-| Descobriu que um ticket existente está errado ou desatualizado | "O ONS-NN afirma Z, que não é mais verdade. Corrijo a descrição?" |
+| Trabalhou a partir de um ticket existente | "Comento o resultado no WEB-NN e movo o status?" |
+| Descobriu que um ticket existente está errado ou desatualizado | "O WEB-NN afirma Z, que não é mais verdade. Corrijo a descrição?" |
 | Tomou uma decisão de implementação que o ticket deixou em aberto | "Decidi por A em vez de B. Registro no ticket?" |
 | Precisou assumir algo que não conseguiu verificar | "Não consegui verificar W. Adiciono na seção Limitação?" |
 
@@ -43,8 +55,8 @@ Ticket duplicado é pior que ticket nenhum.
 
 ```bash
 orca linear search "palavra-chave" --limit 10 --json
-orca linear list-issues --team ONS --limit 40 --json
-orca linear issue ONS-21 --full --json     # antes de mexer em um existente
+orca linear list-issues --team WEB --limit 40 --json
+orca linear issue WEB-21 --full --json     # antes de mexer em um existente
 ```
 
 Se já existe ticket cobrindo aquilo, **atualize-o** em vez de abrir outro. Ticket novo
@@ -123,6 +135,7 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 | `admin` | Painéis `/internal/*`, gestão de usuários, flags |
 | `infra` | Banco, migrations, deploy, ambiente, variáveis |
 | `app` | App autenticado: `/dashboard`, perfil, página do bar, mapa |
+| `billing` | Planos, cobrança, fornecedor pago, cota e faturamento de API de terceiro |
 | `dx` | Testes, CI, tipos, lint, ferramentas de desenvolvimento |
 
 ### `Flags` — opcional, quantos couberem
@@ -142,11 +155,15 @@ Todo ticket entra em um project. Nenhum órfão.
 | Project | O que cobre |
 |---|---|
 | `Waitlist & e-mail transacional` | Da inscrição na landing até a conta criada |
+| `Descoberta & personalização` | `/dashboard`, busca, filtros, mapa, favoritos, página pública do bar |
 | `Performance da landing` | Bundle, CSS, fontes, imagens, tempo de carregamento |
 | `Conversão & copy` | Landing, copy aprovada, funil de cadastro |
 | `Qualidade & CI` | Suíte de testes, tipos, lint, pipeline |
 | `Release: merge para master` | Levar o acumulado do branch para master e produção |
 | `Monetização` | Planos, cobrança, funil de preço para bares |
+
+Todos pertencem ao time `WEB`. O time `PRO` não tem project — ticket de `PRO` fica órfão
+mesmo.
 
 Se o ticket não cabe em nenhum, **pergunte** antes de criar project novo.
 
@@ -189,8 +206,8 @@ Use relação de verdade em vez de mencionar dependência no texto — o Linear 
 ela, e a view `Bloqueados` depende disso.
 
 ```bash
-orca linear relation add ONS-27 --related ONS-29 --type blocked-by --json
-orca linear relation add ONS-26 --related ONS-25 --type related --json
+orca linear relation add WEB-27 --related WEB-29 --type blocked-by --json
+orca linear relation add WEB-26 --related WEB-25 --type related --json
 ```
 
 Tipos: `blocks`, `blocked-by`, `related`, `duplicate-of`.
@@ -217,20 +234,20 @@ velocity mais do que a ausência dele.
 
 ```bash
 # criar
-orca linear create --title "..." --team ONS \
+orca linear create --title "..." --team WEB \
   --body-file - --label Bug --label waitlist \
   --project "Waitlist & e-mail transacional" \
   --assignee me --priority medium --estimate 2 --json
 
 # ler
-orca linear issue ONS-27 --full --json
+orca linear issue WEB-27 --full --json
 
 # atualizar
-orca linear save-issue ONS-27 --body-file - --json
-orca linear label add ONS-27 --label needs-decision --json
-orca linear status set ONS-27 --to "In Review" --json
-orca linear comment add ONS-27 --body-file - --json
-orca linear attach ONS-27 --url <url-do-PR> --title "PR" --json
+orca linear save-issue WEB-27 --body-file - --json
+orca linear label add WEB-27 --label needs-decision --json
+orca linear status set WEB-27 --to "In Review" --json
+orca linear comment add WEB-27 --body-file - --json
+orca linear attach WEB-27 --url <url-do-PR> --title "PR" --json
 ```
 
 Descrições longas vão por `--body-file -` (stdin), nunca inline.
@@ -239,8 +256,17 @@ Escrita é tentativa única. Se voltar `linear_write_unconfirmed`, **leia o tick
 de repetir** — a escrita pode ter passado:
 
 ```bash
-orca linear issue ONS-27 --workspace 5463db2c-28de-42da-83e6-54ee0e13ad08 --json
+orca linear issue WEB-27 --workspace 5463db2c-28de-42da-83e6-54ee0e13ad08 --json
 ```
+
+`linear_write_unconfirmed` é falha de confirmação, não de escrita: na prática a escrita
+costuma ter sido aplicada. Repetir o comando com campos diferentes **sobrescreve o que já
+passou**. Nunca reexecute com valor de sondagem (`--title 'x'`) para investigar o erro —
+isso apaga o valor real. Leia primeiro, e só reescreva o campo que estiver errado.
+
+Cuidado com o `--help` de `save-issue`: ele descreve `--title` como "Custom title for the
+terminal tab", texto herdado de outro comando. Ali `--title` é o **título do ticket** e é
+aplicado de verdade.
 
 ---
 
