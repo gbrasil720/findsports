@@ -112,4 +112,40 @@ describe('applyAuthGuards', () => {
   test('mantém o perfil público do bar acessível a qualquer papel', () => {
     expect(() => applyAuthGuards(session('fan'), '/pub/bar-123')).not.toThrow()
   })
+
+  test('redireciona sessão pronta da landing para a superfície do papel', () => {
+    try {
+      applyAuthGuards(session('fan'), '/')
+      throw new Error('fan deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/dashboard'
+      )
+    }
+
+    try {
+      applyAuthGuards(session('pub'), '/')
+      throw new Error('pub deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/admin'
+      )
+    }
+  })
+
+  test('mantém admin pronto na landing', () => {
+    expect(() => applyAuthGuards(session('admin'), '/')).not.toThrow()
+  })
+
+  test('mantém visitante na landing', () => {
+    expect(() => applyAuthGuards(null, '/')).not.toThrow()
+  })
+
+  test('não admitido na landing vai para o acesso pendente', () => {
+    expect(() => applyAuthGuards(session('fan', true, null), '/')).toThrow()
+  })
+
+  test('sem onboarding na landing vai para o onboarding do papel', () => {
+    expect(() => applyAuthGuards(session('fan', false), '/')).toThrow()
+  })
 })

@@ -92,6 +92,17 @@ export function applyAuthGuards(session: AuthSession, pathname: string) {
     })
   }
 
+  // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
+  // Admin permanece na landing.
+  if (pathname === '/') {
+    if (session.user.role === 'fan') {
+      throw redirect({ to: '/dashboard' })
+    }
+    if (session.user.role === 'pub') {
+      throw redirect({ to: '/admin' })
+    }
+  }
+
   // Não-admin tentando acessar área interna
   if (pathname.startsWith('/internal') && session.user.role !== 'admin') {
     throw redirect({
