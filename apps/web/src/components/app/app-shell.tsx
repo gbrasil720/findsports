@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Logout from 'reicon-react/icons/Logout'
@@ -60,7 +61,9 @@ export function AppShell({ variant, userMeta, children }: Props) {
   const header = (
     <>
       <Link
-        to="/"
+        to={
+          variant === 'fan' ? '/dashboard' : variant === 'pub' ? '/admin' : '/'
+        }
         className="onside-brand-link shrink-0"
         aria-label="Onside — página inicial"
       >
@@ -206,6 +209,21 @@ export function AppShell({ variant, userMeta, children }: Props) {
                     aria-hidden="true"
                   />
                   Ir para o app
+                </DropdownMenuItem>
+              ) : null}
+
+              {hasUser ? (
+                <DropdownMenuItem
+                  className={accountMenuItemClass}
+                  render={<Link to="/" search={{ public: '1' }} />}
+                >
+                  <ArrowUpRight
+                    size={16}
+                    color="currentColor"
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
+                  />
+                  Ver a landing
                 </DropdownMenuItem>
               ) : null}
             </DropdownMenuGroup>
