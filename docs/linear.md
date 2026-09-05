@@ -146,6 +146,28 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 | `blocked` | Bloqueado por algo **fora** do Linear (acesso, terceiro, DNS). Se o bloqueio é outro ticket, use a relação `blocked-by`, não este label |
 | `ready-for-agent` | Escopo fechado o bastante para outro agente executar sem perguntar |
 
+### `agent-*` — obrigatório em ticket aberto, exatamente um
+
+Diz **qual capacidade de modelo o trabalho exige**, para um agente orquestrador rotear o
+worker certo. Deliberadamente não nomeia modelo: nome de modelo caduca, capacidade não.
+
+| Label | O trabalho é | Roteia para |
+|---|---|---|
+| `agent-mechanical` | Spec fechada, poucos arquivos, o teste que prova já existe ou é óbvio | Modelo barato/ilimitado |
+| `agent-standard` | Um subsistema, com escolha de desenho real a fazer | Modelo médio |
+| `agent-frontier` | Corta schema + API + UI, ou integra um terceiro, ou tem fase | Só modelo de fronteira |
+
+Regras:
+
+- **Ausência de `agent-*` significa "não despachável"** — é o estado certo para ticket do
+  time `PRO`, que é decisão de produto e não vira commit.
+- `agent-*` responde *quem consegue fazer*. `ready-for-agent` responde *já dá para começar*.
+  São eixos independentes: um ticket pode ser `agent-mechanical` e ainda estar parado em
+  `needs-decision`.
+- Não confundir com `estimate`. Estimate mede tamanho; `agent-*` mede dificuldade. Um bug de
+  `estimate 1` num invariante de cobrança é `agent-standard`.
+- Ao fechar o ticket, deixe o label. Ele é o dado que calibra o roteamento da próxima vez.
+
 ---
 
 ## 5. Projects — obrigatório
