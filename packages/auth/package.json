@@ -10,7 +10,8 @@
     }
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "bun test --preload=../../test-env.preload.ts"
   },
   "dependencies": {
     "@dodopayments/better-auth": "^1.6.3",

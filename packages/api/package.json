@@ -16,7 +16,8 @@
     }
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "bun test --preload=../../test-env.preload.ts"
   },
   "dependencies": {
     "@findsports_oficial/auth": "workspace:*",
@@ -24,7 +25,6 @@
     "@findsports_oficial/env": "workspace:*",
     "@trpc/server": "catalog:",
     "@upstash/redis": "^1.35.3",
-    "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
   },
   "devDependencies": {

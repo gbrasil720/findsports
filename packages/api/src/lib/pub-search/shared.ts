@@ -1,4 +1,4 @@
-import { type SQL, sql } from 'drizzle-orm'
+import { type SQL, sql } from '@findsports_oficial/db'
 import { z } from 'zod'
 
 import { encodeCursor } from '../keyset-cursor'

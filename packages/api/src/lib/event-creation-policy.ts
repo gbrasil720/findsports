@@ -1,6 +1,6 @@
 import type { db } from '@findsports_oficial/db'
+import { and, count, eq, gte } from '@findsports_oficial/db'
 import { event } from '@findsports_oficial/db/schema/platform'
-import { and, count, eq, gte } from 'drizzle-orm'
 import { STARTER_EVENT_LIMIT } from './plan-limits'
 
 const FALLBACK_PERIOD_MS = 30 * 24 * 60 * 60 * 1000

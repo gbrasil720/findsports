@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
+import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
-import { eq } from 'drizzle-orm'
 import type { Context } from '../context'
 
 function isDisposable(url: string | undefined): boolean {

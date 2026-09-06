@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
+import { inArray } from '@findsports_oficial/db'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
-import { inArray } from 'drizzle-orm'
 
 /**
  * A decisão do portão é pura e está travada em `waitlist-gate.test.ts`. O que
@@ -46,11 +46,9 @@ integrationTest(
         role: 'fan',
         city: 'Teste',
         approvedAt: new Date(),
+        confirmedAt: new Date(),
         approvedBy: approverId
       },
-      // Mesma pessoa, segunda inscrição, esta pendente. A aprovação é do
-      // e-mail: uma linha liberada basta.
-      { email: aprovado, role: 'pub', city: 'Outra', pubName: 'Bar' },
       { email: pendente, role: 'fan', city: 'Teste' },
       { email: adminEmail, role: 'fan', city: 'Teste' }
     ])

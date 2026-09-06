@@ -4,7 +4,7 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
-import { and, createHttpDb, db, eq } from '@findsports_oficial/db'
+import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
@@ -21,7 +21,6 @@ import { admin } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
-import { isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'

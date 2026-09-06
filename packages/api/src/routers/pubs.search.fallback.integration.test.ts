@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { eq, inArray, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -6,7 +7,6 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
-import { eq, inArray, sql } from 'drizzle-orm'
 
 /**
  * ESC-19: a busca tem dois caminhos e um interruptor entre eles.
