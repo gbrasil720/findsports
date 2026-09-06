@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  EMAIL_HERO_IMAGE_URL,
+  EMAIL_LOGO_URL
+} from '@findsports_oficial/config/site'
+import {
   createVerificationEmail,
   sendEmailWithResend,
   sendVerificationEmailWithResend
@@ -147,5 +151,14 @@ describe('e-mail de verificação Onside', () => {
     expect(request?.headers.get('idempotency-key')).toBe(
       'waitlist-launch-entry-1'
     )
+  })
+
+  it('usa assets de imagem públicos e estáveis nos e-mails', () => {
+    for (const assetUrl of [EMAIL_LOGO_URL, EMAIL_HERO_IMAGE_URL]) {
+      const url = new URL(assetUrl) // relativa lança TypeError
+      expect(url.protocol).toBe('https:')
+      expect(url.hostname).toBe('www.onside.sh')
+      expect(url.search).toContain('v=')
+    }
   })
 })

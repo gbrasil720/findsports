@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@findsports_oficial/auth": "workspace:*",
+    "@findsports_oficial/config": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
     "@trpc/server": "catalog:",
@@ -28,7 +29,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@findsports_oficial/config": "workspace:*",
     "@types/bun": "^1.3.14",
     "typescript": "catalog:"
   }

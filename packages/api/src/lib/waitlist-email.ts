@@ -2,6 +2,10 @@ import {
   createOnsideEmailTemplate,
   sendEmailWithResend
 } from '@findsports_oficial/auth/verification-email'
+import {
+  EMAIL_HERO_IMAGE_URL,
+  EMAIL_LOGO_URL
+} from '@findsports_oficial/config/site'
 import { env } from '@findsports_oficial/env/server'
 
 export type WaitlistEmailKind =
@@ -134,12 +138,11 @@ export async function sendWaitlistEmail(input: {
   url: string
   idempotencyKey?: string
 }): Promise<{ delivered: boolean }> {
-  const baseUrl = env.BETTER_AUTH_URL
   const email = createWaitlistEmail({
     kind: input.kind,
     url: input.url,
-    logoUrl: new URL('/onside-wordmark-paper.png', baseUrl).toString(),
-    heroImageUrl: new URL('/og-image.jpg', baseUrl).toString()
+    logoUrl: EMAIL_LOGO_URL,
+    heroImageUrl: EMAIL_HERO_IMAGE_URL
   })
   return sendEmailWithResend({
     apiKey: env.RESEND_API_KEY,

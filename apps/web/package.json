@@ -15,6 +15,7 @@
     "@dodopayments/better-auth": "^1.6.3",
     "@findsports_oficial/api": "workspace:*",
     "@findsports_oficial/auth": "workspace:*",
+    "@findsports_oficial/config": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/ui": "workspace:*",
     "@t3-oss/env-core": "^0.13.1",
@@ -41,7 +42,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@findsports_oficial/config": "workspace:*",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router-devtools": "^1.166.13",
     "@testing-library/dom": "^10.4.1",
