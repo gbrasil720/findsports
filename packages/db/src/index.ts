@@ -49,7 +49,9 @@ function warnIfNotPooledHost(url: string) {
 
 export function createDb() {
   const { url, summary } = resolveAndValidateDatabaseUrl()
-  console.info(`[db] connecting (${process.env.NODE_ENV ?? 'unknown'}): ${summary}`)
+  console.info(
+    `[db] connecting (${process.env.NODE_ENV ?? 'unknown'}): ${summary}`
+  )
 
   if (process.env.NODE_ENV !== 'production') {
     return createLocalDb(url)
@@ -84,4 +86,4 @@ export function createHttpDb() {
 }
 
 export const db = createDb()
-export { and, count, eq, gte, sql } from 'drizzle-orm'
+export { and, count, eq, gte, isNull, sql } from 'drizzle-orm'
