@@ -1,5 +1,10 @@
 {
   "name": "@findsports_oficial/config",
   "version": "0.0.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./site": "./src/site.ts",
+    "./tsconfig.base.json": "./tsconfig.base.json"
+  }
 }

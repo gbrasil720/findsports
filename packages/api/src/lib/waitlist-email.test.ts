@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'bun:test'
+import {
+  EMAIL_HERO_IMAGE_URL,
+  EMAIL_LOGO_URL
+} from '@findsports_oficial/config/site'
 import { createWaitlistEmail } from './waitlist-email'
 
 const baseInput = {
@@ -25,5 +29,27 @@ describe('e-mails da waitlist Onside', () => {
     expect(email.html).toContain('O que acontece agora')
     expect(email.html).toContain('token=abc&amp;role=fan')
     expect(email.text).toContain(baseInput.url)
+  })
+})
+
+describe('assets de imagem dos e-mails', () => {
+  it('apontam para URL pública e estável, nunca localhost nem host de deploy', () => {
+    for (const assetUrl of [EMAIL_LOGO_URL, EMAIL_HERO_IMAGE_URL]) {
+      const url = new URL(assetUrl) // relativa lança TypeError
+      expect(url.protocol).toBe('https:')
+      expect(url.hostname).toBe('www.onside.sh')
+      expect(url.search).toContain('v=')
+    }
+  })
+
+  it('embute as URL canônicas no HTML enviado', () => {
+    const email = createWaitlistEmail({
+      ...baseInput,
+      kind: 'invite',
+      logoUrl: EMAIL_LOGO_URL,
+      heroImageUrl: EMAIL_HERO_IMAGE_URL
+    })
+    expect(email.html).toContain(`src="${EMAIL_LOGO_URL}"`)
+    expect(email.html).toContain(`src="${EMAIL_HERO_IMAGE_URL}"`)
   })
 })

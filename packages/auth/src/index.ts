@@ -4,6 +4,10 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
+import {
+  EMAIL_HERO_IMAGE_URL,
+  EMAIL_LOGO_URL
+} from '@findsports_oficial/config/site'
 import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
@@ -243,11 +247,8 @@ export function createAuth() {
           to: user.email,
           name: user.name,
           verificationUrl: url,
-          logoUrl: new URL(
-            '/onside-wordmark-paper.png',
-            env.BETTER_AUTH_URL
-          ).toString(),
-          heroImageUrl: new URL('/og-image.jpg', env.BETTER_AUTH_URL).toString()
+          logoUrl: EMAIL_LOGO_URL,
+          heroImageUrl: EMAIL_HERO_IMAGE_URL
         })
       }
     },
