@@ -552,7 +552,7 @@ export function OnsideLanding() {
                 className="onside-hero-proof"
                 items={[
                   'Grátis para torcedores',
-                  'Sem newsletter',
+                  'Sem e-mails promocionais',
                   'Aviso no lançamento'
                 ]}
               />
@@ -701,7 +701,7 @@ export function OnsideLanding() {
                 className="onside-waitlist-facts"
                 items={[
                   'Grátis para torcedores',
-                  'Sem newsletter',
+                  'Sem e-mails promocionais',
                   'Aviso no lançamento'
                 ]}
               />
@@ -787,7 +787,11 @@ export function OnsideLanding() {
             </a>
             <ProofList
               className="onside-final-proof"
-              items={['Grátis', 'Sem newsletter', 'Aviso no lançamento']}
+              items={[
+                'Grátis',
+                'Sem e-mails promocionais',
+                'Aviso no lançamento'
+              ]}
             />
           </div>
         </section>
