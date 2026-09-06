@@ -136,7 +136,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         startsAt,
         endsAt: endsAt ?? null,
         participantIds,
-        participantFreeText: form.participantFreeText || undefined
+        participantFreeText: form.participantFreeText
       })
     }
   }

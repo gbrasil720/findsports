@@ -183,7 +183,8 @@ integrationTest(
           sportId,
           championship: 'Evento WEB-43',
           startsAt,
-          endsAt
+          endsAt,
+          participantFreeText: 'Brasil x Argentina'
         })
         .returning({ id: event.id })
       if (!existingEvent) {
@@ -252,6 +253,15 @@ integrationTest(
         new Date(withinTheRange).getTime()
       )
       expect(moved?.endsAt?.getTime()).toBe(endsAt.getTime())
+
+      await caller.pub.updateEvent({
+        eventId: existingEvent.id,
+        participantFreeText: ''
+      })
+      const cleared = await db.query.event.findFirst({
+        where: eq(event.id, existingEvent.id)
+      })
+      expect(cleared?.participantFreeText).toBeNull()
     } finally {
       await db.delete(user).where(eq(user.id, userId))
       await db.delete(sport).where(eq(sport.id, sportId))
