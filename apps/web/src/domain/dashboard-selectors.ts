@@ -92,20 +92,6 @@ function getNextEvent(bar: DiscoveryBar): SearchBar['nextEvent'] | undefined {
   return 'nextEvent' in bar ? bar.nextEvent : undefined
 }
 
-export function sortDiscoveryBars(bars: DiscoveryBar[]): DiscoveryBar[] {
-  return [...bars].sort((first, second) => {
-    const firstEvent = getNextEvent(first)
-    const secondEvent = getNextEvent(second)
-    if (firstEvent && !secondEvent) return -1
-    if (!firstEvent && secondEvent) return 1
-    if (!firstEvent || !secondEvent) return 0
-    return (
-      new Date(firstEvent.startsAt).getTime() -
-      new Date(secondEvent.startsAt).getTime()
-    )
-  })
-}
-
 export function filterDiscoveryBars({
   bars,
   favoriteIds,

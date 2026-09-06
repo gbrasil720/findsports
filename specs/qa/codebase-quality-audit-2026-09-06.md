@@ -46,7 +46,7 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
 |---|---|---|
 | A01 | Dez arquivos de integração guardavam `process.env.DATABASE_URL` por regex, mas `packages/db/src/utils/db-resolver.ts::resolveDatabaseUrl` ignora essa variável em `test`. Com opt-in e URL de teste, sem `LOAD_TEST_DATABASE_URL`, a conexão real podia ser `findsports_dev`. O décimo primeiro arquivo tinha outro guard duplicado. | **WEB-77**: corrigido localmente com `isDisposableTestDatabase` compartilhado pelos onze arquivos. Reprodução antes: guard true e destino dev; depois: 21 integrações puladas na configuração incompleta. |
 | A02 | `apps/web/src/hooks/use-sign-out.ts` faz navegação SPA sem limpar cache. `router.tsx` mantém QueryClient com staleTime de 60 s e queries privadas sem identidade na chave. | **WEB-78**: raiz sincroniza identidade antes das guardas; cancela queries pendentes e limpa cache na troca. Rollback de favorito só restaura a query original. Quatro testes de router passaram; build e tipos passaram; suíte completa passou com 525 testes. QA visual pendente. |
-| A03 | `routes/(dashboard)/dashboard.tsx` aplica `sortDiscoveryBars` a qualquer resultado, inclusive ordenação por nota recebida do servidor. | Testar duas notas com horários em ordem oposta. |
+| A03 | `routes/(dashboard)/dashboard.tsx` aplicava `sortDiscoveryBars` a qualquer resultado, apagando a ordem por nota, a prioridade de plano e a distância do fallback produzidas pelo servidor. | **WEB-80**: corrigido localmente removendo a segunda ordenação; filtros locais preservam a ordem autoritativa da consulta. |
 | A04 | `domain/events.ts::getEventTemporalState` usa sempre três horas. `lib/event-profile-window.ts` do servidor respeita `endsAt`; callers frontend ignoram esse campo. | Eventos curtos e longos devem ter o mesmo estado no servidor, hero, cards e gestão. |
 | A05 | `components/admin/events-manager.tsx` transforma texto livre apagado em `undefined`; `routers/pub.ts` só altera `participantFreeText` quando não é `undefined`. | Editar evento com texto livre, apagar/switch para times e reler persistência. |
 | A06 | `routers/commercial-analytics.ts` espalha `overview` e filtra apenas parte das métricas. Campos `*Prev`/`*Change` de visitantes/views/interesse permanecem para Starter sem comparação. | Testar contrato de resposta por plano; verificar também inferência de direções via totais. |
@@ -81,6 +81,8 @@ preexistentes incluem WEB-45 (participantes), WEB-53 (recuperação de senha), W
 (billing), WEB-66/69 (CSS/portais), WEB-67 (busca por time), WEB-70 (journal local).
 WEB-77 criado para A01, com prioridade high, estimate 2, Bug/dx/agent-standard,
 project Qualidade & CI. Correção local; merge e publicação ainda pendentes.
+WEB-80 criado para A03, com prioridade high, estimate 1, Bug/app/agent-mechanical,
+project Descoberta & personalização. Correção local; merge e publicação pendentes.
 
 WEB-70 distingue o schema local já corrigido do journal legado ainda desalinhado.
 Não reconciliar journal nem apagar banco persistente com base apenas nessa descrição.

@@ -21,7 +21,6 @@ import {
   filterDiscoveryBars,
   resolveFavoriteIds,
   type SportsState,
-  sortDiscoveryBars,
   toMapBars
 } from '@/domain/dashboard-selectors'
 import {
@@ -177,20 +176,19 @@ function FanDashboard() {
     () => resolveFavoriteIds(favoritesQuery.data ?? [], favoriteOverrides),
     [favoritesQuery.data, favoriteOverrides]
   )
-  const sortedBars = useMemo(
-    () =>
-      resultState.status === 'ready' ? sortDiscoveryBars(resultState.bars) : [],
+  const resultBars = useMemo(
+    () => (resultState.status === 'ready' ? resultState.bars : []),
     [resultState]
   )
   const displayedBars = useMemo(
     () =>
       filterDiscoveryBars({
-        bars: sortedBars,
+        bars: resultBars,
         favoriteIds,
         favoritesOnly,
         gamesTodayOnly
       }),
-    [sortedBars, favoriteIds, favoritesOnly, gamesTodayOnly]
+    [resultBars, favoriteIds, favoritesOnly, gamesTodayOnly]
   )
   const mapBars = toMapBars(displayedBars)
 

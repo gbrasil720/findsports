@@ -6,7 +6,6 @@ import {
   type QuerySnapshot,
   resolveFavoriteIds,
   type SearchBar,
-  sortDiscoveryBars,
   toMapBars
 } from './dashboard-selectors'
 import type { RadiusKm } from './discovery'
@@ -174,13 +173,18 @@ describe('deriveDiscoveryResultState', () => {
 })
 
 describe('dashboard display selectors', () => {
-  test('sorts events first without non-null assertions', () => {
-    const later = makeBar('later', '2026-08-13T20:00:00.000Z')
-    const none = makeBar('none')
-    const earlier = makeBar('earlier', '2026-08-13T18:00:00.000Z')
+  test('preserves the ordering received from the search endpoint', () => {
+    const ratingWinner = makeBar('rating-winner', '2026-08-13T20:00:00.000Z')
+    const earlierGame = makeBar('earlier-game', '2026-08-13T18:00:00.000Z')
+
     expect(
-      sortDiscoveryBars([later, none, earlier]).map((bar) => bar.id)
-    ).toEqual(['earlier', 'later', 'none'])
+      filterDiscoveryBars({
+        bars: [ratingWinner, earlierGame],
+        favoriteIds: new Set(),
+        favoritesOnly: false,
+        gamesTodayOnly: false
+      }).map((bar) => bar.id)
+    ).toEqual(['rating-winner', 'earlier-game'])
   })
 
   test('preserves favorites-only and games-today filters', () => {
