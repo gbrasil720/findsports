@@ -55,11 +55,14 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
 | A09 | API aceitava participantes incompatíveis com o esporte do evento e preservava os antigos ao trocar somente o esporte. | **WEB-45** reutilizado e corrigido localmente: create/update validam todos os IDs dentro da transação; troca sem lista explícita limpa os participantes. |
 | A10 | `recordCommercialEvent` derivava `commercialDay` em UTC, contrariando a spec `America/Sao_Paulo`; entre 21h e meia-noite local, deduplicação e rollup iam para o dia seguinte. | **WEB-84**: corrigido localmente com formatter IANA compartilhado; nenhuma correção retroativa de dados foi executada. |
 | A11 | `search-cache.ts` arredondava a origem a três casas, embora distância, ordenação e cursor fossem calculados com as coordenadas exatas. Usuários próximos podiam compartilhar uma página incompatível. | **WEB-86**: corrigido localmente preservando latitude e longitude exatas nas duas chaves de cache. |
+| A12 | `dashboard_.profile.tsx` aguardava `authClient.updateUser` sem `throw` e sem ler `error`; HTTP não-2xx fechava a edição de nome e invalidava a sessão. | **WEB-87**: `persistProfileUser` lança no envelope de erro; nome, foto e raio exibem alerta e a edição de nome permanece aberta. |
 
 ## Candidatos que ainda exigem confirmação
 
-- `dashboard_.profile.tsx`: handlers de nome/imagem/raio podem ignorar envelope
-  `error` de `authClient.updateUser`; reproduzir falhas reais de resposta.
+- ~~`dashboard_.profile.tsx`: handlers de nome/imagem/raio podem ignorar envelope
+  `error` de `authClient.updateUser`.~~ **WEB-87**: `persistProfileUser` usa
+  `fetchOptions.throw`; nome, foto e raio ficam no catch e a edição de nome
+  permanece aberta com `role="alert"`.
 - Webhooks Dodo aplicam eventos sem coordenação aparente de ordem/transação:
   conferir contrato do fornecedor, idempotência e troca de assinatura.
 - Concorrência entre confirmação, reinscrição autenticada e reenvio da waitlist:
