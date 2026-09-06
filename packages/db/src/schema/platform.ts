@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
+  check,
   customType,
   doublePrecision,
   index,
@@ -184,7 +185,13 @@ export const event = pgTable(
     index('event_sportId_idx').on(table.sportId),
     index('event_startsAt_idx').on(table.startsAt),
     // Padrão real de acesso da busca: próximo jogo de um bar específico.
-    index('event_barId_startsAt_idx').on(table.barId, table.startsAt)
+    index('event_barId_startsAt_idx').on(table.barId, table.startsAt),
+    // WEB-43: invariante de intervalo — fim efetivo sempre após o início.
+    // `ends_at` é opcional, então a restrição só vale quando ele existe.
+    check(
+      'event_ends_at_after_starts_at',
+      sql`${table.endsAt} IS NULL OR ${table.endsAt} > ${table.startsAt}`
+    )
   ]
 )
 

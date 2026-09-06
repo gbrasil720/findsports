@@ -1,0 +1,1 @@
+ALTER TABLE "event" ADD CONSTRAINT "event_ends_at_after_starts_at" CHECK ("event"."ends_at" IS NULL OR "event"."ends_at" > "event"."starts_at");
