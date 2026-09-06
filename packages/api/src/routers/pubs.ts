@@ -159,8 +159,8 @@ export const pubsRouter = router({
   search: protectedProcedure
     .input(
       z.object({
-        lat: z.number(),
-        lng: z.number(),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
         radiusKm: z
           .union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
           .default(3),
@@ -504,8 +504,8 @@ export const pubsRouter = router({
   searchByLocation: protectedProcedure
     .input(
       z.object({
-        lat: z.number(),
-        lng: z.number(),
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
         radiusKm: z
           .union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
           .default(5),
