@@ -18,8 +18,8 @@ export const getRouter = () => {
       onError: (error, query) => {
         toast.error(error.message, {
           action: {
-            label: 'retry',
-            onClick: query.invalidate
+            label: 'Tentar novamente',
+            onClick: () => query.invalidate()
           }
         })
       }
