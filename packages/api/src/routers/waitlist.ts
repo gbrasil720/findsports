@@ -472,7 +472,17 @@ export const waitlistRouter = router({
             role = EXCLUDED.role, city = EXCLUDED.city, phone = EXCLUDED.phone,
             pub_name = EXCLUDED.pub_name, confirmed_at = NOW(),
             leave_token_hash = EXCLUDED.leave_token_hash, cancelled_at = NULL,
-            joined_claimed_at = NOW(), joined_sent_at = NULL, joined_error = NULL
+            joined_claimed_at = NOW(), joined_sent_at = NULL, joined_error = NULL,
+            -- A sessão já provou a posse do e-mail: a confirmação pendente
+            -- morre aqui, senão o link antigo continuaria revertendo a
+            -- inscrição autenticada (WEB-55).
+            confirmation_token_hash = NULL,
+            confirmation_expires_at = NULL,
+            confirmation_consumed_at = NULL,
+            pending_role = NULL,
+            pending_city = NULL,
+            pending_phone = NULL,
+            pending_pub_name = NULL
           RETURNING id
         `)
         // A sessão já provou a posse do e-mail: a inscrição vale mesmo que o
