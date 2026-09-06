@@ -1,13 +1,58 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
+
+/**
+ * O toast global de erro de query (QueryCache.onError) oferece uma ação de
+ * retry. O Sonner invoca o callback com o objeto da própria ação como `this`
+ * (`toast.action.onClick.call(toast.action, event)`), então o callback precisa
+ * fechar sobre a instância da query — passar `query.invalidate` solto quebra
+ * com `this.state` indefinido. Estes testes travam o rótulo em português e a
+ * invalidação sem exception.
+ */
+
+interface AcaoDoToast {
+  label?: string
+  onClick?: (event?: unknown) => unknown
+}
+
+const acoesCapturadas: AcaoDoToast[] = []
+
+// Proxy: qualquer `toast.X` chamado pelo app vira no-op; `toast.error` captura
+// a ação do retry para o teste acioná-la. `Toaster` (usado pelo wrapper de UI
+// importado via routeTree) nunca é renderizado nestes testes, então um stub
+// serve.
+const toastFalso = new Proxy(
+  {},
+  {
+    get(_alvo, propriedade: string | symbol) {
+      if (propriedade === 'error') {
+        return (_mensagem: string, opcoes?: { action?: AcaoDoToast }) => {
+          if (opcoes?.action) acoesCapturadas.push(opcoes.action)
+        }
+      }
+      return () => {}
+    }
+  }
+)
+
+mock.module('sonner', () => ({
+  toast: toastFalso,
+  Toaster: () => null
+}))
+
+beforeAll(() => {
+  process.env.DATABASE_URL ??= 'postgres://localhost/findsports_dev'
+  process.env.BETTER_AUTH_SECRET ??= 'test-secret-with-at-least-32-chars'
+  process.env.BETTER_AUTH_URL ??= 'http://localhost:3001'
+  process.env.CORS_ORIGIN ??= 'http://localhost:3001'
+  process.env.DODO_PAYMENTS_API_KEY ??= 'test-api-key'
+})
+
+afterEach(() => {
+  acoesCapturadas.length = 0
+})
 
 describe('router SSR', () => {
   test('isola o cache entre instâncias de requisição', async () => {
-    process.env.DATABASE_URL ??= 'postgres://localhost/findsports_dev'
-    process.env.BETTER_AUTH_SECRET ??= 'test-secret-with-at-least-32-chars'
-    process.env.BETTER_AUTH_URL ??= 'http://localhost:3001'
-    process.env.CORS_ORIGIN ??= 'http://localhost:3001'
-    process.env.DODO_PAYMENTS_API_KEY ??= 'test-api-key'
-
     const { getRouter } = await import('./router')
     const firstRouter = getRouter()
     const secondRouter = getRouter()
@@ -25,5 +70,30 @@ describe('router SSR', () => {
     expect(
       secondRouter.options.context.queryClient.getQueryData(['session'])
     ).toBeUndefined()
+  })
+
+  test('o retry global do toast revalida a query e não lança', async () => {
+    const { getRouter } = await import('./router')
+    const router = getRouter()
+    const { queryClient } = router.options.context
+
+    const queryKey = ['falha', 'retry']
+
+    await expect(
+      queryClient.fetchQuery({
+        queryKey,
+        queryFn: () => Promise.reject(new Error('falha de rede'))
+      })
+    ).rejects.toThrow('falha de rede')
+
+    const acao = acoesCapturadas.at(-1)
+    expect(acao?.label).toBe('Tentar novamente')
+
+    // Sonner chama com `this` = objeto da ação; a invocação não pode lançar.
+    expect(() => acao?.onClick?.call(acao, {})).not.toThrow()
+
+    // A ação invalida justamente a query que falhou.
+    const query = queryClient.getQueryCache().find({ queryKey })
+    expect(query?.state.isInvalidated).toBe(true)
   })
 })
