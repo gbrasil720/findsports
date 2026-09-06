@@ -327,6 +327,7 @@ export const waitlistRouter = router({
         SELECT
           w.id, w.email, w.role, w.city, w.phone, w.pub_name AS "pubName",
           w.created_at AS "createdAt", w.confirmed_at AS "confirmedAt",
+          w.joined_sent_at AS "joinedSentAt", w.joined_error AS "joinedError",
           w.cancelled_at AS "cancelledAt", w.approved_at AS "approvedAt",
           w.approved_by AS "approvedBy", w.invite_expires_at AS "inviteExpiresAt",
           w.invite_sent_at AS "inviteSentAt", w.invite_error AS "inviteError",
@@ -347,6 +348,8 @@ export const waitlistRouter = router({
         pubName: string | null
         createdAt: string
         confirmedAt: string | null
+        joinedSentAt: string | null
+        joinedError: string | null
         cancelledAt: string | null
         approvedAt: string | null
         approvedBy: string | null
