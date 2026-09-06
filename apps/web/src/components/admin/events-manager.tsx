@@ -134,7 +134,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         sportId: form.sportId,
         championship: form.championship,
         startsAt,
-        endsAt,
+        endsAt: endsAt ?? null,
         participantIds,
         participantFreeText: form.participantFreeText || undefined
       })

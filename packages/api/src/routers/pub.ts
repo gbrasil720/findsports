@@ -90,6 +90,20 @@ export function assertEventIntervalValid(
   }
 }
 
+/**
+ * Resolve the value to persist for `endsAt` in `updateEvent`, preserving
+ * "omitted field doesn't change":
+ * - undefined → omit, leaving the stored value untouched
+ * - null → explicit clear (persist NULL)
+ * - string → normalize to Date
+ */
+export function resolveEventEndsAt(
+  input: string | null | undefined
+): Date | null | undefined {
+  if (input === undefined) return undefined
+  return input === null ? null : new Date(input)
+}
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
@@ -439,7 +453,7 @@ export const pubRouter = router({
         sportId: z.string().uuid().optional(),
         championship: z.string().min(2).max(150).optional(),
         startsAt: z.string().datetime().optional(),
-        endsAt: z.string().datetime().optional(),
+        endsAt: z.string().datetime().nullable().optional(),
         participantIds: z.array(z.string().uuid()).optional(),
         participantFreeText: z.string().max(200).optional()
       })
@@ -469,9 +483,11 @@ export const pubRouter = router({
 
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
+      const resolvedEndsAt = resolveEventEndsAt(input.endsAt)
+
       assertEventIntervalValid(
         input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
-        input.endsAt ? new Date(input.endsAt) : existingEvent.endsAt
+        resolvedEndsAt === undefined ? existingEvent.endsAt : resolvedEndsAt
       )
 
       await db.transaction(async (tx) => {
@@ -481,7 +497,7 @@ export const pubRouter = router({
             ...(input.sportId && { sportId: input.sportId }),
             ...(input.championship && { championship: input.championship }),
             ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
-            ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
+            ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
             ...(input.participantFreeText !== undefined && {
               participantFreeText: input.participantFreeText || null
             })

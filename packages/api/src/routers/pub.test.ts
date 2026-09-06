@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
-import { assertEventIntervalValid, resolvePhoneAcceptsWhatsapp } from './pub'
+import {
+  assertEventIntervalValid,
+  resolveEventEndsAt,
+  resolvePhoneAcceptsWhatsapp
+} from './pub'
 
 describe('resolvePhoneAcceptsWhatsapp', () => {
   // -----------------------------------------------------------------------
@@ -172,5 +176,20 @@ describe('assertEventIntervalValid', () => {
 
   it('accepts no endsAt (undefined)', () => {
     expect(() => assertEventIntervalValid(startsAt, undefined)).not.toThrow()
+  })
+})
+
+describe('resolveEventEndsAt', () => {
+  it('returns undefined for an omitted field, leaving the stored value untouched', () => {
+    expect(resolveEventEndsAt(undefined)).toBeUndefined()
+  })
+
+  it('returns null for an explicit clear, persisting NULL', () => {
+    expect(resolveEventEndsAt(null)).toBeNull()
+  })
+
+  it('normalizes a datetime string to a Date', () => {
+    const iso = '2026-09-05T18:00:00.000Z'
+    expect(resolveEventEndsAt(iso)).toEqual(new Date(iso))
   })
 })
