@@ -159,56 +159,97 @@ export function PubHeroSection({
 
               {editing ? (
                 <div className="space-y-3 w-full">
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Nome do bar"
-                    className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-4 py-2.5 font-bold text-2xl text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label htmlFor="admin-bar-name" className="sr-only">
+                      Nome do bar
+                    </label>
                     <input
-                      value={form.address}
+                      id="admin-bar-name"
+                      value={form.name}
                       onChange={(e) =>
-                        setForm({ ...form, address: e.target.value })
+                        setForm({ ...form, name: e.target.value })
                       }
-                      placeholder="Endereço"
-                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
-                    />
-                    <input
-                      value={form.neighborhood}
-                      onChange={(e) =>
-                        setForm({ ...form, neighborhood: e.target.value })
-                      }
-                      placeholder="Bairro"
-                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                      placeholder="Nome do bar"
+                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-4 py-2.5 font-bold text-2xl text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input
-                      value={form.city}
+                    <div className="min-w-0">
+                      <label htmlFor="admin-bar-address" className="sr-only">
+                        Endereço
+                      </label>
+                      <input
+                        id="admin-bar-address"
+                        value={form.address}
+                        onChange={(e) =>
+                          setForm({ ...form, address: e.target.value })
+                        }
+                        placeholder="Endereço"
+                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label
+                        htmlFor="admin-bar-neighborhood"
+                        className="sr-only"
+                      >
+                        Bairro
+                      </label>
+                      <input
+                        id="admin-bar-neighborhood"
+                        value={form.neighborhood}
+                        onChange={(e) =>
+                          setForm({ ...form, neighborhood: e.target.value })
+                        }
+                        placeholder="Bairro"
+                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="min-w-0">
+                      <label htmlFor="admin-bar-city" className="sr-only">
+                        Cidade
+                      </label>
+                      <input
+                        id="admin-bar-city"
+                        value={form.city}
+                        onChange={(e) =>
+                          setForm({ ...form, city: e.target.value })
+                        }
+                        placeholder="Cidade"
+                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label htmlFor="admin-bar-phone" className="sr-only">
+                        Telefone
+                      </label>
+                      <PhoneInput
+                        id="admin-bar-phone"
+                        defaultValue={form.phone}
+                        onChange={(phone) =>
+                          setForm((prev) => ({ ...prev, phone }))
+                        }
+                        variant="dark"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="admin-bar-description" className="sr-only">
+                      Descrição (opcional)
+                    </label>
+                    <textarea
+                      id="admin-bar-description"
+                      value={form.description}
                       onChange={(e) =>
-                        setForm({ ...form, city: e.target.value })
+                        setForm({ ...form, description: e.target.value })
                       }
-                      placeholder="Cidade"
-                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
-                    />
-                    <PhoneInput
-                      defaultValue={form.phone}
-                      onChange={(phone) =>
-                        setForm((prev) => ({ ...prev, phone }))
-                      }
-                      variant="dark"
+                      placeholder="Algo que o checklist não cobre (opcional)"
+                      rows={2}
+                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)] resize-none"
                     />
                   </div>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) =>
-                      setForm({ ...form, description: e.target.value })
-                    }
-                    placeholder="Algo que o checklist não cobre (opcional)"
-                    rows={2}
-                    className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)] resize-none"
-                  />
 
                   <div className="border-[rgb(241_238_230_/_18%)] border-t pt-4">
                     <AmenityChecklist
