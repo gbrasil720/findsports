@@ -119,13 +119,23 @@ writeFileSync(
   )
 )
 
-// Routing: serve static files from CDN, everything else → SSR function
+// Routing: legacy og-image.png URL → permanent redirect to og-image.jpg
+// (URLs shared between 06/08 and 31/08/2026 cached the .png path); then
+// serve static files from CDN, everything else → SSR function
 writeFileSync(
   resolve(vercelOut, 'config.json'),
   JSON.stringify(
     {
       version: 3,
-      routes: [{ handle: 'filesystem' }, { src: '/(.*)', dest: '/ssr' }]
+      routes: [
+        {
+          src: '^/og-image\\.png$',
+          status: 301,
+          headers: { Location: '/og-image.jpg' }
+        },
+        { handle: 'filesystem' },
+        { src: '/(.*)', dest: '/ssr' }
+      ]
     },
     null,
     2
