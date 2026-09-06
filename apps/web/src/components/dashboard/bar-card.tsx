@@ -92,7 +92,7 @@ export function BarCard({
   const upcoming = temporalState === 'upcoming'
   const extraEvents = (bar.event_count ?? 0) - 1
   const newBar = isNew(bar.created_at)
-  const plan = bar.plan ?? 'starter'
+  const plan = bar.plan
   const planConfig = PLAN_CONFIG[plan]
   const participantsLabel =
     event && (event.participants.length > 0 || event.participantFreeText)

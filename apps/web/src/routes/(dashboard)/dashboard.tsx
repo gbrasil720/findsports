@@ -425,7 +425,7 @@ function FanDashboard() {
           analytics.barOpened({
             bar_id: barId,
             source: 'map',
-            bar_plan: bar && 'plan' in bar ? bar.plan : undefined
+            bar_plan: bar?.plan
           })
           navigate({ to: '/pub/$pubId', params: { pubId: barId } })
         }}

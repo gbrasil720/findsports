@@ -74,6 +74,7 @@ type LocationBar = {
   longitude: string
   photo_url: string | null
   created_at: string
+  plan: 'starter' | 'pro' | 'elite'
   distance_km: number
 }
 
@@ -110,6 +111,7 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
       b.longitude,
       b.photo_url,
       b.created_at,
+      b.plan,
       ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
       b.geo <-> ${origin} AS cursor_dist
     FROM bar b
@@ -129,6 +131,7 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
     longitude: string
     photo_url: string | null
     created_at: string
+    plan: 'starter' | 'pro' | 'elite'
     distance_km: number
     cursor_dist: number
   }
@@ -144,6 +147,7 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
     longitude: row.longitude,
     photo_url: row.photo_url,
     created_at: row.created_at,
+    plan: row.plan,
     distance_km: row.distance_km
   }))
 
