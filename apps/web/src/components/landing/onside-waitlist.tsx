@@ -217,7 +217,7 @@ export function OnsideFanWaitlistForm() {
         ) : null}
       </Button>
       <p className="onside-form-note">
-        Cadastro gratuito · seus dados não entram em uma newsletter
+        Cadastro gratuito · sem e-mails promocionais
       </p>
     </form>
   )
