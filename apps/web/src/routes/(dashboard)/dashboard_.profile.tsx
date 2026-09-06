@@ -159,10 +159,19 @@ function ProfilePage() {
           (current = []) =>
             current.filter((favorite) => favorite.barId !== barId)
         )
-        return { previous }
+        return {
+          previous,
+          query: queryClient
+            .getQueryCache()
+            .find({ queryKey: favoritesQueryKey })
+        }
       },
       onError: (_error, _variables, context) => {
-        if (context?.previous) {
+        if (
+          context?.previous &&
+          context.query ===
+            queryClient.getQueryCache().find({ queryKey: favoritesQueryKey })
+        ) {
           queryClient.setQueryData(favoritesQueryKey, context.previous)
         }
       },

@@ -45,7 +45,7 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
 | ID local | Evidência e impacto | Próxima prova / ticket |
 |---|---|---|
 | A01 | Dez arquivos de integração guardavam `process.env.DATABASE_URL` por regex, mas `packages/db/src/utils/db-resolver.ts::resolveDatabaseUrl` ignora essa variável em `test`. Com opt-in e URL de teste, sem `LOAD_TEST_DATABASE_URL`, a conexão real podia ser `findsports_dev`. O décimo primeiro arquivo tinha outro guard duplicado. | **WEB-77**: corrigido localmente com `isDisposableTestDatabase` compartilhado pelos onze arquivos. Reprodução antes: guard true e destino dev; depois: 21 integrações puladas na configuração incompleta. |
-| A02 | `apps/web/src/hooks/use-sign-out.ts` faz navegação SPA sem limpar cache. `router.tsx` mantém QueryClient com staleTime de 60 s e queries privadas sem identidade na chave. | Exercitar conta A → logout → conta B; conferir também impersonação, login e 2FA. |
+| A02 | `apps/web/src/hooks/use-sign-out.ts` faz navegação SPA sem limpar cache. `router.tsx` mantém QueryClient com staleTime de 60 s e queries privadas sem identidade na chave. | **WEB-78**: raiz sincroniza identidade antes das guardas; cancela queries pendentes e limpa cache na troca. Rollback de favorito só restaura a query original. Quatro testes de router passaram; build e tipos passaram; suíte completa passou com 525 testes. QA visual pendente. |
 | A03 | `routes/(dashboard)/dashboard.tsx` aplica `sortDiscoveryBars` a qualquer resultado, inclusive ordenação por nota recebida do servidor. | Testar duas notas com horários em ordem oposta. |
 | A04 | `domain/events.ts::getEventTemporalState` usa sempre três horas. `lib/event-profile-window.ts` do servidor respeita `endsAt`; callers frontend ignoram esse campo. | Eventos curtos e longos devem ter o mesmo estado no servidor, hero, cards e gestão. |
 | A05 | `components/admin/events-manager.tsx` transforma texto livre apagado em `undefined`; `routers/pub.ts` só altera `participantFreeText` quando não é `undefined`. | Editar evento com texto livre, apagar/switch para times e reler persistência. |
@@ -68,6 +68,10 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
   role, imagem e invariantes de admissão.
 - Dependências com advisories: verificar cada cadeia e remediar versões afetadas
   sem confundir plugins não habilitados com ataques reproduzidos no produto.
+- Uma execução da suíte retornou três falhas em reenvio de convite, enquanto
+  o arquivo isolado e a repetição completa passaram. Investigar contador de IP
+  compartilhado entre execuções (`contextoPublico.clientIp = 127.0.0.1`) e limites
+  persistidos no banco descartável. Não declarar estabilidade por um único rerun.
 
 ## Linear e escopo
 

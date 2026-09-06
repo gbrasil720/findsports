@@ -13,6 +13,7 @@ import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
 export const getRouter = () => {
+  let cachedUserId: string | null = null
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
@@ -50,7 +51,17 @@ export const getRouter = () => {
     routeTree,
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    context: { trpc, queryClient },
+    context: {
+      trpc,
+      queryClient,
+      syncSession(userId: string | null) {
+        if (cachedUserId === userId) return
+        // clear also cancels pending queries so an old response cannot refill
+        // the next user's cache. State belongs to this router, including SSR.
+        queryClient.clear()
+        cachedUserId = userId
+      }
+    },
     defaultPendingComponent: () => <Loader />,
     defaultNotFoundComponent: NotFoundPage,
     Wrap: ({ children }) => (

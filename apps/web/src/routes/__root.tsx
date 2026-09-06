@@ -28,6 +28,7 @@ import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
+  syncSession: (userId: string | null) => void
   session?: AuthSession
 }
 
@@ -41,8 +42,9 @@ const ONSIDE_DESCRIPTION =
   'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location, context }) => {
     const session = await getSession()
+    context.syncSession(session?.user.id ?? null)
     applyAuthGuards(session as AuthSession, location.pathname, location.search)
     return { session }
   },
