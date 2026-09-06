@@ -1,5 +1,6 @@
-import { expect, mock, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { afterAll, expect, mock, test } from 'bun:test'
+import { eq, inArray } from '@findsports_oficial/db'
+import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
@@ -40,8 +41,16 @@ function mockarEnvioDeEmail() {
 const contextoPublico = {
   auth: null,
   session: null,
-  clientIp: '127.0.0.1'
+  clientIp: `invite-test-${crypto.randomUUID()}`
 } as unknown as Context
+
+const rateLimitKeys = [`waitlist:invite-resend-ip:${contextoPublico.clientIp}`]
+
+afterAll(async () => {
+  if (!isDisposableTestDatabase()) return
+  const { db } = await import('@findsports_oficial/db')
+  await db.delete(rateLimit).where(inArray(rateLimit.key, rateLimitKeys))
+})
 
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 
@@ -54,6 +63,7 @@ async function prepararConvite(
   ])
   const email = `invite-${crypto.randomUUID()}@integration.invalid`
   const invite = await createWaitlistToken()
+  rateLimitKeys.push(`waitlist:invite-resend:${invite.hash}`)
   await db.insert(waitlistEntries).values({
     email,
     role: 'fan',

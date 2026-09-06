@@ -68,10 +68,11 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
   role, imagem e invariantes de admissão.
 - Dependências com advisories: verificar cada cadeia e remediar versões afetadas
   sem confundir plugins não habilitados com ataques reproduzidos no produto.
-- Uma execução da suíte retornou três falhas em reenvio de convite, enquanto
-  o arquivo isolado e a repetição completa passaram. Investigar contador de IP
-  compartilhado entre execuções (`contextoPublico.clientIp = 127.0.0.1`) e limites
-  persistidos no banco descartável. Não declarar estabilidade por um único rerun.
+- **WEB-79**: uma execução da suíte retornou três falhas em reenvio de convite.
+  Causa reproduzida: contador de IP `127.0.0.1` persistia entre reruns e chegava
+  ao limite oito. A fixture agora usa IP único e limpa suas chaves em `afterAll`.
+  O arquivo passou três vezes consecutivas; após remover 18 contadores antigos
+  somente do container tmpfs da auditoria, passou novamente e deixou zero chaves.
 
 ## Linear e escopo
 
