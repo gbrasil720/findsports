@@ -1,5 +1,5 @@
+import { hashPassword } from '@findsports_oficial/auth/crypto'
 import { db, sql } from '@findsports_oficial/db'
-import { hashPassword } from 'better-auth/crypto'
 
 import { hashWaitlistToken } from './waitlist-workflow'
 
