@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import {
   DatabaseUrlError,
+  isDisposableTestDatabase,
   resolveAndValidateDatabaseUrl,
   resolveDatabaseUrl
 } from './db-resolver'
@@ -142,5 +143,60 @@ describe('DatabaseUrlError', () => {
     expect(err).toBeInstanceOf(Error)
     expect(err.name).toBe('DatabaseUrlError')
     expect(err.message).toBe('test')
+  })
+})
+
+describe('disposable integration target', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    process.env = {
+      ...originalEnv,
+      NODE_ENV: 'test',
+      RUN_DISPOSABLE_DB_TESTS: '1',
+      DATABASE_URL: 'postgres://unused:unused@localhost:55433/ci'
+    }
+    delete process.env.LOAD_TEST_DATABASE_URL
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+  })
+
+  it('does not authorize the persistent dev target using an ignored test URL', () => {
+    expect(resolveDatabaseUrl()).toContain('/findsports_dev')
+    expect(isDisposableTestDatabase()).toBe(false)
+  })
+
+  it.each([
+    'localhost',
+    '127.0.0.1',
+    '[::1]'
+  ])('accepts an explicitly isolated target on %s', (host) => {
+    process.env.LOAD_TEST_DATABASE_URL = `postgresql://test:test@${host}:55433/findsports_load_test`
+    expect(isDisposableTestDatabase()).toBe(true)
+  })
+
+  it.each([
+    'postgres://test:test@example.com:5432/findsports_load_test',
+    'postgres://test:test@localhost:5432/findsports_dev',
+    'postgres://test:test@localhost:5432/ci',
+    'https://localhost:5432/findsports_load_test',
+    'invalid'
+  ])('rejects an unsafe or malformed override: %s', (url) => {
+    process.env.LOAD_TEST_DATABASE_URL = url
+    expect(isDisposableTestDatabase()).toBe(false)
+  })
+
+  it('requires opt-in and test mode even when the override is safe', () => {
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://test:test@localhost:55433/findsports_load_test'
+    process.env.RUN_DISPOSABLE_DB_TESTS = '0'
+    expect(isDisposableTestDatabase()).toBe(false)
+    process.env.RUN_DISPOSABLE_DB_TESTS = '1'
+    process.env.NODE_ENV = 'production'
+    expect(isDisposableTestDatabase()).toBe(false)
+    process.env.NODE_ENV = 'development'
+    expect(isDisposableTestDatabase()).toBe(false)
   })
 })

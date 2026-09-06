@@ -52,6 +52,47 @@ afterEach(() => {
 })
 
 describe('router SSR', () => {
+  test('troca e expiração de sessão removem dados privados, mesma conta preserva cache', async () => {
+    const { getRouter } = await import('./router')
+    const { queryClient, trpc, syncSession } = getRouter().options.context
+    const key = [...trpc.pubs.getFavorites.queryKey()]
+
+    syncSession('A')
+    queryClient.setQueryData(key, ['favorite-from-A'])
+    syncSession('A')
+    expect(queryClient.getQueryData<string[]>(key)).toEqual(['favorite-from-A'])
+
+    syncSession('B')
+    expect(queryClient.getQueryData(key)).toBeUndefined()
+    const result = await queryClient.fetchQuery({
+      queryKey: key,
+      queryFn: async () => ['favorite-from-B']
+    })
+    expect(result).toEqual(['favorite-from-B'])
+
+    syncSession(null)
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
+  })
+
+  test('resposta pendente da conta anterior não repovoa o cache após a troca', async () => {
+    const { getRouter } = await import('./router')
+    const { queryClient, syncSession } = getRouter().options.context
+    syncSession('A')
+    let finishRequest: (value: string) => void = () => {}
+    const pending = queryClient.fetchQuery({
+      queryKey: ['private-pending'],
+      queryFn: () =>
+        new Promise<string>((resolve) => {
+          finishRequest = resolve
+        })
+    })
+    const settled = pending.catch(() => 'cancelled')
+    syncSession('B')
+    finishRequest('private-from-A')
+    expect(await settled).toBe('cancelled')
+    expect(queryClient.getQueryData(['private-pending'])).toBeUndefined()
+  })
+
   test('isola o cache entre instâncias de requisição', async () => {
     const { getRouter } = await import('./router')
     const firstRouter = getRouter()

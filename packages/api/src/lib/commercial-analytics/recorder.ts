@@ -2,6 +2,7 @@ import { db, sql } from '@findsports_oficial/db'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import type { Context } from '../../context'
+import { getCommercialDay } from './commercial-day'
 import type { CommercialEventType } from './types'
 
 /** Rate limit: max events per fan per bar per minute */
@@ -149,7 +150,7 @@ export async function recordCommercialEvent(
   //    decidir se este evento estreia o usuário no dia (unique_visitors)
   //    ou estreia a intenção comercial dele (interested_people).
   const now = new Date()
-  const commercialDay = now.toISOString().slice(0, 10)
+  const commercialDay = getCommercialDay(now)
   const isHighIntent = HIGH_INTENT_TYPES.includes(eventType)
 
   // Só faz sentido perguntar pela estreia de intenção quando o próprio

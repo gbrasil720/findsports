@@ -1,24 +1,8 @@
 import { expect, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
-function isDisposableLoadDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      parsed.pathname === '/findsports_load_test'
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isDisposableLoadDatabase(
-  process.env.LOAD_TEST_DATABASE_URL
-)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 integrationTest(
   'loads only active, non-favorite bars and ranks the onboarding sport',

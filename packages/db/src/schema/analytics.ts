@@ -41,9 +41,9 @@ export const barCommercialEvent = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     type: barCommercialEventTypeEnum('type').notNull(),
-    sourceEventId: text('source_event_id').references(() => event.id, {
-      onDelete: 'set null'
-    }),
+    // Chave histórica, não FK: excluir o cadastro preserva atribuição e
+    // snapshots sem colidir com a deduplicação de ações sem jogo.
+    sourceEventId: text('source_event_id'),
     sourceEventChampionship: text('source_event_championship'),
     sourceEventStartsAt: timestamp('source_event_starts_at'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
@@ -84,8 +84,7 @@ export const barCommercialEvent = pgTable(
       table.type,
       table.occurredAt
     ),
-    // A FK para `event` precisa do próprio índice: sem ele, apagar um jogo
-    // varre esta tabela inteira para resolver o ON DELETE SET NULL.
+    // Também atende consultas e retenção por atribuição histórica.
     index('bar_commercial_event_sourceEventId_idx').on(table.sourceEventId)
   ]
 )

@@ -1,9 +1,9 @@
 /**
  * Chave de cache da busca geográfica.
  *
- * Coordenadas arredondadas a 3 casas (~110 m). Sem isso cada GPS gera chave
- * própria e o cache nunca acerta. TTL curto fica no caller: a busca depende
- * de `starts_at >= NOW()`.
+ * Coordenadas exatas: distância, ordenação e cursor também dependem da origem
+ * exata, então aproximá-la faria páginas incompatíveis compartilharem cache.
+ * TTL curto fica no caller: a busca depende de `starts_at >= NOW()`.
  *
  * Só entra dado global. Nada derivado de sessão.
  */
@@ -45,8 +45,8 @@ export type ChaveLocalInput = {
 export function chaveBusca(input: ChaveBuscaInput): string {
   return [
     input.modo,
-    input.lat.toFixed(3),
-    input.lng.toFixed(3),
+    input.lat,
+    input.lng,
     input.radiusKm,
     input.sportId ?? '',
     (input.championship ?? '').toLowerCase(),
@@ -59,8 +59,8 @@ export function chaveBusca(input: ChaveBuscaInput): string {
 
 export function chaveBuscaLocal(input: ChaveLocalInput): string {
   return [
-    input.lat.toFixed(3),
-    input.lng.toFixed(3),
+    input.lat,
+    input.lng,
     input.radiusKm,
     input.cursor ?? '',
     input.limit

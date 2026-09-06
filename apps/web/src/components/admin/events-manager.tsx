@@ -136,7 +136,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         startsAt,
         endsAt: endsAt ?? null,
         participantIds,
-        participantFreeText: form.participantFreeText || undefined
+        participantFreeText: form.participantFreeText
       })
     }
   }
@@ -161,13 +161,17 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   }
 
   const liveEvents = events.filter(
-    (item) => getEventTemporalState(item.startsAt) === 'live'
+    (item) => getEventTemporalState(item.startsAt, item.endsAt) === 'live'
   )
   const upcomingEvents = events
-    .filter((item) => getEventTemporalState(item.startsAt) === 'upcoming')
+    .filter(
+      (item) => getEventTemporalState(item.startsAt, item.endsAt) === 'upcoming'
+    )
     .sort(compareEventStartsAscending)
   const pastEvents = events
-    .filter((item) => getEventTemporalState(item.startsAt) === 'past')
+    .filter(
+      (item) => getEventTemporalState(item.startsAt, item.endsAt) === 'past'
+    )
     .sort(compareEventStartsDescending)
   const sortedEvents = [...liveEvents, ...upcomingEvents, ...pastEvents]
   const isSaving = createMutation.isPending || updateMutation.isPending

@@ -4,13 +4,17 @@ export type EventTemporalState = 'upcoming' | 'live' | 'past'
 
 export function getEventTemporalState(
   startsAt: string | Date,
+  endsAt: string | Date | null,
   now: string | Date | number = Date.now()
 ): EventTemporalState {
   const startsAtMs = new Date(startsAt).getTime()
+  const endsAtMs = endsAt
+    ? new Date(endsAt).getTime()
+    : startsAtMs + LIVE_WINDOW_MS
   const nowMs = typeof now === 'number' ? now : new Date(now).getTime()
 
   if (nowMs < startsAtMs) return 'upcoming'
-  if (nowMs <= startsAtMs + LIVE_WINDOW_MS) return 'live'
+  if (nowMs <= endsAtMs) return 'live'
   return 'past'
 }
 

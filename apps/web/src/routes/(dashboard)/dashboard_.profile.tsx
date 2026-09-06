@@ -27,6 +27,7 @@ import {
 } from '@/components/profile/profile-selectors'
 import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
+import { persistProfileUser } from '@/components/profile/profile-user-update'
 import { type RadiusKm, SAO_PAULO_FALLBACK } from '@/domain/discovery'
 import { authClient } from '@/lib/auth-client'
 import { CATALOG_QUERY } from '@/lib/query-cache'
@@ -57,6 +58,7 @@ function ProfilePage() {
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     null
   )
@@ -159,10 +161,19 @@ function ProfilePage() {
           (current = []) =>
             current.filter((favorite) => favorite.barId !== barId)
         )
-        return { previous }
+        return {
+          previous,
+          query: queryClient
+            .getQueryCache()
+            .find({ queryKey: favoritesQueryKey })
+        }
       },
       onError: (_error, _variables, context) => {
-        if (context?.previous) {
+        if (
+          context?.previous &&
+          context.query ===
+            queryClient.getQueryCache().find({ queryKey: favoritesQueryKey })
+        ) {
           queryClient.setQueryData(favoritesQueryKey, context.previous)
         }
       },
@@ -198,9 +209,16 @@ function ProfilePage() {
   }
   const handleSaveName = async () => {
     if (!nameInput.trim()) return
-    await authClient.updateUser({ name: nameInput.trim() })
-    void queryClient.invalidateQueries({ queryKey: ['session'] })
-    setEditingName(false)
+    setNameError(null)
+    try {
+      await persistProfileUser(authClient.updateUser, {
+        name: nameInput.trim()
+      })
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
+      setEditingName(false)
+    } catch {
+      setNameError('Não foi possível salvar o nome. Tente de novo.')
+    }
   }
   const handleImageChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -224,7 +242,7 @@ function ProfilePage() {
         handleUploadUrl: '/api/user/avatar',
         contentType: 'image/jpeg'
       })
-      await authClient.updateUser({ image: blob.url })
+      await persistProfileUser(authClient.updateUser, { image: blob.url })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
     } catch {
       setImageError('Erro ao processar imagem. Tente novamente.')
@@ -252,7 +270,9 @@ function ProfilePage() {
     setSavingRadius(true)
     setRadiusError(null)
     try {
-      await authClient.updateUser({ searchRadiusKm: radiusKm })
+      await persistProfileUser(authClient.updateUser, {
+        searchRadiusKm: radiusKm
+      })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
       void queryClient.invalidateQueries({
         queryKey: trpc.recommendations.get.queryKey()
@@ -304,12 +324,20 @@ function ProfilePage() {
         nameInput={nameInput}
         uploadingImage={uploadingImage}
         imageError={imageError}
-        onNameInputChange={setNameInput}
+        nameError={nameError}
+        onNameInputChange={(value) => {
+          setNameError(null)
+          setNameInput(value)
+        }}
         onStartEditingName={() => {
           setNameInput(user?.name ?? '')
+          setNameError(null)
           setEditingName(true)
         }}
-        onCancelEditingName={() => setEditingName(false)}
+        onCancelEditingName={() => {
+          setNameError(null)
+          setEditingName(false)
+        }}
         onSaveName={() => void handleSaveName()}
         onChooseImage={() => fileInputRef.current?.click()}
       />

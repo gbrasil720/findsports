@@ -1,6 +1,8 @@
-import { expect, mock, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { afterAll, expect, mock, test } from 'bun:test'
+import { eq, inArray } from '@findsports_oficial/db'
+import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import type { Context } from '../context'
 
@@ -13,23 +15,7 @@ import type { Context } from '../context'
  * e-mail continua saindo só no caso `valid`, e um convite vencido pode ser
  * reemitido pela própria pessoa — sem que isso aprove ninguém.
  */
-function isClearlyDisposableDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    const database = parsed.pathname.replace(/^\//, '')
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      /(test|testing|tmp|temp|disposable|ci)/i.test(database)
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isClearlyDisposableDatabase(process.env.DATABASE_URL)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 const envios: { kind: string; to: string; url: string }[] = []
 let falharEnvio = false
@@ -55,8 +41,16 @@ function mockarEnvioDeEmail() {
 const contextoPublico = {
   auth: null,
   session: null,
-  clientIp: '127.0.0.1'
+  clientIp: `invite-test-${crypto.randomUUID()}`
 } as unknown as Context
+
+const rateLimitKeys = [`waitlist:invite-resend-ip:${contextoPublico.clientIp}`]
+
+afterAll(async () => {
+  if (!isDisposableTestDatabase()) return
+  const { db } = await import('@findsports_oficial/db')
+  await db.delete(rateLimit).where(inArray(rateLimit.key, rateLimitKeys))
+})
 
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 
@@ -69,6 +63,7 @@ async function prepararConvite(
   ])
   const email = `invite-${crypto.randomUUID()}@integration.invalid`
   const invite = await createWaitlistToken()
+  rateLimitKeys.push(`waitlist:invite-resend:${invite.hash}`)
   await db.insert(waitlistEntries).values({
     email,
     role: 'fan',

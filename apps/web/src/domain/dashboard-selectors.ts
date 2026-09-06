@@ -92,20 +92,6 @@ function getNextEvent(bar: DiscoveryBar): SearchBar['nextEvent'] | undefined {
   return 'nextEvent' in bar ? bar.nextEvent : undefined
 }
 
-export function sortDiscoveryBars(bars: DiscoveryBar[]): DiscoveryBar[] {
-  return [...bars].sort((first, second) => {
-    const firstEvent = getNextEvent(first)
-    const secondEvent = getNextEvent(second)
-    if (firstEvent && !secondEvent) return -1
-    if (!firstEvent && secondEvent) return 1
-    if (!firstEvent || !secondEvent) return 0
-    return (
-      new Date(firstEvent.startsAt).getTime() -
-      new Date(secondEvent.startsAt).getTime()
-    )
-  })
-}
-
 export function filterDiscoveryBars({
   bars,
   favoriteIds,
@@ -156,7 +142,8 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
         lat,
         lng,
         accent:
-          nextEvent && getEventTemporalState(nextEvent.startsAt) === 'live'
+          nextEvent &&
+          getEventTemporalState(nextEvent.startsAt, null) === 'live'
             ? 'live'
             : plan === 'pro' || plan === 'elite'
               ? 'acid'

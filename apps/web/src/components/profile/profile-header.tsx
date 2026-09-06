@@ -14,6 +14,7 @@ type Props = {
   nameInput: string
   uploadingImage: boolean
   imageError: string | null
+  nameError: string | null
   onNameInputChange: (value: string) => void
   onStartEditingName: () => void
   onCancelEditingName: () => void
@@ -29,6 +30,7 @@ export function ProfileHeader({
   nameInput,
   uploadingImage,
   imageError,
+  nameError,
   onNameInputChange,
   onStartEditingName,
   onCancelEditingName,
@@ -75,6 +77,8 @@ export function ProfileHeader({
             <div className="mb-1 flex items-center gap-2">
               <input
                 value={nameInput}
+                aria-invalid={nameError ? true : undefined}
+                aria-describedby={nameError ? 'profile-name-error' : undefined}
                 onChange={(event) => onNameInputChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') onSaveName()
@@ -101,6 +105,15 @@ export function ProfileHeader({
               {user?.name}
             </h1>
           )}
+          {nameError ? (
+            <p
+              id="profile-name-error"
+              className="mb-2 text-[var(--onside-acid)] text-xs"
+              role="alert"
+            >
+              {nameError}
+            </p>
+          ) : null}
           <p className="text-[var(--onside-paper)]/80 text-sm">{user?.email}</p>
           {memberSince ? (
             <p className="mt-1 flex items-center gap-1 text-[var(--onside-paper)]/60 text-xs">

@@ -52,7 +52,8 @@ function TeamCrest({
 export function HeroEventCard({ event, fromSearch }: Props) {
   // ESC-17: só este cartão re-renderiza na virada do minuto.
   const now = useMinuteNow()
-  const isLive = getEventTemporalState(event.startsAt, now) === 'live'
+  const isLive =
+    getEventTemporalState(event.startsAt, event.endsAt, now) === 'live'
   const teams = event.participants
     .map((item) => item.team)
     .filter((team): team is NonNullable<typeof team> => Boolean(team))

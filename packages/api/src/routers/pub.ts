@@ -1,10 +1,11 @@
 import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
-import { db, eq, sql } from '@findsports_oficial/db'
+import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
 import {
   bar,
   event,
   eventParticipants,
-  subscription
+  subscription,
+  team
 } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
@@ -102,6 +103,29 @@ export function resolveEventEndsAt(
 ): Date | null | undefined {
   if (input === undefined) return undefined
   return input === null ? null : new Date(input)
+}
+
+type EventTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+async function assertTeamsMatchSport(
+  tx: EventTransaction,
+  sportId: string,
+  participantIds: string[]
+): Promise<void> {
+  const uniqueIds = [...new Set(participantIds)]
+  if (uniqueIds.length === 0) return
+
+  const matching = await tx
+    .select({ id: team.id })
+    .from(team)
+    .where(and(eq(team.sportId, sportId), inArray(team.id, uniqueIds)))
+
+  if (matching.length !== uniqueIds.length) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Todos os times devem pertencer ao esporte do evento.'
+    })
+  }
 }
 
 async function getBarByUserId(userId: string) {
@@ -409,6 +433,12 @@ export const pubRouter = router({
           })
         }
 
+        await assertTeamsMatchSport(
+          tx,
+          input.sportId,
+          input.participantIds ?? []
+        )
+
         const [newEvent] = await tx
           .insert(event)
           .values({
@@ -484,6 +514,10 @@ export const pubRouter = router({
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
       const resolvedEndsAt = resolveEventEndsAt(input.endsAt)
+      const effectiveSportId = input.sportId ?? existingEvent.sportId
+      const sportChanged = effectiveSportId !== existingEvent.sportId
+      const participantIds =
+        input.participantIds ?? (sportChanged ? [] : undefined)
 
       assertEventIntervalValid(
         input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
@@ -491,6 +525,8 @@ export const pubRouter = router({
       )
 
       await db.transaction(async (tx) => {
+        await assertTeamsMatchSport(tx, effectiveSportId, participantIds ?? [])
+
         await tx
           .update(event)
           .set({
@@ -504,16 +540,16 @@ export const pubRouter = router({
           })
           .where(eq(event.id, input.eventId))
 
-        if (input.participantIds !== undefined) {
+        if (participantIds !== undefined) {
           await tx
             .delete(eventParticipants)
             .where(eq(eventParticipants.eventId, input.eventId))
 
-          if (input.participantIds.length > 0) {
+          if (participantIds.length > 0) {
             await tx
               .insert(eventParticipants)
               .values(
-                input.participantIds.map((teamId) => ({
+                participantIds.map((teamId) => ({
                   eventId: input.eventId,
                   teamId
                 }))

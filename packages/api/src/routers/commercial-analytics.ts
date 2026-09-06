@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { adminProcedure, protectedProcedure, router } from '../index'
 import {
   COMMERCIAL_EVENT_TYPES,
+  COMMERCIAL_TIME_ZONE,
   canViewEventType,
   getAnalyticsEntitlements,
   getMyAnalyticsOverview,
@@ -13,10 +14,97 @@ import {
   runAnalyticsRetention
 } from '../lib/commercial-analytics'
 
-const dateSchema = z
+const DAY_MS = 24 * 60 * 60 * 1000
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+const dateTimeParts = new Intl.DateTimeFormat('en-CA', {
+  timeZone: COMMERCIAL_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23'
+})
+
+export const analyticsDateSchema = z
   .string()
-  .datetime()
-  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+  .datetime({ offset: true })
+  .or(z.string().date())
+
+function startOfCommercialDay(date: string): Date {
+  const [year, month, day] = date.split('-').map(Number) as [
+    number,
+    number,
+    number
+  ]
+  const target = Date.UTC(year, month - 1, day)
+  let instant = target
+
+  // Duas passagens resolvem o deslocamento IANA sem fixar UTC-3 e continuam
+  // corretas se a regra de horário de verão de São Paulo mudar no futuro.
+  for (let pass = 0; pass < 2; pass += 1) {
+    const parts = Object.fromEntries(
+      dateTimeParts
+        .formatToParts(new Date(instant))
+        .filter((part) => part.type !== 'literal')
+        .map((part) => [part.type, Number(part.value)])
+    )
+    if (
+      parts.year === undefined ||
+      parts.month === undefined ||
+      parts.day === undefined ||
+      parts.hour === undefined ||
+      parts.minute === undefined ||
+      parts.second === undefined
+    ) {
+      throw new Error('Intl não retornou uma data comercial completa')
+    }
+    const observed = Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      parts.second
+    )
+    instant += target - observed
+  }
+
+  return new Date(instant)
+}
+
+function nextDate(date: string): string {
+  const next = new Date(`${date}T00:00:00.000Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  return next.toISOString().slice(0, 10)
+}
+
+export function parseAnalyticsRange(input: { from: string; to: string }): {
+  from: Date
+  to: Date
+  periodDays: number
+} {
+  const from = DATE_ONLY_PATTERN.test(input.from)
+    ? startOfCommercialDay(input.from)
+    : new Date(input.from)
+  const to = DATE_ONLY_PATTERN.test(input.to)
+    ? new Date(startOfCommercialDay(nextDate(input.to)).getTime() - 1)
+    : new Date(input.to)
+
+  if (from.getTime() > to.getTime()) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'O início do período deve ser anterior ao fim.'
+    })
+  }
+
+  return {
+    from,
+    to,
+    periodDays: Math.max(1, Math.ceil((to.getTime() - from.getTime()) / DAY_MS))
+  }
+}
 
 export const commercialAnalyticsRouter = router({
   /**
@@ -43,8 +131,8 @@ export const commercialAnalyticsRouter = router({
   getMyAnalyticsOverview: protectedProcedure
     .input(
       z.object({
-        from: dateSchema,
-        to: dateSchema
+        from: analyticsDateSchema,
+        to: analyticsDateSchema
       })
     )
     .query(async ({ ctx, input }) => {
@@ -67,11 +155,7 @@ export const commercialAnalyticsRouter = router({
         })
       }
 
-      const from = new Date(input.from)
-      const to = new Date(input.to)
-      const periodDays = Math.ceil(
-        (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)
-      )
+      const { from, to, periodDays } = parseAnalyticsRange(input)
 
       if (
         entitlements.maxDaysRetention !== null &&
@@ -150,8 +234,8 @@ export const commercialAnalyticsRouter = router({
   getMyEventAnalytics: protectedProcedure
     .input(
       z.object({
-        from: dateSchema,
-        to: dateSchema
+        from: analyticsDateSchema,
+        to: analyticsDateSchema
       })
     )
     .query(async ({ ctx, input }) => {
@@ -174,11 +258,7 @@ export const commercialAnalyticsRouter = router({
         })
       }
 
-      const from = new Date(input.from)
-      const to = new Date(input.to)
-      const periodDays = Math.ceil(
-        (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)
-      )
+      const { from, to, periodDays } = parseAnalyticsRange(input)
 
       if (
         entitlements.maxDaysRetention !== null &&
