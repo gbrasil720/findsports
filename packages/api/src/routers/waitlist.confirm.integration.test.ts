@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'bun:test'
+import { eq } from '@findsports_oficial/db'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
-import { eq } from 'drizzle-orm'
 
 import type { Context } from '../context'
 

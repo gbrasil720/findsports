@@ -25,7 +25,6 @@
     "@findsports_oficial/env": "workspace:*",
     "@trpc/server": "catalog:",
     "@upstash/redis": "^1.35.3",
-    "drizzle-orm": "^0.45.1",
     "zod": "catalog:"
   },
   "devDependencies": {

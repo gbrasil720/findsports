@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray } from '@findsports_oficial/db'
 
 function isDisposableLoadDatabase(url: string | undefined): boolean {
   if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false

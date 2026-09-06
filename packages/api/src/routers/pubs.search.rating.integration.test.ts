@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -6,7 +7,6 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
-import { inArray } from 'drizzle-orm'
 
 /**
  * O modo "melhor avaliados" tem três decisões que quebram em silêncio:

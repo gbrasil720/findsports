@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
+import { inArray } from '@findsports_oficial/db'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
-import { inArray } from 'drizzle-orm'
 
 /**
  * A decisão do portão é pura e está travada em `waitlist-gate.test.ts`. O que

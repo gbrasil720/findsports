@@ -86,4 +86,13 @@ export function createHttpDb() {
 }
 
 export const db = createDb()
-export { and, count, eq, gte, isNull, sql } from 'drizzle-orm'
+export {
+  and,
+  count,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  type SQL,
+  sql
+} from 'drizzle-orm'

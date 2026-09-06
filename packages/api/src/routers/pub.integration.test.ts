@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -6,7 +7,6 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
-import { eq } from 'drizzle-orm'
 
 function isClearlyDisposableDatabase(url: string | undefined): boolean {
   if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
