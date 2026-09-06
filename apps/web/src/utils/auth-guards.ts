@@ -31,7 +31,10 @@ const AUTHENTICATED_PREFIXES = [
   '/dashboard',
   '/admin',
   '/plan',
-  '/internal'
+  '/internal',
+  // O onboarding de torcedor chama `pubs.getSports` e `onboarding.completeFan`,
+  // ambos protegidos — visitante precisa criar sessão antes de entrar.
+  '/onboarding/fan'
 ] as const
 
 export function requiresAuthentication(pathname: string) {
@@ -46,7 +49,8 @@ export function applyAuthGuards(
   search: Record<string, unknown> = {}
 ) {
   // Unknown URLs stay public so the 404 page can render for visitors.
-  // /onboarding remains reachable without a session — existing behavior.
+  // /onboarding/pub stays public — o rascunho pré-cadastro depende do fluxo
+  // de verificação de e-mail, que precisa funcionar antes da sessão existir.
   if (!session && requiresAuthentication(pathname)) {
     throw redirect({ to: '/login' })
   }

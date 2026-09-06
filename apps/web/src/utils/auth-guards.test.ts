@@ -44,15 +44,16 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/plan')).toBe(true)
     expect(requiresAuthentication('/internal')).toBe(true)
     expect(requiresAuthentication('/internal/waitlist')).toBe(true)
+    expect(requiresAuthentication('/onboarding/fan')).toBe(true)
   })
 
-  test('leaves marketing, auth, pubs, onboarding and unknown URLs public', () => {
+  test('leaves marketing, auth, pubs, pub onboarding and unknown URLs public', () => {
     expect(requiresAuthentication('/')).toBe(false)
     expect(requiresAuthentication('/login')).toBe(false)
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
     expect(requiresAuthentication('/verify-email')).toBe(false)
-    expect(requiresAuthentication('/onboarding/fan')).toBe(false)
+    expect(requiresAuthentication('/onboarding/pub')).toBe(false)
     expect(requiresAuthentication('/pagina-que-nao-existe')).toBe(false)
     expect(requiresAuthentication('/api/trpc/pubs.list')).toBe(false)
   })
@@ -68,8 +69,40 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(null, '/pagina-que-nao-existe')).not.toThrow()
   })
 
-  test('keeps onboarding reachable without a session', () => {
-    expect(() => applyAuthGuards(null, '/onboarding/fan')).not.toThrow()
+  test('sends visitors from fan onboarding to login', () => {
+    expect(() => applyAuthGuards(null, '/onboarding/fan')).toThrow()
+  })
+
+  test('keeps pub onboarding reachable without a session', () => {
+    expect(() => applyAuthGuards(null, '/onboarding/pub')).not.toThrow()
+  })
+
+  test('mantém o torcedor logado no onboarding do fan enquanto não conclui', () => {
+    expect(() =>
+      applyAuthGuards(session('fan', false), '/onboarding/fan')
+    ).not.toThrow()
+  })
+
+  test('encaminha o pub logado sem onboarding para o onboarding do pub', () => {
+    try {
+      applyAuthGuards(session('pub', false), '/onboarding/fan')
+      throw new Error('pub deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/onboarding/pub'
+      )
+    }
+  })
+
+  test('desvia da rota de onboarding quem já concluiu', () => {
+    try {
+      applyAuthGuards(session('fan'), '/onboarding/fan')
+      throw new Error('fan pronto deveria sair do onboarding')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/dashboard'
+      )
+    }
   })
 
   test('sends unfinished fans to fan onboarding', () => {
