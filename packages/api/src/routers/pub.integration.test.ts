@@ -7,24 +7,9 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
-function isClearlyDisposableDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    const database = parsed.pathname.replace(/^\//, '')
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      /(test|testing|tmp|temp|disposable|ci)/i.test(database)
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isClearlyDisposableDatabase(process.env.DATABASE_URL)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 integrationTest(
   'serializes concurrent Starter creates at the five-event limit',

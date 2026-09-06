@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import { inArray } from '@findsports_oficial/db'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 /**
  * A decisão do portão é pura e está travada em `waitlist-gate.test.ts`. O que
@@ -8,23 +9,7 @@ import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
  * sentidos: dizer "aprovado" para quem não é abre a porta; negar quem foi
  * aprovado quebra o convite. Login e papel não fazem parte desta consulta.
  */
-function isClearlyDisposableDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    const database = parsed.pathname.replace(/^\//, '')
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      /(test|testing|tmp|temp|disposable|ci)/i.test(database)
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isClearlyDisposableDatabase(process.env.DATABASE_URL)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 integrationTest(
   'a consulta do portão distingue aprovado, pendente e desconhecido',

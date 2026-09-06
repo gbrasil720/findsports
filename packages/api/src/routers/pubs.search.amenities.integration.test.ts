@@ -7,6 +7,7 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 /**
  * O filtro de características é um `@>` — "contém todos" — e portanto tem
@@ -21,23 +22,7 @@ import {
  *   2. o filtro tem de valer nos DOIS caminhos da busca, e o de emergência
  *      é o que ninguém exercita até o dia em que é ligado.
  */
-function isClearlyDisposableDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    const database = parsed.pathname.replace(/^\//, '')
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      /(test|testing|tmp|temp|disposable|ci)/i.test(database)
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isClearlyDisposableDatabase(process.env.DATABASE_URL)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 /** Longe de qualquer bar de seed ou de outro teste. */
 const ORIGIN_LAT = -33.25

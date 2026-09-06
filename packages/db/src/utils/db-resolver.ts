@@ -162,3 +162,25 @@ export function resolveAndValidateDatabaseUrl(): {
     summary: sanitizeUrl(url)
   }
 }
+
+/** Opt in only for the same disposable target that createDb actually resolves. */
+export function isDisposableTestDatabase(): boolean {
+  if (
+    process.env.NODE_ENV !== 'test' ||
+    process.env.RUN_DISPOSABLE_DB_TESTS !== '1'
+  ) {
+    return false
+  }
+
+  try {
+    // In test mode the resolver rejects remote hosts and permits the load-test
+    // database only through LOAD_TEST_DATABASE_URL, never through DATABASE_URL.
+    const url = new URL(resolveDatabaseUrl())
+    return (
+      ['postgres:', 'postgresql:'].includes(url.protocol) &&
+      url.pathname === '/findsports_load_test'
+    )
+  } catch {
+    return false
+  }
+}

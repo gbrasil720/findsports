@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import type { Context } from '../context'
 
@@ -13,23 +14,7 @@ import type { Context } from '../context'
  * e-mail continua saindo só no caso `valid`, e um convite vencido pode ser
  * reemitido pela própria pessoa — sem que isso aprove ninguém.
  */
-function isClearlyDisposableDatabase(url: string | undefined): boolean {
-  if (!url || process.env.RUN_DISPOSABLE_DB_TESTS !== '1') return false
-  try {
-    const parsed = new URL(url)
-    const database = parsed.pathname.replace(/^\//, '')
-    return (
-      ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname) &&
-      /(test|testing|tmp|temp|disposable|ci)/i.test(database)
-    )
-  } catch {
-    return false
-  }
-}
-
-const integrationTest = isClearlyDisposableDatabase(process.env.DATABASE_URL)
-  ? test
-  : test.skip
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 const envios: { kind: string; to: string; url: string }[] = []
 let falharEnvio = false
