@@ -6,6 +6,7 @@
     "build": "vite build",
     "build:vercel": "bun --cwd ../.. run db:migrate:deploy && vite build && bun scripts/build-vercel.mjs",
     "check-types": "tsc --noEmit",
+    "test": "bun test --preload=../../test-env.preload.ts",
     "serve": "vite preview",
     "dev": "vite dev",
     "dev:load-test": "NODE_ENV=test LOAD_TEST_DATABASE_URL=postgres://findsports_load_test:findsports_load_test_local@localhost:5433/findsports_load_test vite dev --port 3101 --strictPort --host 0.0.0.0"

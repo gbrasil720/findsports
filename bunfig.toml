@@ -1,0 +1,9 @@
+# Carrega .env.test (raiz) antes de qualquer arquivo de teste, para que a suíte
+# inteira importe sem segredos de produção (WEB-24).
+#
+# IMPORTANTE: o `preload` do bunfig só vale quando o cwd é a raiz (bun não
+# descobre este arquivo subindo a árvore a partir de apps/*/packages/*). Por isso
+# os scripts `test` de cada pacote passam `--preload=../../test-env.preload.ts`
+# explicitamente — mantenha os dois alinhados.
+[test]
+preload = ["./test-env.preload.ts"]

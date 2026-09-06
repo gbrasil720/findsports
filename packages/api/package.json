@@ -16,7 +16,8 @@
     }
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "bun test --preload=../../test-env.preload.ts"
   },
   "dependencies": {
     "@findsports_oficial/auth": "workspace:*",

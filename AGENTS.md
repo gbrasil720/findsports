@@ -17,6 +17,7 @@ bun run dev:web      # web only
 bun run build        # full build
 bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
+bun run test         # full test suite from repo root (env fake: raiz .env.test via bunfig preload)
 
 bun run db:push      # push schema to DB (no migration files)
 bun run db:generate  # generate migration files
