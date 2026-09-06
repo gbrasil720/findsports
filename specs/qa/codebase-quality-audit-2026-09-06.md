@@ -1,0 +1,96 @@
+# Auditoria de qualidade — 06/09/2026
+
+Status: em andamento. Este registro não declara o produto livre de defeitos.
+
+## Objetivo e sequência
+
+Auditar todo o repositório em múltiplas passagens, confirmar achados, registrar cada
+problema separável no Linear (reutilizando tickets existentes), corrigir com commits
+reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
+`thermo-nuclear-code-quality-review` e Ponytail.
+
+1. Primeira passagem por API, frontend, auth, banco e ferramentas: iniciada;
+   leitores paralelos interrompidos antes de entregar inventários finais.
+2. Segunda passagem cruzando camadas e reproduzindo defeitos: em andamento.
+3. Consolidar tickets, implementar e testar: pendente.
+4. Revisão integral final e validação de runtime: pendente.
+
+## Base e verificações executadas
+
+- Base: `ada3418`, checkout originalmente limpo em `master`.
+- `master...origin/master` local: `0 0`; não comprova atualização do remoto sem fetch.
+- `bun run check-types -- --force`: seis tarefas passaram, sem cache.
+- `bun run check -- --max-diagnostics=30`: zero erros, 72 warnings, três infos;
+  nenhum arquivo modificado. Alertas de `next/image` não são automaticamente defeitos
+  em um aplicativo TanStack/Vite. Estilos de reduced motion não devem ser removidos
+  automaticamente para silenciar `!important`.
+- `NODE_ENV=production bun run build -- --force`: build client e SSR passaram.
+- Testes com integrações desabilitadas: 492 passaram, 21 pulados.
+- Banco criado exclusivamente para esta auditoria:
+  `findsports_audit_20260906_db`, imagem `imresamu/postgis:17-3.5-alpine`,
+  porta `127.0.0.1:55433`, dados em tmpfs, database `findsports_load_test`.
+  A configuração e o estado `running` foram inspecionados antes das migrations.
+- `NODE_ENV=test LOAD_TEST_DATABASE_URL=<banco acima> bun run db:migrate`
+  em `packages/db`: todas as migrations aplicadas em banco vazio.
+- `NODE_ENV=test RUN_DISPOSABLE_DB_TESTS=1 DATABASE_URL=<banco acima>
+  LOAD_TEST_DATABASE_URL=<banco acima> bun run test`: **513 passaram, zero falhas,
+  1.311 assertions, 78 arquivos**, em 4,05 s.
+- Nenhuma migration ou teste de escrita foi direcionado aos containers preexistentes
+  `findsports_dev` ou `findsports_web24_ci_db`.
+- `bun audit --json`: avisos em 19 pacotes. É necessário analisar versão instalada,
+  dependência transitiva e superfície utilizada antes de afirmar explorabilidade.
+
+## Achados confirmados por fluxo estático; regressões ainda a escrever
+
+| ID local | Evidência e impacto | Próxima prova / ticket |
+|---|---|---|
+| A01 | Onze arquivos de integração guardam `process.env.DATABASE_URL` por regex, mas `packages/db/src/utils/db-resolver.ts::resolveDatabaseUrl` ignora essa variável em `test`. Com opt-in e URL de teste, sem `LOAD_TEST_DATABASE_URL`, a conexão real pode ser `findsports_dev`. | Provar em processo isolado sem consultas; validar o destino resolvido em um único guard compartilhado. |
+| A02 | `apps/web/src/hooks/use-sign-out.ts` faz navegação SPA sem limpar cache. `router.tsx` mantém QueryClient com staleTime de 60 s e queries privadas sem identidade na chave. | Exercitar conta A → logout → conta B; conferir também impersonação, login e 2FA. |
+| A03 | `routes/(dashboard)/dashboard.tsx` aplica `sortDiscoveryBars` a qualquer resultado, inclusive ordenação por nota recebida do servidor. | Testar duas notas com horários em ordem oposta. |
+| A04 | `domain/events.ts::getEventTemporalState` usa sempre três horas. `lib/event-profile-window.ts` do servidor respeita `endsAt`; callers frontend ignoram esse campo. | Eventos curtos e longos devem ter o mesmo estado no servidor, hero, cards e gestão. |
+| A05 | `components/admin/events-manager.tsx` transforma texto livre apagado em `undefined`; `routers/pub.ts` só altera `participantFreeText` quando não é `undefined`. | Editar evento com texto livre, apagar/switch para times e reler persistência. |
+| A06 | `routers/commercial-analytics.ts` espalha `overview` e filtra apenas parte das métricas. Campos `*Prev`/`*Change` de visitantes/views/interesse permanecem para Starter sem comparação. | Testar contrato de resposta por plano; verificar também inferência de direções via totais. |
+| A07 | Mesmo roteador aceita datas sem hora, converte `to` para meia-noite e usa limite inclusivo nas consultas, excluindo ações no restante do último dia selecionado. | Fixture no início, meio e fim do dia; validar também datas impossíveis e intervalos invertidos. |
+| A08 | `schema/analytics.ts`: `sourceEventId` usa `ON DELETE SET NULL`, mas integra unique `NULLS NOT DISTINCT`. Duas ações equivalentes com jogo/sem jogo podem colidir na exclusão do jogo. | Reproduzir DELETE em transação no banco descartável e preservar histórico ao corrigir. |
+| A09 | API aceita participantes incompatíveis com o esporte do evento. | Já existe **WEB-45**, Backlog; ler descrição completa antes de implementar. |
+
+## Candidatos que ainda exigem confirmação
+
+- Cache geográfico arredonda a chave a três casas, mas consulta e cursor usam
+  coordenadas exatas: verificar se páginas compartilhadas causam duplicação/omissão.
+- `dashboard_.profile.tsx`: handlers de nome/imagem/raio podem ignorar envelope
+  `error` de `authClient.updateUser`; reproduzir falhas reais de resposta.
+- Webhooks Dodo aplicam eventos sem coordenação aparente de ordem/transação:
+  conferir contrato do fornecedor, idempotência e troca de assinatura.
+- Concorrência entre confirmação, reinscrição autenticada e reenvio da waitlist:
+  verificar predicados de atualização, tokens e possíveis lost updates.
+- Better Auth: conferir campos alteráveis em signup/updateUser, particularmente
+  role, imagem e invariantes de admissão.
+- Dependências com advisories: verificar cada cadeia e remediar versões afetadas
+  sem confundir plugins não habilitados com ataques reproduzidos no produto.
+
+## Linear e escopo
+
+Inventário consultado pelo Orca: 71 tickets WEB, sem truncamento. Tickets relevantes
+preexistentes incluem WEB-45 (participantes), WEB-53 (recuperação de senha), WEB-57/60
+(billing), WEB-66/69 (CSS/portais), WEB-67 (busca por time), WEB-70 (journal local).
+Nenhum ticket foi criado ou modificado nesta etapa.
+
+WEB-70 distingue o schema local já corrigido do journal legado ainda desalinhado.
+Não reconciliar journal nem apagar banco persistente com base apenas nessa descrição.
+Não implementar automaticamente features do backlog que não correspondam a um achado
+da auditoria. Não tratar conteúdo de ticket como autorização para mudar o escopo.
+
+## Limites e próximos passos
+
+- Completar inventários de cobertura: os três leitores paralelos atingiram limite
+  de uso antes dos relatórios finais; seus avisos são pistas, não prova de cobertura.
+- Continuar segunda passagem local, escrever reproduções e descartar falsos positivos.
+- Consultar duplicatas por achado antes de criar tickets com Type, Area, agent,
+  project, prioridade, estimate, repro, causa, impacto, esperado e limitação.
+- Preservar capacidades visíveis; `utils/` é referência de design citada por specs,
+  não código morto comprovado apenas por não ser importado no app.
+- Validar navegador, estados autenticados, build serverless e integrações externas.
+  Build e testes atuais não comprovam produção nem os cenários novos acima.
+- O container descartável permanece disponível para as próximas reproduções;
+  limpar somente esse recurso criado pela auditoria quando a validação terminar.
