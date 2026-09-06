@@ -5,6 +5,7 @@ import {
   subscription,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -66,7 +67,7 @@ export const onboardingRouter = router({
         })
       }
 
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY
+      const apiKey = env.GOOGLE_MAPS_API_KEY
       if (!apiKey) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',

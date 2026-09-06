@@ -15,6 +15,7 @@ export const env = createEnv({
       .string()
       .regex(/^[a-zA-Z0-9_-]+$/, 'BLOB_STORE_ID inválido')
       .optional(),
+    GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
     LAUNCH_ADMISSION_MODE: z
       .enum(['open', 'invite-only'])
       .default('invite-only'),
