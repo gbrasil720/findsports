@@ -235,3 +235,100 @@ integrationTest(
     }
   }
 )
+
+/**
+ * WEB-55: entrar autenticado não invalidava a confirmação pendente — o link
+ * antigo continuava válido e, aberto depois, reaplicava os `pending_*` do
+ * formulário anônimo por cima da inscrição autenticada.
+ */
+integrationTest(
+  'join autenticado encerra a confirmação pendente e o link antigo não reverte',
+  async () => {
+    mockarEnvioDeEmail()
+    // Sem tocar no rate limit compartilhado: cada execução de `join`
+    // incrementaria `waitlist:ip:127.0.0.1` no banco de dev e envenenaria as
+    // janelas dos demais testes de integração.
+    mock.module('../lib/waitlist-rate-limit', () => ({
+      consumirLimitesWaitlist: async () => ({
+        allowed: true,
+        retryAfterMs: 0,
+        count: 0
+      })
+    }))
+    const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('./index'),
+      import('../lib/waitlist-workflow')
+    ])
+
+    const email = `revert-${crypto.randomUUID()}@integration.invalid`
+    const confirmation = await createWaitlistToken()
+
+    // Estado pré-existente: inscrição feita por formulário anônimo, com o
+    // link de confirmação ainda válido apontando para os `pending_*`.
+    await db.insert(waitlistEntries).values({
+      email,
+      role: 'fan',
+      city: 'Cidade antiga',
+      pendingRole: 'fan',
+      pendingCity: 'Cidade antiga',
+      pendingPhone: '11999999999',
+      confirmationTokenHash: confirmation.hash,
+      confirmationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    })
+
+    const caller = appRouter.createCaller({
+      auth: null,
+      clientIp: '127.0.0.1',
+      session: {
+        session: { id: 's', userId: 'u', token: 't' },
+        user: {
+          id: 'u',
+          email,
+          emailVerified: true,
+          role: 'pub',
+          onboardingCompleted: true,
+          searchRadiusKm: 3,
+          twoFactorEnabled: false
+        }
+      }
+    } as unknown as Context)
+
+    try {
+      const autenticada = await caller.waitlist.join({
+        role: 'pub',
+        email,
+        city: 'Cidade nova',
+        pubName: 'Bar da nova'
+      })
+      expect(autenticada.status).toBe('confirmed')
+
+      // A inscrição autenticada valeu e a confirmação pendente morreu junto.
+      const apósJoin = await lerInscrição(email)
+      expect(apósJoin.role).toBe('pub')
+      expect(apósJoin.city).toBe('Cidade nova')
+      expect(apósJoin.pubName).toBe('Bar da nova')
+      expect(apósJoin.confirmedAt).not.toBeNull()
+      expect(apósJoin.confirmationTokenHash).toBeNull()
+      expect(apósJoin.confirmationExpiresAt).toBeNull()
+      expect(apósJoin.confirmationConsumedAt).toBeNull()
+      expect(apósJoin.pendingRole).toBeNull()
+      expect(apósJoin.pendingCity).toBeNull()
+      expect(apósJoin.pendingPhone).toBeNull()
+      expect(apósJoin.pendingPubName).toBeNull()
+
+      // O link antigo deixou de encontrar a linha: recusado, sem reverter.
+      const recusa = await caller.waitlist.confirm({
+        token: confirmation.token
+      })
+      expect(recusa.confirmed).toBe(false)
+      expect(recusa.confirmed === false && recusa.reason).toBe('invalid')
+
+      const final = await lerInscrição(email)
+      expect(final.role).toBe('pub')
+      expect(final.city).toBe('Cidade nova')
+    } finally {
+      await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+    }
+  }
+)
