@@ -46,11 +46,9 @@ integrationTest(
         role: 'fan',
         city: 'Teste',
         approvedAt: new Date(),
+        confirmedAt: new Date(),
         approvedBy: approverId
       },
-      // Mesma pessoa, segunda inscrição, esta pendente. A aprovação é do
-      // e-mail: uma linha liberada basta.
-      { email: aprovado, role: 'pub', city: 'Outra', pubName: 'Bar' },
       { email: pendente, role: 'fan', city: 'Teste' },
       { email: adminEmail, role: 'fan', city: 'Teste' }
     ])

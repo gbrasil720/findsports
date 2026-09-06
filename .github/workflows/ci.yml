@@ -8,11 +8,32 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://findsports_load_test:findsports_load_test_local@127.0.0.1:5432/findsports_load_test
+      LOAD_TEST_DATABASE_URL: postgres://findsports_load_test:findsports_load_test_local@127.0.0.1:5432/findsports_load_test
+      RUN_DISPOSABLE_DB_TESTS: "1"
+    services:
+      postgres:
+        image: imresamu/postgis:17-3.5-alpine
+        env:
+          POSTGRES_DB: findsports_load_test
+          POSTGRES_USER: findsports_load_test
+          POSTGRES_PASSWORD: findsports_load_test_local
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U findsports_load_test -d findsports_load_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.1
       - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+        working-directory: packages/db
       - run: bun run check-types
       - run: bun run test
