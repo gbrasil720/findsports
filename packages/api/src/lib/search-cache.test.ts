@@ -5,7 +5,7 @@ import { chaveBusca, chaveBuscaLocal } from './search-cache'
 const MODO = 'camadas' as const
 
 describe('chave de cache da busca', () => {
-  it('arredonda coordenadas para a mesma célula de ~110 m', () => {
+  it('separa coordenadas próximas quando distância e cursor mudam', () => {
     const a = chaveBusca({
       modo: MODO,
       lat: -23.55012,
@@ -20,7 +20,7 @@ describe('chave de cache da busca', () => {
       radiusKm: 3,
       limit: 20
     })
-    expect(a).toBe(b)
+    expect(a).not.toBe(b)
   })
 
   it('trata listas de características equivalentes como a mesma chave', () => {
@@ -79,7 +79,7 @@ describe('chave de cache da busca', () => {
     )
   })
 
-  it('busca só por localização também arredonda', () => {
+  it('busca só por localização também preserva a origem exata', () => {
     expect(
       chaveBuscaLocal({
         lat: -23.55012,
@@ -87,7 +87,7 @@ describe('chave de cache da busca', () => {
         radiusKm: 5,
         limit: 20
       })
-    ).toBe(
+    ).not.toBe(
       chaveBuscaLocal({
         lat: -23.55044,
         lng: -46.63349,

@@ -54,11 +54,10 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
 | A08 | `sourceEventId` usava `ON DELETE SET NULL`, mas integra unique `NULLS NOT DISTINCT`. A exclusão falhou no banco descartável quando já havia ação equivalente sem jogo; a transação deixou zero fixtures. | **WEB-85**: corrigido localmente removendo somente a FK; id/snapshots históricos, unique, índices e dados são preservados. |
 | A09 | API aceitava participantes incompatíveis com o esporte do evento e preservava os antigos ao trocar somente o esporte. | **WEB-45** reutilizado e corrigido localmente: create/update validam todos os IDs dentro da transação; troca sem lista explícita limpa os participantes. |
 | A10 | `recordCommercialEvent` derivava `commercialDay` em UTC, contrariando a spec `America/Sao_Paulo`; entre 21h e meia-noite local, deduplicação e rollup iam para o dia seguinte. | **WEB-84**: corrigido localmente com formatter IANA compartilhado; nenhuma correção retroativa de dados foi executada. |
+| A11 | `search-cache.ts` arredondava a origem a três casas, embora distância, ordenação e cursor fossem calculados com as coordenadas exatas. Usuários próximos podiam compartilhar uma página incompatível. | **WEB-86**: corrigido localmente preservando latitude e longitude exatas nas duas chaves de cache. |
 
 ## Candidatos que ainda exigem confirmação
 
-- Cache geográfico arredonda a chave a três casas, mas consulta e cursor usam
-  coordenadas exatas: verificar se páginas compartilhadas causam duplicação/omissão.
 - `dashboard_.profile.tsx`: handlers de nome/imagem/raio podem ignorar envelope
   `error` de `authClient.updateUser`; reproduzir falhas reais de resposta.
 - Webhooks Dodo aplicam eventos sem coordenação aparente de ordem/transação:
