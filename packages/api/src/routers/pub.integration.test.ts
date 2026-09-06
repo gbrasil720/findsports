@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
+import { barCommercialEvent } from '@findsports_oficial/db/schema/analytics'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -148,6 +149,7 @@ integrationTest(
       import('./index')
     ])
     const userId = crypto.randomUUID()
+    const fanId = crypto.randomUUID()
     const barId = crypto.randomUUID()
     const firstSportId = crypto.randomUUID()
     const secondSportId = crypto.randomUUID()
@@ -155,14 +157,24 @@ integrationTest(
     const secondTeamId = crypto.randomUUID()
     const now = new Date()
 
-    await db.insert(user).values({
-      id: userId,
-      name: 'Pub de integração',
-      email: `${userId}@integration.invalid`,
-      emailVerified: true,
-      role: 'pub',
-      onboardingCompleted: true
-    })
+    await db.insert(user).values([
+      {
+        id: userId,
+        name: 'Pub de integração',
+        email: `${userId}@integration.invalid`,
+        emailVerified: true,
+        role: 'pub',
+        onboardingCompleted: true
+      },
+      {
+        id: fanId,
+        name: 'Fan de integração',
+        email: `${fanId}@integration.invalid`,
+        emailVerified: true,
+        role: 'fan',
+        onboardingCompleted: true
+      }
+    ])
 
     try {
       await db.insert(sport).values([
@@ -259,8 +271,43 @@ integrationTest(
       })
       expect(changed?.sportId).toBe(secondSportId)
       expect(changed?.participants).toHaveLength(0)
+
+      const commercialDay = now.toISOString().slice(0, 10)
+      await db.insert(barCommercialEvent).values([
+        {
+          barId,
+          actorUserId: fanId,
+          type: 'profile_view',
+          occurredAt: now,
+          commercialDay
+        },
+        {
+          barId,
+          actorUserId: fanId,
+          type: 'profile_view',
+          sourceEventId: existingEvent.id,
+          sourceEventChampionship: 'Evento WEB-45',
+          sourceEventStartsAt: changed?.startsAt ?? now,
+          occurredAt: now,
+          commercialDay
+        }
+      ])
+      await expect(
+        caller.pub.deleteEvent({ eventId: existingEvent.id })
+      ).resolves.toEqual({ success: true })
+      expect(
+        await db.query.barCommercialEvent.findMany({
+          where: eq(barCommercialEvent.barId, barId),
+          columns: { sourceEventId: true }
+        })
+      ).toEqual(
+        expect.arrayContaining([
+          { sourceEventId: null },
+          { sourceEventId: existingEvent.id }
+        ])
+      )
     } finally {
-      await db.delete(user).where(eq(user.id, userId))
+      await db.delete(user).where(inArray(user.id, [userId, fanId]))
       await db
         .delete(sport)
         .where(inArray(sport.id, [firstSportId, secondSportId]))
