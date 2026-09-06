@@ -613,7 +613,9 @@ function AdminWaitlistPage() {
                                           : conviteExpirado
                                             ? 'Convite expirado'
                                             : 'Convite enviado'
-                                        : 'Pendente'}
+                                        : s.joinedError
+                                          ? 'Confirmado — falha no envio'
+                                          : 'Pendente'}
                             </span>
                             <button
                               type="button"
