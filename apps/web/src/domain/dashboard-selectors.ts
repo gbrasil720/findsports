@@ -21,12 +21,10 @@ export type DiscoveryCardBar = Pick<
   | 'longitude'
   | 'photo_url'
   | 'distance_km'
+  | 'plan'
 > &
   Partial<
-    Pick<
-      SearchBar,
-      'created_at' | 'plan' | 'event_count' | 'nextEvent' | 'rating'
-    >
+    Pick<SearchBar, 'created_at' | 'event_count' | 'nextEvent' | 'rating'>
   >
 export type Favorite = RouterOutputs['pubs']['getFavorites'][number]
 export type Sport = RouterOutputs['pubs']['getSports'][number]
@@ -149,7 +147,7 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
     const lng = Number.parseFloat(bar.longitude)
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return []
     const nextEvent = getNextEvent(bar)
-    const plan = 'plan' in bar ? bar.plan : 'starter'
+    const plan = bar.plan
 
     return [
       {

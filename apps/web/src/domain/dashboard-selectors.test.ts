@@ -121,6 +121,7 @@ describe('deriveDiscoveryResultState', () => {
       longitude: '-46.6',
       photo_url: null,
       created_at: '2026-08-01T00:00:00.000Z',
+      plan: 'starter' as const,
       distance_km: 1
     }
     expect(
@@ -228,5 +229,27 @@ describe('dashboard display selectors', () => {
         lng: bar.lng
       }))
     ).toEqual([{ id: 'live', accent: 'live', lat: -23.5, lng: -46.6 }])
+  })
+
+  test('keeps paid plan accents on fallback location bars (WEB-61)', () => {
+    expect(
+      toMapBars([
+        {
+          id: 'pro-location',
+          name: 'Bar pro',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          latitude: '-23.5',
+          longitude: '-46.6',
+          photo_url: null,
+          created_at: '2026-08-01T00:00:00.000Z',
+          plan: 'pro',
+          distance_km: 1
+        }
+      ]).map((bar) => ({
+        id: bar.id,
+        accent: bar.accent
+      }))
+    ).toEqual([{ id: 'pro-location', accent: 'acid' }])
   })
 })
