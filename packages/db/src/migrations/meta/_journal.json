@@ -190,6 +190,13 @@
       "when": 1788207260515,
       "tag": "0027_waitlist_confirmation_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788654221180,
+      "tag": "0028_event_ends_at_after_starts_at_check",
+      "breakpoints": true
     }
   ]
 }

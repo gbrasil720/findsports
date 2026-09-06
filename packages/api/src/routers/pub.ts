@@ -72,6 +72,24 @@ export function resolvePhoneAcceptsWhatsapp(
   return { value: inputAccepts, changed: true }
 }
 
+/**
+ * Enforce the event time invariant: an effective endsAt, when present, must
+ * be strictly after the effective startsAt. createEvent and updateEvent call
+ * this with the values that will actually be persisted, so the check runs
+ * even when only one of the two fields is sent in the mutation.
+ */
+export function assertEventIntervalValid(
+  effectiveStartsAt: Date,
+  effectiveEndsAt: Date | null | undefined
+): void {
+  if (effectiveEndsAt && effectiveEndsAt <= effectiveStartsAt) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'O horário de término deve ser posterior ao horário de início.'
+    })
+  }
+}
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
@@ -333,17 +351,10 @@ export const pubRouter = router({
         })
       }
 
-      if (input.endsAt) {
-        const starts = new Date(input.startsAt)
-        const ends = new Date(input.endsAt)
-        if (ends <= starts) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message:
-              'O horário de término deve ser posterior ao horário de início.'
-          })
-        }
-      }
+      assertEventIntervalValid(
+        new Date(input.startsAt),
+        input.endsAt ? new Date(input.endsAt) : null
+      )
 
       await db.transaction(async (tx) => {
         const [lockedBar] = await tx
@@ -456,18 +467,12 @@ export const pubRouter = router({
         })
       }
 
-      if (input.endsAt) {
-        const effectiveStartsAt = input.startsAt
-          ? new Date(input.startsAt)
-          : existingEvent.startsAt
-        if (new Date(input.endsAt) <= effectiveStartsAt) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message:
-              'O horário de término deve ser posterior ao horário de início.'
-          })
-        }
-      }
+      // WEB-43: compare the effective pair (input or persisted) on every update —
+      // changing only startsAt must not be able to push start past the saved end.
+      assertEventIntervalValid(
+        input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
+        input.endsAt ? new Date(input.endsAt) : existingEvent.endsAt
+      )
 
       await db.transaction(async (tx) => {
         await tx

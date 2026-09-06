@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
-import { resolvePhoneAcceptsWhatsapp } from './pub'
+import { assertEventIntervalValid, resolvePhoneAcceptsWhatsapp } from './pub'
 
 describe('resolvePhoneAcceptsWhatsapp', () => {
   // -----------------------------------------------------------------------
@@ -142,5 +142,35 @@ describe('resolvePhoneAcceptsWhatsapp', () => {
       '11999999999'
     )
     expect(result).toEqual({ value: true, changed: true })
+  })
+})
+
+describe('assertEventIntervalValid', () => {
+  const startsAt = new Date('2026-09-05T18:00:00Z')
+
+  it('accepts an endsAt strictly after startsAt', () => {
+    expect(() =>
+      assertEventIntervalValid(startsAt, new Date('2026-09-05T19:00:00Z'))
+    ).not.toThrow()
+  })
+
+  it('rejects an endsAt equal to startsAt', () => {
+    expect(() => assertEventIntervalValid(startsAt, startsAt)).toThrow(
+      TRPCError
+    )
+  })
+
+  it('rejects an endsAt before startsAt', () => {
+    expect(() =>
+      assertEventIntervalValid(startsAt, new Date('2026-09-05T17:00:00Z'))
+    ).toThrow(TRPCError)
+  })
+
+  it('accepts no endsAt (null)', () => {
+    expect(() => assertEventIntervalValid(startsAt, null)).not.toThrow()
+  })
+
+  it('accepts no endsAt (undefined)', () => {
+    expect(() => assertEventIntervalValid(startsAt, undefined)).not.toThrow()
   })
 })

@@ -148,3 +148,128 @@ integrationTest(
     }
   }
 )
+
+// WEB-43: updating only startsAt must not be able to push it past the
+// persisted endsAt — the effective pair is validated on every update.
+integrationTest(
+  'rejects moving startsAt past the persisted endsAt and keeps the row intact',
+  async () => {
+    const [{ db }, { appRouter }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('./index')
+    ])
+    const userId = crypto.randomUUID()
+    const barId = crypto.randomUUID()
+    const sportId = crypto.randomUUID()
+    const now = new Date()
+    const startsAt = new Date(now.getTime() + 86_400_000)
+    const endsAt = new Date(startsAt.getTime() + 3_600_000)
+
+    await db.insert(user).values({
+      id: userId,
+      name: 'Pub de integração',
+      email: `${userId}@integration.invalid`,
+      emailVerified: true,
+      role: 'pub',
+      onboardingCompleted: true
+    })
+
+    try {
+      await db.insert(sport).values({
+        id: sportId,
+        name: `Esporte ${sportId}`,
+        slug: `integration-${sportId}`
+      })
+      await db.insert(bar).values({
+        id: barId,
+        userId,
+        name: 'Pub de integração',
+        address: 'Rua descartável, 1',
+        neighborhood: 'Teste',
+        city: 'Teste',
+        latitude: '-23.55052000',
+        longitude: '-46.63330800',
+        isActive: true
+      })
+      const [existingEvent] = await db
+        .insert(event)
+        .values({
+          barId,
+          sportId,
+          championship: 'Evento WEB-43',
+          startsAt,
+          endsAt
+        })
+        .returning({ id: event.id })
+      if (!existingEvent) {
+        throw new Error('event insert returned no row')
+      }
+
+      const caller = appRouter.createCaller({
+        auth: null,
+        clientIp: '127.0.0.1',
+        session: {
+          session: {
+            id: crypto.randomUUID(),
+            token: crypto.randomUUID(),
+            userId,
+            createdAt: now,
+            updatedAt: now,
+            expiresAt: new Date(now.getTime() + 3_600_000),
+            ipAddress: null,
+            userAgent: null
+          },
+          user: {
+            id: userId,
+            name: 'Pub de integração',
+            email: `${userId}@integration.invalid`,
+            emailVerified: true,
+            image: null,
+            role: 'pub',
+            banned: false,
+            onboardingCompleted: true,
+            searchRadiusKm: 3,
+            twoFactorEnabled: false,
+            createdAt: now,
+            updatedAt: now
+          }
+        }
+      })
+
+      const pastTheEnd = new Date(endsAt.getTime() + 3_600_000).toISOString()
+      await expect(
+        caller.pub.updateEvent({
+          eventId: existingEvent.id,
+          startsAt: pastTheEnd
+        })
+      ).rejects.toThrow()
+
+      const untouched = await db.query.event.findFirst({
+        where: eq(event.id, existingEvent.id)
+      })
+      expect(untouched?.startsAt?.getTime()).toBe(startsAt.getTime())
+      expect(untouched?.endsAt?.getTime()).toBe(endsAt.getTime())
+
+      // Control: an update that keeps the interval valid still succeeds.
+      const withinTheRange = new Date(
+        startsAt.getTime() + 1_800_000
+      ).toISOString()
+      await expect(
+        caller.pub.updateEvent({
+          eventId: existingEvent.id,
+          startsAt: withinTheRange
+        })
+      ).resolves.toEqual({ success: true })
+      const moved = await db.query.event.findFirst({
+        where: eq(event.id, existingEvent.id)
+      })
+      expect(moved?.startsAt?.getTime()).toBe(
+        new Date(withinTheRange).getTime()
+      )
+      expect(moved?.endsAt?.getTime()).toBe(endsAt.getTime())
+    } finally {
+      await db.delete(user).where(eq(user.id, userId))
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
