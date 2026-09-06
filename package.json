@@ -37,10 +37,11 @@
     "db:seed:load-test": "turbo run db:seed:load-test --filter=@findsports_oficial/db",
     "db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
     "db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
-    "check": "biome check --write ."
+    "check": "biome check .",
+    "fix": "biome check --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
+    "@biomejs/biome": "^2.4.15",
     "@findsports_oficial/config": "workspace:*",
     "@types/node": "catalog:",
     "bun-types": "^1.3.14",
