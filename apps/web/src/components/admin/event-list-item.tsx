@@ -59,7 +59,7 @@ export function EventListItem({
   isDeleting
 }: Props) {
   const { date, time } = formatEventDate(e.startsAt)
-  const temporalState = getEventTemporalState(e.startsAt)
+  const temporalState = getEventTemporalState(e.startsAt, e.endsAt)
   const live = temporalState === 'live'
   const past = temporalState === 'past'
   const soon = !live && !past && isUpcomingSoon(e.startsAt)

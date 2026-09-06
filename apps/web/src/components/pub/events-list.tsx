@@ -113,7 +113,8 @@ export function EventsList({
               <ul className="space-y-2">
                 {group.events.map((event) => {
                   const live =
-                    getEventTemporalState(event.startsAt, now) === 'live'
+                    getEventTemporalState(event.startsAt, event.endsAt, now) ===
+                    'live'
 
                   return (
                     <li key={event.id} className="onside-event-row">

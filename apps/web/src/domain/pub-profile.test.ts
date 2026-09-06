@@ -75,6 +75,23 @@ describe('resolveHeroEvent', () => {
 
     expect(resolveHeroEvent([past], null, NOW)).toBeNull()
   })
+
+  it('respeita o fim informado ao escolher o destaque', () => {
+    const stillLive = makeEvent({
+      id: 'longo',
+      startsAt: new Date(NOW.getTime() - 4 * HOUR),
+      endsAt: new Date(NOW.getTime() + HOUR)
+    })
+    const alreadyOver = makeEvent({
+      id: 'curto',
+      startsAt: new Date(NOW.getTime() - HOUR),
+      endsAt: new Date(NOW.getTime() - 1)
+    })
+
+    expect(resolveHeroEvent([alreadyOver, stillLive], null, NOW)?.id).toBe(
+      'longo'
+    )
+  })
 })
 
 describe('formatMatchup', () => {

@@ -296,10 +296,10 @@ function PubDashboard() {
 
   const eventList = eventsState.status === 'ready' ? eventsState.events : []
   const hasUpcomingEvent = eventList.some(
-    (e) => getEventTemporalState(e.startsAt, now) === 'upcoming'
+    (e) => getEventTemporalState(e.startsAt, e.endsAt, now) === 'upcoming'
   )
   const liveEvent = eventList.find(
-    (item) => getEventTemporalState(item.startsAt, now) === 'live'
+    (item) => getEventTemporalState(item.startsAt, item.endsAt, now) === 'live'
   )
   const totalCount = eventList.length
   const isInactive = bar ? !bar.isActive : false

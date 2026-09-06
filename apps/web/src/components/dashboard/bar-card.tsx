@@ -86,7 +86,7 @@ export function BarCard({
   // ESC-17: só este cartão re-renderiza na virada do minuto, e não a página.
   const agora = useMinuteNow()
   const temporalState = event
-    ? getEventTemporalState(event.startsAt, agora)
+    ? getEventTemporalState(event.startsAt, null, agora)
     : null
   const live = temporalState === 'live'
   const upcoming = temporalState === 'upcoming'

@@ -142,7 +142,8 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
         lat,
         lng,
         accent:
-          nextEvent && getEventTemporalState(nextEvent.startsAt) === 'live'
+          nextEvent &&
+          getEventTemporalState(nextEvent.startsAt, null) === 'live'
             ? 'live'
             : plan === 'pro' || plan === 'elite'
               ? 'acid'

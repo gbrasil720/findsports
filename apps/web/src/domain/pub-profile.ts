@@ -44,7 +44,10 @@ export function resolveHeroEvent<T extends ProfileEvent>(
   }
 
   const upcoming = events
-    .filter((item) => getEventTemporalState(item.startsAt, now) !== 'past')
+    .filter(
+      (item) =>
+        getEventTemporalState(item.startsAt, item.endsAt, now) !== 'past'
+    )
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
 
   return upcoming[0] ?? null

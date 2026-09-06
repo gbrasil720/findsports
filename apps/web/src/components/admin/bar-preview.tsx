@@ -37,7 +37,9 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
   const events = eventsState.status === 'ready' ? eventsState.events : null
   const plan = planState.status === 'ready' ? planState.plan : null
   const nextEvent = events
-    ?.filter((item) => getEventTemporalState(item.startsAt) !== 'past')
+    ?.filter(
+      (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
+    )
     .sort(compareEventStartsAscending)[0]
 
   const previewBar =
