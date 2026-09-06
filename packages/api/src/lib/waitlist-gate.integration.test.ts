@@ -41,6 +41,8 @@ integrationTest(
     const approverId = crypto.randomUUID()
 
     await db.insert(waitlistEntries).values([
+      // Uma linha por e-mail: `waitlist_entries_email_unique` garante que a
+      // liberação é do e-mail — uma linha aprovada e confirmada basta.
       {
         email: aprovado,
         role: 'fan',
