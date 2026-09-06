@@ -52,7 +52,7 @@ reversíveis e verificar o resultado. Ao final, revisar todo o repositório com
 | A06 | `routers/commercial-analytics.ts` espalha `overview` e filtra apenas parte das métricas. Campos `*Prev`/`*Change` de visitantes/views/interesse permanecem para Starter sem comparação. | Testar contrato de resposta por plano; verificar também inferência de direções via totais. |
 | A07 | O roteador aceitava datas sem hora, convertia `to` para meia-noite e usava limite inclusivo nas consultas, excluindo ações no restante do último dia selecionado. | **WEB-83**: corrigido localmente; data civil cobre o dia UTC inteiro, timestamps preservam o instante e intervalos inválidos são rejeitados. |
 | A08 | `schema/analytics.ts`: `sourceEventId` usa `ON DELETE SET NULL`, mas integra unique `NULLS NOT DISTINCT`. Duas ações equivalentes com jogo/sem jogo podem colidir na exclusão do jogo. | Reproduzir DELETE em transação no banco descartável e preservar histórico ao corrigir. |
-| A09 | API aceita participantes incompatíveis com o esporte do evento. | Já existe **WEB-45**, Backlog; ler descrição completa antes de implementar. |
+| A09 | API aceitava participantes incompatíveis com o esporte do evento e preservava os antigos ao trocar somente o esporte. | **WEB-45** reutilizado e corrigido localmente: create/update validam todos os IDs dentro da transação; troca sem lista explícita limpa os participantes. |
 | A10 | `recordCommercialEvent` derivava `commercialDay` em UTC, contrariando a spec `America/Sao_Paulo`; entre 21h e meia-noite local, deduplicação e rollup iam para o dia seguinte. | **WEB-84**: corrigido localmente com formatter IANA compartilhado; nenhuma correção retroativa de dados foi executada. |
 
 ## Candidatos que ainda exigem confirmação
