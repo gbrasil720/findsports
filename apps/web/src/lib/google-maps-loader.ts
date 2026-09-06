@@ -1,5 +1,12 @@
 const SCRIPT_ID = 'onside-google-maps-script'
 const CALLBACK_NAME = '__onsideInitMap'
+/**
+ * WEB-35: um 200 que não executa o callback (stub de adblock, corpo vazio)
+ * dispara `script.onload` sem chamar `__onsideInitMap`, e `onerror` não cobre
+ * esse caminho. Sem timeout a promessa ficaria pendente para sempre e a UI
+ * presa em "Carregando mapa…".
+ */
+const LOAD_TIMEOUT_MS = 15_000
 
 declare global {
   interface Window {
@@ -13,6 +20,8 @@ declare global {
 type LoadOptions = {
   apiKey: string | undefined
   channel?: string
+  /** Sobrescreve o timeout padrão; só os testes usam valores pequenos. */
+  timeoutMs?: number
 }
 
 type MapsUrlOptions = {
@@ -142,7 +151,11 @@ async function getGoogleMapsRuntime(): Promise<GoogleMapsRuntime> {
   }
 }
 
-export function loadGoogleMaps({ apiKey, channel = '' }: LoadOptions) {
+export function loadGoogleMaps({
+  apiKey,
+  channel = '',
+  timeoutMs = LOAD_TIMEOUT_MS
+}: LoadOptions) {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Google Maps requer um navegador'))
   }
@@ -166,11 +179,22 @@ export function loadGoogleMaps({ apiKey, channel = '' }: LoadOptions) {
   }
 
   loadPromise = new Promise<GoogleMapsRuntime>((resolve, reject) => {
-    const script = getScript() ?? document.createElement('script')
+    // WEB-35: um script já conectado não roda de novo — reusá-lo deixaria a
+    // promessa pendente para sempre (HMR em dev, ou HMR + `loadPromise` nulo).
+    // Sempre recriar o elemento garante nova execução e novo callback.
+    const scriptExistente = getScript()
+    if (scriptExistente) {
+      scriptExistente.onload = null
+      scriptExistente.onerror = null
+      scriptExistente.remove()
+    }
+    const script = document.createElement('script')
     let settled = false
     let runtimePromise: Promise<GoogleMapsRuntime> | null = null
+    let timeout: ReturnType<typeof setTimeout> | null = null
 
     const cleanupHandlers = () => {
+      if (timeout !== null) clearTimeout(timeout)
       script.onload = null
       script.onerror = null
       delete window.__onsideInitMap
@@ -204,13 +228,18 @@ export function loadGoogleMaps({ apiKey, channel = '' }: LoadOptions) {
     }
     window.__onsideInitMap = initializeRuntime
     script.onerror = () => fail(new Error('Falha ao carregar o Google Maps'))
-
-    if (!script.isConnected) {
-      script.id = SCRIPT_ID
-      script.src = buildGoogleMapsUrl({ apiKey, channel })
-      script.async = true
-      document.head.appendChild(script)
-    }
+    script.id = SCRIPT_ID
+    script.src = buildGoogleMapsUrl({ apiKey, channel })
+    script.async = true
+    document.head.appendChild(script)
+    // `onerror` só cobre falha de rede/parse; um stub que devolve 200 com
+    // corpo vazio dispara `onload` sem chamar o callback. O timeout é a única
+    // saída para esse caminho — e rejeita retriável, então a UI cai no cartão
+    // "Mapa indisponível" com "Tentar novamente".
+    timeout = setTimeout(
+      () => fail(new Error('Tempo esgotado ao carregar o Google Maps')),
+      timeoutMs
+    )
   })
 
   return loadPromise

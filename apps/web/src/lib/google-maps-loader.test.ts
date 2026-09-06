@@ -170,6 +170,44 @@ describe('Google Maps loader', () => {
     expect(document.querySelectorAll('script')).toHaveLength(0)
     expect(window.__onsideInitMap).toBeUndefined()
   })
+
+  test('times out a script that loads without calling the callback (WEB-35)', async () => {
+    const pending = loadGoogleMaps({ apiKey: 'key', timeoutMs: 5 })
+    // Stub de adblock: `onload` dispara, `__onsideInitMap` nunca é chamado.
+    document
+      .querySelector('script')
+      ?.dispatchEvent(new dom.window.Event('load'))
+
+    await expect(pending).rejects.toThrow(
+      'Tempo esgotado ao carregar o Google Maps'
+    )
+    expect(document.querySelectorAll('script')).toHaveLength(0)
+    expect(window.__onsideInitMap).toBeUndefined()
+
+    // A rejeição é retriável: a chamada seguinte recarrega do zero.
+    const retry = loadGoogleMaps({ apiKey: 'key' })
+    expect(retry).not.toBe(pending)
+    installGoogleMapsStub()
+    window.__onsideInitMap?.()
+    await expect(retry).resolves.toMatchObject({ Map: MapStub })
+  })
+
+  test('recreates a stale connected script instead of reusing it (WEB-35)', async () => {
+    const stale = document.createElement('script')
+    stale.id = 'onside-google-maps-script'
+    document.head.appendChild(stale)
+
+    const pending = loadGoogleMaps({ apiKey: 'key' })
+    const scripts = document.querySelectorAll('script')
+    expect(scripts).toHaveLength(1)
+    expect(scripts[0]).not.toBe(stale)
+    expect(stale.isConnected).toBe(false)
+    expect(scripts[0].getAttribute('src')).toContain('maps.googleapis.com')
+
+    installGoogleMapsStub()
+    window.__onsideInitMap?.()
+    await expect(pending).resolves.toMatchObject({ Map: MapStub })
+  })
 })
 
 describe('hasGoogleMapsConfig', () => {
