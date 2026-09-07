@@ -39,22 +39,19 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
   client: {
     /**
-     * Chave pública do Google Maps. Sem ela o mapa recusa carregar com
-     * mensagem própria (`google-maps-loader.ts`); o resto do app funciona.
-     */
-    VITE_GOOGLE_MAPS_PUBLIC_KEY: z.string().min(1).optional(),
-
-    /**
-     * Map ID do Google Cloud (ESC-16). O `AdvancedMarkerElement` só renderiza
-     * em mapa criado com um; sem ele os pinos somem sem erro nenhum, que é a
-     * pior falha possível. Por isso o mapa recusa carregar quando falta, em
-     * vez de subir mudo — ver `google-map.tsx`.
+     * Arquivo PMTiles do basemap (WEB-73).
      *
-     * Não é segredo: viaja no bundle do cliente e identifica um mapa, não uma
-     * credencial. Quem controla acesso é a chave pública, com restrição de
-     * origem.
+     * É a URL pública completa do `.pmtiles` no bucket — o mapa inteiro é um
+     * objeto só, e o navegador lê faixas de bytes dele por HTTP Range. O nome
+     * do arquivo carrega a data do build, então um rebuild trimestral troca
+     * esta variável em vez de invalidar cache.
+     *
+     * Não é segredo e não é credencial: é um arquivo público, sem chave, sem
+     * cota e sem faturamento. Substituiu o par
+     * `VITE_GOOGLE_MAPS_PUBLIC_KEY` + `VITE_GOOGLE_MAPS_MAP_ID`, que eram os
+     * dois pontos únicos de falha comercial do lado do cliente.
      */
-    VITE_GOOGLE_MAPS_MAP_ID: z.string().min(1).optional(),
+    VITE_MAP_TILES_URL: z.url().optional(),
 
     /**
      * Projeto do PostHog. Ausente = sem analytics, que é o estado normal em
@@ -66,8 +63,7 @@ export const env = createEnv({
     VITE_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com')
   },
   runtimeEnv: {
-    VITE_GOOGLE_MAPS_PUBLIC_KEY: import.meta.env.VITE_GOOGLE_MAPS_PUBLIC_KEY,
-    VITE_GOOGLE_MAPS_MAP_ID: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID,
+    VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST
   },

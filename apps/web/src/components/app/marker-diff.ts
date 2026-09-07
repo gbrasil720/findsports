@@ -1,4 +1,4 @@
-import type { MapAccent } from './google-map-icons'
+import type { MapAccent } from './map-icons'
 
 /**
  * Estado visual de um pino no mapa (ESC-16).

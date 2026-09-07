@@ -1,8 +1,7 @@
 import Location from 'reicon-react/icons/Location'
 import Route from 'reicon-react/icons/Route'
-import { GoogleMap } from '@/components/app/google-map'
+import { OnsideMap } from '@/components/app/onside-map'
 import { env } from '@/lib/env'
-import { hasGoogleMapsConfig } from '@/lib/google-maps-loader'
 
 type Props = {
   barId: string
@@ -24,16 +23,15 @@ type Props = {
  * na lateral — e nenhuma delas mostrava o lugar. Aqui ele aparece uma vez, ao
  * lado de um mapa, que é o que responde "isso é longe de mim?".
  *
- * O mapa reaproveita o `GoogleMap` do dashboard em vez de uma imagem da Static
- * Maps API: a biblioteca já está no bundle e a chave já está configurada para
- * ela, enquanto a Static Maps é outro produto do console — sem ele habilitado,
- * a imagem volta como erro silencioso.
+ * O mapa reaproveita o `OnsideMap` do dashboard em vez de uma imagem estática:
+ * a biblioteca já está no bundle das telas com mapa, e o mesmo arquivo de
+ * tiles serve os dois.
  *
- * Sem chave configurada, o mapa não é renderizado — e não vira a caixa "Mapa
- * indisponível / tentar novamente" que o `GoogleMap` mostra por padrão. Ali
- * aquele aviso é correto: o mapa é o conteúdo da tela. Aqui ele é apoio, e um
- * botão de repetir que não tem como funcionar só rouba a atenção de quem
- * precisava do endereço e da rota — que continuam inteiros.
+ * Sem arquivo de tiles configurado, o mapa não é renderizado — e não vira a
+ * caixa "Mapa indisponível / tentar novamente" que o `OnsideMap` mostra por
+ * padrão. Ali aquele aviso é correto: o mapa é o conteúdo da tela. Aqui ele é
+ * apoio, e um botão de repetir que não tem como funcionar só rouba a atenção
+ * de quem precisava do endereço e da rota — que continuam inteiros.
  */
 export function BarLocationBlock({
   barId,
@@ -52,10 +50,7 @@ export function BarLocationBlock({
   const showMap =
     Number.isFinite(lat) &&
     Number.isFinite(lng) &&
-    hasGoogleMapsConfig({
-      apiKey: env.VITE_GOOGLE_MAPS_PUBLIC_KEY,
-      mapId: env.VITE_GOOGLE_MAPS_MAP_ID
-    })
+    Boolean(env.VITE_MAP_TILES_URL)
 
   return (
     <section className="onside-panel p-5 md:p-6">
@@ -97,7 +92,7 @@ export function BarLocationBlock({
 
         {showMap && (
           <div className="onside-map-frame h-[180px]" aria-hidden="true">
-            <GoogleMap
+            <OnsideMap
               bars={[
                 {
                   id: barId,

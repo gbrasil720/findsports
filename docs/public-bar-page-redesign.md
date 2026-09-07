@@ -85,11 +85,10 @@ contradiz o job da página.
 
 ## 8. Riscos
 
-- `VITE_GOOGLE_MAPS_PUBLIC_KEY` é opcional no schema de env. Sem chave, o mapa
-  estático precisa degradar para o bloco de endereço + botão, nunca para uma
-  imagem quebrada.
-- Static Maps cobra por requisição e exige restrição de origem na chave —
-  conferir antes de subir.
+- `VITE_MAP_TILES_URL` é opcional no schema de env. Sem o arquivo de tiles, o
+  mapa precisa degradar para o bloco de endereço + botão, nunca para uma imagem
+  quebrada. (Era `VITE_GOOGLE_MAPS_PUBLIC_KEY`; o WEB-73 trocou o Google por
+  MapLibre + Protomaps auto-hospedado — ver `docs/map-tiles.md`.)
 - A página continua `protectedProcedure` + `noindex`. O bar não ganha tráfego
   orgânico com ela; se isso incomodar, é outra decisão (versão pública rasa),
   fora deste escopo.

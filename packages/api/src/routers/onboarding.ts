@@ -67,7 +67,7 @@ export const onboardingRouter = router({
         })
       }
 
-      const apiKey = env.GOOGLE_MAPS_API_KEY
+      const apiKey = env.LOCATIONIQ_API_KEY
       if (!apiKey) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',

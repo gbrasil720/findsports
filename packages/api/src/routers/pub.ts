@@ -221,7 +221,7 @@ export const pubRouter = router({
       const addressChanged = input.address || input.neighborhood || input.city
 
       if (addressChanged) {
-        const apiKey = env.GOOGLE_MAPS_API_KEY
+        const apiKey = env.LOCATIONIQ_API_KEY
         if (!apiKey) {
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',

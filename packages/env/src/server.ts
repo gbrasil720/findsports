@@ -15,7 +15,17 @@ export const env = createEnv({
       .string()
       .regex(/^[a-zA-Z0-9_-]+$/, 'BLOB_STORE_ID inválido')
       .optional(),
-    GOOGLE_MAPS_API_KEY: z.string().min(1).optional(),
+    /**
+     * Geocoding do cadastro de bar (WEB-73). Era `GOOGLE_MAPS_API_KEY`, um
+     * SKU faturado que parou de responder quando o trial do Google Cloud
+     * acabou; agora é a LocationIQ, cujo tier grátis (5.000/dia) cobre o
+     * volume com folga — geocoding só roda em `createPub` e no `update` com
+     * endereço alterado.
+     *
+     * Opcional no esquema, como as outras: faltando, só o cadastro de bar
+     * para, com mensagem própria. Obrigatória aqui derrubaria o app inteiro.
+     */
+    LOCATIONIQ_API_KEY: z.string().min(1).optional(),
     LAUNCH_ADMISSION_MODE: z
       .enum(['open', 'invite-only'])
       .default('invite-only'),

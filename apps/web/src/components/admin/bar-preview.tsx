@@ -1,5 +1,5 @@
 import Eye from 'reicon-react/icons/Eye'
-import { GoogleMap } from '@/components/app/google-map'
+import { OnsideMap } from '@/components/app/onside-map'
 import { BarCard } from '@/components/dashboard/bar-card'
 import {
   compareEventStartsAscending,
@@ -120,7 +120,7 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
           <p className="onside-kicker mb-3">Mapa</p>
           {plan ? (
             <div className="onside-map-frame relative h-[180px]">
-              <GoogleMap
+              <OnsideMap
                 bars={[
                   {
                     id: bar.id,

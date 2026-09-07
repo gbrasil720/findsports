@@ -1,6 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
-import type { MapBar } from '@/components/app/google-map'
+import type { MapBar } from '@/components/app/onside-map'
 import type { LocationState, RadiusKm } from './discovery'
 import { getEventTemporalState } from './events'
 
