@@ -18,6 +18,7 @@ Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
 | Campo | Valor |
 |---|---|
 | Build do Protomaps | `20260906` |
+| URL pública | `pub-f88d43ef3adc4cdbbdf3458187f8f15f.r2.dev` (provisória) |
 | bbox | `-74.1,-33.9,-34.7,5.4` (Brasil) |
 | maxzoom | 15 |
 | Tamanho | 6,1 GB |
@@ -70,10 +71,23 @@ domínio próprio o cache de borda funciona normalmente.
 Duas coisas que só existem no painel da Cloudflare, porque o token de escrita de
 objeto não alcança configuração de bucket:
 
-1. **Acesso público.** R2 → o bucket → Settings → Public access. O subdomínio
-   `r2.dev` é limitado por taxa e a própria Cloudflare diz que é só para
-   desenvolvimento; para produção, domínio próprio (exige a zona na Cloudflare)
-   ou um Worker em `workers.dev` na frente do bucket.
+1. **Acesso público.** R2 → o bucket → Settings → Public access.
+
+   Hoje está no subdomínio `r2.dev`, que é **provisório**: a Cloudflare o
+   limita por taxa e diz que serve só para desenvolvimento. Ele está no ar
+   porque o destino — `tiles.onside.sh` como domínio próprio do bucket — exige
+   que `onside.sh` seja uma zona na Cloudflare, e o DNS ainda está na Vercel.
+
+   Quando os nameservers migrarem: R2 → Settings → Custom Domains →
+   `tiles.onside.sh`, trocar `VITE_MAP_TILES_URL` e desligar o `r2.dev`. Aí
+   entra o cache de borda, que o `r2.dev` não dá.
+
+   **Na migração de DNS, todo registro da Vercel entra como "DNS only" (nuvem
+   cinza).** Com o proxy ligado a Vercel perde visibilidade de tráfego e a
+   detecção de bot passa a desafiar usuário legítimo — está na documentação
+   deles. Só o registro do R2 fica proxied, e esse a Cloudflare cria sozinha.
+   O DNS da Vercel tem wildcard, então a lista de registros precisa sair do
+   painel deles: de fora não dá para distinguir registro real de curinga.
 2. **Política de CORS**, no mesmo Settings:
 
 ```json
