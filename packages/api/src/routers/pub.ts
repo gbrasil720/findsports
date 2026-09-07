@@ -229,8 +229,15 @@ export const pubRouter = router({
           })
         }
 
-        const fullAddress = `${input.address ?? existingBar.address}, ${input.neighborhood ?? existingBar.neighborhood}, ${input.city ?? existingBar.city}`
-        coordinates = await geocodeAddress(fullAddress, apiKey)
+        // Campos separados, e sem o bairro — ver `geocode-address.ts`.
+        coordinates = await geocodeAddress(
+          {
+            street: input.address ?? existingBar.address,
+            city: input.city ?? existingBar.city,
+            neighborhood: input.neighborhood ?? existingBar.neighborhood
+          },
+          apiKey
+        )
       }
 
       const [updated] = await db

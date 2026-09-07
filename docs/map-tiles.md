@@ -83,6 +83,46 @@ o latino que aparece dentro do recorte, mais a pontuação tipográfica. Origem:
 `map-style.test.ts` falha se uma camada pedir uma fonte ou faixa que não está no
 disco, então a peça mais fácil de esquecer é a única que não dá para esquecer.
 
+## Geocoding: precisão e limites
+
+O provedor é a LocationIQ, sobre a mesma base OpenStreetMap dos tiles. Medido
+contra endereços reais de São Paulo e Campinas, com a coordenada que o Google
+tinha gravado como referência:
+
+| Endereço | Erro |
+|---|---|
+| Rua Forte William, 87 — Panamby | 129 m |
+| Rua dos Pinheiros, 500 — Pinheiros | 10 m |
+| Rua Treze de Maio, 500 — Centro, Campinas | 0 m |
+| Rua Vinte e Quatro de Maio, 62 — República | 47 m |
+
+Três armadilhas descobertas medindo, todas tratadas em `geocode-address.ts`:
+
+1. **Endereço concatenado casa por aproximação, e não avisa.** `"rua forte
+   william 87, panamby, São Paulo"` numa linha só devolveu a *Rua Forte*, no
+   Ipiranga, a **11,5 km** — primeiro resultado, HTTP 200, nenhum sinal. Em
+   campos separados (`street` + `city`) acerta. O bairro **não entra na
+   consulta**: no texto livre ele degradou a busca até o centro da cidade.
+2. **Rua homônima na mesma cidade.** "Rua dos Pinheiros" tem cinco em São
+   Paulo; com `limit=1` vinha uma qualquer, já vista a ~20 km. Agora pedimos
+   cinco candidatos e o bairro **desempata** — nunca elimina, porque os limites
+   do OSM não são os que o dono do bar tem na cabeça (quem escreve "Panamby"
+   está, para a base, em "Vila Andrade").
+3. **Data no nome da rua muda de grafia.** A base tem "Rua 13 de Maio" onde o
+   dono escreve "Rua Treze de Maio". Sem equivalência entre algarismo e
+   extenso, a guarda recusaria endereço certo e travaria o cadastro.
+
+**Limitação que fica:** o OpenStreetMap tem a geometria da rua, mas raramente o
+número da casa no Brasil (`house_number: null` na maioria dos casos medidos).
+Quando falta, o provedor devolve um ponto da via, não o imóvel — o pino cai na
+rua certa, no bairro certo, mas pode estar a algumas centenas de metros do
+número. O Google interpolava e acertava mais fino. É uma perda real de
+precisão, aceita em troca de sair do SKU faturado.
+
+Se isso incomodar, o caminho é pedir **CEP** no formulário e resolver via
+ViaCEP/BrasilAPI antes de geocodificar — está previsto no WEB-73 e mexe no
+onboarding, então é decisão separada.
+
 ## Atribuição
 
 Obrigatória, e é condição de uso do que é grátis: **OpenStreetMap** pela ODbL
