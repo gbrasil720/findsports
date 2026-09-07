@@ -66,7 +66,7 @@ IDs use `crypto.randomUUID()` as default. Prefer `db:push` in development, migra
 ### Environment variables
 
 Split by runtime boundary:
-- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `NODE_ENV`
+- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `LOCATIONIQ_API_KEY`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
@@ -87,6 +87,15 @@ npx shadcn@latest add <component> -c packages/ui
 Add app-specific blocks: run shadcn CLI from `apps/web`.
 
 Import shared components: `import { Button } from "@findsports_oficial/ui/components/button"`
+
+### Mapa
+
+MapLibre GL JS lendo um arquivo PMTiles próprio — sem chave, sem cota e sem
+faturamento. Componente em `apps/web/src/components/app/onside-map.tsx`, estilo
+versionado em `apps/web/src/lib/map-style.ts`, glyphs e sprite em
+`apps/web/public/map/`. **Antes de mexer em tiles, estilo ou rebuild, leia
+`docs/map-tiles.md`** — ele tem o runbook e as armadilhas (URL absoluta para
+sprite/glyphs, `maplibre-gl` fora do `optimizeDeps` do Vite).
 
 ### Routing
 

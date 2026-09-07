@@ -5,7 +5,7 @@ import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import LocationSlash from 'reicon-react/icons/LocationSlash'
 import Store from 'reicon-react/icons/Store'
-import { GoogleMap, type MapBar } from '@/components/app/google-map'
+import { type MapBar, OnsideMap } from '@/components/app/onside-map'
 import type {
   DiscoveryBar,
   DiscoveryResultState
@@ -260,7 +260,7 @@ export function DashboardResults(props: Props) {
 
       <div className="flex min-h-0 min-w-0 flex-col lg:col-start-2 lg:row-start-2">
         <section className="onside-map-frame relative h-[280px] sm:h-[320px] lg:h-auto lg:min-h-[360px] lg:flex-1">
-          <GoogleMap
+          <OnsideMap
             bars={mapBars}
             center={coords ?? undefined}
             showUserLocation={Boolean(coords) && !locationError}

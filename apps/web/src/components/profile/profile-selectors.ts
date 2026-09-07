@@ -1,4 +1,4 @@
-import type { MapBar } from '@/components/app/google-map'
+import type { MapBar } from '@/components/app/onside-map'
 import type {
   CompletionItem,
   Favorite,

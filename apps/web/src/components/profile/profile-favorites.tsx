@@ -5,7 +5,7 @@ import List from 'reicon-react/icons/List'
 import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import Sort from 'reicon-react/icons/Sort'
-import { GoogleMap, type MapBar } from '@/components/app/google-map'
+import { type MapBar, OnsideMap } from '@/components/app/onside-map'
 import type { Coordinates } from '@/domain/discovery'
 import { FavoriteCard } from './favorite-card'
 import type { Favorite, FavoriteSort, FavoriteView } from './profile-model'
@@ -138,7 +138,7 @@ export function ProfileFavorites(props: Props) {
 
       {!loading && viewMode === 'map' && sortedFavorites.length > 0 ? (
         <div className="relative h-[420px] overflow-hidden rounded-none border border-[var(--onside-ink)] md:h-[520px]">
-          <GoogleMap
+          <OnsideMap
             bars={mapBars}
             center={coords ?? undefined}
             hoveredId={hoveredBarId}

@@ -26,10 +26,3 @@ export function isValidCoordinates(coords: Coordinates): boolean {
     isValidCoordinate(coords.lat, 'lat') && isValidCoordinate(coords.lng, 'lng')
   )
 }
-
-export function getRadiusZoom(radiusKm: RadiusKm): number {
-  if (radiusKm <= 1) return 15
-  if (radiusKm <= 3) return 14
-  if (radiusKm <= 5) return 13
-  return 12
-}

@@ -67,7 +67,7 @@ export const onboardingRouter = router({
         })
       }
 
-      const apiKey = env.GOOGLE_MAPS_API_KEY
+      const apiKey = env.LOCATIONIQ_API_KEY
       if (!apiKey) {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
@@ -75,8 +75,17 @@ export const onboardingRouter = router({
         })
       }
 
-      const fullAddress = `${input.address}, ${input.neighborhood}, ${input.city}`
-      const { latitude, longitude } = await geocodeAddress(fullAddress, apiKey)
+      // Campos separados, e sem o bairro: concatenar tudo numa linha faz a
+      // LocationIQ casar por aproximação e devolver outra rua sem avisar. Ver
+      // `geocode-address.ts`.
+      const { latitude, longitude } = await geocodeAddress(
+        {
+          street: input.address,
+          city: input.city,
+          neighborhood: input.neighborhood
+        },
+        apiKey
+      )
 
       await db.transaction(async (tx) => {
         const [newBar] = await tx
