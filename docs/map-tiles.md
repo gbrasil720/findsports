@@ -100,6 +100,13 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   O pré-empacotamento do Vite quebra o `new Worker(new URL(...))` do MapLibre e
   o worker vira 404 em desenvolvimento; sem worker, nenhum tile é decodificado —
   mesmo sintoma silencioso do item acima. Só afeta `vite dev`.
+- **O contêiner do mapa não pode ser `absolute inset-0`.** O MapLibre marca o
+  nó que recebe com a classe `maplibregl-map`, e a folha de estilo dele declara
+  `.maplibregl-map { position: relative }` — o que vence o utilitário e faz
+  `inset-0` deixar de dimensionar. A altura vira zero, o mapa carrega, decodifica
+  os tiles e desenha num canvas de altura zero, sem erro nenhum. Use `h-full
+  w-full`, como em `map-status.tsx`. O SDK do Google não escrevia classe no nosso
+  `<div>`, então é uma armadilha exclusiva da troca.
 - **Vercel Blob cobra transferência.** O R2, considerado no ticket, tem egress
   zero. Não há cliff de faturamento como no Google — a conta é proporcional ao
   tráfego —, mas não é grátis.

@@ -194,6 +194,7 @@ function MapaDaOnside({
   useEffect(() => {
     let cancelado = false
     let tempoLimite: ReturnType<typeof setTimeout> | null = null
+    let observador: ResizeObserver | null = null
     setError(null)
     setReady(false)
 
@@ -240,9 +241,35 @@ function MapaDaOnside({
           'bottom-right'
         )
 
+        // O MapLibre observa o contêiner sozinho, mas não converge: nos nossos
+        // layouts ele mede uma altura intermediária — enquanto o `flex-1` do
+        // `/dashboard` ainda está assentando — e fica com ela. Verificado: o
+        // canvas parava em 1021 px num contêiner de 970, e um `resize()` à mão
+        // corrigia.
+        //
+        // O erro não aparece na tela (o canvas é recortado pelo
+        // `overflow: hidden`), mas a projeção passa a ser calculada para uma
+        // janela que não existe, e o centro do `easeTo` deixa de ser o centro
+        // do que a pessoa vê. Observar por conta própria custa uma linha e
+        // fecha a família inteira de defeitos de medida.
+        if (containerRef.current) {
+          observador = new ResizeObserver(() => {
+            // Depois de `remove()` o mapa não aceita mais comandos, e o
+            // observador pode disparar uma última vez na desmontagem.
+            if (cancelado) return
+            mapa.resize()
+          })
+          observador.observe(containerRef.current)
+        }
+
         mapa.once('load', () => {
           if (cancelado) return
           if (tempoLimite !== null) clearTimeout(tempoLimite)
+          // A medida que o MapLibre pegou na construção pode ser de um layout
+          // que ainda estava assentando; aqui ele já é o tamanho final. O
+          // `ResizeObserver` acima cobre as mudanças seguintes, mas não esta,
+          // porque para ele o contêiner nunca mudou de tamanho.
+          mapa.resize()
           // A fonte do raio nasce vazia: o efeito de câmera preenche quando
           // houver centro e raio. Criar aqui evita ter que checar "a camada
           // já existe?" a cada mudança de filtro.
@@ -297,6 +324,7 @@ function MapaDaOnside({
     return () => {
       cancelado = true
       if (tempoLimite !== null) clearTimeout(tempoLimite)
+      observador?.disconnect()
       // A limpeza roda na fase passiva, ou seja, DEPOIS de o React já ter
       // tirado o contêiner do documento. Nada aqui pode lançar: um erro nesta
       // função sobe pelo commit e derruba a tela para a qual estamos

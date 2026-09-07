@@ -33,6 +33,24 @@ export function MapLoadError({
   )
 }
 
+/**
+ * O contêiner do mapa é dimensionado por `h-full w-full`, e não por
+ * `absolute inset-0` (WEB-73).
+ *
+ * O MapLibre marca o nó que recebe com a classe `maplibregl-map`, e a folha de
+ * estilo dele declara `.maplibregl-map { position: relative }`. Isso vence o
+ * `position: absolute` do utilitário, e num elemento relativo `inset-0` não
+ * dimensiona nada: a altura passa a vir do conteúdo, que é zero.
+ *
+ * O resultado é o pior tipo de falha — o mapa carrega, decodifica os tiles e
+ * desenha num canvas de altura zero. Nenhum erro, nenhum aviso: só um
+ * retângulo vazio. Nas telas de altura fixa dá para não notar, porque o canvas
+ * fica com a medida que o contêiner tinha antes de o layout assentar; no
+ * `/dashboard`, cuja coluna do mapa cresce com `flex-1`, o mapa some inteiro.
+ *
+ * O SDK do Google não escrevia classe nenhuma no nosso `<div>`, então o
+ * `absolute inset-0` funcionava — é uma armadilha que só aparece na troca.
+ */
 export function MapCanvas({
   containerRef,
   ready
@@ -53,7 +71,7 @@ export function MapCanvas({
           </span>
         </div>
       ) : null}
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   )
 }
