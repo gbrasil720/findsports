@@ -6,7 +6,7 @@ arquivo** num bucket, e o navegador lê faixas de bytes dele por HTTP Range.
 | Peça | Onde | Quem paga |
 |---|---|---|
 | Biblioteca | `maplibre-gl` (BSD), npm | — |
-| Tiles | `.pmtiles` no Vercel Blob | armazenamento + transferência |
+| Tiles | `.pmtiles` no Cloudflare R2 | armazenamento (egress grátis) |
 | Glyphs e sprite | `apps/web/public/map/`, mesma origem | — |
 | Estilo | `apps/web/src/lib/map-style.ts` | — |
 | Geocoding | LocationIQ (`LOCATIONIQ_API_KEY`) | tier grátis, 5.000/dia |
@@ -49,6 +49,47 @@ tamanho do arquivo. Não havia motivo para pagar em cobertura o que não se
 economizava em conta.
 
 **Abrir cidade nova não exige rebuild.**
+
+## Por que R2, e não Vercel Blob
+
+O arquivo morou no Vercel Blob por um dia e estourou o plano: **o tier grátis
+Hobby dá 1 GB de armazenamento**, e o arquivo tem 6,1 GB. Não era volume de uso
+— transferência estava em 176 MB de 10 GB e operações em 278 de 10 mil —, era o
+tamanho do arquivo. Passar para o Pro resolveria por US$ 20/mês, que é
+exatamente o custo recorrente de que este ticket existe para sair.
+
+O R2 dá 10 GB de armazenamento e **egress zero** no tier grátis. O arquivo cabe
+inteiro e a conta fica em US$ 0 sem teto de tráfego — não "US$ 0 até estourar".
+
+Havia um segundo motivo, de desempenho: o Vercel Blob não guarda em cache
+objeto acima de 512 MB, então toda requisição de faixa ia à origem. No R2 com
+domínio próprio o cache de borda funciona normalmente.
+
+## Configuração do bucket
+
+Duas coisas que só existem no painel da Cloudflare, porque o token de escrita de
+objeto não alcança configuração de bucket:
+
+1. **Acesso público.** R2 → o bucket → Settings → Public access. O subdomínio
+   `r2.dev` é limitado por taxa e a própria Cloudflare diz que é só para
+   desenvolvimento; para produção, domínio próprio (exige a zona na Cloudflare)
+   ou um Worker em `workers.dev` na frente do bucket.
+2. **Política de CORS**, no mesmo Settings:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://www.onside.sh", "https://onside.sh", "http://localhost:3001"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["range", "if-match", "content-type"],
+    "ExposeHeaders": ["etag", "content-length", "content-range", "accept-ranges"],
+    "MaxAgeSeconds": 86400
+  }
+]
+```
+
+`range` em `AllowedHeaders` é o item que não pode faltar: sem ele o preflight
+recusa e o PMTiles não consegue ler faixa nenhuma.
 
 ## Rebuild
 
@@ -147,6 +188,9 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   os tiles e desenha num canvas de altura zero, sem erro nenhum. Use `h-full
   w-full`, como em `map-status.tsx`. O SDK do Google não escrevia classe no nosso
   `<div>`, então é uma armadilha exclusiva da troca.
-- **Vercel Blob cobra transferência.** O R2, considerado no ticket, tem egress
-  zero. Não há cliff de faturamento como no Google — a conta é proporcional ao
-  tráfego —, mas não é grátis.
+- **O bucket precisa de CORS.** O navegador busca o `.pmtiles` de outra origem
+  e com cabeçalho `Range`. Diferente do Vercel Blob, que mandava
+  `access-control-allow-origin: *` por padrão, o R2 não manda nada sem política
+  configurada — e a falha aparece como mapa vazio, não como erro de rede
+  legível. A política está abaixo, e ela precisa liberar `range` em
+  `AllowedHeaders` e expor `content-range` e `accept-ranges`.

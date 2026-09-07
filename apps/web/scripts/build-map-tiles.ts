@@ -11,7 +11,7 @@
  *
  * 1. Corta o planeta do Protomaps na bbox do Brasil, sem baixar o planeta: o
  *    `pmtiles extract` usa HTTP Range e traz só as faixas de bytes da região.
- * 2. Sobe o `.pmtiles` para o Vercel Blob, com o nome carregando a data do
+ * 2. Sobe o `.pmtiles` para o Cloudflare R2, com o nome carregando a data do
  *    build.
  * 3. Imprime a URL. **Trocar `VITE_MAP_TILES_URL` é passo manual**, na Vercel e
  *    no `.env` local.
@@ -30,13 +30,14 @@
  * ## Requisitos
  *
  * - `pmtiles` no PATH (`brew install pmtiles`), só para rodar este script.
- * - `BLOB_READ_WRITE_TOKEN` no ambiente (está em `apps/web/.env`).
+ * - `CF_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET`
+ *   no ambiente (estão em `apps/web/.env`). São credenciais de escrita, e não
+ *   viajam para o navegador: quem serve os tiles é a URL pública do bucket.
  */
 
 import { spawnSync } from 'node:child_process'
-import { createReadStream, existsSync, statSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import path from 'node:path'
-import { put } from '@vercel/blob'
 
 /**
  * Brasil inteiro, com folga de alguns décimos de grau nas bordas.
@@ -108,20 +109,47 @@ if (!existsSync(destino)) {
   process.exit(1)
 }
 
+const faltando = [
+  'CF_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET'
+].filter((nome) => !process.env[nome])
+if (faltando.length > 0) {
+  console.error(`\nFaltam variáveis de ambiente: ${faltando.join(', ')}`)
+  process.exit(1)
+}
+
 const { size } = statSync(destino)
 console.log(`\nsubindo ${(size / 1e9).toFixed(2)} GB para ${nomeNoBucket}…`)
 
-const { url } = await put(nomeNoBucket, createReadStream(destino), {
-  access: 'public',
-  contentType: 'application/vnd.pmtiles',
-  addRandomSuffix: false,
-  allowOverwrite: true,
-  multipart: true,
-  // Imutável: o nome carrega a data do build.
-  cacheControlMaxAge: 31_536_000
+const r2 = new Bun.S3Client({
+  accessKeyId: process.env.R2_ACCESS_KEY_ID,
+  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  bucket: process.env.R2_BUCKET,
+  endpoint: `https://${process.env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`
 })
 
-console.log(`\npronto.\n\nVITE_MAP_TILES_URL="${url}"`)
+await r2.write(nomeNoBucket, Bun.file(destino), {
+  type: 'application/vnd.pmtiles',
+  // Imutável: o nome carrega a data do build, então um rebuild vira outra URL
+  // em vez de precisar invalidar cache.
+  acl: undefined,
+  partSize: 64 * 1024 * 1024,
+  queueSize: 4,
+  retry: 3
+})
+
+const enviado = await r2.file(nomeNoBucket).stat()
+if (enviado.size !== size) {
+  console.error(
+    `\nO arquivo no bucket tem ${enviado.size} bytes e o local tem ${size}. Refaça o envio.`
+  )
+  process.exit(1)
+}
+
+console.log(`\npronto — ${enviado.size} bytes conferidos no bucket.`)
+console.log(`\nVITE_MAP_TILES_URL="<url-pública-do-bucket>/${nomeNoBucket}"`)
 console.log(
   '\nTroque a variável na Vercel e no .env local, faça o deploy, confirme o' +
     ' mapa no ar e só então apague o arquivo antigo do bucket.'
