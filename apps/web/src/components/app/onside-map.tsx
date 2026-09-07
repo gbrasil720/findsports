@@ -9,12 +9,15 @@ import type {
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef, useState } from 'react'
 import {
-  getRadiusZoom,
   isValidCoordinates,
   type RadiusKm,
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
-import { CIRCULO_VAZIO, criarCirculoDeRaio } from '@/domain/geo-circle'
+import {
+  CIRCULO_VAZIO,
+  criarCirculoDeRaio,
+  limitesDoRaio
+} from '@/domain/geo-circle'
 import { env } from '@/lib/env'
 import { criarEstiloDoMapa } from '@/lib/map-style'
 import {
@@ -55,6 +58,35 @@ type Props = {
  * UI ficaria presa em "Carregando mapa…" para sempre.
  */
 const TEMPO_LIMITE_MS = 15_000
+
+/**
+ * Zoom de quem não escolheu raio — página do bar, favoritos, prévia do painel.
+ *
+ * Era 14, herdado do mapa do Google, e ficou perto demais: o Google desenha em
+ * tiles de 256 px e o MapLibre, em 512, então **o mesmo número de zoom mostra
+ * metade da área em cada eixo**. 13 aqui enquadra o que 14 enquadrava lá.
+ *
+ * Onde existe raio a câmera não usa isto: enquadra pela caixa do círculo, que
+ * não depende de convenção de zoom nenhuma.
+ */
+const ZOOM_SEM_RAIO = 13
+
+/**
+ * Sobra ao redor do círculo, em pixels.
+ *
+ * O pino tem 46 px e é ancorado pela ponta, então um bar bem na borda do raio
+ * precisa de espaço acima do limite para não sair cortado pelo topo do quadro.
+ */
+const MARGEM_DO_ENQUADRAMENTO = 48
+
+/**
+ * Teto de zoom da câmera, casado com o `maxzoom` do arquivo de tiles.
+ *
+ * Passar disso não mostra mais detalhe: o MapLibre estica o tile de z15, e o
+ * mapa fica embaçado. Vale para o raio de 1 km num quadro pequeno, que é onde
+ * o enquadramento chegaria mais perto.
+ */
+const ZOOM_MAXIMO = 15
 
 const FONTE_DO_RAIO = 'raio'
 const CAMADA_DO_RAIO_PREENCHIMENTO = 'raio-preenchimento'
@@ -180,6 +212,7 @@ function MapaDaOnside({
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map())
   const userMarkerRef = useRef<Marker>(null)
   const centerRef = useRef(center)
+  const radiusRef = useRef(radiusKm)
   const onHoverRef = useRef(onHover)
   const onSelectRef = useRef(onSelect)
   const [error, setError] = useState<MapError | null>(null)
@@ -187,6 +220,7 @@ function MapaDaOnside({
   const [retryKey, setRetryKey] = useState(0)
 
   centerRef.current = center
+  radiusRef.current = radiusKm
   onHoverRef.current = onHover
   onSelectRef.current = onSelect
 
@@ -217,11 +251,27 @@ function MapaDaOnside({
         if (cancelado || !containerRef.current) return
         libRef.current = maplibre
 
+        // Já nascer enquadrado, em vez de nascer perto e afastar depois: o
+        // efeito de câmera só roda quando o mapa termina de carregar, e até lá
+        // a pessoa veria o quarteirão em vez da área que ela pediu.
+        const centroInicial = centerRef.current
+        const raioInicial = radiusRef.current
+        const enquadramentoInicial =
+          centroInicial && isValidCoordinates(centroInicial) && raioInicial
+            ? { bounds: limitesDoRaio(centroInicial, raioInicial) }
+            : {
+                center: centroInicial ?? SAO_PAULO_FALLBACK,
+                zoom: ZOOM_SEM_RAIO
+              }
+
         const mapa = new maplibre.Map({
           container: containerRef.current,
           style: criarEstiloDoMapa(tilesUrl, window.location.origin),
-          center: centerRef.current ?? SAO_PAULO_FALLBACK,
-          zoom: 14,
+          ...enquadramentoInicial,
+          fitBoundsOptions: {
+            padding: MARGEM_DO_ENQUADRAMENTO,
+            maxZoom: ZOOM_MAXIMO
+          },
           // Paridade com `gestureHandling: 'cooperative'`: a roda do mouse só
           // dá zoom com Ctrl, e um dedo só arrasta a página.
           cooperativeGestures: true,
@@ -362,10 +412,18 @@ function MapaDaOnside({
       const centroValido = center && isValidCoordinates(center)
 
       if (centroValido) {
-        mapa.easeTo({
-          center: [center.lng, center.lat],
-          ...(radiusKm ? { zoom: getRadiusZoom(radiusKm) } : {})
-        })
+        if (radiusKm) {
+          // Enquadrar pela caixa do círculo, e não por um zoom escolhido a
+          // dedo: o raio inteiro cabe na tela em qualquer formato de quadro, e
+          // quem trocou de 1 km para 10 km vê a área nova sem ter que arrastar
+          // o mapa atrás dela.
+          mapa.fitBounds(limitesDoRaio(center, radiusKm), {
+            padding: MARGEM_DO_ENQUADRAMENTO,
+            maxZoom: ZOOM_MAXIMO
+          })
+        } else {
+          mapa.easeTo({ center: [center.lng, center.lat] })
+        }
       }
 
       if (showUserLocation && centroValido) {

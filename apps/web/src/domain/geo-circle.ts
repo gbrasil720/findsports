@@ -105,6 +105,33 @@ export function criarCirculoDeRaio(
   }
 }
 
+/**
+ * A caixa que contém o círculo, para enquadrar a câmera.
+ *
+ * O mapa antigo escolhia um zoom por faixa de raio (`getRadiusZoom`), o que só
+ * funcionava porque o zoom do Google era o do Google. Enquadrar pela caixa não
+ * depende de convenção de zoom nem do formato do contêiner: o raio inteiro
+ * aparece num quadro alto e estreito e num baixo e largo, e continua
+ * aparecendo se o layout mudar.
+ *
+ * Vem do mesmo polígono desenhado na tela, então a moldura e o desenho não têm
+ * como divergir.
+ *
+ * Formato `[[oeste, sul], [leste, norte]]`, que é o que o MapLibre espera.
+ */
+export function limitesDoRaio(
+  centro: Coordinates,
+  raioKm: number
+): [[number, number], [number, number]] {
+  const anel = criarCirculoDeRaio(centro, raioKm).geometry.coordinates[0]
+  const lngs = anel.map(([lng]) => lng)
+  const lats = anel.map(([, lat]) => lat)
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)]
+  ]
+}
+
 /** Círculo vazio, para a fonte existir antes de haver raio escolhido. */
 export const CIRCULO_VAZIO = {
   type: 'FeatureCollection',

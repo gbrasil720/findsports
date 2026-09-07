@@ -52,9 +52,11 @@ import { put } from '@vercel/blob'
 const BBOX = '-74.1,-33.9,-34.7,5.4'
 
 /**
- * O zoom máximo que a UI alcança sai de `getRadiusZoom` (`domain/discovery`):
- * 15 no raio de 1 km. Acima disso o MapLibre repete o tile de z15 esticado, em
- * vez de pedir um que não existe.
+ * O zoom máximo que a UI alcança. A câmera enquadra pela caixa do raio
+ * (`limitesDoRaio`) e para em 15, que é o teto declarado em `onside-map.tsx` —
+ * o mais perto que ela chega é no raio de 1 km num quadro pequeno. Acima disso
+ * o MapLibre repetiria o tile de z15 esticado, em vez de pedir um que não
+ * existe.
  */
 const MAXZOOM = 15
 

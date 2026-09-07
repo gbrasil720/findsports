@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { criarCirculoDeRaio } from './geo-circle'
+import { criarCirculoDeRaio, limitesDoRaio } from './geo-circle'
 
 const SAO_PAULO = { lat: -23.5505, lng: -46.6333 }
 const RAIO_DA_TERRA_KM = 6371.0088
@@ -60,5 +60,47 @@ describe('círculo de raio (WEB-73)', () => {
       expect(lng).toBeGreaterThanOrEqual(-180)
       expect(lng).toBeLessThanOrEqual(180)
     }
+  })
+})
+
+describe('limites do raio (WEB-73)', () => {
+  it('contém o círculo inteiro', () => {
+    const [[oeste, sul], [leste, norte]] = limitesDoRaio(SAO_PAULO, 5)
+    for (const [lng, lat] of criarCirculoDeRaio(SAO_PAULO, 5).geometry
+      .coordinates[0]) {
+      expect(lng).toBeGreaterThanOrEqual(oeste)
+      expect(lng).toBeLessThanOrEqual(leste)
+      expect(lat).toBeGreaterThanOrEqual(sul)
+      expect(lat).toBeLessThanOrEqual(norte)
+    }
+  })
+
+  /**
+   * A caixa tem que ter o diâmetro do raio nos dois eixos: é o que garante que
+   * a área buscada apareça inteira, e não só o pedaço que coube.
+   */
+  it('mede dois raios de ponta a ponta', () => {
+    const [[oeste, sul], [leste, norte]] = limitesDoRaio(SAO_PAULO, 5)
+    expect(
+      distanciaKm(
+        { lat: sul, lng: SAO_PAULO.lng },
+        { lat: norte, lng: SAO_PAULO.lng }
+      )
+    ).toBeCloseTo(10, 1)
+    expect(
+      distanciaKm(
+        { lat: SAO_PAULO.lat, lng: oeste },
+        { lat: SAO_PAULO.lat, lng: leste }
+      )
+    ).toBeCloseTo(10, 1)
+  })
+
+  it('cresce junto com o raio', () => {
+    const largura = (raioKm: number) => {
+      const [[oeste], [leste]] = limitesDoRaio(SAO_PAULO, raioKm)
+      return leste - oeste
+    }
+    expect(largura(10)).toBeGreaterThan(largura(5))
+    expect(largura(5)).toBeGreaterThan(largura(1))
   })
 })
