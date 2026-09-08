@@ -1,5 +1,5 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import type { AnalyticsEntitlements } from './types'
+import type { AnalyticsEntitlements, EventAnalyticsResponse } from './types'
 
 /**
  * Plan-based entitlements for commercial analytics.
@@ -7,9 +7,10 @@ import type { AnalyticsEntitlements } from './types'
  * Each plan gets a unique set of capabilities. No two plans share the same
  * entitlement shape — this makes it easy to justify upgrades.
  *
- * - Starter:  profile views only, 30d retention, previous-period comparison
+ * - Starter:  profile views only, 30d retention, previous-period comparison,
+ *              basic per-game
  * - Pro:      + phone clicked, whatsapp opened, 365d retention, comparison
- * - Elite:    + directions opened, daily breakdown, event breakdown, unlimited
+ * - Elite:    + directions opened, daily breakdown, complete per-game, unlimited
  */
 
 const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
@@ -20,7 +21,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: false,
     canViewComparison: true,
     canViewDailyBreakdown: false,
-    canViewEventBreakdown: false,
+    eventBreakdown: 'basic',
     maxDaysRetention: 30,
     plan: 'starter'
   },
@@ -31,7 +32,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: false,
     canViewComparison: true,
     canViewDailyBreakdown: false,
-    canViewEventBreakdown: false,
+    eventBreakdown: 'complete',
     maxDaysRetention: 365,
     plan: 'pro'
   },
@@ -42,7 +43,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: true,
     canViewComparison: true,
     canViewDailyBreakdown: true,
-    canViewEventBreakdown: true,
+    eventBreakdown: 'complete',
     maxDaysRetention: null,
     plan: 'elite'
   }
@@ -73,5 +74,31 @@ export function canViewEventType(
       return e.canViewDirectionsOpened
     default:
       return false
+  }
+}
+
+/**
+ * Aplica o entitlement de analytics por jogo na resposta: métricas que o
+ * plano não enxerga vêm nulas (mesma regra do overview). O servidor é
+ * autoritativo — o cliente nunca decide qual métrica ele pode ver.
+ */
+export function applyEventBreakdownEntitlements(
+  response: EventAnalyticsResponse,
+  entitlements: AnalyticsEntitlements
+) {
+  return {
+    ...response,
+    events: response.events.map((event) => ({
+      ...event,
+      directionsOpened: entitlements.canViewDirectionsOpened
+        ? event.directionsOpened
+        : null,
+      phoneClicked: entitlements.canViewPhoneClicked
+        ? event.phoneClicked
+        : null,
+      whatsappOpened: entitlements.canViewWhatsappOpened
+        ? event.whatsappOpened
+        : null
+    }))
   }
 }

@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { adminProcedure, protectedProcedure, router } from '../index'
 import {
+  applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
   COMMERCIAL_EVENT_TYPES,
   COMMERCIAL_TIME_ZONE,
@@ -204,10 +205,10 @@ export const commercialAnalyticsRouter = router({
       const { barId, plan } = await resolveBarAndPlan(userId)
       const entitlements = getAnalyticsEntitlements(plan)
 
-      if (!entitlements.canViewEventBreakdown) {
+      if (entitlements.eventBreakdown === 'none') {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Plano não permite breakdown por evento'
+          message: 'Plano não permite analytics por jogo'
         })
       }
 
@@ -223,7 +224,11 @@ export const commercialAnalyticsRouter = router({
         })
       }
 
-      return getMyEventAnalytics(barId, from, to)
+      const result = await getMyEventAnalytics(barId, from, to)
+
+      // O servidor filtra as métricas por entitlement — as que o plano não
+      // enxerga vêm nulas, nunca vazam o valor (mesma regra do overview).
+      return applyEventBreakdownEntitlements(result, entitlements)
     }),
 
   /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 import {
+  applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
   assertRecordable,
   COMMERCIAL_EVENT_TYPES,
@@ -92,7 +93,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewDirectionsOpened).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.canViewDailyBreakdown).toBe(false)
-    expect(e.canViewEventBreakdown).toBe(false)
+    expect(e.eventBreakdown).toBe('basic')
     expect(e.maxDaysRetention).toBe(30)
   })
 
@@ -104,7 +105,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewDirectionsOpened).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.canViewDailyBreakdown).toBe(false)
-    expect(e.canViewEventBreakdown).toBe(false)
+    expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(365)
   })
 
@@ -116,7 +117,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewDirectionsOpened).toBe(true)
     expect(e.canViewComparison).toBe(true)
     expect(e.canViewDailyBreakdown).toBe(true)
-    expect(e.canViewEventBreakdown).toBe(true)
+    expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(null)
   })
 
@@ -128,6 +129,97 @@ describe('commercial-analytics entitlements', () => {
     expect(JSON.stringify(starter)).not.toEqual(JSON.stringify(pro))
     expect(JSON.stringify(pro)).not.toEqual(JSON.stringify(elite))
     expect(JSON.stringify(starter)).not.toEqual(JSON.stringify(elite))
+  })
+
+  it('per-game analytics (WEB-100): Starter tem nível básico, Pro/Elite completo', () => {
+    const levels = {
+      starter: getAnalyticsEntitlements('starter').eventBreakdown,
+      pro: getAnalyticsEntitlements('pro').eventBreakdown,
+      elite: getAnalyticsEntitlements('elite').eventBreakdown
+    }
+
+    expect(levels).toEqual({
+      starter: 'basic',
+      pro: 'complete',
+      elite: 'complete'
+    })
+  })
+
+  it('per-game filtering é coerente com as métricas visíveis do plano', () => {
+    const starter = getAnalyticsEntitlements('starter')
+    const pro = getAnalyticsEntitlements('pro')
+    const elite = getAnalyticsEntitlements('elite')
+
+    // Starter (básico): só profile_view aparece no breakdown por jogo.
+    expect(starter.eventBreakdown).toBe('basic')
+    expect(starter.canViewPhoneClicked).toBe(false)
+    expect(starter.canViewWhatsappOpened).toBe(false)
+    expect(starter.canViewDirectionsOpened).toBe(false)
+
+    // Pro (completo): funil sem rota, igual ao overview.
+    expect(pro.eventBreakdown).toBe('complete')
+    expect(pro.canViewPhoneClicked).toBe(true)
+    expect(pro.canViewWhatsappOpened).toBe(true)
+    expect(pro.canViewDirectionsOpened).toBe(false)
+
+    // Elite (completo): funil inteiro.
+    expect(elite.eventBreakdown).toBe('complete')
+    expect(elite.canViewPhoneClicked).toBe(true)
+    expect(elite.canViewWhatsappOpened).toBe(true)
+    expect(elite.canViewDirectionsOpened).toBe(true)
+  })
+
+  it('applyEventBreakdownEntitlements filtra por plano (WEB-100)', () => {
+    const response = {
+      from: '2026-09-01',
+      to: '2026-09-07',
+      events: [
+        {
+          eventId: 'event-1',
+          eventName: 'Campeonato - Evento',
+          startsAt: '2026-09-05T22:00:00.000Z',
+          profileViews: 10,
+          directionsOpened: 3,
+          phoneClicked: 2,
+          whatsappOpened: 1
+        }
+      ]
+    }
+
+    const expected = {
+      eventId: 'event-1',
+      eventName: 'Campeonato - Evento',
+      startsAt: '2026-09-05T22:00:00.000Z',
+      profileViews: 10,
+      directionsOpened: 3,
+      phoneClicked: 2,
+      whatsappOpened: 1
+    }
+
+    const starter = applyEventBreakdownEntitlements(
+      response,
+      getAnalyticsEntitlements('starter')
+    )
+    expect(starter.events).toEqual([
+      {
+        ...expected,
+        directionsOpened: null,
+        phoneClicked: null,
+        whatsappOpened: null
+      }
+    ])
+
+    const pro = applyEventBreakdownEntitlements(
+      response,
+      getAnalyticsEntitlements('pro')
+    )
+    expect(pro.events).toEqual([{ ...expected, directionsOpened: null }])
+
+    const elite = applyEventBreakdownEntitlements(
+      response,
+      getAnalyticsEntitlements('elite')
+    )
+    expect(elite.events).toEqual([expected])
   })
 
   it('canViewEventType returns correct values', () => {

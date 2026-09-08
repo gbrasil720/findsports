@@ -173,8 +173,17 @@ function PubDashboard() {
     refetch: refetchSub
   } = useQuery(trpc.pub.getMySubscription.queryOptions())
 
+  const {
+    data: analyticsEntitlements,
+    isLoading: loadingEntitlements,
+    isError: entitlementsError,
+    refetch: refetchEntitlements
+  } = useQuery(trpc.commercialAnalytics.getMyEntitlements.queryOptions())
+
   const canQueryEventAnalytics =
-    subFetched && !subError && subscription?.plan === 'elite'
+    !loadingEntitlements &&
+    !entitlementsError &&
+    analyticsEntitlements?.eventBreakdown !== 'none'
 
   const {
     data: creationPolicy,
@@ -272,23 +281,30 @@ function PubDashboard() {
         ? { status: 'ready', data: analyticsOverview }
         : { status: 'empty' }
 
-  /* Event analytics state machine */
-  const eventAnalyticsState: EventAnalyticsState = loadingSub
+  /* Event analytics state machine — o entitlement (não o plano) é autoritativo */
+  const eventAnalyticsState: EventAnalyticsState = loadingEntitlements
     ? { status: 'loading' }
-    : !canQueryEventAnalytics
-      ? { status: 'empty' }
-      : loadingEventAnalytics
-        ? { status: 'loading' }
-        : eventAnalyticsError
-          ? {
-              status: 'error',
-              retry: () => {
-                void refetchEventAnalytics()
+    : entitlementsError || !analyticsEntitlements
+      ? {
+          status: 'error',
+          retry: () => {
+            void refetchEntitlements()
+          }
+        }
+      : analyticsEntitlements.eventBreakdown === 'none'
+        ? { status: 'blocked' }
+        : loadingEventAnalytics
+          ? { status: 'loading' }
+          : eventAnalyticsError
+            ? {
+                status: 'error',
+                retry: () => {
+                  void refetchEventAnalytics()
+                }
               }
-            }
-          : eventAnalytics?.events && eventAnalytics.events.length > 0
-            ? { status: 'ready', items: eventAnalytics.events }
-            : { status: 'empty' }
+            : eventAnalytics?.events && eventAnalytics.events.length > 0
+              ? { status: 'ready', items: eventAnalytics.events }
+              : { status: 'empty' }
 
   /* ------------------------------------------------------------------ */
   /* Derived                                                             */

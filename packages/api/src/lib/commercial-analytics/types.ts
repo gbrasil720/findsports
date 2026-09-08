@@ -166,7 +166,13 @@ export interface AnalyticsEntitlements {
   canViewDirectionsOpened: boolean
   canViewComparison: boolean
   canViewDailyBreakdown: boolean
-  canViewEventBreakdown: boolean
+  /**
+   * Per-event (por jogo) analytics level:
+   * - `basic` — per-game breakdown with the plan's base metrics (profile views)
+   * - `complete` — per-game breakdown with the plan's full metric set
+   * - `none` — no per-game breakdown
+   */
+  eventBreakdown: 'none' | 'basic' | 'complete'
   maxDaysRetention: number | null
   plan: DbSubscriptionPlan
 }

@@ -50,6 +50,7 @@ export type AnalyticsOverviewState =
 export type EventAnalyticsState =
   | { status: 'loading' }
   | { status: 'error'; retry: () => void }
+  | { status: 'blocked' }
   | { status: 'empty' }
   | { status: 'ready'; items: EventAnalyticsRow[] }
 
@@ -98,5 +99,8 @@ export function getMainAction(data: {
   ]
 
   const max = Math.max(...actions.map((a) => a.count))
+  // Sem nenhuma ação contabilizada (ou sem métricas visíveis no plano) não
+  // existe "ação mais usada" — evita cair no tie-break e mostrar "Rota".
+  if (max === 0) return '—'
   return actions.find((a) => a.count === max)?.label ?? '—'
 }
