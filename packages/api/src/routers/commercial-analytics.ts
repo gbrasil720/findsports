@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { adminProcedure, protectedProcedure, router } from '../index'
 import {
+  applyOverviewEntitlements,
   COMMERCIAL_EVENT_TYPES,
   COMMERCIAL_TIME_ZONE,
   canViewEventType,
@@ -169,59 +170,11 @@ export const commercialAnalyticsRouter = router({
 
       const overview = await getMyAnalyticsOverview(barId, from, to)
 
-      // Server-side entitlement filtering
+      // Server-side entitlement filtering. The response is shaped field by
+      // field (never by spreading the raw overview), so a plan blocked from
+      // comparison cannot leak `*Prev`/`*Change` values.
       return {
-        ...overview,
-        phoneClicked: entitlements.canViewPhoneClicked
-          ? overview.phoneClicked
-          : null,
-        whatsappOpened: entitlements.canViewWhatsappOpened
-          ? overview.whatsappOpened
-          : null,
-        directionsOpened: entitlements.canViewDirectionsOpened
-          ? overview.directionsOpened
-          : null,
-        phoneClickedPrev:
-          entitlements.canViewComparison && entitlements.canViewPhoneClicked
-            ? overview.phoneClickedPrev
-            : null,
-        whatsappOpenedPrev:
-          entitlements.canViewComparison && entitlements.canViewWhatsappOpened
-            ? overview.whatsappOpenedPrev
-            : null,
-        directionsOpenedPrev:
-          entitlements.canViewComparison && entitlements.canViewDirectionsOpened
-            ? overview.directionsOpenedPrev
-            : null,
-        phoneClickedChange:
-          entitlements.canViewComparison && entitlements.canViewPhoneClicked
-            ? overview.phoneClickedChange
-            : null,
-        whatsappOpenedChange:
-          entitlements.canViewComparison && entitlements.canViewWhatsappOpened
-            ? overview.whatsappOpenedChange
-            : null,
-        directionsOpenedChange:
-          entitlements.canViewComparison && entitlements.canViewDirectionsOpened
-            ? overview.directionsOpenedChange
-            : null,
-        dailyProfileViews: entitlements.canViewDailyBreakdown
-          ? overview.dailyProfileViews
-          : null,
-        dailyPhoneClicked:
-          entitlements.canViewDailyBreakdown && entitlements.canViewPhoneClicked
-            ? overview.dailyPhoneClicked
-            : null,
-        dailyWhatsappOpened:
-          entitlements.canViewDailyBreakdown &&
-          entitlements.canViewWhatsappOpened
-            ? overview.dailyWhatsappOpened
-            : null,
-        dailyDirectionsOpened:
-          entitlements.canViewDailyBreakdown &&
-          entitlements.canViewDirectionsOpened
-            ? overview.dailyDirectionsOpened
-            : null,
+        ...applyOverviewEntitlements(overview, entitlements),
         plan,
         entitlements
       }

@@ -87,6 +87,54 @@ export interface AnalyticsOverview {
   to: string
 }
 
+/**
+ * Overview response after applying plan entitlements — what the API actually
+ * returns to a pub. Every field the plan cannot view (metric or comparison)
+ * is null, so the client never sees a partially masked comparison.
+ */
+export interface AnalyticsOverviewResponse {
+  // Current period — always viewable: `canViewAnalytics`
+  uniqueVisitors: number
+  interestedPeople: number
+  highIntentActions: number
+  profileViews: number
+
+  // Current period — per-metric entitlement
+  directionsOpened: number | null
+  phoneClicked: number | null
+  whatsappOpened: number | null
+
+  // Comparison (previous period) — `canViewComparison`, plus the metric
+  // entitlement for channel-specific comparisons
+  uniqueVisitorsPrev: number | null
+  interestedPeoplePrev: number | null
+  highIntentActionsPrev: number | null
+  profileViewsPrev: number | null
+  directionsOpenedPrev: number | null
+  phoneClickedPrev: number | null
+  whatsappOpenedPrev: number | null
+
+  // Percentage changes
+  uniqueVisitorsChange: number | null
+  interestedPeopleChange: number | null
+  highIntentActionsChange: number | null
+  profileViewsChange: number | null
+  directionsOpenedChange: number | null
+  phoneClickedChange: number | null
+  whatsappOpenedChange: number | null
+
+  // Daily time-series (current period) — `canViewDailyBreakdown`, plus the
+  // metric entitlement for channel-specific series
+  dailyProfileViews: DailyDataPoint[] | null
+  dailyDirectionsOpened: DailyDataPoint[] | null
+  dailyPhoneClicked: DailyDataPoint[] | null
+  dailyWhatsappOpened: DailyDataPoint[] | null
+
+  // Date range used
+  from: string
+  to: string
+}
+
 // ---------------------------------------------------------------------------
 // Event analytics response (per-event breakdown)
 // ---------------------------------------------------------------------------
