@@ -366,3 +366,55 @@
   border-color: var(--onside-live);
   color: var(--onside-ink);
 }
+
+/*
+ * Cartão de bar da lista de descoberta.
+ *
+ * O plano do bar é expresso pelo cartão inteiro, não por uma etiqueta: uma
+ * badge de 9px na terceira linha de conteúdo disputa espaço com "ao vivo",
+ * "novo" e a nota, e some quando a lista rola. O que o torcedor precisa
+ * distinguir de relance é o cartão, então é o cartão que muda.
+ *
+ * A escala é: `starter` no papel, `pro` com trilho acid na borda esquerda,
+ * `elite` invertido. Starter não perde nada — não ter trilho não é penalidade,
+ * é a ausência do degrau seguinte.
+ *
+ * As cores vêm de variáveis locais em vez de classes condicionais no JSX
+ * porque o cartão inverte oito coisas de uma vez (fundo, texto, texto
+ * secundário, avatar, selo do esporte, selo do plano, sombra, vermelho de "ao
+ * vivo"). Com classe condicional, esquecer uma delas produz texto ink sobre
+ * fundo ink — invisível, e invisível não aparece em teste de markup.
+ */
+.onside-app .onside-bar-card {
+  --bar-card-bg: var(--onside-paper);
+  --bar-card-fg: var(--onside-ink);
+  --bar-card-muted: var(--onside-muted);
+  --bar-card-avatar-bg: var(--onside-ink);
+  --bar-card-avatar-fg: var(--onside-paper);
+  --bar-card-chip-bg: var(--onside-ink);
+  --bar-card-chip-fg: var(--onside-paper);
+  --bar-card-live: var(--onside-live-text);
+  --bar-card-shadow: var(--onside-ink);
+}
+
+/*
+ * Trilho por dentro da borda, não no lugar dela: acid sobre papel tem 1.1:1 de
+ * contraste, então um trilho encostado no fundo da página sumiria. Emoldurado
+ * pela borda ink de 1.5px, ele lê.
+ */
+.onside-app .onside-bar-card-pro {
+  box-shadow: inset 6px 0 0 var(--onside-acid);
+}
+
+.onside-app .onside-bar-card-elite {
+  --bar-card-bg: var(--onside-ink);
+  --bar-card-fg: var(--onside-paper);
+  --bar-card-muted: var(--onside-muted-on-ink);
+  --bar-card-avatar-bg: var(--onside-paper);
+  --bar-card-avatar-fg: var(--onside-ink);
+  --bar-card-chip-bg: var(--onside-paper);
+  --bar-card-chip-fg: var(--onside-ink);
+  --bar-card-live: var(--onside-live-on-ink);
+  /* Sombra ink sobre um cartão ink não existe: o realce de hover vira acid. */
+  --bar-card-shadow: var(--onside-acid);
+}

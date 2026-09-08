@@ -40,7 +40,7 @@ function SportBadge({ name }: { slug: string; name: string }) {
   const initials = name.slice(0, 2).toUpperCase()
   return (
     <span
-      className="inline-flex size-4 shrink-0 items-center justify-center border border-[var(--onside-ink)] bg-[var(--onside-ink)] font-[family-name:var(--onside-mono)] text-[8px] font-bold text-[var(--onside-paper)]"
+      className="inline-flex size-4 shrink-0 items-center justify-center border border-[var(--bar-card-chip-bg)] bg-[var(--bar-card-chip-bg)] font-[family-name:var(--onside-mono)] text-[8px] font-bold text-[var(--bar-card-chip-fg)]"
       title={name}
     >
       {initials}
@@ -49,25 +49,28 @@ function SportBadge({ name }: { slug: string; name: string }) {
 }
 
 /**
- * Escala de peso do selo, de menor para maior: `starter` não tem selo, `pro`
- * é contornado e `elite` é sólido. O peso visual sobe junto com o plano, que
- * é o que faz a hierarquia ser lida sem legenda.
+ * Tratamento do cartão por plano.
  *
- * `starter` sem selo vem da §5 de `docs/public-bar-page-redesign.md` — capa
- * compacta, sem selo, nada escondido. Selo é hierarquia, não penalidade: um
- * "sem selo" escrito na tela do torcedor seria penalidade.
+ * A distinção não depende de cor sozinha em nenhum degrau: o ícone vem do
+ * próprio plano em `PLAN_CATALOG` (`Star` no Pro, `Trophy` no Elite), o nome
+ * está escrito, e a forma do cartão muda — trilho no Pro, inversão no Elite.
  *
- * O Elite é sólido no ink, não no acid, por dois motivos. O acid já é o chip
- * "Novo" logo ao lado, e dois chips acid na mesma linha viram um borrão. E
- * preto sólido num fundo claro pesa mais que acid sólido — com o Pro no preto
- * a hierarquia lia ao contrário.
- *
- * Cor não carrega a distinção sozinha em nenhum caso: o ícone vem do próprio
- * plano em `PLAN_CATALOG` (`Star` no Pro, `Trophy` no Elite) e o nome está
- * escrito.
+ * `starter` sem selo vem da §5 de `docs/public-bar-page-redesign.md`: capa
+ * compacta, sem selo, nada escondido.
+ */
+const PLAN_CARD: Record<SubscriptionPlan, string | null> = {
+  elite: 'onside-bar-card-elite',
+  pro: 'onside-bar-card-pro',
+  starter: null
+}
+
+/**
+ * O selo continua existindo para nomear o plano — o cartão diz que é
+ * diferente, o selo diz qual é. No Elite ele inverte junto, senão vira ink
+ * sobre ink.
  */
 const PLAN_BADGE: Record<SubscriptionPlan, string | null> = {
-  elite: 'bg-[var(--onside-ink)] text-[var(--onside-acid)]',
+  elite: 'bg-[var(--onside-acid)] text-[var(--onside-ink)]',
   pro: 'border border-[var(--onside-ink)] text-[var(--onside-ink)]',
   starter: null
 }
@@ -106,6 +109,7 @@ export function BarCard({
   const extraEvents = (bar.event_count ?? 0) - 1
   const newBar = isNew(bar.created_at)
   const plan = bar.plan
+  const planCard = PLAN_CARD[plan]
   const planBadge = PLAN_BADGE[plan]
   const PlanIcon = getPlan(plan).icon
   const planName = getPlan(plan).name
@@ -125,9 +129,9 @@ export function BarCard({
 
   return (
     <div
-      className={`group grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 sm:gap-4 ${
-        isHovered ? 'shadow-[4px_4px_0_var(--onside-ink)]' : 'shadow-none'
-      }`}
+      className={`onside-bar-card group grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--bar-card-bg)] p-4 text-[var(--bar-card-fg)] sm:gap-4 ${
+        planCard ?? ''
+      } ${isHovered ? 'shadow-[4px_4px_0_var(--bar-card-shadow)]' : ''}`}
     >
       <Link
         to="/pub/$pubId"
@@ -151,8 +155,10 @@ export function BarCard({
             disputavam o mesmo pixel e um bar Elite com jogo ao vivo perdia o
             sinal de plano. */}
         <div
-          className={`grid size-16 shrink-0 place-items-center overflow-hidden font-bold text-xl text-[var(--onside-paper)] ${
-            live ? 'bg-[var(--onside-live)]' : 'bg-[var(--onside-ink)]'
+          className={`grid size-16 shrink-0 place-items-center overflow-hidden font-bold text-xl ${
+            live
+              ? 'bg-[var(--onside-live)] text-[var(--onside-paper)]'
+              : 'bg-[var(--bar-card-avatar-bg)] text-[var(--bar-card-avatar-fg)]'
           }`}
         >
           {bar.photo_url ? (
@@ -172,7 +178,7 @@ export function BarCard({
           <div className="mb-1 flex flex-wrap items-center gap-2">
             {event ? (
               live ? (
-                <span className="inline-flex items-center gap-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-live-text)] uppercase tracking-widest">
+                <span className="inline-flex items-center gap-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--bar-card-live)] uppercase tracking-widest">
                   <span
                     className="onside-live-dot is-pulse"
                     aria-hidden="true"
@@ -180,13 +186,13 @@ export function BarCard({
                   Ao vivo
                 </span>
               ) : upcoming ? (
-                <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest tabular-nums">
+                <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--bar-card-muted)] uppercase tracking-widest tabular-nums">
                   {formatDate(event.startsAt)} às{' '}
                   {formatStartsAt(event.startsAt)}
                 </span>
               ) : null
             ) : (
-              <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest">
+              <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--bar-card-muted)] uppercase tracking-widest">
                 Sem eventos programados
               </span>
             )}
@@ -217,11 +223,11 @@ export function BarCard({
                 ? `${bar.distance_km.toFixed(1)} km`
                 : '—'}
             </span>
-            <span className="text-[var(--onside-muted)] text-xs">
+            <span className="text-[var(--bar-card-muted)] text-xs">
               {bar.neighborhood}
             </span>
             {event ? (
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--onside-muted)] text-xs">
+              <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--bar-card-muted)] text-xs">
                 <SportBadge slug={event.sport.slug} name={event.sport.name} />
                 <span className="truncate" title={event.championship}>
                   {event.championship}
@@ -230,7 +236,7 @@ export function BarCard({
             ) : null}
             {participantsLabel ? (
               <span
-                className="truncate text-[var(--onside-muted)] text-xs"
+                className="truncate text-[var(--bar-card-muted)] text-xs"
                 title={participantsLabel}
               >
                 {participantsLabel}

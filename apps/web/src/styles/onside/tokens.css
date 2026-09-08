@@ -116,6 +116,10 @@
   --onside-acid: #c9f135;
   --onside-live: #e8320c;
   --onside-live-text: #c92b0c;
+  /* Vermelho de "ao vivo" sobre superfície ink. O `--onside-live-text` só
+     atinge 3.43:1 contra o ink, abaixo do mínimo de 4.5:1 para texto pequeno;
+     este chega a 5.01:1 mantendo a mesma matiz. Use só sobre ink. */
+  --onside-live-on-ink: #f3421d;
   --onside-stone: #e7e3db;
   --onside-muted: #55554f;
   --onside-muted-on-ink: #aaa9a4;
