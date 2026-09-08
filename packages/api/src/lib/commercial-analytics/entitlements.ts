@@ -7,7 +7,7 @@ import type { AnalyticsEntitlements } from './types'
  * Each plan gets a unique set of capabilities. No two plans share the same
  * entitlement shape — this makes it easy to justify upgrades.
  *
- * - Starter:  profile views only, 30d retention, no comparison
+ * - Starter:  profile views only, 30d retention, previous-period comparison
  * - Pro:      + phone clicked, whatsapp opened, 365d retention, comparison
  * - Elite:    + directions opened, daily breakdown, event breakdown, unlimited
  */
@@ -18,7 +18,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewPhoneClicked: false,
     canViewWhatsappOpened: false,
     canViewDirectionsOpened: false,
-    canViewComparison: false,
+    canViewComparison: true,
     canViewDailyBreakdown: false,
     canViewEventBreakdown: false,
     maxDaysRetention: 30,

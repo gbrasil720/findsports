@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 import {
+  applyOverviewEntitlements,
   assertRecordable,
   COMMERCIAL_EVENT_TYPES,
   canViewEventType,
@@ -8,6 +9,7 @@ import {
   pctChange,
   RECORD_FAILURES
 } from './index'
+import type { AnalyticsOverview } from './types'
 
 describe('commercial-analytics types', () => {
   it('has 4 canonical event types', () => {
@@ -87,7 +89,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewPhoneClicked).toBe(false)
     expect(e.canViewWhatsappOpened).toBe(false)
     expect(e.canViewDirectionsOpened).toBe(false)
-    expect(e.canViewComparison).toBe(false)
+    expect(e.canViewComparison).toBe(true)
     expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.canViewEventBreakdown).toBe(false)
     expect(e.maxDaysRetention).toBe(30)
@@ -159,5 +161,183 @@ describe('commercial-analytics recorder', () => {
     expect(source).toMatch(
       /ON CONFLICT \(bar_id, actor_user_id, type, commercial_day, source_event_id\) DO NOTHING\s+RETURNING id/
     )
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* applyOverviewEntitlements — complete object per plan (WEB-89)       */
+/*                                                                     */
+/* Contracto: o objeto inteiro devolvido a cada plano é o contrato.    */
+/* Se o catálogo/spec anunciam comparação para o Starter, o servidor   */
+/* deve entregar comparação nas métricas que o plano enxerga — e nunca */
+/* vazar campos comparativos bloqueados via spread.                    */
+/* ------------------------------------------------------------------ */
+
+const DAY = (n: number) => ({ date: '2026-09-01', value: n })
+
+const OVERVIEW_RAW: AnalyticsOverview = {
+  uniqueVisitors: 100,
+  interestedPeople: 30,
+  highIntentActions: 12,
+  profileViews: 240,
+  directionsOpened: 8,
+  phoneClicked: 3,
+  whatsappOpened: 4,
+
+  uniqueVisitorsPrev: 80,
+  interestedPeoplePrev: 25,
+  highIntentActionsPrev: 9,
+  profileViewsPrev: 200,
+  directionsOpenedPrev: 6,
+  phoneClickedPrev: 2,
+  whatsappOpenedPrev: 3,
+
+  uniqueVisitorsChange: 25,
+  interestedPeopleChange: 20,
+  highIntentActionsChange: 33,
+  profileViewsChange: 20,
+  directionsOpenedChange: 33,
+  phoneClickedChange: 50,
+  whatsappOpenedChange: 33,
+
+  dailyProfileViews: [DAY(10)],
+  dailyDirectionsOpened: [DAY(1)],
+  dailyPhoneClicked: [DAY(1)],
+  dailyWhatsappOpened: [DAY(1)],
+
+  from: '2026-09-01',
+  to: '2026-09-30'
+}
+
+const overviewFor = (plan: 'starter' | 'pro' | 'elite') =>
+  applyOverviewEntitlements(OVERVIEW_RAW, getAnalyticsEntitlements(plan))
+
+describe('applyOverviewEntitlements — objeto completo por plano', () => {
+  it('starter: catálogo anuncia comparação com período anterior e ela chega', () => {
+    expect(overviewFor('starter')).toEqual({
+      uniqueVisitors: 100,
+      interestedPeople: 30,
+      highIntentActions: 12,
+      profileViews: 240,
+      directionsOpened: null,
+      phoneClicked: null,
+      whatsappOpened: null,
+
+      uniqueVisitorsPrev: 80,
+      interestedPeoplePrev: 25,
+      highIntentActionsPrev: 9,
+      profileViewsPrev: 200,
+      directionsOpenedPrev: null,
+      phoneClickedPrev: null,
+      whatsappOpenedPrev: null,
+
+      uniqueVisitorsChange: 25,
+      interestedPeopleChange: 20,
+      highIntentActionsChange: 33,
+      profileViewsChange: 20,
+      directionsOpenedChange: null,
+      phoneClickedChange: null,
+      whatsappOpenedChange: null,
+
+      dailyProfileViews: null,
+      dailyDirectionsOpened: null,
+      dailyPhoneClicked: null,
+      dailyWhatsappOpened: null,
+
+      from: '2026-09-01',
+      to: '2026-09-30'
+    })
+  })
+
+  it('pro: comparação dos canais liberados, sem directions', () => {
+    expect(overviewFor('pro')).toEqual({
+      uniqueVisitors: 100,
+      interestedPeople: 30,
+      highIntentActions: 12,
+      profileViews: 240,
+      directionsOpened: null,
+      phoneClicked: 3,
+      whatsappOpened: 4,
+
+      uniqueVisitorsPrev: 80,
+      interestedPeoplePrev: 25,
+      highIntentActionsPrev: 9,
+      profileViewsPrev: 200,
+      directionsOpenedPrev: null,
+      phoneClickedPrev: 2,
+      whatsappOpenedPrev: 3,
+
+      uniqueVisitorsChange: 25,
+      interestedPeopleChange: 20,
+      highIntentActionsChange: 33,
+      profileViewsChange: 20,
+      directionsOpenedChange: null,
+      phoneClickedChange: 50,
+      whatsappOpenedChange: 33,
+
+      dailyProfileViews: null,
+      dailyDirectionsOpened: null,
+      dailyPhoneClicked: null,
+      dailyWhatsappOpened: null,
+
+      from: '2026-09-01',
+      to: '2026-09-30'
+    })
+  })
+
+  it('elite: objeto completo, sem campos bloqueados', () => {
+    expect(overviewFor('elite')).toEqual({
+      uniqueVisitors: 100,
+      interestedPeople: 30,
+      highIntentActions: 12,
+      profileViews: 240,
+      directionsOpened: 8,
+      phoneClicked: 3,
+      whatsappOpened: 4,
+
+      uniqueVisitorsPrev: 80,
+      interestedPeoplePrev: 25,
+      highIntentActionsPrev: 9,
+      profileViewsPrev: 200,
+      directionsOpenedPrev: 6,
+      phoneClickedPrev: 2,
+      whatsappOpenedPrev: 3,
+
+      uniqueVisitorsChange: 25,
+      interestedPeopleChange: 20,
+      highIntentActionsChange: 33,
+      profileViewsChange: 20,
+      directionsOpenedChange: 33,
+      phoneClickedChange: 50,
+      whatsappOpenedChange: 33,
+
+      dailyProfileViews: [DAY(10)],
+      dailyDirectionsOpened: [DAY(1)],
+      dailyPhoneClicked: [DAY(1)],
+      dailyWhatsappOpened: [DAY(1)],
+
+      from: '2026-09-01',
+      to: '2026-09-30'
+    })
+  })
+
+  it('sem canViewComparison nenhum campo comparativo vaza (regressão WEB-89)', () => {
+    const plano = {
+      ...getAnalyticsEntitlements('pro'),
+      canViewComparison: false
+    }
+    const res = applyOverviewEntitlements(OVERVIEW_RAW, plano)
+
+    expect(res.uniqueVisitorsPrev).toBeNull()
+    expect(res.interestedPeoplePrev).toBeNull()
+    expect(res.highIntentActionsPrev).toBeNull()
+    expect(res.profileViewsPrev).toBeNull()
+    expect(res.uniqueVisitorsChange).toBeNull()
+    expect(res.interestedPeopleChange).toBeNull()
+    expect(res.highIntentActionsChange).toBeNull()
+    expect(res.profileViewsChange).toBeNull()
+    expect(res.phoneClickedPrev).toBeNull()
+    expect(res.whatsappOpenedPrev).toBeNull()
+    expect(res.directionsOpenedPrev).toBeNull()
   })
 })

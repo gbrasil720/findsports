@@ -56,7 +56,7 @@ function hasComparisonData(data: AnalyticsOverviewData): boolean {
     (data.phoneClickedPrev ?? 0) > 0 ||
     (data.whatsappOpenedPrev ?? 0) > 0 ||
     (data.directionsOpenedPrev ?? 0) > 0 ||
-    data.profileViewsPrev > 0
+    (data.profileViewsPrev ?? 0) > 0
   )
 }
 
@@ -205,8 +205,8 @@ function KpiCards({ data }: { data: AnalyticsOverviewData }) {
   const intentRate = formatRate(intentActions, data.uniqueVisitors)
   const intentRateChange = formatPpChange(
     data.uniqueVisitors > 0 ? intentActions / data.uniqueVisitors : null,
-    data.uniqueVisitorsPrev > 0
-      ? intentActionsPrev / data.uniqueVisitorsPrev
+    (data.uniqueVisitorsPrev ?? 0) > 0
+      ? intentActionsPrev / (data.uniqueVisitorsPrev ?? 0)
       : null
   )
 
