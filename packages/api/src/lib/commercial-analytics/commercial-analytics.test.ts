@@ -7,6 +7,7 @@ import {
   canViewEventType,
   getAnalyticsEntitlements,
   pctChange,
+  previousPeriodRange,
   RECORD_FAILURES
 } from './index'
 import type { AnalyticsOverview } from './types'
@@ -137,6 +138,49 @@ describe('commercial-analytics entitlements', () => {
     expect(canViewEventType('elite', 'directions_opened')).toBe(true)
     expect(canViewEventType('elite', 'whatsapp_opened')).toBe(true)
     expect(canViewEventType('starter', 'unknown')).toBe(false)
+  })
+})
+
+describe('commercial-analytics period comparison (WEB-99)', () => {
+  const iso = (d: Date) => d.toISOString()
+
+  it('cobre o dia inteiro imediatamente anterior para período de um dia', () => {
+    const from = new Date('2026-09-01T00:00:00.000Z')
+    const to = new Date('2026-09-01T23:59:59.999Z')
+
+    const prev = previousPeriodRange(from, to)
+
+    expect(iso(prev.start)).toBe('2026-08-31T00:00:00.000Z')
+    expect(iso(prev.end)).toBe('2026-08-31T23:59:59.999Z')
+  })
+
+  it('cobre os dias inteiros imediatamente anteriores para período de vários dias', () => {
+    const from = new Date('2026-09-01T00:00:00.000Z')
+    const to = new Date('2026-09-03T23:59:59.999Z')
+
+    const prev = previousPeriodRange(from, to)
+
+    expect(iso(prev.start)).toBe('2026-08-29T00:00:00.000Z')
+    expect(iso(prev.end)).toBe('2026-08-31T23:59:59.999Z')
+  })
+
+  it('mantém os dois intervalos adjacentes, sem lacuna e com a mesma duração', () => {
+    const casos = [
+      ['2026-09-01T00:00:00.000Z', '2026-09-01T23:59:59.999Z'],
+      ['2026-09-01T00:00:00.000Z', '2026-09-03T23:59:59.999Z'],
+      ['2026-09-01T12:00:00.000Z', '2026-09-02T12:00:00.000Z']
+    ] as const
+
+    for (const [fromIso, toIso] of casos) {
+      const from = new Date(fromIso)
+      const to = new Date(toIso)
+      const prev = previousPeriodRange(from, to)
+
+      expect(prev.end.getTime() + 1).toBe(from.getTime())
+      expect(prev.end.getTime() - prev.start.getTime()).toBe(
+        to.getTime() - from.getTime()
+      )
+    }
   })
 })
 
