@@ -28,7 +28,8 @@
       "!**/wrangler.jsonc",
       "!**/.source",
       "!**/convex/_generated",
-      "!apps/web/public/map"
+      "!apps/web/public/map",
+      "!apps/web/src/data/municipios.json"
     ]
   },
   "formatter": {
