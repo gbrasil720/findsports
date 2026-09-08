@@ -16,7 +16,7 @@ import {
 } from '@findsports_oficial/ui/components/table'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Export from 'reicon-react/icons/Export'
 import Fire from 'reicon-react/icons/Fire'
 import Loader from 'reicon-react/icons/Loader'
@@ -62,6 +62,21 @@ const ROLE_FILTER_ITEMS = {
   fan: 'Torcedor',
   pub: 'Bar / Pub'
 } as const
+type RoleFilter = keyof typeof ROLE_FILTER_ITEMS
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const sync = () => setIsMobile(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+
+  return isMobile
+}
 
 function formatDate(date: Date | string) {
   const d = new Date(date)
@@ -90,14 +105,24 @@ function roleLabel(role: string) {
 
 function AdminWaitlistPage() {
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  const [pageCursor, setPageCursor] = useState<string>()
+  const [cursorHistory, setCursorHistory] = useState<string[]>([])
   const [exporting, setExporting] = useState(false)
   const searchId = useId()
   const roleFilterId = useId()
+  const isMobile = useIsMobile()
 
   const trpc = useTRPC()
   const trpcClient = useTRPCClient()
   const queryClient = useQueryClient()
+
+  const queryInput = {
+    cursor: pageCursor,
+    search: search.trim() || undefined,
+    role: roleFilter === 'all' ? undefined : roleFilter,
+    limit: 50
+  }
 
   /**
    * ESC-19: a aprovação é da PESSOA, não da linha. O portão de entrada
@@ -126,74 +151,39 @@ function AdminWaitlistPage() {
       }
     })
   )
-  const {
-    data: subscribers = [],
-    isLoading,
-    isError,
-    isFetching,
-    refetch
-  } = useQuery({
-    queryKey: trpc.waitlist.getAll.queryKey(),
-    // A resposta do servidor passou a ser paginada (ESC-09), mas a tela
-    // filtra, conta e exporta sobre a lista inteira. Percorremos as páginas
-    // aqui para preservar isso — o que muda é o tamanho de cada resposta,
-    // não o que a tela enxerga.
-    queryFn: async () => {
-      const todos: Awaited<
-        ReturnType<typeof trpcClient.waitlist.getAll.query>
-      >['entries'] = []
-      let cursor: string | undefined
-      do {
-        const pagina = await trpcClient.waitlist.getAll.query({ cursor })
-        todos.push(...pagina.entries)
-        cursor = pagina.nextCursor ?? undefined
-      } while (cursor)
-      return todos
-    }
-  })
-
-  const filtered = subscribers.filter((s) => {
-    const q = search.toLowerCase()
-    const matchesSearch =
-      s.email.toLowerCase().includes(q) ||
-      s.city.toLowerCase().includes(q) ||
-      (s.pubName?.toLowerCase().includes(q) ?? false)
-    const matchesRole = roleFilter === 'all' ? true : s.role === roleFilter
-    return matchesSearch && matchesRole
-  })
-
-  const total = filtered.length
-  const fanCount = filtered.filter((s) => s.role === 'fan').length
-  const pubCount = filtered.filter((s) => s.role === 'pub').length
-
-  // Contagem sobre a lista INTEIRA, não sobre o filtro da busca: o painel
-  // decide se é seguro fechar a porta, e um filtro de texto na tela não pode
-  // mudar essa resposta.
-  const emailsLiberados = new Set(
-    subscribers.filter((s) => s.approvedAt).map((s) => s.email)
+  const { data, isLoading, isError, isFetching, refetch } = useQuery(
+    trpc.waitlist.getAll.queryOptions(queryInput)
   )
-  const emailsPendentes = new Set(
-    subscribers
-      .filter((s) => !s.approvedAt && s.confirmedAt && !s.cancelledAt)
-      .map((s) => s.email)
-  )
-  for (const email of emailsLiberados) emailsPendentes.delete(email)
-  const agora = Date.now()
-  const convitesAtivos = subscribers.filter(
-    (s) =>
-      s.approvedAt &&
-      !s.activatedAt &&
-      s.inviteExpiresAt &&
-      new Date(s.inviteExpiresAt).getTime() > agora
-  ).length
-  const convitesExpirados = subscribers.filter(
-    (s) =>
-      s.approvedAt &&
-      !s.activatedAt &&
-      s.inviteExpiresAt &&
-      new Date(s.inviteExpiresAt).getTime() <= agora
-  ).length
-  const ativados = subscribers.filter((s) => s.activatedAt).length
+
+  const subscribers = data?.entries ?? []
+  const total = data?.total ?? 0
+  const fanCount = data?.fanCount ?? 0
+  const pubCount = data?.pubCount ?? 0
+  const access = data?.access ?? {
+    liberados: 0,
+    pendentes: 0,
+    convitesAtivos: 0,
+    convitesExpirados: 0,
+    ativados: 0
+  }
+
+  function resetPagination() {
+    setPageCursor(undefined)
+    setCursorHistory([])
+  }
+
+  function nextPage() {
+    if (!data?.nextCursor) return
+    setCursorHistory((history) => [...history, pageCursor ?? ''])
+    setPageCursor(data.nextCursor)
+  }
+
+  function previousPage() {
+    const previousCursor = cursorHistory.at(-1)
+    if (previousCursor === undefined) return
+    setCursorHistory(cursorHistory.slice(0, -1))
+    setPageCursor(previousCursor || undefined)
+  }
 
   function escapeCsv(value: string) {
     return `"${value.replace(/"/g, '""')}"`
@@ -202,6 +192,20 @@ function AdminWaitlistPage() {
   async function handleExportCSV() {
     setExporting(true)
     try {
+      const entries: Awaited<
+        ReturnType<typeof trpcClient.waitlist.getAll.query>
+      >['entries'] = []
+      let cursor: string | undefined
+      do {
+        const page = await trpcClient.waitlist.getAll.query({
+          cursor,
+          search: search.trim() || undefined,
+          role: roleFilter === 'all' ? undefined : roleFilter,
+          limit: 500
+        })
+        entries.push(...page.entries)
+        cursor = page.nextCursor ?? undefined
+      } while (cursor)
       const header = [
         'ID',
         'Email',
@@ -211,7 +215,7 @@ function AdminWaitlistPage() {
         'Cidade',
         'Data de inscrição'
       ]
-      const rows = filtered.map((s) => [
+      const rows = entries.map((s) => [
         s.id,
         s.email,
         s.phone ?? '',
@@ -232,7 +236,7 @@ function AdminWaitlistPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.success(`${filtered.length} registros exportados.`)
+      toast.success(`${entries.length} registros exportados.`)
     } catch (error) {
       console.error('Export failed:', error)
       toast.error('Erro ao exportar. Tente novamente.')
@@ -244,11 +248,11 @@ function AdminWaitlistPage() {
   return (
     <InternalShell title="Lista de Espera">
       <WaitlistAccessPanel
-        liberados={emailsLiberados.size}
-        pendentes={emailsPendentes.size}
-        convitesAtivos={convitesAtivos}
-        convitesExpirados={convitesExpirados}
-        ativados={ativados}
+        liberados={access.liberados}
+        pendentes={access.pendentes}
+        convitesAtivos={access.convitesAtivos}
+        convitesExpirados={access.convitesExpirados}
+        ativados={access.ativados}
       />
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -258,7 +262,7 @@ function AdminWaitlistPage() {
         <button
           type="button"
           onClick={handleExportCSV}
-          disabled={isLoading || exporting || filtered.length === 0}
+          disabled={isLoading || exporting || total === 0}
           className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
         >
           {exporting ? (
@@ -325,7 +329,10 @@ function AdminWaitlistPage() {
               spellCheck={false}
               placeholder="E-mail, cidade ou estabelecimento…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                resetPagination()
+              }}
               className="onside-input pl-10"
             />
           </div>
@@ -336,7 +343,10 @@ function AdminWaitlistPage() {
           </label>
           <Select
             value={roleFilter}
-            onValueChange={(v) => setRoleFilter(v ?? 'all')}
+            onValueChange={(v) => {
+              setRoleFilter(v === 'fan' || v === 'pub' ? v : 'all')
+              resetPagination()
+            }}
             items={ROLE_FILTER_ITEMS}
           >
             <SelectTrigger
@@ -399,268 +409,302 @@ function AdminWaitlistPage() {
             Tentar novamente
           </button>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : subscribers.length === 0 ? (
         <div className="onside-panel py-16 text-center text-sm text-[var(--onside-muted)]">
           Nenhum inscrito encontrado.
         </div>
       ) : (
         <>
           {/* Mobile cards */}
-          <ul className="mb-4 space-y-3 md:hidden" aria-label="Inscritos">
-            {filtered.map((s) => {
-              const label = entryLabel(s)
-              const conviteExpirado = Boolean(
-                s.approvedAt &&
-                  !s.activatedAt &&
-                  s.inviteExpiresAt &&
-                  new Date(s.inviteExpiresAt).getTime() <= Date.now()
-              )
-              return (
-                <li key={s.id} className="onside-panel p-4">
-                  <div className="mb-3 flex items-start gap-3">
-                    <div
-                      className={`grid size-10 shrink-0 place-items-center border border-[var(--onside-ink)] font-bold text-xs ${
-                        s.role === 'fan'
-                          ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                          : 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
-                      }`}
-                      aria-hidden="true"
-                    >
-                      {label.slice(0, 1).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="break-all font-medium text-sm">{s.email}</p>
-                      <span className="onside-badge onside-badge-stone mt-1">
-                        {roleLabel(s.role)}
-                      </span>
-                      {s.accountExists && !s.approvedAt ? (
-                        <span className="onside-badge onside-badge-stone mt-1 ml-1">
-                          Conta existente — acesso pendente
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <dl className="space-y-1.5 text-sm">
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-[var(--onside-muted)]">Telefone</dt>
-                      <dd className="text-right">
-                        {s.phone ? formatStoredPhone(s.phone) : '—'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-[var(--onside-muted)]">
-                        Estabelecimento
-                      </dt>
-                      <dd className="max-w-[60%] truncate text-right">
-                        {s.role === 'pub' && s.pubName?.trim()
-                          ? s.pubName
-                          : '—'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-[var(--onside-muted)]">Cidade</dt>
-                      <dd className="text-right">
-                        {s.city.trim() ? s.city : '—'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-[var(--onside-muted)]">Inscrição</dt>
-                      <dd className="text-right tabular-nums">
-                        {formatDate(s.createdAt)}
-                      </dd>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 pt-2">
-                      <dt className="text-[var(--onside-muted)]">Acesso</dt>
-                      <dd>
-                        <button
-                          type="button"
-                          disabled={
-                            Boolean(
-                              s.activatedAt || s.cancelledAt || !s.confirmedAt
-                            ) || aprovacao.isPending
-                          }
-                          onClick={() =>
-                            aprovacao.mutate({
-                              email: s.email,
-                              approved:
-                                s.inviteError || conviteExpirado
-                                  ? true
-                                  : !s.approvedAt
-                            })
-                          }
-                          className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
-                        >
-                          {s.approvedAt
-                            ? s.inviteError || conviteExpirado
-                              ? 'Reenviar convite'
-                              : 'Revogar'
-                            : 'Aprovar e convidar'}
-                        </button>
-                      </dd>
-                    </div>
-                  </dl>
-                </li>
-              )
-            })}
-          </ul>
-
-          {/* Desktop table */}
-          <div className="onside-panel hidden overflow-hidden md:block">
-            <section
-              className="overflow-x-auto"
-              aria-label="Tabela de inscritos"
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      E-mail
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Telefone
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Tipo
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Estabelecimento
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Cidade
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Data de inscrição
-                    </TableHead>
-                    <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
-                      Acesso
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((s) => {
-                    const label = entryLabel(s)
-                    const conviteExpirado = Boolean(
-                      s.approvedAt &&
-                        !s.activatedAt &&
-                        s.inviteExpiresAt &&
-                        new Date(s.inviteExpiresAt).getTime() <= Date.now()
-                    )
-                    return (
-                      <TableRow
-                        key={s.id}
-                        className="border-[var(--onside-line)] border-b"
+          {isMobile ? (
+            <ul className="mb-4 space-y-3" aria-label="Inscritos">
+              {subscribers.map((s) => {
+                const label = entryLabel(s)
+                const conviteExpirado = Boolean(
+                  s.approvedAt &&
+                    !s.activatedAt &&
+                    s.inviteExpiresAt &&
+                    new Date(s.inviteExpiresAt).getTime() <= Date.now()
+                )
+                return (
+                  <li key={s.id} className="onside-panel p-4">
+                    <div className="mb-3 flex items-start gap-3">
+                      <div
+                        className={`grid size-10 shrink-0 place-items-center border border-[var(--onside-ink)] font-bold text-xs ${
+                          s.role === 'fan'
+                            ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                            : 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                        }`}
+                        aria-hidden="true"
                       >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`grid size-8 shrink-0 place-items-center border border-[var(--onside-ink)] font-bold text-xs ${
-                                s.role === 'fan'
-                                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                                  : 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
-                              }`}
-                              aria-hidden="true"
-                            >
-                              {label.slice(0, 1).toUpperCase()}
-                            </div>
-                            <span className="break-all text-sm">{s.email}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-[var(--onside-muted)]">
-                          {s.phone ? formatStoredPhone(s.phone) : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <span className="onside-badge onside-badge-stone">
-                            {roleLabel(s.role)}
+                        {label.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="break-all font-medium text-sm">
+                          {s.email}
+                        </p>
+                        <span className="onside-badge onside-badge-stone mt-1">
+                          {roleLabel(s.role)}
+                        </span>
+                        {s.accountExists && !s.approvedAt ? (
+                          <span className="onside-badge onside-badge-stone mt-1 ml-1">
+                            Conta existente — acesso pendente
                           </span>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {s.role === 'pub' ? (
-                            <span className="font-medium">
-                              {s.pubName?.trim() ? s.pubName : '—'}
-                            </span>
-                          ) : (
-                            <span className="text-[var(--onside-muted)]">
-                              —
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-[var(--onside-muted)]">
+                        ) : null}
+                      </div>
+                    </div>
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-[var(--onside-muted)]">Telefone</dt>
+                        <dd className="text-right">
+                          {s.phone ? formatStoredPhone(s.phone) : '—'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-[var(--onside-muted)]">
+                          Estabelecimento
+                        </dt>
+                        <dd className="max-w-[60%] truncate text-right">
+                          {s.role === 'pub' && s.pubName?.trim()
+                            ? s.pubName
+                            : '—'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-[var(--onside-muted)]">Cidade</dt>
+                        <dd className="text-right">
                           {s.city.trim() ? s.city : '—'}
-                        </TableCell>
-                        <TableCell className="text-sm tabular-nums text-[var(--onside-muted)]">
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-[var(--onside-muted)]">
+                          Inscrição
+                        </dt>
+                        <dd className="text-right tabular-nums">
                           {formatDate(s.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={
-                                s.approvedAt
-                                  ? 'onside-badge bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                                  : 'onside-badge onside-badge-stone'
-                              }
-                            >
-                              {s.activatedAt
-                                ? 'Conta ativada'
-                                : s.accountExists && !s.approvedAt
-                                  ? 'Conta existente — acesso pendente'
-                                  : s.cancelledAt
-                                    ? 'Saiu da lista'
-                                    : !s.confirmedAt
-                                      ? 'Aguardando confirmação'
-                                      : s.approvedAt
-                                        ? s.inviteError
-                                          ? 'Aprovado — falha no envio'
-                                          : conviteExpirado
-                                            ? 'Convite expirado'
-                                            : 'Convite enviado'
-                                        : s.joinedError
-                                          ? 'Confirmado — falha no envio'
-                                          : 'Pendente'}
-                            </span>
-                            <button
-                              type="button"
-                              disabled={
-                                Boolean(
-                                  s.activatedAt ||
-                                    s.cancelledAt ||
-                                    !s.confirmedAt
-                                ) ||
-                                (aprovacao.isPending &&
-                                  aprovacao.variables?.email === s.email)
-                              }
-                              onClick={() =>
-                                aprovacao.mutate({
-                                  email: s.email,
-                                  approved:
-                                    s.inviteError || conviteExpirado
-                                      ? true
-                                      : !s.approvedAt
-                                })
-                              }
-                              className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
-                            >
-                              {s.approvedAt
-                                ? s.inviteError || conviteExpirado
-                                  ? 'Reenviar'
-                                  : 'Revogar'
-                                : 'Aprovar e convidar'}
-                            </button>
-                          </div>
-                        </TableCell>
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 pt-2">
+                        <dt className="text-[var(--onside-muted)]">Acesso</dt>
+                        <dd>
+                          <button
+                            type="button"
+                            disabled={
+                              Boolean(
+                                s.activatedAt || s.cancelledAt || !s.confirmedAt
+                              ) || aprovacao.isPending
+                            }
+                            onClick={() =>
+                              aprovacao.mutate({
+                                email: s.email,
+                                approved:
+                                  s.inviteError || conviteExpirado
+                                    ? true
+                                    : !s.approvedAt
+                              })
+                            }
+                            className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+                          >
+                            {s.approvedAt
+                              ? s.inviteError || conviteExpirado
+                                ? 'Reenviar convite'
+                                : 'Revogar'
+                              : 'Aprovar e convidar'}
+                          </button>
+                        </dd>
+                      </div>
+                    </dl>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="onside-panel overflow-hidden">
+                <section
+                  className="overflow-x-auto"
+                  aria-label="Tabela de inscritos"
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          E-mail
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Telefone
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Tipo
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Estabelecimento
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Cidade
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Data de inscrição
+                        </TableHead>
+                        <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+                          Acesso
+                        </TableHead>
                       </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </section>
-            <div className="border-[var(--onside-line)] border-t px-4 py-3 font-[family-name:var(--onside-mono)] text-[11px] text-[var(--onside-muted)]">
-              Exibindo {filtered.length} de {subscribers.length} registros
-            </div>
-          </div>
+                    </TableHeader>
+                    <TableBody>
+                      {subscribers.map((s) => {
+                        const label = entryLabel(s)
+                        const conviteExpirado = Boolean(
+                          s.approvedAt &&
+                            !s.activatedAt &&
+                            s.inviteExpiresAt &&
+                            new Date(s.inviteExpiresAt).getTime() <= Date.now()
+                        )
+                        return (
+                          <TableRow
+                            key={s.id}
+                            className="border-[var(--onside-line)] border-b"
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`grid size-8 shrink-0 place-items-center border border-[var(--onside-ink)] font-bold text-xs ${
+                                    s.role === 'fan'
+                                      ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                                      : 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  {label.slice(0, 1).toUpperCase()}
+                                </div>
+                                <span className="break-all text-sm">
+                                  {s.email}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-[var(--onside-muted)]">
+                              {s.phone ? formatStoredPhone(s.phone) : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <span className="onside-badge onside-badge-stone">
+                                {roleLabel(s.role)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {s.role === 'pub' ? (
+                                <span className="font-medium">
+                                  {s.pubName?.trim() ? s.pubName : '—'}
+                                </span>
+                              ) : (
+                                <span className="text-[var(--onside-muted)]">
+                                  —
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-[var(--onside-muted)]">
+                              {s.city.trim() ? s.city : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm tabular-nums text-[var(--onside-muted)]">
+                              {formatDate(s.createdAt)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={
+                                    s.approvedAt
+                                      ? 'onside-badge bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                                      : 'onside-badge onside-badge-stone'
+                                  }
+                                >
+                                  {s.activatedAt
+                                    ? 'Conta ativada'
+                                    : s.accountExists && !s.approvedAt
+                                      ? 'Conta existente — acesso pendente'
+                                      : s.cancelledAt
+                                        ? 'Saiu da lista'
+                                        : !s.confirmedAt
+                                          ? 'Aguardando confirmação'
+                                          : s.approvedAt
+                                            ? s.inviteError
+                                              ? 'Aprovado — falha no envio'
+                                              : conviteExpirado
+                                                ? 'Convite expirado'
+                                                : 'Convite enviado'
+                                            : s.joinedError
+                                              ? 'Confirmado — falha no envio'
+                                              : 'Pendente'}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={
+                                    Boolean(
+                                      s.activatedAt ||
+                                        s.cancelledAt ||
+                                        !s.confirmedAt
+                                    ) ||
+                                    (aprovacao.isPending &&
+                                      aprovacao.variables?.email === s.email)
+                                  }
+                                  onClick={() =>
+                                    aprovacao.mutate({
+                                      email: s.email,
+                                      approved:
+                                        s.inviteError || conviteExpirado
+                                          ? true
+                                          : !s.approvedAt
+                                    })
+                                  }
+                                  className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+                                >
+                                  {s.approvedAt
+                                    ? s.inviteError || conviteExpirado
+                                      ? 'Reenviar'
+                                      : 'Revogar'
+                                    : 'Aprovar e convidar'}
+                                </button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </section>
+                <div className="border-[var(--onside-line)] border-t px-4 py-3 font-[family-name:var(--onside-mono)] text-[11px] text-[var(--onside-muted)]">
+                  Exibindo {subscribers.length} de {total} registros
+                </div>
+              </div>
+            </>
+          )}
 
-          <p className="mt-3 font-[family-name:var(--onside-mono)] text-[11px] text-[var(--onside-muted)] md:hidden">
-            Exibindo {filtered.length} de {subscribers.length} registros
-          </p>
+          {isMobile ? (
+            <p className="mt-3 font-[family-name:var(--onside-mono)] text-[11px] text-[var(--onside-muted)]">
+              Exibindo {subscribers.length} de {total} registros
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={previousPage}
+              disabled={cursorHistory.length === 0 || isFetching}
+              className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+            >
+              Página anterior
+            </button>
+            <span className="font-[family-name:var(--onside-mono)] text-[11px] text-[var(--onside-muted)]">
+              Página {cursorHistory.length + 1}
+            </span>
+            <button
+              type="button"
+              onClick={nextPage}
+              disabled={!data?.nextCursor || isFetching}
+              className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+            >
+              Próxima página
+            </button>
+          </div>
         </>
       )}
     </InternalShell>

@@ -36,6 +36,14 @@ export type WaitlistConfirmRefusal =
 
 const CIDADE_DE_CONVITE = 'Convite direto'
 const waitlistCursorSchema = z.object({ c: z.string(), i: z.string() })
+const waitlistListInput = z
+  .object({
+    cursor: z.string().optional(),
+    limit: z.number().min(1).max(500).default(200),
+    search: z.string().trim().max(255).optional(),
+    role: z.enum(['fan', 'pub']).optional()
+  })
+  .default({ limit: 200 })
 const tokenSchema = z.string().min(32).max(256)
 const commonFields = {
   email: z.string().trim().toLowerCase().email().max(255),
@@ -50,6 +58,36 @@ function emptyToNull(value: string | undefined) {
 
 function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
+}
+
+function escapeLike(value: string) {
+  return value.replace(/[\\%_]/g, '\\$&')
+}
+
+function waitlistWhere(
+  input: { role?: 'fan' | 'pub'; search?: string },
+  cursor?: { c: string; i: string }
+) {
+  const filters = []
+  if (cursor) {
+    filters.push(
+      sql`(w.created_at, w.id) < (${cursor.c}::timestamp, ${cursor.i}::text)`
+    )
+  }
+  if (input.role) filters.push(sql`w.role = ${input.role}::waitlist_role`)
+  if (input.search) {
+    const pattern = `%${escapeLike(input.search.toLowerCase())}%`
+    filters.push(sql`
+      (
+        LOWER(w.email) LIKE ${pattern} ESCAPE '\\'
+        OR LOWER(w.city) LIKE ${pattern} ESCAPE '\\'
+        OR LOWER(COALESCE(w.pub_name, '')) LIKE ${pattern} ESCAPE '\\'
+      )
+    `)
+  }
+  return filters.length > 0
+    ? sql`WHERE ${sql.join(filters, sql` AND `)}`
+    : sql``
 }
 
 function emailPersistError(delivered: boolean) {
@@ -324,68 +362,117 @@ async function approveAndInvite(input: { email: string; adminId: string }) {
 }
 
 export const waitlistRouter = router({
-  getAll: adminProcedure
-    .input(
-      z
-        .object({
-          cursor: z.string().optional(),
-          limit: z.number().min(1).max(500).default(200)
-        })
-        .default({ limit: 200 })
-    )
-    .query(async ({ input }) => {
-      const keyset = input.cursor
-        ? decodeCursor(input.cursor, waitlistCursorSchema)
-        : null
-      const keysetFilter = keyset
-        ? sql`WHERE (w.created_at, w.id) < (${keyset.c}::timestamp, ${keyset.i}::text)`
-        : sql``
-      const result = await db.execute(sql`
-        SELECT
-          w.id, w.email, w.role, w.city, w.phone, w.pub_name AS "pubName",
-          w.created_at AS "createdAt", w.confirmed_at AS "confirmedAt",
-          w.joined_sent_at AS "joinedSentAt", w.joined_error AS "joinedError",
-          w.cancelled_at AS "cancelledAt", w.approved_at AS "approvedAt",
-          w.approved_by AS "approvedBy", w.invite_expires_at AS "inviteExpiresAt",
-          w.invite_sent_at AS "inviteSentAt", w.invite_error AS "inviteError",
-          w.activated_at AS "activatedAt",
-          EXISTS (SELECT 1 FROM "user" u WHERE lower(u.email) = w.email) AS "accountExists",
-          to_char(w.created_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_created_at
-        FROM waitlist_entries w
-        ${keysetFilter}
-        ORDER BY w.created_at DESC, w.id DESC
-        LIMIT ${input.limit}
-      `)
-      type Row = {
-        id: string
-        email: string
-        role: 'fan' | 'pub'
-        city: string
-        phone: string | null
-        pubName: string | null
-        createdAt: string
-        confirmedAt: string | null
-        joinedSentAt: string | null
-        joinedError: string | null
-        cancelledAt: string | null
-        approvedAt: string | null
-        approvedBy: string | null
-        inviteExpiresAt: string | null
-        inviteSentAt: string | null
-        inviteError: string | null
-        activatedAt: string | null
-        accountExists: boolean
-        cursor_created_at: string
+  getAll: adminProcedure.input(waitlistListInput).query(async ({ input }) => {
+    const keyset = input.cursor
+      ? decodeCursor(input.cursor, waitlistCursorSchema)
+      : null
+    const filter = waitlistWhere(input)
+    const pageFilter = waitlistWhere(input, keyset ?? undefined)
+    const [result, counts, access] = await Promise.all([
+      db.execute(sql`
+          SELECT
+            w.id, w.email, w.role, w.city, w.phone, w.pub_name AS "pubName",
+            w.created_at AS "createdAt", w.confirmed_at AS "confirmedAt",
+            w.joined_sent_at AS "joinedSentAt", w.joined_error AS "joinedError",
+            w.cancelled_at AS "cancelledAt", w.approved_at AS "approvedAt",
+            w.approved_by AS "approvedBy", w.invite_expires_at AS "inviteExpiresAt",
+            w.invite_sent_at AS "inviteSentAt", w.invite_error AS "inviteError",
+            w.activated_at AS "activatedAt",
+            EXISTS (SELECT 1 FROM "user" u WHERE lower(u.email) = w.email) AS "accountExists",
+            to_char(w.created_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_created_at
+          FROM waitlist_entries w
+          ${pageFilter}
+          ORDER BY w.created_at DESC, w.id DESC
+          LIMIT ${input.limit + 1}
+        `),
+      db.execute(sql`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE w.role = 'fan')::int AS fan_count,
+            COUNT(*) FILTER (WHERE w.role = 'pub')::int AS pub_count
+          FROM waitlist_entries w
+          ${filter}
+        `),
+      db.execute(sql`
+          SELECT
+            COUNT(DISTINCT w.email) FILTER (WHERE w.approved_at IS NOT NULL)::int AS liberados,
+            COUNT(DISTINCT w.email) FILTER (
+              WHERE w.approved_at IS NULL
+                AND w.confirmed_at IS NOT NULL
+                AND w.cancelled_at IS NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM waitlist_entries approved
+                  WHERE approved.email = w.email AND approved.approved_at IS NOT NULL
+                )
+            )::int AS pendentes,
+            COUNT(*) FILTER (
+              WHERE w.approved_at IS NOT NULL
+                AND w.activated_at IS NULL
+                AND w.invite_expires_at > NOW()
+            )::int AS convites_ativos,
+            COUNT(*) FILTER (
+              WHERE w.approved_at IS NOT NULL
+                AND w.activated_at IS NULL
+                AND w.invite_expires_at <= NOW()
+            )::int AS convites_expirados,
+            COUNT(*) FILTER (WHERE w.activated_at IS NOT NULL)::int AS ativados
+          FROM waitlist_entries w
+        `)
+    ])
+    type Row = {
+      id: string
+      email: string
+      role: 'fan' | 'pub'
+      city: string
+      phone: string | null
+      pubName: string | null
+      createdAt: string
+      confirmedAt: string | null
+      joinedSentAt: string | null
+      joinedError: string | null
+      cancelledAt: string | null
+      approvedAt: string | null
+      approvedBy: string | null
+      inviteExpiresAt: string | null
+      inviteSentAt: string | null
+      inviteError: string | null
+      activatedAt: string | null
+      accountExists: boolean
+      cursor_created_at: string
+    }
+    const rows = result.rows as Row[]
+    const hasNext = rows.length > input.limit
+    const pageRows = hasNext ? rows.slice(0, input.limit) : rows
+    const last = hasNext ? pageRows.at(-1) : undefined
+    const countRow = (counts.rows[0] ?? {}) as {
+      total?: number
+      fan_count?: number
+      pub_count?: number
+    }
+    const accessRow = (access.rows[0] ?? {}) as {
+      liberados?: number
+      pendentes?: number
+      convites_ativos?: number
+      convites_expirados?: number
+      ativados?: number
+    }
+    return {
+      entries: pageRows.map(({ cursor_created_at, ...entry }) => entry),
+      nextCursor: last
+        ? encodeCursor({ c: last.cursor_created_at, i: last.id })
+        : null,
+      total: countRow.total ?? 0,
+      fanCount: countRow.fan_count ?? 0,
+      pubCount: countRow.pub_count ?? 0,
+      access: {
+        liberados: accessRow.liberados ?? 0,
+        pendentes: accessRow.pendentes ?? 0,
+        convitesAtivos: accessRow.convites_ativos ?? 0,
+        convitesExpirados: accessRow.convites_expirados ?? 0,
+        ativados: accessRow.ativados ?? 0
       }
-      const rows = result.rows as Row[]
-      const last = rows.length === input.limit ? rows.at(-1) : undefined
-      return {
-        entries: rows.map(({ cursor_created_at, ...entry }) => entry),
-        nextCursor: last
-          ? encodeCursor({ c: last.cursor_created_at, i: last.id })
-          : null
-      }
-    }),
+    }
+  }),
 
   setApproval: adminProcedure
     .input(
