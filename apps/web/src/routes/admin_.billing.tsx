@@ -15,14 +15,17 @@ import {
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
 import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
+import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/billing')({
   head: () => ({
     meta: [
       { title: 'Assinatura e pagamentos — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
+      { name: 'robots', content: 'noindex' },
+      ...PWA_META
+    ],
+    links: [...PWA_LINKS]
   }),
   component: BillingPage
 })

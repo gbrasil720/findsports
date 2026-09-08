@@ -14,6 +14,7 @@ import { Route as PlanRouteImport } from './routes/plan'
 import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
 import { Route as InternalRouteImport } from './routes/internal'
 import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
 import { Route as AccessPendingRouteImport } from './routes/access-pending'
@@ -62,6 +63,11 @@ const InternalRoute = InternalRouteImport.update({
 const ConfirmWaitlistRoute = ConfirmWaitlistRouteImport.update({
   id: '/confirm-waitlist',
   path: '/confirm-waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/access-pending': typeof AccessPendingRoute
   '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/access-pending': typeof AccessPendingRoute
   '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
@@ -255,6 +263,7 @@ export interface FileRoutesById {
   '/access-pending': typeof AccessPendingRoute
   '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
   '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
@@ -288,6 +297,7 @@ export interface FileRouteTypes {
     | '/access-pending'
     | '/activate-invite'
     | '/admin'
+    | '/app'
     | '/confirm-waitlist'
     | '/internal'
     | '/leave-waitlist'
@@ -319,6 +329,7 @@ export interface FileRouteTypes {
     | '/access-pending'
     | '/activate-invite'
     | '/admin'
+    | '/app'
     | '/confirm-waitlist'
     | '/internal'
     | '/leave-waitlist'
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/access-pending'
     | '/activate-invite'
     | '/admin'
+    | '/app'
     | '/confirm-waitlist'
     | '/internal'
     | '/leave-waitlist'
@@ -382,6 +394,7 @@ export interface RootRouteChildren {
   AccessPendingRoute: typeof AccessPendingRoute
   ActivateInviteRoute: typeof ActivateInviteRoute
   AdminRoute: typeof AdminRoute
+  AppRoute: typeof AppRoute
   ConfirmWaitlistRoute: typeof ConfirmWaitlistRoute
   InternalRoute: typeof InternalRoute
   LeaveWaitlistRoute: typeof LeaveWaitlistRoute
@@ -443,6 +456,13 @@ declare module '@tanstack/react-router' {
       path: '/confirm-waitlist'
       fullPath: '/confirm-waitlist'
       preLoaderRoute: typeof ConfirmWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -622,6 +642,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccessPendingRoute: AccessPendingRoute,
   ActivateInviteRoute: ActivateInviteRoute,
   AdminRoute: AdminRoute,
+  AppRoute: AppRoute,
   ConfirmWaitlistRoute: ConfirmWaitlistRoute,
   InternalRoute: InternalRoute,
   LeaveWaitlistRoute: LeaveWaitlistRoute,

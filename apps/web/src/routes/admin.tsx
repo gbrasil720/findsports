@@ -29,9 +29,11 @@ import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { RatingsPanel } from '@/components/admin/ratings-panel'
 import { RecommendationQualityStatus } from '@/components/admin/recommendation-quality-status'
 import { AppShell } from '@/components/app/app-shell'
+import { InstallAppCard } from '@/components/app/install-app-card'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin')({
@@ -43,8 +45,10 @@ export const Route = createFileRoute('/admin')({
         content:
           'Gerencie a programação de jogos do seu bar e atraia torcedores perto de você.'
       },
-      { name: 'robots', content: 'noindex' }
-    ]
+      { name: 'robots', content: 'noindex' },
+      ...PWA_META
+    ],
+    links: [...PWA_LINKS]
   }),
   component: PubDashboard
 })
@@ -106,6 +110,7 @@ function getAnalyticsDates() {
 /* ------------------------------------------------------------------ */
 
 function PubDashboard() {
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const now = useMinuteNow()
@@ -721,6 +726,10 @@ function PubDashboard() {
             <AccountSettings surface="pub" />
           </section>
         </div>
+
+        {session ? (
+          <InstallAppCard userId={session.user.id} surface="admin" />
+        ) : null}
       </div>
     </AppShell>
   )

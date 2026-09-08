@@ -6,6 +6,9 @@ export type UserRole = 'fan' | 'pub'
 export type BarPlan = 'starter' | 'pro' | 'elite'
 export type BarOpenSource = 'card' | 'map'
 export type BarIntentAction = 'directions' | 'whatsapp' | 'phone' | 'favorite'
+/** Onde o convite de instalação apareceu, e em que plataforma. */
+export type InstallSurface = 'dashboard' | 'admin'
+export type InstallPlatform = 'android' | 'ios'
 /** Motivos pelos quais um convite não serve — espelha o status do servidor. */
 export type WaitlistInviteStatus =
   | 'expired'
@@ -160,6 +163,30 @@ export const analytics = {
   upgradeClicked: (current_plan: string, target_plan: string) => {
     void withPosthog((posthog) =>
       posthog.capture('upgrade_clicked', { current_plan, target_plan })
+    )
+  },
+
+  /**
+   * Convite de instalação do PWA (WEB-72). Os três eventos juntos respondem a
+   * pergunta que decide se o convite fica: de cada exibição, quantos instalam
+   * e quantos dispensam. Sem o `dismissed`, um convite que só incomoda parece
+   * idêntico a um que ninguém viu.
+   */
+  installPromptShown: (platform: InstallPlatform, surface: InstallSurface) => {
+    void withPosthog((posthog) =>
+      posthog.capture('install_prompt_shown', { platform, surface })
+    )
+  },
+
+  installAccepted: (platform: InstallPlatform, surface: InstallSurface) => {
+    void withPosthog((posthog) =>
+      posthog.capture('install_accepted', { platform, surface })
+    )
+  },
+
+  installDismissed: (platform: InstallPlatform, surface: InstallSurface) => {
+    void withPosthog((posthog) =>
+      posthog.capture('install_dismissed', { platform, surface })
     )
   }
 }

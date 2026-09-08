@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
+import { InstallAppCard } from '@/components/app/install-app-card'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import {
   DashboardResults,
@@ -30,6 +31,7 @@ import {
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
+import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
@@ -42,13 +44,16 @@ export const Route = createFileRoute('/(dashboard)/dashboard')({
         content:
           'Descubra quais bares perto de você estão passando o jogo. Filtre por esporte, campeonato e distância.'
       },
-      { name: 'robots', content: 'noindex' }
-    ]
+      { name: 'robots', content: 'noindex' },
+      ...PWA_META
+    ],
+    links: [...PWA_LINKS]
   }),
   component: FanDashboard
 })
 
 function FanDashboard() {
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const navigate = useNavigate()
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -428,6 +433,9 @@ function FanDashboard() {
           navigate({ to: '/pub/$pubId', params: { pubId: barId } })
         }}
       />
+      {session ? (
+        <InstallAppCard userId={session.user.id} surface="dashboard" />
+      ) : null}
     </AppShell>
   )
 }
