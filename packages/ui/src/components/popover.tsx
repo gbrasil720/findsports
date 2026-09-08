@@ -2,6 +2,7 @@
 
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
 import { cn } from '@findsports_oficial/ui/lib/utils'
+import { usePortalContainer } from './portal'
 
 function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
@@ -11,8 +12,15 @@ function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
 }
 
-function PopoverPortal({ ...props }: PopoverPrimitive.Portal.Props) {
-  return <PopoverPrimitive.Portal data-slot="popover-portal" {...props} />
+function PopoverPortal({ container, ...props }: PopoverPrimitive.Portal.Props) {
+  const portalContainer = usePortalContainer()
+  return (
+    <PopoverPrimitive.Portal
+      data-slot="popover-portal"
+      {...props}
+      container={container === undefined ? portalContainer : container}
+    />
+  )
 }
 
 function PopoverPositioner({

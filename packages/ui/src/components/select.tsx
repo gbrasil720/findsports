@@ -6,8 +6,20 @@ import type * as React from 'react'
 import Check from 'reicon-react/icons/Check'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import ChevronUp from 'reicon-react/icons/ChevronUp'
+import { usePortalContainer } from './portal'
 
 const Select = SelectPrimitive.Root
+
+function SelectPortal({ container, ...props }: SelectPrimitive.Portal.Props) {
+  const portalContainer = usePortalContainer()
+  return (
+    <SelectPrimitive.Portal
+      data-slot="select-portal"
+      {...props}
+      container={container === undefined ? portalContainer : container}
+    />
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -77,7 +89,7 @@ function SelectContent({
     'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'
   >) {
   return (
-    <SelectPrimitive.Portal>
+    <SelectPortal>
       <SelectPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}
@@ -100,7 +112,7 @@ function SelectContent({
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
-    </SelectPrimitive.Portal>
+    </SelectPortal>
   )
 }
 
@@ -200,6 +212,7 @@ export {
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectPortal,
   SelectScrollDownButton,
   SelectScrollUpButton,
   SelectSeparator,

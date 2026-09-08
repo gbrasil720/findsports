@@ -3,6 +3,7 @@
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { cn } from '@findsports_oficial/ui/lib/utils'
 import Xmark from 'reicon-react/icons/Xmark'
+import { usePortalContainer } from './portal'
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -12,8 +13,15 @@ function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
-function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+function DialogPortal({ container, ...props }: DialogPrimitive.Portal.Props) {
+  const portalContainer = usePortalContainer()
+  return (
+    <DialogPrimitive.Portal
+      data-slot="dialog-portal"
+      {...props}
+      container={container === undefined ? portalContainer : container}
+    />
+  )
 }
 
 function DialogBackdrop({
@@ -39,7 +47,7 @@ function DialogContent({
   ...props
 }: DialogPrimitive.Popup.Props) {
   return (
-    <DialogPrimitive.Portal>
+    <DialogPortal>
       <DialogBackdrop />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
@@ -52,7 +60,7 @@ function DialogContent({
       >
         {children}
       </DialogPrimitive.Popup>
-    </DialogPrimitive.Portal>
+    </DialogPortal>
   )
 }
 

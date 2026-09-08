@@ -101,6 +101,7 @@
 }
 
 /* ─── Root tokens & base ─── */
+/* Portal primitives inherit these tokens through ProductFrame's portal node. */
 :where(.onside-page, .onside-app, .onside-dialog, .onside-hint, .onside-menu) {
   --onside-ink: #12120f;
   --onside-paper: #f1eee6;
