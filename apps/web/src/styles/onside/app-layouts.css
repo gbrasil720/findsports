@@ -307,7 +307,9 @@
   color: var(--onside-ink);
   font-family: var(--onside-body);
   box-shadow: 6px 6px 0 var(--onside-ink);
-  transition-duration: 150ms;
+  transform-origin: var(--transform-origin, top left);
+  transition-duration: var(--onside-motion-fast);
+  transition-timing-function: var(--onside-ease-out);
 }
 
 .onside-menu [data-slot="dropdown-menu-item"],
