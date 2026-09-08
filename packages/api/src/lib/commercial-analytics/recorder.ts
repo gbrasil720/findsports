@@ -128,7 +128,7 @@ export async function recordCommercialEvent(
   const actorUserId = ctx.session.user.id
   const sessionId = ctx.session.session.id
 
-  // 2. Validações no banco + insert + rollup, tudo numa instrução só
+  // 2. Validações no banco + insert + rollup, tudo numa transação só
   //
   //    ESC-06: impersonação, bar, jogo, telefone, WhatsApp e rate limit eram
   //    cinco consultas sequenciais antes do insert. Viraram CTEs da mesma
@@ -185,15 +185,37 @@ export async function recordCommercialEvent(
 
   const rateLimitCutoff = new Date(now.getTime() - 60_000)
 
+  // WEB-96: checar e gravar na mesma instrução fechou a janela dentro de uma
+  // chamada, mas não entre chamadas — sob concorrência, cada instrução monta
+  // o próprio snapshot e requisições paralelas podem contar o mesmo estado
+  // pré-commit e todas passar (write skew), estourando o limite de 30/min.
+  //
+  // O lock de transação no par fan/bar serializa as chamadas concorrentes: a
+  // que chega atrás só monta o snapshot da instrução depois do commit da
+  // anterior, então enxerga a contagem atualizada e é recusada quando o par
+  // já atingiu 30 na janela. O limite é por par, então serializar o par não
+  // afeta pares diferentes, e o volume legítimo do par já é limitado a 30/min
+  // pelo próprio rate limit.
   const result = await db.transaction(async (tx) => {
     // Lock de consultoria na mesma transação da instrução principal, numa
     // instrução própria — só assim ele vale antes do snapshot dela (WEB-97).
+    // Sempre adquirido ANTES do lock do par abaixo, na mesma ordem para
+    // qualquer chamador: a ordem fixa entre os dois locks de consultoria
+    // evita espera circular entre chamadas concorrentes do mesmo par.
     await tx.execute(sql`
       SELECT pg_advisory_xact_lock(
         hashtextextended(
           ${pubId}::text || ':' || ${actorUserId}::text || ':' || ${commercialDay}::text,
           0
         )
+      )
+    `)
+
+    // Lock de transação no par fan/bar (WEB-96): liberado no
+    // COMMIT/ROLLBACK, nunca em autocommit.
+    await tx.execute(sql`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(concat(${actorUserId}::text, '|', ${pubId}::text), 0)
       )
     `)
 
