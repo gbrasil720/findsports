@@ -28,6 +28,7 @@ import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { buildTrustedOrigins } from './trusted-origins'
 import { sendVerificationEmailWithResend } from './verification-email'
@@ -199,6 +200,7 @@ export function createAuth() {
                 'A foto precisa ser uma URL https curta, não um arquivo embutido.'
             })
           }
+          assertNoSelfRoleChange(ctx.body)
         }
         if (!requiresPubBillingAccess(ctx.path)) return
         const session = await getSessionFromCtx(ctx)
