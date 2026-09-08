@@ -152,11 +152,26 @@ async function limitarReenvioDeConvite(args: { ip: string; hash: string }) {
   }
 }
 
-async function persistEmailResult(input: {
-  email: string
-  kind: 'confirmation' | 'invite'
-  error: string | null
-}) {
+async function persistEmailResult(
+  input:
+    | {
+        email: string
+        kind: 'confirmation'
+        error: string | null
+      }
+    | {
+        email: string
+        kind: 'invite'
+        /**
+         * Hash reservado por esta tentativa. O resultado só vale enquanto a
+         * linha ainda carrega esse hash: se outra operação (WEB-90) já
+         * substituiu o convite, a finalização antiga não pode marcar o novo
+         * como enviado/erro nem limpar o claim dele.
+         */
+        hash: string
+        error: string | null
+      }
+) {
   if (input.kind === 'confirmation') {
     await db.execute(sql`
       UPDATE waitlist_entries SET
@@ -171,7 +186,7 @@ async function persistEmailResult(input: {
       invite_claimed_at = NULL,
       invite_sent_at = ${input.error ? null : new Date()},
       invite_error = ${input.error}
-    WHERE email = ${input.email}
+    WHERE invite_token_hash = ${input.hash}
   `)
 }
 
@@ -284,6 +299,7 @@ async function approveAndInvite(input: { email: string; adminId: string }) {
     await persistEmailResult({
       email: input.email,
       kind: 'invite',
+      hash: token.hash,
       error: emailPersistError(sent.delivered)
     })
   } catch (error) {
@@ -291,6 +307,7 @@ async function approveAndInvite(input: { email: string; adminId: string }) {
     await persistEmailResult({
       email: input.email,
       kind: 'invite',
+      hash: token.hash,
       error: message
     })
     throw new TRPCError({
@@ -754,6 +771,7 @@ export const waitlistRouter = router({
         await persistEmailResult({
           email: row.email,
           kind: 'invite',
+          hash: token.hash,
           error: emailPersistError(sent.delivered)
         })
         return {
@@ -768,14 +786,17 @@ export const waitlistRouter = router({
         // novo nunca chegou, e o antigo já não casa com hash nenhum — o botão
         // "Reenviar" passaria a responder "este link não pode gerar um convite
         // novo", que é o beco sem saída que este ticket veio fechar. O prazo
-        // volta para o passado porque era lá que ele estava.
+        // volta para o passado porque era lá que ele estava. O rollback é um
+        // compare-and-set no hash reservado: se outra operação (WEB-90) já
+        // colocou um convite mais novo na linha, a tentativa antiga não pode
+        // restaurar o hash expirado por cima dele.
         await db.execute(sql`
           UPDATE waitlist_entries SET
             invite_token_hash = ${hashAntigo},
             invite_expires_at = NOW() - INTERVAL '1 second',
             invite_claimed_at = NULL, invite_sent_at = NULL,
             invite_error = ${message}
-          WHERE id = ${row.id}
+          WHERE id = ${row.id} AND invite_token_hash = ${token.hash}
         `)
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
