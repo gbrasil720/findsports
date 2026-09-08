@@ -30,6 +30,7 @@ import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { persistProfileUser } from '@/components/profile/profile-user-update'
 import { type RadiusKm, SAO_PAULO_FALLBACK } from '@/domain/discovery'
 import { authClient } from '@/lib/auth-client'
+import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
@@ -37,8 +38,10 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
   head: () => ({
     meta: [
       { title: 'Meu perfil — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
+      { name: 'robots', content: 'noindex' },
+      ...PWA_META
+    ],
+    links: [...PWA_LINKS]
   }),
   component: ProfilePage
 })

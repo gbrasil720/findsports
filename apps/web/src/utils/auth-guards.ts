@@ -32,6 +32,9 @@ const AUTHENTICATED_PREFIXES = [
   '/admin',
   '/plan',
   '/internal',
+  // `start_url` do PWA: abrir o ícone da tela inicial sem sessão tem que cair
+  // no login, e não numa tela em branco.
+  '/app',
   // O onboarding de torcedor chama `pubs.getSports` e `onboarding.completeFan`,
   // ambos protegidos — visitante precisa criar sessão antes de entrar.
   '/onboarding/fan'

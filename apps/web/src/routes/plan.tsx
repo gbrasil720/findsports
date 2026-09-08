@@ -10,6 +10,7 @@ import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
 import { PLAN_CATALOG, PLAN_TIER_ORDER, type Plan } from '@/lib/plan-catalog'
+import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -21,8 +22,10 @@ export const Route = createFileRoute('/plan')({
         name: 'description',
         content: 'Escolha o plano ideal para o seu bar no Onside.'
       },
-      { name: 'robots', content: 'noindex' }
-    ]
+      { name: 'robots', content: 'noindex' },
+      ...PWA_META
+    ],
+    links: [...PWA_LINKS]
   }),
   component: PlanSelection
 })
