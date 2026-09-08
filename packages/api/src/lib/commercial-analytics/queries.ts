@@ -1,6 +1,7 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, sql } from '@findsports_oficial/db'
 import { TRPCError } from '@trpc/server'
+import { getCommercialDay } from './commercial-day'
 import type {
   AnalyticsOverview,
   DailyDataPoint,
@@ -50,6 +51,22 @@ type DailyRow = {
 }
 
 /**
+ * Uma linha do rollup diário finalizado que substitui um dia podado (WEB-98).
+ * A poda apaga o dia inteiro de um bar (ESC-10), então um dia finalizado sem
+ * evento bruto é exatamente um dia podado — e é o único caso em que o rollup
+ * entra como origem nas leituras.
+ */
+type RollupDailyRow = {
+  date: string
+  unique_visitors: number
+  interested_people: number
+  profile_views: number
+  directions_opened: number
+  phone_clicked: number
+  whatsapp_opened: number
+}
+
+/**
  * Preenche os dias sem evento com zero. O gráfico precisa da série contínua;
  * o banco só devolve os dias que existem.
  */
@@ -83,20 +100,80 @@ function previousPeriodRange(from: Date, to: Date): { start: Date; end: Date } {
 }
 
 /**
+ * Dias do período já podados: rollup diário finalizado sem evento bruto.
+ *
+ * A retenção (ESC-10/WEB-98) só apaga o dia inteiro de um bar e depois de
+ * finalizar o rollup daquele dia. Então a ausência total de brutos num dia
+ * finalizado é a assinatura exata de um dia podado — nenhum outro fluxo de
+ * escrita produz esse estado. São esses dias que voltam pelo rollup em vez da
+ * contagem exata sobre os brutos.
+ */
+async function buscarDiasPodados(
+  barId: string,
+  prev: { start: Date; end: Date },
+  to: Date
+): Promise<RollupDailyRow[]> {
+  const result = await db.execute(sql`
+    SELECT
+      r.commercial_day::text AS date,
+      r.unique_visitors,
+      r.interested_people,
+      r.profile_views,
+      r.directions_opened,
+      r.phone_clicked,
+      r.whatsapp_opened
+    FROM bar_commercial_daily_rollup r
+    WHERE r.bar_id = ${barId}
+      AND r.is_finalized = true
+      AND r.commercial_day >= ${getCommercialDay(prev.start)}::date
+      AND r.commercial_day <= ${getCommercialDay(to)}::date
+      AND NOT EXISTS (
+        SELECT 1
+        FROM bar_commercial_event e
+        WHERE e.bar_id = r.bar_id
+          AND e.commercial_day = r.commercial_day
+      )
+    ORDER BY r.commercial_day
+  `)
+
+  return (
+    result.rows as Array<{
+      date: string
+      unique_visitors: string
+      interested_people: string
+      profile_views: string
+      directions_opened: string
+      phone_clicked: string
+      whatsapp_opened: string
+    }>
+  ).map((row) => ({
+    date: row.date,
+    unique_visitors: Number(row.unique_visitors),
+    interested_people: Number(row.interested_people),
+    profile_views: Number(row.profile_views),
+    directions_opened: Number(row.directions_opened),
+    phone_clicked: Number(row.phone_clicked),
+    whatsapp_opened: Number(row.whatsapp_opened)
+  }))
+}
+
+/**
  * GetMyAnalyticsOverview: aggregate analytics for a bar's date range.
  * Tenant-safe: bar_id derived from session.
  *
- * Por que NÃO lê das tabelas de rollup, apesar de o relatório original ter
- * sugerido isso: cinco das sete métricas são somáveis por dia, mas
- * `unique_visitors` e `interested_people` são contagens distintas. Somar o
- * valor diário contaria duas vezes quem voltou em dias diferentes, e o painel
- * passaria a mostrar um número maior do que a realidade — silenciosamente.
+ * Duas origens, com o bruto sempre na frente:
+ * - dias com evento bruto: os brutos são a fonte exata — contagens somáveis e
+ *   contagens distintas do período inteiro, numa passagem só (ESC-07);
+ * - dias podados (rollup finalizado sem evento bruto, WEB-98): o rollup diário
+ *   finalizado substitui o bruto que a retenção apagou, para o período antigo
+ *   continuar a aparecer no painel em vez de virar zero.
  *
- * Os eventos brutos continuam sendo a fonte da verdade e dão a resposta
- * exata numa passagem só. Os rollups voltam a ser a origem certa quando
- * existir a poda de eventos brutos (ESC-10): aí o período longo deixará de
- * ter dado bruto para consultar, e a perda de precisão nas duas métricas
- * distintas passa a ser uma escolha consciente, não um efeito colateral.
+ * A perda de precisão fica restrita às duas contagens distintas
+ * (`unique_visitors` e `interested_people`) de um período que contenha dia
+ * podado: o valor passa a ser o distinto de cada dia somado — quem voltou em
+ * dois dias entra duas vezes, inclusive no limite entre dia bruto e dia
+ * podado. Enquanto o período inteiro ainda tem bruto (o caso comum hoje), a
+ * leitura continua exata, contando cada pessoa uma vez só.
  */
 export async function getMyAnalyticsOverview(
   barId: string,
@@ -158,24 +235,64 @@ export async function getMyAnalyticsOverview(
   const row = result.rows[0] as Record<string, string | DailyRow[] | null>
   const n = (campo: string) => Number(row[campo] ?? 0)
 
-  const profileViews = n('profile_views')
-  const directionsOpened = n('directions_opened')
-  const phoneClicked = n('phone_clicked')
-  const whatsappOpened = n('whatsapp_opened')
-  const profileViewsPrev = n('profile_views_prev')
-  const directionsOpenedPrev = n('directions_opened_prev')
-  const phoneClickedPrev = n('phone_clicked_prev')
-  const whatsappOpenedPrev = n('whatsapp_opened_prev')
-  const uniqueVisitors = n('unique_visitors')
-  const uniqueVisitorsPrev = n('unique_visitors_prev')
-  const interestedPeople = n('interested_people')
-  const interestedPeoplePrev = n('interested_people_prev')
+  let profileViews = n('profile_views')
+  let directionsOpened = n('directions_opened')
+  let phoneClicked = n('phone_clicked')
+  let whatsappOpened = n('whatsapp_opened')
+  let profileViewsPrev = n('profile_views_prev')
+  let directionsOpenedPrev = n('directions_opened_prev')
+  let phoneClickedPrev = n('phone_clicked_prev')
+  let whatsappOpenedPrev = n('whatsapp_opened_prev')
+  let uniqueVisitors = n('unique_visitors')
+  let uniqueVisitorsPrev = n('unique_visitors_prev')
+  let interestedPeople = n('interested_people')
+  let interestedPeoplePrev = n('interested_people_prev')
+
+  const diario: DailyRow[] = (row.diario as DailyRow[] | null) ?? []
+
+  // WEB-98: dias podados voltam pelos rollups finalizados — ver o comentário
+  // do cabeçalho desta função para a precisão esperada nas contagens distintas.
+  const diasPodados = await buscarDiasPodados(barId, prev, to)
+  if (diasPodados.length > 0) {
+    const atualIni = getCommercialDay(from)
+    const atualFim = getCommercialDay(to)
+    const anteriorIni = getCommercialDay(prev.start)
+    const anteriorFim = getCommercialDay(prev.end)
+
+    for (const dia of diasPodados) {
+      const noAtual = dia.date >= atualIni && dia.date <= atualFim
+      const noAnterior = dia.date >= anteriorIni && dia.date <= anteriorFim
+
+      if (noAtual) {
+        profileViews += dia.profile_views
+        directionsOpened += dia.directions_opened
+        phoneClicked += dia.phone_clicked
+        whatsappOpened += dia.whatsapp_opened
+        uniqueVisitors += dia.unique_visitors
+        interestedPeople += dia.interested_people
+      }
+      if (noAnterior) {
+        profileViewsPrev += dia.profile_views
+        directionsOpenedPrev += dia.directions_opened
+        phoneClickedPrev += dia.phone_clicked
+        whatsappOpenedPrev += dia.whatsapp_opened
+        uniqueVisitorsPrev += dia.unique_visitors
+        interestedPeoplePrev += dia.interested_people
+      }
+
+      diario.push({
+        date: dia.date,
+        profile_view: dia.profile_views,
+        directions_opened: dia.directions_opened,
+        phone_clicked: dia.phone_clicked,
+        whatsapp_opened: dia.whatsapp_opened
+      })
+    }
+  }
 
   const highIntentActions = directionsOpened + phoneClicked + whatsappOpened
   const highIntentActionsPrev =
     directionsOpenedPrev + phoneClickedPrev + whatsappOpenedPrev
-
-  const diario = (row.diario as DailyRow[] | null) ?? []
   const dailyProfileViews = fillGaps(diario, 'profile_view', from, to)
   const dailyDirectionsOpened = fillGaps(diario, 'directions_opened', from, to)
   const dailyPhoneClicked = fillGaps(diario, 'phone_clicked', from, to)
@@ -218,6 +335,13 @@ export async function getMyAnalyticsOverview(
 /**
  * GetMyEventAnalytics: per-event breakdown for a bar within a date range.
  * Tenant-safe: events filtered by bar_id derived from session.
+ *
+ * Quebra por evento não dá para reconstruir a partir dos rollups diários —
+ * eles não têm dimensão de evento (WEB-98). Depois de podar os brutos de um
+ * dia, os eventos daquele dia continuam listados (a tabela `event` nunca é
+ * podada), mas as contagens refletem apenas os brutos que sobreviveram. É o
+ * limite de precisão documentado do contrato: a retenção de brutos sacrifica
+ * a atribuição histórica por evento em troca do agregado diário finalizado.
  */
 export async function getMyEventAnalytics(
   barId: string,
