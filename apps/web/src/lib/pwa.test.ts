@@ -12,16 +12,34 @@ import {
 
 const janelaOriginal = globalThis.window
 
+/**
+ * Troca `globalThis.window` por `defineProperty`, e não por atribuição.
+ *
+ * Outros arquivos de teste — `product-frame.test.tsx`, `posthog-flag.test.tsx`
+ * — instalam o `window` do JSDOM com `Object.defineProperty(globalThis,
+ * 'window', { value, configurable: true })`. Sem `writable`, a propriedade
+ * nasce somente-leitura, e uma atribuição simples depois disso lança
+ * `TypeError: Attempted to assign to readonly property` em módulo ESM.
+ *
+ * Como a ordem dos arquivos varia entre máquinas, atribuir direto passava
+ * localmente e quebrava na CI — e quebrava o arquivo inteiro, porque o erro
+ * acontecia no `afterEach`. `defineProperty` funciona nos dois casos, já que
+ * a propriedade continua `configurable`.
+ */
+function definirJanela(valor: unknown) {
+  Object.defineProperty(globalThis, 'window', {
+    value: valor,
+    configurable: true,
+    writable: true
+  })
+}
+
 afterEach(() => {
-  if (janelaOriginal === undefined) {
-    ;(globalThis as { window?: unknown }).window = undefined
-  } else {
-    globalThis.window = janelaOriginal
-  }
+  definirJanela(janelaOriginal)
 })
 
 function fingirJanela(parcial: Record<string, unknown>) {
-  ;(globalThis as { window?: unknown }).window = parcial
+  definirJanela(parcial)
 }
 
 describe('ehIOS', () => {
