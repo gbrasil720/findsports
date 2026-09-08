@@ -280,16 +280,16 @@ function PubPage() {
 
   return (
     <div className="flex min-h-dvh">
-      {/* Auth gate dialog — shown when no session */}
-      {!isAuthed && <AuthRequiredDialog open />}
+      <AppShell variant={shellVariant}>
+        {/* Auth gate dialog — shown when no session */}
+        {!isAuthed && <AuthRequiredDialog open />}
 
-      {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
-      <div
-        className="flex w-full flex-col"
-        inert={!isAuthed}
-        aria-hidden={!isAuthed}
-      >
-        <AppShell variant={shellVariant}>
+        {/* Authenticated content — inert + aria-hidden when no session (spec §8.1) */}
+        <div
+          className="flex w-full flex-col"
+          inert={!isAuthed}
+          aria-hidden={!isAuthed}
+        >
           {isLoadingPub ? (
             <div className="space-y-4">
               <Skeleton className="h-[260px] w-full" />
@@ -354,8 +354,8 @@ function PubPage() {
               <BarActions {...actions} variant="bar" isOwner={isOwner} />
             </div>
           ) : null}
-        </AppShell>
-      </div>
+        </div>
+      </AppShell>
     </div>
   )
 }

@@ -26,9 +26,7 @@ export function AuthRequiredDialog({ open }: Props) {
         if (!isOpen) return
       }}
     >
-      {/* Portals mount outside `.onside-app`; keep both classes so tokens and
-          primitives (`onside-display`, `onside-btn…`) still resolve here. */}
-      <DialogContent className="onside-app onside-dialog max-w-[calc(100vw-2rem)] p-0 sm:max-w-sm [&>button]:hidden">
+      <DialogContent className="onside-dialog max-w-[calc(100vw-2rem)] p-0 sm:max-w-sm [&>button]:hidden">
         <DialogTitle className="sr-only">Autenticação obrigatória</DialogTitle>
 
         <div className="flex flex-col items-center text-center px-6 pt-8 pb-6">

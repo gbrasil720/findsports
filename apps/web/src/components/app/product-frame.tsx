@@ -1,4 +1,6 @@
+import { PortalProvider } from '@findsports_oficial/ui/components/portal'
 import type { ReactNode } from 'react'
+import { useRef } from 'react'
 
 type Props = {
   header: ReactNode
@@ -13,17 +15,21 @@ export function ProductFrame({
   rootClassName = 'onside-app',
   headerInnerClassName = 'onside-app-shell onside-app-header-inner'
 }: Props) {
+  const portalContainer = useRef<HTMLDivElement>(null)
+
   return (
-    <div className={rootClassName}>
-      <a className="onside-skip-link" href="#main-content">
-        Ir para o conteúdo
-      </a>
-      <header className="onside-app-header">
-        <div className={headerInnerClassName}>{header}</div>
-      </header>
-      <main id="main-content" className="onside-app-shell onside-app-main">
-        {children}
-      </main>
-    </div>
+    <PortalProvider container={portalContainer}>
+      <div ref={portalContainer} className={rootClassName}>
+        <a className="onside-skip-link" href="#main-content">
+          Ir para o conteúdo
+        </a>
+        <header className="onside-app-header">
+          <div className={headerInnerClassName}>{header}</div>
+        </header>
+        <main id="main-content" className="onside-app-shell onside-app-main">
+          {children}
+        </main>
+      </div>
+    </PortalProvider>
   )
 }

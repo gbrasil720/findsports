@@ -250,9 +250,7 @@
 }
 
 /* ─── Dialog / modal surface ─── */
-/* Dialogs portal outside `.onside-app`, so the surface must be self-contained. */
-.onside-dialog,
-.onside-app.onside-dialog {
+.onside-dialog {
   min-height: 0;
   border: 1.5px solid var(--onside-ink) !important;
   border-radius: 0 !important;
@@ -263,8 +261,16 @@
   max-height: min(90dvh, 900px);
 }
 
+.onside-app [data-slot="dialog-content"] {
+  min-height: 0;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  box-shadow: 8px 8px 0 var(--onside-ink);
+  max-height: min(90dvh, 900px);
+}
+
 /* ─── Hint popover surface ─── */
-/* Hints portal outside `.onside-app`, so the surface must be self-contained. */
 .onside-hint {
   border: 1.5px solid var(--onside-ink) !important;
   border-radius: 0 !important;
@@ -272,6 +278,15 @@
   color: var(--onside-ink);
   font-family: var(--onside-body);
   box-shadow: 6px 6px 0 var(--onside-ink) !important;
+}
+
+.onside-app [data-slot="popover-content"] {
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  box-shadow: 6px 6px 0 var(--onside-ink);
 }
 
 /* ─── Sticky filter offset ─── */
@@ -283,7 +298,9 @@
 }
 
 /* ─── Dropdown menu surface ─── */
-.onside-menu {
+.onside-menu,
+.onside-app [data-slot="dropdown-menu-content"],
+.onside-app [data-slot="select-content"] {
   border: 1.5px solid var(--onside-ink);
   border-radius: 0;
   background: var(--onside-paper);
@@ -293,15 +310,43 @@
   transition-duration: 150ms;
 }
 
+.onside-menu [data-slot="dropdown-menu-item"],
+.onside-app [data-slot="select-content"] [data-slot="select-item"] {
+  color: var(--onside-ink);
+}
+
 .onside-menu
-  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]) {
+  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
+.onside-app
+  [data-slot="dropdown-menu-content"]
+  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
+.onside-app
+  [data-slot="select-content"]
+  [data-slot="select-item"]:is(:hover, :focus, [data-highlighted]) {
   background: var(--onside-stone);
   color: var(--onside-ink);
 }
 
-.onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]) {
+.onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
+.onside-app
+  [data-slot="dropdown-menu-content"]
+  [data-slot="dropdown-menu-item"][data-variant="destructive"]:is(
+    :hover,
+    :focus,
+    [data-highlighted]
+  ) {
   background: color-mix(in srgb, var(--onside-live) 10%, var(--onside-paper));
   color: var(--onside-live-text);
+}
+
+.onside-app
+  [data-slot="select-content"]
+  :is(
+    [data-slot="select-scroll-up-button"],
+    [data-slot="select-scroll-down-button"]
+  ) {
+  background: var(--onside-paper);
+  color: var(--onside-ink);
 }
 
 /* ─── Barra de ação do perfil público (mobile) ─── */
