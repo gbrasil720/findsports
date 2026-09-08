@@ -219,7 +219,7 @@ export function EventPerformance({
   eventAnalyticsState
 }: {
   eventAnalyticsState: {
-    status: 'loading' | 'error' | 'empty' | 'ready'
+    status: 'loading' | 'error' | 'blocked' | 'empty' | 'ready'
     items?: EventAnalyticsRow[]
     retry?: () => void
   }
@@ -227,6 +227,20 @@ export function EventPerformance({
   if (eventAnalyticsState.status === 'loading') return <PerformanceSkeleton />
   if (eventAnalyticsState.status === 'error' && eventAnalyticsState.retry)
     return <PerformanceError onRetry={eventAnalyticsState.retry} />
+
+  // Bloqueio real de plano — não é ausência de dados, então não pode cair no
+  // estado vazio ("os números aparecem quando...") que esconderia o motivo.
+  if (eventAnalyticsState.status === 'blocked') {
+    return (
+      <div className="onside-panel-acid p-4">
+        <PerformanceHeading />
+        <p className="text-sm text-[var(--onside-ink)] opacity-60">
+          Seu plano não inclui analytics por jogo. Confira os planos com esse
+          recurso na página de planos.
+        </p>
+      </div>
+    )
+  }
 
   if (eventAnalyticsState.status === 'empty') {
     return (
