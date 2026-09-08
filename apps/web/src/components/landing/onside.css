@@ -2805,6 +2805,12 @@
   .onside-page .onside-site-header {
     transition: none;
   }
+
+  .onside-page .onside-button,
+  .onside-page .onside-nav-cta,
+  .onside-page .onside-faq summary .onside-faq-icon {
+    transform: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {

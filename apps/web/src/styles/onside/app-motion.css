@@ -21,50 +21,6 @@
   }
 }
 
-@keyframes onside-dialog-enter {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-@keyframes onside-dialog-exit {
-  from {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
-  }
-}
-
-@keyframes onside-surface-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes onside-surface-exit {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
-
 @media (hover: hover) and (pointer: fine) {
   .onside-app .onside-btn:hover:not(:disabled) {
     transform: translate(-2px, -2px);
@@ -80,38 +36,81 @@
       var(--onside-ease-out) both;
   }
 
+  [data-slot="dialog-backdrop"],
+  [data-slot="dialog-content"],
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"] {
+    animation: none;
+  }
+
+  [data-slot="dialog-backdrop"] {
+    opacity: 0;
+    transition: opacity var(--onside-motion-base) var(--onside-ease-out);
+  }
+
   [data-slot="dialog-backdrop"][data-open] {
-    animation: onside-surface-enter var(--onside-motion-base)
-      var(--onside-ease-out) both;
+    opacity: 1;
   }
 
   [data-slot="dialog-backdrop"][data-closed] {
-    animation: onside-surface-exit var(--onside-motion-base)
-      var(--onside-ease-out) both;
+    opacity: 0;
+  }
+
+  [data-slot="dialog-content"] {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+    transition:
+      opacity var(--onside-motion-base) var(--onside-ease-out),
+      transform var(--onside-motion-base) var(--onside-ease-out);
   }
 
   [data-slot="dialog-content"][data-open] {
-    animation: onside-dialog-enter var(--onside-motion-base)
-      var(--onside-ease-out) both;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 
   [data-slot="dialog-content"][data-closed] {
-    animation: onside-dialog-exit var(--onside-motion-base)
-      var(--onside-ease-out) both;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"] {
+    opacity: 0;
+    transform: scale(0.97);
+    transform-origin: var(--transform-origin, top left);
+    transition:
+      opacity var(--onside-motion-fast) var(--onside-ease-out),
+      transform var(--onside-motion-fast) var(--onside-ease-out);
   }
 
   [data-slot="popover-content"][data-open],
   [data-slot="dropdown-menu-content"][data-open] {
-    animation: onside-surface-enter var(--onside-motion-fast)
-      var(--onside-ease-out) both;
-    transform-origin: var(--transform-origin, top left);
+    opacity: 1;
+    transform: scale(1);
   }
 
   [data-slot="popover-content"][data-closed],
   [data-slot="dropdown-menu-content"][data-closed] {
-    animation: onside-surface-exit var(--onside-motion-fast)
-      var(--onside-ease-out) both;
-    transform-origin: var(--transform-origin, top left);
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  @starting-style {
+    [data-slot="dialog-backdrop"][data-open] {
+      opacity: 0;
+    }
+
+    [data-slot="dialog-content"][data-open] {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.97);
+    }
+
+    [data-slot="popover-content"][data-open],
+    [data-slot="dropdown-menu-content"][data-open] {
+      opacity: 0;
+      transform: scale(0.97);
+    }
   }
 }
 
@@ -179,6 +178,14 @@
   [data-slot="popover-content"][data-closed],
   [data-slot="dropdown-menu-content"][data-open],
   [data-slot="dropdown-menu-content"][data-closed] {
+    transform: none !important;
+  }
+
+  [class~="transition-[grid-template-rows]"] {
+    transition: none !important;
+  }
+
+  [class~="rotate-180"] {
     transform: none !important;
   }
 
