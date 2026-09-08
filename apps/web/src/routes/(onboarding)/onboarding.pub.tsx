@@ -177,7 +177,7 @@ function PubOnboarding() {
       <OnboardingHeader label="Conta de bar" />
       <StepProgress step={step} steps={STEPS} />
 
-      <OnboardingStep>
+      <OnboardingStep step={step}>
         {step === 0 && (
           <WelcomeStep
             eyebrow="Seu bar no radar dos torcedores."

@@ -37,10 +37,10 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
 
   return (
     <label
-      className={`relative block min-h-11 w-full cursor-pointer border-[1.5px] border-[var(--onside-ink)] p-6 text-left transition-[transform,box-shadow,background] duration-150 focus-within:ring-[3px] focus-within:ring-[var(--onside-live)] ${
+      className={`relative block min-h-11 w-full cursor-pointer border-[1.5px] border-[var(--onside-ink)] p-6 text-left focus-within:ring-[3px] focus-within:ring-[var(--onside-live)] ${
         isSelected
           ? 'bg-[var(--onside-acid)] shadow-[6px_6px_0_var(--onside-ink)]'
-          : 'bg-[var(--onside-paper)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--onside-ink)]'
+          : 'bg-[var(--onside-paper)]'
       } ${plan.highlight && !isSelected ? 'ring-2 ring-[var(--onside-ink)]' : ''}`}
     >
       <input

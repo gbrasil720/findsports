@@ -126,11 +126,13 @@ function OnsideHeader() {
         </button>
       </div>
 
-      {menuOpen ? (
+      {
         // biome-ignore lint/a11y/noStaticElementInteractions: closes menu when any hash link inside is activated
         <div
           id={menuId}
-          className="onside-mobile-menu is-open"
+          className={`onside-mobile-menu${menuOpen ? ' is-open' : ''}`}
+          aria-hidden={!menuOpen}
+          inert={!menuOpen}
           onClick={(event) => {
             const target = event.target
             if (target instanceof Element && target.closest('a[href^="#"]')) {
@@ -163,7 +165,7 @@ function OnsideHeader() {
             {LANDING_COPY.primaryCta}
           </a>
         </div>
-      ) : null}
+      }
     </header>
   )
 }

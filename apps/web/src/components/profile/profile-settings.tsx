@@ -61,7 +61,9 @@ export function ProfileSettings(props: Props) {
             className="animate-spin text-[var(--onside-muted)]"
           />
         ) : props.editingSports ? (
-          <SportsEditor {...props} />
+          <div className="onside-profile-sports-editor">
+            <SportsEditor {...props} />
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2">
             {props.preferences.length === 0 ? (

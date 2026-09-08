@@ -1,4 +1,4 @@
-@keyframes onside-pulse {
+@keyframes onside-app-pulse {
   0%,
   100% {
     opacity: 1;
@@ -36,10 +36,27 @@
       var(--onside-ease-out) both;
   }
 
+  .onside-onboarding-step-content {
+    opacity: 1;
+    transform: translateX(0);
+    transition:
+      opacity var(--onside-motion-base) var(--onside-ease-out),
+      transform var(--onside-motion-base) var(--onside-ease-out);
+  }
+
+  .onside-profile-sports-editor {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity var(--onside-motion-base) var(--onside-ease-out),
+      transform var(--onside-motion-base) var(--onside-ease-out);
+  }
+
   [data-slot="dialog-backdrop"],
   [data-slot="dialog-content"],
   [data-slot="popover-content"],
-  [data-slot="dropdown-menu-content"] {
+  [data-slot="dropdown-menu-content"],
+  [data-slot="select-content"] {
     animation: none;
   }
 
@@ -75,7 +92,8 @@
   }
 
   [data-slot="popover-content"],
-  [data-slot="dropdown-menu-content"] {
+  [data-slot="dropdown-menu-content"],
+  [data-slot="select-content"] {
     opacity: 0;
     transform: scale(0.97);
     transform-origin: var(--transform-origin, top left);
@@ -85,18 +103,30 @@
   }
 
   [data-slot="popover-content"][data-open],
-  [data-slot="dropdown-menu-content"][data-open] {
+  [data-slot="dropdown-menu-content"][data-open],
+  [data-slot="select-content"][data-open] {
     opacity: 1;
     transform: scale(1);
   }
 
   [data-slot="popover-content"][data-closed],
-  [data-slot="dropdown-menu-content"][data-closed] {
+  [data-slot="dropdown-menu-content"][data-closed],
+  [data-slot="select-content"][data-closed] {
     opacity: 0;
     transform: scale(0.97);
   }
 
   @starting-style {
+    .onside-onboarding-step-content {
+      opacity: 0;
+      transform: translateX(6px);
+    }
+
+    .onside-profile-sports-editor {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
     [data-slot="dialog-backdrop"][data-open] {
       opacity: 0;
     }
@@ -107,7 +137,8 @@
     }
 
     [data-slot="popover-content"][data-open],
-    [data-slot="dropdown-menu-content"][data-open] {
+    [data-slot="dropdown-menu-content"][data-open],
+    [data-slot="select-content"][data-open] {
       opacity: 0;
       transform: scale(0.97);
     }
@@ -130,6 +161,7 @@
   .onside-live-dot.is-pulse,
   [class~="animate-spin"],
   [class~="animate-pulse"],
+  [class~="animate-caret-blink"],
   [data-sonner-toast][data-swipe-out="true"] {
     animation: none !important;
   }
@@ -147,10 +179,33 @@
     animation: none !important;
   }
 
+  .onside-onboarding-step-content {
+    opacity: 1;
+    transform: none;
+    transition: opacity 120ms ease-out;
+  }
+
+  .onside-profile-sports-editor {
+    opacity: 1;
+    transform: none;
+    transition: opacity 120ms ease-out;
+  }
+
+  @starting-style {
+    .onside-onboarding-step-content {
+      opacity: 0;
+    }
+
+    .onside-profile-sports-editor {
+      opacity: 0;
+    }
+  }
+
   [data-slot="dialog-backdrop"],
   [data-slot="dialog-content"],
   [data-slot="popover-content"],
-  [data-slot="dropdown-menu-content"] {
+  [data-slot="dropdown-menu-content"],
+  [data-slot="select-content"] {
     animation: none !important;
     transition: opacity 120ms ease-out !important;
   }
@@ -158,14 +213,16 @@
   [data-slot="dialog-backdrop"][data-open],
   [data-slot="dialog-content"][data-open],
   [data-slot="popover-content"][data-open],
-  [data-slot="dropdown-menu-content"][data-open] {
+  [data-slot="dropdown-menu-content"][data-open],
+  [data-slot="select-content"][data-open] {
     opacity: 1;
   }
 
   [data-slot="dialog-backdrop"][data-closed],
   [data-slot="dialog-content"][data-closed],
   [data-slot="popover-content"][data-closed],
-  [data-slot="dropdown-menu-content"][data-closed] {
+  [data-slot="dropdown-menu-content"][data-closed],
+  [data-slot="select-content"][data-closed] {
     opacity: 0;
   }
 
@@ -177,12 +234,10 @@
   [data-slot="popover-content"][data-open],
   [data-slot="popover-content"][data-closed],
   [data-slot="dropdown-menu-content"][data-open],
-  [data-slot="dropdown-menu-content"][data-closed] {
+  [data-slot="dropdown-menu-content"][data-closed],
+  [data-slot="select-content"][data-open],
+  [data-slot="select-content"][data-closed] {
     transform: none !important;
-  }
-
-  [class~="transition-[grid-template-rows]"] {
-    transition: none !important;
   }
 
   [class~="rotate-180"] {

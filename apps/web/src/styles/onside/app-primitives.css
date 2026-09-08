@@ -45,7 +45,7 @@
 }
 
 .onside-app .onside-live-dot.is-pulse {
-  animation: onside-pulse 1.4s ease-in-out infinite;
+  animation: onside-app-pulse 1.4s ease-in-out infinite;
 }
 
 /* ─── Buttons ─── */

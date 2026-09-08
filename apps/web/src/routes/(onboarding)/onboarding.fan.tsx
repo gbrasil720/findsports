@@ -118,7 +118,7 @@ function FanOnboarding() {
       <OnboardingHeader label="Conta de torcedor" />
       <StepProgress step={step} steps={STEPS} />
 
-      <OnboardingStep>
+      <OnboardingStep step={step}>
         {step === 0 && (
           <WelcomeStep
             eyebrow="É torcedor? Chegou no lugar certo."

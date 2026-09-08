@@ -85,8 +85,8 @@ export function ProfileOverview({
           </div>
           <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-[var(--onside-stone)]">
             <div
-              className="h-full rounded-none bg-[var(--onside-acid)]"
-              style={{ width: `${completionScore}%` }}
+              className="h-full origin-left rounded-none bg-[var(--onside-acid)] transition-transform duration-[180ms] [transition-timing-function:var(--onside-ease-out)] motion-reduce:transition-none"
+              style={{ transform: `scaleX(${completionScore / 100})` }}
             />
           </div>
           <ul className="space-y-1.5">

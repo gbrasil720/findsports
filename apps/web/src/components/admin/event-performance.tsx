@@ -126,7 +126,7 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
         <ChevronDown
           size={16}
           color="var(--onside-ink)"
-          className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          className={`transition-transform duration-[180ms] [transition-timing-function:var(--onside-ease-out)] ${expanded ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
 
@@ -155,14 +155,12 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
         </span>
       </button>
 
-      {/* Altura animada por grid-template-rows: 0fr → 1fr anima sem precisar
-          medir o conteúdo. `prefers-reduced-motion` neutraliza a transição. */}
+      {/* O painel de métricas abre instantaneamente: animar sua altura causa
+          reflow e atrapalha a leitura de dados. */}
       <div
         id={panelId}
         aria-hidden={!expanded}
-        className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        }`}
+        className={`grid ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
       >
         <div className="overflow-hidden">
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pb-3 pl-8 text-[var(--onside-ink)] text-sm opacity-80 sm:grid-cols-4">

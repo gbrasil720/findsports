@@ -98,7 +98,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
               <button
                 type="button"
                 aria-label={menuLabel}
-                className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2 transition-[transform,box-shadow] duration-150 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[4px_4px_0_var(--onside-ink)]"
+                className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
               />
             }
           >

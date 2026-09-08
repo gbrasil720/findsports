@@ -110,10 +110,8 @@ export function BarCard({
 
   return (
     <div
-      className={`group relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 transition-[transform,box-shadow] duration-150 sm:gap-4 ${
-        isHovered
-          ? '-translate-x-0.5 -translate-y-0.5 shadow-[4px_4px_0_var(--onside-ink)]'
-          : 'shadow-none'
+      className={`group relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 sm:gap-4 ${
+        isHovered ? 'shadow-[4px_4px_0_var(--onside-ink)]' : 'shadow-none'
       }`}
     >
       {planConfig ? (
