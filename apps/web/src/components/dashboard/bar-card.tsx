@@ -1,11 +1,12 @@
+import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { Link } from '@tanstack/react-router'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
-import Star from 'reicon-react/icons/Star'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import type { DiscoveryCardBar } from '@/domain/dashboard-selectors'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { getPlan } from '@/lib/plan-catalog'
 
 function formatStartsAt(startsAt: string | Date): string {
   return new Date(startsAt).toLocaleTimeString('pt-BR', {
@@ -47,17 +48,29 @@ function SportBadge({ name }: { slug: string; name: string }) {
   )
 }
 
-const PLAN_CONFIG = {
-  elite: {
-    badge: 'bg-[var(--onside-acid)] text-[var(--onside-ink)]',
-    label: 'Elite'
-  },
-  pro: {
-    badge: 'bg-[var(--onside-ink)] text-[var(--onside-paper)]',
-    label: 'Pro'
-  },
+/**
+ * Escala de peso do selo, de menor para maior: `starter` não tem selo, `pro`
+ * é contornado e `elite` é sólido. O peso visual sobe junto com o plano, que
+ * é o que faz a hierarquia ser lida sem legenda.
+ *
+ * `starter` sem selo vem da §5 de `docs/public-bar-page-redesign.md` — capa
+ * compacta, sem selo, nada escondido. Selo é hierarquia, não penalidade: um
+ * "sem selo" escrito na tela do torcedor seria penalidade.
+ *
+ * O Elite é sólido no ink, não no acid, por dois motivos. O acid já é o chip
+ * "Novo" logo ao lado, e dois chips acid na mesma linha viram um borrão. E
+ * preto sólido num fundo claro pesa mais que acid sólido — com o Pro no preto
+ * a hierarquia lia ao contrário.
+ *
+ * Cor não carrega a distinção sozinha em nenhum caso: o ícone vem do próprio
+ * plano em `PLAN_CATALOG` (`Star` no Pro, `Trophy` no Elite) e o nome está
+ * escrito.
+ */
+const PLAN_BADGE: Record<SubscriptionPlan, string | null> = {
+  elite: 'bg-[var(--onside-ink)] text-[var(--onside-acid)]',
+  pro: 'border border-[var(--onside-ink)] text-[var(--onside-ink)]',
   starter: null
-} as const
+}
 
 type Props = {
   bar: DiscoveryCardBar
@@ -93,7 +106,9 @@ export function BarCard({
   const extraEvents = (bar.event_count ?? 0) - 1
   const newBar = isNew(bar.created_at)
   const plan = bar.plan
-  const planConfig = PLAN_CONFIG[plan]
+  const planBadge = PLAN_BADGE[plan]
+  const PlanIcon = getPlan(plan).icon
+  const planName = getPlan(plan).name
   const participantsLabel =
     event && (event.participants.length > 0 || event.participantFreeText)
       ? event.participants.length > 0
@@ -110,19 +125,10 @@ export function BarCard({
 
   return (
     <div
-      className={`group relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 sm:gap-4 ${
+      className={`group grid grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 sm:gap-4 ${
         isHovered ? 'shadow-[4px_4px_0_var(--onside-ink)]' : 'shadow-none'
       }`}
     >
-      {planConfig ? (
-        <span
-          className={`absolute top-2 left-2 z-[1] inline-flex max-w-[calc(100%-4.5rem)] items-center gap-1 truncate px-2 py-0.5 font-[family-name:var(--onside-mono)] text-[9px] font-bold uppercase tracking-wider sm:left-auto sm:right-14 sm:top-3 sm:max-w-none ${planConfig.badge}`}
-        >
-          <Star size={9} color="currentColor" aria-hidden="true" />
-          {planConfig.label}
-        </span>
-      ) : null}
-
       <Link
         to="/pub/$pubId"
         params={{ pubId: bar.id }}
@@ -140,14 +146,14 @@ export function BarCard({
         className="col-span-2 grid min-w-0 grid-cols-[auto_1fr] items-center gap-3 outline-offset-2 sm:gap-4"
         aria-label={`Ver ${bar.name}`}
       >
+        {/* Ao vivo é urgência e plano é hierarquia: canais separados. O avatar
+            carrega só o estado, e o selo carrega só o plano — antes os dois
+            disputavam o mesmo pixel e um bar Elite com jogo ao vivo perdia o
+            sinal de plano. */}
         <div
           className={`grid size-16 shrink-0 place-items-center overflow-hidden font-bold text-xl text-[var(--onside-paper)] ${
-            live
-              ? 'bg-[var(--onside-live)]'
-              : plan === 'elite'
-                ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                : 'bg-[var(--onside-ink)]'
-          } ${planConfig ? 'mt-4 sm:mt-0' : ''}`}
+            live ? 'bg-[var(--onside-live)]' : 'bg-[var(--onside-ink)]'
+          }`}
         >
           {bar.photo_url ? (
             <img
@@ -162,7 +168,7 @@ export function BarCard({
           )}
         </div>
 
-        <div className={`min-w-0 ${planConfig ? 'mt-4 sm:mt-0' : ''}`}>
+        <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-2">
             {event ? (
               live ? (
@@ -184,6 +190,14 @@ export function BarCard({
                 Sem eventos programados
               </span>
             )}
+            {planBadge ? (
+              <span
+                className={`inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 font-[family-name:var(--onside-mono)] text-[9px] font-bold uppercase tracking-wider ${planBadge}`}
+              >
+                <PlanIcon size={9} color="currentColor" aria-hidden="true" />
+                {planName}
+              </span>
+            ) : null}
             {newBar ? (
               <span className="onside-badge-acid onside-badge">Novo</span>
             ) : null}
