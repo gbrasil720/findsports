@@ -156,8 +156,7 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
       </button>
 
       {/* Altura animada por grid-template-rows: 0fr → 1fr anima sem precisar
-          medir o conteúdo. `prefers-reduced-motion` já derruba tudo que casa
-          com `[class*="transition"]` dentro de `.onside-app`. */}
+          medir o conteúdo. `prefers-reduced-motion` neutraliza a transição. */}
       <div
         id={panelId}
         aria-hidden={!expanded}
