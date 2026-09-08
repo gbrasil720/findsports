@@ -7,6 +7,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
+import { ControleCidades } from '@/components/internal/controle-cidades'
 import { getUser } from '@/functions/get-user'
 import { useTRPC } from '@/utils/trpc'
 
@@ -64,6 +65,27 @@ function camposBooleanos(valor: unknown): [string, boolean][] {
   }
   return Object.entries(valor).filter(
     (entrada): entrada is [string, boolean] => typeof entrada[1] === 'boolean'
+  )
+}
+
+/**
+ * Chave cujo valor é uma lista de cidades.
+ *
+ * É uma exceção nomeada, não uma regra por formato: `launch.pub_cities` não é
+ * flag de engenheiro. Quem a opera toca o lançamento comercial, é a chave que
+ * mais vai ser mexida daqui para frente — uma vez por cidade nova, provavelmente
+ * com pressa — e o preço de errar é fechar o cadastro de bar de uma cidade
+ * inteira. Toda outra chave sem controle próprio continua no textarea de JSON.
+ */
+const CHAVE_LISTA_CIDADES = 'launch.pub_cities'
+
+function ehListaDeCidades(
+  entrada: Entrada
+): entrada is Entrada & { valor: string[] } {
+  return (
+    entrada.key === CHAVE_LISTA_CIDADES &&
+    Array.isArray(entrada.valor) &&
+    entrada.valor.every((item) => typeof item === 'string')
   )
 }
 
@@ -127,6 +149,9 @@ function formatarData(iso: string) {
  *
  * Chave booleana ganha dois botões por cima disso. É a forma mais comum e a
  * mais urgente: às três da manhã ninguém quer digitar `false` sem aspas.
+ *
+ * `launch.pub_cities` ganha o mesmo tratamento pelo mesmo motivo, e a exceção
+ * é por chave — não por formato. Ver `ehListaDeCidades`.
  */
 function CartaoFlag({
   entrada,
@@ -203,6 +228,14 @@ function CartaoFlag({
           ligado={entrada.valor === true}
           desabilitado={salvando}
           onToggle={onSalvar}
+        />
+      ) : null}
+
+      {ehListaDeCidades(entrada) ? (
+        <ControleCidades
+          cidades={entrada.valor}
+          desabilitado={salvando}
+          onAlterar={onSalvar}
         />
       ) : null}
 
