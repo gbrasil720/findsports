@@ -66,11 +66,11 @@
   cursor: pointer;
   touch-action: manipulation;
   transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease,
-    color 180ms ease,
-    opacity 180ms ease;
+    transform var(--onside-motion-base) var(--onside-ease-out),
+    box-shadow var(--onside-motion-base) var(--onside-ease-out),
+    background-color var(--onside-motion-base) ease,
+    color var(--onside-motion-base) ease,
+    opacity var(--onside-motion-base) ease;
   text-decoration: none;
   color: var(--onside-ink);
   background: transparent;
@@ -83,7 +83,7 @@
 }
 
 .onside-app .onside-btn:active:not(:disabled) {
-  transform: none;
+  transform: scale(0.97);
   box-shadow: none;
 }
 
@@ -242,10 +242,14 @@
   cursor: pointer;
   touch-action: manipulation;
   transition:
-    background 150ms ease,
-    color 150ms ease,
-    transform 150ms ease,
-    box-shadow 150ms ease;
+    background-color var(--onside-motion-fast) ease,
+    color var(--onside-motion-fast) ease,
+    transform var(--onside-motion-fast) var(--onside-ease-out),
+    box-shadow var(--onside-motion-fast) var(--onside-ease-out);
+}
+
+.onside-app .onside-choice:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .onside-app .onside-choice[data-selected="true"],

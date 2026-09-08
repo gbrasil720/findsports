@@ -85,7 +85,7 @@ export function ProfileOverview({
           </div>
           <div className="mb-4 h-1.5 overflow-hidden rounded-none bg-[var(--onside-stone)]">
             <div
-              className="h-full rounded-none bg-[var(--onside-acid)] transition-[width] duration-500"
+              className="h-full rounded-none bg-[var(--onside-acid)]"
               style={{ width: `${completionScore}%` }}
             />
           </div>

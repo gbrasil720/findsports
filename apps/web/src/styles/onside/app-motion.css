@@ -10,6 +10,61 @@
   }
 }
 
+@keyframes onside-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--onside-motion-distance));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onside-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes onside-dialog-exit {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97);
+  }
+}
+
+@keyframes onside-surface-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes onside-surface-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .onside-app .onside-btn:hover:not(:disabled) {
     transform: translate(-2px, -2px);
@@ -17,29 +72,118 @@
   }
 }
 
-/* ─── Reduced motion ─── */
+/* Route changes bridge the old and new page without delaying interaction. */
+@media (prefers-reduced-motion: no-preference) {
+  .onside-app > main,
+  #onboarding-main {
+    animation: onside-route-enter var(--onside-motion-slow)
+      var(--onside-ease-out) both;
+  }
+
+  [data-slot="dialog-backdrop"][data-open] {
+    animation: onside-surface-enter var(--onside-motion-base)
+      var(--onside-ease-out) both;
+  }
+
+  [data-slot="dialog-backdrop"][data-closed] {
+    animation: onside-surface-exit var(--onside-motion-base)
+      var(--onside-ease-out) both;
+  }
+
+  [data-slot="dialog-content"][data-open] {
+    animation: onside-dialog-enter var(--onside-motion-base)
+      var(--onside-ease-out) both;
+  }
+
+  [data-slot="dialog-content"][data-closed] {
+    animation: onside-dialog-exit var(--onside-motion-base)
+      var(--onside-ease-out) both;
+  }
+
+  [data-slot="popover-content"][data-open],
+  [data-slot="dropdown-menu-content"][data-open] {
+    animation: onside-surface-enter var(--onside-motion-fast)
+      var(--onside-ease-out) both;
+    transform-origin: var(--transform-origin, top left);
+  }
+
+  [data-slot="popover-content"][data-closed],
+  [data-slot="dropdown-menu-content"][data-closed] {
+    animation: onside-surface-exit var(--onside-motion-fast)
+      var(--onside-ease-out) both;
+    transform-origin: var(--transform-origin, top left);
+  }
+}
+
+/* Sonner's default 400ms movement is too slow for a confirmation toast. */
+[data-sonner-toast] {
+  transition:
+    transform var(--onside-motion-slow) var(--onside-ease-out),
+    opacity var(--onside-motion-base) var(--onside-ease-out);
+}
+
+[data-sonner-toast] > * {
+  transition: opacity var(--onside-motion-fast) var(--onside-ease-out);
+}
+
+/* Reduced motion keeps state feedback, but drops travel, spin, and pulse. */
 @media (prefers-reduced-motion: reduce) {
-  .onside-app .onside-live-dot.is-pulse,
-  .onside-app .animate-spin,
-  .onside-app .animate-pulse {
+  .onside-live-dot.is-pulse,
+  [class~="animate-spin"],
+  [class~="animate-pulse"],
+  [data-sonner-toast][data-swipe-out="true"] {
     animation: none !important;
   }
 
-  .onside-app .onside-btn,
-  .onside-app .onside-choice,
-  .onside-app .onside-input,
-  .onside-app .onside-textarea,
-  .onside-app .onside-select,
-  .onside-app .onside-progress-seg,
-  .onside-app a,
-  .onside-app button,
-  .onside-app [class*="transition"] {
-    transition: none !important;
-  }
-
   .onside-app .onside-btn:hover:not(:disabled),
-  .onside-app .onside-choice:hover:not(:disabled) {
+  .onside-app .onside-choice:hover:not(:disabled),
+  .onside-app .onside-btn:active:not(:disabled),
+  .onside-app .onside-choice:active:not(:disabled) {
     transform: none !important;
     box-shadow: none !important;
+  }
+
+  .onside-app > main,
+  #onboarding-main {
+    animation: none !important;
+  }
+
+  [data-slot="dialog-backdrop"],
+  [data-slot="dialog-content"],
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"] {
+    animation: none !important;
+    transition: opacity 120ms ease-out !important;
+  }
+
+  [data-slot="dialog-backdrop"][data-open],
+  [data-slot="dialog-content"][data-open],
+  [data-slot="popover-content"][data-open],
+  [data-slot="dropdown-menu-content"][data-open] {
+    opacity: 1;
+  }
+
+  [data-slot="dialog-backdrop"][data-closed],
+  [data-slot="dialog-content"][data-closed],
+  [data-slot="popover-content"][data-closed],
+  [data-slot="dropdown-menu-content"][data-closed] {
+    opacity: 0;
+  }
+
+  [data-slot="dialog-content"][data-open],
+  [data-slot="dialog-content"][data-closed] {
+    transform: translate(-50%, -50%) !important;
+  }
+
+  [data-slot="popover-content"][data-open],
+  [data-slot="popover-content"][data-closed],
+  [data-slot="dropdown-menu-content"][data-open],
+  [data-slot="dropdown-menu-content"][data-closed] {
+    transform: none !important;
+  }
+
+  [data-sonner-toast] {
+    --y: translateY(0) !important;
+    transition: opacity 120ms ease-out !important;
   }
 }

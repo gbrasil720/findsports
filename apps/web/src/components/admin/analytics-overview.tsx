@@ -414,7 +414,7 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
               </div>
               <div className="h-2 w-full overflow-hidden rounded-sm bg-[var(--onside-paper)]">
                 <div
-                  className="h-full bg-[var(--onside-ink)] transition-all"
+                  className="h-full bg-[var(--onside-ink)]"
                   style={{ width: `${pct}%` }}
                 />
               </div>

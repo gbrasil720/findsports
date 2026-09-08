@@ -148,8 +148,8 @@
   border-bottom: 1px solid rgb(18 18 15 / 17%);
   background: var(--onside-paper);
   transition:
-    background 250ms ease,
-    box-shadow 250ms ease;
+    background-color var(--onside-motion-slow) ease,
+    box-shadow var(--onside-motion-slow) var(--onside-ease-out);
 }
 
 @supports (backdrop-filter: blur(16px)) {
@@ -207,7 +207,7 @@
   background: var(--onside-live);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 200ms;
+  transition: transform var(--onside-motion-base) var(--onside-ease-out);
 }
 
 .onside-page .onside-nav-links a:hover::after {
@@ -223,9 +223,9 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   transition:
-    background 200ms,
-    color 200ms,
-    transform 200ms;
+    background-color var(--onside-motion-base) ease,
+    color var(--onside-motion-base) ease,
+    transform var(--onside-motion-base) var(--onside-ease-out);
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -285,10 +285,10 @@
   text-transform: uppercase;
   letter-spacing: 0.035em;
   transition:
-    transform 200ms,
-    box-shadow 200ms,
-    background 200ms,
-    color 200ms;
+    transform var(--onside-motion-base) var(--onside-ease-out),
+    box-shadow var(--onside-motion-base) var(--onside-ease-out),
+    background-color var(--onside-motion-base) ease,
+    color var(--onside-motion-base) ease;
   cursor: pointer;
   background: transparent;
   color: var(--onside-ink);
@@ -1383,7 +1383,7 @@
   background: var(--onside-paper);
   border: 1.5px solid var(--onside-ink);
   margin-top: -1px;
-  transition: transform 200ms;
+  transition: transform var(--onside-motion-base) var(--onside-ease-out);
 }
 
 .onside-page .onside-compare-row:nth-child(2) {
@@ -2150,7 +2150,7 @@
   justify-content: center;
   font-family: var(--onside-mono);
   font-size: 21px;
-  transition: transform 200ms;
+  transition: transform var(--onside-motion-base) var(--onside-ease-out);
   flex: none;
   line-height: 0;
   color: var(--onside-ink);
