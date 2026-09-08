@@ -34,6 +34,7 @@ export function NotFoundPage() {
             <h1 className="onside-not-found-title">
               Essa página
               <br />
+              {/* espaço literal p/ o leitor de tela não ler "páginasaiu" (WEB-93) */}{' '}
               <span className="onside-not-found-title-line">
                 saiu de campo
                 <span className="onside-not-found-dot" aria-hidden="true" />
