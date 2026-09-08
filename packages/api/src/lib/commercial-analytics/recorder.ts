@@ -149,6 +149,17 @@ export async function recordCommercialEvent(
   //    outras, que compartilham o mesmo snapshot. É isso que permite
   //    decidir se este evento estreia o usuário no dia (unique_visitors)
   //    ou estreia a intenção comercial dele (interested_people).
+  //
+  //    WEB-97: esse snapshot é POR INSTRUÇÃO, não por transação — duas
+  //    primeiras ações paralelas do mesmo fan/bar/dia tiravam o snapshot
+  //    antes de qualquer commit e cada uma somava 1 em unique_visitors
+  //    (e interested_people, quando as duas eram de alta intenção). O lock
+  //    de consultoria abaixo serializa o par ANTES do snapshot da instrução
+  //    principal: um lock dentro da própria instrução não adianta, o
+  //    snapshot já estaria tirado (verificado empiricamente). Por isso o
+  //    lock é uma instrução separada, na mesma transação — a segunda
+  //    chamada só tira o snapshot depois que a primeira commitou, e enxerga
+  //    o evento já gravado no `prior`.
   const now = new Date()
   const commercialDay = getCommercialDay(now)
   const isHighIntent = HIGH_INTENT_TYPES.includes(eventType)
@@ -174,7 +185,19 @@ export async function recordCommercialEvent(
 
   const rateLimitCutoff = new Date(now.getTime() - 60_000)
 
-  const result = await db.execute(sql`
+  const result = await db.transaction(async (tx) => {
+    // Lock de consultoria na mesma transação da instrução principal, numa
+    // instrução própria — só assim ele vale antes do snapshot dela (WEB-97).
+    await tx.execute(sql`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(
+          ${pubId}::text || ':' || ${actorUserId}::text || ':' || ${commercialDay}::text,
+          0
+        )
+      )
+    `)
+
+    return tx.execute(sql`
     WITH bar_row AS (
       SELECT b.id, b.is_active, b.phone, b.phone_accepts_whatsapp
       FROM bar b
@@ -274,7 +297,8 @@ export async function recordCommercialEvent(
     SELECT
       (SELECT c.reason FROM checks c) AS reason,
       (SELECT COUNT(*) FROM inserted)::int AS inserted_count
-  `)
+    `)
+  })
 
   const outcome = result.rows[0] as
     | { reason: string; inserted_count: number }
