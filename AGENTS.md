@@ -19,9 +19,10 @@ bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
 bun run test         # full test suite from repo root (env fake: raiz .env.test via bunfig preload)
 
-bun run db:push      # push schema to DB (no migration files)
 bun run db:generate  # generate migration files
-bun run db:migrate   # run migrations
+bun run db:migrate   # run migrations (NODE_ENV=development localmente)
+bun run db:journal   # relatório do journal; --upto <tag> / --all reconciliam
+bun run db:push      # empurra o schema sem gerar migration (ver aviso abaixo)
 bun run db:studio    # open Drizzle Studio
 ```
 
@@ -61,7 +62,36 @@ Add new routers in `packages/api/src/routers/`, export from `routers/index.ts`.
 
 Schema files live in `packages/db/src/schema/`. Each domain gets its own file; all are re-exported from `schema/index.ts`. Currently: `auth.ts` (better-auth tables) and `waitlist.ts`.
 
-IDs use `crypto.randomUUID()` as default. Prefer `db:push` in development, migration files for production.
+IDs use `crypto.randomUUID()` as default.
+
+**Migration é a via oficial em dev e em produção.** `NODE_ENV=development bun run db:migrate`
+põe um banco local em dia; `db:generate` cria o arquivo versionado.
+
+`db:push` continua existindo para experimentar schema sem gerar arquivo, mas **não use
+para pôr um banco em dia**: ele cria os objetos sem escrever em
+`drizzle.__drizzle_migrations`, e o `migrate` seguinte tenta aplicar migrations cujos
+objetos já existem e estoura no primeiro repetido. Além disso `push` é interativo e trava
+sem TTY quando sugere truncar tabela, então não fecha o ciclo para um agente.
+
+Se um banco já estiver nesse estado — journal atrás dos arquivos —, o caminho é
+`db:journal`:
+
+```bash
+NODE_ENV=development bun run db:journal
+# Faltando registrar (26): ... / drizzle-kit migrate aplicaria agora: ...
+
+NODE_ENV=development bun run db:journal -- --upto 0028_event_ends_at_after_starts_at_check
+NODE_ENV=development bun run db:migrate
+```
+
+`--upto <tag>` registra como aplicadas as migrations que o banco realmente tem, **sem
+executar o SQL delas**, e deixa o `migrate` aplicar o resto pelo caminho normal. `--all`
+registra o journal inteiro e só vale quando o banco veio de `db:push` do schema atual.
+`--dry-run` mostra o plano sem escrever. O script é idempotente e não-interativo.
+
+Não existe modo "descubra sozinho até onde o banco está": marcar como aplicada uma
+migration que não está faz o `migrate` pular SQL de verdade, e o erro só aparece depois.
+Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 
 ### Environment variables
 

@@ -26,18 +26,22 @@
       "env": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "CORS_ORIGIN"]
     },
     "db:push": {
-      "cache": false
+      "cache": false,
+      "env": ["NODE_ENV", "DATABASE_URL"]
     },
     "db:generate": {
-      "cache": false
+      "cache": false,
+      "env": ["NODE_ENV", "DATABASE_URL"]
     },
     "db:migrate": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["NODE_ENV", "DATABASE_URL"]
     },
     "db:studio": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["NODE_ENV", "DATABASE_URL"]
     },
     "db:seed:analytics": {
       "cache": false,
