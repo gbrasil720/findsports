@@ -90,11 +90,20 @@ function fillGaps(
 
 /**
  * Compute the previous period range given a current range.
+ *
+ * The previous period is the closed interval of the same duration ending
+ * immediately before `from` (prevEnd = from - 1ms), so both ranges are
+ * adjacent: no gap, no overlap, same number of instants covered. The old
+ * implementation subtracted a whole calendar day from `from` to build
+ * prevEnd and then subtracted the duration again, which skipped the day
+ * right before the period (WEB-99).
  */
-function previousPeriodRange(from: Date, to: Date): { start: Date; end: Date } {
+export function previousPeriodRange(
+  from: Date,
+  to: Date
+): { start: Date; end: Date } {
   const durationMs = to.getTime() - from.getTime()
-  const prevEnd = new Date(from)
-  prevEnd.setUTCDate(prevEnd.getUTCDate() - 1)
+  const prevEnd = new Date(from.getTime() - 1)
   const prevStart = new Date(prevEnd.getTime() - durationMs)
   return { start: prevStart, end: prevEnd }
 }
