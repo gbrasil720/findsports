@@ -19,6 +19,10 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 const envios: { kind: string; to: string; url: string }[] = []
 let falharEnvio = false
+/** Gancho para interleaving (WEB-90): roda dentro do envio, entre a reserva
+ *  do hash e a finalização — o ponto exato onde uma operação concorrente
+ *  pode substituir o convite. Consumido uma vez para não vazar entre testes. */
+let antesDoEnvio: (() => Promise<void>) | null = null
 
 /** Mesmo motivo de `waitlist.confirm.integration.test.ts`: `mock.module` é
  *  global no processo, então só entra quando o arquivo de fato roda. */
@@ -32,11 +36,30 @@ function mockarEnvioDeEmail() {
       url: string
     }) => {
       envios.push(input)
+      const fundo = antesDoEnvio
+      antesDoEnvio = null
+      if (fundo) await fundo()
       if (falharEnvio) throw new Error('Resend devolveu 500.')
       return { delivered: true }
     }
   }))
 }
+
+const contextoAdmin = {
+  auth: null,
+  session: {
+    session: { id: 's', userId: 'admin', token: 't' },
+    user: {
+      id: 'admin',
+      emailVerified: true,
+      role: 'admin',
+      onboardingCompleted: true,
+      searchRadiusKm: 3,
+      twoFactorEnabled: false
+    }
+  },
+  clientIp: `invite-test-admin-${crypto.randomUUID()}`
+} as unknown as Context
 
 const contextoPublico = {
   auth: null,
@@ -239,6 +262,125 @@ integrationTest(
       expect(segunda.sent).toBe(true)
     } finally {
       falharEnvio = false
+      await limpar(email)
+    }
+  }
+)
+
+/**
+ * WEB-90: uma tentativa pode reverter só o estado que ela própria reservou.
+ * Aqui o reenvio A troca o hash antigo por A2 e, durante o envio externo
+ * (dentro do mock), um admin desaprova e aprova de novo — o convite B passa
+ * a ser o atual. A falha de A não pode restaurar o hash expirado por cima de B.
+ */
+integrationTest(
+  'rollback antigo não restaura o hash expirado sobre o convite novo (WEB-90)',
+  async () => {
+    mockarEnvioDeEmail()
+    const { appRouter } = await import('./index')
+    const [{ hashWaitlistToken }] = await Promise.all([
+      import('../lib/waitlist-workflow')
+    ])
+    const callerPublic = appRouter.createCaller(contextoPublico)
+    const callerAdmin = appRouter.createCaller(contextoAdmin)
+    const { db, email, invite } = await prepararConvite({
+      inviteExpiresAt: new Date(Date.now() - SETE_DIAS)
+    })
+    try {
+      envios.length = 0
+      falharEnvio = false
+      antesDoEnvio = async () => {
+        await callerAdmin.waitlist.setApproval({ email, approved: false })
+        await callerAdmin.waitlist.setApproval({ email, approved: true })
+        // A falha de A vem depois que B já reservou o hash novo.
+        falharEnvio = true
+      }
+      await expect(
+        callerPublic.waitlist.resendInvite({ token: invite.token })
+      ).rejects.toThrow('Não foi possível enviar o convite.')
+
+      // Dois envios: o de A (que falhou) e o de B (que passou).
+      expect(envios).toHaveLength(2)
+      const tokenB = new URL(envios[1]?.url ?? '').searchParams.get('token')
+      expect(tokenB).toBeTruthy()
+      if (!tokenB) throw new Error('Convite de B não gerou URL')
+
+      const linha = (
+        await db
+          .select()
+          .from(waitlistEntries)
+          .where(eq(waitlistEntries.email, email))
+      )[0]
+      // O convite de B sobreviveu inteiro: hash novo, sem erro de A, enviado.
+      expect(linha?.inviteTokenHash).toBe(await hashWaitlistToken(tokenB))
+      expect(linha?.inviteError).toBeNull()
+      expect(linha?.inviteSentAt).not.toBeNull()
+      expect(linha?.inviteExpiresAt?.getTime() ?? 0).toBeGreaterThan(Date.now())
+
+      // O link antigo não voltou a existir: o rollback não restaurou A1.
+      const antigo = await callerPublic.waitlist.inviteDetails({
+        token: invite.token
+      })
+      expect(antigo).toEqual({ status: 'not_found' })
+      // E o convite novo de B é o que vale para a ativação.
+      const novo = await callerPublic.waitlist.inviteDetails({ token: tokenB })
+      expect(novo.status).toBe('valid')
+    } finally {
+      falharEnvio = false
+      antesDoEnvio = null
+      await limpar(email)
+    }
+  }
+)
+
+/**
+ * WEB-90, caminho de sucesso: mesmo sem falha, a finalização de A ("enviado")
+ * não pode marcar o convite de B — o persist só vale no hash que A reservou.
+ */
+integrationTest(
+  'finalização de sucesso antiga não marca o convite novo (WEB-90)',
+  async () => {
+    mockarEnvioDeEmail()
+    const { appRouter } = await import('./index')
+    const [{ hashWaitlistToken }] = await Promise.all([
+      import('../lib/waitlist-workflow')
+    ])
+    const callerPublic = appRouter.createCaller(contextoPublico)
+    const callerAdmin = appRouter.createCaller(contextoAdmin)
+    const { db, email, invite } = await prepararConvite({
+      inviteExpiresAt: new Date(Date.now() - SETE_DIAS)
+    })
+    try {
+      envios.length = 0
+      falharEnvio = false
+      antesDoEnvio = async () => {
+        await callerAdmin.waitlist.setApproval({ email, approved: false })
+        await callerAdmin.waitlist.setApproval({ email, approved: true })
+      }
+      const resultado = await callerPublic.waitlist.resendInvite({
+        token: invite.token
+      })
+      expect(resultado.sent).toBe(true)
+      expect(envios).toHaveLength(2)
+
+      const tokenB = new URL(envios[1]?.url ?? '').searchParams.get('token')
+      expect(tokenB).toBeTruthy()
+      if (!tokenB) throw new Error('Convite de B não gerou URL')
+      const linha = (
+        await db
+          .select()
+          .from(waitlistEntries)
+          .where(eq(waitlistEntries.email, email))
+      )[0]
+      // B continua dono da linha: A não tocou no estado dele.
+      expect(linha?.inviteTokenHash).toBe(await hashWaitlistToken(tokenB))
+      expect(linha?.inviteSentAt).not.toBeNull()
+      expect(linha?.inviteError).toBeNull()
+      const novo = await callerPublic.waitlist.inviteDetails({ token: tokenB })
+      expect(novo.status).toBe('valid')
+    } finally {
+      falharEnvio = false
+      antesDoEnvio = null
       await limpar(email)
     }
   }
