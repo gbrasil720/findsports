@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: Dialog fields use associated labels via layout patterns already present. */
 import { Badge } from '@findsports_oficial/ui/components/badge'
 import {
   Dialog,
@@ -470,11 +469,12 @@ function ManageUsersPage() {
                               render={
                                 <button
                                   type="button"
+                                  aria-label={`Ações de ${u.name}`}
                                   className="inline-flex size-8 items-center justify-center rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] text-[var(--onside-muted)] transition-colors hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)]"
                                 />
                               }
                             >
-                              <More className="size-4" />
+                              <More className="size-4" aria-hidden="true" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" side="bottom">
                               <DropdownMenuGroup>
@@ -557,13 +557,17 @@ function ManageUsersPage() {
             </DialogDescription>
           </div>
           <div className="px-6 pb-4 space-y-3">
-            <label className="block text-sm font-semibold text-[var(--onside-ink)]">
+            <label
+              htmlFor="ban-reason"
+              className="block text-sm font-semibold text-[var(--onside-ink)]"
+            >
               Motivo do banimento{' '}
               <span className="font-normal text-muted-foreground">
                 (opcional)
               </span>
             </label>
             <Textarea
+              id="ban-reason"
               placeholder="Ex: Violação dos termos de uso..."
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
@@ -607,7 +611,10 @@ function ManageUsersPage() {
             </DialogDescription>
           </div>
           <div className="px-6 pb-4 space-y-3">
-            <label className="block text-sm font-semibold text-[var(--onside-ink)]">
+            <label
+              htmlFor="new-role"
+              className="block text-sm font-semibold text-[var(--onside-ink)]"
+            >
               Novo role
             </label>
             <Select
@@ -616,7 +623,10 @@ function ManageUsersPage() {
                 if (v) setNewRole(v)
               }}
             >
-              <SelectTrigger className="rounded-none border-[var(--onside-line)] bg-[var(--onside-paper)] w-full">
+              <SelectTrigger
+                id="new-role"
+                className="rounded-none border-[var(--onside-line)] bg-[var(--onside-paper)] w-full"
+              >
                 <SelectValue placeholder="Selecione um role" />
               </SelectTrigger>
               <SelectContent>
