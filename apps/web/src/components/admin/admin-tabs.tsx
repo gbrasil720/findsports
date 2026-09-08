@@ -103,9 +103,7 @@ export function AdminTabs({ activeSection, onChange }: Props) {
         })}
       </div>
 
-      <Link to="/admin/billing" className="onside-admin-billing-link">
-        Assinatura e pagamentos
-      </Link>
+      <Link to="/admin/billing">Assinatura e pagamentos</Link>
     </nav>
   )
 }

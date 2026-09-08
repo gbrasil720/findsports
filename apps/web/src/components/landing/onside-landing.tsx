@@ -323,10 +323,7 @@ function OnsideTicker() {
 function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
   if (variant === 'search') {
     return (
-      <div
-        className="onside-journey-visual onside-search-visual"
-        aria-hidden="true"
-      >
+      <div className="onside-journey-visual" aria-hidden="true">
         <div className="onside-mini-search">
           <span className="onside-inline-icon">
             <Search size={16} aria-hidden="true" focusable="false" />
@@ -564,9 +561,9 @@ export function OnsideLanding() {
 
         <OnsideTicker />
 
-        <section className="onside-problem onside-section-pad" id="produto">
+        <section className="onside-section-pad" id="produto">
           <div className="onside-shell">
-            <div className="onside-section-intro onside-split-intro">
+            <div className="onside-split-intro">
               <p className="onside-section-kicker">
                 {LANDING_COPY.problem.kicker}
               </p>
@@ -609,12 +606,9 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section
-          className="onside-experience onside-section-pad"
-          id="como-funciona"
-        >
+        <section className="onside-section-pad" id="como-funciona">
           <div className="onside-shell">
-            <div className="onside-section-intro onside-centered-intro">
+            <div className="onside-centered-intro">
               <p className="onside-section-kicker">
                 {LANDING_COPY.journey.kicker}
               </p>

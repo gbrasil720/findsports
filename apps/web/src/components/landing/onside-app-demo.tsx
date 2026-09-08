@@ -106,7 +106,7 @@ export function OnsideAppDemo() {
                 hidden={isMap}
               >
                 <article className="onside-venue-card onside-venue-featured">
-                  <div className="onside-venue-image onside-venue-one">
+                  <div className="onside-venue-image">
                     <span>MAIS PERTO</span>
                   </div>
                   <div className="onside-venue-body">

@@ -37,7 +37,7 @@
     "db:seed:load-test": "turbo run db:seed:load-test --filter=@findsports_oficial/db",
     "db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
     "db:seed:teams": "turbo -F @findsports_oficial/db db:seed:teams",
-    "check": "biome check .",
+    "check": "biome check . && bun scripts/check-onside-classes.ts",
     "fix": "biome check --write ."
   },
   "devDependencies": {
