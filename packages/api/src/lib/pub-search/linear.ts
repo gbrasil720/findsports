@@ -5,6 +5,7 @@ import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
   type LinhaBusca,
+  legacySearchCursorSchema,
   montarFiltrosBusca,
   montarPaginaBusca,
   type SearchInput,
@@ -62,7 +63,11 @@ export async function executarBuscaLinear(
     WHEN n.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -n.rating_score
     ELSE 0
   END`
-  const keyset = cursor ? decodeCursor(cursor, searchCursorSchema) : null
+  const keyset = cursor
+    ? decodeCursor(cursor, searchCursorSchema, {
+        restartOn: legacySearchCursorSchema
+      })
+    : null
   const keysetFilter = keyset
     ? sql`WHERE (${classicRankSql}, ${planRankSql}, ${qualityRankSql},
                  agg.next_event_at, n.distance_km, n.id) >

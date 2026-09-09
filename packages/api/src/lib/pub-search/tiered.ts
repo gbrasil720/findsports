@@ -5,6 +5,7 @@ import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
   type LinhaBusca,
+  legacySearchCursorSchema,
   montarFiltrosBusca,
   montarPaginaBusca,
   type SearchInput,
@@ -66,7 +67,11 @@ export async function executarBuscaEmCamadas(
   const champBarFilterR = champBarFilter(sql`r.name`)
   const amenityFilterB = amenityFilter(sql`b`)
 
-  const keyset = cursor ? decodeCursor(cursor, searchCursorSchema) : null
+  const keyset = cursor
+    ? decodeCursor(cursor, searchCursorSchema, {
+        restartOn: legacySearchCursorSchema
+      })
+    : null
 
   // Cursor apontando para um plano que não existe mais (ou forjado): acabou a
   // paginação. Sem isso a lista de camadas ficaria vazia e o UNION ALL sairia

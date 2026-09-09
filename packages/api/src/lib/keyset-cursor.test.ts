@@ -11,6 +11,16 @@ const schema = z.object({
   i: z.string()
 })
 
+const versionedSchema = z.object({
+  v: z.literal(2),
+  p: z.number(),
+  e: z.string(),
+  d: z.number(),
+  i: z.string()
+})
+
+const legacySchema = schema.strict()
+
 describe('keyset cursor', () => {
   it('faz round-trip preservando os valores', () => {
     const payload = {
@@ -49,6 +59,26 @@ describe('keyset cursor', () => {
   it('rejeita cursor com formato diferente do esperado', () => {
     const cursor = encodeCursor({ campo: 'inesperado' })
     expect(() => decodeCursor(cursor, schema)).toThrow(TRPCError)
+  })
+
+  it('reinicia para cursor de versão antiga conhecida', () => {
+    const cursor = encodeCursor({
+      p: 2,
+      e: '2026-08-16 12:00:00.000000',
+      d: 11.57,
+      i: 'bar-123'
+    })
+
+    expect(
+      decodeCursor(cursor, versionedSchema, { restartOn: legacySchema })
+    ).toBeNull()
+  })
+
+  it('mantém BAD_REQUEST para formato inválido mesmo com reinício habilitado', () => {
+    const cursor = encodeCursor({ p: '2', e: 'x', d: 1, i: 'bar-123' })
+    expect(() =>
+      decodeCursor(cursor, versionedSchema, { restartOn: legacySchema })
+    ).toThrow(TRPCError)
   })
 
   it('rejeita em vez de silenciosamente voltar à primeira página', () => {

@@ -85,6 +85,16 @@ export const searchCursorSchema = z.object({
   i: z.string()
 })
 
+/** Cursor de relevância emitido antes da prioridade de clássico e qualidade. */
+export const legacySearchCursorSchema = z
+  .object({
+    p: z.number(),
+    e: z.string(),
+    d: z.number(),
+    i: z.string()
+  })
+  .strict()
+
 /**
  * Cursor do modo "melhor avaliados": grupo (com nota pública ou sem), nota
  * negada, plano, próximo jogo, distância, id.

@@ -15,6 +15,8 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
+import { encodeCursor } from '../lib/keyset-cursor'
+
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 const ORIGIN_LAT = -39.5
@@ -250,11 +252,27 @@ integrationTest(
         expectedOrder.slice(0, 2)
       )
 
+      const restartedFromLegacyCursor = await caller.pubs.search({
+        lat: ORIGIN_LAT,
+        lng: ORIGIN_LNG,
+        radiusKm: 3,
+        limit: 20,
+        cursor: encodeCursor({
+          p: 1,
+          e: new Date(now.getTime() + 30 * 60_000).toISOString(),
+          d: 0,
+          i: eliteClassic.barId
+        })
+      })
+      expect(restartedFromLegacyCursor.bars.map((item) => item.id)).toEqual(
+        expectedOrder
+      )
+
       const ticker = await caller.pubs.getEliteEvents()
       const ourTicker = ticker.filter(
         (item) =>
-          String(item.bar_id) === eliteClassic.barId ||
-          String(item.bar_id) === eliteOther.barId
+          String(item.event_id) === eliteClassic.eventId ||
+          String(item.event_id) === eliteOther.eventId
       )
       expect(ourTicker.map((item) => item.event_id)).toEqual([
         eliteClassic.eventId,
@@ -301,7 +319,7 @@ integrationTest(
         })
         .from(barCommercialEvent)
         .where(eq(barCommercialEvent.barId, eliteClassic.barId))
-        .orderBy(sql`type DESC`)
+        .orderBy(sql`type ASC`)
       expect(measurements).toEqual([
         {
           type: 'classic_exposure',

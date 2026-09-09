@@ -16,7 +16,7 @@ uma alteração editorial futura não reescreve a classificação já medida.
 
 | Superfície | Contrato | Exceção |
 | --- | --- | --- |
-| Busca por relevância | O backend ordena `Elite clássico → plano → qualidade Wilson → próximo jogo → distância → id`. Um Elite com próximo evento clássico fica no topo antes dos demais resultados. O cursor carrega todas as chaves e a versão 2 da ordem. | Nenhuma reordenação no cliente. |
+| Busca por relevância | O backend ordena `Elite clássico → plano → qualidade Wilson → próximo jogo → distância → id`. Um Elite com próximo evento clássico fica no topo antes dos demais resultados. O cursor carrega todas as chaves e a versão 2 da ordem; cursor legado conhecido reinicia na primeira página. | Nenhuma reordenação no cliente. |
 | Busca por rating | O backend ordena nota pública/Wilson, depois plano, jogo, distância e id. | A ordenação pedida pelo torcedor tira o plano da frente; não há garantia Elite. |
 | Busca por localização | O backend ordena distância (`<->`) e id. | É fallback sem contexto de evento; não há garantia Elite. |
 | Mapa | Recebe a mesma sequência da busca por relevância e não a reordena. | A posição geográfica dos marcadores não representa ranking; fallback local segue distância. |
