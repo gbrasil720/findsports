@@ -130,29 +130,29 @@ export function groupEventsByDay<T extends ProfileEvent>(
 export type BarPlan = 'starter' | 'pro' | 'elite'
 
 export type PlanPresentation = {
-  /** Selo de verificado no topo — só para quem assina acima do starter. */
-  badge: { label: string; className: string } | null
+  /** Selo que identifica o plano — só para quem assina acima do starter. */
+  planBadge: { label: string; className: string } | null
   /** Altura da capa. Starter não perde informação, perde palco. */
   coverHeight: string
 }
 
 const PLAN_PRESENTATION: Record<BarPlan, PlanPresentation> = {
   elite: {
-    badge: {
+    planBadge: {
       label: 'Elite',
       className: 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
     },
-    coverHeight: 'h-[220px] md:h-[300px]'
+    coverHeight: 'h-[300px] md:h-[360px]'
   },
   pro: {
-    badge: {
+    planBadge: {
       label: 'Pro',
       className: 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
     },
-    coverHeight: 'h-[220px] md:h-[300px]'
+    coverHeight: 'h-[300px] md:h-[360px]'
   },
   starter: {
-    badge: null,
+    planBadge: null,
     coverHeight: 'h-[150px] md:h-[180px]'
   }
 }

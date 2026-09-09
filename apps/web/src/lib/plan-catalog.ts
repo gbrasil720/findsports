@@ -95,7 +95,7 @@ export const PLAN_CATALOG: Plan[] = [
     ],
     profilePerks: [
       { label: 'Tudo do Starter', status: 'live' },
-      { label: 'Selo de bar verificado no perfil', status: 'live' },
+      { label: 'Selo Pro no perfil', status: 'live' },
       { label: 'Capa em destaque, o dobro da altura', status: 'live' },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
       { label: 'Cardápio e promoções no perfil', status: 'soon' }
