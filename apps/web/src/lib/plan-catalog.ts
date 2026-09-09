@@ -158,6 +158,8 @@ export const PLAN_TIER_ORDER: Record<SubscriptionPlan, number> = {
   elite: 2
 }
 
+export type PlanOrigin = 'admin' | 'billing'
+
 export function getPlan(id: SubscriptionPlan): Plan {
   const entry = PLAN_CATALOG.find((p) => p.id === id)
   if (!entry) throw new Error(`Plan ${id} not found in catalog`)
@@ -173,6 +175,32 @@ export function isDowngrade(
   target: SubscriptionPlan
 ): boolean {
   return PLAN_TIER_ORDER[target] < PLAN_TIER_ORDER[current]
+}
+
+export function getPlanSelectionState(
+  current: SubscriptionPlan | null,
+  selected: SubscriptionPlan
+) {
+  return {
+    isDowngrade: current !== null && isDowngrade(current, selected),
+    isSamePlan: current === selected
+  }
+}
+
+export function parsePlanOrigin(value: unknown): PlanOrigin | undefined {
+  if (value === 'admin' || value === 'billing') return value
+  return undefined
+}
+
+export function getPlanExitLink(origin: PlanOrigin | undefined) {
+  switch (origin) {
+    case 'admin':
+      return { label: 'Voltar', to: '/admin' as const }
+    case 'billing':
+      return { label: 'Voltar', to: '/admin/billing' as const }
+    default:
+      return { label: 'Ver planos depois', to: '/admin' as const }
+  }
 }
 
 export function formatHistoryWindow(a: PlanAnalytics): string {

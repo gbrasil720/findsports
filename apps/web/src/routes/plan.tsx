@@ -9,12 +9,22 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
-import { PLAN_CATALOG, PLAN_TIER_ORDER, type Plan } from '@/lib/plan-catalog'
+import {
+  getPlanExitLink,
+  getPlanSelectionState,
+  PLAN_CATALOG,
+  type Plan,
+  parsePlanOrigin
+} from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
 export const Route = createFileRoute('/plan')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const origin = parsePlanOrigin(search.origin)
+    return origin ? { origin } : {}
+  },
   head: () => ({
     meta: [
       { title: 'Escolha seu plano — Onside' },
@@ -31,6 +41,7 @@ export const Route = createFileRoute('/plan')({
 })
 
 function PlanSelection() {
+  const { origin } = Route.useSearch()
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,9 +60,9 @@ function PlanSelection() {
   const checkoutLiberado =
     configQuery.data?.['billing.checkout_enabled'] ?? true
   const subscription = subscriptionQuery.data
-  const currentPlan = subscription?.plan ?? null
-  const hasActivePlan =
-    subscription?.status === 'active' || subscription?.status === 'trialing'
+  const currentPlan = subscription?.currentPlan ?? null
+  const hasActivePlan = currentPlan !== null
+  const exitLink = getPlanExitLink(origin)
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
@@ -100,9 +111,10 @@ function PlanSelection() {
     }
   }
 
-  const isDowngrade =
-    currentPlan && PLAN_TIER_ORDER[selected] < PLAN_TIER_ORDER[currentPlan]
-  const isSamePlan = selected === currentPlan
+  const { isDowngrade, isSamePlan } = getPlanSelectionState(
+    currentPlan,
+    selected
+  )
 
   return (
     <OnboardingLayout variant="plan">
@@ -221,11 +233,11 @@ function PlanSelection() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to={hasActivePlan ? '/admin/billing' : '/onboarding/pub'}
+          to={exitLink.to}
           className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-          Voltar
+          {exitLink.label}
         </Link>
 
         <button

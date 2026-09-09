@@ -6,9 +6,12 @@ import {
   formatPerGame,
   getAnalyticsEntitlement,
   getPlan,
+  getPlanExitLink,
+  getPlanSelectionState,
   isDowngrade,
   PLAN_CATALOG,
-  PLAN_TIER_ORDER
+  PLAN_TIER_ORDER,
+  parsePlanOrigin
 } from '@/lib/plan-catalog'
 
 describe('PLAN_CATALOG structure', () => {
@@ -103,6 +106,53 @@ describe('Tier ordering', () => {
     expect(isDowngrade('starter', 'starter')).toBe(false)
     expect(isDowngrade('pro', 'pro')).toBe(false)
     expect(isDowngrade('elite', 'elite')).toBe(false)
+  })
+})
+
+describe('Plan selection state', () => {
+  test('mantém todos os planos contratáveis sem plano vigente', () => {
+    for (const selected of ['starter', 'pro', 'elite'] as const) {
+      expect(getPlanSelectionState(null, selected)).toEqual({
+        isDowngrade: false,
+        isSamePlan: false
+      })
+    }
+  })
+
+  test('marca apenas o plano vigente como plano atual', () => {
+    for (const current of ['starter', 'pro', 'elite'] as const) {
+      expect(getPlanSelectionState(current, current)).toEqual({
+        isDowngrade: false,
+        isSamePlan: true
+      })
+    }
+  })
+
+  test('permite recontratar após a assinatura ficar inativa', () => {
+    expect(getPlanSelectionState(null, 'pro').isSamePlan).toBe(false)
+  })
+})
+
+describe('Saída da tela de planos', () => {
+  test.each([
+    ['admin', { label: 'Voltar', to: '/admin' }],
+    ['billing', { label: 'Voltar', to: '/admin/billing' }]
+  ] as const)('volta para %s quando a origem é conhecida', (origin, link) => {
+    expect(getPlanExitLink(origin)).toEqual(link)
+  })
+
+  test('mostra Ver planos depois e leva ao admin sem origem', () => {
+    expect(getPlanExitLink(undefined)).toEqual({
+      label: 'Ver planos depois',
+      to: '/admin'
+    })
+  })
+
+  test('trata origem inválida como ausência de origem', () => {
+    expect(getPlanExitLink(parsePlanOrigin('https://exemplo.test'))).toEqual({
+      label: 'Ver planos depois',
+      to: '/admin'
+    })
   })
 })
 

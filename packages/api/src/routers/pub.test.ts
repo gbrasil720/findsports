@@ -1,10 +1,74 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, test } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 import {
   assertEventIntervalValid,
+  getCurrentPlan,
   resolveEventEndsAt,
   resolvePhoneAcceptsWhatsapp
 } from './pub'
+
+describe('getCurrentPlan', () => {
+  const now = new Date('2026-09-08T12:00:00.000Z')
+
+  test.each([
+    ['starter', 'starter'],
+    ['pro', 'pro'],
+    ['elite', 'elite']
+  ] as const)('considera o plano ativo %s como vigente', (plan, expected) => {
+    expect(
+      getCurrentPlan({ plan, status: 'active', currentPeriodEnd: null }, now)
+    ).toBe(expected)
+  })
+
+  test('não considera trial sem fim como plano vigente', () => {
+    expect(
+      getCurrentPlan(
+        { plan: 'pro', status: 'trialing', currentPeriodEnd: null },
+        now
+      )
+    ).toBeNull()
+  })
+
+  test('considera trial com fim futuro como plano vigente', () => {
+    expect(
+      getCurrentPlan(
+        {
+          plan: 'pro',
+          status: 'trialing',
+          currentPeriodEnd: new Date('2026-09-09T12:00:00.000Z')
+        },
+        now
+      )
+    ).toBe('pro')
+  })
+
+  test('não considera trial expirado como plano vigente', () => {
+    expect(
+      getCurrentPlan(
+        {
+          plan: 'pro',
+          status: 'trialing',
+          currentPeriodEnd: new Date('2026-09-08T11:59:59.999Z')
+        },
+        now
+      )
+    ).toBeNull()
+  })
+
+  test.each([
+    'past_due',
+    'inactive',
+    'cancelled'
+  ] as const)('não considera o status %s como plano vigente', (status) => {
+    expect(
+      getCurrentPlan({ plan: 'pro', status, currentPeriodEnd: null }, now)
+    ).toBeNull()
+  })
+
+  test('retorna sem plano quando não há assinatura', () => {
+    expect(getCurrentPlan(null, now)).toBeNull()
+  })
+})
 
 describe('resolvePhoneAcceptsWhatsapp', () => {
   // -----------------------------------------------------------------------

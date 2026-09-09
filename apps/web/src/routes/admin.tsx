@@ -752,6 +752,7 @@ function PubDashboard() {
                 </div>
                 <Link
                   to="/plan"
+                  search={{ origin: 'admin' }}
                   className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
                 >
                   Ver planos
@@ -817,6 +818,7 @@ function PubDashboard() {
                 {(isAtLimit || isNearLimit) && (
                   <Link
                     to="/plan"
+                    search={{ origin: 'admin' }}
                     className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
                   >
                     Fazer upgrade

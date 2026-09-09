@@ -102,7 +102,7 @@ function BillingPage() {
     }
   }
 
-  const plan = subscription?.plan
+  const plan = subscription?.currentPlan
   const planInfo = plan ? getPlan(plan) : null
   const statusInfo = STATUS_LABEL[subscription?.status ?? '']
 
@@ -239,6 +239,7 @@ function BillingPage() {
               {plan && plan !== 'elite' ? (
                 <Link
                   to="/plan"
+                  search={{ origin: 'billing' }}
                   onClick={() =>
                     analytics.upgradeClicked(
                       plan,
@@ -391,6 +392,7 @@ function BillingPage() {
                 </ul>
                 <Link
                   to="/plan"
+                  search={{ origin: 'billing' }}
                   className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
                 >
                   Mudar para {info.name}
