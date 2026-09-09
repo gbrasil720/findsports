@@ -6,6 +6,7 @@ import {
   formatPerGame,
   getAnalyticsEntitlement,
   getPlan,
+  getPlanSelectionState,
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER
@@ -103,6 +104,30 @@ describe('Tier ordering', () => {
     expect(isDowngrade('starter', 'starter')).toBe(false)
     expect(isDowngrade('pro', 'pro')).toBe(false)
     expect(isDowngrade('elite', 'elite')).toBe(false)
+  })
+})
+
+describe('Plan selection state', () => {
+  test('keeps every plan contractable without a current plan', () => {
+    for (const selected of ['starter', 'pro', 'elite'] as const) {
+      expect(getPlanSelectionState(null, selected)).toEqual({
+        isDowngrade: false,
+        isSamePlan: false
+      })
+    }
+  })
+
+  test('marks only the active plan as the same plan', () => {
+    for (const current of ['starter', 'pro', 'elite'] as const) {
+      expect(getPlanSelectionState(current, current)).toEqual({
+        isDowngrade: false,
+        isSamePlan: true
+      })
+    }
+  })
+
+  test('allows re-contracting a plan after its subscription becomes inactive', () => {
+    expect(getPlanSelectionState(null, 'pro').isSamePlan).toBe(false)
   })
 })
 

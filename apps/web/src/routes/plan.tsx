@@ -9,7 +9,11 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
-import { PLAN_CATALOG, PLAN_TIER_ORDER, type Plan } from '@/lib/plan-catalog'
+import {
+  getPlanSelectionState,
+  PLAN_CATALOG,
+  type Plan
+} from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
@@ -49,9 +53,8 @@ function PlanSelection() {
   const checkoutLiberado =
     configQuery.data?.['billing.checkout_enabled'] ?? true
   const subscription = subscriptionQuery.data
-  const currentPlan = subscription?.plan ?? null
-  const hasActivePlan =
-    subscription?.status === 'active' || subscription?.status === 'trialing'
+  const currentPlan = subscription?.currentPlan ?? null
+  const hasActivePlan = currentPlan !== null
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
@@ -100,9 +103,10 @@ function PlanSelection() {
     }
   }
 
-  const isDowngrade =
-    currentPlan && PLAN_TIER_ORDER[selected] < PLAN_TIER_ORDER[currentPlan]
-  const isSamePlan = selected === currentPlan
+  const { isDowngrade, isSamePlan } = getPlanSelectionState(
+    currentPlan,
+    selected
+  )
 
   return (
     <OnboardingLayout variant="plan">
@@ -221,11 +225,11 @@ function PlanSelection() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to={hasActivePlan ? '/admin/billing' : '/onboarding/pub'}
+          to="/admin"
           className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-          Voltar
+          {hasActivePlan ? 'Voltar' : 'Ver planos depois'}
         </Link>
 
         <button

@@ -146,6 +146,27 @@ async function getBarByUserId(userId: string) {
   return result
 }
 
+type SubscriptionForPlan = Pick<
+  typeof subscription.$inferSelect,
+  'plan' | 'status' | 'currentPeriodEnd'
+>
+
+export function getCurrentPlan(
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+) {
+  if (!subscription) return null
+  if (subscription.status === 'active') return subscription.plan
+  if (
+    subscription.status === 'trialing' &&
+    subscription.currentPeriodEnd !== null &&
+    subscription.currentPeriodEnd > now
+  ) {
+    return subscription.plan
+  }
+  return null
+}
+
 export const pubRouter = router({
   getMe: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
@@ -612,7 +633,12 @@ export const pubRouter = router({
 
     const existingBar = await getBarByUserId(userId)
 
-    return existingBar.subscription ?? null
+    return existingBar.subscription
+      ? {
+          ...existingBar.subscription,
+          currentPlan: getCurrentPlan(existingBar.subscription)
+        }
+      : null
   }),
 
   getAccountDeletionEligibility: protectedProcedure.query(async ({ ctx }) => {

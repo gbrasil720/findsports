@@ -102,7 +102,7 @@ function BillingPage() {
     }
   }
 
-  const plan = subscription?.plan
+  const plan = subscription?.currentPlan
   const planInfo = plan ? getPlan(plan) : null
   const statusInfo = STATUS_LABEL[subscription?.status ?? '']
 

@@ -166,6 +166,16 @@ export function isDowngrade(
   return PLAN_TIER_ORDER[target] < PLAN_TIER_ORDER[current]
 }
 
+export function getPlanSelectionState(
+  current: SubscriptionPlan | null,
+  selected: SubscriptionPlan
+) {
+  return {
+    isDowngrade: current !== null && isDowngrade(current, selected),
+    isSamePlan: current === selected
+  }
+}
+
 export function formatHistoryWindow(a: PlanAnalytics): string {
   if (a.historyDays === null) return 'Histórico completo'
   if (a.historyDays >= 365) return '12 meses'

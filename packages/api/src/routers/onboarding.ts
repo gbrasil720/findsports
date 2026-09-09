@@ -2,7 +2,6 @@ import { db, eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
-  subscription,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
@@ -112,11 +111,6 @@ export const onboardingRouter = router({
             message: 'Erro ao criar o bar.'
           })
         }
-
-        await tx.insert(subscription).values({
-          barId: newBar.id,
-          status: 'trialing'
-        })
 
         await tx
           .update(user)
