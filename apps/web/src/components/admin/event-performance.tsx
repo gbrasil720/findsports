@@ -11,10 +11,12 @@ import {
   type EventAnalyticsRow,
   type EventComparisonData,
   formatAnalyticsValue,
+  type EventAnalyticsState,
   formatRate,
   getMainAction,
   sumAnalyticsActions
 } from './admin-model'
+import { formatAnalyticsPeriod } from './analytics-period'
 import { getMetric } from './metric-glossary'
 import { MetricHint } from './metric-hint'
 
@@ -417,7 +419,13 @@ function PerformanceSkeleton() {
 /* Error                                                               */
 /* ------------------------------------------------------------------ */
 
-function PerformanceError({ onRetry }: { onRetry: () => void }) {
+function PerformanceError({
+  message,
+  onRetry
+}: {
+  message?: string
+  onRetry: () => void
+}) {
   return (
     <div className="onside-callout onside-callout-danger" role="alert">
       <AlertCircle
@@ -427,7 +435,7 @@ function PerformanceError({ onRetry }: { onRetry: () => void }) {
         aria-hidden="true"
       />
       <p className="flex-1">
-        Não foi possível carregar o desempenho dos jogos.
+        {message || 'Não foi possível carregar o desempenho dos jogos.'}
       </p>
       <button
         type="button"
@@ -579,22 +587,16 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
 export function EventPerformance({
   eventAnalyticsState
 }: {
-  eventAnalyticsState: {
-    status: 'loading' | 'error' | 'blocked' | 'empty' | 'ready'
-    items?: EventAnalyticsRow[]
-    retry?: () => void
-    comparisonMode?: AnalyticsComparisonMode
-    comparisonTarget?: EventComparisonTarget
-    comparison?: EventComparisonData
-    comparisonLoading?: boolean
-    onComparisonTargetChange?: (
-      target: EventComparisonTarget | undefined
-    ) => void
-  }
+  eventAnalyticsState: EventAnalyticsState
 }) {
   if (eventAnalyticsState.status === 'loading') return <PerformanceSkeleton />
   if (eventAnalyticsState.status === 'error' && eventAnalyticsState.retry)
-    return <PerformanceError onRetry={eventAnalyticsState.retry} />
+    return (
+      <PerformanceError
+        message={eventAnalyticsState.message}
+        onRetry={eventAnalyticsState.retry}
+      />
+    )
 
   // Bloqueio real de plano — não é ausência de dados, então não pode cair no
   // estado vazio ("os números aparecem quando...") que esconderia o motivo.
@@ -639,6 +641,13 @@ export function EventPerformance({
   return (
     <div className="onside-panel-acid p-4">
       <PerformanceHeading />
+      <p className="mb-3 text-[var(--onside-ink)] text-xs opacity-60">
+        Janela consultada:{' '}
+        {formatAnalyticsPeriod(
+          eventAnalyticsState.from,
+          eventAnalyticsState.to
+        )}
+      </p>
 
       <ComparisonControls
         items={items}

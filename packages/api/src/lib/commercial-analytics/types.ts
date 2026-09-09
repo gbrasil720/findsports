@@ -62,6 +62,10 @@ export interface DailyDataPoint {
   value: number
 }
 
+/** Limitações explícitas dos dados reconstruídos depois da retenção. */
+export type AnalyticsLimitation =
+  'distinct_counts_are_daily_sums_after_retention'
+
 // ---------------------------------------------------------------------------
 // Overview response — aligned with spec section 9.4 rollup shape
 // ---------------------------------------------------------------------------
@@ -103,6 +107,9 @@ export interface AnalyticsOverview {
   // Date range used
   from: string
   to: string
+
+  // Explicit data-quality caveats for pruned periods.
+  limitations: AnalyticsLimitation[]
 }
 
 /**
@@ -151,6 +158,9 @@ export interface AnalyticsOverviewResponse {
   // Date range used
   from: string
   to: string
+
+  // Explicit data-quality caveats for pruned periods.
+  limitations: AnalyticsLimitation[]
 }
 
 // ---------------------------------------------------------------------------

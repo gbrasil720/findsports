@@ -1,4 +1,5 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
+import { TRPCError } from '@trpc/server'
 import { maskEventComparisonRow, rankEventComparison } from './comparison'
 import type {
   AnalyticsEntitlements,
@@ -64,6 +65,23 @@ export function getAnalyticsEntitlements(
   plan: SubscriptionPlan
 ): AnalyticsEntitlements {
   return ENTITLEMENTS[plan]
+}
+
+/**
+ * A retenção é um limite do servidor, não uma sugestão para a UI. Mantém o
+ * mesmo contrato para overview e breakdown por jogo.
+ */
+export function assertAnalyticsPeriodAllowed(
+  plan: SubscriptionPlan,
+  periodDays: number
+): void {
+  const maxDays = getAnalyticsEntitlements(plan).maxDaysRetention
+  if (maxDays !== null && periodDays > maxDays) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: `Plano ${plan} suporta até ${maxDays} dias`
+    })
+  }
 }
 
 /**

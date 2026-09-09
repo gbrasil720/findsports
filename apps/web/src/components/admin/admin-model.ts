@@ -21,6 +21,8 @@ export type SubscriptionPlan = DbSubscriptionPlan
 
 export type AnalyticsOverviewData =
   RouterOutputs['commercialAnalytics']['getMyAnalyticsOverview']
+export type AnalyticsEntitlementsData =
+  RouterOutputs['commercialAnalytics']['getMyEntitlements']
 export type EventAnalyticsData =
   RouterOutputs['commercialAnalytics']['getMyEventAnalytics']
 export type EventAnalyticsRow = EventAnalyticsData['events'][number]
@@ -47,14 +49,14 @@ export type PlanState =
 
 export type AnalyticsOverviewState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | { status: 'error'; message?: string; retry: () => void }
   | { status: 'empty' }
   | { status: 'partial'; data: AnalyticsOverviewData }
   | { status: 'ready'; data: AnalyticsOverviewData }
 
 export type EventAnalyticsState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | { status: 'error'; message?: string; retry: () => void }
   | { status: 'blocked' }
   | { status: 'empty' }
   | {
@@ -67,6 +69,8 @@ export type EventAnalyticsState =
       onComparisonTargetChange?: (
         target: EventComparisonTarget | undefined
       ) => void
+      from: string
+      to: string
     }
 
 /* ------------------------------------------------------------------ */

@@ -6,6 +6,7 @@ import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
 import type {
   AnalyticsComparisonMode,
+  AnalyticsLimitation,
   AnalyticsOverview,
   ComparisonMetric,
   DailyDataPoint,
@@ -262,6 +263,7 @@ export async function getMyAnalyticsOverview(
   let uniqueVisitorsPrev = n('unique_visitors_prev')
   let interestedPeople = n('interested_people')
   let interestedPeoplePrev = n('interested_people_prev')
+  const limitations: AnalyticsLimitation[] = []
 
   const diario: DailyRow[] = (row.diario as DailyRow[] | null) ?? []
 
@@ -269,6 +271,7 @@ export async function getMyAnalyticsOverview(
   // do cabeçalho desta função para a precisão esperada nas contagens distintas.
   const diasPodados = await buscarDiasPodados(barId, prev, to)
   if (diasPodados.length > 0) {
+    limitations.push('distinct_counts_are_daily_sums_after_retention')
     const atualIni = getCommercialDay(from)
     const atualFim = getCommercialDay(to)
     const anteriorIni = getCommercialDay(prev.start)
@@ -342,8 +345,9 @@ export async function getMyAnalyticsOverview(
     dailyDirectionsOpened,
     dailyPhoneClicked,
     dailyWhatsappOpened,
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10)
+    from: getCommercialDay(from),
+    to: getCommercialDay(to),
+    limitations
   }
 }
 
@@ -354,6 +358,11 @@ export async function getMyAnalyticsOverview(
  * The effective game window is the stored interval or the same three-hour
  * fallback used by the public profile. Comparison normalizes counts per hour
  * of that window, so a two-hour game is not treated like a full-day game.
+ *
+ * Atribuição recente vem dos brutos. Dias finalizados sem nenhum bruto usam
+ * a projeção por bar+jogo+dia, preservando a atribuição depois da poda. A
+ * ausência total de brutos no dia é a fronteira de troca e evita dupla
+ * contagem.
  */
 async function getEventAnalyticsSnapshots(
   barId: string,
@@ -361,6 +370,42 @@ async function getEventAnalyticsSnapshots(
   to: Date
 ): Promise<EventAnalyticsSnapshot[]> {
   const result = await db.execute(sql`
+    WITH bruto AS (
+      SELECT
+        bce.source_event_id AS event_id,
+        COUNT(DISTINCT bce.actor_user_id)
+          FILTER (WHERE bce.type = 'profile_view') AS unique_visitors,
+        COUNT(*) FILTER (WHERE bce.type = 'profile_view') AS profile_views,
+        COUNT(*) FILTER (WHERE bce.type = 'directions_opened') AS directions_opened,
+        COUNT(*) FILTER (WHERE bce.type = 'phone_clicked') AS phone_clicked,
+        COUNT(*) FILTER (WHERE bce.type = 'whatsapp_opened') AS whatsapp_opened
+      FROM bar_commercial_event bce
+      WHERE bce.bar_id = ${barId}
+        AND bce.source_event_id IS NOT NULL
+        AND bce.occurred_at >= ${from}
+        AND bce.occurred_at <= ${to}
+      GROUP BY bce.source_event_id
+    ),
+    podado AS (
+      SELECT
+        r.event_id,
+        SUM(r.profile_views) AS profile_views,
+        SUM(r.directions_opened) AS directions_opened,
+        SUM(r.phone_clicked) AS phone_clicked,
+        SUM(r.whatsapp_opened) AS whatsapp_opened
+      FROM bar_commercial_event_daily_rollup r
+      WHERE r.bar_id = ${barId}
+        AND r.is_finalized = true
+        AND r.commercial_day >= ${getCommercialDay(from)}::date
+        AND r.commercial_day <= ${getCommercialDay(to)}::date
+        AND NOT EXISTS (
+          SELECT 1
+          FROM bar_commercial_event bce
+          WHERE bce.bar_id = r.bar_id
+            AND bce.commercial_day = r.commercial_day
+        )
+      GROUP BY r.event_id
+    )
     SELECT
       e.id AS event_id,
       COALESCE(e.championship || ' - ', '') || 'Evento' AS event_name,
@@ -379,20 +424,17 @@ async function getEventAnalyticsSnapshots(
       EXTRACT(
         ISODOW FROM (e.starts_at AT TIME ZONE ${COMMERCIAL_TIME_ZONE})
       ) AS weekday,
-      COUNT(CASE WHEN bce.type = 'profile_view' THEN 1 END) AS profile_views,
-      COUNT(DISTINCT bce.actor_user_id)
-        FILTER (WHERE bce.type = 'profile_view') AS unique_visitors,
-      COUNT(CASE WHEN bce.type = 'directions_opened' THEN 1 END) AS directions_opened,
-      COUNT(CASE WHEN bce.type = 'phone_clicked' THEN 1 END) AS phone_clicked,
-      COUNT(CASE WHEN bce.type = 'whatsapp_opened' THEN 1 END) AS whatsapp_opened
+      COALESCE(bruto.unique_visitors, 0) AS unique_visitors,
+      COALESCE(bruto.profile_views, 0) + COALESCE(podado.profile_views, 0) AS profile_views,
+      COALESCE(bruto.directions_opened, 0) + COALESCE(podado.directions_opened, 0) AS directions_opened,
+      COALESCE(bruto.phone_clicked, 0) + COALESCE(podado.phone_clicked, 0) AS phone_clicked,
+      COALESCE(bruto.whatsapp_opened, 0) + COALESCE(podado.whatsapp_opened, 0) AS whatsapp_opened
     FROM event e
-    LEFT JOIN bar_commercial_event bce
-      ON bce.source_event_id = e.id AND bce.bar_id = ${barId}
-      AND bce.occurred_at >= ${from} AND bce.occurred_at <= ${to}
+    LEFT JOIN bruto ON bruto.event_id = e.id
+    LEFT JOIN podado ON podado.event_id = e.id
     WHERE e.bar_id = ${barId}
       AND e.starts_at >= ${from}
       AND e.starts_at <= ${to}
-    GROUP BY e.id, e.championship, e.starts_at, e.ends_at
     ORDER BY e.starts_at DESC
   `)
 
@@ -467,8 +509,8 @@ export async function getMyEventAnalytics(
 
   const response: EventAnalyticsResponse = {
     events,
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10)
+    from: getCommercialDay(from),
+    to: getCommercialDay(to)
   }
 
   if (options?.comparisonTarget) {

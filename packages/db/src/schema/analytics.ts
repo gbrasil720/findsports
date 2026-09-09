@@ -128,6 +128,48 @@ export const barCommercialDailyRollup = pgTable(
 )
 
 /* ------------------------------------------------------------------ */
+/*  bar_commercial_event_daily_rollup — atribuição por jogo            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Projeção somável da atribuição por jogo. `eventId` é deliberadamente um
+ * snapshot sem FK: o evento bruto e o cadastro do jogo podem ser removidos
+ * sem apagar a leitura histórica já consolidada.
+ */
+export const barCommercialEventDailyRollup = pgTable(
+  'bar_commercial_event_daily_rollup',
+  {
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    eventId: text('event_id').notNull(),
+    commercialDay: date('commercial_day').notNull(),
+    profileViews: integer('profile_views').default(0).notNull(),
+    directionsOpened: integer('directions_opened').default(0).notNull(),
+    phoneClicked: integer('phone_clicked').default(0).notNull(),
+    whatsappOpened: integer('whatsapp_opened').default(0).notNull(),
+    isFinalized: boolean('is_finalized').default(false).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (table) => [
+    unique('bar_commercial_event_daily_rollup_pkey').on(
+      table.barId,
+      table.eventId,
+      table.commercialDay
+    ),
+    index('bar_commercial_event_daily_rollup_barId_commercialDay_idx').on(
+      table.barId,
+      table.commercialDay
+    )
+  ]
+)
+
+/* ------------------------------------------------------------------ */
 /*  bar_commercial_monthly_rollup — agregado mensal (seção 9.4)       */
 /* ------------------------------------------------------------------ */
 
@@ -218,6 +260,16 @@ export const barCommercialDailyRollupRelations = relations(
   ({ one }) => ({
     bar: one(bar, {
       fields: [barCommercialDailyRollup.barId],
+      references: [bar.id]
+    })
+  })
+)
+
+export const barCommercialEventDailyRollupRelations = relations(
+  barCommercialEventDailyRollup,
+  ({ one }) => ({
+    bar: one(bar, {
+      fields: [barCommercialEventDailyRollup.barId],
       references: [bar.id]
     })
   })

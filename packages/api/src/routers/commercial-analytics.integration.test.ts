@@ -2,7 +2,8 @@ import { expect, test } from 'bun:test'
 import { and, eq, inArray } from '@findsports_oficial/db'
 import {
   barCommercialDailyRollup,
-  barCommercialEvent
+  barCommercialEvent,
+  barCommercialEventDailyRollup
 } from '@findsports_oficial/db/schema/analytics'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -218,6 +219,8 @@ integrationTest(
 
     const barId = crypto.randomUUID()
     const pubUserId = crypto.randomUUID()
+    const otherBarId = crypto.randomUUID()
+    const otherPubUserId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
     const oldEventId = crypto.randomUUID()
     const recentEventId = crypto.randomUUID()
@@ -272,6 +275,14 @@ integrationTest(
           role: 'pub',
           onboardingCompleted: true
         },
+        {
+          id: otherPubUserId,
+          name: 'Outro pub WEB-104',
+          email: `pub-${otherPubUserId}@web104.invalid`,
+          emailVerified: true,
+          role: 'pub',
+          onboardingCompleted: true
+        },
         ...fanIds.map((id, i) => ({
           id,
           name: `Fan WEB-98 ${i}`,
@@ -287,17 +298,30 @@ integrationTest(
         name: 'Futebol WEB-98',
         slug: `web98-${sportId}`
       })
-      await db.insert(bar).values({
-        id: barId,
-        userId: pubUserId,
-        name: 'Bar WEB-98',
-        address: 'Rua Central, 100',
-        neighborhood: 'Centro',
-        city: 'São Paulo',
-        latitude: '-23.55000000',
-        longitude: '-46.63000000',
-        isActive: true
-      })
+      await db.insert(bar).values([
+        {
+          id: barId,
+          userId: pubUserId,
+          name: 'Bar WEB-98',
+          address: 'Rua Central, 100',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          latitude: '-23.55000000',
+          longitude: '-46.63000000',
+          isActive: true
+        },
+        {
+          id: otherBarId,
+          userId: otherPubUserId,
+          name: 'Outro bar WEB-104',
+          address: 'Rua Isolada, 104',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          latitude: '-23.55100000',
+          longitude: '-46.63100000',
+          isActive: true
+        }
+      ])
       await db
         .insert(subscription)
         .values({ barId, plan: 'elite', status: 'active' })
@@ -321,7 +345,7 @@ integrationTest(
       await db.insert(barCommercialEvent).values([
         // Dia que será podado (10 dias atrás): 5 ações, 3 visitantes distintos
         rawRow(fanIds[0], 'profile_view', oldDay),
-        rawRow(fanIds[0], 'phone_clicked', oldDay),
+        rawRow(fanIds[0], 'phone_clicked', oldDay, oldEventId),
         rawRow(fanIds[1], 'profile_view', oldDay),
         rawRow(fanIds[1], 'directions_opened', oldDay),
         rawRow(fanIds[2], 'profile_view', oldDay, oldEventId),
@@ -385,8 +409,20 @@ integrationTest(
       expect(rollupPodado).toHaveLength(1)
       expect(rollupPodado[0]?.isFinalized).toBe(true)
 
+      // Mesmo event_id em outra barra não pode contaminar a atribuição deste
+      // bar; a dimensão de tenant é parte da chave da projeção.
+      await db.insert(barCommercialEventDailyRollup).values({
+        barId: otherBarId,
+        eventId: oldEventId,
+        commercialDay: iso(oldDay),
+        profileViews: 99,
+        isFinalized: true
+      })
+
       // ------------------- Fase C: leitura do mesmo período ---------------
       const depois = await getMyAnalyticsOverview(barId, from, to)
+      expect(depois.from).toBe(iso(from))
+      expect(depois.to).toBe(iso(dia(0)))
       expect(depois.profileViews).toBe(6)
       expect(depois.directionsOpened).toBe(1)
       expect(depois.phoneClicked).toBe(1)
@@ -396,6 +432,9 @@ integrationTest(
       // dois lados do limite).
       expect(depois.uniqueVisitors).toBe(6)
       expect(depois.interestedPeople).toBe(3)
+      expect(depois.limitations).toEqual([
+        'distinct_counts_are_daily_sums_after_retention'
+      ])
       // O dia podado volta na série diária vindo do rollup finalizado.
       expect(
         depois.dailyProfileViews.find((p) => p.date === iso(oldDay))?.value
@@ -404,9 +443,8 @@ integrationTest(
         depois.dailyProfileViews.find((p) => p.date === iso(recentDay))?.value
       ).toBe(3)
 
-      // Quebra por evento: o evento antigo continua listado (a tabela `event`
-      // nunca é podada), mas a atribuição dele saiu junto com o bruto — o
-      // limite de precisão documentado no contrato (WEB-98).
+      // Quebra por evento: o evento antigo continua listado e as métricas
+      // voltam da projeção por jogo mesmo depois da poda.
       const depoisEventos = await getMyEventAnalytics(barId, from, to)
       const velhoDepois = depoisEventos.events.find(
         (e) => e.eventId === oldEventId
@@ -415,16 +453,24 @@ integrationTest(
         (e) => e.eventId === recentEventId
       )
       expect(velhoDepois?.eventName).toBe('Torneio WEB-98 - Evento')
-      expect(velhoDepois?.profileViews).toBe(0)
+      expect(velhoDepois?.profileViews).toBe(1)
+      expect(velhoDepois?.phoneClicked).toBe(1)
       expect(novoDepois?.profileViews).toBe(1)
     } finally {
+      await db
+        .delete(barCommercialEventDailyRollup)
+        .where(
+          inArray(barCommercialEventDailyRollup.barId, [barId, otherBarId])
+        )
       await db
         .delete(barCommercialDailyRollup)
         .where(eq(barCommercialDailyRollup.barId, barId))
       await db
         .delete(barCommercialEvent)
         .where(eq(barCommercialEvent.barId, barId))
-      await db.delete(user).where(inArray(user.id, [pubUserId, ...fanIds]))
+      await db
+        .delete(user)
+        .where(inArray(user.id, [pubUserId, otherPubUserId, ...fanIds]))
       await db.delete(sport).where(eq(sport.id, sportId))
     }
   }
