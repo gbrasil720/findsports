@@ -11,7 +11,7 @@ import type { AnalyticsEntitlements, EventAnalyticsResponse } from './types'
  *              basic per-game
  * - Pro:      + directions opened, phone clicked, whatsapp opened, 365d
  *              retention, comparison
- * - Elite:    + directions opened, daily breakdown, complete per-game, unlimited
+ * - Elite:    + daily breakdown, complete per-game, unlimited retention
  */
 
 const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
