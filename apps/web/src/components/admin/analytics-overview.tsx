@@ -4,10 +4,15 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
 import {
   type AnalyticsOverviewData,
+  type AnalyticsOverviewState,
   formatAnalyticsValue,
   formatRate,
   getMainAction
 } from './admin-model'
+import {
+  formatAnalyticsPeriod,
+  formatComparisonPeriod
+} from './analytics-period'
 import { getMetric, type MetricId } from './metric-glossary'
 import { MetricHint } from './metric-hint'
 
@@ -34,6 +39,14 @@ function formatPpChange(curr: number | null, prev: number | null): string {
   return `${diff > 0 ? '+' : ''}${diff.toFixed(1)} p.p.`
 }
 
+function sumIntentActions(data: AnalyticsOverviewData): number {
+  return (
+    (data.whatsappOpened ?? 0) +
+    (data.directionsOpened ?? 0) +
+    (data.phoneClicked ?? 0)
+  )
+}
+
 /** Título de seção com o ⓘ do glossário ao lado. */
 function SectionHeading({ metric }: { metric: MetricId }) {
   return (
@@ -51,12 +64,6 @@ function hasComparisonData(data: AnalyticsOverviewData): boolean {
     (data.directionsOpenedPrev !== null && data.directionsOpenedPrev > 0) ||
     (data.profileViewsPrev !== null && data.profileViewsPrev > 0)
   )
-}
-
-function formatPeriod(from: string, to: string): string {
-  const f = new Date(from)
-  const t = new Date(to)
-  return `${f.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })} — ${t.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,7 +110,13 @@ function OverviewSkeleton() {
 /* Error                                                               */
 /* ------------------------------------------------------------------ */
 
-function OverviewError({ onRetry }: { onRetry: () => void }) {
+function OverviewError({
+  message,
+  onRetry
+}: {
+  message?: string
+  onRetry: () => void
+}) {
   return (
     <section aria-label="Visão geral">
       <div className="onside-callout onside-callout-danger" role="alert">
@@ -114,7 +127,8 @@ function OverviewError({ onRetry }: { onRetry: () => void }) {
           aria-hidden="true"
         />
         <p className="flex-1">
-          Não foi possível carregar as analytics. Tente novamente.
+          {message ||
+            'Não foi possível carregar as analytics. Tente novamente.'}
         </p>
         <button
           type="button"
@@ -137,7 +151,8 @@ function KpiCard({
   value,
   secondary,
   change,
-  accent
+  accent,
+  comparisonLabel
 }: {
   metric: MetricId
   value: string
@@ -146,6 +161,7 @@ function KpiCard({
   /** Variação percentual contra o período anterior. */
   change?: string
   accent?: 'acid'
+  comparisonLabel: string
 }) {
   const { label } = getMetric(metric)
 
@@ -170,17 +186,34 @@ function KpiCard({
       )}
       {change !== undefined && (
         <p className="mt-1 text-xs text-[var(--onside-ink)] opacity-60">
-          {change} vs 30 dias anteriores
+          {change} vs {comparisonLabel}
         </p>
       )}
     </div>
   )
 }
 
-function KpiCards({ data }: { data: AnalyticsOverviewData }) {
-  const intentActions = data.highIntentActions
-  const intentActionsPrev = data.highIntentActionsPrev
-  const intentChange = data.highIntentActionsChange
+function KpiCards({
+  data,
+  comparisonLabel
+}: {
+  data: AnalyticsOverviewData
+  comparisonLabel: string
+}) {
+  const intentActions = sumIntentActions(data)
+  const intentActionsPrev =
+    (data.whatsappOpenedPrev ?? 0) +
+    (data.directionsOpenedPrev ?? 0) +
+    (data.phoneClickedPrev ?? 0)
+
+  /* A API não devolve variação agregada de intenção — só por canal. Somar os
+     canais do período anterior dá o mesmo número sem custo de backend. */
+  const intentChange =
+    intentActionsPrev > 0
+      ? Math.round(
+          ((intentActions - intentActionsPrev) / intentActionsPrev) * 100
+        )
+      : null
 
   /* A taxa mede pessoas, não aberturas: "de cada 100 que viram, X se
      interessaram" só faz sentido com visitantes únicos no denominador. */
@@ -203,18 +236,21 @@ function KpiCards({ data }: { data: AnalyticsOverviewData }) {
         value={data.uniqueVisitors.toLocaleString('pt-BR')}
         secondary={`abriram ${views} ${data.profileViews === 1 ? 'vez' : 'vezes'} no total`}
         change={formatPctChange(data.uniqueVisitorsChange)}
+        comparisonLabel={comparisonLabel}
       />
       <KpiCard
         metric="interest"
         value={intentActions.toLocaleString('pt-BR')}
         change={formatPctChange(intentChange)}
         accent="acid"
+        comparisonLabel={comparisonLabel}
       />
       <KpiCard
         metric="interestRate"
         value={intentRate}
         secondary="de quem viu seu bar"
         change={intentRateChange}
+        comparisonLabel={comparisonLabel}
       />
     </div>
   )
@@ -418,13 +454,19 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
 /* Period Comparison                                                   */
 /* ------------------------------------------------------------------ */
 
-function PeriodComparison({ data }: { data: AnalyticsOverviewData }) {
+function PeriodComparison({
+  data,
+  comparisonLabel
+}: {
+  data: AnalyticsOverviewData
+  comparisonLabel: string
+}) {
   if (!hasComparisonData(data)) {
     return (
       <div className="onside-panel-acid p-4">
         <SectionHeading metric="periodComparison" />
         <p className="text-sm text-[var(--onside-ink)] opacity-70">
-          Ainda não há dados dos 30 dias anteriores. A comparação aparece assim
+          Ainda não há dados de {comparisonLabel}. A comparação aparece assim
           que houver histórico suficiente.
         </p>
       </div>
@@ -484,16 +526,17 @@ export function AnalyticsOverview({
   overviewState,
   onCreateEvent
 }: {
-  overviewState: {
-    status: 'loading' | 'error' | 'empty' | 'partial' | 'ready'
-    data?: AnalyticsOverviewData
-    retry?: () => void
-  }
+  overviewState: AnalyticsOverviewState
   onCreateEvent?: () => void
 }) {
   if (overviewState.status === 'loading') return <OverviewSkeleton />
   if (overviewState.status === 'error' && overviewState.retry)
-    return <OverviewError onRetry={overviewState.retry} />
+    return (
+      <OverviewError
+        message={overviewState.message}
+        onRetry={overviewState.retry}
+      />
+    )
 
   if (overviewState.status === 'empty') {
     return (
@@ -531,6 +574,7 @@ export function AnalyticsOverview({
   }
 
   const data = overviewState.data
+  const comparisonLabel = formatComparisonPeriod(data.from, data.to)
 
   return (
     <section aria-label="Visão geral">
@@ -538,12 +582,25 @@ export function AnalyticsOverview({
         <div>
           <h2 className="onside-display text-2xl">Desempenho do bar</h2>
           <p className="mt-1 text-sm text-[var(--onside-ink)] opacity-60">
-            {formatPeriod(data.from, data.to)} • Plano: {data.plan ?? '—'}
+            {formatAnalyticsPeriod(data.from, data.to)} • Plano:{' '}
+            {data.plan ?? '—'}
           </p>
         </div>
       </header>
 
-      <KpiCards data={data} />
+      {data.limitations.includes(
+        'distinct_counts_are_daily_sums_after_retention'
+      ) && (
+        <div className="onside-callout onside-callout-warn mb-4" role="note">
+          <p className="text-sm">
+            Visitantes e interessados de dias já consolidados são somados por
+            dia. A mesma pessoa em dias diferentes pode aparecer mais de uma vez
+            nessa janela.
+          </p>
+        </div>
+      )}
+
+      <KpiCards data={data} comparisonLabel={comparisonLabel} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DailyChart
@@ -556,7 +613,7 @@ export function AnalyticsOverview({
       </div>
 
       <div className="mt-6">
-        <PeriodComparison data={data} />
+        <PeriodComparison data={data} comparisonLabel={comparisonLabel} />
       </div>
     </section>
   )

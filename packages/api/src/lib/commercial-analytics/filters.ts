@@ -101,6 +101,7 @@ export function applyOverviewEntitlements(
         : null,
 
     from: overview.from,
-    to: overview.to
+    to: overview.to,
+    limitations: overview.limitations
   }
 }

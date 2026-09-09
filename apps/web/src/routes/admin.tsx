@@ -9,6 +9,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import { AccountSettings } from '@/components/account/account-settings'
 import type {
+  AnalyticsEntitlementsData,
   AnalyticsOverviewState,
   EventAnalyticsState,
   EventsState,
@@ -22,6 +23,13 @@ import {
   getAdminTabId
 } from '@/components/admin/admin-tabs'
 import { AnalyticsOverview } from '@/components/admin/analytics-overview'
+import {
+  type AnalyticsDateRange,
+  type AnalyticsPeriodPreset,
+  formatAnalyticsPeriod,
+  getAnalyticsRange,
+  getAvailableAnalyticsPeriods
+} from '@/components/admin/analytics-period'
 import { BarPreview } from '@/components/admin/bar-preview'
 import { ConversionReadiness } from '@/components/admin/conversion-readiness'
 import { EventPerformance } from '@/components/admin/event-performance'
@@ -96,14 +104,170 @@ function QueryError({
 /* Analytics date helpers                                              */
 /* ------------------------------------------------------------------ */
 
-function getAnalyticsDates() {
-  const to = new Date()
-  const from = new Date()
-  from.setDate(to.getDate() - 30)
-  return {
-    from: from.toISOString(),
-    to: to.toISOString()
-  }
+function getAnalyticsDates(): AnalyticsDateRange {
+  return getAnalyticsRange('30d')
+}
+
+function AnalyticsPeriodSelector({
+  entitlements,
+  loadingEntitlements,
+  entitlementsError,
+  onRetryEntitlements,
+  range,
+  preset,
+  customRange,
+  customError,
+  isFetching,
+  onPresetChange,
+  onCustomRangeChange,
+  onApplyCustom
+}: {
+  entitlements?: AnalyticsEntitlementsData
+  loadingEntitlements: boolean
+  entitlementsError: boolean
+  onRetryEntitlements: () => void
+  range: AnalyticsDateRange
+  preset: AnalyticsPeriodPreset
+  customRange: AnalyticsDateRange
+  customError: string | null
+  isFetching: boolean
+  onPresetChange: (preset: AnalyticsPeriodPreset) => void
+  onCustomRangeChange: (field: 'from' | 'to', value: string) => void
+  onApplyCustom: () => void
+}) {
+  const availablePeriods = entitlements
+    ? getAvailableAnalyticsPeriods(entitlements.maxDaysRetention)
+    : []
+
+  return (
+    <section
+      className="onside-panel-acid mb-6 p-4"
+      aria-label="Período das analytics"
+      aria-busy={loadingEntitlements || isFetching}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="onside-label mb-1 text-[var(--onside-ink)] opacity-70">
+            Janela consultada
+          </p>
+          <p className="font-semibold text-[var(--onside-ink)] text-sm">
+            {formatAnalyticsPeriod(range.from, range.to)}
+          </p>
+          <p className="mt-1 text-[var(--onside-ink)] text-xs opacity-60">
+            {loadingEntitlements
+              ? 'Carregando o limite do seu plano…'
+              : entitlements
+                ? entitlements.maxDaysRetention === null
+                  ? 'Seu plano permite todo o histórico disponível.'
+                  : `Seu plano permite até ${entitlements.maxDaysRetention} dias.`
+                : 'Não foi possível verificar o limite do seu plano.'}
+          </p>
+        </div>
+        {isFetching && (
+          <span className="text-[var(--onside-ink)] text-xs" role="status">
+            Atualizando…
+          </span>
+        )}
+      </div>
+
+      {loadingEntitlements ? (
+        <p className="mt-4 text-[var(--onside-ink)] text-sm opacity-70">
+          Carregando períodos disponíveis…
+        </p>
+      ) : entitlementsError ? (
+        <div className="onside-callout onside-callout-danger mt-4" role="alert">
+          <p className="flex-1 text-sm">
+            Não foi possível carregar os períodos disponíveis.
+          </p>
+          <button
+            type="button"
+            onClick={onRetryEntitlements}
+            className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      ) : (
+        <>
+          <fieldset className="mt-4 border-0 p-0">
+            <legend className="onside-label mb-2 text-[var(--onside-ink)] opacity-70">
+              Atalho
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {availablePeriods.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={preset === option.id}
+                  onClick={() => onPresetChange(option.id)}
+                  className={`onside-choice onside-choice-ink min-h-11 px-4 text-xs ${preset === option.id ? 'is-selected' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={preset === 'custom'}
+                onClick={() => onPresetChange('custom')}
+                className={`onside-choice onside-choice-ink min-h-11 px-4 text-xs ${preset === 'custom' ? 'is-selected' : ''}`}
+              >
+                Personalizado
+              </button>
+            </div>
+          </fieldset>
+
+          {preset === 'custom' && (
+            <form
+              className="mt-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onApplyCustom()
+              }}
+            >
+              <label className="block">
+                <span className="onside-label mb-1.5 block">De</span>
+                <input
+                  type="date"
+                  value={customRange.from}
+                  onChange={(event) =>
+                    onCustomRangeChange('from', event.target.value)
+                  }
+                  className="onside-input"
+                  aria-label="Data inicial"
+                />
+              </label>
+              <label className="block">
+                <span className="onside-label mb-1.5 block">Até</span>
+                <input
+                  type="date"
+                  value={customRange.to}
+                  onChange={(event) =>
+                    onCustomRangeChange('to', event.target.value)
+                  }
+                  className="onside-input"
+                  aria-label="Data final"
+                />
+              </label>
+              <button
+                type="submit"
+                className="onside-btn onside-btn-ink min-h-11"
+              >
+                Consultar período
+              </button>
+              {customError && (
+                <p
+                  className="text-[var(--onside-live-text)] text-xs sm:col-span-3"
+                  role="alert"
+                >
+                  {customError}
+                </p>
+              )}
+            </form>
+          )}
+        </>
+      )}
+    </section>
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -189,6 +353,60 @@ function PubDashboard() {
     refetch: refetchEntitlements
   } = useQuery(trpc.commercialAnalytics.getMyEntitlements.queryOptions())
 
+  const [analyticsDates, setAnalyticsDates] = useState(getAnalyticsDates)
+  const [analyticsPreset, setAnalyticsPreset] =
+    useState<AnalyticsPeriodPreset>('30d')
+  const [customAnalyticsDates, setCustomAnalyticsDates] =
+    useState<AnalyticsDateRange>(analyticsDates)
+  const [customAnalyticsError, setCustomAnalyticsError] = useState<
+    string | null
+  >(null)
+
+  const handleAnalyticsPresetChange = (preset: AnalyticsPeriodPreset) => {
+    if (preset === 'custom') {
+      setAnalyticsPreset(preset)
+      setCustomAnalyticsError(null)
+      return
+    }
+
+    if (
+      !analyticsEntitlements ||
+      !getAvailableAnalyticsPeriods(
+        analyticsEntitlements.maxDaysRetention
+      ).some((option) => option.id === preset)
+    ) {
+      return
+    }
+
+    setAnalyticsDates(getAnalyticsRange(preset))
+    setAnalyticsPreset(preset)
+    setCustomAnalyticsError(null)
+  }
+
+  const handleCustomAnalyticsRangeChange = (
+    field: 'from' | 'to',
+    value: string
+  ) => {
+    setCustomAnalyticsDates((current) => ({ ...current, [field]: value }))
+    setCustomAnalyticsError(null)
+  }
+
+  const applyCustomAnalyticsRange = () => {
+    if (!customAnalyticsDates.from || !customAnalyticsDates.to) {
+      setCustomAnalyticsError('Informe as duas datas do período.')
+      return
+    }
+    if (customAnalyticsDates.from > customAnalyticsDates.to) {
+      setCustomAnalyticsError(
+        'A data inicial deve ser anterior ou igual à data final.'
+      )
+      return
+    }
+
+    setAnalyticsDates(customAnalyticsDates)
+    setAnalyticsPreset('custom')
+  }
+
   const canQueryEventAnalytics =
     !loadingEntitlements &&
     !entitlementsError &&
@@ -202,8 +420,6 @@ function PubDashboard() {
   } = useQuery(trpc.pub.getMyEventCreationPolicy.queryOptions())
 
   /* Analytics queries */
-  const [analyticsDates] = useState(getAnalyticsDates)
-
   const periodStart = Date.parse(analyticsDates.from)
   const periodEnd = Date.parse(analyticsDates.to)
   const comparisonEventIds = (events ?? [])
@@ -220,11 +436,12 @@ function PubDashboard() {
       : undefined
   const requestedComparisonTarget =
     eventComparisonTarget ?? defaultComparisonTarget
-
   const {
     data: analyticsOverview,
     isLoading: loadingAnalytics,
     isError: analyticsError,
+    error: analyticsOverviewError,
+    isFetching: fetchingAnalytics,
     refetch: refetchAnalytics
   } = useQuery(
     trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions({
@@ -238,6 +455,7 @@ function PubDashboard() {
     isLoading: loadingEventAnalytics,
     isFetching: fetchingEventAnalytics,
     isError: eventAnalyticsError,
+    error: eventAnalyticsQueryError,
     refetch: refetchEventAnalytics
   } = useQuery({
     ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
@@ -303,6 +521,7 @@ function PubDashboard() {
     : analyticsError
       ? {
           status: 'error',
+          message: analyticsOverviewError?.message,
           retry: () => {
             void refetchAnalytics()
           }
@@ -328,6 +547,7 @@ function PubDashboard() {
           : eventAnalyticsError
             ? {
                 status: 'error',
+                message: eventAnalyticsQueryError?.message,
                 retry: () => {
                   void refetchEventAnalytics()
                 }
@@ -343,7 +563,9 @@ function PubDashboard() {
                     fetchingEventAnalytics && !!requestedComparisonTarget,
                   onComparisonTargetChange: (target) => {
                     setEventComparisonTarget(target)
-                  }
+                  },
+                  from: eventAnalytics.from,
+                  to: eventAnalytics.to
                 }
               : { status: 'empty' }
 
@@ -634,6 +856,22 @@ function PubDashboard() {
             </div>
 
             {/* Analytics Overview — real data */}
+            <AnalyticsPeriodSelector
+              entitlements={analyticsEntitlements}
+              loadingEntitlements={loadingEntitlements}
+              entitlementsError={entitlementsError}
+              onRetryEntitlements={() => {
+                void refetchEntitlements()
+              }}
+              range={analyticsDates}
+              preset={analyticsPreset}
+              customRange={customAnalyticsDates}
+              customError={customAnalyticsError}
+              isFetching={fetchingAnalytics || fetchingEventAnalytics}
+              onPresetChange={handleAnalyticsPresetChange}
+              onCustomRangeChange={handleCustomAnalyticsRangeChange}
+              onApplyCustom={applyCustomAnalyticsRange}
+            />
             <AnalyticsOverview
               overviewState={analyticsOverviewState}
               onCreateEvent={() => changeSection('admin-grade')}

@@ -5,6 +5,7 @@ import { adminProcedure, protectedProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
+  assertAnalyticsPeriodAllowed,
   COMMERCIAL_EVENT_TYPES,
   COMMERCIAL_TIME_ZONE,
   canViewEventType,
@@ -171,15 +172,7 @@ export const commercialAnalyticsRouter = router({
 
       const { from, to, periodDays } = parseAnalyticsRange(input)
 
-      if (
-        entitlements.maxDaysRetention !== null &&
-        periodDays > entitlements.maxDaysRetention
-      ) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: `Plano ${plan} suporta até ${entitlements.maxDaysRetention} dias`
-        })
-      }
+      assertAnalyticsPeriodAllowed(plan, periodDays)
 
       const overview = await getMyAnalyticsOverview(barId, from, to)
 
@@ -227,15 +220,7 @@ export const commercialAnalyticsRouter = router({
 
       const { from, to, periodDays } = parseAnalyticsRange(input)
 
-      if (
-        entitlements.maxDaysRetention !== null &&
-        periodDays > entitlements.maxDaysRetention
-      ) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: `Plano ${plan} suporta até ${entitlements.maxDaysRetention} dias`
-        })
-      }
+      assertAnalyticsPeriodAllowed(plan, periodDays)
 
       if (
         input.comparisonTarget &&

@@ -315,6 +315,29 @@ export async function recordCommercialEvent(
         whatsapp_opened = bar_commercial_daily_rollup.whatsapp_opened + EXCLUDED.whatsapp_opened,
         is_finalized = false,
         updated_at = NOW()
+    ),
+    event_rollup AS (
+      INSERT INTO bar_commercial_event_daily_rollup (
+        bar_id, event_id, commercial_day,
+        profile_views, directions_opened, phone_clicked, whatsapp_opened,
+        is_finalized, created_at, updated_at
+      )
+      SELECT
+        ${pubId}, ${sourceEventId ?? null}::text, ${commercialDay}::date,
+        ${eventType === 'profile_view' ? 1 : 0}::integer,
+        ${eventType === 'directions_opened' ? 1 : 0}::integer,
+        ${eventType === 'phone_clicked' ? 1 : 0}::integer,
+        ${eventType === 'whatsapp_opened' ? 1 : 0}::integer,
+        false, NOW(), NOW()
+      FROM inserted
+      WHERE ${sourceEventId ?? null}::text IS NOT NULL
+      ON CONFLICT (bar_id, event_id, commercial_day) DO UPDATE SET
+        profile_views = bar_commercial_event_daily_rollup.profile_views + EXCLUDED.profile_views,
+        directions_opened = bar_commercial_event_daily_rollup.directions_opened + EXCLUDED.directions_opened,
+        phone_clicked = bar_commercial_event_daily_rollup.phone_clicked + EXCLUDED.phone_clicked,
+        whatsapp_opened = bar_commercial_event_daily_rollup.whatsapp_opened + EXCLUDED.whatsapp_opened,
+        is_finalized = false,
+        updated_at = NOW()
     )
     SELECT
       (SELECT c.reason FROM checks c) AS reason,
@@ -401,6 +424,9 @@ export type RetentionResult = {
  * teria mais evento bruto de onde recalcular.
  */
 async function finalizarDiasFechados(): Promise<number> {
+  // Sem limite inferior de propósito: qualquer bruto de dia fechado pode
+  // ainda precisar de consolidação. A poda é o que mantém esta varredura
+  // barata; se a política de poda mudar, introduza uma janela inferior aqui.
   const result = await db.execute(sql`
     INSERT INTO bar_commercial_daily_rollup (
       bar_id, commercial_day,
@@ -435,6 +461,36 @@ async function finalizarDiasFechados(): Promise<number> {
     WHERE bar_commercial_daily_rollup.is_finalized = false
     RETURNING bar_id
   `)
+
+  await db.execute(sql`
+    INSERT INTO bar_commercial_event_daily_rollup (
+      bar_id, event_id, commercial_day,
+      profile_views, directions_opened, phone_clicked, whatsapp_opened,
+      is_finalized, created_at, updated_at
+    )
+    SELECT
+      bar_id,
+      source_event_id,
+      commercial_day,
+      COUNT(*) FILTER (WHERE type = 'profile_view'),
+      COUNT(*) FILTER (WHERE type = 'directions_opened'),
+      COUNT(*) FILTER (WHERE type = 'phone_clicked'),
+      COUNT(*) FILTER (WHERE type = 'whatsapp_opened'),
+      true, NOW(), NOW()
+    FROM bar_commercial_event
+    WHERE commercial_day < CURRENT_DATE
+      AND source_event_id IS NOT NULL
+    GROUP BY bar_id, source_event_id, commercial_day
+    ON CONFLICT (bar_id, event_id, commercial_day) DO UPDATE SET
+      profile_views = EXCLUDED.profile_views,
+      directions_opened = EXCLUDED.directions_opened,
+      phone_clicked = EXCLUDED.phone_clicked,
+      whatsapp_opened = EXCLUDED.whatsapp_opened,
+      is_finalized = true,
+      updated_at = NOW()
+    WHERE bar_commercial_event_daily_rollup.is_finalized = false
+  `)
+
   return result.rows.length
 }
 

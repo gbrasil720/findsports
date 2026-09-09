@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
+  assertAnalyticsPeriodAllowed,
   assertRecordable,
   COMMERCIAL_EVENT_TYPES,
   canViewEventType,
@@ -254,6 +255,22 @@ describe('commercial-analytics entitlements', () => {
   })
 })
 
+describe('commercial-analytics retention contract', () => {
+  it('allows each advertised horizon and rejects the next day server-side', () => {
+    expect(() => assertAnalyticsPeriodAllowed('starter', 30)).not.toThrow()
+    expect(() => assertAnalyticsPeriodAllowed('starter', 31)).toThrow(
+      'Plano starter suporta até 30 dias'
+    )
+
+    expect(() => assertAnalyticsPeriodAllowed('pro', 365)).not.toThrow()
+    expect(() => assertAnalyticsPeriodAllowed('pro', 366)).toThrow(
+      'Plano pro suporta até 365 dias'
+    )
+
+    expect(() => assertAnalyticsPeriodAllowed('elite', 10_000)).not.toThrow()
+  })
+})
+
 describe('commercial-analytics period comparison (WEB-99)', () => {
   const iso = (d: Date) => d.toISOString()
 
@@ -363,7 +380,8 @@ const OVERVIEW_RAW: AnalyticsOverview = {
   dailyWhatsappOpened: [DAY(1)],
 
   from: '2026-09-01',
-  to: '2026-09-30'
+  to: '2026-09-30',
+  limitations: []
 }
 
 const overviewFor = (plan: 'starter' | 'pro' | 'elite') =>
@@ -402,7 +420,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       dailyWhatsappOpened: null,
 
       from: '2026-09-01',
-      to: '2026-09-30'
+      to: '2026-09-30',
+      limitations: []
     })
   })
 
@@ -438,7 +457,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       dailyWhatsappOpened: null,
 
       from: '2026-09-01',
-      to: '2026-09-30'
+      to: '2026-09-30',
+      limitations: []
     })
   })
 
@@ -474,7 +494,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       dailyWhatsappOpened: [DAY(1)],
 
       from: '2026-09-01',
-      to: '2026-09-30'
+      to: '2026-09-30',
+      limitations: []
     })
   })
 
