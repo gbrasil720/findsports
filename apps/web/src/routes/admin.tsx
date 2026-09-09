@@ -1,3 +1,4 @@
+import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -116,6 +117,9 @@ function PubDashboard() {
   const now = useMinuteNow()
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>('admin-visao')
+  const [eventComparisonTarget, setEventComparisonTarget] = useState<
+    EventComparisonTarget | undefined
+  >()
   const [profileError, setProfileError] = useState<string | null>(null)
   const limitTracked = useRef(false)
 
@@ -200,6 +204,23 @@ function PubDashboard() {
   /* Analytics queries */
   const [analyticsDates] = useState(getAnalyticsDates)
 
+  const periodStart = Date.parse(analyticsDates.from)
+  const periodEnd = Date.parse(analyticsDates.to)
+  const comparisonEventIds = (events ?? [])
+    .filter((event) => {
+      const startsAt = new Date(event.startsAt).getTime()
+      return startsAt >= periodStart && startsAt <= periodEnd
+    })
+    .map((event) => event.id)
+    .slice(0, 3)
+  const defaultComparisonTarget =
+    analyticsEntitlements?.comparison !== 'previous_period' &&
+    comparisonEventIds.length > 0
+      ? { type: 'events' as const, eventIds: comparisonEventIds }
+      : undefined
+  const requestedComparisonTarget =
+    eventComparisonTarget ?? defaultComparisonTarget
+
   const {
     data: analyticsOverview,
     isLoading: loadingAnalytics,
@@ -215,12 +236,16 @@ function PubDashboard() {
   const {
     data: eventAnalytics,
     isLoading: loadingEventAnalytics,
+    isFetching: fetchingEventAnalytics,
     isError: eventAnalyticsError,
     refetch: refetchEventAnalytics
   } = useQuery({
     ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
       from: analyticsDates.from,
-      to: analyticsDates.to
+      to: analyticsDates.to,
+      ...(requestedComparisonTarget
+        ? { comparisonTarget: requestedComparisonTarget }
+        : {})
     }),
     enabled: canQueryEventAnalytics
   })
@@ -308,7 +333,18 @@ function PubDashboard() {
                 }
               }
             : eventAnalytics?.events && eventAnalytics.events.length > 0
-              ? { status: 'ready', items: eventAnalytics.events }
+              ? {
+                  status: 'ready',
+                  items: eventAnalytics.events,
+                  comparisonMode: analyticsEntitlements.comparison,
+                  comparisonTarget: requestedComparisonTarget,
+                  comparison: eventAnalytics.comparison,
+                  comparisonLoading:
+                    fetchingEventAnalytics && !!requestedComparisonTarget,
+                  onComparisonTargetChange: (target) => {
+                    setEventComparisonTarget(target)
+                  }
+                }
               : { status: 'empty' }
 
   /* ------------------------------------------------------------------ */

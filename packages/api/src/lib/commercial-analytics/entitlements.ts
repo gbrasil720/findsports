@@ -1,5 +1,11 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import type { AnalyticsEntitlements, EventAnalyticsResponse } from './types'
+import { maskEventComparisonRow, rankEventComparison } from './comparison'
+import type {
+  AnalyticsEntitlements,
+  ComparisonMetric,
+  EventAnalyticsResponse,
+  EventComparisonResult
+} from './types'
 
 /**
  * Plan-based entitlements for commercial analytics.
@@ -10,8 +16,9 @@ import type { AnalyticsEntitlements, EventAnalyticsResponse } from './types'
  * - Starter:  profile views only, 30d retention, previous-period comparison,
  *              basic per-game
  * - Pro:      + directions opened, phone clicked, whatsapp opened, 365d
- *              retention, comparison
- * - Elite:    + daily breakdown, complete per-game, unlimited retention
+ *              retention, cross-game comparison
+ * - Elite:    + daily breakdown, complete per-game, unlimited retention,
+ *              advanced comparison and insights
  */
 
 const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
@@ -21,6 +28,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: false,
     canViewDirectionsOpened: false,
     canViewComparison: true,
+    comparison: 'previous_period',
     canViewDailyBreakdown: false,
     eventBreakdown: 'basic',
     maxDaysRetention: 30,
@@ -32,6 +40,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
     canViewComparison: true,
+    comparison: 'cross_game',
     canViewDailyBreakdown: false,
     eventBreakdown: 'complete',
     maxDaysRetention: 365,
@@ -43,6 +52,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
     canViewComparison: true,
+    comparison: 'advanced',
     canViewDailyBreakdown: true,
     eventBreakdown: 'complete',
     maxDaysRetention: null,
@@ -78,6 +88,51 @@ export function canViewEventType(
   }
 }
 
+/** Metrics a comparison may expose for the plan. */
+export function getComparisonMetrics(
+  entitlements: AnalyticsEntitlements
+): ComparisonMetric[] {
+  return [
+    'uniqueVisitors',
+    'profileViews',
+    ...(entitlements.canViewDirectionsOpened
+      ? ['directionsOpened' as const]
+      : []),
+    ...(entitlements.canViewPhoneClicked ? ['phoneClicked' as const] : []),
+    ...(entitlements.canViewWhatsappOpened ? ['whatsappOpened' as const] : [])
+  ]
+}
+
+/** Remove every comparison value that the plan is not entitled to see. */
+export function applyEventComparisonEntitlements(
+  comparison: EventComparisonResult,
+  entitlements: AnalyticsEntitlements
+): EventComparisonResult {
+  const metrics = getComparisonMetrics(entitlements)
+  const events = comparison.events.map((event) =>
+    maskEventComparisonRow(event, metrics)
+  )
+  const benchmark = comparison.benchmark
+    ? maskEventComparisonRow(comparison.benchmark, metrics)
+    : null
+
+  return {
+    mode: comparison.mode,
+    target: comparison.target,
+    status: comparison.status,
+    ...(comparison.emptyReason ? { emptyReason: comparison.emptyReason } : {}),
+    events,
+    benchmark,
+    ranking: rankEventComparison(events),
+    benchmarks: comparison.benchmarks.filter((item) =>
+      metrics.includes(item.metric)
+    ),
+    insights: comparison.insights.filter((item) =>
+      metrics.includes(item.metric)
+    )
+  }
+}
+
 /**
  * Aplica o entitlement de analytics por jogo na resposta: métricas que o
  * plano não enxerga vêm nulas (mesma regra do overview). O servidor é
@@ -88,7 +143,8 @@ export function applyEventBreakdownEntitlements(
   entitlements: AnalyticsEntitlements
 ) {
   return {
-    ...response,
+    from: response.from,
+    to: response.to,
     events: response.events.map((event) => ({
       ...event,
       directionsOpened: entitlements.canViewDirectionsOpened
@@ -100,6 +156,14 @@ export function applyEventBreakdownEntitlements(
       whatsappOpened: entitlements.canViewWhatsappOpened
         ? event.whatsappOpened
         : null
-    }))
+    })),
+    ...(response.comparison
+      ? {
+          comparison: applyEventComparisonEntitlements(
+            response.comparison,
+            entitlements
+          )
+        }
+      : {})
   }
 }

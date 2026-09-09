@@ -17,6 +17,24 @@ export const COMMERCIAL_EVENT_TYPES = [
 ] as const
 export type CommercialEventType = (typeof COMMERCIAL_EVENT_TYPES)[number]
 
+export type AnalyticsComparisonMode =
+  | 'previous_period'
+  | 'cross_game'
+  | 'advanced'
+
+export type EventComparisonTarget =
+  | { type: 'events'; eventIds: string[] }
+  | { type: 'event_to_bar'; eventId: string }
+
+export const COMPARISON_METRICS = [
+  'uniqueVisitors',
+  'profileViews',
+  'directionsOpened',
+  'phoneClicked',
+  'whatsappOpened'
+] as const
+export type ComparisonMetric = (typeof COMPARISON_METRICS)[number]
+
 // ---------------------------------------------------------------------------
 // Subscription plans (subscription.plan)
 // ---------------------------------------------------------------------------
@@ -149,10 +167,84 @@ export interface EventAnalyticsRow {
   whatsappOpened: number
 }
 
+/** Raw per-game snapshot used to calculate comparison and advanced insights. */
+export interface EventAnalyticsSnapshot {
+  eventId: string
+  eventName: string
+  startsAt: string
+  weekday: number
+  windowHours: number
+  uniqueVisitors: number
+  profileViews: number
+  directionsOpened: number
+  phoneClicked: number
+  whatsappOpened: number
+}
+
+export interface ComparisonMetricValues {
+  uniqueVisitors: number | null
+  profileViews: number | null
+  directionsOpened: number | null
+  phoneClicked: number | null
+  whatsappOpened: number | null
+}
+
+/** Per-game comparison values. Rates are percentages, not fractions. */
+export interface EventComparisonRow extends ComparisonMetricValues {
+  eventId: string
+  eventName: string
+  startsAt: string
+  windowHours: number
+  normalized: ComparisonMetricValues
+  conversionRate: number | null
+}
+
+export interface EventComparisonRank {
+  eventId: string
+  eventName: string
+  conversionRate: number | null
+  rank: number
+}
+
+export interface AnalyticsBenchmark {
+  scope: 'history' | 'weekday'
+  metric: ComparisonMetric
+  current: number
+  baseline: number
+  changePercent: number | null
+  eventId?: string
+  weekday?: number
+}
+
+export interface AnalyticsInsight {
+  kind: 'anomaly'
+  scope: 'weekday'
+  metric: ComparisonMetric
+  eventId: string
+  eventName: string
+  weekday: number
+  value: number
+  baseline: number
+  changePercent: number
+}
+
+export interface EventComparisonResult {
+  mode: 'cross_game' | 'advanced'
+  target: EventComparisonTarget
+  status: 'ready' | 'empty'
+  emptyReason?: 'no_data' | 'not_enough_games' | 'no_baseline'
+  events: EventComparisonRow[]
+  benchmark: EventComparisonRow | null
+  ranking: EventComparisonRank[]
+  benchmarks: AnalyticsBenchmark[]
+  insights: AnalyticsInsight[]
+}
+
 export interface EventAnalyticsResponse {
   events: EventAnalyticsRow[]
   from: string
   to: string
+  comparison?: EventComparisonResult
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +257,8 @@ export interface AnalyticsEntitlements {
   canViewWhatsappOpened: boolean
   canViewDirectionsOpened: boolean
   canViewComparison: boolean
+  /** Comparison capability sold by the plan; the server is authoritative. */
+  comparison: AnalyticsComparisonMode
   canViewDailyBreakdown: boolean
   /**
    * Per-event (por jogo) analytics level:

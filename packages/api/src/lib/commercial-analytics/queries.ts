@@ -1,12 +1,18 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, sql } from '@findsports_oficial/db'
 import { TRPCError } from '@trpc/server'
-import { getCommercialDay } from './commercial-day'
+import { EVENT_LIVE_WINDOW_HOURS } from '../event-profile-window'
+import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
+import { buildEventComparison } from './comparison'
 import type {
+  AnalyticsComparisonMode,
   AnalyticsOverview,
+  ComparisonMetric,
   DailyDataPoint,
   EventAnalyticsResponse,
-  EventAnalyticsRow
+  EventAnalyticsRow,
+  EventAnalyticsSnapshot,
+  EventComparisonTarget
 } from './types'
 import { pctChange } from './types'
 
@@ -342,27 +348,40 @@ export async function getMyAnalyticsOverview(
 }
 
 /**
- * GetMyEventAnalytics: per-event breakdown for a bar within a date range.
- * Tenant-safe: events filtered by bar_id derived from session.
+ * Get per-game snapshots for a bar within a date range.
+ * Tenant-safe: both the game and its attributed events use the same bar_id.
  *
- * Quebra por evento não dá para reconstruir a partir dos rollups diários —
- * eles não têm dimensão de evento (WEB-98). Depois de podar os brutos de um
- * dia, os eventos daquele dia continuam listados (a tabela `event` nunca é
- * podada), mas as contagens refletem apenas os brutos que sobreviveram. É o
- * limite de precisão documentado do contrato: a retenção de brutos sacrifica
- * a atribuição histórica por evento em troca do agregado diário finalizado.
+ * The effective game window is the stored interval or the same three-hour
+ * fallback used by the public profile. Comparison normalizes counts per hour
+ * of that window, so a two-hour game is not treated like a full-day game.
  */
-export async function getMyEventAnalytics(
+async function getEventAnalyticsSnapshots(
   barId: string,
   from: Date,
   to: Date
-): Promise<EventAnalyticsResponse> {
+): Promise<EventAnalyticsSnapshot[]> {
   const result = await db.execute(sql`
     SELECT
       e.id AS event_id,
       COALESCE(e.championship || ' - ', '') || 'Evento' AS event_name,
       e.starts_at,
+      GREATEST(
+        EXTRACT(
+          EPOCH FROM (
+            COALESCE(
+              e.ends_at,
+              e.starts_at + (${EVENT_LIVE_WINDOW_HOURS} * interval '1 hour')
+            ) - e.starts_at
+          )
+        ) / 3600,
+        0.25
+      ) AS window_hours,
+      EXTRACT(
+        ISODOW FROM (e.starts_at AT TIME ZONE ${COMMERCIAL_TIME_ZONE})
+      ) AS weekday,
       COUNT(CASE WHEN bce.type = 'profile_view' THEN 1 END) AS profile_views,
+      COUNT(DISTINCT bce.actor_user_id)
+        FILTER (WHERE bce.type = 'profile_view') AS unique_visitors,
       COUNT(CASE WHEN bce.type = 'directions_opened' THEN 1 END) AS directions_opened,
       COUNT(CASE WHEN bce.type = 'phone_clicked' THEN 1 END) AS phone_clicked,
       COUNT(CASE WHEN bce.type = 'whatsapp_opened' THEN 1 END) AS whatsapp_opened
@@ -373,33 +392,94 @@ export async function getMyEventAnalytics(
     WHERE e.bar_id = ${barId}
       AND e.starts_at >= ${from}
       AND e.starts_at <= ${to}
-    GROUP BY e.id, e.championship, e.starts_at
+    GROUP BY e.id, e.championship, e.starts_at, e.ends_at
     ORDER BY e.starts_at DESC
   `)
 
-  const events: EventAnalyticsRow[] = (
-    result.rows as Array<{
-      event_id: string
-      event_name: string
-      starts_at: string
-      profile_views: string
-      directions_opened: string
-      phone_clicked: string
-      whatsapp_opened: string
-    }>
-  ).map((row) => ({
+  const rows = result.rows as Array<{
+    event_id: string
+    event_name: string
+    starts_at: string | Date
+    window_hours: string | number
+    weekday: string | number
+    profile_views: string | number
+    unique_visitors: string | number
+    directions_opened: string | number
+    phone_clicked: string | number
+    whatsapp_opened: string | number
+  }>
+
+  return rows.map((row) => ({
     eventId: row.event_id,
     eventName: row.event_name,
-    startsAt: row.starts_at,
+    startsAt: new Date(row.starts_at).toISOString(),
+    weekday: Number(row.weekday),
+    windowHours: Number(row.window_hours),
+    uniqueVisitors: Number(row.unique_visitors),
     profileViews: Number(row.profile_views),
     directionsOpened: Number(row.directions_opened),
     phoneClicked: Number(row.phone_clicked),
     whatsappOpened: Number(row.whatsapp_opened)
   }))
+}
 
-  return {
+export interface EventAnalyticsQueryOptions {
+  comparisonTarget?: EventComparisonTarget
+  comparisonMode?: Exclude<AnalyticsComparisonMode, 'previous_period'>
+  comparisonMetrics?: readonly ComparisonMetric[]
+}
+
+/**
+ * GetMyEventAnalytics: per-event breakdown and optional plan-authorized
+ * comparison for a bar within a date range.
+ *
+ * Quebra por evento não dá para reconstruir a partir dos rollups diários —
+ * eles não têm dimensão de evento (WEB-98). Depois de podar os brutos de um
+ * dia, os eventos daquele dia continuam listados, mas suas contagens por jogo
+ * refletem apenas os brutos que sobreviveram.
+ */
+export async function getMyEventAnalytics(
+  barId: string,
+  from: Date,
+  to: Date,
+  options?: EventAnalyticsQueryOptions
+): Promise<EventAnalyticsResponse> {
+  const comparisonMode = options?.comparisonMode ?? 'cross_game'
+  const [snapshots, historicalRows] = await Promise.all([
+    getEventAnalyticsSnapshots(barId, from, to),
+    options?.comparisonTarget && comparisonMode === 'advanced'
+      ? getEventAnalyticsSnapshots(
+          barId,
+          new Date(from.getTime() - 84 * 24 * 60 * 60 * 1000),
+          new Date(from.getTime() - 1)
+        )
+      : Promise.resolve<EventAnalyticsSnapshot[]>([])
+  ])
+  const events: EventAnalyticsRow[] = snapshots.map((row) => ({
+    eventId: row.eventId,
+    eventName: row.eventName,
+    startsAt: row.startsAt,
+    profileViews: row.profileViews,
+    directionsOpened: row.directionsOpened,
+    phoneClicked: row.phoneClicked,
+    whatsappOpened: row.whatsappOpened
+  }))
+
+  const response: EventAnalyticsResponse = {
     events,
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10)
   }
+
+  if (options?.comparisonTarget) {
+    response.comparison = buildEventComparison({
+      mode: comparisonMode,
+      target: options.comparisonTarget,
+      currentRows: snapshots,
+      historicalRows,
+      metrics: options.comparisonMetrics
+    })
+  }
+
+  return response
 }

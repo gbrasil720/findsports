@@ -7,6 +7,7 @@ import {
   COMMERCIAL_EVENT_TYPES,
   canViewEventType,
   getAnalyticsEntitlements,
+  getComparisonMetrics,
   pctChange,
   previousPeriodRange,
   RECORD_FAILURES
@@ -92,6 +93,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewWhatsappOpened).toBe(false)
     expect(e.canViewDirectionsOpened).toBe(false)
     expect(e.canViewComparison).toBe(true)
+    expect(e.comparison).toBe('previous_period')
     expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.eventBreakdown).toBe('basic')
     expect(e.maxDaysRetention).toBe(30)
@@ -104,6 +106,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewWhatsappOpened).toBe(true)
     expect(e.canViewDirectionsOpened).toBe(true)
     expect(e.canViewComparison).toBe(true)
+    expect(e.comparison).toBe('cross_game')
     expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(365)
@@ -116,6 +119,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewWhatsappOpened).toBe(true)
     expect(e.canViewDirectionsOpened).toBe(true)
     expect(e.canViewComparison).toBe(true)
+    expect(e.comparison).toBe('advanced')
     expect(e.canViewDailyBreakdown).toBe(true)
     expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(null)
@@ -129,6 +133,20 @@ describe('commercial-analytics entitlements', () => {
     expect(JSON.stringify(starter)).not.toEqual(JSON.stringify(pro))
     expect(JSON.stringify(pro)).not.toEqual(JSON.stringify(elite))
     expect(JSON.stringify(starter)).not.toEqual(JSON.stringify(elite))
+  })
+
+  it('comparison mode is the server contract for Starter, Pro and Elite', () => {
+    expect(
+      ['starter', 'pro', 'elite'].map(
+        (plan) =>
+          getAnalyticsEntitlements(plan as 'starter' | 'pro' | 'elite')
+            .comparison
+      )
+    ).toEqual(['previous_period', 'cross_game', 'advanced'])
+    expect(getComparisonMetrics(getAnalyticsEntitlements('starter'))).toEqual([
+      'uniqueVisitors',
+      'profileViews'
+    ])
   })
 
   it('per-game analytics (WEB-100): Starter tem nível básico, Pro/Elite completo', () => {

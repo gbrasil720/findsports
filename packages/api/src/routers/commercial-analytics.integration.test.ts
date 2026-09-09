@@ -51,6 +51,38 @@ function fanContext(userId: string, now = new Date()) {
   }
 }
 
+function pubContext(userId: string, now = new Date()) {
+  return {
+    auth: null,
+    clientIp: '127.0.0.1',
+    session: {
+      session: {
+        id: crypto.randomUUID(),
+        token: crypto.randomUUID(),
+        userId,
+        createdAt: now,
+        updatedAt: now,
+        expiresAt: new Date(now.getTime() + 3_600_000),
+        ipAddress: null,
+        userAgent: null
+      },
+      user: {
+        id: userId,
+        name: 'Pub de integração',
+        email: `${userId}@integration.invalid`,
+        emailVerified: true,
+        role: 'pub' as const,
+        banned: false,
+        onboardingCompleted: true,
+        searchRadiusKm: 3,
+        twoFactorEnabled: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    }
+  }
+}
+
 integrationTest(
   'WEB-96: serializa registros paralelos e não aceita o 31º evento na janela',
   async () => {
@@ -393,6 +425,205 @@ integrationTest(
         .delete(barCommercialEvent)
         .where(eq(barCommercialEvent.barId, barId))
       await db.delete(user).where(inArray(user.id, [pubUserId, ...fanIds]))
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
+
+integrationTest(
+  'WEB-103: comparação fica isolada no bar e mascara canais do Pro',
+  async () => {
+    const [{ db }, { appRouter }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('./index')
+    ])
+    const pubUserId = crypto.randomUUID()
+    const otherPubUserId = crypto.randomUUID()
+    const fanUserId = crypto.randomUUID()
+    const barId = crypto.randomUUID()
+    const otherBarId = crypto.randomUUID()
+    const sportId = crypto.randomUUID()
+    const firstEventId = crypto.randomUUID()
+    const secondEventId = crypto.randomUUID()
+    const foreignEventId = crypto.randomUUID()
+    const now = new Date()
+    const firstStartsAt = new Date('2026-09-10T20:00:00.000Z')
+    const secondStartsAt = new Date('2026-09-12T20:00:00.000Z')
+    const foreignStartsAt = new Date('2026-09-14T20:00:00.000Z')
+
+    try {
+      await db.insert(user).values([
+        {
+          id: pubUserId,
+          name: 'Pub WEB-103',
+          email: `pub-${pubUserId}@web103.invalid`,
+          emailVerified: true,
+          role: 'pub',
+          onboardingCompleted: true
+        },
+        {
+          id: otherPubUserId,
+          name: 'Outro pub WEB-103',
+          email: `pub-${otherPubUserId}@web103.invalid`,
+          emailVerified: true,
+          role: 'pub',
+          onboardingCompleted: true
+        },
+        {
+          id: fanUserId,
+          name: 'Fan WEB-103',
+          email: `fan-${fanUserId}@web103.invalid`,
+          emailVerified: true,
+          role: 'fan',
+          onboardingCompleted: true
+        }
+      ])
+      await db.insert(sport).values({
+        id: sportId,
+        name: 'Futebol WEB-103',
+        slug: `web103-${sportId}`
+      })
+      await db.insert(bar).values([
+        {
+          id: barId,
+          userId: pubUserId,
+          name: 'Bar WEB-103',
+          address: 'Rua WEB-103, 1',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          latitude: '-23.55000000',
+          longitude: '-46.63000000',
+          isActive: true
+        },
+        {
+          id: otherBarId,
+          userId: otherPubUserId,
+          name: 'Outro bar WEB-103',
+          address: 'Rua WEB-103, 2',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          latitude: '-23.55010000',
+          longitude: '-46.63010000',
+          isActive: true
+        }
+      ])
+      await db.insert(subscription).values([
+        { barId, plan: 'pro', status: 'active' },
+        { barId: otherBarId, plan: 'pro', status: 'active' }
+      ])
+      await db.insert(event).values([
+        {
+          id: firstEventId,
+          barId,
+          sportId,
+          championship: 'WEB-103 A',
+          startsAt: firstStartsAt
+        },
+        {
+          id: secondEventId,
+          barId,
+          sportId,
+          championship: 'WEB-103 B',
+          startsAt: secondStartsAt
+        },
+        {
+          id: foreignEventId,
+          barId: otherBarId,
+          sportId,
+          championship: 'WEB-103 externo',
+          startsAt: foreignStartsAt
+        }
+      ])
+      await db.insert(barCommercialEvent).values([
+        {
+          id: crypto.randomUUID(),
+          barId,
+          actorUserId: fanUserId,
+          type: 'profile_view',
+          sourceEventId: firstEventId,
+          sourceEventChampionship: 'WEB-103 A',
+          sourceEventStartsAt: firstStartsAt,
+          occurredAt: firstStartsAt,
+          commercialDay: getCommercialDay(firstStartsAt)
+        },
+        {
+          id: crypto.randomUUID(),
+          barId,
+          actorUserId: fanUserId,
+          type: 'directions_opened',
+          sourceEventId: firstEventId,
+          sourceEventChampionship: 'WEB-103 A',
+          sourceEventStartsAt: firstStartsAt,
+          occurredAt: firstStartsAt,
+          commercialDay: getCommercialDay(firstStartsAt)
+        },
+        {
+          id: crypto.randomUUID(),
+          barId,
+          actorUserId: fanUserId,
+          type: 'phone_clicked',
+          sourceEventId: firstEventId,
+          sourceEventChampionship: 'WEB-103 A',
+          sourceEventStartsAt: firstStartsAt,
+          occurredAt: firstStartsAt,
+          commercialDay: getCommercialDay(firstStartsAt)
+        },
+        {
+          id: crypto.randomUUID(),
+          barId,
+          actorUserId: fanUserId,
+          type: 'profile_view',
+          sourceEventId: secondEventId,
+          sourceEventChampionship: 'WEB-103 B',
+          sourceEventStartsAt: secondStartsAt,
+          occurredAt: secondStartsAt,
+          commercialDay: getCommercialDay(secondStartsAt)
+        },
+        {
+          id: crypto.randomUUID(),
+          barId: otherBarId,
+          actorUserId: fanUserId,
+          type: 'profile_view',
+          sourceEventId: foreignEventId,
+          sourceEventChampionship: 'WEB-103 externo',
+          sourceEventStartsAt: foreignStartsAt,
+          occurredAt: foreignStartsAt,
+          commercialDay: getCommercialDay(foreignStartsAt)
+        }
+      ])
+
+      const result = await appRouter
+        .createCaller(pubContext(pubUserId, now))
+        .commercialAnalytics.getMyEventAnalytics({
+          from: '2026-09-01',
+          to: '2026-09-30',
+          comparisonTarget: {
+            type: 'events',
+            eventIds: [firstEventId, secondEventId, foreignEventId]
+          }
+        })
+
+      expect(result.comparison?.events.map((item) => item.eventId)).toEqual([
+        firstEventId,
+        secondEventId
+      ])
+      expect(result.comparison?.events[0]?.directionsOpened).toBeNull()
+      expect(result.comparison?.events[0]?.phoneClicked).toBe(1)
+      expect(result.comparison?.events[0]?.uniqueVisitors).toBe(1)
+    } finally {
+      await db
+        .delete(barCommercialEvent)
+        .where(inArray(barCommercialEvent.barId, [barId, otherBarId]))
+      await db
+        .delete(subscription)
+        .where(inArray(subscription.barId, [barId, otherBarId]))
+      await db
+        .delete(event)
+        .where(inArray(event.id, [firstEventId, secondEventId, foreignEventId]))
+      await db.delete(bar).where(inArray(bar.id, [barId, otherBarId]))
+      await db
+        .delete(user)
+        .where(inArray(user.id, [pubUserId, otherPubUserId, fanUserId]))
       await db.delete(sport).where(eq(sport.id, sportId))
     }
   }
