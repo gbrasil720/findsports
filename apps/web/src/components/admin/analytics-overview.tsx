@@ -256,6 +256,53 @@ function KpiCards({
   )
 }
 
+function ClassicPlacement({ data }: { data: AnalyticsOverviewData }) {
+  if (data.classicExposures === null || data.classicClicks === null) {
+    return null
+  }
+
+  const clickRate =
+    data.classicExposures > 0
+      ? `${((data.classicClicks / data.classicExposures) * 100).toFixed(1)}%`
+      : '—'
+
+  return (
+    <div className="onside-panel-acid mt-6 p-4">
+      <h3 className="onside-heading mb-1">Entrega Elite nos clássicos</h3>
+      <p className="mb-3 text-sm text-[var(--onside-ink)] opacity-70">
+        Quantas vezes seu bar apareceu na posição garantida e quantas pessoas
+        abriram o perfil a partir dessa posição.
+      </p>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <p className="text-xs text-[var(--onside-ink)] opacity-60">
+            Exposições
+          </p>
+          <p className="onside-display text-lg text-[var(--onside-ink)]">
+            {data.classicExposures}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-[var(--onside-ink)] opacity-60">Cliques</p>
+          <p className="onside-display text-lg text-[var(--onside-ink)]">
+            {data.classicClicks}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-[var(--onside-ink)] opacity-60">CTR</p>
+          <p className="onside-display text-lg text-[var(--onside-ink)]">
+            {clickRate}
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-[var(--onside-ink)] opacity-60">
+        Exposições {formatPctChange(data.classicExposuresChange)} • Cliques{' '}
+        {formatPctChange(data.classicClicksChange)} vs 30 dias anteriores
+      </p>
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ */
 /* Daily Chart                                                         */
 /* ------------------------------------------------------------------ */
@@ -601,6 +648,7 @@ export function AnalyticsOverview({
       )}
 
       <KpiCards data={data} comparisonLabel={comparisonLabel} />
+      <ClassicPlacement data={data} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DailyChart

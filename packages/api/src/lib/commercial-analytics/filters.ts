@@ -35,6 +35,10 @@ export function applyOverviewEntitlements(
       : null,
     phoneClicked: e.canViewPhoneClicked ? overview.phoneClicked : null,
     whatsappOpened: e.canViewWhatsappOpened ? overview.whatsappOpened : null,
+    classicExposures: e.canViewClassicPlacement
+      ? overview.classicExposures
+      : null,
+    classicClicks: e.canViewClassicPlacement ? overview.classicClicks : null,
 
     uniqueVisitorsPrev: e.canViewComparison
       ? overview.uniqueVisitorsPrev
@@ -58,6 +62,12 @@ export function applyOverviewEntitlements(
       e.canViewComparison && e.canViewWhatsappOpened
         ? overview.whatsappOpenedPrev
         : null,
+    classicExposuresPrev: e.canViewClassicPlacement
+      ? overview.classicExposuresPrev
+      : null,
+    classicClicksPrev: e.canViewClassicPlacement
+      ? overview.classicClicksPrev
+      : null,
 
     uniqueVisitorsChange: e.canViewComparison
       ? overview.uniqueVisitorsChange
@@ -83,6 +93,12 @@ export function applyOverviewEntitlements(
       e.canViewComparison && e.canViewWhatsappOpened
         ? overview.whatsappOpenedChange
         : null,
+    classicExposuresChange: e.canViewClassicPlacement
+      ? overview.classicExposuresChange
+      : null,
+    classicClicksChange: e.canViewClassicPlacement
+      ? overview.classicClicksChange
+      : null,
 
     dailyProfileViews: e.canViewDailyBreakdown
       ? overview.dailyProfileViews

@@ -16,12 +16,14 @@ import {
 import type { AnalyticsOverview } from './types'
 
 describe('commercial-analytics types', () => {
-  it('has 4 canonical event types', () => {
-    expect(COMMERCIAL_EVENT_TYPES).toHaveLength(4)
+  it('has 6 canonical event types', () => {
+    expect(COMMERCIAL_EVENT_TYPES).toHaveLength(6)
     expect(COMMERCIAL_EVENT_TYPES).toContain('profile_view')
     expect(COMMERCIAL_EVENT_TYPES).toContain('directions_opened')
     expect(COMMERCIAL_EVENT_TYPES).toContain('phone_clicked')
     expect(COMMERCIAL_EVENT_TYPES).toContain('whatsapp_opened')
+    expect(COMMERCIAL_EVENT_TYPES).toContain('classic_exposure')
+    expect(COMMERCIAL_EVENT_TYPES).toContain('classic_click')
   })
 
   it('pctChange calculates correctly', () => {
@@ -77,10 +79,13 @@ describe('recusa de registro de evento (ESC-06)', () => {
     expect(Object.keys(RECORD_FAILURES).sort()).toEqual([
       'bar_inactive',
       'bar_not_found',
+      'classic_event_required',
+      'classic_not_elite',
       'event_mismatch',
       'impersonated',
       'no_phone',
       'no_whatsapp',
+      'not_classic_event',
       'rate_limited'
     ])
   })
@@ -93,6 +98,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewPhoneClicked).toBe(false)
     expect(e.canViewWhatsappOpened).toBe(false)
     expect(e.canViewDirectionsOpened).toBe(false)
+    expect(e.canViewClassicPlacement).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('previous_period')
     expect(e.canViewDailyBreakdown).toBe(false)
@@ -106,6 +112,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewPhoneClicked).toBe(true)
     expect(e.canViewWhatsappOpened).toBe(true)
     expect(e.canViewDirectionsOpened).toBe(true)
+    expect(e.canViewClassicPlacement).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('cross_game')
     expect(e.canViewDailyBreakdown).toBe(false)
@@ -119,6 +126,7 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewPhoneClicked).toBe(true)
     expect(e.canViewWhatsappOpened).toBe(true)
     expect(e.canViewDirectionsOpened).toBe(true)
+    expect(e.canViewClassicPlacement).toBe(true)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('advanced')
     expect(e.canViewDailyBreakdown).toBe(true)
@@ -251,6 +259,8 @@ describe('commercial-analytics entitlements', () => {
     expect(canViewEventType('pro', 'directions_opened')).toBe(true)
     expect(canViewEventType('elite', 'directions_opened')).toBe(true)
     expect(canViewEventType('elite', 'whatsapp_opened')).toBe(true)
+    expect(canViewEventType('pro', 'classic_exposure')).toBe(false)
+    expect(canViewEventType('elite', 'classic_click')).toBe(true)
     expect(canViewEventType('starter', 'unknown')).toBe(false)
   })
 })
@@ -357,6 +367,8 @@ const OVERVIEW_RAW: AnalyticsOverview = {
   directionsOpened: 8,
   phoneClicked: 3,
   whatsappOpened: 4,
+  classicExposures: 20,
+  classicClicks: 5,
 
   uniqueVisitorsPrev: 80,
   interestedPeoplePrev: 25,
@@ -365,6 +377,8 @@ const OVERVIEW_RAW: AnalyticsOverview = {
   directionsOpenedPrev: 6,
   phoneClickedPrev: 2,
   whatsappOpenedPrev: 3,
+  classicExposuresPrev: 10,
+  classicClicksPrev: 2,
 
   uniqueVisitorsChange: 25,
   interestedPeopleChange: 20,
@@ -373,6 +387,8 @@ const OVERVIEW_RAW: AnalyticsOverview = {
   directionsOpenedChange: 33,
   phoneClickedChange: 50,
   whatsappOpenedChange: 33,
+  classicExposuresChange: 100,
+  classicClicksChange: 150,
 
   dailyProfileViews: [DAY(10)],
   dailyDirectionsOpened: [DAY(1)],
@@ -397,6 +413,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpened: null,
       phoneClicked: null,
       whatsappOpened: null,
+      classicExposures: null,
+      classicClicks: null,
 
       uniqueVisitorsPrev: 80,
       interestedPeoplePrev: 25,
@@ -405,6 +423,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedPrev: null,
       phoneClickedPrev: null,
       whatsappOpenedPrev: null,
+      classicExposuresPrev: null,
+      classicClicksPrev: null,
 
       uniqueVisitorsChange: 25,
       interestedPeopleChange: 20,
@@ -413,6 +433,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedChange: null,
       phoneClickedChange: null,
       whatsappOpenedChange: null,
+      classicExposuresChange: null,
+      classicClicksChange: null,
 
       dailyProfileViews: null,
       dailyDirectionsOpened: null,
@@ -434,6 +456,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpened: 8,
       phoneClicked: 3,
       whatsappOpened: 4,
+      classicExposures: null,
+      classicClicks: null,
 
       uniqueVisitorsPrev: 80,
       interestedPeoplePrev: 25,
@@ -442,6 +466,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedPrev: 6,
       phoneClickedPrev: 2,
       whatsappOpenedPrev: 3,
+      classicExposuresPrev: null,
+      classicClicksPrev: null,
 
       uniqueVisitorsChange: 25,
       interestedPeopleChange: 20,
@@ -450,6 +476,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedChange: 33,
       phoneClickedChange: 50,
       whatsappOpenedChange: 33,
+      classicExposuresChange: null,
+      classicClicksChange: null,
 
       dailyProfileViews: null,
       dailyDirectionsOpened: null,
@@ -471,6 +499,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpened: 8,
       phoneClicked: 3,
       whatsappOpened: 4,
+      classicExposures: 20,
+      classicClicks: 5,
 
       uniqueVisitorsPrev: 80,
       interestedPeoplePrev: 25,
@@ -479,6 +509,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedPrev: 6,
       phoneClickedPrev: 2,
       whatsappOpenedPrev: 3,
+      classicExposuresPrev: 10,
+      classicClicksPrev: 2,
 
       uniqueVisitorsChange: 25,
       interestedPeopleChange: 20,
@@ -487,6 +519,8 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       directionsOpenedChange: 33,
       phoneClickedChange: 50,
       whatsappOpenedChange: 33,
+      classicExposuresChange: 100,
+      classicClicksChange: 150,
 
       dailyProfileViews: [DAY(10)],
       dailyDirectionsOpened: [DAY(1)],

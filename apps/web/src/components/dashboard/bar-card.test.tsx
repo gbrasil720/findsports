@@ -54,7 +54,8 @@ function eventoEm(startsAt: Date): NonNullable<DiscoveryCardBar['nextEvent']> {
     startsAt: startsAt.toISOString(),
     sport: { name: 'Futebol', slug: 'futebol' },
     participants: [],
-    participantFreeText: null
+    participantFreeText: null,
+    classic: null
   } as NonNullable<DiscoveryCardBar['nextEvent']>
 }
 

@@ -28,6 +28,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewPhoneClicked: false,
     canViewWhatsappOpened: false,
     canViewDirectionsOpened: false,
+    canViewClassicPlacement: false,
     canViewComparison: true,
     comparison: 'previous_period',
     canViewDailyBreakdown: false,
@@ -40,6 +41,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewPhoneClicked: true,
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
+    canViewClassicPlacement: false,
     canViewComparison: true,
     comparison: 'cross_game',
     canViewDailyBreakdown: false,
@@ -52,6 +54,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewPhoneClicked: true,
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
+    canViewClassicPlacement: true,
     canViewComparison: true,
     comparison: 'advanced',
     canViewDailyBreakdown: true,
@@ -101,6 +104,9 @@ export function canViewEventType(
       return e.canViewWhatsappOpened
     case 'directions_opened':
       return e.canViewDirectionsOpened
+    case 'classic_exposure':
+    case 'classic_click':
+      return e.canViewClassicPlacement
     default:
       return false
   }

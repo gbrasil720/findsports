@@ -33,7 +33,8 @@ function makeBar(id: string, startsAt?: string): SearchBar {
           startsAt,
           sport: { name: 'Futebol', slug: 'futebol' },
           participants: [],
-          participantFreeText: null
+          participantFreeText: null,
+          classic: null
         }
       : undefined
   }

@@ -48,13 +48,15 @@ export async function resolveBarAndPlan(
   }
 }
 
-/** Uma linha por dia, com os quatro tipos já separados. */
+/** Uma linha por dia, com os tipos já separados. */
 type DailyRow = {
   date: string
   profile_view: number
   directions_opened: number
   phone_clicked: number
   whatsapp_opened: number
+  classic_exposure: number
+  classic_click: number
 }
 
 /**
@@ -71,6 +73,8 @@ type RollupDailyRow = {
   directions_opened: number
   phone_clicked: number
   whatsapp_opened: number
+  classic_exposures: number
+  classic_clicks: number
 }
 
 /**
@@ -137,7 +141,9 @@ async function buscarDiasPodados(
       r.profile_views,
       r.directions_opened,
       r.phone_clicked,
-      r.whatsapp_opened
+      r.whatsapp_opened,
+      r.classic_exposures,
+      r.classic_clicks
     FROM bar_commercial_daily_rollup r
     WHERE r.bar_id = ${barId}
       AND r.is_finalized = true
@@ -161,6 +167,8 @@ async function buscarDiasPodados(
       directions_opened: string
       phone_clicked: string
       whatsapp_opened: string
+      classic_exposures: string
+      classic_clicks: string
     }>
   ).map((row) => ({
     date: row.date,
@@ -169,7 +177,9 @@ async function buscarDiasPodados(
     profile_views: Number(row.profile_views),
     directions_opened: Number(row.directions_opened),
     phone_clicked: Number(row.phone_clicked),
-    whatsapp_opened: Number(row.whatsapp_opened)
+    whatsapp_opened: Number(row.whatsapp_opened),
+    classic_exposures: Number(row.classic_exposures),
+    classic_clicks: Number(row.classic_clicks)
   }))
 }
 
@@ -223,7 +233,9 @@ export async function getMyAnalyticsOverview(
         COUNT(*) FILTER (WHERE type = 'profile_view')      AS profile_view,
         COUNT(*) FILTER (WHERE type = 'directions_opened') AS directions_opened,
         COUNT(*) FILTER (WHERE type = 'phone_clicked')     AS phone_clicked,
-        COUNT(*) FILTER (WHERE type = 'whatsapp_opened')   AS whatsapp_opened
+        COUNT(*) FILTER (WHERE type = 'whatsapp_opened')   AS whatsapp_opened,
+        COUNT(*) FILTER (WHERE type = 'classic_exposure')  AS classic_exposure,
+        COUNT(*) FILTER (WHERE type = 'classic_click')      AS classic_click
       FROM eventos
       WHERE ${noPeriodoAtual}
       GROUP BY commercial_day
@@ -233,10 +245,14 @@ export async function getMyAnalyticsOverview(
       COUNT(*) FILTER (WHERE type = 'directions_opened' AND ${noPeriodoAtual})     AS directions_opened,
       COUNT(*) FILTER (WHERE type = 'phone_clicked'     AND ${noPeriodoAtual})     AS phone_clicked,
       COUNT(*) FILTER (WHERE type = 'whatsapp_opened'   AND ${noPeriodoAtual})     AS whatsapp_opened,
+      COUNT(*) FILTER (WHERE type = 'classic_exposure' AND ${noPeriodoAtual})     AS classic_exposures,
+      COUNT(*) FILTER (WHERE type = 'classic_click'    AND ${noPeriodoAtual})     AS classic_clicks,
       COUNT(*) FILTER (WHERE type = 'profile_view'      AND ${noPeriodoAnterior})  AS profile_views_prev,
       COUNT(*) FILTER (WHERE type = 'directions_opened' AND ${noPeriodoAnterior})  AS directions_opened_prev,
       COUNT(*) FILTER (WHERE type = 'phone_clicked'     AND ${noPeriodoAnterior})  AS phone_clicked_prev,
       COUNT(*) FILTER (WHERE type = 'whatsapp_opened'   AND ${noPeriodoAnterior})  AS whatsapp_opened_prev,
+      COUNT(*) FILTER (WHERE type = 'classic_exposure' AND ${noPeriodoAnterior})  AS classic_exposures_prev,
+      COUNT(*) FILTER (WHERE type = 'classic_click'    AND ${noPeriodoAnterior})  AS classic_clicks_prev,
       -- Contagens distintas sobre o período inteiro: quem visita em dois dias
       -- conta uma vez só. É por isso que elas não podem sair da soma dos
       -- rollups diários (ver comentário abaixo).
@@ -255,10 +271,14 @@ export async function getMyAnalyticsOverview(
   let directionsOpened = n('directions_opened')
   let phoneClicked = n('phone_clicked')
   let whatsappOpened = n('whatsapp_opened')
+  let classicExposures = n('classic_exposures')
+  let classicClicks = n('classic_clicks')
   let profileViewsPrev = n('profile_views_prev')
   let directionsOpenedPrev = n('directions_opened_prev')
   let phoneClickedPrev = n('phone_clicked_prev')
   let whatsappOpenedPrev = n('whatsapp_opened_prev')
+  let classicExposuresPrev = n('classic_exposures_prev')
+  let classicClicksPrev = n('classic_clicks_prev')
   let uniqueVisitors = n('unique_visitors')
   let uniqueVisitorsPrev = n('unique_visitors_prev')
   let interestedPeople = n('interested_people')
@@ -286,6 +306,8 @@ export async function getMyAnalyticsOverview(
         directionsOpened += dia.directions_opened
         phoneClicked += dia.phone_clicked
         whatsappOpened += dia.whatsapp_opened
+        classicExposures += dia.classic_exposures
+        classicClicks += dia.classic_clicks
         uniqueVisitors += dia.unique_visitors
         interestedPeople += dia.interested_people
       }
@@ -294,6 +316,8 @@ export async function getMyAnalyticsOverview(
         directionsOpenedPrev += dia.directions_opened
         phoneClickedPrev += dia.phone_clicked
         whatsappOpenedPrev += dia.whatsapp_opened
+        classicExposuresPrev += dia.classic_exposures
+        classicClicksPrev += dia.classic_clicks
         uniqueVisitorsPrev += dia.unique_visitors
         interestedPeoplePrev += dia.interested_people
       }
@@ -303,7 +327,9 @@ export async function getMyAnalyticsOverview(
         profile_view: dia.profile_views,
         directions_opened: dia.directions_opened,
         phone_clicked: dia.phone_clicked,
-        whatsapp_opened: dia.whatsapp_opened
+        whatsapp_opened: dia.whatsapp_opened,
+        classic_exposure: dia.classic_exposures,
+        classic_click: dia.classic_clicks
       })
     }
   }
@@ -324,6 +350,8 @@ export async function getMyAnalyticsOverview(
     directionsOpened,
     phoneClicked,
     whatsappOpened,
+    classicExposures,
+    classicClicks,
     uniqueVisitorsPrev,
     interestedPeoplePrev,
     highIntentActionsPrev,
@@ -331,6 +359,8 @@ export async function getMyAnalyticsOverview(
     directionsOpenedPrev,
     phoneClickedPrev,
     whatsappOpenedPrev,
+    classicExposuresPrev,
+    classicClicksPrev,
     uniqueVisitorsChange: pctChange(uniqueVisitors, uniqueVisitorsPrev),
     interestedPeopleChange: pctChange(interestedPeople, interestedPeoplePrev),
     highIntentActionsChange: pctChange(
@@ -341,6 +371,8 @@ export async function getMyAnalyticsOverview(
     directionsOpenedChange: pctChange(directionsOpened, directionsOpenedPrev),
     phoneClickedChange: pctChange(phoneClicked, phoneClickedPrev),
     whatsappOpenedChange: pctChange(whatsappOpened, whatsappOpenedPrev),
+    classicExposuresChange: pctChange(classicExposures, classicExposuresPrev),
+    classicClicksChange: pctChange(classicClicks, classicClicksPrev),
     dailyProfileViews,
     dailyDirectionsOpened,
     dailyPhoneClicked,

@@ -1,5 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 
+import { classicRuleLateral, currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -70,7 +71,7 @@ export async function executarBuscaPorNota(
     : sql``
 
   const results = await db.execute(sql`
-    WITH ranked AS MATERIALIZED (
+    WITH ${currentClassicRulesCte}, ranked AS MATERIALIZED (
       SELECT
         b.id,
         b.name,
@@ -120,6 +121,8 @@ export async function executarBuscaPorNota(
       nxt.next_sport_name,
       nxt.next_sport_slug,
       nxt.next_participant_free_text,
+      nxt.next_classic_rule_version,
+      nxt.next_classic_rule_reason,
       COALESCE(parts.next_participants, '[]'::json) AS next_participants
     FROM ranked r
     JOIN LATERAL (
@@ -138,9 +141,12 @@ export async function executarBuscaPorNota(
         e.starts_at AS next_event_starts_at,
         s.name AS next_sport_name,
         s.slug AS next_sport_slug,
-        e.participant_free_text AS next_participant_free_text
+        e.participant_free_text AS next_participant_free_text,
+        classic.classic_rule_version AS next_classic_rule_version,
+        classic.classic_rule_reason AS next_classic_rule_reason
       FROM event e
       JOIN sport s ON s.id = e.sport_id
+      ${classicRuleLateral(sql`e`)}
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
         ${sportFilter}

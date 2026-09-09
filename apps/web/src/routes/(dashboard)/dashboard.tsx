@@ -31,6 +31,7 @@ import {
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
+import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
@@ -196,6 +197,32 @@ function FanDashboard() {
     [resultBars, favoriteIds, favoritesOnly, gamesTodayOnly]
   )
   const mapBars = toMapBars(displayedBars)
+  const classicPlacementGuaranteed =
+    sort === 'relevance' &&
+    !primaryQuery.isFetching &&
+    primaryQuery.data !== undefined &&
+    resultState.status === 'ready' &&
+    !resultState.fallback
+
+  useEffect(() => {
+    if (!classicPlacementGuaranteed) return
+
+    for (const bar of displayedBars) {
+      if (
+        bar.plan !== 'elite' ||
+        !('nextEvent' in bar) ||
+        !bar.nextEvent?.classic
+      ) {
+        continue
+      }
+
+      trackCommercialEvent({
+        pubId: bar.id,
+        type: 'classic_exposure',
+        sourceEventId: bar.nextEvent.id
+      })
+    }
+  }, [classicPlacementGuaranteed, displayedBars])
 
   const favoritesQueryKey = trpc.pubs.getFavorites.queryKey()
   const clearOverride = (barId: string, expected: boolean) => {
@@ -416,6 +443,7 @@ function FanDashboard() {
         favoritePending={
           favoriteMutation.isPending || unfavoriteMutation.isPending
         }
+        classicPlacementGuaranteed={classicPlacementGuaranteed}
         onHover={setHoveredId}
         onFavorite={toggleFavorite}
         onRequestLocation={requestLocation}
@@ -430,6 +458,18 @@ function FanDashboard() {
             source: 'map',
             bar_plan: bar?.plan
           })
+          if (
+            classicPlacementGuaranteed &&
+            bar?.plan === 'elite' &&
+            'nextEvent' in bar &&
+            bar.nextEvent?.classic
+          ) {
+            trackCommercialEvent({
+              pubId: bar.id,
+              type: 'classic_click',
+              sourceEventId: bar.nextEvent.id
+            })
+          }
           navigate({ to: '/pub/$pubId', params: { pubId: barId } })
         }}
       />

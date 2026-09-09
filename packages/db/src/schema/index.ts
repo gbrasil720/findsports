@@ -1,5 +1,6 @@
 export * from './analytics'
 export * from './auth'
+export * from './classic'
 export * from './config'
 export * from './platform'
 export * from './rating'
