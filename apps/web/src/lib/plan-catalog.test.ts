@@ -6,6 +6,7 @@ import {
   formatPerGame,
   getAnalyticsEntitlement,
   getPlan,
+  getPlanExitLink,
   getPlanSelectionState,
   isDowngrade,
   PLAN_CATALOG,
@@ -108,7 +109,7 @@ describe('Tier ordering', () => {
 })
 
 describe('Plan selection state', () => {
-  test('keeps every plan contractable without a current plan', () => {
+  test('mantém todos os planos contratáveis sem plano vigente', () => {
     for (const selected of ['starter', 'pro', 'elite'] as const) {
       expect(getPlanSelectionState(null, selected)).toEqual({
         isDowngrade: false,
@@ -117,7 +118,7 @@ describe('Plan selection state', () => {
     }
   })
 
-  test('marks only the active plan as the same plan', () => {
+  test('marca apenas o plano vigente como plano atual', () => {
     for (const current of ['starter', 'pro', 'elite'] as const) {
       expect(getPlanSelectionState(current, current)).toEqual({
         isDowngrade: false,
@@ -126,8 +127,24 @@ describe('Plan selection state', () => {
     }
   })
 
-  test('allows re-contracting a plan after its subscription becomes inactive', () => {
+  test('permite recontratar após a assinatura ficar inativa', () => {
     expect(getPlanSelectionState(null, 'pro').isSamePlan).toBe(false)
+  })
+})
+
+describe('Saída da tela de planos', () => {
+  test('mostra Ver planos depois e leva ao admin sem plano vigente', () => {
+    expect(getPlanExitLink(false)).toEqual({
+      label: 'Ver planos depois',
+      to: '/admin'
+    })
+  })
+
+  test('mostra Voltar e leva ao billing com plano vigente', () => {
+    expect(getPlanExitLink(true)).toEqual({
+      label: 'Voltar',
+      to: '/admin/billing'
+    })
   })
 })
 

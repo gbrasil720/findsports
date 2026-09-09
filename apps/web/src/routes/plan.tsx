@@ -10,6 +10,7 @@ import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
 import {
+  getPlanExitLink,
   getPlanSelectionState,
   PLAN_CATALOG,
   type Plan
@@ -55,6 +56,7 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
+  const exitLink = getPlanExitLink(hasActivePlan)
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
@@ -225,11 +227,11 @@ function PlanSelection() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          to="/admin"
+          to={exitLink.to}
           className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-          {hasActivePlan ? 'Voltar' : 'Ver planos depois'}
+          {exitLink.label}
         </Link>
 
         <button

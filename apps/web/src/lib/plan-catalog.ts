@@ -176,6 +176,12 @@ export function getPlanSelectionState(
   }
 }
 
+export function getPlanExitLink(hasActivePlan: boolean) {
+  return hasActivePlan
+    ? { label: 'Voltar', to: '/admin/billing' as const }
+    : { label: 'Ver planos depois', to: '/admin' as const }
+}
+
 export function formatHistoryWindow(a: PlanAnalytics): string {
   if (a.historyDays === null) return 'Histórico completo'
   if (a.historyDays >= 365) return '12 meses'

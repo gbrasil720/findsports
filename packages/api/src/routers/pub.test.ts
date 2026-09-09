@@ -14,13 +14,13 @@ describe('getCurrentPlan', () => {
     ['starter', 'starter'],
     ['pro', 'pro'],
     ['elite', 'elite']
-  ] as const)('keeps an active %s plan', (plan, expected) => {
+  ] as const)('considera o plano ativo %s como vigente', (plan, expected) => {
     expect(
       getCurrentPlan({ plan, status: 'active', currentPeriodEnd: null }, now)
     ).toBe(expected)
   })
 
-  test('does not treat a trial without an end as a current plan', () => {
+  test('não considera trial sem fim como plano vigente', () => {
     expect(
       getCurrentPlan(
         { plan: 'pro', status: 'trialing', currentPeriodEnd: null },
@@ -29,7 +29,7 @@ describe('getCurrentPlan', () => {
     ).toBeNull()
   })
 
-  test('treats a future trial end as a current plan', () => {
+  test('considera trial com fim futuro como plano vigente', () => {
     expect(
       getCurrentPlan(
         {
@@ -42,7 +42,7 @@ describe('getCurrentPlan', () => {
     ).toBe('pro')
   })
 
-  test('does not treat an expired trial as a current plan', () => {
+  test('não considera trial expirado como plano vigente', () => {
     expect(
       getCurrentPlan(
         {
@@ -59,13 +59,13 @@ describe('getCurrentPlan', () => {
     'past_due',
     'inactive',
     'cancelled'
-  ] as const)('does not treat %s as a current plan', (status) => {
+  ] as const)('não considera o status %s como plano vigente', (status) => {
     expect(
       getCurrentPlan({ plan: 'pro', status, currentPeriodEnd: null }, now)
     ).toBeNull()
   })
 
-  test('returns no plan when there is no subscription', () => {
+  test('retorna sem plano quando não há assinatura', () => {
     expect(getCurrentPlan(null, now)).toBeNull()
   })
 })
