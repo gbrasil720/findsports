@@ -27,6 +27,7 @@ type Props = {
   hoveredId: string | null
   favoriteIds: ReadonlySet<string>
   favoritePending: boolean
+  classicPlacementGuaranteed: boolean
   onHover: (barId: string | null) => void
   onFavorite: (barId: string) => void
   onRequestLocation: () => void
@@ -209,6 +210,7 @@ function ResultContent(props: Props) {
       isHovered={props.hoveredId === bar.id}
       isFavorite={props.favoriteIds.has(bar.id)}
       favoritePending={props.favoritePending}
+      classicPlacementGuaranteed={props.classicPlacementGuaranteed}
       onMouseEnter={() => props.onHover(bar.id)}
       onMouseLeave={() => props.onHover(null)}
       onFocus={() => props.onHover(bar.id)}

@@ -1,8 +1,11 @@
 import { db, sql } from '@findsports_oficial/db'
 
+import { classicRuleLateral, currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
+import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
   type LinhaBusca,
+  legacySearchCursorSchema,
   montarFiltrosBusca,
   montarPaginaBusca,
   type SearchInput,
@@ -43,10 +46,9 @@ const PLAN_TIERS = [
  * — filtro que não casa com nada, obrigando as três camadas a varrer tudo —
  * ficou em 23 ms, ou seja, empata com o plano antigo em vez de regredir.
  *
- * Resultado idêntico ao anterior: mesmos filtros, mesma ordem, mesmo
- * cursor — verificado linha a linha contra a query antiga. Campeonato ainda
- * casa pelo nome do bar na qualificação e só pelo campeonato no detalhe do
- * próximo jogo.
+ * Preserva os mesmos filtros e a troca segura para o caminho linear; o cursor
+ * de relevância agora é v2 porque inclui clássico e qualidade. Campeonato
+ * ainda casa pelo nome do bar na qualificação e no próximo jogo selecionado.
  */
 export async function executarBuscaEmCamadas(
   input: SearchInput
@@ -56,7 +58,6 @@ export async function executarBuscaEmCamadas(
     origin,
     radiusMeters,
     sportFilter,
-    champFilter,
     dateFilter,
     champBarFilter,
     amenityFilter
@@ -66,7 +67,11 @@ export async function executarBuscaEmCamadas(
   const champBarFilterR = champBarFilter(sql`r.name`)
   const amenityFilterB = amenityFilter(sql`b`)
 
-  const keyset = cursor ? decodeCursor(cursor, searchCursorSchema) : null
+  const keyset = cursor
+    ? decodeCursor(cursor, searchCursorSchema, {
+        restartOn: legacySearchCursorSchema
+      })
+    : null
 
   // Cursor apontando para um plano que não existe mais (ou forjado): acabou a
   // paginação. Sem isso a lista de camadas ficaria vazia e o UNION ALL sairia
@@ -81,12 +86,23 @@ export async function executarBuscaEmCamadas(
   const tiers = PLAN_TIERS.filter(
     (tier) => !keyset || tier.rank >= keyset.p
   ).map((tier) => {
+    const classicRank =
+      tier.rank === 1
+        ? sql`CASE WHEN agg.classic_rule_id IS NULL THEN 1 ELSE 0 END`
+        : sql`1`
+    const qualityRank = sql`CASE
+      WHEN b.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -b.rating_score
+      ELSE 0
+    END`
+
     // Só a camada onde o cursor parou continua de onde parou. As seguintes
     // começam do zero, porque toda linha delas já é maior na primeira chave.
     const tierKeyset =
       keyset && tier.rank === keyset.p
-        ? sql`AND (agg.next_event_at, ST_Distance(b.geo, ${origin}) / 1000, b.id) >
-                (${keyset.e}::timestamp, ${keyset.d}::float8, ${keyset.i}::text)`
+        ? sql`AND (${classicRank}, ${qualityRank}, agg.next_event_at,
+                   ST_Distance(b.geo, ${origin}) / 1000, b.id) >
+                (${keyset.c}::int, ${keyset.q}::float8, ${keyset.e}::timestamp,
+                 ${keyset.d}::float8, ${keyset.i}::text)`
         : sql``
 
     return sql`(
@@ -103,44 +119,74 @@ export async function executarBuscaEmCamadas(
         b.plan,
         b.rating_count,
         b.rating_positive,
+        ${classicRank} AS cursor_classic_rank,
+        ${qualityRank} AS cursor_quality_rank,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
-        to_char(agg.next_event_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_next_event_at
+        to_char(agg.next_event_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_next_event_at,
+        agg.next_event_id,
+        agg.next_championship,
+        agg.next_event_starts_at,
+        agg.next_sport_name,
+        agg.next_sport_slug,
+        agg.next_participant_free_text,
+        agg.next_classic_rule_version,
+        agg.next_classic_rule_reason
       FROM bar b
       JOIN LATERAL (
-        SELECT MIN(e.starts_at) AS next_event_at
+        SELECT
+          e.id AS next_event_id,
+          e.championship AS next_championship,
+          e.starts_at AS next_event_at,
+          e.starts_at AS next_event_starts_at,
+          s.name AS next_sport_name,
+          s.slug AS next_sport_slug,
+          e.participant_free_text AS next_participant_free_text,
+          classic.classic_rule_version AS next_classic_rule_version,
+          classic.classic_rule_reason AS next_classic_rule_reason,
+          classic.classic_rule_id
         FROM event e
+        JOIN sport s ON s.id = e.sport_id
+        ${classicRuleLateral(sql`e`)}
         WHERE e.bar_id = b.id
           AND e.starts_at >= NOW()
           ${sportFilter}
           ${champBarFilterB}
           ${dateFilter}
+        ORDER BY e.starts_at ASC, e.id ASC
+        LIMIT 1
       ) agg ON agg.next_event_at IS NOT NULL
       WHERE b.is_active
         AND b.plan = ${tier.plan}
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
         ${tierKeyset}
-      ORDER BY agg.next_event_at ASC, distance_km ASC, b.id ASC
+      ORDER BY
+        ${classicRank} ASC,
+        ${qualityRank} ASC,
+        agg.next_event_at ASC,
+        distance_km ASC,
+        b.id ASC
       LIMIT ${limit}
     )`
   })
 
   const results = await db.execute(sql`
-    WITH ranked AS MATERIALIZED (
+    WITH ${currentClassicRulesCte}, ranked AS MATERIALIZED (
       SELECT * FROM (
         ${sql.join(tiers, sql` UNION ALL `)}
       ) tiers
+      ORDER BY
+        cursor_plan_rank,
+        cursor_classic_rank,
+        cursor_quality_rank,
+        cursor_next_event_at,
+        distance_km,
+        id
       LIMIT ${limit}
     )
     SELECT
       r.*,
       cnt.event_count,
-      nxt.next_event_id,
-      nxt.next_championship,
-      nxt.next_event_starts_at,
-      nxt.next_sport_name,
-      nxt.next_sport_slug,
-      nxt.next_participant_free_text,
       COALESCE(parts.next_participants, '[]'::json) AS next_participants
     FROM ranked r
     JOIN LATERAL (
@@ -153,28 +199,10 @@ export async function executarBuscaEmCamadas(
         ${dateFilter}
     ) cnt ON true
     LEFT JOIN LATERAL (
-      SELECT
-        e.id AS next_event_id,
-        e.championship AS next_championship,
-        e.starts_at AS next_event_starts_at,
-        s.name AS next_sport_name,
-        s.slug AS next_sport_slug,
-        e.participant_free_text AS next_participant_free_text
-      FROM event e
-      JOIN sport s ON s.id = e.sport_id
-      WHERE e.bar_id = r.id
-        AND e.starts_at >= NOW()
-        ${sportFilter}
-        ${champFilter}
-        ${dateFilter}
-      ORDER BY e.starts_at ASC
-      LIMIT 1
-    ) nxt ON true
-    LEFT JOIN LATERAL (
       SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants
       FROM event_participants ep
       JOIN team t ON t.id = ep.team_id
-      WHERE ep.event_id = nxt.next_event_id
+      WHERE ep.event_id = r.next_event_id
     ) parts ON true
   `)
 

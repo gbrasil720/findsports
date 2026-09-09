@@ -21,7 +21,9 @@ export const barCommercialEventTypeEnum = pgEnum('bar_commercial_event_type', [
   'profile_view',
   'directions_opened',
   'phone_clicked',
-  'whatsapp_opened'
+  'whatsapp_opened',
+  'classic_exposure',
+  'classic_click'
 ])
 
 /* ------------------------------------------------------------------ */
@@ -46,6 +48,12 @@ export const barCommercialEvent = pgTable(
     sourceEventId: text('source_event_id'),
     sourceEventChampionship: text('source_event_championship'),
     sourceEventStartsAt: timestamp('source_event_starts_at'),
+    // Snapshots, not foreign keys: rule versions are append-only, but the
+    // measurement must remain explainable even if editorial data is repaired.
+    classicRuleId: text('classic_rule_id'),
+    classicRuleVersionId: text('classic_rule_version_id'),
+    classicRuleVersion: integer('classic_rule_version'),
+    classicRuleReason: text('classic_rule_reason'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
     commercialDay: date('commercial_day').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -107,6 +115,8 @@ export const barCommercialDailyRollup = pgTable(
     directionsOpened: integer('directions_opened').default(0).notNull(),
     phoneClicked: integer('phone_clicked').default(0).notNull(),
     whatsappOpened: integer('whatsapp_opened').default(0).notNull(),
+    classicExposures: integer('classic_exposures').default(0).notNull(),
+    classicClicks: integer('classic_clicks').default(0).notNull(),
     isFinalized: boolean('is_finalized').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
@@ -187,6 +197,8 @@ export const barCommercialMonthlyRollup = pgTable(
     directionsOpened: integer('directions_opened').default(0).notNull(),
     phoneClicked: integer('phone_clicked').default(0).notNull(),
     whatsappOpened: integer('whatsapp_opened').default(0).notNull(),
+    classicExposures: integer('classic_exposures').default(0).notNull(),
+    classicClicks: integer('classic_clicks').default(0).notNull(),
     isFinalized: boolean('is_finalized').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()

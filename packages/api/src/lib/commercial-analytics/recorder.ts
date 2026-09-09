@@ -2,6 +2,7 @@ import { db, sql } from '@findsports_oficial/db'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import type { Context } from '../../context'
+import { classicRuleMatches, currentClassicRulesCte } from '../classics'
 import { getCommercialDay } from './commercial-day'
 import type { CommercialEventType } from './types'
 
@@ -62,6 +63,18 @@ export const RECORD_FAILURES = {
   rate_limited: {
     code: 'TOO_MANY_REQUESTS',
     message: 'Muitas requisições. Tente novamente mais tarde.'
+  },
+  classic_event_required: {
+    code: 'BAD_REQUEST',
+    message: 'Exposição de clássico exige um evento de origem'
+  },
+  not_classic_event: {
+    code: 'BAD_REQUEST',
+    message: 'Evento não é um clássico editorial'
+  },
+  classic_not_elite: {
+    code: 'BAD_REQUEST',
+    message: 'A posição garantida nos clássicos é exclusiva do Elite'
   }
 } as const satisfies Record<
   string,
@@ -163,6 +176,8 @@ export async function recordCommercialEvent(
   const now = new Date()
   const commercialDay = getCommercialDay(now)
   const isHighIntent = HIGH_INTENT_TYPES.includes(eventType)
+  const isClassicPlacement =
+    eventType === 'classic_exposure' || eventType === 'classic_click'
 
   // Só faz sentido perguntar pela estreia de intenção quando o próprio
   // evento é de intenção; caso contrário o incremento é sempre zero.
@@ -220,10 +235,35 @@ export async function recordCommercialEvent(
     `)
 
     return tx.execute(sql`
-    WITH bar_row AS (
-      SELECT b.id, b.is_active, b.phone, b.phone_accepts_whatsapp
+    WITH ${currentClassicRulesCte},
+    bar_row AS (
+      SELECT b.id, b.is_active, b.plan, b.phone, b.phone_accepts_whatsapp
       FROM bar b
       WHERE b.id = ${pubId}
+    ),
+    source_event AS (
+      SELECT
+        e.id,
+        e.championship,
+        e.starts_at,
+        classic.classic_rule_id,
+        classic.classic_rule_version_id,
+        classic.classic_rule_version,
+        classic.classic_rule_reason
+      FROM event e
+      LEFT JOIN LATERAL (
+        SELECT
+          cr.classic_rule_id,
+          cr.classic_rule_version_id,
+          cr.classic_rule_version,
+          cr.classic_rule_reason
+        FROM current_classic_rules cr
+        WHERE ${classicRuleMatches(sql`e`)}
+        ORDER BY cr.rule_type, cr.classic_rule_id
+        LIMIT 1
+      ) classic ON true
+      WHERE e.id = ${sourceEventId ?? null}
+        AND e.bar_id = ${pubId}
     ),
     checks AS (
       SELECT CASE
@@ -239,6 +279,14 @@ export async function recordCommercialEvent(
             SELECT 1 FROM event e
             WHERE e.id = ${sourceEventId ?? null} AND e.bar_id = ${pubId}
           ) THEN 'event_mismatch'
+        WHEN ${isClassicPlacement} AND ${sourceEventId ?? null}::text IS NULL
+          THEN 'classic_event_required'
+        WHEN ${isClassicPlacement}
+          AND NOT EXISTS (SELECT 1 FROM source_event WHERE classic_rule_id IS NOT NULL)
+          THEN 'not_classic_event'
+        WHEN ${isClassicPlacement}
+          AND (SELECT b.plan FROM bar_row b) <> 'elite'
+          THEN 'classic_not_elite'
         ${phoneCheck}
         ${whatsappCheck}
         WHEN (
@@ -273,13 +321,19 @@ export async function recordCommercialEvent(
     inserted AS (
       INSERT INTO bar_commercial_event (
         id, bar_id, actor_user_id, type, source_event_id,
-        occurred_at, commercial_day, created_at
+        source_event_championship, source_event_starts_at,
+        classic_rule_id, classic_rule_version_id, classic_rule_version,
+        classic_rule_reason, occurred_at, commercial_day, created_at
       )
       SELECT
         ${crypto.randomUUID()}, ${pubId}, ${actorUserId}, ${eventType},
         ${sourceEventId ?? null},
+        source_event.championship, source_event.starts_at,
+        source_event.classic_rule_id, source_event.classic_rule_version_id,
+        source_event.classic_rule_version, source_event.classic_rule_reason,
         ${now}, ${commercialDay}::date, ${now}
       FROM checks c
+      LEFT JOIN source_event ON true
       WHERE c.reason = 'ok'
       ON CONFLICT (bar_id, actor_user_id, type, commercial_day, source_event_id) DO NOTHING
       RETURNING id
@@ -289,6 +343,7 @@ export async function recordCommercialEvent(
         bar_id, commercial_day,
         unique_visitors, interested_people, high_intent_actions,
         profile_views, directions_opened, phone_clicked, whatsapp_opened,
+        classic_exposures, classic_clicks,
         is_finalized, created_at, updated_at
       )
       SELECT
@@ -300,6 +355,8 @@ export async function recordCommercialEvent(
         ${eventType === 'directions_opened' ? 1 : 0}::integer,
         ${eventType === 'phone_clicked' ? 1 : 0}::integer,
         ${eventType === 'whatsapp_opened' ? 1 : 0}::integer,
+        ${eventType === 'classic_exposure' ? 1 : 0}::integer,
+        ${eventType === 'classic_click' ? 1 : 0}::integer,
         false, NOW(), NOW()
       FROM prior p
       -- Só contabiliza se o evento bruto foi de fato inserido; em conflito
@@ -313,6 +370,8 @@ export async function recordCommercialEvent(
         directions_opened = bar_commercial_daily_rollup.directions_opened + EXCLUDED.directions_opened,
         phone_clicked = bar_commercial_daily_rollup.phone_clicked + EXCLUDED.phone_clicked,
         whatsapp_opened = bar_commercial_daily_rollup.whatsapp_opened + EXCLUDED.whatsapp_opened,
+        classic_exposures = bar_commercial_daily_rollup.classic_exposures + EXCLUDED.classic_exposures,
+        classic_clicks = bar_commercial_daily_rollup.classic_clicks + EXCLUDED.classic_clicks,
         is_finalized = false,
         updated_at = NOW()
     ),
@@ -432,6 +491,7 @@ async function finalizarDiasFechados(): Promise<number> {
       bar_id, commercial_day,
       unique_visitors, interested_people, high_intent_actions,
       profile_views, directions_opened, phone_clicked, whatsapp_opened,
+      classic_exposures, classic_clicks,
       is_finalized, created_at, updated_at
     )
     SELECT
@@ -444,6 +504,8 @@ async function finalizarDiasFechados(): Promise<number> {
       COUNT(*) FILTER (WHERE type = 'directions_opened'),
       COUNT(*) FILTER (WHERE type = 'phone_clicked'),
       COUNT(*) FILTER (WHERE type = 'whatsapp_opened'),
+      COUNT(*) FILTER (WHERE type = 'classic_exposure'),
+      COUNT(*) FILTER (WHERE type = 'classic_click'),
       true, NOW(), NOW()
     FROM bar_commercial_event
     WHERE commercial_day < CURRENT_DATE
@@ -456,6 +518,8 @@ async function finalizarDiasFechados(): Promise<number> {
       directions_opened = EXCLUDED.directions_opened,
       phone_clicked = EXCLUDED.phone_clicked,
       whatsapp_opened = EXCLUDED.whatsapp_opened,
+      classic_exposures = EXCLUDED.classic_exposures,
+      classic_clicks = EXCLUDED.classic_clicks,
       is_finalized = true,
       updated_at = NOW()
     WHERE bar_commercial_daily_rollup.is_finalized = false

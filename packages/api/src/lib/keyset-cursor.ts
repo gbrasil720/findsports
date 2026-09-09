@@ -35,28 +35,50 @@ export function encodeCursor(payload: Record<string, unknown>): string {
   return toBase64Url(JSON.stringify(payload))
 }
 
+type DecodeCursorOptions = {
+  restartOn: z.ZodType
+}
+
+function invalidCursor(): never {
+  throw new TRPCError({
+    code: 'BAD_REQUEST',
+    message: 'Cursor de paginação inválido.'
+  })
+}
+
+function parseCursor(cursor: string): unknown {
+  try {
+    return JSON.parse(fromBase64Url(cursor))
+  } catch {
+    return invalidCursor()
+  }
+}
+
 /**
  * Decodifica e valida um cursor. Um cursor corrompido é erro do cliente, não
  * um "começar do zero" silencioso — devolver a primeira página nesse caso
  * esconderia o bug e faria o consumidor repetir resultados para sempre.
+ *
+ * `restartOn` é reservado para versões antigas conhecidas: elas não são
+ * corrupção, mas também não podem continuar numa ordem que mudou.
  */
-export function decodeCursor<T>(cursor: string, schema: z.ZodType<T>): T {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(fromBase64Url(cursor))
-  } catch {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Cursor de paginação inválido.'
-    })
-  }
+export function decodeCursor<T>(cursor: string, schema: z.ZodType<T>): T
+export function decodeCursor<T>(
+  cursor: string,
+  schema: z.ZodType<T>,
+  options: DecodeCursorOptions
+): T | null
+export function decodeCursor<T>(
+  cursor: string,
+  schema: z.ZodType<T>,
+  options?: DecodeCursorOptions
+): T | null {
+  const parsed = parseCursor(cursor)
 
   const result = schema.safeParse(parsed)
   if (!result.success) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Cursor de paginação inválido.'
-    })
+    if (options?.restartOn.safeParse(parsed).success) return null
+    return invalidCursor()
   }
 
   return result.data

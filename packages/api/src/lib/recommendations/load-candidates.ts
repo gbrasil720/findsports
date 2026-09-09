@@ -115,6 +115,7 @@ export async function loadRecommendationCandidates(input: {
       JOIN event e ON e.id = ce.source_event_id
       CROSS JOIN reset_boundary rb
       WHERE ce.actor_user_id = ${input.userId}
+        AND ce.type <> 'classic_exposure'
         AND ce.occurred_at >= rb.starts_at
     ),
     recent_teams AS MATERIALIZED (
@@ -123,6 +124,7 @@ export async function loadRecommendationCandidates(input: {
       JOIN event_participants ep ON ep.event_id = ce.source_event_id
       CROSS JOIN reset_boundary rb
       WHERE ce.actor_user_id = ${input.userId}
+        AND ce.type <> 'classic_exposure'
         AND ce.occurred_at >= rb.starts_at
     ),
     spatial_candidates AS MATERIALIZED (
@@ -154,6 +156,7 @@ export async function loadRecommendationCandidates(input: {
         FROM bar_commercial_event ce
         CROSS JOIN reset_boundary rb
         WHERE ce.actor_user_id = ${input.userId}
+          AND ce.type <> 'classic_exposure'
           AND ce.occurred_at >= rb.starts_at
         GROUP BY ce.bar_id
         UNION ALL
@@ -363,6 +366,7 @@ export async function loadRecommendationCandidates(input: {
         CROSS JOIN reset_boundary rb
         WHERE ce.actor_user_id = ${input.userId}
           AND ce.bar_id = eligible.id
+          AND ce.type <> 'classic_exposure'
           AND ce.occurred_at >= rb.starts_at
         UNION ALL
         SELECT 'positive_rating' AS kind, r.updated_at AS occurred_at

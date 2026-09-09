@@ -2,7 +2,8 @@
  * Commercial analytics domain types.
  *
  * Canonical event types per spec:
- *   profile_view, directions_opened, phone_clicked, whatsapp_opened
+ *   profile_view, directions_opened, phone_clicked, whatsapp_opened,
+ *   classic_exposure, classic_click
  */
 
 // ---------------------------------------------------------------------------
@@ -13,7 +14,9 @@ export const COMMERCIAL_EVENT_TYPES = [
   'profile_view',
   'directions_opened',
   'phone_clicked',
-  'whatsapp_opened'
+  'whatsapp_opened',
+  'classic_exposure',
+  'classic_click'
 ] as const
 export type CommercialEventType = (typeof COMMERCIAL_EVENT_TYPES)[number]
 
@@ -79,6 +82,8 @@ export interface AnalyticsOverview {
   directionsOpened: number
   phoneClicked: number
   whatsappOpened: number
+  classicExposures: number
+  classicClicks: number
 
   // Comparison (previous period)
   uniqueVisitorsPrev: number
@@ -88,6 +93,8 @@ export interface AnalyticsOverview {
   directionsOpenedPrev: number
   phoneClickedPrev: number
   whatsappOpenedPrev: number
+  classicExposuresPrev: number
+  classicClicksPrev: number
 
   // Percentage changes
   uniqueVisitorsChange: number | null
@@ -97,6 +104,8 @@ export interface AnalyticsOverview {
   directionsOpenedChange: number | null
   phoneClickedChange: number | null
   whatsappOpenedChange: number | null
+  classicExposuresChange: number | null
+  classicClicksChange: number | null
 
   // Daily time-series (current period)
   dailyProfileViews: DailyDataPoint[]
@@ -128,6 +137,8 @@ export interface AnalyticsOverviewResponse {
   directionsOpened: number | null
   phoneClicked: number | null
   whatsappOpened: number | null
+  classicExposures: number | null
+  classicClicks: number | null
 
   // Comparison (previous period) — `canViewComparison`, plus the metric
   // entitlement for channel-specific comparisons
@@ -138,6 +149,8 @@ export interface AnalyticsOverviewResponse {
   directionsOpenedPrev: number | null
   phoneClickedPrev: number | null
   whatsappOpenedPrev: number | null
+  classicExposuresPrev: number | null
+  classicClicksPrev: number | null
 
   // Percentage changes
   uniqueVisitorsChange: number | null
@@ -147,6 +160,8 @@ export interface AnalyticsOverviewResponse {
   directionsOpenedChange: number | null
   phoneClickedChange: number | null
   whatsappOpenedChange: number | null
+  classicExposuresChange: number | null
+  classicClicksChange: number | null
 
   // Daily time-series (current period) — `canViewDailyBreakdown`, plus the
   // metric entitlement for channel-specific series
@@ -266,6 +281,7 @@ export interface AnalyticsEntitlements {
   canViewPhoneClicked: boolean
   canViewWhatsappOpened: boolean
   canViewDirectionsOpened: boolean
+  canViewClassicPlacement: boolean
   canViewComparison: boolean
   /** Comparison capability sold by the plan; the server is authoritative. */
   comparison: AnalyticsComparisonMode

@@ -131,7 +131,7 @@ export const PLAN_CATALOG: Plan[] = [
       'Destaque na busca por time e liga',
       'Pin destacado no mapa',
       'Suporte prioritário',
-      'Topo da lista nos clássicos',
+      'Topo na busca por relevância quando há um clássico',
       'Banner patrocinado na home',
       'Histórico completo',
       'Analytics completa por jogo',

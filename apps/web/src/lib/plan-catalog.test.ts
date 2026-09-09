@@ -182,6 +182,10 @@ describe('Feature text consistency', () => {
 
   test('elite includes analytics features from spec', () => {
     const elite = getPlan('elite')
+    expect(elite.features).toContain(
+      'Topo na busca por relevância quando há um clássico'
+    )
+    expect(elite.features).not.toContain('Topo da lista nos clássicos')
     expect(elite.features).toContain('Histórico completo')
     expect(elite.features).toContain('Inteligência avançada')
   })

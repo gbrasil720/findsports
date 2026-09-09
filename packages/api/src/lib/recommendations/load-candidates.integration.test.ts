@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
+import { barCommercialEvent } from '@findsports_oficial/db/schema/analytics'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
@@ -113,6 +114,15 @@ integrationTest(
         championship: 'Copa de recomendação',
         startsAt: new Date(now.getTime() + 86_400_000)
       })
+      await db.insert(barCommercialEvent).values({
+        id: crypto.randomUUID(),
+        barId: candidateId,
+        actorUserId: fanId,
+        type: 'classic_exposure',
+        sourceEventId: eventId,
+        occurredAt: now,
+        commercialDay: now.toISOString().slice(0, 10)
+      })
 
       const candidates = await loadRecommendationCandidates({
         userId: fanId,
@@ -121,6 +131,7 @@ integrationTest(
         now
       })
       expect(candidates.map((item) => item.id)).toEqual([candidateId])
+      expect(candidates[0]?.intentActions).toEqual([])
 
       const ranked = rankRecommendations(candidates, { now, radiusKm: 3 })
       expect(ranked[0]?.reason).toBe('preferred_sport')

@@ -70,7 +70,8 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
                     logoUrl: item.team.logoUrl ?? null
                   }
                 })),
-                participantFreeText: nextEvent.participantFreeText
+                participantFreeText: nextEvent.participantFreeText,
+                classic: null
               }
             : undefined
         }

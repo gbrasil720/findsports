@@ -63,19 +63,37 @@ export type SearchBar = {
         sport: { name: string; slug: string }
         participants: { team: { name: string; logoUrl: string | null } }[]
         participantFreeText: string | null
+        classic: { reason: string; ruleVersion: number } | null
       }
     | undefined
 }
 
 export type SearchPage = { bars: SearchBar[]; nextCursor: string | null }
 
-/** Última tupla de ordenação: plano, próximo jogo, distância, id. */
+/**
+ * Última tupla de relevância: prioridade do clássico Elite, plano, qualidade,
+ * próximo jogo, distância e id. `v` invalida cursores emitidos antes da nova
+ * regra, evitando continuar uma paginação com uma ordem diferente.
+ */
 export const searchCursorSchema = z.object({
+  v: z.literal(2),
+  c: z.number(),
+  q: z.number(),
   p: z.number(),
   e: z.string(),
   d: z.number(),
   i: z.string()
 })
+
+/** Cursor de relevância emitido antes da prioridade de clássico e qualidade. */
+export const legacySearchCursorSchema = z
+  .object({
+    p: z.number(),
+    e: z.string(),
+    d: z.number(),
+    i: z.string()
+  })
+  .strict()
 
 /**
  * Cursor do modo "melhor avaliados": grupo (com nota pública ou sem), nota
@@ -117,6 +135,8 @@ export type LinhaBusca = {
   rating_positive?: string | number | null
   cursor_bucket?: number
   cursor_sort_score?: number
+  cursor_classic_rank?: number
+  cursor_quality_rank?: number
   event_count: string | number
   distance_km: number
   cursor_plan_rank: number
@@ -127,6 +147,8 @@ export type LinhaBusca = {
   next_sport_name: string | null
   next_sport_slug: string | null
   next_participant_free_text: string | null
+  next_classic_rule_version: number | string | null
+  next_classic_rule_reason: string | null
   next_participants: { name: string; logoUrl: string | null }[]
 }
 
@@ -228,7 +250,15 @@ export function montarPaginaBusca(
           participants: row.next_participants.map((p) => ({
             team: { name: p.name, logoUrl: p.logoUrl }
           })),
-          participantFreeText: row.next_participant_free_text
+          participantFreeText: row.next_participant_free_text,
+          classic:
+            row.next_classic_rule_reason &&
+            row.next_classic_rule_version != null
+              ? {
+                  reason: row.next_classic_rule_reason,
+                  ruleVersion: Number(row.next_classic_rule_version)
+                }
+              : null
         }
       : undefined
   }))
@@ -250,6 +280,9 @@ export function montarPaginaBusca(
             i: last.id
           }
         : {
+            v: 2,
+            c: Number(last.cursor_classic_rank),
+            q: Number(last.cursor_quality_rank),
             p: Number(last.cursor_plan_rank),
             e: last.cursor_next_event_at,
             d: last.distance_km,

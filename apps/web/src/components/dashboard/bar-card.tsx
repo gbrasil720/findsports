@@ -6,6 +6,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import type { DiscoveryCardBar } from '@/domain/dashboard-selectors'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { getPlan } from '@/lib/plan-catalog'
 
 function formatStartsAt(startsAt: string | Date): string {
@@ -80,6 +81,7 @@ type Props = {
   isHovered: boolean
   isFavorite: boolean
   favoritePending?: boolean
+  classicPlacementGuaranteed?: boolean
   onMouseEnter: () => void
   onMouseLeave: () => void
   onFocus: () => void
@@ -92,6 +94,7 @@ export function BarCard({
   isHovered,
   isFavorite,
   favoritePending = false,
+  classicPlacementGuaranteed = false,
   onMouseEnter,
   onMouseLeave,
   onFocus,
@@ -136,13 +139,24 @@ export function BarCard({
       <Link
         to="/pub/$pubId"
         params={{ pubId: bar.id }}
-        onClick={() =>
+        onClick={() => {
           analytics.barOpened({
             bar_id: bar.id,
             source: 'card',
             bar_plan: plan
           })
-        }
+          if (
+            classicPlacementGuaranteed &&
+            plan === 'elite' &&
+            event?.classic
+          ) {
+            trackCommercialEvent({
+              pubId: bar.id,
+              type: 'classic_click',
+              sourceEventId: event.id
+            })
+          }
+        }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onFocus={onFocus}

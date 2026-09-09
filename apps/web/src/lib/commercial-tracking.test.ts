@@ -124,11 +124,15 @@ describe('commercial-tracking', () => {
       | 'directions_opened'
       | 'phone_clicked'
       | 'whatsapp_opened'
+      | 'classic_exposure'
+      | 'classic_click'
     )[] = [
       'profile_view',
       'directions_opened',
       'phone_clicked',
-      'whatsapp_opened'
+      'whatsapp_opened',
+      'classic_exposure',
+      'classic_click'
     ]
 
     types.forEach((t) => {
