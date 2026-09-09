@@ -9,7 +9,8 @@ import type { AnalyticsEntitlements, EventAnalyticsResponse } from './types'
  *
  * - Starter:  profile views only, 30d retention, previous-period comparison,
  *              basic per-game
- * - Pro:      + phone clicked, whatsapp opened, 365d retention, comparison
+ * - Pro:      + directions opened, phone clicked, whatsapp opened, 365d
+ *              retention, comparison
  * - Elite:    + directions opened, daily breakdown, complete per-game, unlimited
  */
 
@@ -29,7 +30,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewAnalytics: true,
     canViewPhoneClicked: true,
     canViewWhatsappOpened: true,
-    canViewDirectionsOpened: false,
+    canViewDirectionsOpened: true,
     canViewComparison: true,
     canViewDailyBreakdown: false,
     eventBreakdown: 'complete',

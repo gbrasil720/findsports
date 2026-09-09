@@ -4,8 +4,10 @@ import Check from 'reicon-react/icons/Check'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import {
   type EventAnalyticsRow,
+  formatAnalyticsValue,
   formatRate,
-  getMainAction
+  getMainAction,
+  sumAnalyticsActions
 } from './admin-model'
 import { getMetric } from './metric-glossary'
 import { MetricHint } from './metric-hint'
@@ -109,10 +111,7 @@ function PerformanceColumns() {
 function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
   const [expanded, setExpanded] = useState(false)
   const panelId = `event-performance-${item.eventId}`
-  const intentActions =
-    (item.whatsappOpened ?? 0) +
-    (item.directionsOpened ?? 0) +
-    (item.phoneClicked ?? 0)
+  const intentActions = sumAnalyticsActions(item)
 
   return (
     <div className="border-b border-[var(--onside-line)] last:border-b-0">
@@ -147,11 +146,13 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
         </span>
         <span className="text-right font-medium text-[var(--onside-ink)] text-sm tabular-nums">
           <span className="sr-only">Interesse: </span>
-          {intentActions}
+          {formatAnalyticsValue(intentActions)}
         </span>
         <span className="hidden text-right font-medium text-[var(--onside-ink)] text-sm tabular-nums sm:block">
           <span className="sr-only">Taxa: </span>
-          {formatRate(intentActions, item.profileViews)}
+          {intentActions === null
+            ? formatAnalyticsValue(null)
+            : formatRate(intentActions, item.profileViews)}
         </span>
       </button>
 
@@ -167,19 +168,19 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
             <div>
               <dt className="text-xs opacity-60">WhatsApp</dt>
               <dd className="font-medium tabular-nums">
-                {item.whatsappOpened ?? 0}
+                {formatAnalyticsValue(item.whatsappOpened)}
               </dd>
             </div>
             <div>
               <dt className="text-xs opacity-60">Rota</dt>
               <dd className="font-medium tabular-nums">
-                {item.directionsOpened ?? 0}
+                {formatAnalyticsValue(item.directionsOpened)}
               </dd>
             </div>
             <div>
               <dt className="text-xs opacity-60">Telefone</dt>
               <dd className="font-medium tabular-nums">
-                {item.phoneClicked ?? 0}
+                {formatAnalyticsValue(item.phoneClicked)}
               </dd>
             </div>
             <div>
@@ -198,7 +199,9 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
             <div>
               <dt className="text-xs opacity-60">Taxa</dt>
               <dd className="font-medium tabular-nums">
-                {formatRate(intentActions, item.profileViews)}
+                {intentActions === null
+                  ? formatAnalyticsValue(null)
+                  : formatRate(intentActions, item.profileViews)}
               </dd>
             </div>
           </dl>
@@ -257,27 +260,19 @@ export function EventPerformance({
   const items = eventAnalyticsState.items
 
   const topEvent = items.reduce<EventAnalyticsRow | null>((best, item) => {
-    const intent =
-      (item.whatsappOpened ?? 0) +
-      (item.directionsOpened ?? 0) +
-      (item.phoneClicked ?? 0)
-    const bestIntent =
-      (best?.whatsappOpened ?? 0) +
-      (best?.directionsOpened ?? 0) +
-      (best?.phoneClicked ?? 0)
-    return !best || intent > bestIntent ? item : best
+    const intent = sumAnalyticsActions(item)
+    const bestIntent = best ? sumAnalyticsActions(best) : null
+    if (intent === null) return best
+    return !best || bestIntent === null || intent > bestIntent ? item : best
   }, null)
 
-  const topEventIntent =
-    (topEvent?.whatsappOpened ?? 0) +
-    (topEvent?.directionsOpened ?? 0) +
-    (topEvent?.phoneClicked ?? 0)
+  const topEventIntent = topEvent ? sumAnalyticsActions(topEvent) : null
 
   return (
     <div className="onside-panel-acid p-4">
       <PerformanceHeading />
 
-      {topEvent && (
+      {topEvent && topEventIntent !== null && (
         <div className="mb-3 flex items-center gap-2 border border-[var(--onside-ink)] bg-[var(--onside-ink)] px-3 py-2 text-sm text-[var(--onside-paper)]">
           <Check size={14} color="currentColor" aria-hidden="true" />
           Melhor jogo: {topEvent.eventName} ({topEventIntent}{' '}
