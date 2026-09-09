@@ -147,6 +147,9 @@ describe('commercial-analytics entitlements', () => {
       'uniqueVisitors',
       'profileViews'
     ])
+    expect(getComparisonMetrics(getAnalyticsEntitlements('pro'))).toContain(
+      'directionsOpened'
+    )
   })
 
   it('per-game analytics (WEB-100): Starter tem nível básico, Pro/Elite completo', () => {

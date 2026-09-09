@@ -152,6 +152,7 @@ describe('comparison entitlements', () => {
     expect(getComparisonMetrics(getAnalyticsEntitlements('pro'))).toEqual([
       'uniqueVisitors',
       'profileViews',
+      'directionsOpened',
       'phoneClicked',
       'whatsappOpened'
     ])
@@ -175,18 +176,18 @@ describe('comparison entitlements', () => {
       historicalRows: [snapshot('old', { directionsOpened: 1 })]
     })
 
-    const pro = applyEventComparisonEntitlements(
+    const starter = applyEventComparisonEntitlements(
       comparison,
-      getAnalyticsEntitlements('pro')
+      getAnalyticsEntitlements('starter')
     )
-    expect(pro.events[0]?.directionsOpened).toBeNull()
-    expect(pro.events[0]?.phoneClicked).toBe(0)
-    expect(pro.events[0]?.normalized.directionsOpened).toBeNull()
+    expect(starter.events[0]?.directionsOpened).toBeNull()
+    expect(starter.events[0]?.phoneClicked).toBeNull()
+    expect(starter.events[0]?.normalized.directionsOpened).toBeNull()
     expect(
-      pro.benchmarks.every((item) => item.metric !== 'directionsOpened')
+      starter.benchmarks.every((item) => item.metric !== 'directionsOpened')
     ).toBe(true)
     expect(
-      pro.insights.every((item) => item.metric !== 'directionsOpened')
+      starter.insights.every((item) => item.metric !== 'directionsOpened')
     ).toBe(true)
   })
 })

@@ -607,7 +607,7 @@ integrationTest(
         firstEventId,
         secondEventId
       ])
-      expect(result.comparison?.events[0]?.directionsOpened).toBeNull()
+      expect(result.comparison?.events[0]?.directionsOpened).toBe(1)
       expect(result.comparison?.events[0]?.phoneClicked).toBe(1)
       expect(result.comparison?.events[0]?.uniqueVisitors).toBe(1)
     } finally {
