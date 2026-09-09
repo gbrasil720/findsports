@@ -1,15 +1,27 @@
 import { describe, expect, it } from 'bun:test'
 import {
   EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL
+  EMAIL_LOGO_URL,
+  emailAssetUrls
 } from '@findsports_oficial/config/site'
 import {
   createVerificationEmail,
+  publicEmailUrl,
   sendEmailWithResend,
   sendVerificationEmailWithResend
 } from './verification-email'
 
 describe('e-mail de verificação Onside', () => {
+  it('move o link de autenticação para o host público do e-mail', () => {
+    expect(
+      publicEmailUrl(
+        'http://localhost:3001/api/auth/verify-email?token=abc',
+        'https://www.onside.sh',
+        'http://localhost:3001'
+      )
+    ).toBe('https://www.onside.sh/api/auth/verify-email?token=abc')
+  })
+
   it('mantém a identidade visual, CTA e alternativa em texto', () => {
     const email = createVerificationEmail({
       name: 'Ana',
@@ -39,6 +51,25 @@ describe('e-mail de verificação Onside', () => {
     expect(email.html).toContain('&lt;img src=x&gt;')
     expect(email.html).toContain('a=1&amp;b=2')
     expect(email.html).not.toContain('hero.jpg?a=1&b=2')
+  })
+
+  it('renderiza href e src somente no host público configurado', () => {
+    const publicBaseUrl = 'https://www.onside.sh'
+    const publicHost = new URL(publicBaseUrl).hostname
+    const email = createVerificationEmail({
+      name: 'Ana',
+      verificationUrl: new URL('/verify?token=abc', publicBaseUrl).toString(),
+      ...emailAssetUrls(publicBaseUrl)
+    })
+    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
+      (match) => (match[1] ?? '').replaceAll('&amp;', '&')
+    )
+
+    expect(urls).toHaveLength(4)
+    expect(email.html).not.toContain('localhost')
+    for (const value of urls) {
+      expect(new URL(value).hostname).toBe(publicHost)
+    }
   })
 
   it('envia HTML e texto pela API do Resend sem expor a chave no corpo', async () => {

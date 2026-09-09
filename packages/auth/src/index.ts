@@ -4,15 +4,12 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
-import {
-  EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL
-} from '@findsports_oficial/config/site'
+import { emailAssetUrls } from '@findsports_oficial/config/site'
 import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
-import { env } from '@findsports_oficial/env/server'
+import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -31,7 +28,10 @@ import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { buildTrustedOrigins } from './trusted-origins'
-import { sendVerificationEmailWithResend } from './verification-email'
+import {
+  publicEmailUrl,
+  sendVerificationEmailWithResend
+} from './verification-email'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -243,14 +243,18 @@ export function createAuth() {
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
       sendVerificationEmail: async ({ user, url }) => {
+        const publicAppUrl = getPublicAppUrl()
         await sendVerificationEmailWithResend({
           apiKey: env.RESEND_API_KEY,
           fromEmail: env.RESEND_FROM_EMAIL,
           to: user.email,
           name: user.name,
-          verificationUrl: url,
-          logoUrl: EMAIL_LOGO_URL,
-          heroImageUrl: EMAIL_HERO_IMAGE_URL
+          verificationUrl: publicEmailUrl(
+            url,
+            publicAppUrl,
+            env.BETTER_AUTH_URL
+          ),
+          ...emailAssetUrls(publicAppUrl)
         })
       }
     },

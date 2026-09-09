@@ -2,11 +2,8 @@ import {
   createOnsideEmailTemplate,
   sendEmailWithResend
 } from '@findsports_oficial/auth/verification-email'
-import {
-  EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL
-} from '@findsports_oficial/config/site'
-import { env } from '@findsports_oficial/env/server'
+import { emailAssetUrls } from '@findsports_oficial/config/site'
+import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 
 export type WaitlistEmailKind =
   | 'confirm'
@@ -141,8 +138,7 @@ export async function sendWaitlistEmail(input: {
   const email = createWaitlistEmail({
     kind: input.kind,
     url: input.url,
-    logoUrl: EMAIL_LOGO_URL,
-    heroImageUrl: EMAIL_HERO_IMAGE_URL
+    ...emailAssetUrls(getPublicAppUrl())
   })
   return sendEmailWithResend({
     apiKey: env.RESEND_API_KEY,
@@ -155,8 +151,16 @@ export async function sendWaitlistEmail(input: {
   })
 }
 
-export function waitlistUrl(path: string, token?: string) {
-  const url = new URL(path, env.BETTER_AUTH_URL)
+export function buildWaitlistUrl(
+  baseUrl: string,
+  path: string,
+  token?: string
+) {
+  const url = new URL(path, baseUrl)
   if (token) url.searchParams.set('token', token)
   return url.toString()
+}
+
+export function waitlistUrl(path: string, token?: string) {
+  return buildWaitlistUrl(getPublicAppUrl(), path, token)
 }

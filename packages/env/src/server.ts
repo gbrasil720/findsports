@@ -2,11 +2,12 @@ import 'dotenv/config'
 import { createEnv } from '@t3-oss/env-core'
 import { z } from 'zod'
 
-export const env = createEnv({
+const rawEnv = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
+    PUBLIC_APP_URL: z.url().optional(),
     CORS_ORIGIN: z.url(),
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
@@ -36,3 +37,42 @@ export const env = createEnv({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true
 })
+
+const LOCAL_HOSTNAMES = new Set([
+  'localhost',
+  'localhost.',
+  '127.0.0.1',
+  '0.0.0.0',
+  '[::1]'
+])
+
+export function resolvePublicAppUrl(
+  publicAppUrl: string | undefined,
+  betterAuthUrl: string,
+  nodeEnv: 'development' | 'production' | 'test'
+): string {
+  if (nodeEnv === 'production') {
+    if (!publicAppUrl) {
+      throw new Error('PUBLIC_APP_URL é obrigatória em produção.')
+    }
+
+    const url = new URL(publicAppUrl)
+    if (url.protocol !== 'https:' || LOCAL_HOSTNAMES.has(url.hostname)) {
+      throw new Error(
+        'PUBLIC_APP_URL deve apontar para um endereço HTTPS público em produção.'
+      )
+    }
+  }
+
+  return publicAppUrl ?? betterAuthUrl
+}
+
+export const env = rawEnv
+
+export function getPublicAppUrl(): string {
+  return resolvePublicAppUrl(
+    rawEnv.PUBLIC_APP_URL,
+    rawEnv.BETTER_AUTH_URL,
+    rawEnv.NODE_ENV
+  )
+}

@@ -21,6 +21,18 @@ type OnsideEmailTemplateInput = {
 
 type EmailFetcher = (input: string, init?: RequestInit) => Promise<Response>
 
+export function publicEmailUrl(
+  url: string,
+  publicBaseUrl: string,
+  authBaseUrl: string
+) {
+  const sourceUrl = new URL(url, authBaseUrl)
+  return new URL(
+    `${sourceUrl.pathname}${sourceUrl.search}${sourceUrl.hash}`,
+    publicBaseUrl
+  ).toString()
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
     const escaped: Record<string, string> = {
