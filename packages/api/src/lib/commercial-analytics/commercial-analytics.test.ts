@@ -97,12 +97,12 @@ describe('commercial-analytics entitlements', () => {
     expect(e.maxDaysRetention).toBe(30)
   })
 
-  it('pro has phone clicked and whatsapp opened', () => {
+  it('pro has directions, phone clicked and whatsapp opened', () => {
     const e = getAnalyticsEntitlements('pro')
     expect(e.canViewAnalytics).toBe(true)
     expect(e.canViewPhoneClicked).toBe(true)
     expect(e.canViewWhatsappOpened).toBe(true)
-    expect(e.canViewDirectionsOpened).toBe(false)
+    expect(e.canViewDirectionsOpened).toBe(true)
     expect(e.canViewComparison).toBe(true)
     expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.eventBreakdown).toBe('complete')
@@ -156,11 +156,11 @@ describe('commercial-analytics entitlements', () => {
     expect(starter.canViewWhatsappOpened).toBe(false)
     expect(starter.canViewDirectionsOpened).toBe(false)
 
-    // Pro (completo): funil sem rota, igual ao overview.
+    // Pro (completo): funil inteiro, igual ao overview.
     expect(pro.eventBreakdown).toBe('complete')
     expect(pro.canViewPhoneClicked).toBe(true)
     expect(pro.canViewWhatsappOpened).toBe(true)
-    expect(pro.canViewDirectionsOpened).toBe(false)
+    expect(pro.canViewDirectionsOpened).toBe(true)
 
     // Elite (completo): funil inteiro.
     expect(elite.eventBreakdown).toBe('complete')
@@ -213,7 +213,7 @@ describe('commercial-analytics entitlements', () => {
       response,
       getAnalyticsEntitlements('pro')
     )
-    expect(pro.events).toEqual([{ ...expected, directionsOpened: null }])
+    expect(pro.events).toEqual([expected])
 
     const elite = applyEventBreakdownEntitlements(
       response,
@@ -226,7 +226,7 @@ describe('commercial-analytics entitlements', () => {
     expect(canViewEventType('starter', 'profile_view')).toBe(true)
     expect(canViewEventType('starter', 'phone_clicked')).toBe(false)
     expect(canViewEventType('pro', 'phone_clicked')).toBe(true)
-    expect(canViewEventType('pro', 'directions_opened')).toBe(false)
+    expect(canViewEventType('pro', 'directions_opened')).toBe(true)
     expect(canViewEventType('elite', 'directions_opened')).toBe(true)
     expect(canViewEventType('elite', 'whatsapp_opened')).toBe(true)
     expect(canViewEventType('starter', 'unknown')).toBe(false)
@@ -385,13 +385,13 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
     })
   })
 
-  it('pro: comparação dos canais liberados, sem directions', () => {
+  it('pro: comparação dos canais liberados, incluindo directions', () => {
     expect(overviewFor('pro')).toEqual({
       uniqueVisitors: 100,
       interestedPeople: 30,
       highIntentActions: 12,
       profileViews: 240,
-      directionsOpened: null,
+      directionsOpened: 8,
       phoneClicked: 3,
       whatsappOpened: 4,
 
@@ -399,7 +399,7 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       interestedPeoplePrev: 25,
       highIntentActionsPrev: 9,
       profileViewsPrev: 200,
-      directionsOpenedPrev: null,
+      directionsOpenedPrev: 6,
       phoneClickedPrev: 2,
       whatsappOpenedPrev: 3,
 
@@ -407,7 +407,7 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       interestedPeopleChange: 20,
       highIntentActionsChange: 33,
       profileViewsChange: 20,
-      directionsOpenedChange: null,
+      directionsOpenedChange: 33,
       phoneClickedChange: 50,
       whatsappOpenedChange: 33,
 

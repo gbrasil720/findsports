@@ -83,6 +83,25 @@ export function formatRate(num: number, den: number): string {
   return `${((num / den) * 100).toFixed(1)}%`
 }
 
+export const LOCKED_ANALYTICS_VALUE = 'Exclusivo do plano superior'
+
+export function formatAnalyticsValue(value: number | null): string {
+  return value === null ? LOCKED_ANALYTICS_VALUE : value.toLocaleString('pt-BR')
+}
+
+export function sumAnalyticsActions(data: {
+  directionsOpened: number | null
+  phoneClicked: number | null
+  whatsappOpened: number | null
+}): number | null {
+  return [data.directionsOpened, data.whatsappOpened, data.phoneClicked].reduce<
+    number | null
+  >(
+    (total, value) => (total === null || value === null ? null : total + value),
+    0
+  )
+}
+
 /**
  * Determine the main action label from analytics data.
  * Tie-breaking order (spec §4.6): directions > whatsapp > phone.

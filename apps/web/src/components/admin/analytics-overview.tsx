@@ -4,6 +4,7 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
 import {
   type AnalyticsOverviewData,
+  formatAnalyticsValue,
   formatRate,
   getMainAction
 } from './admin-model'
@@ -33,14 +34,6 @@ function formatPpChange(curr: number | null, prev: number | null): string {
   return `${diff > 0 ? '+' : ''}${diff.toFixed(1)} p.p.`
 }
 
-function sumIntentActions(data: AnalyticsOverviewData): number {
-  return (
-    (data.whatsappOpened ?? 0) +
-    (data.directionsOpened ?? 0) +
-    (data.phoneClicked ?? 0)
-  )
-}
-
 /** Título de seção com o ⓘ do glossário ao lado. */
 function SectionHeading({ metric }: { metric: MetricId }) {
   return (
@@ -53,10 +46,10 @@ function SectionHeading({ metric }: { metric: MetricId }) {
 
 function hasComparisonData(data: AnalyticsOverviewData): boolean {
   return (
-    (data.phoneClickedPrev ?? 0) > 0 ||
-    (data.whatsappOpenedPrev ?? 0) > 0 ||
-    (data.directionsOpenedPrev ?? 0) > 0 ||
-    (data.profileViewsPrev ?? 0) > 0
+    (data.phoneClickedPrev !== null && data.phoneClickedPrev > 0) ||
+    (data.whatsappOpenedPrev !== null && data.whatsappOpenedPrev > 0) ||
+    (data.directionsOpenedPrev !== null && data.directionsOpenedPrev > 0) ||
+    (data.profileViewsPrev !== null && data.profileViewsPrev > 0)
   )
 }
 
@@ -185,28 +178,19 @@ function KpiCard({
 }
 
 function KpiCards({ data }: { data: AnalyticsOverviewData }) {
-  const intentActions = sumIntentActions(data)
-  const intentActionsPrev =
-    (data.whatsappOpenedPrev ?? 0) +
-    (data.directionsOpenedPrev ?? 0) +
-    (data.phoneClickedPrev ?? 0)
-
-  /* A API não devolve variação agregada de intenção — só por canal. Somar os
-     canais do período anterior dá o mesmo número sem custo de backend. */
-  const intentChange =
-    intentActionsPrev > 0
-      ? Math.round(
-          ((intentActions - intentActionsPrev) / intentActionsPrev) * 100
-        )
-      : null
+  const intentActions = data.highIntentActions
+  const intentActionsPrev = data.highIntentActionsPrev
+  const intentChange = data.highIntentActionsChange
 
   /* A taxa mede pessoas, não aberturas: "de cada 100 que viram, X se
      interessaram" só faz sentido com visitantes únicos no denominador. */
   const intentRate = formatRate(intentActions, data.uniqueVisitors)
   const intentRateChange = formatPpChange(
     data.uniqueVisitors > 0 ? intentActions / data.uniqueVisitors : null,
-    (data.uniqueVisitorsPrev ?? 0) > 0
-      ? intentActionsPrev / (data.uniqueVisitorsPrev ?? 0)
+    data.uniqueVisitorsPrev !== null &&
+      intentActionsPrev !== null &&
+      data.uniqueVisitorsPrev > 0
+      ? intentActionsPrev / data.uniqueVisitorsPrev
       : null
   )
 
@@ -374,16 +358,17 @@ function DailyChart({
 /* ------------------------------------------------------------------ */
 
 function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
-  const items: Array<{ label: string; count: number }> = [
-    { label: 'WhatsApp', count: data.whatsappOpened ?? 0 },
-    { label: 'Rota', count: data.directionsOpened ?? 0 },
-    { label: 'Telefone', count: data.phoneClicked ?? 0 }
+  const items: Array<{ label: string; count: number | null }> = [
+    { label: 'WhatsApp', count: data.whatsappOpened },
+    { label: 'Rota', count: data.directionsOpened },
+    { label: 'Telefone', count: data.phoneClicked }
   ]
 
-  const total = items.reduce((s, i) => s + i.count, 0)
-  if (total === 0) return null
+  const total = items.reduce((s, i) => s + (i.count ?? 0), 0)
+  const hasLockedMetric = items.some((item) => item.count === null)
+  if (total === 0 && !hasLockedMetric) return null
 
-  const mainAction = getMainAction(data)
+  const mainAction = hasLockedMetric ? null : getMainAction(data)
 
   return (
     <div className="onside-panel-acid p-4">
@@ -398,7 +383,8 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
 
       <div className="space-y-2">
         {items.map((item) => {
-          const pct = total > 0 ? (item.count / total) * 100 : 0
+          const pct =
+            item.count !== null && total > 0 ? (item.count / total) * 100 : 0
           return (
             <div key={item.label}>
               <div className="mb-1 flex items-center justify-between text-sm">
@@ -406,10 +392,12 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
                   {item.label}
                 </span>
                 <span className="font-medium text-[var(--onside-ink)]">
-                  {item.count}
-                  <span className="ml-1 text-xs opacity-50">
-                    ({pct.toFixed(0)}%)
-                  </span>
+                  {formatAnalyticsValue(item.count)}
+                  {item.count !== null && (
+                    <span className="ml-1 text-xs opacity-50">
+                      ({pct.toFixed(0)}%)
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-sm bg-[var(--onside-paper)]">
@@ -451,17 +439,17 @@ function PeriodComparison({ data }: { data: AnalyticsOverviewData }) {
     },
     {
       label: 'WhatsApp',
-      curr: data.whatsappOpened ?? 0,
+      curr: data.whatsappOpened,
       change: data.whatsappOpenedChange
     },
     {
       label: 'Rota',
-      curr: data.directionsOpened ?? 0,
+      curr: data.directionsOpened,
       change: data.directionsOpenedChange
     },
     {
       label: 'Telefone',
-      curr: data.phoneClicked ?? 0,
+      curr: data.phoneClicked,
       change: data.phoneClickedChange
     }
   ]
@@ -476,7 +464,7 @@ function PeriodComparison({ data }: { data: AnalyticsOverviewData }) {
               {r.label}
             </p>
             <p className="onside-display text-lg text-[var(--onside-ink)]">
-              {r.curr}
+              {formatAnalyticsValue(r.curr)}
             </p>
             <p className="text-xs text-[var(--onside-ink)] opacity-60">
               {r.change !== null ? formatPctChange(r.change) : '—'}
