@@ -54,7 +54,7 @@ export function ImpersonationBanner() {
   return (
     <div
       ref={bannerRef}
-      className="fixed top-0 right-0 left-0 z-[60] border-b border-[var(--onside-ink)] bg-[var(--onside-acid)] font-[family-name:var(--onside-body)] text-[var(--onside-ink)]"
+      className="onside-banner fixed top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)] font-[family-name:var(--onside-body)] text-[var(--onside-ink)]"
       role="status"
       aria-live="polite"
       aria-atomic="true"

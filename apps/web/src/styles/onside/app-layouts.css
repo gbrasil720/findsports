@@ -34,12 +34,18 @@
 }
 
 /* ─── Skip link ─── */
+/*
+ * Escondido por `top: 0` + `translate: 0 -100%`: sai da viewport pela própria
+ * altura, qualquer que seja ela. Um `translateY(-200%)` a partir de um `top`
+ * já deslocado (banner + 12px) não garante isso — com o banner de
+ * personificação aberto o atalho reaparecia por cima dele.
+ */
 .onside-app .onside-skip-link {
   position: fixed;
   left: 12px;
-  top: calc(var(--banner-h, 0px) + 12px);
+  top: 0;
+  translate: 0 -100%;
   z-index: 1000;
-  transform: translateY(-200%);
   background: var(--onside-acid);
   border: 2px solid var(--onside-ink);
   color: var(--onside-ink);
@@ -50,7 +56,8 @@
 }
 
 .onside-app .onside-skip-link:focus-visible {
-  transform: translateY(0);
+  top: calc(var(--banner-h, 0px) + 12px);
+  translate: 0 0;
 }
 
 /* ─── Shell ─── */

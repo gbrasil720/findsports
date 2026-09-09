@@ -42,9 +42,9 @@
 .onside-not-found-skip {
   position: fixed;
   left: 16px;
-  top: calc(var(--banner-h, 0px) + 16px);
+  top: 0;
+  translate: 0 -100%;
   z-index: 1000;
-  transform: translateY(-180%);
   background: var(--onside-acid);
   border: 2px solid var(--onside-ink);
   color: var(--onside-ink);
@@ -53,7 +53,8 @@
 }
 
 .onside-not-found-skip:focus-visible {
-  transform: translateY(0);
+  top: calc(var(--banner-h, 0px) + 16px);
+  translate: 0 0;
 }
 
 .onside-not-found-frame {

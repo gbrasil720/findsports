@@ -110,7 +110,14 @@
   --onside-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --onside-motion-distance: 6px;
 }
-:where(.onside-page, .onside-app, .onside-dialog, .onside-hint, .onside-menu) {
+:where(
+  .onside-page,
+  .onside-app,
+  .onside-banner,
+  .onside-dialog,
+  .onside-hint,
+  .onside-menu
+) {
   --onside-ink: #12120f;
   --onside-paper: #f1eee6;
   --onside-acid: #c9f135;
