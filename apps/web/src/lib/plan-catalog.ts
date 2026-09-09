@@ -132,7 +132,6 @@ export const PLAN_CATALOG: Plan[] = [
       'Pin destacado no mapa',
       'Suporte prioritário',
       'Topo na busca por relevância quando há um clássico',
-      'Banner patrocinado na home',
       'Histórico completo',
       'Analytics completa por jogo',
       'Funil detalhado de rota, telefone e WhatsApp',
