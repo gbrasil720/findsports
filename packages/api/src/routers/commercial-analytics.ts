@@ -9,6 +9,7 @@ import {
   COMMERCIAL_TIME_ZONE,
   canViewEventType,
   getAnalyticsEntitlements,
+  getComparisonMetrics,
   getMyAnalyticsOverview,
   getMyEventAnalytics,
   recordCommercialEvent,
@@ -33,6 +34,17 @@ export const analyticsDateSchema = z
   .string()
   .datetime({ offset: true })
   .or(z.string().date())
+
+export const comparisonTargetSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('events'),
+    eventIds: z.array(z.string().uuid()).min(1).max(20)
+  }),
+  z.object({
+    type: z.literal('event_to_bar'),
+    eventId: z.string().uuid()
+  })
+])
 
 function startOfCommercialDay(date: string): Date {
   const [year, month, day] = date.split('-').map(Number) as [
@@ -189,7 +201,8 @@ export const commercialAnalyticsRouter = router({
     .input(
       z.object({
         from: analyticsDateSchema,
-        to: analyticsDateSchema
+        to: analyticsDateSchema,
+        comparisonTarget: comparisonTargetSchema.optional()
       })
     )
     .query(async ({ ctx, input }) => {
@@ -224,7 +237,22 @@ export const commercialAnalyticsRouter = router({
         })
       }
 
-      const result = await getMyEventAnalytics(barId, from, to)
+      if (
+        input.comparisonTarget &&
+        entitlements.comparison === 'previous_period'
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Seu plano não permite comparação entre jogos'
+        })
+      }
+
+      const result = await getMyEventAnalytics(barId, from, to, {
+        comparisonTarget: input.comparisonTarget,
+        comparisonMode:
+          entitlements.comparison === 'advanced' ? 'advanced' : 'cross_game',
+        comparisonMetrics: getComparisonMetrics(entitlements)
+      })
 
       // O servidor filtra as métricas por entitlement — as que o plano não
       // enxerga vêm nulas, nunca vazam o valor (mesma regra do overview).

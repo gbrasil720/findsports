@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server'
 
 import {
   analyticsDateSchema,
+  comparisonTargetSchema,
   parseAnalyticsRange
 } from './commercial-analytics'
 
@@ -36,5 +37,37 @@ describe('parseAnalyticsRange', () => {
     expect(() =>
       parseAnalyticsRange({ from: '2026-09-02', to: '2026-09-01' })
     ).toThrow(TRPCError)
+  })
+})
+
+describe('comparisonTargetSchema', () => {
+  test('accepts selected games and game-to-bar targets', () => {
+    const first = crypto.randomUUID()
+    const second = crypto.randomUUID()
+
+    expect(
+      comparisonTargetSchema.safeParse({
+        type: 'events',
+        eventIds: [first, second]
+      }).success
+    ).toBe(true)
+    expect(
+      comparisonTargetSchema.safeParse({
+        type: 'event_to_bar',
+        eventId: first
+      }).success
+    ).toBe(true)
+  })
+
+  test('requires at least one game and caps the selection', () => {
+    expect(
+      comparisonTargetSchema.safeParse({ type: 'events', eventIds: [] }).success
+    ).toBe(false)
+    expect(
+      comparisonTargetSchema.safeParse({
+        type: 'events',
+        eventIds: Array.from({ length: 21 }, () => crypto.randomUUID())
+      }).success
+    ).toBe(false)
   })
 })

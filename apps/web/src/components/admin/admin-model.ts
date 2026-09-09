@@ -1,3 +1,7 @@
+import type {
+  AnalyticsComparisonMode,
+  EventComparisonTarget
+} from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { SubscriptionPlan as DbSubscriptionPlan } from '@findsports_oficial/db'
 import type { inferRouterOutputs } from '@trpc/server'
@@ -20,6 +24,7 @@ export type AnalyticsOverviewData =
 export type EventAnalyticsData =
   RouterOutputs['commercialAnalytics']['getMyEventAnalytics']
 export type EventAnalyticsRow = EventAnalyticsData['events'][number]
+export type EventComparisonData = NonNullable<EventAnalyticsData['comparison']>
 
 export type EventsState =
   | { status: 'loading' }
@@ -52,7 +57,17 @@ export type EventAnalyticsState =
   | { status: 'error'; retry: () => void }
   | { status: 'blocked' }
   | { status: 'empty' }
-  | { status: 'ready'; items: EventAnalyticsRow[] }
+  | {
+      status: 'ready'
+      items: EventAnalyticsRow[]
+      comparisonMode?: AnalyticsComparisonMode
+      comparisonTarget?: EventComparisonTarget
+      comparison?: EventComparisonData
+      comparisonLoading?: boolean
+      onComparisonTargetChange?: (
+        target: EventComparisonTarget | undefined
+      ) => void
+    }
 
 /* ------------------------------------------------------------------ */
 /* Readiness diagnostics                                               */

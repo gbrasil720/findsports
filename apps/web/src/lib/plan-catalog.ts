@@ -1,3 +1,5 @@
+import { getAnalyticsEntitlements } from '@findsports_oficial/api/lib/commercial-analytics/entitlements'
+import type { AnalyticsComparisonMode } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { STARTER_EVENT_LIMIT } from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
@@ -26,7 +28,20 @@ export interface PlanProfilePerk {
 export interface PlanAnalytics {
   historyDays: number | null
   perGame: 'basic' | 'complete'
-  comparison: 'previous_period' | 'cross_game' | 'advanced'
+  comparison: AnalyticsComparisonMode
+}
+
+function analyticsForPlan(id: SubscriptionPlan): PlanAnalytics {
+  const entitlements = getAnalyticsEntitlements(id)
+  if (entitlements.eventBreakdown === 'none') {
+    throw new Error(`Plan ${id} has no per-game analytics entitlement`)
+  }
+
+  return {
+    historyDays: entitlements.maxDaysRetention,
+    perGame: entitlements.eventBreakdown,
+    comparison: entitlements.comparison
+  }
 }
 
 export interface Plan {
@@ -68,9 +83,7 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Foto de capa', status: 'live' }
     ],
     analytics: {
-      historyDays: 30,
-      perGame: 'basic',
-      comparison: 'previous_period'
+      ...analyticsForPlan('starter')
     }
   },
   {
@@ -101,9 +114,7 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Cardápio e promoções no perfil', status: 'soon' }
     ],
     analytics: {
-      historyDays: 365,
-      perGame: 'complete',
-      comparison: 'cross_game'
+      ...analyticsForPlan('pro')
     }
   },
   {
@@ -136,9 +147,7 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Reserva de mesa pela plataforma', status: 'soon' }
     ],
     analytics: {
-      historyDays: null,
-      perGame: 'complete',
-      comparison: 'advanced'
+      ...analyticsForPlan('elite')
     }
   }
 ]

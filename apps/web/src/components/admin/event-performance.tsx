@@ -1,9 +1,15 @@
+import type {
+  AnalyticsComparisonMode,
+  ComparisonMetric,
+  EventComparisonTarget
+} from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { useState } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Check from 'reicon-react/icons/Check'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import {
   type EventAnalyticsRow,
+  type EventComparisonData,
   formatAnalyticsValue,
   formatRate,
   getMainAction,
@@ -28,6 +34,361 @@ function formatEventDate(startsAt: string): string {
     day: 'numeric',
     month: 'short'
   })
+}
+
+const COMPARISON_METRIC_LABELS: Record<ComparisonMetric, string> = {
+  uniqueVisitors: 'Visitantes',
+  profileViews: 'Aberturas',
+  directionsOpened: 'Rota',
+  phoneClicked: 'Telefone',
+  whatsappOpened: 'WhatsApp'
+}
+
+const WEEKDAY_LABELS = [
+  '',
+  'segunda-feira',
+  'terça-feira',
+  'quarta-feira',
+  'quinta-feira',
+  'sexta-feira',
+  'sábado',
+  'domingo'
+]
+
+function formatComparisonNumber(value: number | null): string {
+  return value === null
+    ? formatAnalyticsValue(null)
+    : value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+}
+
+function formatConversionRate(value: number | null): string {
+  return value === null ? '—' : `${value.toFixed(1)}%`
+}
+
+function ComparisonControls({
+  items,
+  mode,
+  target,
+  loading,
+  onChange
+}: {
+  items: EventAnalyticsRow[]
+  mode?: AnalyticsComparisonMode
+  target?: EventComparisonTarget
+  loading?: boolean
+  onChange?: (target: EventComparisonTarget | undefined) => void
+}) {
+  if (!mode || mode === 'previous_period' || !onChange) return null
+
+  const selectedIds = target?.type === 'events' ? target.eventIds : []
+  const isBarAverage = target?.type === 'event_to_bar'
+
+  const chooseEvents = () => {
+    const ids = selectedIds.length
+      ? selectedIds
+      : items.slice(0, 2).map((item) => item.eventId)
+    if (ids.length > 0) onChange({ type: 'events', eventIds: ids })
+  }
+
+  const toggleEvent = (eventId: string) => {
+    const next = selectedIds.includes(eventId)
+      ? selectedIds.filter((id) => id !== eventId)
+      : [...selectedIds, eventId]
+    onChange(next.length > 0 ? { type: 'events', eventIds: next } : undefined)
+  }
+
+  return (
+    <fieldset className="mb-4 border border-[var(--onside-line)] p-3">
+      <legend className="px-1 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-ink)] uppercase tracking-[0.1em] opacity-60">
+        Comparação disponível no plano {mode === 'advanced' ? 'Elite' : 'Pro'}
+      </legend>
+
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="event-comparison-mode"
+            checked={!isBarAverage}
+            onChange={chooseEvents}
+          />
+          Entre jogos
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="event-comparison-mode"
+            checked={isBarAverage}
+            onChange={() => {
+              const eventId =
+                target?.type === 'event_to_bar'
+                  ? target.eventId
+                  : items[0]?.eventId
+              if (eventId) onChange({ type: 'event_to_bar', eventId })
+            }}
+          />
+          Jogo contra média do bar
+        </label>
+        {loading && (
+          <span className="text-xs text-[var(--onside-muted)]">
+            Calculando…
+          </span>
+        )}
+      </div>
+
+      {!isBarAverage && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {items.map((item) => (
+            <label
+              key={item.eventId}
+              className="flex min-w-0 items-center gap-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(item.eventId)}
+                onChange={() => toggleEvent(item.eventId)}
+              />
+              <span className="truncate">{item.eventName}</span>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {isBarAverage && (
+        <label className="mt-3 block max-w-md text-sm">
+          <span className="mb-1 block text-xs text-[var(--onside-muted)]">
+            Jogo alvo
+          </span>
+          <select
+            value={target.type === 'event_to_bar' ? target.eventId : ''}
+            onChange={(event) => {
+              if (event.currentTarget.value) {
+                onChange({
+                  type: 'event_to_bar',
+                  eventId: event.currentTarget.value
+                })
+              }
+            }}
+            className="min-h-10 w-full border border-[var(--onside-line)] bg-[var(--onside-paper)] px-2 text-sm"
+          >
+            <option value="">Selecione um jogo</option>
+            {items.map((item) => (
+              <option key={item.eventId} value={item.eventId}>
+                {item.eventName}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {!isBarAverage && selectedIds.length < 2 && (
+        <p className="mt-2 text-xs text-[var(--onside-muted)]">
+          Selecione pelo menos dois jogos com dados.
+        </p>
+      )}
+    </fieldset>
+  )
+}
+
+function ComparisonTable({ comparison }: { comparison: EventComparisonData }) {
+  const rows = comparison.benchmark
+    ? [...comparison.events, comparison.benchmark]
+    : comparison.events
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[620px] text-left text-xs">
+        <thead className="border-[var(--onside-line)] border-b text-[var(--onside-muted)]">
+          <tr>
+            <th className="py-2 pr-3 font-normal">Jogo</th>
+            {(
+              [
+                'uniqueVisitors',
+                'profileViews',
+                'directionsOpened',
+                'phoneClicked',
+                'whatsappOpened'
+              ] as const
+            ).map((metric) => (
+              <th key={metric} className="px-2 py-2 text-right font-normal">
+                {COMPARISON_METRIC_LABELS[metric]}
+              </th>
+            ))}
+            <th className="py-2 pl-2 text-right font-normal">Conversão</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.eventId}
+              className="border-[var(--onside-line)] border-b last:border-0"
+            >
+              <th
+                className="max-w-44 truncate py-2 pr-3 font-medium"
+                scope="row"
+              >
+                {row.eventName}
+              </th>
+              {(
+                [
+                  'uniqueVisitors',
+                  'profileViews',
+                  'directionsOpened',
+                  'phoneClicked',
+                  'whatsappOpened'
+                ] as const
+              ).map((metric) => (
+                <td key={metric} className="px-2 py-2 text-right tabular-nums">
+                  {formatComparisonNumber(row[metric])}
+                </td>
+              ))}
+              <td className="py-2 pl-2 text-right font-medium tabular-nums">
+                {formatConversionRate(row.conversionRate)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ComparisonResult({
+  comparison,
+  mode,
+  loading
+}: {
+  comparison?: EventComparisonData
+  mode?: AnalyticsComparisonMode
+  loading?: boolean
+}) {
+  if (!mode || mode === 'previous_period') return null
+  if (loading && !comparison) {
+    return (
+      <div className="onside-panel-acid mb-4 p-4 text-sm text-[var(--onside-muted)]">
+        Calculando comparação com os dados do bar…
+      </div>
+    )
+  }
+  if (!comparison) return null
+
+  if (comparison.status === 'empty') {
+    const message =
+      comparison.emptyReason === 'no_baseline'
+        ? 'Cadastre outro jogo com dados para calcular a média do bar.'
+        : comparison.emptyReason === 'not_enough_games'
+          ? 'Selecione pelo menos dois jogos com dados para comparar.'
+          : 'Ainda não há dados elegíveis para esta comparação.'
+    return (
+      <div className="onside-panel-acid mb-4 p-4 text-sm text-[var(--onside-muted)]">
+        {message}
+      </div>
+    )
+  }
+
+  const ranking = comparison.ranking
+  const historyBenchmarks = comparison.benchmarks.filter(
+    (benchmark) => benchmark.scope === 'history'
+  )
+
+  return (
+    <div className="onside-panel-acid mb-4 space-y-4 p-4">
+      <div>
+        <h4 className="onside-heading mb-1">Comparação calculada</h4>
+        <p className="text-xs text-[var(--onside-muted)]">
+          Os volumes são brutos; os insights também usam a taxa por hora da
+          janela efetiva de cada jogo.
+        </p>
+      </div>
+
+      <ComparisonTable comparison={comparison} />
+
+      <div className="grid gap-3 text-xs sm:grid-cols-2">
+        {comparison.events.map((row) => (
+          <div key={`${row.eventId}-normalized`}>
+            <p className="mb-1 font-medium">{row.eventName} — por hora</p>
+            <p className="text-[var(--onside-muted)]">
+              Visitantes {formatComparisonNumber(row.normalized.uniqueVisitors)}
+              {' · '}Aberturas{' '}
+              {formatComparisonNumber(row.normalized.profileViews)}
+              {' · '}Ações{' '}
+              {formatComparisonNumber(
+                sumAnalyticsActions({
+                  directionsOpened: row.normalized.directionsOpened,
+                  phoneClicked: row.normalized.phoneClicked,
+                  whatsappOpened: row.normalized.whatsappOpened
+                })
+              )}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="mb-2 font-medium text-sm">Ranking por conversão</p>
+        <ol className="space-y-1 text-sm">
+          {ranking.map((item) => (
+            <li key={item.eventId} className="flex justify-between gap-3">
+              <span>
+                {item.rank}. {item.eventName}
+              </span>
+              <span className="font-medium tabular-nums">
+                {formatConversionRate(item.conversionRate)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {comparison.mode === 'advanced' && (
+        <div className="space-y-3 border-[var(--onside-line)] border-t pt-3">
+          <div>
+            <p className="mb-2 font-medium text-sm">Benchmark histórico</p>
+            {historyBenchmarks.length > 0 ? (
+              <div className="grid gap-2 text-xs sm:grid-cols-2">
+                {historyBenchmarks.map((benchmark) => (
+                  <p key={`history-${benchmark.metric}`}>
+                    {COMPARISON_METRIC_LABELS[benchmark.metric]}:{' '}
+                    <span className="font-medium tabular-nums">
+                      {formatComparisonNumber(benchmark.current)}
+                    </span>{' '}
+                    vs histórico{' '}
+                    <span className="font-medium tabular-nums">
+                      {formatComparisonNumber(benchmark.baseline)}
+                    </span>{' '}
+                    ({formatConversionRate(benchmark.changePercent)})
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--onside-muted)]">
+                Ainda não há histórico suficiente para formar um benchmark.
+              </p>
+            )}
+          </div>
+
+          {comparison.insights.length > 0 && (
+            <div>
+              <p className="mb-2 font-medium text-sm">Variações anômalas</p>
+              <ul className="space-y-1 text-xs">
+                {comparison.insights.map((insight) => (
+                  <li key={`${insight.eventId}-${insight.metric}`}>
+                    {insight.eventName}:{' '}
+                    {COMPARISON_METRIC_LABELS[insight.metric]}{' '}
+                    <span className="font-medium tabular-nums">
+                      {formatComparisonNumber(insight.value)}
+                    </span>{' '}
+                    vs {formatComparisonNumber(insight.baseline)} na{' '}
+                    {WEEKDAY_LABELS[insight.weekday] ?? 'semana'} (
+                    {formatConversionRate(insight.changePercent)})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -222,6 +583,13 @@ export function EventPerformance({
     status: 'loading' | 'error' | 'blocked' | 'empty' | 'ready'
     items?: EventAnalyticsRow[]
     retry?: () => void
+    comparisonMode?: AnalyticsComparisonMode
+    comparisonTarget?: EventComparisonTarget
+    comparison?: EventComparisonData
+    comparisonLoading?: boolean
+    onComparisonTargetChange?: (
+      target: EventComparisonTarget | undefined
+    ) => void
   }
 }) {
   if (eventAnalyticsState.status === 'loading') return <PerformanceSkeleton />
@@ -271,6 +639,20 @@ export function EventPerformance({
   return (
     <div className="onside-panel-acid p-4">
       <PerformanceHeading />
+
+      <ComparisonControls
+        items={items}
+        mode={eventAnalyticsState.comparisonMode}
+        target={eventAnalyticsState.comparisonTarget}
+        loading={eventAnalyticsState.comparisonLoading}
+        onChange={eventAnalyticsState.onComparisonTargetChange}
+      />
+
+      <ComparisonResult
+        comparison={eventAnalyticsState.comparison}
+        mode={eventAnalyticsState.comparisonMode}
+        loading={eventAnalyticsState.comparisonLoading}
+      />
 
       {topEvent && topEventIntent !== null && (
         <div className="mb-3 flex items-center gap-2 border border-[var(--onside-ink)] bg-[var(--onside-ink)] px-3 py-2 text-sm text-[var(--onside-paper)]">
