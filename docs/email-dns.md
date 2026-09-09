@@ -5,8 +5,10 @@
 Os links de ação e as imagens dos e-mails usam `PUBLIC_APP_URL`, separado de
 `BETTER_AUTH_URL`. Em `development` e `test`, a variável pode ficar ausente e
 cai para `BETTER_AUTH_URL`; em `production`, ela é obrigatória e precisa ser um
-endereço HTTPS público. Configure `PUBLIC_APP_URL=https://www.onside.sh` na
-Vercel e no ambiente de produção.
+endereço HTTPS público. A validação acontece no caminho de e-mail: a ausência
+não derruba o boot da aplicação, mas impede o envio até a variável ser
+configurada. Configure `PUBLIC_APP_URL=https://www.onside.sh` na Vercel e no
+ambiente local que dispara e-mails reais.
 
 O asset `apps/web/public/og-image.jpg` já existe no branch e em produção; não
 use `og-image.png`, que não é um fallback válido.

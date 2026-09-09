@@ -9,7 +9,7 @@ import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
-import { env } from '@findsports_oficial/env/server'
+import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -243,6 +243,7 @@ export function createAuth() {
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
       sendVerificationEmail: async ({ user, url }) => {
+        const publicAppUrl = getPublicAppUrl()
         await sendVerificationEmailWithResend({
           apiKey: env.RESEND_API_KEY,
           fromEmail: env.RESEND_FROM_EMAIL,
@@ -250,10 +251,10 @@ export function createAuth() {
           name: user.name,
           verificationUrl: publicEmailUrl(
             url,
-            env.PUBLIC_APP_URL,
+            publicAppUrl,
             env.BETTER_AUTH_URL
           ),
-          ...emailAssetUrls(env.PUBLIC_APP_URL)
+          ...emailAssetUrls(publicAppUrl)
         })
       }
     },

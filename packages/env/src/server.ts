@@ -67,9 +67,10 @@ export function resolvePublicAppUrl(
   return publicAppUrl ?? betterAuthUrl
 }
 
-export const env = {
-  ...rawEnv,
-  PUBLIC_APP_URL: resolvePublicAppUrl(
+export const env = rawEnv
+
+export function getPublicAppUrl(): string {
+  return resolvePublicAppUrl(
     rawEnv.PUBLIC_APP_URL,
     rawEnv.BETTER_AUTH_URL,
     rawEnv.NODE_ENV

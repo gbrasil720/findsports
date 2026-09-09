@@ -3,7 +3,7 @@ import {
   sendEmailWithResend
 } from '@findsports_oficial/auth/verification-email'
 import { emailAssetUrls } from '@findsports_oficial/config/site'
-import { env } from '@findsports_oficial/env/server'
+import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 
 export type WaitlistEmailKind =
   | 'confirm'
@@ -138,7 +138,7 @@ export async function sendWaitlistEmail(input: {
   const email = createWaitlistEmail({
     kind: input.kind,
     url: input.url,
-    ...emailAssetUrls(env.PUBLIC_APP_URL)
+    ...emailAssetUrls(getPublicAppUrl())
   })
   return sendEmailWithResend({
     apiKey: env.RESEND_API_KEY,
@@ -162,5 +162,5 @@ export function buildWaitlistUrl(
 }
 
 export function waitlistUrl(path: string, token?: string) {
-  return buildWaitlistUrl(env.PUBLIC_APP_URL, path, token)
+  return buildWaitlistUrl(getPublicAppUrl(), path, token)
 }
