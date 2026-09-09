@@ -54,7 +54,8 @@ novo na sidebar. Consolidar em uma ocorrência, no bloco do mapa.
 
 ## 5. Plano
 
-- `pro` / `elite`: selo verificado no herói + capa em altura grande.
+- `pro`: selo Pro no perfil + capa com o dobro da altura do Starter.
+- `elite`: selo Elite no topo do perfil + capa com o dobro da altura do Starter.
 - `starter`: mesma informação, capa compacta, sem selo. Nada escondido.
 - `plan` já vem no retorno de `getById` (só `geo` e `userId` são omitidos).
 - `plan.tsx` (pricing) passa a listar o que o perfil ganha por plano, marcando

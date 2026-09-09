@@ -1,5 +1,5 @@
+import Medal from 'reicon-react/icons/Medal'
 import Star from 'reicon-react/icons/Star'
-import Verified from 'reicon-react/icons/Verified'
 import { getBarInitials, getPlanPresentation } from '@/domain/pub-profile'
 import { OwnerNudge } from './owner-notice'
 
@@ -62,12 +62,12 @@ export function BarCover({
           </div>
         )}
 
-        {presentation.badge && (
+        {presentation.planBadge && (
           <span
-            className={`onside-badge absolute top-3 left-3 ${presentation.badge.className}`}
+            className={`onside-badge absolute top-3 left-3 ${presentation.planBadge.className}`}
           >
-            <Verified size={12} color="currentColor" aria-hidden="true" />
-            {presentation.badge.label}
+            <Medal size={12} color="currentColor" aria-hidden="true" />
+            <span>{presentation.planBadge.label}</span>
           </span>
         )}
       </div>

@@ -160,20 +160,32 @@ describe('groupEventsByDay', () => {
 })
 
 describe('getPlanPresentation', () => {
-  it('dá selo a pro e elite', () => {
-    expect(getPlanPresentation('pro').badge?.label).toBe('Pro')
-    expect(getPlanPresentation('elite').badge?.label).toBe('Elite')
+  it('expõe o selo do plano e a altura correta para cada plano', () => {
+    expect(getPlanPresentation('starter')).toMatchObject({
+      planBadge: null,
+      coverHeight: 'h-[150px] md:h-[180px]'
+    })
+
+    expect(getPlanPresentation('pro')).toMatchObject({
+      planBadge: { label: 'Pro' },
+      coverHeight: 'h-[300px] md:h-[360px]'
+    })
+
+    expect(getPlanPresentation('elite')).toMatchObject({
+      planBadge: { label: 'Elite' },
+      coverHeight: 'h-[300px] md:h-[360px]'
+    })
   })
 
-  it('não dá selo ao starter, e ainda assim entrega capa', () => {
+  it('não dá selo a plano ausente, e ainda assim entrega capa', () => {
     const starter = getPlanPresentation('starter')
-    expect(starter.badge).toBeNull()
+    expect(starter.planBadge).toBeNull()
     expect(starter.coverHeight.length).toBeGreaterThan(0)
   })
 
   it('trata plano ausente ou desconhecido como starter', () => {
-    expect(getPlanPresentation(null).badge).toBeNull()
-    expect(getPlanPresentation('lendario').badge).toBeNull()
+    expect(getPlanPresentation(null).planBadge).toBeNull()
+    expect(getPlanPresentation('lendario').planBadge).toBeNull()
   })
 })
 

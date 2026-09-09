@@ -214,6 +214,23 @@ describe('profilePerks', () => {
     }
   })
 
+  test('identificam o plano sem prometer verificação', () => {
+    expect(getPlan('pro').profilePerks).toContainEqual({
+      label: 'Selo Pro no perfil',
+      status: 'live'
+    })
+    expect(getPlan('elite').profilePerks).toContainEqual({
+      label: 'Selo Elite no topo do perfil',
+      status: 'live'
+    })
+
+    for (const id of ['pro', 'elite'] as const) {
+      expect(
+        getPlan(id).profilePerks.some((perk) => /verific/i.test(perk.label))
+      ).toBe(false)
+    }
+  })
+
   test('o que ainda não existe está marcado como tal', () => {
     const roadmap = PLAN_CATALOG.flatMap((plan) =>
       plan.profilePerks.filter((perk) => perk.status === 'soon')
