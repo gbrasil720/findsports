@@ -482,8 +482,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "bar_commercial_event_daily_rollup_pkey": {
-          "name": "bar_commercial_event_daily_rollup_pkey",
+        "bar_commercial_event_daily_rollup_bar_event_day_unique": {
+          "name": "bar_commercial_event_daily_rollup_bar_event_day_unique",
           "nullsNotDistinct": false,
           "columns": [
             "bar_id",

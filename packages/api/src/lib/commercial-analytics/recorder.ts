@@ -424,6 +424,9 @@ export type RetentionResult = {
  * teria mais evento bruto de onde recalcular.
  */
 async function finalizarDiasFechados(): Promise<number> {
+  // Sem limite inferior de propósito: qualquer bruto de dia fechado pode
+  // ainda precisar de consolidação. A poda é o que mantém esta varredura
+  // barata; se a política de poda mudar, introduza uma janela inferior aqui.
   const result = await db.execute(sql`
     INSERT INTO bar_commercial_daily_rollup (
       bar_id, commercial_day,

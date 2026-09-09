@@ -9,9 +9,9 @@ import Check from 'reicon-react/icons/Check'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import {
   type EventAnalyticsRow,
+  type EventAnalyticsState,
   type EventComparisonData,
   formatAnalyticsValue,
-  type EventAnalyticsState,
   formatRate,
   getMainAction,
   sumAnalyticsActions

@@ -9,7 +9,7 @@ CREATE TABLE "bar_commercial_event_daily_rollup" (
 	"is_finalized" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "bar_commercial_event_daily_rollup_pkey" UNIQUE("bar_id","event_id","commercial_day")
+	CONSTRAINT "bar_commercial_event_daily_rollup_bar_event_day_unique" UNIQUE("bar_id","event_id","commercial_day")
 );
 --> statement-breakpoint
 ALTER TABLE "bar_commercial_event_daily_rollup" ADD CONSTRAINT "bar_commercial_event_daily_rollup_bar_id_bar_id_fk" FOREIGN KEY ("bar_id") REFERENCES "public"."bar"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

@@ -157,7 +157,7 @@ export const barCommercialEventDailyRollup = pgTable(
       .notNull()
   },
   (table) => [
-    unique('bar_commercial_event_daily_rollup_pkey').on(
+    unique('bar_commercial_event_daily_rollup_bar_event_day_unique').on(
       table.barId,
       table.eventId,
       table.commercialDay
