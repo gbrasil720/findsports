@@ -10,7 +10,8 @@ import {
   getPlanSelectionState,
   isDowngrade,
   PLAN_CATALOG,
-  PLAN_TIER_ORDER
+  PLAN_TIER_ORDER,
+  parsePlanOrigin
 } from '@/lib/plan-catalog'
 
 describe('PLAN_CATALOG structure', () => {
@@ -133,17 +134,24 @@ describe('Plan selection state', () => {
 })
 
 describe('Saída da tela de planos', () => {
-  test('mostra Ver planos depois e leva ao admin sem plano vigente', () => {
-    expect(getPlanExitLink(false)).toEqual({
+  test.each([
+    ['admin', { label: 'Voltar', to: '/admin' }],
+    ['billing', { label: 'Voltar', to: '/admin/billing' }]
+  ] as const)('volta para %s quando a origem é conhecida', (origin, link) => {
+    expect(getPlanExitLink(origin)).toEqual(link)
+  })
+
+  test('mostra Ver planos depois e leva ao admin sem origem', () => {
+    expect(getPlanExitLink(undefined)).toEqual({
       label: 'Ver planos depois',
       to: '/admin'
     })
   })
 
-  test('mostra Voltar e leva ao billing com plano vigente', () => {
-    expect(getPlanExitLink(true)).toEqual({
-      label: 'Voltar',
-      to: '/admin/billing'
+  test('trata origem inválida como ausência de origem', () => {
+    expect(getPlanExitLink(parsePlanOrigin('https://exemplo.test'))).toEqual({
+      label: 'Ver planos depois',
+      to: '/admin'
     })
   })
 })

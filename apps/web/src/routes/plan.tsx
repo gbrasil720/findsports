@@ -13,13 +13,18 @@ import {
   getPlanExitLink,
   getPlanSelectionState,
   PLAN_CATALOG,
-  type Plan
+  type Plan,
+  parsePlanOrigin
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
 export const Route = createFileRoute('/plan')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const origin = parsePlanOrigin(search.origin)
+    return origin ? { origin } : {}
+  },
   head: () => ({
     meta: [
       { title: 'Escolha seu plano — Onside' },
@@ -36,6 +41,7 @@ export const Route = createFileRoute('/plan')({
 })
 
 function PlanSelection() {
+  const { origin } = Route.useSearch()
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +62,7 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
-  const exitLink = getPlanExitLink(hasActivePlan)
+  const exitLink = getPlanExitLink(origin)
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
