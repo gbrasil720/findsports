@@ -52,6 +52,14 @@ describe('router contract', () => {
     expectTypeOf(appRouter).toHaveProperty('waitlist')
   })
 
+  it('router exposes support procedures', () => {
+    expectTypeOf(appRouter).toHaveProperty('support')
+    expectTypeOf(appRouter.support).toHaveProperty('create')
+    expectTypeOf(appRouter.support).toHaveProperty('listMine')
+    expectTypeOf(appRouter.support).toHaveProperty('listQueue')
+    expectTypeOf(appRouter.support).toHaveProperty('updateStatus')
+  })
+
   it('recommendations exposes the personalized read and feedback controls', () => {
     expectTypeOf(appRouter).toHaveProperty('recommendations')
     expectTypeOf(appRouter.recommendations).toHaveProperty('get')

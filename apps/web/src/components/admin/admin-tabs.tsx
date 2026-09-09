@@ -104,6 +104,7 @@ export function AdminTabs({ activeSection, onChange }: Props) {
       </div>
 
       <Link to="/admin/billing">Assinatura e pagamentos</Link>
+      <Link to="/admin/support">Suporte</Link>
     </nav>
   )
 }

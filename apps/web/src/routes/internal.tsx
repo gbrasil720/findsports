@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Settings from 'reicon-react/icons/Settings'
 import SliderH from 'reicon-react/icons/SliderH'
 import Users from 'reicon-react/icons/Users'
@@ -39,6 +40,31 @@ function InternalHallPage() {
       </p>
 
       <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+        <Link
+          to="/internal/support"
+          className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"
+        >
+          <div className="grid size-14 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
+            <CircleInfo
+              size={28}
+              color="var(--onside-ink)"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <h2 className="onside-display text-2xl tracking-tight">
+              Fila de Suporte
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
+              Atenda solicitações ordenadas pela prioridade vigente de cada
+              plano.
+            </p>
+          </div>
+          <span className="onside-kicker text-[var(--onside-ink)]">
+            Acessar →
+          </span>
+        </Link>
+
         <Link
           to="/internal/waitlist"
           className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"

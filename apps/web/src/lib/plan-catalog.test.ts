@@ -140,6 +140,15 @@ describe('Format helpers', () => {
 })
 
 describe('Feature text consistency', () => {
+  test('Pro e Elite publicam prioridade sem inventar SLA', () => {
+    expect(getPlan('pro').features).toContain(
+      'Suporte prioritário (SLA pendente de confirmação)'
+    )
+    expect(getPlan('elite').features).toContain(
+      'Suporte prioritário (SLA pendente de confirmação)'
+    )
+  })
+
   test('no plan contains "Perfil público do bar"', () => {
     for (const plan of PLAN_CATALOG) {
       const match = plan.features.find((f) =>

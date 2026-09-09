@@ -807,6 +807,7 @@ export function OnsideLanding() {
             <a href="#lista">Waitlist</a>
             <a href="#bar-form">Para bares</a>
             <a href="#duvidas">Dúvidas</a>
+            <a href="/support">Suporte e SLA</a>
             <a href="mailto:contato@onside.sh">Contato</a>
           </div>
           <small>© 2026 Onside</small>

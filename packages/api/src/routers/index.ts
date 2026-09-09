@@ -6,6 +6,7 @@ import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
 import { ratingsRouter } from './ratings'
 import { recommendationsRouter } from './recommendations'
+import { supportRouter } from './support'
 import { waitlistRouter } from './waitlist'
 
 export const appRouter = router({
@@ -25,6 +26,7 @@ export const appRouter = router({
   pubs: pubsRouter,
   recommendations: recommendationsRouter,
   commercialAnalytics: commercialAnalyticsRouter,
-  ratings: ratingsRouter
+  ratings: ratingsRouter,
+  support: supportRouter
 })
 export type AppRouter = typeof appRouter

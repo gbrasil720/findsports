@@ -16,6 +16,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
+import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Logout from 'reicon-react/icons/Logout'
 import Settings from 'reicon-react/icons/Settings'
@@ -193,6 +194,18 @@ export function AppShell({ variant, userMeta, children }: Props) {
                       aria-hidden="true"
                     />
                     Assinatura e pagamentos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={accountMenuItemClass}
+                    render={<Link to="/admin/support" />}
+                  >
+                    <CircleInfo
+                      size={16}
+                      color="currentColor"
+                      className="text-[var(--onside-muted)]"
+                      aria-hidden="true"
+                    />
+                    Suporte
                   </DropdownMenuItem>
                 </>
               ) : null}

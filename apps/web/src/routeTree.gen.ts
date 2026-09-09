@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
@@ -21,8 +22,10 @@ import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
+import { Route as InternalSupportRouteImport } from './routes/internal_.support'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
+import { Route as AdminSupportRouteImport } from './routes/admin_.support'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
@@ -40,6 +43,11 @@ import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboardin
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
 
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -100,6 +108,11 @@ const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
   path: '/internal/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalSupportRoute = InternalSupportRouteImport.update({
+  id: '/internal_/support',
+  path: '/internal/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
   id: '/internal_/manage-users',
   path: '/internal/manage-users',
@@ -108,6 +121,11 @@ const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
 const InternalFlagsRoute = InternalFlagsRouteImport.update({
   id: '/internal_/flags',
   path: '/internal/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/admin_/support',
+  path: '/admin/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
@@ -204,14 +222,17 @@ export interface FileRoutesByFullPath {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/support': typeof AdminSupportRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
+  '/internal/support': typeof InternalSupportRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -236,14 +257,17 @@ export interface FileRoutesByTo {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/support': typeof AdminSupportRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
+  '/internal/support': typeof InternalSupportRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -269,14 +293,17 @@ export interface FileRoutesById {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/support': typeof SupportRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
+  '/admin_/support': typeof AdminSupportRoute
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
+  '/internal_/support': typeof InternalSupportRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -303,14 +330,17 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/support'
     | '/login'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/support'
     | '/internal/flags'
     | '/internal/manage-users'
+    | '/internal/support'
     | '/internal/waitlist'
     | '/dashboard/profile'
     | '/onboarding/fan'
@@ -335,14 +365,17 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/support'
     | '/login'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/support'
     | '/internal/flags'
     | '/internal/manage-users'
+    | '/internal/support'
     | '/internal/waitlist'
     | '/dashboard/profile'
     | '/onboarding/fan'
@@ -367,14 +400,17 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/support'
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/(auth)/two-factor'
     | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
+    | '/admin_/support'
     | '/internal_/flags'
     | '/internal_/manage-users'
+    | '/internal_/support'
     | '/internal_/waitlist'
     | '/(dashboard)/dashboard_/profile'
     | '/(onboarding)/onboarding/fan'
@@ -400,14 +436,17 @@ export interface RootRouteChildren {
   LeaveWaitlistRoute: typeof LeaveWaitlistRoute
   PlanRoute: typeof PlanRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SupportRoute: typeof SupportRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
+  InternalSupportRoute: typeof InternalSupportRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
@@ -423,6 +462,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -507,6 +553,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal_/support': {
+      id: '/internal_/support'
+      path: '/internal/support'
+      fullPath: '/internal/support'
+      preLoaderRoute: typeof InternalSupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/internal_/manage-users': {
       id: '/internal_/manage-users'
       path: '/internal/manage-users'
@@ -519,6 +572,13 @@ declare module '@tanstack/react-router' {
       path: '/internal/flags'
       fullPath: '/internal/flags'
       preLoaderRoute: typeof InternalFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/support': {
+      id: '/admin_/support'
+      path: '/admin/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/billing': {
@@ -648,14 +708,17 @@ const rootRouteChildren: RootRouteChildren = {
   LeaveWaitlistRoute: LeaveWaitlistRoute,
   PlanRoute: PlanRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SupportRoute: SupportRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminSupportRoute: AdminSupportRoute,
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
+  InternalSupportRoute: InternalSupportRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,

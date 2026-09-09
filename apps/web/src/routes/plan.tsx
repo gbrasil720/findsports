@@ -8,6 +8,7 @@ import Loader from 'reicon-react/icons/Loader'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
+import { SupportSla } from '@/components/support/support-sla'
 import { analytics } from '@/lib/analytics'
 import { PLAN_CATALOG, PLAN_TIER_ORDER, type Plan } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -182,6 +183,10 @@ function PlanSelection() {
           />
         ))}
       </fieldset>
+
+      <div className="mb-10">
+        <SupportSla />
+      </div>
 
       {!checkoutLiberado && !configQuery.isLoading ? (
         <div
