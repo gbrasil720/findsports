@@ -1,15 +1,45 @@
 import { describe, expect, it } from 'bun:test'
 import {
   EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL
+  EMAIL_LOGO_URL,
+  emailAssetUrls
 } from '@findsports_oficial/config/site'
-import { createWaitlistEmail } from './waitlist-email'
+import { resolvePublicAppUrl } from '@findsports_oficial/env/server'
+import { buildWaitlistUrl, createWaitlistEmail } from './waitlist-email'
 
 const baseInput = {
   url: 'https://onside.app/action?token=abc&role=fan',
   logoUrl: 'https://onside.app/onside-wordmark-paper.png',
   heroImageUrl: 'https://onside.app/og-image.jpg'
 }
+
+describe('PUBLIC_APP_URL', () => {
+  it('usa BETTER_AUTH_URL como fallback fora de produção', () => {
+    expect(
+      resolvePublicAppUrl(undefined, 'http://localhost:3001', 'development')
+    ).toBe('http://localhost:3001')
+  })
+
+  it('exige HTTPS público em produção', () => {
+    expect(() =>
+      resolvePublicAppUrl(undefined, 'http://localhost:3001', 'production')
+    ).toThrow('PUBLIC_APP_URL é obrigatória em produção.')
+    expect(() =>
+      resolvePublicAppUrl(
+        'http://localhost:3001',
+        'https://www.onside.sh',
+        'production'
+      )
+    ).toThrow('HTTPS público')
+    expect(
+      resolvePublicAppUrl(
+        'https://www.onside.sh',
+        'http://localhost:3001',
+        'production'
+      )
+    ).toBe('https://www.onside.sh')
+  })
+})
 
 describe('e-mails da waitlist Onside', () => {
   it.each([
@@ -39,6 +69,25 @@ describe('assets de imagem dos e-mails', () => {
       expect(url.protocol).toBe('https:')
       expect(url.hostname).toBe('www.onside.sh')
       expect(url.search).toContain('v=')
+    }
+  })
+
+  it('renderiza href e src somente no host público configurado', () => {
+    const publicBaseUrl = 'https://www.onside.sh'
+    const publicHost = new URL(publicBaseUrl).hostname
+    const email = createWaitlistEmail({
+      kind: 'invite',
+      url: buildWaitlistUrl(publicBaseUrl, '/activate-invite', 'token'),
+      ...emailAssetUrls(publicBaseUrl)
+    })
+    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
+      (match) => (match[1] ?? '').replaceAll('&amp;', '&')
+    )
+
+    expect(urls).toHaveLength(4)
+    expect(email.html).not.toContain('localhost')
+    for (const value of urls) {
+      expect(new URL(value).hostname).toBe(publicHost)
     }
   })
 

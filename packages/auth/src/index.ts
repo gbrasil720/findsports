@@ -4,10 +4,7 @@ import {
   portal,
   webhooks
 } from '@dodopayments/better-auth'
-import {
-  EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL
-} from '@findsports_oficial/config/site'
+import { emailAssetUrls } from '@findsports_oficial/config/site'
 import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
@@ -31,7 +28,10 @@ import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { buildTrustedOrigins } from './trusted-origins'
-import { sendVerificationEmailWithResend } from './verification-email'
+import {
+  publicEmailUrl,
+  sendVerificationEmailWithResend
+} from './verification-email'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -248,9 +248,12 @@ export function createAuth() {
           fromEmail: env.RESEND_FROM_EMAIL,
           to: user.email,
           name: user.name,
-          verificationUrl: url,
-          logoUrl: EMAIL_LOGO_URL,
-          heroImageUrl: EMAIL_HERO_IMAGE_URL
+          verificationUrl: publicEmailUrl(
+            url,
+            env.PUBLIC_APP_URL,
+            env.BETTER_AUTH_URL
+          ),
+          ...emailAssetUrls(env.PUBLIC_APP_URL)
         })
       }
     },
