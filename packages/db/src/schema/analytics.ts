@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   date,
@@ -93,7 +93,12 @@ export const barCommercialEvent = pgTable(
       table.occurredAt
     ),
     // Também atende consultas e retenção por atribuição histórica.
-    index('bar_commercial_event_sourceEventId_idx').on(table.sourceEventId)
+    index('bar_commercial_event_sourceEventId_idx').on(table.sourceEventId),
+    // WEB-110: a consolidação diária lê por faixa de dia comercial, do
+    // primeiro dia ainda não consolidado até ontem. Todos os índices acima
+    // começam por bar, ator ou jogo, então nenhum serve a essa faixa — sem
+    // este, o piso da varredura só descarta a linha depois de lê-la.
+    index('bar_commercial_event_commercialDay_idx').on(table.commercialDay)
   ]
 )
 
@@ -133,7 +138,13 @@ export const barCommercialDailyRollup = pgTable(
     index('bar_commercial_daily_rollup_barId_commercialDay_idx').on(
       table.barId,
       table.commercialDay
-    )
+    ),
+    // WEB-110: a consolidação deriva daqui o primeiro dia que ainda pode
+    // virar. Índice parcial porque só a fração não consolidada interessa —
+    // em regime, os dias correntes e o que sobrou de execuções interrompidas.
+    index('bar_commercial_daily_rollup_pending_idx')
+      .on(table.commercialDay)
+      .where(sql`is_finalized = false`)
   ]
 )
 
@@ -175,7 +186,12 @@ export const barCommercialEventDailyRollup = pgTable(
     index('bar_commercial_event_daily_rollup_barId_commercialDay_idx').on(
       table.barId,
       table.commercialDay
-    )
+    ),
+    // WEB-110: mesmo papel do índice parcial do rollup diário, para o piso
+    // da projeção por jogo — que é derivado desta tabela, não da outra.
+    index('bar_commercial_event_daily_rollup_pending_idx')
+      .on(table.commercialDay)
+      .where(sql`is_finalized = false`)
   ]
 )
 

@@ -477,15 +477,46 @@ export type RetentionResult = {
  * nada no código o levava a `true`, o que deixava a política de retenção
  * inteira sem gatilho.
  *
- * Só toca dias anteriores a hoje — o dia corrente ainda está recebendo
- * evento. E o `WHERE` do `ON CONFLICT` protege o que já está consolidado: um
+ * Só toca dias anteriores ao dia comercial corrente — o dia corrente ainda
+ * está recebendo evento. E o `WHERE` do `ON CONFLICT` protege o que já está consolidado: um
  * dia finalizado não é reescrito, o que importa porque depois da poda ele não
  * teria mais evento bruto de onde recalcular.
+ *
+ * WEB-110: a varredura também tem piso. Cada instrução começa no primeiro dia
+ * que a sua própria projeção ainda não consolidou, em vez de reler a tabela de
+ * brutos inteira para descobrir no `ON CONFLICT` que não havia o que reescrever.
+ *
+ * O piso é seguro por três fatos, nesta ordem:
+ *
+ * 1. `recordCommercialEvent` grava o bruto e a linha de rollup na mesma
+ *    instrução — um dia com evento bruto tem linha de rollup desde o instante
+ *    em que aconteceu, e é o único caminho de escrita de bruto do sistema.
+ * 2. Dia passado é imutável: o bruto sempre entra com o dia comercial de hoje,
+ *    então nenhum evento novo cai num dia já fechado.
+ * 3. `is_finalized` só volta a `false` no upsert do dia corrente.
+ *
+ * Logo, abaixo do primeiro dia não consolidado todo par (bar, dia) já está
+ * finalizado, e reler aqueles brutos não mudaria nenhuma linha.
+ *
+ * A contrapartida: quem inserir bruto fora do gravador — seed, backfill,
+ * fixture de teste — precisa criar a linha de rollup não finalizada junto,
+ * como o gravador faz. Sem ela o dia fica abaixo do piso e nunca consolida.
  */
-async function finalizarDiasFechados(): Promise<number> {
-  // Sem limite inferior de propósito: qualquer bruto de dia fechado pode
-  // ainda precisar de consolidação. A poda é o que mantém esta varredura
-  // barata; se a política de poda mudar, introduza uma janela inferior aqui.
+async function finalizarDiasFechados(agora: Date): Promise<number> {
+  // WEB-110: o teto é o dia comercial de hoje em `America/Sao_Paulo`, e não
+  // `CURRENT_DATE`. `commercial_day` é gravado nesse fuso, mas `CURRENT_DATE`
+  // sai do relógio do servidor — em UTC, das 21h à meia-noite de São Paulo ele
+  // já é o dia seguinte, e a consolidação fechava um dia que ainda estava
+  // recebendo evento. Vem do mesmo `getCommercialDay` que grava o bruto, para
+  // não existir uma segunda definição de "hoje".
+  const hoje = getCommercialDay(agora)
+
+  // O piso sai da própria projeção que está sendo escrita, não de uma data
+  // compartilhada: se a primeira instrução consolidar e a segunda falhar, a
+  // execução seguinte reencontra cada uma no ponto onde parou.
+  //
+  // `COALESCE(..., hoje)` para o caso de não haver nada pendente: o piso
+  // encosta no teto e a faixa fica vazia, sem varrer nada.
   const result = await db.execute(sql`
     INSERT INTO bar_commercial_daily_rollup (
       bar_id, commercial_day,
@@ -508,7 +539,12 @@ async function finalizarDiasFechados(): Promise<number> {
       COUNT(*) FILTER (WHERE type = 'classic_click'),
       true, NOW(), NOW()
     FROM bar_commercial_event
-    WHERE commercial_day < CURRENT_DATE
+    WHERE commercial_day >= (
+        SELECT COALESCE(MIN(r.commercial_day), ${hoje}::date)
+        FROM bar_commercial_daily_rollup r
+        WHERE r.is_finalized = false
+      )
+      AND commercial_day < ${hoje}::date
     GROUP BY bar_id, commercial_day
     ON CONFLICT (bar_id, commercial_day) DO UPDATE SET
       unique_visitors = EXCLUDED.unique_visitors,
@@ -542,7 +578,12 @@ async function finalizarDiasFechados(): Promise<number> {
       COUNT(*) FILTER (WHERE type = 'whatsapp_opened'),
       true, NOW(), NOW()
     FROM bar_commercial_event
-    WHERE commercial_day < CURRENT_DATE
+    WHERE commercial_day >= (
+        SELECT COALESCE(MIN(r.commercial_day), ${hoje}::date)
+        FROM bar_commercial_event_daily_rollup r
+        WHERE r.is_finalized = false
+      )
+      AND commercial_day < ${hoje}::date
       AND source_event_id IS NOT NULL
     GROUP BY bar_id, source_event_id, commercial_day
     ON CONFLICT (bar_id, event_id, commercial_day) DO UPDATE SET
@@ -581,14 +622,23 @@ async function finalizarDiasFechados(): Promise<number> {
 export async function runAnalyticsRetention(options: {
   retentionDays: number
   apagarEventosBrutos?: boolean
+  /** Instante de referência. Existe para o teste fixar o relógio. */
+  agora?: Date
 }): Promise<RetentionResult> {
-  const { retentionDays, apagarEventosBrutos = false } = options
+  const {
+    retentionDays,
+    apagarEventosBrutos = false,
+    agora = new Date()
+  } = options
 
-  const cutoff = new Date()
-  cutoff.setUTCDate(cutoff.getUTCDate() - retentionDays)
-  const cutoffDay = cutoff.toISOString().slice(0, 10)
+  // WEB-110: o corte da poda também é dia comercial, pelo mesmo motivo do teto
+  // da consolidação — `commercial_day` vive em `America/Sao_Paulo`, e derivar a
+  // data em UTC deslocava a janela em um dia durante três horas por dia.
+  const cutoffDay = getCommercialDay(
+    new Date(agora.getTime() - retentionDays * 24 * 60 * 60 * 1000)
+  )
 
-  const diasFinalizados = await finalizarDiasFechados()
+  const diasFinalizados = await finalizarDiasFechados(agora)
 
   // O JOIN com o rollup finalizado é a garantia: nenhum evento bruto é
   // apagado sem que o agregado daquele bar naquele dia já exista e esteja

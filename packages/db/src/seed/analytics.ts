@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { createDb } from '..'
 import {
   bar,
@@ -272,6 +272,30 @@ async function main() {
       )
     await tx.delete(user).where(inArray(user.id, fanIds))
 
+    // Os dias registrados abaixo só existem por causa dos brutos demo. Sem
+    // bruto e sem consolidação, a linha não carrega informação nenhuma —
+    // limpar aqui evita que uma reexecução deixe dia órfão para trás.
+    await tx.execute(sql`
+      DELETE FROM bar_commercial_daily_rollup r
+      WHERE r.bar_id = ${target.barId}
+        AND r.is_finalized = false
+        AND NOT EXISTS (
+          SELECT 1 FROM bar_commercial_event e
+          WHERE e.bar_id = r.bar_id AND e.commercial_day = r.commercial_day
+        )
+    `)
+    await tx.execute(sql`
+      DELETE FROM bar_commercial_event_daily_rollup r
+      WHERE r.bar_id = ${target.barId}
+        AND r.is_finalized = false
+        AND NOT EXISTS (
+          SELECT 1 FROM bar_commercial_event e
+          WHERE e.bar_id = r.bar_id
+            AND e.source_event_id = r.event_id
+            AND e.commercial_day = r.commercial_day
+        )
+    `)
+
     if (process.argv.includes('--clean')) return
 
     await tx
@@ -308,6 +332,30 @@ async function main() {
         .insert(barCommercialEvent)
         .values(analyticsRows.slice(index, index + 500))
     }
+
+    // WEB-110: a consolidação diária começa no primeiro dia que ainda não
+    // fechou, e descobre isso pelo rollup — não relendo os brutos. Em
+    // produção a linha do rollup nasce no mesmo comando do evento; aqui os
+    // brutos entram direto, então os dias são registrados na mão, com
+    // contador zerado e sem finalizar. A retenção recalcula o valor exato a
+    // partir dos brutos quando rodar; até lá o painel lê os próprios brutos.
+    await tx.execute(sql`
+      INSERT INTO bar_commercial_daily_rollup (bar_id, commercial_day, is_finalized)
+      SELECT DISTINCT bar_id, commercial_day, false
+      FROM bar_commercial_event
+      WHERE bar_id = ${target.barId}
+      ON CONFLICT (bar_id, commercial_day) DO NOTHING
+    `)
+    await tx.execute(sql`
+      INSERT INTO bar_commercial_event_daily_rollup (
+        bar_id, event_id, commercial_day, is_finalized
+      )
+      SELECT DISTINCT bar_id, source_event_id, commercial_day, false
+      FROM bar_commercial_event
+      WHERE bar_id = ${target.barId}
+        AND source_event_id IS NOT NULL
+      ON CONFLICT (bar_id, event_id, commercial_day) DO NOTHING
+    `)
   })
 
   if (process.argv.includes('--clean')) {
