@@ -1,4 +1,4 @@
-import { and, db, eq, sql } from '@findsports_oficial/db'
+import { and, db, eq, or, sql } from '@findsports_oficial/db'
 import {
   bar,
   sport,
@@ -241,7 +241,12 @@ export const pubsRouter = router({
    * diálogo de autenticação e marca o conteúdo como inerte sem sessão.
    *
    * `user_id` do dono e a coluna derivada `geo` ficam de fora da resposta, e
-   * um bar inativo responde como inexistente.
+   * um bar inativo responde como inexistente — **exceto para o próprio dono**.
+   *
+   * A exceção existe porque `bar.is_active` nasce `false`: o painel oferecia
+   * ao dono a prévia do próprio perfil e a prévia respondia "Bar não
+   * encontrado." até alguém ativar o bar. O dono precisa ver o que o cadastro
+   * dele produz antes de ele ir ao ar; ninguém mais vê.
    */
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
@@ -250,7 +255,10 @@ export const pubsRouter = router({
       const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
       const result = await db.query.bar.findFirst({
-        where: and(eq(bar.id, input.id), eq(bar.isActive, true)),
+        where: and(
+          eq(bar.id, input.id),
+          or(eq(bar.isActive, true), eq(bar.userId, ctx.session.user.id))
+        ),
         // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
         // dono e descartado antes da resposta — quem visita não precisa saber
         // qual conta é dona do bar.
@@ -258,6 +266,9 @@ export const pubsRouter = router({
           ...PUBLIC_BAR_COLUMNS,
           plan: true,
           userId: true,
+          // Só o dono chega aqui com `false`: para qualquer outra conta um bar
+          // inativo nem sai da consulta.
+          isActive: true,
           ratingCount: true,
           ratingPositive: true
         },

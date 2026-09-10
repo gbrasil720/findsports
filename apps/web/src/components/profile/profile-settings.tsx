@@ -5,7 +5,11 @@ import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import Medal from 'reicon-react/icons/Medal'
 import { AccountSettings } from '@/components/account/account-settings'
-import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
+import {
+  normalizeRadiusKm,
+  type RadiusKm,
+  SEARCH_RADII
+} from '@/domain/discovery'
 import type { Preference, ProfileUser, Sport } from './profile-model'
 
 type Props = {
@@ -74,7 +78,7 @@ export function ProfileSettings(props: Props) {
               props.preferences.map((preference) => (
                 <span
                   key={preference.sportId}
-                  className="rounded-none bg-[var(--onside-acid)]/10 px-3 py-1.5 font-bold text-[var(--onside-ink)] text-xs"
+                  className="onside-badge onside-badge-acid"
                 >
                   {preference.sport.name}
                 </span>
@@ -97,17 +101,22 @@ export function ProfileSettings(props: Props) {
           Distância máxima para buscar bares
         </p>
         <div className="flex flex-wrap gap-2">
+          {/*
+           * Mesmo chip da barra de busca do dashboard: era o mesmo controle
+           * com dois desenhos — aqui cinza sobre pedra, lá borda ink — e sem
+           * `aria-pressed`, então o estado marcado não existia para quem
+           * navega por leitor de tela.
+           */}
           {SEARCH_RADII.map((radiusKm) => (
             <button
               key={radiusKm}
               type="button"
               disabled={props.savingRadius}
+              aria-pressed={
+                normalizeRadiusKm(props.user?.searchRadiusKm) === radiusKm
+              }
               onClick={() => props.onRadiusChange(radiusKm)}
-              className={`min-h-11 rounded-none px-4 py-2 font-bold text-sm transition-colors disabled:opacity-60 ${
-                props.user?.searchRadiusKm === radiusKm
-                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                  : 'bg-[var(--onside-stone)] text-[var(--onside-muted)] hover:bg-[var(--onside-stone)]'
-              }`}
+              className="onside-chip tabular-nums"
             >
               {radiusKm} km
             </button>

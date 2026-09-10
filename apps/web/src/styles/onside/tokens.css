@@ -164,9 +164,47 @@
   box-sizing: border-box;
 }
 
+/*
+ * Política única de foco visível (WEB-111).
+ *
+ * Um único elemento responde pelo indicador, e ele é sempre um `outline`.
+ * Campos compostos (input-group, telefone) declaram `.onside-field-composite`
+ * e assumem o anel pelo `:focus-within`; o controle interno cala o próprio
+ * outline. Nada de `box-shadow` acumulado por cima — era isso que produzia
+ * dois e três anéis no mesmo campo.
+ *
+ * `--onside-focus-offset` existe porque dentro de um contêiner que rola
+ * (menu, tablist, barra de filtros) um outline afastado é cortado pelo
+ * `overflow` e sobra como duas barras vermelhas soltas. Nesses contextos o
+ * anel vira interno (`-3px`) em vez de sumir.
+ */
+:where(
+  .onside-page,
+  .onside-app,
+  .onside-banner,
+  .onside-dialog,
+  .onside-hint,
+  .onside-menu
+) {
+  --onside-focus-width: 3px;
+  --onside-focus-color: var(--onside-live);
+  --onside-focus-offset: 3px;
+}
+
 .onside-app :focus-visible {
-  outline: 3px solid var(--onside-live);
-  outline-offset: 3px;
+  outline: var(--onside-focus-width) solid var(--onside-focus-color);
+  outline-offset: var(--onside-focus-offset);
+}
+
+/* Contêineres que rolam ou recortam: o anel encosta por dentro do item. */
+.onside-app .onside-sticky-filters,
+.onside-app .onside-tablist,
+.onside-app .onside-admin-tablist,
+.onside-app [data-slot="table-container"],
+.onside-menu,
+.onside-app [data-slot="dropdown-menu-content"],
+.onside-app [data-slot="select-content"] {
+  --onside-focus-offset: -3px;
 }
 
 .onside-app h1,

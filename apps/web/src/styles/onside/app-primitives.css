@@ -1,8 +1,15 @@
 /* ─── Typography helpers ─── */
+/*
+ * Anton é condensada e o espaço dela já é estreito; o `letter-spacing`
+ * negativo o encurtava mais ainda e "DE VOLTA AO JOGO." era lido como
+ * "DE VOLTA AOJOGO.". O `word-spacing` devolve ao espaço o que o tracking
+ * tira, sem afrouxar as letras.
+ */
 .onside-app .onside-display {
   font-family: var(--onside-display);
   font-weight: 400;
   letter-spacing: -0.025em;
+  word-spacing: 0.12em;
   line-height: 0.95;
   text-transform: uppercase;
   text-wrap: balance;
@@ -12,6 +19,7 @@
   font-family: var(--onside-display);
   font-weight: 400;
   letter-spacing: -0.025em;
+  word-spacing: 0.12em;
   line-height: 1.1;
   text-transform: uppercase;
   text-wrap: balance;
@@ -111,6 +119,22 @@
   box-shadow: none;
 }
 
+/*
+ * Ação destrutiva. Existia como classes soltas em cada diálogo de admin —
+ * `bg-[var(--onside-live)] px-5 py-2 text-sm` num, outra combinação no
+ * seguinte — e nenhuma delas alcançava os 48px de alvo dos demais botões.
+ */
+.onside-app .onside-btn-danger {
+  background: var(--onside-live);
+  color: var(--onside-paper);
+  border-color: var(--onside-live);
+}
+
+.onside-app .onside-btn-danger:hover:not(:disabled) {
+  background: var(--onside-live-text);
+  border-color: var(--onside-live-text);
+}
+
 .onside-app .onside-btn-full {
   width: 100%;
 }
@@ -188,13 +212,37 @@
   color: var(--onside-muted);
 }
 
+/*
+ * Só a borda muda de cor; o anel é o `outline` da política global. O
+ * `box-shadow` que existia aqui somava um segundo anel ao redor do primeiro.
+ */
 .onside-app .onside-input:focus-visible,
 .onside-app .onside-textarea:focus-visible,
 .onside-app .onside-select:focus-visible {
   border-color: var(--onside-live);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--onside-live) 25%, transparent);
-  outline: 3px solid var(--onside-live);
-  outline-offset: 2px;
+}
+
+/*
+ * Mesmo campo sobre superfície ink. A edição do bar declarava esse desenho em
+ * cinco `className` idênticos, cada um com o próprio `outline-none` e o
+ * próprio `focus:border` — o campo perdia o anel de foco da política global e
+ * ficava com uma borda que muda de cor como único sinal.
+ */
+.onside-app .onside-input-ink,
+.onside-app .onside-textarea-ink {
+  border-color: rgb(241 238 230 / 30%);
+  background: rgb(241 238 230 / 8%);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-input-ink::placeholder,
+.onside-app .onside-textarea-ink::placeholder {
+  color: rgb(241 238 230 / 40%);
+}
+
+.onside-app .onside-input-ink:focus-visible,
+.onside-app .onside-textarea-ink:focus-visible {
+  border-color: var(--onside-live);
 }
 
 .onside-app .onside-field-error {
@@ -203,19 +251,112 @@
   color: var(--onside-live-text);
 }
 
-/* Input group override for auth fields */
+/* ─── Campos compostos ───
+ *
+ * Um campo composto é um invólucro com mais de um controle dentro (ícone,
+ * seletor de país, botão de mostrar senha). Quem desenha o foco é o
+ * invólucro, uma vez: os controles internos calam o próprio `outline` para
+ * não empilhar anéis, e a divisória interna não muda de cor no foco.
+ */
+.onside-app .onside-field-composite {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border: 1.5px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  transition: border-color var(--onside-motion-fast) ease;
+}
+
+.onside-app .onside-field-composite:focus-within {
+  border-color: var(--onside-live);
+  outline: var(--onside-focus-width) solid var(--onside-focus-color);
+  outline-offset: var(--onside-focus-offset);
+}
+
+.onside-app .onside-field-composite :focus-visible {
+  outline: none;
+}
+
+.onside-app .onside-field-composite[data-invalid="true"] {
+  border-color: var(--onside-live);
+}
+
+/* Tom escuro: mesmo campo sobre superfície ink. */
+.onside-app .onside-field-composite-ink {
+  border-color: rgb(241 238 230 / 28%);
+  background: rgb(241 238 230 / 6%);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-field-composite-ink:focus-within {
+  border-color: var(--onside-live);
+}
+
+.onside-app .onside-field-part {
+  min-height: 48px;
+  min-width: 0;
+  padding: 12px 14px;
+  background: transparent;
+  color: inherit;
+  font-family: var(--onside-body);
+  font-size: 16px;
+  line-height: 1.4;
+  border: 0;
+  outline: none;
+}
+
+.onside-app .onside-field-part-grow {
+  flex: 1 1 auto;
+}
+
+.onside-app .onside-field-part-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  border-right: 1.5px solid var(--onside-line);
+  font-size: 14px;
+  color: var(--onside-muted);
+  cursor: pointer;
+  transition: background-color var(--onside-motion-fast) ease;
+}
+
+.onside-app .onside-field-part-lead:hover {
+  background: var(--onside-stone);
+}
+
+.onside-app .onside-field-composite-ink .onside-field-part-lead {
+  border-right-color: rgb(241 238 230 / 20%);
+  color: color-mix(in srgb, var(--onside-paper) 72%, transparent);
+}
+
+.onside-app .onside-field-composite-ink .onside-field-part-lead:hover {
+  background: rgb(241 238 230 / 6%);
+}
+
+.onside-app .onside-field-composite-ink .onside-field-part::placeholder {
+  color: rgb(241 238 230 / 40%);
+}
+
+/* Input group do shadcn usado nos campos de autenticação: mesma política. */
 .onside-app .onside-input-group {
   border: 1.5px solid var(--onside-ink) !important;
   border-radius: 0 !important;
   background: var(--onside-paper) !important;
   min-height: 48px;
   box-shadow: none !important;
-  overflow: hidden;
 }
 
 .onside-app .onside-input-group:focus-within {
   border-color: var(--onside-live) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--onside-live) 25%, transparent) !important;
+  outline: var(--onside-focus-width) solid var(--onside-focus-color);
+  outline-offset: var(--onside-focus-offset);
+}
+
+.onside-app .onside-input-group :focus-visible {
+  outline: none;
 }
 
 .onside-app .onside-input-control {
@@ -273,6 +414,124 @@
   border-color: var(--onside-acid);
   color: var(--onside-ink);
   box-shadow: 3px 3px 0 rgb(0 0 0 / 35%);
+}
+
+/* ─── Chips de filtro ───
+ *
+ * Um só primitive para o que antes eram cinco listas de classes soltas
+ * (esporte, ordem, raio, comodidades, filtros ativos). Estado por atributo,
+ * não por classe condicional: `aria-pressed` já é o que o leitor de tela lê,
+ * então é ele que pinta.
+ */
+.onside-app .onside-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--onside-ink);
+  border-radius: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color var(--onside-motion-fast) ease;
+}
+
+.onside-app .onside-chip:hover:not(:disabled) {
+  background: var(--onside-stone);
+}
+
+.onside-app .onside-chip[aria-pressed="true"] {
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-chip-ink[aria-pressed="true"] {
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-chip-ink[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--onside-ink);
+}
+
+.onside-app .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--onside-acid);
+}
+
+.onside-app .onside-chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.onside-app .onside-chip-stack {
+  flex-direction: column;
+  gap: 2px;
+  min-width: 3.75rem;
+  padding: 6px 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.onside-app .onside-chip-note {
+  font-family: var(--onside-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  color: var(--onside-muted);
+}
+
+.onside-app .onside-chip[aria-pressed="true"] .onside-chip-note {
+  color: var(--onside-ink);
+  opacity: 0.7;
+}
+
+/* ─── Tablist ───
+ *
+ * Mesma casca para as abas do perfil e do painel do bar. O anel de foco é
+ * interno porque a faixa rola na horizontal e um anel afastado seria cortado
+ * pelo `overflow`.
+ */
+.onside-app .onside-tablist {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--onside-ink);
+  background: var(--onside-paper);
+}
+
+.onside-app .onside-tablist > [role="tab"] {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--onside-muted);
+  font-family: var(--onside-body);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--onside-motion-fast) ease,
+    background-color var(--onside-motion-fast) ease;
+}
+
+.onside-app .onside-tablist > [role="tab"]:hover {
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-tablist > [role="tab"][aria-selected="true"] {
+  background: var(--onside-acid);
+  color: var(--onside-ink);
 }
 
 /* ─── Status badges ─── */

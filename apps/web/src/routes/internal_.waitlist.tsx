@@ -28,6 +28,7 @@ import { InternalShell } from '@/components/app/internal-shell'
 import { WaitlistAccessPanel } from '@/components/internal/waitlist-access-panel'
 import { getUser } from '@/functions/get-user'
 import { analytics } from '@/lib/analytics'
+import { roleLabel, rolePluralLabel } from '@/lib/roles'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
@@ -59,8 +60,8 @@ export const Route = createFileRoute('/internal_/waitlist')({
 
 const ROLE_FILTER_ITEMS = {
   all: 'Todos',
-  fan: 'Torcedor',
-  pub: 'Bar / Pub'
+  fan: roleLabel('fan'),
+  pub: roleLabel('pub')
 } as const
 type RoleFilter = keyof typeof ROLE_FILTER_ITEMS
 
@@ -97,10 +98,6 @@ function entryLabel(s: {
 }) {
   if (s.role === 'pub' && s.pubName?.trim()) return s.pubName
   return s.email
-}
-
-function roleLabel(role: string) {
-  return role === 'fan' ? 'Torcedor' : 'Bar / Pub'
 }
 
 function AdminWaitlistPage() {
@@ -292,7 +289,7 @@ function AdminWaitlistPage() {
         <div className="onside-stat">
           <div className="mb-2 flex items-center gap-2">
             <Fire size={16} color="currentColor" aria-hidden="true" />
-            <span className="onside-stat-label">Torcedores</span>
+            <span className="onside-stat-label">{rolePluralLabel('fan')}</span>
           </div>
           <div className="onside-stat-value tabular-nums" aria-live="polite">
             {isLoading ? '…' : fanCount}
@@ -301,7 +298,7 @@ function AdminWaitlistPage() {
         <div className="onside-stat">
           <div className="mb-2 flex items-center gap-2">
             <Store size={16} color="currentColor" aria-hidden="true" />
-            <span className="onside-stat-label">Bares / Pubs</span>
+            <span className="onside-stat-label">{rolePluralLabel('pub')}</span>
           </div>
           <div className="onside-stat-value tabular-nums" aria-live="polite">
             {isLoading ? '…' : pubCount}
@@ -358,8 +355,8 @@ function AdminWaitlistPage() {
             <SelectContent className="rounded-none border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)]">
               <SelectGroup>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="fan">Torcedor</SelectItem>
-                <SelectItem value="pub">Bar / Pub</SelectItem>
+                <SelectItem value="fan">{roleLabel('fan')}</SelectItem>
+                <SelectItem value="pub">{roleLabel('pub')}</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -521,12 +518,18 @@ function AdminWaitlistPage() {
           ) : (
             <>
               {/* Desktop table */}
-              <div className="onside-panel overflow-hidden">
-                <section
-                  className="overflow-x-auto"
-                  aria-label="Tabela de inscritos"
-                >
-                  <Table>
+              {/*
+               * O `Table` do shadcn já traz o próprio contêiner de rolagem.
+               * Havia um `overflow-x-auto` extra por fora dele e um
+               * `overflow-hidden` no painel: dois scrollers aninhados no mesmo
+               * eixo, e a coluna de ações — a última — ficava recortada sem
+               * barra que a alcançasse. Sobrou um contêiner só, e a largura
+               * mínima da tabela garante que ele de fato role em vez de
+               * espremer as colunas.
+               */}
+              <div className="onside-panel">
+                <section aria-label="Tabela de inscritos">
+                  <Table className="min-w-[68rem]">
                     <TableHeader>
                       <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
                         <TableHead className="font-[family-name:var(--onside-mono)] font-semibold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
@@ -608,7 +611,7 @@ function AdminWaitlistPage() {
                             <TableCell className="text-sm tabular-nums text-[var(--onside-muted)]">
                               {formatDate(s.createdAt)}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <span
                                   className={

@@ -49,6 +49,7 @@ import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
+import { roleLabel } from '@/lib/roles'
 
 export const Route = createFileRoute('/internal_/manage-users')({
   head: () => ({
@@ -100,12 +101,7 @@ function formatDate(date: Date | string) {
   })
 }
 
-function getRoleLabel(role: string) {
-  if (role === 'fan') return 'Torcedor'
-  if (role === 'pub') return 'Bar / Pub'
-  if (role === 'admin') return 'Admin'
-  return role
-}
+const getRoleLabel = roleLabel
 
 function getRoleBadgeClass(role: string) {
   if (role === 'fan') return 'onside-badge onside-badge-acid'
@@ -319,9 +315,9 @@ function ManageUsersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="fan">Torcedor</SelectItem>
-              <SelectItem value="pub">Bar / Pub</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="fan">{roleLabel('fan')}</SelectItem>
+              <SelectItem value="pub">{roleLabel('pub')}</SelectItem>
+              <SelectItem value="admin">{roleLabel('admin')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -548,7 +544,7 @@ function ManageUsersPage() {
           }
         }}
       >
-        <DialogContent className="p-0 overflow-hidden max-w-[calc(100vw-2rem)] sm:max-w-md">
+        <DialogContent className="onside-dialog p-0 overflow-hidden max-w-[calc(100vw-2rem)] sm:max-w-md">
           <div className="p-6">
             <DialogTitle>Banir usuário</DialogTitle>
             <DialogDescription className="mt-1">
@@ -576,17 +572,19 @@ function ManageUsersPage() {
             />
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
-            <DialogClose className="rounded-none border border-[var(--onside-line)] px-4 py-2 text-sm font-medium text-[var(--onside-muted)] hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)] transition-colors">
+            <DialogClose className="onside-btn onside-btn-outline min-h-11 px-4 text-xs">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleBan}
               disabled={banLoading}
-              className="inline-flex min-h-11 items-center gap-2 rounded-none bg-[var(--onside-live)] px-5 py-2 text-sm font-bold text-[var(--onside-paper)] transition-colors hover:bg-[var(--onside-live-text)] disabled:opacity-50"
+              className="onside-btn onside-btn-danger min-h-11 px-5 text-xs"
             >
-              {banLoading && <Loader className="size-4 animate-spin" />}
-              <Ban className="size-4" />
+              {banLoading && (
+                <Loader className="size-4 animate-spin" aria-hidden="true" />
+              )}
+              <Ban className="size-4" aria-hidden="true" />
               Banir
             </button>
           </div>
@@ -603,7 +601,7 @@ function ManageUsersPage() {
           }
         }}
       >
-        <DialogContent className="p-0 overflow-hidden max-w-[calc(100vw-2rem)] sm:max-w-md">
+        <DialogContent className="onside-dialog p-0 overflow-hidden max-w-[calc(100vw-2rem)] sm:max-w-md">
           <div className="p-6">
             <DialogTitle>Alterar role</DialogTitle>
             <DialogDescription className="mt-1">
@@ -630,9 +628,9 @@ function ManageUsersPage() {
                 <SelectValue placeholder="Selecione um role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fan">Torcedor</SelectItem>
-                <SelectItem value="pub">Bar / Pub</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="fan">{roleLabel('fan')}</SelectItem>
+                <SelectItem value="pub">{roleLabel('pub')}</SelectItem>
+                <SelectItem value="admin">{roleLabel('admin')}</SelectItem>
               </SelectContent>
             </Select>
             {newRole === 'admin' && (
@@ -642,17 +640,19 @@ function ManageUsersPage() {
             )}
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
-            <DialogClose className="rounded-none border border-[var(--onside-line)] px-4 py-2 text-sm font-medium text-[var(--onside-muted)] hover:border-[var(--onside-ink)] hover:text-[var(--onside-ink)] transition-colors">
+            <DialogClose className="onside-btn onside-btn-outline min-h-11 px-4 text-xs">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleSetRole}
               disabled={roleLoading || !newRole}
-              className="inline-flex min-h-11 items-center gap-2 rounded-none bg-[var(--onside-ink)] px-5 py-2 text-sm font-bold text-[var(--onside-paper)] transition-colors hover:bg-[var(--onside-ink)] disabled:opacity-50"
+              className="onside-btn onside-btn-ink min-h-11 px-5 text-xs"
             >
-              {roleLoading && <Loader className="size-4 animate-spin" />}
-              <Trophy className="size-4" />
+              {roleLoading && (
+                <Loader className="size-4 animate-spin" aria-hidden="true" />
+              )}
+              <Trophy className="size-4" aria-hidden="true" />
               Salvar
             </button>
           </div>

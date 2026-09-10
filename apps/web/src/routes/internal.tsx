@@ -38,7 +38,13 @@ function InternalHallPage() {
         Escolha uma área para gerenciar.
       </p>
 
-      <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+      {/*
+       * O `max-w-2xl` prendia os cartões em 42rem dentro de uma casca de
+       * 1260px: metade da tela ficava vazia enquanto os cartões se
+       * espremiam. Sem o teto, a grade ocupa a casca e ganha a terceira
+       * coluna onde há espaço para ela.
+       */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Link
           to="/internal/waitlist"
           className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"

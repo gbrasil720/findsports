@@ -22,6 +22,7 @@ import {
   type PubOnboardingDraft,
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
+import { roleAccountLabel } from '@/lib/roles'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -174,7 +175,7 @@ function PubOnboarding() {
 
   return (
     <OnboardingLayout variant="pub">
-      <OnboardingHeader label="Conta de bar" />
+      <OnboardingHeader label={roleAccountLabel('pub')} />
       <StepProgress step={step} steps={STEPS} />
 
       <OnboardingStep step={step}>

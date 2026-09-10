@@ -51,10 +51,16 @@ export function ImpersonationBanner() {
     }
   }
 
+  /*
+   * `sticky`, não `fixed`: fixo o banner sai do fluxo e, ao rolar, passa por
+   * cima do conteúdo em qualquer tela sem cabeçalho grudado — perfil e
+   * detalhe do bar. Grudado, ele ocupa a própria altura no fluxo e nunca
+   * cobre nada.
+   */
   return (
     <div
       ref={bannerRef}
-      className="onside-banner fixed top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)] font-[family-name:var(--onside-body)] text-[var(--onside-ink)]"
+      className="onside-banner sticky top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)] font-[family-name:var(--onside-body)] text-[var(--onside-ink)]"
       role="status"
       aria-live="polite"
       aria-atomic="true"

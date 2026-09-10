@@ -74,8 +74,17 @@ export function ProfileHeader({
             Conta de torcedor
           </div>
           {editingName ? (
+            /*
+             * `max-w-xs` cortava o campo em ~20rem: nome com sobrenome não
+             * cabia e a pessoa editava às cegas. A linha inteira é o limite,
+             * e os dois botões são `shrink-0` para não roubarem espaço dele.
+             */
             <div className="mb-1 flex items-center gap-2">
+              <label htmlFor="profile-name-input" className="sr-only">
+                Nome de exibição
+              </label>
               <input
+                id="profile-name-input"
                 value={nameInput}
                 aria-invalid={nameError ? true : undefined}
                 aria-describedby={nameError ? 'profile-name-error' : undefined}
@@ -83,21 +92,23 @@ export function ProfileHeader({
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') onSaveName()
                 }}
-                className="w-full max-w-xs rounded-none bg-[var(--onside-paper)]/20 px-3 py-1.5 font-bold text-2xl text-[var(--onside-paper)] outline-none placeholder-white/50 focus:ring-2 focus:ring-white/40"
+                className="min-w-0 flex-1 rounded-none bg-[var(--onside-paper)]/20 px-3 py-1.5 font-bold text-2xl text-[var(--onside-paper)] outline-none placeholder-white/50"
               />
               <button
                 type="button"
                 onClick={onSaveName}
-                className="rounded-none bg-[var(--onside-paper)]/20 p-2 hover:bg-[var(--onside-paper)]/30"
+                aria-label="Salvar nome"
+                className="grid size-11 shrink-0 place-items-center rounded-none bg-[var(--onside-paper)]/20 hover:bg-[var(--onside-paper)]/30"
               >
-                <Check size={16} color="currentColor" />
+                <Check size={16} color="currentColor" aria-hidden="true" />
               </button>
               <button
                 type="button"
                 onClick={onCancelEditingName}
-                className="rounded-none bg-[var(--onside-paper)]/20 p-2 hover:bg-[var(--onside-paper)]/30"
+                aria-label="Cancelar edição do nome"
+                className="grid size-11 shrink-0 place-items-center rounded-none bg-[var(--onside-paper)]/20 hover:bg-[var(--onside-paper)]/30"
               >
-                <Xmark size={16} color="currentColor" />
+                <Xmark size={16} color="currentColor" aria-hidden="true" />
               </button>
             </div>
           ) : (

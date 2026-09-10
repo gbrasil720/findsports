@@ -12,11 +12,26 @@ import { NotFoundPage } from './components/not-found/not-found-page'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
+/**
+ * Marcação por query para o toast global de erro.
+ *
+ * `errorToast: false` é para a tela que já desenha o próprio erro no lugar
+ * onde o dado faltou. Sem isso a pessoa recebia duas mensagens pelo mesmo
+ * problema — a da tela, em português, e a do toast, que repete o texto cru do
+ * servidor (às vezes em inglês, vindo do provedor de pagamento).
+ */
+declare module '@tanstack/react-query' {
+  interface Register {
+    queryMeta: { errorToast?: boolean }
+  }
+}
+
 export const getRouter = () => {
   let cachedUserId: string | null = null
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
+        if (query.meta?.errorToast === false) return
         toast.error(error.message, {
           action: {
             label: 'Tentar novamente',

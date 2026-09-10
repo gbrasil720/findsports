@@ -12,7 +12,6 @@ import Xmark from 'reicon-react/icons/Xmark'
 import { SportIcon } from '@/components/sports/sport-icon'
 import type { SportsState } from '@/domain/dashboard-selectors'
 import {
-  DEFAULT_RADIUS_KM,
   type LocationState,
   type RadiusKm,
   SEARCH_RADII
@@ -40,6 +39,12 @@ type Props = {
   sportId: string | undefined
   onSportChange: (value: string | undefined) => void
   radiusKm: RadiusKm
+  /**
+   * O raio que o torcedor salvou no perfil. É ele que ganha a marca na barra
+   * — antes a marca era uma constante da tela, que podia contradizer o que o
+   * perfil mostrava como preferência.
+   */
+  preferredRadiusKm: RadiusKm
   onRadiusChange: (value: RadiusKm) => void
   amenities: number[]
   onToggleAmenity: (id: number) => void
@@ -58,15 +63,13 @@ type Props = {
   onRequestLocation: () => void
 }
 
-const chipBase =
-  'inline-flex min-h-11 items-center gap-2 border border-[var(--onside-ink)] px-3.5 py-2 font-bold text-xs uppercase tracking-[0.04em] transition-colors'
-
 export function SearchFilterBar({
   championship,
   onChampionshipChange,
   sportId,
   onSportChange,
   radiusKm,
+  preferredRadiusKm,
   onRadiusChange,
   amenities,
   onToggleAmenity,
@@ -179,11 +182,7 @@ export function SearchFilterBar({
               type="button"
               onClick={() => onSportChange(undefined)}
               aria-pressed={!sportId}
-              className={`${chipBase} ${
-                !sportId
-                  ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
-                  : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-              }`}
+              className="onside-chip onside-chip-ink"
             >
               Todos
             </button>
@@ -234,11 +233,7 @@ export function SearchFilterBar({
                         )
                       }
                       aria-pressed={selected}
-                      className={`${chipBase} ${
-                        selected
-                          ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                          : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-                      }`}
+                      className="onside-chip"
                     >
                       <SportIcon
                         slug={sport.slug}
@@ -271,11 +266,7 @@ export function SearchFilterBar({
                     type="button"
                     onClick={() => onSortChange(option)}
                     aria-pressed={sort === option}
-                    className={`${chipBase} ${
-                      sort === option
-                        ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
-                        : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-                    }`}
+                    className="onside-chip onside-chip-ink"
                   >
                     {SORT_LABELS[option]}
                   </button>
@@ -291,30 +282,18 @@ export function SearchFilterBar({
             <div className="flex flex-wrap gap-2">
               {SEARCH_RADII.map((km) => {
                 const selected = radiusKm === km
-                const suggested = km === DEFAULT_RADIUS_KM
+                const preferred = km === preferredRadiusKm
                 return (
                   <button
                     key={km}
                     type="button"
                     onClick={() => onRadiusChange(km)}
                     aria-pressed={selected}
-                    className={`relative inline-flex min-h-11 min-w-[3.75rem] flex-col items-center justify-center border border-[var(--onside-ink)] px-3 py-1.5 font-bold text-xs uppercase tracking-[0.04em] tabular-nums transition-colors ${
-                      selected
-                        ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                        : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-                    }`}
+                    className="onside-chip onside-chip-stack"
                   >
                     <span className="leading-none">{RADIUS_LABELS[km]}</span>
-                    {suggested ? (
-                      <span
-                        className={`mt-0.5 font-[family-name:var(--onside-mono)] text-[8px] font-bold tracking-[0.1em] ${
-                          selected
-                            ? 'text-[var(--onside-ink)] opacity-70'
-                            : 'text-[var(--onside-muted)]'
-                        }`}
-                      >
-                        Sugerido
-                      </span>
+                    {preferred ? (
+                      <span className="onside-chip-note">Seu raio</span>
                     ) : null}
                   </button>
                 )
@@ -367,11 +346,7 @@ export function SearchFilterBar({
                         // estreita o resultado, e a busca aceita no máximo
                         // `MAX_AMENITY_FILTER`.
                         disabled={!selected && atAmenityLimit}
-                        className={`${chipBase} ${
-                          selected
-                            ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                            : 'bg-[var(--onside-paper)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)] disabled:opacity-40 disabled:hover:bg-[var(--onside-paper)]'
-                        }`}
+                        className="onside-chip"
                       >
                         {amenity.label}
                       </button>
@@ -397,7 +372,7 @@ export function SearchFilterBar({
               key={filter.label}
               type="button"
               onClick={filter.clear}
-              className="inline-flex min-h-11 items-center gap-1.5 border border-[var(--onside-ink)] bg-[var(--onside-stone)] px-3 font-bold text-[var(--onside-ink)] text-xs"
+              className="onside-chip bg-[var(--onside-stone)]"
               aria-label={`Remover filtro ${filter.label}`}
             >
               {filter.label}

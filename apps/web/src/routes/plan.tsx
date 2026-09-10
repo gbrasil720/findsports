@@ -17,6 +17,7 @@ import {
   parsePlanOrigin
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { roleAccountLabel } from '@/lib/roles'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -118,7 +119,7 @@ function PlanSelection() {
 
   return (
     <OnboardingLayout variant="plan">
-      <OnboardingHeader label="Conta de bar" mb="mb-10" />
+      <OnboardingHeader label={roleAccountLabel('pub')} mb="mb-10" />
 
       <div className="mx-auto mb-10 max-w-2xl text-center">
         <p className="onside-kicker onside-kicker-acid mb-3">

@@ -40,8 +40,18 @@ export function toWhatsAppNumber(phone: string): string | null {
 export function buildWhatsAppMessage(
   event: WhatsAppEventContext | null | undefined
 ): string {
-  if (event) {
-    return `Oi! Vi no Onside que vocês vão passar ${event.matchup} ${event.when}. Têm mesa?`
+  /*
+   * `matchup` cai para o nome do campeonato e daí para vazio quando o evento
+   * não tem times nem texto livre. Interpolado direto, o vazio produzia
+   * "vão passar  hoje às 21:00." — dois espaços, ou um espaço solto antes da
+   * pontuação. Montar por partes não-vazias resolve a classe inteira.
+   */
+  const partes = [event?.matchup, event?.when]
+    .map((parte) => parte?.trim())
+    .filter((parte): parte is string => Boolean(parte))
+
+  if (partes.length > 0) {
+    return `Oi! Vi no Onside que vocês vão passar ${partes.join(' ')}. Têm mesa?`
   }
 
   return 'Oi! Vi vocês no Onside. Qual jogo vai passar aí?'

@@ -29,8 +29,13 @@ export function AccountSettings({ surface }: Props) {
   const signOut = useSignOut('/login')
   const [passwordOpen, setPasswordOpen] = useState(false)
 
+  /*
+   * Em telas largas as quatro seções empilhavam numa coluna só, com metade
+   * da largura da casca vazia à direita. Em duas colunas, `items-start`
+   * impede que a seção mais curta estique até a altura da vizinha.
+   */
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
       <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
         <div className="mb-2">
           <p className="onside-kicker mb-2">Conta</p>

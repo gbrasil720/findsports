@@ -57,16 +57,27 @@ function needsLocation(locationState: LocationState): boolean {
   )
 }
 
+/**
+ * O recuo para "todos os bares por perto" só vale quando a pessoa não pediu
+ * nada específico.
+ *
+ * Buscar um time que ninguém transmite devolvia zero no `search` e a tela
+ * caía no `searchByLocation`, que ignora o termo: apareciam bares que não
+ * têm relação nenhuma com o que foi digitado, sob um aviso de uma linha. Com
+ * intenção de busca declarada, vazio é vazio.
+ */
 export function deriveDiscoveryResultState({
   primary,
   fallback,
   locationState,
-  radiusKm
+  radiusKm,
+  hasSearchIntent = false
 }: {
   primary: QuerySnapshot<SearchResult>
   fallback: QuerySnapshot<LocationSearchResult>
   locationState: LocationState
   radiusKm: RadiusKm
+  hasSearchIntent?: boolean
 }): DiscoveryResultState {
   if (primary.isLoading) return { status: 'loading' }
   if (primary.isError) return { status: 'error', source: 'primary' }
@@ -76,6 +87,13 @@ export function deriveDiscoveryResultState({
   }
 
   if (!primary.data) return { status: 'loading' }
+
+  if (hasSearchIntent) {
+    return needsLocation(locationState)
+      ? { status: 'location-required' }
+      : { status: 'empty', radiusKm }
+  }
+
   if (fallback.isError) return { status: 'error', source: 'fallback' }
   if (fallback.isLoading || !fallback.data) return { status: 'loading' }
 

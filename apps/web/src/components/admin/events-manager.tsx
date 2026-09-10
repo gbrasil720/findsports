@@ -267,10 +267,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
             </button>
           </div>
         ) : sortedEvents.length === 0 ? (
-          <EmptyEventsState
-            onCreate={openCreate}
-            createDisabled={createBlocked}
-          />
+          <EmptyEventsState onCreate={openCreate} blockReason={blockReason} />
         ) : (
           <ul className="space-y-2">
             {sortedEvents.map((item) => (

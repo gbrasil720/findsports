@@ -170,7 +170,7 @@ export function PubHeroSection({
                         setForm({ ...form, name: e.target.value })
                       }
                       placeholder="Nome do bar"
-                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-4 py-2.5 font-bold text-2xl text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                      className="onside-input onside-input-ink font-bold text-2xl"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -185,7 +185,7 @@ export function PubHeroSection({
                           setForm({ ...form, address: e.target.value })
                         }
                         placeholder="Endereço"
-                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                        className="onside-input onside-input-ink"
                       />
                     </div>
                     <div className="min-w-0">
@@ -202,7 +202,7 @@ export function PubHeroSection({
                           setForm({ ...form, neighborhood: e.target.value })
                         }
                         placeholder="Bairro"
-                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                        className="onside-input onside-input-ink"
                       />
                     </div>
                   </div>
@@ -218,7 +218,7 @@ export function PubHeroSection({
                           setForm({ ...form, city: e.target.value })
                         }
                         placeholder="Cidade"
-                        className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)]"
+                        className="onside-input onside-input-ink"
                       />
                     </div>
                     <div className="min-w-0">
@@ -231,7 +231,7 @@ export function PubHeroSection({
                         onChange={(phone) =>
                           setForm((prev) => ({ ...prev, phone }))
                         }
-                        variant="dark"
+                        tone="ink"
                       />
                     </div>
                   </div>
@@ -247,7 +247,7 @@ export function PubHeroSection({
                       }
                       placeholder="Algo que o checklist não cobre (opcional)"
                       rows={2}
-                      className="w-full border border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_8%)] px-3 py-2 text-base text-[var(--onside-paper)] outline-none placeholder:text-[rgb(241_238_230_/_40%)] focus:border-[var(--onside-live)] resize-none"
+                      className="onside-textarea onside-textarea-ink resize-none"
                     />
                   </div>
 

@@ -42,6 +42,28 @@ describe('buildWhatsAppMessage', () => {
   it('tem versão sem jogo', () => {
     expect(buildWhatsAppMessage(null)).toContain('Onside')
   })
+
+  it('não deixa espaço solto quando uma das partes vem vazia', () => {
+    // `matchup` fica vazio quando o evento não tem times, texto livre nem
+    // campeonato: interpolado direto, sobrava " ." na mensagem enviada.
+    const semJogo = buildWhatsAppMessage({
+      matchup: '',
+      when: 'hoje às 21:00'
+    })
+    expect(semJogo).toContain('passar hoje às 21:00.')
+    expect(semJogo).not.toMatch(/\s[.,]/)
+
+    const semHorario = buildWhatsAppMessage({
+      matchup: 'Palmeiras × Santos',
+      when: '  '
+    })
+    expect(semHorario).toContain('passar Palmeiras × Santos.')
+    expect(semHorario).not.toMatch(/\s[.,]/)
+
+    expect(buildWhatsAppMessage({ matchup: '', when: '' })).toBe(
+      buildWhatsAppMessage(null)
+    )
+  })
 })
 
 describe('buildWhatsAppLink', () => {

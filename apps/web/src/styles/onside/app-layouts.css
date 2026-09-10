@@ -324,16 +324,24 @@
   color: var(--onside-ink);
 }
 
+/*
+ * O item apontado ganha a superfície inteira, não uma linha. Antes o realce
+ * era um cinza discreto e o que se via de fato era o `outline` vermelho da
+ * política global — afastado 3px e cortado pelo `overflow` do menu, sobravam
+ * duas barras horizontais. Aqui a superfície é o destaque e o anel, quando
+ * aparece, encosta por dentro (ver `--onside-focus-offset`).
+ */
 .onside-menu
-  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
+[data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
 .onside-app
   [data-slot="dropdown-menu-content"]
   [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
 .onside-app
   [data-slot="select-content"]
   [data-slot="select-item"]:is(:hover, :focus, [data-highlighted]) {
-  background: var(--onside-stone);
+  background: var(--onside-acid);
   color: var(--onside-ink);
+  box-shadow: inset 3px 0 0 var(--onside-ink);
 }
 
 .onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
