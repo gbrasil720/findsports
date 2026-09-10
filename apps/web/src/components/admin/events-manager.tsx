@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Calendar from 'reicon-react/icons/Calendar'
@@ -247,12 +248,20 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
 
       <section>
         {eventsState.status === 'loading' ? (
-          <div className="space-y-2" aria-busy="true">
+          <div className="space-y-2" aria-busy="true" aria-live="polite">
+            <span className="sr-only">Carregando sua grade…</span>
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="h-[76px] animate-pulse border border-[var(--onside-ink)] bg-[var(--onside-stone)]"
-              />
+                className="flex min-h-[76px] items-center gap-3 border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3"
+              >
+                <Skeleton className="h-11 w-12 shrink-0 bg-[var(--onside-stone)]" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3 bg-[var(--onside-stone)]" />
+                  <Skeleton className="h-3 w-1/3 bg-[var(--onside-stone)]" />
+                </div>
+                <Skeleton className="size-9 shrink-0 bg-[var(--onside-stone)]" />
+              </div>
             ))}
           </div>
         ) : eventsState.status === 'error' ? (

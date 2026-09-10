@@ -407,11 +407,6 @@ function PubDashboard() {
     setAnalyticsPreset('custom')
   }
 
-  const canQueryEventAnalytics =
-    !loadingEntitlements &&
-    !entitlementsError &&
-    analyticsEntitlements?.eventBreakdown !== 'none'
-
   const {
     data: creationPolicy,
     isLoading: loadingPolicy,
@@ -457,16 +452,15 @@ function PubDashboard() {
     isError: eventAnalyticsError,
     error: eventAnalyticsQueryError,
     refetch: refetchEventAnalytics
-  } = useQuery({
-    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
+  } = useQuery(
+    trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
       from: analyticsDates.from,
       to: analyticsDates.to,
       ...(requestedComparisonTarget
         ? { comparisonTarget: requestedComparisonTarget }
         : {})
-    }),
-    enabled: canQueryEventAnalytics
-  })
+    })
+  )
 
   /* Mutations */
   const updateMeMutation = useMutation(
