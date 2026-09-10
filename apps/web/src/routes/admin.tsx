@@ -2,7 +2,7 @@ import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commerci
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { Activity, useEffect, useRef, useState } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
@@ -692,315 +692,329 @@ function PubDashboard() {
           {/* ============================================================ */}
           {/* Tab: Visão Geral                                              */}
           {/* ============================================================ */}
-          <section
-            id="admin-visao"
-            role="tabpanel"
-            aria-labelledby={getAdminTabId('admin-visao')}
-            hidden={activeSection !== 'admin-visao'}
-            className="space-y-4"
+          <Activity
+            mode={activeSection === 'admin-visao' ? 'visible' : 'hidden'}
           >
-            <div>
-              <h2 className="onside-display text-2xl">Visão geral</h2>
-              <p className="mt-1 text-sm text-[var(--onside-muted)]">
-                Acompanhe a visibilidade, o plano e a programação do seu bar.
-              </p>
-            </div>
-
-            {subError && (
-              <QueryError
-                message="Não foi possível carregar a assinatura."
-                onRetry={() => {
-                  void refetchSub()
-                }}
-              />
-            )}
-
-            {eventsError && (
-              <QueryError
-                message="Não foi possível carregar os eventos."
-                onRetry={() => {
-                  void refetchEvents()
-                }}
-              />
-            )}
-
-            {policyError && (
-              <QueryError
-                message="Não foi possível verificar a disponibilidade de eventos."
-                onRetry={() => {
-                  void refetchPolicy()
-                }}
-              />
-            )}
-
-            {isInactive && (
-              <div className="onside-callout onside-callout-warn">
-                <AlertCircle
-                  size={20}
-                  color="currentColor"
-                  className="mt-0.5 shrink-0"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="mb-0.5 font-semibold text-sm">
-                    Seu bar não está visível na plataforma
-                  </p>
-                  <p className="text-sm opacity-90">
-                    Nenhum plano ou período de teste ativo. Ative um plano para
-                    aparecer nas buscas e no mapa.
-                  </p>
-                </div>
-                <Link
-                  to="/plan"
-                  search={{ origin: 'admin' }}
-                  className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
-                >
-                  Ver planos
-                  <ArrowRight
-                    size={13}
-                    color="currentColor"
-                    aria-hidden="true"
-                  />
-                </Link>
+            <section
+              id="admin-visao"
+              role="tabpanel"
+              aria-labelledby={getAdminTabId('admin-visao')}
+              className="space-y-4"
+            >
+              <div>
+                <h2 className="onside-display text-2xl">Visão geral</h2>
+                <p className="mt-1 text-sm text-[var(--onside-muted)]">
+                  Acompanhe a visibilidade, o plano e a programação do seu bar.
+                </p>
               </div>
-            )}
 
-            <RecommendationQualityStatus
-              status={recommendationQualityStatus}
-              loading={loadingRecommendationQuality}
-              error={recommendationQualityError}
-              onRetry={() => {
-                void refetchRecommendationQuality()
-              }}
-            />
+              {subError && (
+                <QueryError
+                  message="Não foi possível carregar a assinatura."
+                  onRetry={() => {
+                    void refetchSub()
+                  }}
+                />
+              )}
 
-            {isStarter && !isInactive && eventsRemaining !== null && (
-              <div
-                className={`onside-callout ${
-                  isAtLimit
-                    ? 'onside-callout-danger'
-                    : isNearLimit
-                      ? 'onside-callout-warn'
-                      : 'onside-callout-acid'
-                }`}
-              >
-                {isAtLimit || isNearLimit ? (
+              {eventsError && (
+                <QueryError
+                  message="Não foi possível carregar os eventos."
+                  onRetry={() => {
+                    void refetchEvents()
+                  }}
+                />
+              )}
+
+              {policyError && (
+                <QueryError
+                  message="Não foi possível verificar a disponibilidade de eventos."
+                  onRetry={() => {
+                    void refetchPolicy()
+                  }}
+                />
+              )}
+
+              {isInactive && (
+                <div className="onside-callout onside-callout-warn">
                   <AlertCircle
                     size={20}
                     color="currentColor"
                     className="mt-0.5 shrink-0"
                     aria-hidden="true"
                   />
-                ) : (
-                  <CircleInfo
-                    size={20}
-                    color="currentColor"
-                    className="mt-0.5 shrink-0"
-                    aria-hidden="true"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="mb-0.5 font-semibold text-sm">
-                    {isAtLimit
-                      ? 'Limite de jogos atingido este mês'
-                      : isNearLimit
-                        ? 'Último jogo disponível no plano Starter'
-                        : `Plano Starter — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`}
-                  </p>
-                  <p className="text-sm opacity-90">
-                    {isAtLimit
-                      ? 'Faça upgrade para o plano Pro e cadastre jogos ilimitados.'
-                      : isNearLimit
-                        ? 'Considere fazer upgrade para o Pro antes de atingir o limite.'
-                        : `Você usou ${eventsUsed} jogo${eventsUsed !== 1 ? 's' : ''} neste período de cobrança.`}
-                  </p>
-                </div>
-                {(isAtLimit || isNearLimit) && (
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-0.5 font-semibold text-sm">
+                      Seu bar não está visível na plataforma
+                    </p>
+                    <p className="text-sm opacity-90">
+                      Nenhum plano ou período de teste ativo. Ative um plano
+                      para aparecer nas buscas e no mapa.
+                    </p>
+                  </div>
                   <Link
                     to="/plan"
                     search={{ origin: 'admin' }}
                     className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
                   >
-                    Fazer upgrade
+                    Ver planos
                     <ArrowRight
                       size={13}
                       color="currentColor"
                       aria-hidden="true"
                     />
                   </Link>
-                )}
-              </div>
-            )}
+                </div>
+              )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="onside-stat">
-                <div className="onside-stat-value tabular-nums">
-                  {loadingEvents ? '…' : totalCount}
-                </div>
-                <div className="onside-stat-label">Jogos na grade</div>
-              </div>
-              <div className="onside-stat">
-                <div className="onside-stat-value tabular-nums">
-                  {loadingEvents ? '…' : liveEvent ? 1 : 0}
-                </div>
-                <div className="onside-stat-label">Ao vivo</div>
-              </div>
-              <div className="onside-stat">
-                <div className="onside-stat-value uppercase">
-                  {loadingSub ? '…' : (planLabel ?? '—')}
-                </div>
-                <div className="onside-stat-label">
-                  {isStarter && eventsRemaining !== null
-                    ? `${eventsRemaining} restantes`
-                    : 'Plano atual'}
-                </div>
-              </div>
-            </div>
+              <RecommendationQualityStatus
+                status={recommendationQualityStatus}
+                loading={loadingRecommendationQuality}
+                error={recommendationQualityError}
+                onRetry={() => {
+                  void refetchRecommendationQuality()
+                }}
+              />
 
-            {/* Analytics Overview — real data */}
-            <AnalyticsPeriodSelector
-              entitlements={analyticsEntitlements}
-              loadingEntitlements={loadingEntitlements}
-              entitlementsError={entitlementsError}
-              onRetryEntitlements={() => {
-                void refetchEntitlements()
-              }}
-              range={analyticsDates}
-              preset={analyticsPreset}
-              customRange={customAnalyticsDates}
-              customError={customAnalyticsError}
-              isFetching={fetchingAnalytics || fetchingEventAnalytics}
-              onPresetChange={handleAnalyticsPresetChange}
-              onCustomRangeChange={handleCustomAnalyticsRangeChange}
-              onApplyCustom={applyCustomAnalyticsRange}
-            />
-            <AnalyticsOverview
-              overviewState={analyticsOverviewState}
-              onCreateEvent={() => changeSection('admin-grade')}
-            />
-          </section>
+              {isStarter && !isInactive && eventsRemaining !== null && (
+                <div
+                  className={`onside-callout ${
+                    isAtLimit
+                      ? 'onside-callout-danger'
+                      : isNearLimit
+                        ? 'onside-callout-warn'
+                        : 'onside-callout-acid'
+                  }`}
+                >
+                  {isAtLimit || isNearLimit ? (
+                    <AlertCircle
+                      size={20}
+                      color="currentColor"
+                      className="mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <CircleInfo
+                      size={20}
+                      color="currentColor"
+                      className="mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-0.5 font-semibold text-sm">
+                      {isAtLimit
+                        ? 'Limite de jogos atingido este mês'
+                        : isNearLimit
+                          ? 'Último jogo disponível no plano Starter'
+                          : `Plano Starter — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`}
+                    </p>
+                    <p className="text-sm opacity-90">
+                      {isAtLimit
+                        ? 'Faça upgrade para o plano Pro e cadastre jogos ilimitados.'
+                        : isNearLimit
+                          ? 'Considere fazer upgrade para o Pro antes de atingir o limite.'
+                          : `Você usou ${eventsUsed} jogo${eventsUsed !== 1 ? 's' : ''} neste período de cobrança.`}
+                    </p>
+                  </div>
+                  {(isAtLimit || isNearLimit) && (
+                    <Link
+                      to="/plan"
+                      search={{ origin: 'admin' }}
+                      className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+                    >
+                      Fazer upgrade
+                      <ArrowRight
+                        size={13}
+                        color="currentColor"
+                        aria-hidden="true"
+                      />
+                    </Link>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="onside-stat">
+                  <div className="onside-stat-value tabular-nums">
+                    {loadingEvents ? '…' : totalCount}
+                  </div>
+                  <div className="onside-stat-label">Jogos na grade</div>
+                </div>
+                <div className="onside-stat">
+                  <div className="onside-stat-value tabular-nums">
+                    {loadingEvents ? '…' : liveEvent ? 1 : 0}
+                  </div>
+                  <div className="onside-stat-label">Ao vivo</div>
+                </div>
+                <div className="onside-stat">
+                  <div className="onside-stat-value uppercase">
+                    {loadingSub ? '…' : (planLabel ?? '—')}
+                  </div>
+                  <div className="onside-stat-label">
+                    {isStarter && eventsRemaining !== null
+                      ? `${eventsRemaining} restantes`
+                      : 'Plano atual'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Analytics Overview — real data */}
+              <AnalyticsPeriodSelector
+                entitlements={analyticsEntitlements}
+                loadingEntitlements={loadingEntitlements}
+                entitlementsError={entitlementsError}
+                onRetryEntitlements={() => {
+                  void refetchEntitlements()
+                }}
+                range={analyticsDates}
+                preset={analyticsPreset}
+                customRange={customAnalyticsDates}
+                customError={customAnalyticsError}
+                isFetching={fetchingAnalytics || fetchingEventAnalytics}
+                onPresetChange={handleAnalyticsPresetChange}
+                onCustomRangeChange={handleCustomAnalyticsRangeChange}
+                onApplyCustom={applyCustomAnalyticsRange}
+              />
+              <AnalyticsOverview
+                overviewState={analyticsOverviewState}
+                onCreateEvent={() => changeSection('admin-grade')}
+              />
+            </section>
+          </Activity>
 
           {/* ============================================================ */}
           {/* Tab: Grade                                                    */}
           {/* ============================================================ */}
-          <section
-            id="admin-grade"
-            role="tabpanel"
-            aria-labelledby={getAdminTabId('admin-grade')}
-            hidden={activeSection !== 'admin-grade'}
-            className="space-y-6"
+          <Activity
+            mode={activeSection === 'admin-grade' ? 'visible' : 'hidden'}
           >
-            <EventsManager
-              eventsState={eventsState}
-              policyState={policyState}
-            />
+            <section
+              id="admin-grade"
+              role="tabpanel"
+              aria-labelledby={getAdminTabId('admin-grade')}
+              className="space-y-6"
+            >
+              <EventsManager
+                eventsState={eventsState}
+                policyState={policyState}
+              />
 
-            {/* Event Performance — real data */}
-            <EventPerformance eventAnalyticsState={eventAnalyticsState} />
-          </section>
+              {/* Event Performance — real data */}
+              <EventPerformance eventAnalyticsState={eventAnalyticsState} />
+            </section>
+          </Activity>
 
           {/* ============================================================ */}
           {/* Tab: Meu Espaço                                               */}
           {/* ============================================================ */}
-          <section
-            id="admin-espaco"
-            role="tabpanel"
-            aria-labelledby={getAdminTabId('admin-espaco')}
-            hidden={activeSection !== 'admin-espaco'}
-            className="space-y-6"
+          <Activity
+            mode={activeSection === 'admin-espaco' ? 'visible' : 'hidden'}
           >
-            {/* Conversion Readiness */}
-            <ConversionReadiness
-              bar={bar}
-              hasUpcomingEvent={hasUpcomingEvent}
-              isConfirmingWhatsApp={confirmWhatsAppMutation.isPending}
-              onConfirmWhatsApp={handleConfirmWhatsApp}
-              onEditProfile={() => {
-                document
-                  .getElementById('admin-profile-editor')
-                  ?.scrollIntoView({ behavior: 'smooth' })
-              }}
-              onCreateEvent={() => changeSection('admin-grade')}
-            />
+            <section
+              id="admin-espaco"
+              role="tabpanel"
+              aria-labelledby={getAdminTabId('admin-espaco')}
+              className="space-y-6"
+            >
+              {/* Conversion Readiness */}
+              <ConversionReadiness
+                bar={bar}
+                hasUpcomingEvent={hasUpcomingEvent}
+                isConfirmingWhatsApp={confirmWhatsAppMutation.isPending}
+                onConfirmWhatsApp={handleConfirmWhatsApp}
+                onEditProfile={() => {
+                  document
+                    .getElementById('admin-profile-editor')
+                    ?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                onCreateEvent={() => changeSection('admin-grade')}
+              />
 
-            <PubHeroSection
-              bar={bar}
-              liveEvent={liveEvent}
-              totalCount={totalCount}
-              isSaving={updateMeMutation.isPending}
-              saveError={profileError}
-              onSave={async (data) => {
-                setProfileError(null)
-                await updateMeMutation.mutateAsync({
-                  name: data.name || undefined,
-                  address: data.address || undefined,
-                  neighborhood: data.neighborhood || undefined,
-                  city: data.city || undefined,
-                  phone: data.phone || undefined,
-                  description: data.description || undefined,
-                  amenities: data.amenities,
-                  screenCount: data.screenCount
-                })
-              }}
-              onPhotoUpdate={async (url: string) => {
-                // ESC-15: o arquivo agora sobe direto do navegador, então a
-                // rota de upload não grava mais nada. Quem persiste a URL é
-                // esta chamada — e o servidor confere que ela pertence ao
-                // armazenamento e à pasta deste bar antes de aceitar.
-                await updateMeMutation.mutateAsync({ photoUrl: url })
-                queryClient.invalidateQueries({
-                  queryKey: trpc.pub.getMe.queryKey()
-                })
-              }}
-            />
+              <PubHeroSection
+                bar={bar}
+                liveEvent={liveEvent}
+                totalCount={totalCount}
+                isSaving={updateMeMutation.isPending}
+                saveError={profileError}
+                onSave={async (data) => {
+                  setProfileError(null)
+                  await updateMeMutation.mutateAsync({
+                    name: data.name || undefined,
+                    address: data.address || undefined,
+                    neighborhood: data.neighborhood || undefined,
+                    city: data.city || undefined,
+                    phone: data.phone || undefined,
+                    description: data.description || undefined,
+                    amenities: data.amenities,
+                    screenCount: data.screenCount
+                  })
+                }}
+                onPhotoUpdate={async (url: string) => {
+                  // ESC-15: o arquivo agora sobe direto do navegador, então a
+                  // rota de upload não grava mais nada. Quem persiste a URL é
+                  // esta chamada — e o servidor confere que ela pertence ao
+                  // armazenamento e à pasta deste bar antes de aceitar.
+                  await updateMeMutation.mutateAsync({ photoUrl: url })
+                  queryClient.invalidateQueries({
+                    queryKey: trpc.pub.getMe.queryKey()
+                  })
+                }}
+              />
 
-            <RatingsPanel
-              state={
-                loadingRatings
-                  ? { status: 'loading' }
-                  : ratingsError || !ratings
-                    ? {
-                        status: 'error',
-                        retry: () => {
-                          void refetchRatings()
+              <RatingsPanel
+                state={
+                  loadingRatings
+                    ? { status: 'loading' }
+                    : ratingsError || !ratings
+                      ? {
+                          status: 'error',
+                          retry: () => {
+                            void refetchRatings()
+                          }
                         }
-                      }
-                    : { status: 'ready', ratings }
-              }
-            />
+                      : { status: 'ready', ratings }
+                }
+              />
 
-            <BarPreview
-              bar={{
-                id: bar.id,
-                name: bar.name,
-                neighborhood: bar.neighborhood,
-                city: bar.city,
-                latitude: bar.latitude,
-                longitude: bar.longitude,
-                photoUrl: bar.photoUrl
-              }}
-              eventsState={eventsState}
-              planState={planState}
-            />
-          </section>
+              <BarPreview
+                bar={{
+                  id: bar.id,
+                  name: bar.name,
+                  neighborhood: bar.neighborhood,
+                  city: bar.city,
+                  latitude: bar.latitude,
+                  longitude: bar.longitude,
+                  photoUrl: bar.photoUrl
+                }}
+                eventsState={eventsState}
+                planState={planState}
+              />
+            </section>
+          </Activity>
 
           {/* ============================================================ */}
           {/* Tab: Configurações                                            */}
           {/* ============================================================ */}
-          <section
-            id="admin-configuracoes"
-            role="tabpanel"
-            aria-labelledby={getAdminTabId('admin-configuracoes')}
-            hidden={activeSection !== 'admin-configuracoes'}
+          <Activity
+            mode={
+              activeSection === 'admin-configuracoes' ? 'visible' : 'hidden'
+            }
           >
-            <div className="mb-6">
-              <h2 className="onside-display text-2xl">Configurações</h2>
-              <p className="mt-1 text-sm text-[var(--onside-muted)]">
-                Gerencie a segurança da conta responsável por este bar.
-              </p>
-            </div>
-            <AccountSettings surface="pub" />
-          </section>
+            <section
+              id="admin-configuracoes"
+              role="tabpanel"
+              aria-labelledby={getAdminTabId('admin-configuracoes')}
+            >
+              <div className="mb-6">
+                <h2 className="onside-display text-2xl">Configurações</h2>
+                <p className="mt-1 text-sm text-[var(--onside-muted)]">
+                  Gerencie a segurança da conta responsável por este bar.
+                </p>
+              </div>
+              <AccountSettings surface="pub" />
+            </section>
+          </Activity>
         </div>
 
         {session ? (
