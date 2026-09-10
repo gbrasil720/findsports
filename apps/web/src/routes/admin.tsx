@@ -200,7 +200,7 @@ function AnalyticsPeriodSelector({
                   type="button"
                   aria-pressed={preset === option.id}
                   onClick={() => onPresetChange(option.id)}
-                  className={`onside-choice onside-choice-ink min-h-11 px-4 text-xs ${preset === option.id ? 'is-selected' : ''}`}
+                  className={`onside-btn min-h-11 px-4 text-xs ${preset === option.id ? 'onside-btn-ink' : 'onside-btn-outline'}`}
                 >
                   {option.label}
                 </button>
@@ -209,7 +209,7 @@ function AnalyticsPeriodSelector({
                 type="button"
                 aria-pressed={preset === 'custom'}
                 onClick={() => onPresetChange('custom')}
-                className={`onside-choice onside-choice-ink min-h-11 px-4 text-xs ${preset === 'custom' ? 'is-selected' : ''}`}
+                className={`onside-btn min-h-11 px-4 text-xs ${preset === 'custom' ? 'onside-btn-ink' : 'onside-btn-outline'}`}
               >
                 Personalizado
               </button>

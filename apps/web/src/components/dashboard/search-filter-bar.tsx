@@ -88,7 +88,19 @@ export function SearchFilterBar({
   const locationGranted = locationState === 'granted'
 
   return (
-    <div className="onside-sticky-filters -mx-4 mb-6 max-h-[min(50dvh,24rem)] space-y-3 overflow-y-auto px-4 md:mx-0 md:max-h-none md:overflow-visible md:px-0">
+    /*
+     * O teto de 50dvh com rolagem própria existe para a barra grudada não
+     * comer a tela no celular. Ele não pode valer com "O que o bar tem"
+     * aberto: o painel abre no fim da barra, fora da área visível do próprio
+     * scroll, e o toque parecia não fazer nada.
+     */
+    <div
+      className={`onside-sticky-filters -mx-4 mb-6 space-y-3 px-4 md:mx-0 md:max-h-none md:overflow-visible md:px-0 ${
+        amenitiesOpen
+          ? 'max-h-none overflow-visible'
+          : 'max-h-[min(50dvh,24rem)] overflow-y-auto'
+      }`}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <div
           className={`flex min-h-12 min-w-0 flex-1 items-center gap-3 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-3 transition-colors ${

@@ -279,7 +279,12 @@ function PubPage() {
   }
 
   return (
-    <div className="flex min-h-dvh">
+    /*
+     * `flex-col`: como item de um flex em linha, o `.onside-app` do AppShell
+     * encolhia até o conteúdo e a página ficava numa coluna estreita no
+     * celular. Em coluna o item estica na largura.
+     */
+    <div className="flex min-h-dvh flex-col">
       <AppShell variant={shellVariant}>
         {/* Auth gate dialog — shown when no session */}
         {!isAuthed && <AuthRequiredDialog open />}

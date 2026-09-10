@@ -73,22 +73,29 @@
     opacity: 0;
   }
 
+  /*
+   * A entrada anima `scale`, nunca `transform`: a centralização do diálogo vem
+   * da propriedade `translate` (utilitários `-translate-x-1/2`/`-translate-y-1/2`
+   * do Tailwind v4). `translate` e `transform` se somam, então um
+   * `transform: translate(-50%, -50%)` aqui deslocaria o diálogo por -100% em
+   * cada eixo e o tiraria do centro.
+   */
   [data-slot="dialog-content"] {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    scale: 0.97;
     transition:
       opacity var(--onside-motion-base) var(--onside-ease-out),
-      transform var(--onside-motion-base) var(--onside-ease-out);
+      scale var(--onside-motion-base) var(--onside-ease-out);
   }
 
   [data-slot="dialog-content"][data-open] {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    scale: 1;
   }
 
   [data-slot="dialog-content"][data-closed] {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.97);
+    scale: 0.97;
   }
 
   [data-slot="popover-content"],
@@ -133,7 +140,7 @@
 
     [data-slot="dialog-content"][data-open] {
       opacity: 0;
-      transform: translate(-50%, -50%) scale(0.97);
+      scale: 0.97;
     }
 
     [data-slot="popover-content"][data-open],
@@ -228,7 +235,7 @@
 
   [data-slot="dialog-content"][data-open],
   [data-slot="dialog-content"][data-closed] {
-    transform: translate(-50%, -50%) !important;
+    scale: 1 !important;
   }
 
   [data-slot="popover-content"][data-open],
