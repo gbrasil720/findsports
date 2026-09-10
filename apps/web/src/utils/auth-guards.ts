@@ -64,6 +64,18 @@ export function applyAuthGuards(
   // do onboarding antes que o guard encaminhe para a rota seguinte.
   if (pathname.startsWith('/verify-email')) return
 
+  // WEB-53: recuperação de senha tem que abrir mesmo com cookie de sessão no
+  // navegador — é justamente o caso de quem esqueceu a senha numa aba antiga,
+  // ou de quem clica no link do e-mail logado em outra conta. Sem isto, o
+  // guard abaixo mandaria essa pessoa para `/access-pending` ou para o
+  // onboarding e o link do e-mail seria consumido sem redefinir nada.
+  if (
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password')
+  ) {
+    return
+  }
+
   if (
     session.user.role !== 'admin' &&
     session.user.admittedAt === null &&

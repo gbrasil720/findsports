@@ -28,7 +28,9 @@ import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/das
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
+import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
@@ -135,9 +137,19 @@ const authSignupRoute = authSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const authResetPasswordRoute = authResetPasswordRouteImport.update({
+  id: '/(auth)/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const authLoginRoute = authLoginRouteImport.update({
   id: '/(auth)/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
+  id: '/(auth)/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
@@ -204,7 +216,9 @@ export interface FileRoutesByFullPath {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
+  '/reset-password': typeof authResetPasswordRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
@@ -236,7 +250,9 @@ export interface FileRoutesByTo {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
+  '/reset-password': typeof authResetPasswordRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
@@ -269,7 +285,9 @@ export interface FileRoutesById {
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/login': typeof authLoginRoute
+  '/(auth)/reset-password': typeof authResetPasswordRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
@@ -303,7 +321,9 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
@@ -335,7 +355,9 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/forgot-password'
     | '/login'
+    | '/reset-password'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
@@ -367,7 +389,9 @@ export interface FileRouteTypes {
     | '/leave-waitlist'
     | '/plan'
     | '/sitemap.xml'
+    | '/(auth)/forgot-password'
     | '/(auth)/login'
+    | '/(auth)/reset-password'
     | '/(auth)/signup'
     | '/(auth)/two-factor'
     | '/(auth)/verify-email'
@@ -400,7 +424,9 @@ export interface RootRouteChildren {
   LeaveWaitlistRoute: typeof LeaveWaitlistRoute
   PlanRoute: typeof PlanRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  authForgotPasswordRoute: typeof authForgotPasswordRoute
   authLoginRoute: typeof authLoginRoute
+  authResetPasswordRoute: typeof authResetPasswordRoute
   authSignupRoute: typeof authSignupRoute
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
@@ -556,11 +582,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(auth)/reset-password': {
+      id: '/(auth)/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof authResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/login': {
       id: '/(auth)/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof authLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/forgot-password': {
+      id: '/(auth)/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof authForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/waitlist/activate': {
@@ -648,7 +688,9 @@ const rootRouteChildren: RootRouteChildren = {
   LeaveWaitlistRoute: LeaveWaitlistRoute,
   PlanRoute: PlanRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  authForgotPasswordRoute: authForgotPasswordRoute,
   authLoginRoute: authLoginRoute,
+  authResetPasswordRoute: authResetPasswordRoute,
   authSignupRoute: authSignupRoute,
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,

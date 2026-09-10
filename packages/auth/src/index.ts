@@ -25,6 +25,7 @@ import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { buildTrustedOrigins } from './trusted-origins'
@@ -225,6 +226,30 @@ export function createAuth() {
       enabled: true,
       autoSignIn: false,
       requireEmailVerification: true,
+      // WEB-53: recuperação self-service pelo fluxo nativo do better-auth.
+      //
+      // O endpoint `/request-password-reset` já responde a mesma mensagem
+      // para e-mail existente e inexistente (e ainda simula a geração do
+      // token para nivelar o tempo de resposta), então não há enumeração de
+      // contas a proteger aqui — a UI só não pode acrescentar o que o
+      // servidor calou.
+      resetPasswordTokenExpiresIn: 60 * 60,
+      // Quem redefine a senha normalmente é quem perdeu o acesso; se a conta
+      // estava comprometida, as sessões do invasor precisam cair junto.
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ user, url }) => {
+        const publicAppUrl = getPublicAppUrl()
+        await sendResetPasswordEmailWithResend({
+          apiKey: env.RESEND_API_KEY,
+          fromEmail: env.RESEND_FROM_EMAIL,
+          to: user.email,
+          name: user.name,
+          // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
+          // localhost e não abre na caixa de entrada de ninguém.
+          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL),
+          ...emailAssetUrls(publicAppUrl)
+        })
+      },
       customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
         ...coreFields,
         role: 'fan',
