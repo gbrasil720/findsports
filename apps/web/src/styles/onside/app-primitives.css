@@ -366,6 +366,184 @@
   color: var(--onside-ink) !important;
 }
 
+/* ─── Tabela do shadcn no produto ───
+ *
+ * A tabela do registry usa os tokens neutros (`--border`, `--muted`), que num
+ * cartão de papel/acid entram como um cinza que não pertence à paleta. O
+ * cabeçalho segue o mesmo desenho dos rótulos de coluna do resto do painel:
+ * mono, 10px, versalete.
+ */
+.onside-app [data-slot="table"] {
+  font-family: var(--onside-body);
+  color: var(--onside-ink);
+}
+
+.onside-app [data-slot="table-header"] [data-slot="table-head"] {
+  height: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+.onside-app [data-slot="table-row"] {
+  border-color: var(--onside-line);
+}
+
+.onside-app [data-slot="table-row"]:hover {
+  background: rgb(18 18 15 / 5%);
+}
+
+/* ─── Checkbox e radio do shadcn ───
+ *
+ * Os cartões de analytics usavam `<input type="radio">` e
+ * `<input type="checkbox">` crus: o desenho vinha do sistema operacional —
+ * azul do Chrome, canto arredondado, 13px — dentro de um cartão que é ink
+ * sobre acid e não tem um único canto arredondado nem um único azul. O
+ * desenho do produto entra aqui uma vez, pelos `data-slot` dos primitives, e
+ * vale para toda ocorrência futura em vez de virar `className` copiado.
+ *
+ * `box-shadow: none` derruba o `ring` do registry: o anel de foco é o
+ * `outline` da política única (tokens.css), e o ring somava um segundo anel
+ * concêntrico por cima dele.
+ */
+.onside-app [data-slot="checkbox"],
+.onside-app [data-slot="radio-group-item"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-paper);
+  color: var(--onside-paper);
+  box-shadow: none;
+  transition:
+    background-color var(--onside-motion-fast) ease,
+    border-color var(--onside-motion-fast) ease;
+}
+
+.onside-app [data-slot="checkbox"] {
+  border-radius: 0;
+}
+
+.onside-app [data-slot="radio-group-item"] {
+  border-radius: 999px;
+}
+
+.onside-app [data-slot="checkbox"][data-checked],
+.onside-app [data-slot="radio-group-item"][data-checked] {
+  background: var(--onside-ink);
+  border-color: var(--onside-ink);
+}
+
+.onside-app [data-slot="checkbox"][data-disabled],
+.onside-app [data-slot="radio-group-item"][data-disabled] {
+  opacity: 0.45;
+}
+
+/*
+ * Linha de escolha: o controle e o rótulo são um alvo só, com altura de toque
+ * de 32px. O `Label` do shadcn vem em 12px `leading-none`, tamanho de rótulo
+ * de formulário denso; aqui a escolha é conteúdo, e lê em 14px.
+ */
+.onside-app .onside-choice-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  font-family: var(--onside-body);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--onside-ink);
+  cursor: pointer;
+}
+
+.onside-app .onside-choice-row:has([data-disabled]) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ─── Fieldset agrupador ─── */
+.onside-app .onside-fieldset {
+  min-width: 0;
+  padding: 4px 14px 14px;
+  border: 1.5px solid var(--onside-line);
+  border-radius: 0;
+}
+
+.onside-app .onside-fieldset-legend {
+  padding: 0 6px;
+  margin-left: -6px;
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+.onside-app .onside-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--onside-muted);
+}
+
+/* ─── Accordion (shadcn/Base UI) ───
+ *
+ * O gatilho do registry sublinha no hover. Numa linha que é nome do jogo à
+ * esquerda e três colunas de números à direita, o sublinhado atravessa a
+ * linha inteira e some junto com o ponteiro — realce que não diz onde está o
+ * alvo. Aqui o realce é o fundo da linha, que é o que o resto do produto usa.
+ */
+.onside-app [data-slot="accordion-item"] {
+  border-bottom: 1px solid var(--onside-line);
+}
+
+.onside-app [data-slot="accordion-item"]:last-child {
+  border-bottom: 0;
+}
+
+.onside-app [data-slot="accordion-trigger"] {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--onside-motion-fast) ease;
+}
+
+.onside-app [data-slot="accordion-trigger"]:hover {
+  background: rgb(18 18 15 / 7%);
+  text-decoration: none;
+}
+
+.onside-app [data-slot="accordion-trigger"][data-panel-open] {
+  background: rgb(18 18 15 / 10%);
+}
+
+.onside-app [data-slot="accordion-trigger"][data-disabled] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* O chevron acompanha o ink da linha; `text-muted-foreground` é o cinza do
+   tema neutro do shadcn e sobre acid vira uma terceira cor sem função. */
+.onside-app [data-slot="accordion-trigger-icon"] {
+  color: var(--onside-ink);
+  opacity: 0.55;
+  transition-timing-function: var(--onside-ease-out);
+}
+
+.onside-app [data-slot="accordion-content"] {
+  transition-timing-function: var(--onside-ease-out);
+}
+
 /* ─── Choice plates (role, sports, radius) ─── */
 .onside-app .onside-choice {
   display: flex;

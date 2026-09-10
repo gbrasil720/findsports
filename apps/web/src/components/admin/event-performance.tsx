@@ -3,10 +3,37 @@ import type {
   ComparisonMetric,
   EventComparisonTarget
 } from '@findsports_oficial/api/lib/commercial-analytics/types'
-import { useState } from 'react'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@findsports_oficial/ui/components/accordion'
+import { Checkbox } from '@findsports_oficial/ui/components/checkbox'
+import { Label } from '@findsports_oficial/ui/components/label'
+import {
+  RadioGroup,
+  RadioGroupItem
+} from '@findsports_oficial/ui/components/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@findsports_oficial/ui/components/select'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@findsports_oficial/ui/components/table'
+import { useId } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Check from 'reicon-react/icons/Check'
-import ChevronDown from 'reicon-react/icons/ChevronDown'
 import {
   type EventAnalyticsRow,
   type EventAnalyticsState,
@@ -46,6 +73,14 @@ const COMPARISON_METRIC_LABELS: Record<ComparisonMetric, string> = {
   whatsappOpened: 'WhatsApp'
 }
 
+const COMPARISON_METRICS = [
+  'uniqueVisitors',
+  'profileViews',
+  'directionsOpened',
+  'phoneClicked',
+  'whatsappOpened'
+] as const
+
 const WEEKDAY_LABELS = [
   '',
   'segunda-feira',
@@ -80,16 +115,28 @@ function ComparisonControls({
   loading?: boolean
   onChange?: (target: EventComparisonTarget | undefined) => void
 }) {
+  const targetLabelId = useId()
+
   if (!mode || mode === 'previous_period' || !onChange) return null
 
   const selectedIds = target?.type === 'events' ? target.eventIds : []
   const isBarAverage = target?.type === 'event_to_bar'
+  const selectItems = items.map((item) => ({
+    value: item.eventId,
+    label: item.eventName
+  }))
 
   const chooseEvents = () => {
     const ids = selectedIds.length
       ? selectedIds
       : items.slice(0, 2).map((item) => item.eventId)
     if (ids.length > 0) onChange({ type: 'events', eventIds: ids })
+  }
+
+  const chooseBarAverage = () => {
+    const eventId =
+      target?.type === 'event_to_bar' ? target.eventId : items[0]?.eventId
+    if (eventId) onChange({ type: 'event_to_bar', eventId })
   }
 
   const toggleEvent = (eventId: string) => {
@@ -100,93 +147,88 @@ function ComparisonControls({
   }
 
   return (
-    <fieldset className="mb-4 border border-[var(--onside-line)] p-3">
-      <legend className="px-1 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-ink)] uppercase tracking-[0.1em] opacity-60">
+    <fieldset className="onside-fieldset mb-4">
+      <legend className="onside-fieldset-legend">
         Comparação disponível no plano {mode === 'advanced' ? 'Elite' : 'Pro'}
       </legend>
 
-      <div className="flex flex-wrap gap-4 text-sm">
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="event-comparison-mode"
-            checked={!isBarAverage}
-            onChange={chooseEvents}
-          />
+      <RadioGroup
+        aria-label="Tipo de comparação"
+        value={isBarAverage ? 'event_to_bar' : 'events'}
+        onValueChange={(value) => {
+          if (value === 'event_to_bar') chooseBarAverage()
+          else chooseEvents()
+        }}
+        className="flex flex-wrap items-center gap-x-6 gap-y-0"
+      >
+        <Label className="onside-choice-row">
+          <RadioGroupItem value="events" />
           Entre jogos
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="event-comparison-mode"
-            checked={isBarAverage}
-            onChange={() => {
-              const eventId =
-                target?.type === 'event_to_bar'
-                  ? target.eventId
-                  : items[0]?.eventId
-              if (eventId) onChange({ type: 'event_to_bar', eventId })
-            }}
-          />
+        </Label>
+        <Label className="onside-choice-row">
+          <RadioGroupItem value="event_to_bar" />
           Jogo contra média do bar
-        </label>
-        {loading && (
-          <span className="text-xs text-[var(--onside-muted)]">
-            Calculando…
-          </span>
-        )}
-      </div>
+        </Label>
+      </RadioGroup>
 
       {!isBarAverage && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="mt-2 grid gap-0 sm:grid-cols-2">
           {items.map((item) => (
-            <label
-              key={item.eventId}
-              className="flex min-w-0 items-center gap-2 text-sm"
-            >
-              <input
-                type="checkbox"
+            <Label key={item.eventId} className="onside-choice-row min-w-0">
+              <Checkbox
                 checked={selectedIds.includes(item.eventId)}
-                onChange={() => toggleEvent(item.eventId)}
+                onCheckedChange={() => toggleEvent(item.eventId)}
               />
               <span className="truncate">{item.eventName}</span>
-            </label>
+            </Label>
           ))}
         </div>
       )}
 
       {isBarAverage && (
-        <label className="mt-3 block max-w-md text-sm">
-          <span className="mb-1 block text-xs text-[var(--onside-muted)]">
+        <div className="mt-3 max-w-md">
+          {/* `Label` sem `htmlFor`: o gatilho do Select é um `button`, que não
+              é elemento rotulável — quem nomeia é o `aria-labelledby`. */}
+          <Label id={targetLabelId} className="onside-label">
             Jogo alvo
-          </span>
-          <select
+          </Label>
+          <Select
+            items={selectItems}
             value={target.type === 'event_to_bar' ? target.eventId : ''}
-            onChange={(event) => {
-              if (event.currentTarget.value) {
-                onChange({
-                  type: 'event_to_bar',
-                  eventId: event.currentTarget.value
-                })
+            onValueChange={(value) => {
+              if (typeof value === 'string' && value) {
+                onChange({ type: 'event_to_bar', eventId: value })
               }
             }}
-            className="min-h-10 w-full border border-[var(--onside-line)] bg-[var(--onside-paper)] px-2 text-sm"
           >
-            <option value="">Selecione um jogo</option>
-            {items.map((item) => (
-              <option key={item.eventId} value={item.eventId}>
-                {item.eventName}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger
+              aria-labelledby={targetLabelId}
+              className="onside-select h-12 min-h-12 w-full text-sm"
+            >
+              <SelectValue placeholder="Selecione um jogo" />
+            </SelectTrigger>
+            <SelectContent>
+              {items.map((item) => (
+                <SelectItem key={item.eventId} value={item.eventId}>
+                  {item.eventName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
-      {!isBarAverage && selectedIds.length < 2 && (
-        <p className="mt-2 text-xs text-[var(--onside-muted)]">
-          Selecione pelo menos dois jogos com dados.
-        </p>
-      )}
+      <div
+        className="mt-2 flex flex-wrap items-center gap-x-3"
+        aria-live="polite"
+      >
+        {!isBarAverage && selectedIds.length < 2 && (
+          <p className="onside-hint">
+            Selecione pelo menos dois jogos com dados.
+          </p>
+        )}
+        {loading && <p className="onside-hint">Calculando…</p>}
+      </div>
     </fieldset>
   )
 }
@@ -197,60 +239,39 @@ function ComparisonTable({ comparison }: { comparison: EventComparisonData }) {
     : comparison.events
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[620px] text-left text-xs">
-        <thead className="border-[var(--onside-line)] border-b text-[var(--onside-muted)]">
-          <tr>
-            <th className="py-2 pr-3 font-normal">Jogo</th>
-            {(
-              [
-                'uniqueVisitors',
-                'profileViews',
-                'directionsOpened',
-                'phoneClicked',
-                'whatsappOpened'
-              ] as const
-            ).map((metric) => (
-              <th key={metric} className="px-2 py-2 text-right font-normal">
-                {COMPARISON_METRIC_LABELS[metric]}
-              </th>
-            ))}
-            <th className="py-2 pl-2 text-right font-normal">Conversão</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.eventId}
-              className="border-[var(--onside-line)] border-b last:border-0"
-            >
-              <th
-                className="max-w-44 truncate py-2 pr-3 font-medium"
-                scope="row"
-              >
-                {row.eventName}
-              </th>
-              {(
-                [
-                  'uniqueVisitors',
-                  'profileViews',
-                  'directionsOpened',
-                  'phoneClicked',
-                  'whatsappOpened'
-                ] as const
-              ).map((metric) => (
-                <td key={metric} className="px-2 py-2 text-right tabular-nums">
-                  {formatComparisonNumber(row[metric])}
-                </td>
-              ))}
-              <td className="py-2 pl-2 text-right font-medium tabular-nums">
-                {formatConversionRate(row.conversionRate)}
-              </td>
-            </tr>
+    <Table className="min-w-[620px]">
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="pl-0">Jogo</TableHead>
+          {COMPARISON_METRICS.map((metric) => (
+            <TableHead key={metric} className="text-right">
+              {COMPARISON_METRIC_LABELS[metric]}
+            </TableHead>
           ))}
-        </tbody>
-      </table>
-    </div>
+          <TableHead className="pr-0 text-right">Conversão</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.eventId}>
+            <TableHead
+              scope="row"
+              className="max-w-44 truncate py-2 pr-2 pl-0 font-medium"
+            >
+              {row.eventName}
+            </TableHead>
+            {COMPARISON_METRICS.map((metric) => (
+              <TableCell key={metric} className="text-right tabular-nums">
+                {formatComparisonNumber(row[metric])}
+              </TableCell>
+            ))}
+            <TableCell className="pr-0 text-right font-medium tabular-nums">
+              {formatConversionRate(row.conversionRate)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
@@ -266,7 +287,7 @@ function ComparisonResult({
   if (!mode || mode === 'previous_period') return null
   if (loading && !comparison) {
     return (
-      <div className="onside-panel-acid mb-4 p-4 text-sm text-[var(--onside-muted)]">
+      <div className="onside-panel mb-4 p-4 text-sm text-[var(--onside-muted)]">
         Calculando comparação com os dados do bar…
       </div>
     )
@@ -281,7 +302,7 @@ function ComparisonResult({
           ? 'Selecione pelo menos dois jogos com dados para comparar.'
           : 'Ainda não há dados elegíveis para esta comparação.'
     return (
-      <div className="onside-panel-acid mb-4 p-4 text-sm text-[var(--onside-muted)]">
+      <div className="onside-panel mb-4 p-4 text-sm text-[var(--onside-muted)]">
         {message}
       </div>
     )
@@ -293,10 +314,10 @@ function ComparisonResult({
   )
 
   return (
-    <div className="onside-panel-acid mb-4 space-y-4 p-4">
+    <div className="onside-panel mb-4 space-y-4 p-4">
       <div>
         <h4 className="onside-heading mb-1">Comparação calculada</h4>
-        <p className="text-xs text-[var(--onside-muted)]">
+        <p className="onside-hint">
           Os volumes são brutos; os insights também usam a taxa por hora da
           janela efetiva de cada jogo.
         </p>
@@ -362,7 +383,7 @@ function ComparisonResult({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[var(--onside-muted)]">
+              <p className="onside-hint">
                 Ainda não há histórico suficiente para formar um benchmark.
               </p>
             )}
@@ -405,10 +426,7 @@ function PerformanceSkeleton() {
       </h3>
       <div className="space-y-3">
         {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-12 w-full rounded-sm bg-[var(--onside-paper)] animate-pulse"
-          />
+          <Skeleton key={i} className="h-12 w-full bg-[var(--onside-paper)]" />
         ))}
       </div>
     </div>
@@ -454,52 +472,42 @@ function PerformanceError({
 
 /**
  * Trilha de colunas compartilhada pelo cabeçalho e pelas linhas — é o que
- * mantém os números alinhados sem repetir o rótulo em cada linha.
+ * mantém os números alinhados sem repetir o rótulo em cada linha. A última
+ * faixa é do chevron do accordion, que fecha a linha na mesma coluna em todas
+ * elas em vez de flutuar antes do nome.
  *
  * No celular só sobra "Interesse": as outras duas colunas não cabem sem
  * espremer o nome do jogo, e o detalhe completo já está no painel expandido.
  */
 const ROW_GRID =
-  'grid grid-cols-[1.25rem_minmax(0,1fr)_4.25rem] items-center gap-x-3 sm:grid-cols-[1.25rem_minmax(0,1fr)_repeat(3,4.25rem)]'
+  'grid grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]'
 
 function PerformanceColumns() {
   return (
     <div
-      className={`${ROW_GRID} border-[var(--onside-line)] border-b pb-1.5 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-ink)] uppercase tracking-[0.1em] opacity-50`}
+      className={`${ROW_GRID} border-[var(--onside-line)] border-b pb-1.5 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]`}
       aria-hidden="true"
     >
-      <span />
       <span />
       <span className="hidden text-right sm:block">Aberturas</span>
       <span className="text-right">Interesse</span>
       <span className="hidden text-right sm:block">Taxa</span>
+      <span />
     </div>
   )
 }
 
 function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
-  const [expanded, setExpanded] = useState(false)
-  const panelId = `event-performance-${item.eventId}`
   const intentActions = sumAnalyticsActions(item)
 
   return (
-    <div className="border-b border-[var(--onside-line)] last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className={`${ROW_GRID} w-full py-2.5 text-left transition-colors hover:bg-[var(--onside-paper)]/50`}
-        aria-expanded={expanded}
-        aria-controls={panelId}
+    <AccordionItem value={item.eventId}>
+      <AccordionTrigger
+        headingLevel={4}
+        className={`${ROW_GRID} px-2 py-2.5 text-sm`}
       >
-        <ChevronDown
-          size={16}
-          color="var(--onside-ink)"
-          className={`transition-transform duration-[180ms] [transition-timing-function:var(--onside-ease-out)] ${expanded ? 'rotate-180' : ''}`}
-          aria-hidden="true"
-        />
-
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate font-medium text-[var(--onside-ink)] text-sm">
+          <span className="truncate font-medium text-[var(--onside-ink)]">
             {item.eventName}
           </span>
           <span className="shrink-0 text-[var(--onside-ink)] text-xs opacity-60">
@@ -509,74 +517,64 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
 
         {/* O cabeçalho é só alinhamento visual, então cada número carrega o
             próprio rótulo pra leitor de tela. */}
-        <span className="hidden text-right font-medium text-[var(--onside-ink)] text-sm tabular-nums sm:block">
+        <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
           <span className="sr-only">Aberturas: </span>
           {item.profileViews}
         </span>
-        <span className="text-right font-medium text-[var(--onside-ink)] text-sm tabular-nums">
+        <span className="text-right font-medium text-[var(--onside-ink)] tabular-nums">
           <span className="sr-only">Interesse: </span>
           {formatAnalyticsValue(intentActions)}
         </span>
-        <span className="hidden text-right font-medium text-[var(--onside-ink)] text-sm tabular-nums sm:block">
+        <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
           <span className="sr-only">Taxa: </span>
           {intentActions === null
             ? formatAnalyticsValue(null)
             : formatRate(intentActions, item.profileViews)}
         </span>
-      </button>
+      </AccordionTrigger>
 
-      {/* O painel de métricas abre instantaneamente: animar sua altura causa
-          reflow e atrapalha a leitura de dados. */}
-      <div
-        id={panelId}
-        aria-hidden={!expanded}
-        className={`grid ${expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-      >
-        <div className="overflow-hidden">
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pb-3 pl-8 text-[var(--onside-ink)] text-sm opacity-80 sm:grid-cols-4">
-            <div>
-              <dt className="text-xs opacity-60">WhatsApp</dt>
-              <dd className="font-medium tabular-nums">
-                {formatAnalyticsValue(item.whatsappOpened)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-60">Rota</dt>
-              <dd className="font-medium tabular-nums">
-                {formatAnalyticsValue(item.directionsOpened)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-60">Telefone</dt>
-              <dd className="font-medium tabular-nums">
-                {formatAnalyticsValue(item.phoneClicked)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-60">Mais usado</dt>
-              <dd className="font-medium">{getMainAction(item) ?? '—'}</dd>
-            </div>
-          </dl>
+      <AccordionContent className="px-2 pb-3">
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[var(--onside-ink)] text-sm sm:grid-cols-4">
+          <div>
+            <dt className="onside-hint">WhatsApp</dt>
+            <dd className="font-medium tabular-nums">
+              {formatAnalyticsValue(item.whatsappOpened)}
+            </dd>
+          </div>
+          <div>
+            <dt className="onside-hint">Rota</dt>
+            <dd className="font-medium tabular-nums">
+              {formatAnalyticsValue(item.directionsOpened)}
+            </dd>
+          </div>
+          <div>
+            <dt className="onside-hint">Telefone</dt>
+            <dd className="font-medium tabular-nums">
+              {formatAnalyticsValue(item.phoneClicked)}
+            </dd>
+          </div>
+          <div>
+            <dt className="onside-hint">Mais usado</dt>
+            <dd className="font-medium">{getMainAction(item) ?? '—'}</dd>
+          </div>
 
           {/* No celular as colunas de aberturas e taxa saem do cabeçalho;
               aqui elas reaparecem pra não sumir a informação. */}
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pb-3 pl-8 text-[var(--onside-ink)] text-sm opacity-80 sm:hidden">
-            <div>
-              <dt className="text-xs opacity-60">Aberturas</dt>
-              <dd className="font-medium tabular-nums">{item.profileViews}</dd>
-            </div>
-            <div>
-              <dt className="text-xs opacity-60">Taxa</dt>
-              <dd className="font-medium tabular-nums">
-                {intentActions === null
-                  ? formatAnalyticsValue(null)
-                  : formatRate(intentActions, item.profileViews)}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-    </div>
+          <div className="sm:hidden">
+            <dt className="onside-hint">Aberturas</dt>
+            <dd className="font-medium tabular-nums">{item.profileViews}</dd>
+          </div>
+          <div className="sm:hidden">
+            <dt className="onside-hint">Taxa</dt>
+            <dd className="font-medium tabular-nums">
+              {intentActions === null
+                ? formatAnalyticsValue(null)
+                : formatRate(intentActions, item.profileViews)}
+            </dd>
+          </div>
+        </dl>
+      </AccordionContent>
+    </AccordionItem>
   )
 }
 
@@ -641,7 +639,7 @@ export function EventPerformance({
   return (
     <div className="onside-panel-acid p-4">
       <PerformanceHeading />
-      <p className="mb-3 text-[var(--onside-ink)] text-xs opacity-60">
+      <p className="onside-hint mb-3">
         Janela consultada:{' '}
         {formatAnalyticsPeriod(
           eventAnalyticsState.from,
@@ -664,7 +662,7 @@ export function EventPerformance({
       />
 
       {topEvent && topEventIntent !== null && (
-        <div className="mb-3 flex items-center gap-2 border border-[var(--onside-ink)] bg-[var(--onside-ink)] px-3 py-2 text-sm text-[var(--onside-paper)]">
+        <div className="onside-panel-ink mb-3 flex items-center gap-2 px-3 py-2 text-sm">
           <Check size={14} color="currentColor" aria-hidden="true" />
           Melhor jogo: {topEvent.eventName} ({topEventIntent}{' '}
           {topEventIntent === 1 ? 'interessado' : 'interessados'})
@@ -672,11 +670,11 @@ export function EventPerformance({
       )}
 
       <PerformanceColumns />
-      <div>
+      <Accordion>
         {items.map((item) => (
           <EventPerformanceRow key={item.eventId} item={item} />
         ))}
-      </div>
+      </Accordion>
     </div>
   )
 }
