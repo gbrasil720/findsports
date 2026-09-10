@@ -12,6 +12,25 @@ export const PROFILE_TABS = [
 ] as const
 
 export type ProfileTab = (typeof PROFILE_TABS)[number]
+
+/**
+ * Slug estável por aba. O rótulo é texto de tela e muda; `id`, `aria-controls`
+ * e `aria-labelledby` precisam de algo que não mude junto — e que não carregue
+ * acento nem espaço para dentro de um atributo de id.
+ */
+export const PROFILE_TAB_SLUGS: Record<ProfileTab, string> = {
+  'Visão geral': 'visao-geral',
+  Favoritos: 'favoritos',
+  Configurações: 'configuracoes'
+}
+
+export function profileTabId(tab: ProfileTab): string {
+  return `perfil-${PROFILE_TAB_SLUGS[tab]}-tab`
+}
+
+export function profileTabPanelId(tab: ProfileTab): string {
+  return `perfil-${PROFILE_TAB_SLUGS[tab]}`
+}
 export type FavoriteSort = 'upcoming' | 'az' | 'city'
 export type FavoriteView = 'list' | 'map'
 export type ProfileUser = NonNullable<SessionResult['data']>['user']

@@ -44,6 +44,45 @@ export const Route = createFileRoute('/(auth)/signup')({
   component: SignupPage
 })
 
+/**
+ * As regras de cada campo, num lugar só e rodando duas vezes: no `blur` e no
+ * envio. Antes elas viviam duplicadas — uma cópia no validador do campo, para
+ * o `blur`, e outra dentro do `onSubmit`, que só sabia produzir toast. Enviar
+ * o formulário vazio não acendia nenhum erro sob os campos.
+ */
+function validateName({ value }: { value: string }) {
+  return value.trim() ? undefined : 'Informe seu nome completo.'
+}
+
+function validateEmail({ value }: { value: string }) {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Informe seu e-mail.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return 'Informe um e-mail válido.'
+  }
+  return undefined
+}
+
+function validatePassword({ value }: { value: string }) {
+  if (!value) return 'Informe uma senha.'
+  if (value.length < 8) return 'A senha deve ter pelo menos 8 caracteres.'
+  return undefined
+}
+
+function validateConfirm({
+  value,
+  fieldApi
+}: {
+  value: string
+  fieldApi: { form: { getFieldValue: (name: 'password') => string } }
+}) {
+  if (!value) return 'Confirme sua senha.'
+  if (value !== fieldApi.form.getFieldValue('password')) {
+    return 'As senhas não coincidem.'
+  }
+  return undefined
+}
+
 function SignupPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
@@ -80,32 +119,14 @@ function SignupPage() {
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
+    // Envio inválido leva o foco ao primeiro campo com erro. As regras vivem
+    // nos validadores dos campos, que rodam no `blur` e no envio — assim a
+    // mensagem aparece embaixo do campo em vez de só passar num toast.
+    onSubmitInvalid: () => focusFirstInvalid(),
     onSubmit: async ({ value }) => {
       const name = value.name.trim()
       const email = value.email.trim()
       const password = value.password
-      const confirm = value.confirm
-
-      if (!name) {
-        toast.error('Informe seu nome completo.')
-        focusFirstInvalid()
-        return
-      }
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        toast.error('Informe um e-mail válido.')
-        focusFirstInvalid()
-        return
-      }
-      if (password !== confirm) {
-        toast.error('As senhas não coincidem.')
-        focusFirstInvalid()
-        return
-      }
-      if (password.length < 8) {
-        toast.error('A senha deve ter pelo menos 8 caracteres.')
-        focusFirstInvalid()
-        return
-      }
 
       setIsLoading(true)
       const { error } = await authClient.signUp.email({
@@ -232,10 +253,7 @@ function SignupPage() {
 
             <form.Field
               name="name"
-              validators={{
-                onBlur: ({ value }) =>
-                  value.trim() ? undefined : 'Informe seu nome completo.'
-              }}
+              validators={{ onBlur: validateName, onSubmit: validateName }}
             >
               {(field) => (
                 <AuthInputField
@@ -254,15 +272,7 @@ function SignupPage() {
 
             <form.Field
               name="email"
-              validators={{
-                onBlur: ({ value }) => {
-                  const v = value.trim()
-                  if (!v) return 'Informe seu e-mail.'
-                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-                    return 'Informe um e-mail válido.'
-                  return undefined
-                }
-              }}
+              validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
             >
               {(field) => (
                 <AuthInputField
@@ -284,12 +294,8 @@ function SignupPage() {
             <form.Field
               name="password"
               validators={{
-                onBlur: ({ value }) => {
-                  if (!value) return 'Informe uma senha.'
-                  if (value.length < 8)
-                    return 'A senha deve ter pelo menos 8 caracteres.'
-                  return undefined
-                }
+                onBlur: validatePassword,
+                onSubmit: validatePassword
               }}
             >
               {(field) => (
@@ -309,12 +315,8 @@ function SignupPage() {
             <form.Field
               name="confirm"
               validators={{
-                onBlur: ({ value, fieldApi }) => {
-                  const password = fieldApi.form.getFieldValue('password')
-                  if (!value) return 'Confirme sua senha.'
-                  if (value !== password) return 'As senhas não coincidem.'
-                  return undefined
-                }
+                onBlur: validateConfirm,
+                onSubmit: validateConfirm
               }}
             >
               {(field) => (

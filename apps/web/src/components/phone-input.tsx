@@ -43,39 +43,24 @@ function parsePhone(stored: string): { country: Country; digits: string } {
   return { country: COUNTRIES[0], digits: stored.replace(/\D/g, '') }
 }
 
-const variants = {
-  dark: {
-    container:
-      'flex min-h-12 overflow-hidden border border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] focus-within:border-[var(--onside-live)]',
-    trigger:
-      'flex min-h-12 shrink-0 cursor-pointer items-center gap-1.5 border-r border-[rgb(241_238_230_/_20%)] bg-transparent px-3 py-3 text-sm text-[color-mix(in_srgb,var(--onside-paper)_72%,transparent)] transition-colors hover:bg-[rgb(241_238_230_/_6%)]',
-    input:
-      'min-h-12 min-w-0 flex-1 bg-transparent px-3 py-3 text-base text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)] outline-none'
-  },
-  onboarding: {
-    container:
-      'flex min-h-12 overflow-hidden border border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] focus-within:border-[var(--onside-live)]',
-    trigger:
-      'flex min-h-12 shrink-0 cursor-pointer items-center gap-1.5 border-r border-[rgb(241_238_230_/_20%)] bg-transparent px-4 py-3 text-sm text-[color-mix(in_srgb,var(--onside-paper)_72%,transparent)] transition-colors hover:bg-[rgb(241_238_230_/_6%)]',
-    input:
-      'min-h-12 min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)] outline-none'
-  },
-  admin: {
-    container:
-      'flex min-h-12 overflow-hidden border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] focus-within:border-[var(--onside-live)] focus-within:shadow-[0_0_0_2px_rgb(232_50_12_/_25%)]',
-    trigger:
-      'flex min-h-12 shrink-0 cursor-pointer items-center gap-1.5 border-r border-[var(--onside-line)] bg-transparent px-3 py-3 text-sm font-semibold text-[var(--onside-muted)] transition-colors hover:bg-[var(--onside-stone)]',
-    input:
-      'min-h-12 min-w-0 flex-1 bg-transparent px-3 py-3 text-base font-semibold text-[var(--onside-ink)] placeholder:text-[var(--onside-muted)] outline-none'
-  },
-  onside: {
-    container:
-      'flex min-h-12 overflow-hidden border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] focus-within:border-[var(--onside-live)]',
-    trigger:
-      'flex min-h-12 shrink-0 cursor-pointer items-center gap-1.5 border-r border-[var(--onside-line)] bg-transparent px-3 py-3 text-sm text-[var(--onside-muted)]',
-    input:
-      'min-h-12 min-w-0 flex-1 bg-transparent px-3 py-3 text-base text-[var(--onside-ink)] placeholder:text-[var(--onside-muted)] outline-none'
-  }
+/**
+ * Tom da superfície, e só isso.
+ *
+ * Eram quatro conjuntos de classes (`dark`, `onboarding`, `admin`, `onside`)
+ * para dois desenhos: dois deles nunca foram usados e os dois usados
+ * diferiam em 4px de padding. Cada conjunto trazia a própria borda, sombra e
+ * regra de foco, e o campo acendia três indicadores ao mesmo tempo — o anel
+ * do invólucro, a divisória interna e o outline do input ou do gatilho.
+ *
+ * Agora o desenho inteiro mora em `.onside-field-composite` (ver
+ * `app-primitives.css`), que aplica a política única de foco: o invólucro
+ * desenha o anel uma vez, os controles internos calam o próprio.
+ */
+export type PhoneInputTone = 'paper' | 'ink'
+
+const TONE_CLASS: Record<PhoneInputTone, string> = {
+  paper: 'onside-field-composite',
+  ink: 'onside-field-composite onside-field-composite-ink'
 }
 
 type Props = {
@@ -83,7 +68,7 @@ type Props = {
   id?: string
   name?: string
   onChange: (phone: string) => void
-  variant?: keyof typeof variants
+  tone?: PhoneInputTone
   placeholder?: string
   required?: boolean
   invalid?: boolean
@@ -95,7 +80,7 @@ export function PhoneInput({
   id,
   name,
   onChange,
-  variant = 'dark',
+  tone = 'ink',
   placeholder = '(11) 9 1234-5678',
   required,
   invalid,
@@ -113,7 +98,6 @@ export function PhoneInput({
     setDigits(next.digits)
   }, [defaultValue])
 
-  const s = variants[variant]
   const formatCode =
     selectedCountry.code === 'NANP' ? 'US' : selectedCountry.code
 
@@ -130,11 +114,11 @@ export function PhoneInput({
   }
 
   return (
-    <div className={s.container}>
+    <div className={TONE_CLASS[tone]} data-invalid={invalid || undefined}>
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`Código do país: ${selectedCountry.name} ${selectedCountry.dial}`}
-          className={s.trigger}
+          className="onside-field-part onside-field-part-lead"
         >
           <span className="font-[family-name:var(--onside-mono)] text-xs font-bold tracking-wide">
             {selectedCountry.code === 'NANP' ? '+1' : selectedCountry.code}
@@ -179,7 +163,7 @@ export function PhoneInput({
         required={required}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
-        className={s.input}
+        className="onside-field-part onside-field-part-grow"
       />
     </div>
   )

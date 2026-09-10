@@ -25,8 +25,8 @@ import {
   toMapBars
 } from '@/domain/dashboard-selectors'
 import {
-  DEFAULT_RADIUS_KM,
   type LocationState,
+  normalizeRadiusKm,
   type RadiusKm,
   SAO_PAULO_FALLBACK
 } from '@/domain/discovery'
@@ -64,7 +64,14 @@ function FanDashboard() {
   const [locationState, setLocationState] = useState<LocationState>('unknown')
   const [sportId, setSportId] = useState<string>()
   const [championship, setChampionship] = useState('')
-  const [radiusKm, setRadiusKm] = useState<RadiusKm>(DEFAULT_RADIUS_KM)
+  /*
+   * O raio da busca começa no raio salvo pelo torcedor, não numa constante da
+   * tela. Eram três números diferentes para a mesma preferência: 3 no banco,
+   * 5 na busca e o do perfil — quem trocava o raio no perfil voltava ao
+   * dashboard e via outro valor marcado.
+   */
+  const preferredRadiusKm = normalizeRadiusKm(session?.user.searchRadiusKm)
+  const [radiusKm, setRadiusKm] = useState<RadiusKm>(preferredRadiusKm)
   const [amenities, setAmenities] = useState<number[]>([])
   const [sort, setSort] = useState<SearchSort>('relevance')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -133,6 +140,12 @@ function FanDashboard() {
       limit: 30
     })
   )
+  // Termo, esporte ou característica marcada é pedido explícito. Com um deles
+  // no ar, "todos os bares por perto" não responde à pergunta feita.
+  const hasSearchIntent =
+    championship.trim().length > 0 ||
+    sportId !== undefined ||
+    amenities.length > 0
   const primaryEmpty = primaryQuery.data?.bars.length === 0
   const fallbackQuery = useQuery({
     ...trpc.pubs.searchByLocation.queryOptions({
@@ -140,7 +153,7 @@ function FanDashboard() {
       radiusKm,
       limit: 30
     }),
-    enabled: primaryEmpty
+    enabled: primaryEmpty && !hasSearchIntent
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
 
@@ -168,9 +181,10 @@ function FanDashboard() {
         primary: primaryQuery,
         fallback: fallbackQuery,
         locationState,
-        radiusKm
+        radiusKm,
+        hasSearchIntent
       }),
-    [primaryQuery, fallbackQuery, locationState, radiusKm]
+    [primaryQuery, fallbackQuery, locationState, radiusKm, hasSearchIntent]
   )
   const sportsState: SportsState = sportsQuery.isLoading
     ? { status: 'loading' }
@@ -279,7 +293,7 @@ function FanDashboard() {
   const reset = () => {
     setSportId(undefined)
     setChampionship('')
-    setRadiusKm(DEFAULT_RADIUS_KM)
+    setRadiusKm(preferredRadiusKm)
     setFavoritesOnly(false)
     setGamesTodayOnly(false)
     setAmenities([])
@@ -336,10 +350,10 @@ function FanDashboard() {
       clear: () => setChampionship('')
     })
   }
-  if (radiusKm !== DEFAULT_RADIUS_KM) {
+  if (radiusKm !== preferredRadiusKm) {
     activeFilters.push({
       label: `Até ${radiusKm} km`,
-      clear: () => setRadiusKm(DEFAULT_RADIUS_KM)
+      clear: () => setRadiusKm(preferredRadiusKm)
     })
   }
   if (favoritesOnly) {
@@ -397,6 +411,7 @@ function FanDashboard() {
         sportId={sportId}
         onSportChange={handleSportChange}
         radiusKm={radiusKm}
+        preferredRadiusKm={preferredRadiusKm}
         onRadiusChange={handleRadiusChange}
         amenities={amenities}
         onToggleAmenity={toggleAmenity}

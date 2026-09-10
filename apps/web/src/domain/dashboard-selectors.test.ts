@@ -171,6 +171,57 @@ describe('deriveDiscoveryResultState', () => {
       })
     ).toEqual({ status: 'empty', radiusKm: RADIUS })
   })
+
+  test('com busca declarada, vazio é vazio — não cai nos bares da região', () => {
+    const fallbackBar = {
+      id: 'fallback',
+      name: 'Bar fallback',
+      neighborhood: 'Centro',
+      city: 'São Paulo',
+      latitude: '-23.5',
+      longitude: '-46.6',
+      photo_url: null,
+      created_at: '2026-08-01T00:00:00.000Z',
+      plan: 'starter' as const,
+      distance_km: 1
+    }
+
+    // Este é o defeito: buscar um termo sem resultado devolvia a lista da
+    // localização, que ignora o termo, sob um aviso de uma linha.
+    expect(
+      deriveDiscoveryResultState({
+        primary: {
+          data: { bars: [], nextCursor: null },
+          isLoading: false,
+          isError: false
+        },
+        fallback: {
+          data: { bars: [fallbackBar], nextCursor: null },
+          isLoading: false,
+          isError: false
+        },
+        locationState: 'granted',
+        radiusKm: RADIUS,
+        hasSearchIntent: true
+      })
+    ).toEqual({ status: 'empty', radiusKm: RADIUS })
+  })
+
+  test('sem localização e com busca declarada, pede a localização', () => {
+    expect(
+      deriveDiscoveryResultState({
+        primary: {
+          data: { bars: [], nextCursor: null },
+          isLoading: false,
+          isError: false
+        },
+        fallback: emptyFallback,
+        locationState: 'idle',
+        radiusKm: RADIUS,
+        hasSearchIntent: true
+      })
+    ).toEqual({ status: 'location-required' })
+  })
 })
 
 describe('dashboard display selectors', () => {

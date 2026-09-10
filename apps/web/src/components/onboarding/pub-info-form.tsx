@@ -12,8 +12,9 @@ type Props = {
   >
 }
 
-const fieldClass =
-  'onside-input border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]'
+// Mesmo campo sobre ink que a edição do bar em `/admin` usa. Eram duas
+// receitas de cores com valores levemente diferentes para o mesmo desenho.
+const fieldClass = 'onside-input onside-input-ink'
 const labelClass =
   'onside-label text-[color-mix(in_srgb,var(--onside-paper)_70%,transparent)]'
 
@@ -139,7 +140,7 @@ export function PubInfoForm({
           name="phone"
           defaultValue={phone}
           onChange={(p) => onChange('phone', p)}
-          variant="onboarding"
+          tone="ink"
           invalid={Boolean(errors.phone)}
           describedBy={errors.phone ? 'pub-phone-error' : undefined}
         />

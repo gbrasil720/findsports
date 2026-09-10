@@ -36,6 +36,19 @@ export const Route = createFileRoute('/(auth)/login')({
   component: LoginPage
 })
 
+function validateEmail({ value }: { value: string }) {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Informe seu e-mail.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return 'Informe um e-mail válido.'
+  }
+  return undefined
+}
+
+function validatePassword({ value }: { value: string }) {
+  return value ? undefined : 'Informe sua senha.'
+}
+
 function LoginPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
@@ -47,14 +60,12 @@ function LoginPage() {
 
   const form = useForm({
     defaultValues: { email: '', password: '' },
+    // Envio inválido leva o foco ao primeiro campo com erro; a mensagem já
+    // está sob ele, e quem navega por teclado chega nela sem procurar.
+    onSubmitInvalid: () => focusFirstInvalid(),
     onSubmit: async ({ value }) => {
       const email = value.email.trim()
       const password = value.password
-      if (!email || !password) {
-        toast.error('Preencha e-mail e senha para continuar.')
-        focusFirstInvalid()
-        return
-      }
       setIsLoading(true)
       const { data, error } = await authClient.signIn.email({
         email,
@@ -99,9 +110,13 @@ function LoginPage() {
         <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
           O JOGO <span className="text-[var(--onside-acid)]">COMEÇA AQUI.</span>
         </h2>
+        {/*
+         * "o maior mapa de bares esportivos do Brasil" era superlativo de
+         * produto lançado, numa tela cujo próprio fluxo depende de convite e
+         * lista de espera. A frase que fica é a que o produto já cumpre.
+         */}
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
-          Entre na sua conta e faça parte do maior mapa de bares esportivos do
-          Brasil.
+          Entre na sua conta e veja quais bares estão passando o seu jogo.
         </p>
       </AuthBrandPanel>
 
@@ -146,16 +161,18 @@ function LoginPage() {
               form.handleSubmit()
             }}
           >
+            {/*
+             * O formulário é `noValidate`, então o navegador não valida nada;
+             * e os validadores só rodavam no `blur`. Enviar vazio sem tocar
+             * em campo nenhum não acendia erro em lugar algum da tela — só um
+             * toast, que some. Validar também no envio é o que faz a mensagem
+             * aparecer sob o campo e `aria-invalid` ir junto.
+             */}
             <form.Field
               name="email"
               validators={{
-                onBlur: ({ value }) => {
-                  const v = value.trim()
-                  if (!v) return 'Informe seu e-mail.'
-                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-                    return 'Informe um e-mail válido.'
-                  return undefined
-                }
+                onBlur: validateEmail,
+                onSubmit: validateEmail
               }}
             >
               {(field) => (
@@ -177,8 +194,8 @@ function LoginPage() {
             <form.Field
               name="password"
               validators={{
-                onBlur: ({ value }) =>
-                  value ? undefined : 'Informe sua senha.'
+                onBlur: validatePassword,
+                onSubmit: validatePassword
               }}
             >
               {(field) => (

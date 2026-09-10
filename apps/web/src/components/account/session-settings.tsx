@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Monitor from 'reicon-react/icons/Monitor'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
+import { describeDevice } from '@/lib/describe-device'
 
 type AccountSession = NonNullable<
   Awaited<ReturnType<typeof authClient.listSessions>>['data']
@@ -109,6 +110,7 @@ export function SessionSettings() {
         ) : (
           ordered.map((session) => {
             const isCurrent = session.token === current?.session.token
+            const device = describeDevice(session.userAgent)
             return (
               <article
                 key={session.id}
@@ -127,15 +129,18 @@ export function SessionSettings() {
                   />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-sm">
-                        {isCurrent ? 'Este dispositivo' : 'Outro acesso'}
-                      </h3>
+                      <h3 className="font-bold text-sm">{device.label}</h3>
                       {isCurrent ? (
                         <span className="font-bold text-[10px] uppercase tracking-[0.1em]">
-                          Atual
+                          Este dispositivo
                         </span>
                       ) : null}
                     </div>
+                    {/*
+                     * A string crua fica, um degrau abaixo: ela é o que
+                     * permite conferir um acesso que o rótulo não descreveu
+                     * bem — ou que não descreveu nada.
+                     */}
                     <p className="mt-1 break-all text-[var(--onside-muted)] text-xs">
                       {session.userAgent ?? 'Navegador não informado'}
                     </p>

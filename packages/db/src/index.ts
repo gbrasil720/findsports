@@ -93,6 +93,7 @@ export {
   gte,
   inArray,
   isNull,
+  or,
   type SQL,
   sql
 } from 'drizzle-orm'

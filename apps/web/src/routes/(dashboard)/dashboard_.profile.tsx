@@ -9,11 +9,13 @@ import { AppShell } from '@/components/app/app-shell'
 import { ProfileFavorites } from '@/components/profile/profile-favorites'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { compressProfileImage } from '@/components/profile/profile-image'
-import type {
-  Favorite,
-  FavoriteSort,
-  FavoriteView,
-  ProfileTab
+import {
+  type Favorite,
+  type FavoriteSort,
+  type FavoriteView,
+  type ProfileTab,
+  profileTabId,
+  profileTabPanelId
 } from '@/components/profile/profile-model'
 import { ProfileOverview } from '@/components/profile/profile-overview'
 import {
@@ -28,7 +30,11 @@ import {
 import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { persistProfileUser } from '@/components/profile/profile-user-update'
-import { type RadiusKm, SAO_PAULO_FALLBACK } from '@/domain/discovery'
+import {
+  normalizeRadiusKm,
+  type RadiusKm,
+  SAO_PAULO_FALLBACK
+} from '@/domain/discovery'
 import { authClient } from '@/lib/auth-client'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
@@ -346,92 +352,115 @@ function ProfilePage() {
       />
       <ProfileTabs activeTab={tab} onChange={handleTabChange} />
 
-      {tab === 'Visão geral' ? (
-        <ProfileOverview
-          completionItems={completionItems}
-          completionScore={getCompletionScore(completionItems)}
-          favoritesCount={favorites.length}
-          preferencesCount={preferences.length}
-          radiusKm={user?.searchRadiusKm ?? 3}
-          loadingFavorites={favoritesQuery.isLoading}
-          upcomingEvents={upcomingEvents}
-          recommendations={recommendationsQuery.data?.recommendations ?? []}
-          loadingRecommendations={recommendationsQuery.isLoading}
-          recommendationsError={recommendationsQuery.isError}
-          dismissingRecommendation={dismissRecommendation.isPending}
-          onRetryRecommendations={() => void recommendationsQuery.refetch()}
-          onOpenRecommendation={(barId) => {
-            const runId = recommendationsQuery.data?.runId
-            if (runId) {
-              sessionStorage.setItem(`onside:recommendation:${barId}`, runId)
-              recordRecommendationOpen.mutate({ runId, barId })
+      <div
+        id={profileTabPanelId('Visão geral')}
+        role="tabpanel"
+        aria-labelledby={profileTabId('Visão geral')}
+        hidden={tab !== 'Visão geral'}
+      >
+        {tab === 'Visão geral' ? (
+          <ProfileOverview
+            completionItems={completionItems}
+            completionScore={getCompletionScore(completionItems)}
+            favoritesCount={favorites.length}
+            preferencesCount={preferences.length}
+            radiusKm={normalizeRadiusKm(user?.searchRadiusKm)}
+            loadingFavorites={favoritesQuery.isLoading}
+            upcomingEvents={upcomingEvents}
+            recommendations={recommendationsQuery.data?.recommendations ?? []}
+            loadingRecommendations={recommendationsQuery.isLoading}
+            recommendationsError={recommendationsQuery.isError}
+            dismissingRecommendation={dismissRecommendation.isPending}
+            onRetryRecommendations={() => void recommendationsQuery.refetch()}
+            onOpenRecommendation={(barId) => {
+              const runId = recommendationsQuery.data?.runId
+              if (runId) {
+                sessionStorage.setItem(`onside:recommendation:${barId}`, runId)
+                recordRecommendationOpen.mutate({ runId, barId })
+              }
+            }}
+            onDismissRecommendation={(barId) => {
+              const runId = recommendationsQuery.data?.runId
+              if (runId) dismissRecommendation.mutate({ runId, barId })
+            }}
+            onSelectTab={setTab}
+          />
+        ) : null}
+      </div>
+
+      <div
+        id={profileTabPanelId('Favoritos')}
+        role="tabpanel"
+        aria-labelledby={profileTabId('Favoritos')}
+        hidden={tab !== 'Favoritos'}
+      >
+        {tab === 'Favoritos' ? (
+          <ProfileFavorites
+            favorites={favorites}
+            sortedFavorites={sortedFavorites}
+            favoritesByCity={favoritesByCity}
+            mapBars={mapBars}
+            coords={coords}
+            loading={favoritesQuery.isLoading}
+            sortBy={sortBy}
+            viewMode={viewMode}
+            filterWithEvents={filterWithEvents}
+            hoveredBarId={hoveredBarId}
+            unfavoritePending={unfavorite.isPending}
+            onSortChange={setSortBy}
+            onViewModeChange={setViewMode}
+            onToggleEventsFilter={() =>
+              setFilterWithEvents((current) => !current)
             }
-          }}
-          onDismissRecommendation={(barId) => {
-            const runId = recommendationsQuery.data?.runId
-            if (runId) dismissRecommendation.mutate({ runId, barId })
-          }}
-          onSelectTab={setTab}
-        />
-      ) : null}
-      {tab === 'Favoritos' ? (
-        <ProfileFavorites
-          favorites={favorites}
-          sortedFavorites={sortedFavorites}
-          favoritesByCity={favoritesByCity}
-          mapBars={mapBars}
-          coords={coords}
-          loading={favoritesQuery.isLoading}
-          sortBy={sortBy}
-          viewMode={viewMode}
-          filterWithEvents={filterWithEvents}
-          hoveredBarId={hoveredBarId}
-          unfavoritePending={unfavorite.isPending}
-          onSortChange={setSortBy}
-          onViewModeChange={setViewMode}
-          onToggleEventsFilter={() =>
-            setFilterWithEvents((current) => !current)
-          }
-          onHoverBar={setHoveredBarId}
-          onSelectBar={(barId) =>
-            navigate({ to: '/pub/$pubId', params: { pubId: barId } })
-          }
-          onUnfavorite={(barId) => unfavorite.mutate({ barId })}
-        />
-      ) : null}
-      {tab === 'Configurações' ? (
-        <ProfileSettings
-          user={user}
-          sports={sports}
-          preferences={preferences}
-          loadingPreferences={preferencesQuery.isLoading}
-          editingSports={editingSports}
-          selectedSportIds={selectedSportIds}
-          savingSports={updatePreferences.isPending}
-          sportsError={updatePreferences.error?.message ?? null}
-          savingRadius={savingRadius}
-          radiusError={radiusError}
-          resettingRecommendations={resetRecommendations.isPending}
-          recommendationsReset={resetRecommendations.isSuccess}
-          recommendationsResetError={
-            resetRecommendations.error?.message ?? null
-          }
-          onStartEditingSports={openEditSports}
-          onCancelEditingSports={() => setEditingSports(false)}
-          onToggleSport={toggleSport}
-          onSaveSports={saveSports}
-          onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
-          onResetRecommendations={() => {
-            if (
-              window.confirm(
-                'Recomeçar somente suas sugestões personalizadas? Seus esportes, raio, favoritos e avaliações serão preservados.'
-              )
-            ) {
-              resetRecommendations.mutate()
+            onHoverBar={setHoveredBarId}
+            onSelectBar={(barId) =>
+              navigate({ to: '/pub/$pubId', params: { pubId: barId } })
             }
-          }}
-        />
-      ) : null}
+            onUnfavorite={(barId) => unfavorite.mutate({ barId })}
+          />
+        ) : null}
+      </div>
+
+      <div
+        id={profileTabPanelId('Configurações')}
+        role="tabpanel"
+        aria-labelledby={profileTabId('Configurações')}
+        hidden={tab !== 'Configurações'}
+      >
+        {tab === 'Configurações' ? (
+          <ProfileSettings
+            user={user}
+            sports={sports}
+            preferences={preferences}
+            loadingPreferences={preferencesQuery.isLoading}
+            editingSports={editingSports}
+            selectedSportIds={selectedSportIds}
+            savingSports={updatePreferences.isPending}
+            sportsError={updatePreferences.error?.message ?? null}
+            savingRadius={savingRadius}
+            radiusError={radiusError}
+            resettingRecommendations={resetRecommendations.isPending}
+            recommendationsReset={resetRecommendations.isSuccess}
+            recommendationsResetError={
+              resetRecommendations.error?.message ?? null
+            }
+            onStartEditingSports={openEditSports}
+            onCancelEditingSports={() => setEditingSports(false)}
+            onToggleSport={toggleSport}
+            onSaveSports={saveSports}
+            onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
+            onResetRecommendations={() => {
+              if (
+                window.confirm(
+                  'Recomeçar somente suas sugestões personalizadas? Seus esportes, raio, favoritos e avaliações serão preservados.'
+                )
+              ) {
+                resetRecommendations.mutate()
+              }
+            }}
+          />
+        ) : null}
+      </div>
     </AppShell>
   )
 }

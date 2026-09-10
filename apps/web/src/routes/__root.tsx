@@ -208,14 +208,19 @@ function RootDocument() {
   return (
     <>
       <MinuteTickProvider>
+        {/*
+         * `--banner-h` continua existindo porque os cabeçalhos grudados das
+         * telas internas se deslocam por ele. O `paddingTop` saiu: o banner
+         * agora é `sticky` e já ocupa a própria altura no fluxo — somar o
+         * padding abriria uma faixa vazia do tamanho do banner.
+         */}
         <div
           className="min-h-dvh w-full"
           style={
             {
               '--banner-h': impersonatedBy
                 ? 'var(--onside-banner-h, 2.75rem)'
-                : '0px',
-              paddingTop: 'var(--banner-h)'
+                : '0px'
             } as CSSProperties
           }
         >

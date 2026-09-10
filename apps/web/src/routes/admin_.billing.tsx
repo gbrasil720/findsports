@@ -76,13 +76,20 @@ function BillingPage() {
   const [openingPortal, setOpeningPortal] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
-  const subscriptionQuery = useQuery(trpc.pub.getMySubscription.queryOptions())
+  // As duas seções desenham o próprio erro, com botão de tentar de novo. O
+  // toast global repetiria a mesma falha — e no caso dos pagamentos repetiria
+  // o texto cru do provedor, em inglês, ao lado da mensagem em português.
+  const subscriptionQuery = useQuery({
+    ...trpc.pub.getMySubscription.queryOptions(),
+    meta: { errorToast: false }
+  })
   const subscription = subscriptionQuery.data
   const loadingSub = subscriptionQuery.isLoading
 
   const paymentsQuery = useQuery({
     queryKey: ['dodo-payments'],
-    queryFn: listCustomerPayments
+    queryFn: listCustomerPayments,
+    meta: { errorToast: false }
   })
 
   const handleOpenPortal = async () => {

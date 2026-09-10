@@ -14,9 +14,22 @@ import Eye from 'reicon-react/icons/Eye'
  * Nada disso chega ao torcedor: um bar constrangido na frente do cliente
  * converte menos, não mais.
  */
-export function OwnerPreviewBanner() {
+/**
+ * `isPublished` é `bar.is_active` do servidor, e ele nasce `false`. Enquanto
+ * está `false` esta página existe só para o dono — dizer "como o torcedor vê"
+ * sem dizer que nenhum torcedor vê ainda seria a mesma promessa vazia que a
+ * prévia já dava quando respondia "Bar não encontrado.".
+ */
+export function OwnerPreviewBanner({
+  isPublished = true
+}: {
+  isPublished?: boolean
+}) {
   return (
-    <div className="onside-callout onside-callout-stone" role="status">
+    <div
+      className={`onside-callout ${isPublished ? 'onside-callout-stone' : 'onside-callout-warn'}`}
+      role="status"
+    >
       <Eye
         size={18}
         color="currentColor"
@@ -25,10 +38,14 @@ export function OwnerPreviewBanner() {
       />
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-sm">
-          Você está vendo seu perfil como o torcedor vê
+          {isPublished
+            ? 'Você está vendo seu perfil como o torcedor vê'
+            : 'Prévia do seu perfil — ainda fora do ar'}
         </p>
         <p className="text-sm opacity-90">
-          Os avisos desta página aparecem só para você.
+          {isPublished
+            ? 'Os avisos desta página aparecem só para você.'
+            : 'Só você abre esta página enquanto o bar não é publicado. Os avisos daqui também aparecem só para você.'}
         </p>
       </div>
       <Link

@@ -119,7 +119,12 @@ export function AppShell({ variant, userMeta, children }: Props) {
               </Avatar>
             )}
             <div className="hidden min-w-0 leading-tight text-left sm:block">
-              <div className="max-w-[140px] truncate font-bold text-xs">
+              {/* O chip do cabeçalho é estreito de propósito; o nome inteiro
+                  aparece no cabeçalho do menu, que tem largura para ele. */}
+              <div
+                className="max-w-[140px] truncate font-bold text-xs"
+                title={name || undefined}
+              >
                 {name || '…'}
               </div>
               <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
@@ -139,10 +144,10 @@ export function AppShell({ variant, userMeta, children }: Props) {
             className="onside-menu w-64 overflow-hidden p-0"
           >
             <div className="border-[var(--onside-line)] border-b px-4 py-3">
-              <div className="truncate font-bold text-[var(--onside-ink)] text-sm">
+              <div className="break-words font-bold text-[var(--onside-ink)] text-sm">
                 {name || '…'}
               </div>
-              <div className="truncate text-[var(--onside-muted)] text-xs">
+              <div className="break-all text-[var(--onside-muted)] text-xs">
                 {session?.user?.email}
               </div>
               {userMeta && (

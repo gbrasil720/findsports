@@ -3,6 +3,8 @@ import { useId, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { analytics } from '@/lib/analytics'
+import { countLabel } from '@/lib/plural'
+import { roleLabel } from '@/lib/roles'
 import { useTRPC } from '@/utils/trpc'
 
 /**
@@ -136,7 +138,11 @@ export function WaitlistAccessPanel({
       onSuccess: async (resultado) => {
         analytics.launchNoticeSent(resultado.sent, resultado.failed)
         toast.success(
-          `${resultado.sent} enviados · ${resultado.failed} falharam.`
+          `${countLabel(resultado.sent, 'enviado', 'enviados')} · ${countLabel(
+            resultado.failed,
+            'falhou',
+            'falharam'
+          )}.`
         )
         await queryClient.invalidateQueries({
           queryKey: trpc.waitlist.campaignPreview.queryKey()
@@ -165,13 +171,33 @@ export function WaitlistAccessPanel({
   const carregando = configQuery.isLoading
   const salvando = salvarPortao.isPending
 
+  /*
+   * O botão do aviso ficava cinza ao lado de "N elegíveis" sem dizer por quê,
+   * e a razão mais comum não é a contagem: é o cadastro ainda estar fechado.
+   * Avisar abertura antes de abrir mandaria todo mundo para uma porta
+   * trancada, então o bloqueio é correto — o que faltava era dizê-lo.
+   */
+  const elegiveis = campaignQuery.data?.eligible ?? 0
+  const bloqueioCampanha = campaignQuery.isLoading
+    ? 'Lendo quem está elegível…'
+    : campaignQuery.isError
+      ? 'Não foi possível ler quem está elegível.'
+      : portao?.signup !== false
+        ? 'Abra o cadastro antes de enviar: o aviso leva as pessoas para uma tela de cadastro fechada.'
+        : elegiveis === 0
+          ? 'Ninguém elegível: todo mundo da lista já recebeu o aviso.'
+          : null
+
   return (
     <section className="onside-panel mb-8 p-5 sm:p-6" aria-label="Acesso">
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="onside-display text-xl">Acesso à plataforma</h2>
         <p className="font-mono text-[11px] text-[var(--onside-muted)]">
-          {liberados} liberados · {pendentes} pendentes · {convitesAtivos}{' '}
-          convites ativos · {convitesExpirados} expirados · {ativados} ativados
+          {countLabel(liberados, 'liberado', 'liberados')} ·{' '}
+          {countLabel(pendentes, 'pendente', 'pendentes')} ·{' '}
+          {countLabel(convitesAtivos, 'convite ativo', 'convites ativos')} ·{' '}
+          {countLabel(convitesExpirados, 'expirado', 'expirados')} ·{' '}
+          {countLabel(ativados, 'ativado', 'ativados')}
         </p>
       </header>
 
@@ -251,8 +277,8 @@ export function WaitlistAccessPanel({
             aria-label="Tipo de conta"
             className="min-h-11 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-3 text-sm"
           >
-            <option value="pub">Bar / Pub</option>
-            <option value="fan">Torcedor</option>
+            <option value="pub">{roleLabel('pub')}</option>
+            <option value="fan">{roleLabel('fan')}</option>
           </select>
           <button
             type="submit"
@@ -277,21 +303,23 @@ export function WaitlistAccessPanel({
           Aviso de abertura
         </p>
         <p className="mt-2 text-xs text-[var(--onside-muted)]">
-          {campaignQuery.data?.eligible ?? 0} elegíveis ·{' '}
-          {campaignQuery.data?.sent ?? 0} já enviados ·{' '}
-          {campaignQuery.data?.failed ?? 0} falhas
+          {countLabel(elegiveis, 'elegível', 'elegíveis')} ·{' '}
+          {countLabel(
+            campaignQuery.data?.sent ?? 0,
+            'já enviado',
+            'já enviados'
+          )}{' '}
+          · {countLabel(campaignQuery.data?.failed ?? 0, 'falha', 'falhas')}
         </p>
         <button
           type="button"
-          disabled={
-            enviarCampanha.isPending ||
-            !campaignQuery.data?.eligible ||
-            portao?.signup !== false
-          }
+          disabled={enviarCampanha.isPending || bloqueioCampanha !== null}
+          aria-describedby={bloqueioCampanha ? 'campanha-bloqueio' : undefined}
+          title={bloqueioCampanha ?? undefined}
           onClick={() => {
             if (
               window.confirm(
-                `Enviar o aviso genérico para ${campaignQuery.data?.eligible ?? 0} pessoas elegíveis?`
+                `Enviar o aviso genérico para ${countLabel(elegiveis, 'pessoa elegível', 'pessoas elegíveis')}?`
               )
             ) {
               enviarCampanha.mutate()
@@ -301,6 +329,14 @@ export function WaitlistAccessPanel({
         >
           {enviarCampanha.isPending ? 'Enviando…' : 'Enviar aviso de abertura'}
         </button>
+        {bloqueioCampanha ? (
+          <p
+            id="campanha-bloqueio"
+            className="mt-2 max-w-prose text-xs text-[var(--onside-live-text)]"
+          >
+            {bloqueioCampanha}
+          </p>
+        ) : null}
       </div>
     </section>
   )

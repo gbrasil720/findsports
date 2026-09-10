@@ -95,7 +95,10 @@ function PubPage() {
     isError
   } = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: pubId }),
-    enabled: Boolean(session)
+    enabled: Boolean(session),
+    // A tela já avisa e redireciona quando o bar não existe. Com o toast
+    // global ligado, o mesmo "Bar não encontrado." aparecia duas vezes.
+    meta: { errorToast: false }
   })
 
   const normalizedPub = useMemo(() => normalizePub(pub), [pub])
@@ -124,13 +127,19 @@ function PubPage() {
     }
   }, [normalizedPub, pubId, eventId])
 
-  // Redirect if pub not found (only after auth resolves)
+  /*
+   * Bar inexistente devolve quem estava olhando à casa do próprio papel. O
+   * destino era `/dashboard` fixo, e dono de bar não entra lá: a guarda de
+   * rota o mandava para `/admin`, então o que ele via era um redirecionamento
+   * duplo terminando numa tela que não explica nada.
+   */
+  const viewerRole = session?.user?.role
   useEffect(() => {
     if (!isLoadingPub && !normalizedPub && isError) {
-      toast.error('Bar não encontrado')
-      navigate({ to: '/dashboard' })
+      toast.error('Bar não encontrado.')
+      navigate({ to: viewerRole === 'pub' ? '/admin' : '/dashboard' })
     }
-  }, [isLoadingPub, normalizedPub, isError, navigate])
+  }, [isLoadingPub, normalizedPub, isError, navigate, viewerRole])
 
   const canFavorite = canFavoriteBars(session?.user?.role)
 
@@ -303,7 +312,11 @@ function PubPage() {
             </div>
           ) : normalizedPub ? (
             <div className="onside-pub-page space-y-4 md:space-y-5">
-              {isOwner && <OwnerPreviewBanner />}
+              {isOwner && (
+                <OwnerPreviewBanner
+                  isPublished={normalizedPub?.isActive !== false}
+                />
+              )}
 
               <BarCover
                 name={normalizedPub.name}

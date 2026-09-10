@@ -14,7 +14,21 @@
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
-  scroll-padding-top: calc(var(--onside-header-h) + 12px);
+}
+
+/*
+ * O contêiner que rola é o documento, não `.onside-page` — `scroll-padding`
+ * aqui não fazia nada, e âncoras alcançadas por foco de teclado paravam
+ * debaixo do cabeçalho fixo. O recuo tem de morar no scroller.
+ */
+html:has(.onside-page) {
+  scroll-padding-top: calc(74px + 16px);
+}
+
+@media (max-width: 1100px) {
+  html:has(.onside-page) {
+    scroll-padding-top: calc(66px + 16px);
+  }
 }
 
 .onside-page > main {
@@ -50,9 +64,16 @@
   display: none !important;
 }
 
+/* Mesma política de foco do app; os tokens vêm de `onside/tokens.css`. */
 .onside-page :focus-visible {
-  outline: 3px solid var(--onside-live);
-  outline-offset: 3px;
+  outline: var(--onside-focus-width) solid var(--onside-focus-color);
+  outline-offset: var(--onside-focus-offset);
+}
+
+/* O menu móvel e a lista de perguntas recortam: o anel encosta por dentro. */
+.onside-page .onside-mobile-menu,
+.onside-page .onside-faq-list {
+  --onside-focus-offset: -3px;
 }
 
 .onside-page h1,
@@ -2304,19 +2325,15 @@
 }
 
 /* ─── Anchor targets ─── */
-.onside-page #produto,
-.onside-page #como-funciona,
-.onside-page #historia,
-.onside-page #lista,
-.onside-page #duvidas,
-.onside-page #top {
-  scroll-margin-top: calc(var(--onside-header-h) + 12px);
+.onside-page [id] {
+  scroll-margin-top: calc(var(--onside-header-h) + 16px);
 }
 
 /* ─── Tablet ─── */
 @media (max-width: 1100px) {
   .onside-page {
-    --onside-header-h: 74px;
+    /* Bate com `.onside-nav-wrap { height: 66px }` deste mesmo breakpoint. */
+    --onside-header-h: 66px;
   }
 
   .onside-page .onside-nav-wrap {
