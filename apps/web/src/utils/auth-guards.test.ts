@@ -53,6 +53,8 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
     expect(requiresAuthentication('/verify-email')).toBe(false)
+    expect(requiresAuthentication('/forgot-password')).toBe(false)
+    expect(requiresAuthentication('/reset-password')).toBe(false)
     expect(requiresAuthentication('/onboarding/pub')).toBe(false)
     expect(requiresAuthentication('/pagina-que-nao-existe')).toBe(false)
     expect(requiresAuthentication('/api/trpc/pubs.list')).toBe(false)
@@ -113,6 +115,22 @@ describe('applyAuthGuards', () => {
     expect(() =>
       applyAuthGuards(session('pub', false), '/verify-email')
     ).not.toThrow()
+  })
+
+  test('mantém a recuperação de senha aberta mesmo com sessão no navegador', () => {
+    // Quem clica no link do e-mail pode ter cookie de outra conta, ou de uma
+    // conta que ainda não passou pelo onboarding/aprovação. Em qualquer um
+    // desses casos a tela precisa abrir, senão o token é gasto sem redefinir.
+    for (const pathname of ['/forgot-password', '/reset-password']) {
+      expect(() =>
+        applyAuthGuards(session('pub', false), pathname)
+      ).not.toThrow()
+      expect(() =>
+        applyAuthGuards(session('fan', true, null), pathname)
+      ).not.toThrow()
+      expect(() => applyAuthGuards(session('fan'), pathname)).not.toThrow()
+      expect(() => applyAuthGuards(null, pathname)).not.toThrow()
+    }
   })
 
   test('sends an existing unapproved account to the pending access screen', () => {

@@ -425,8 +425,8 @@ function RecoveryCodes({
         Concluir
       </Button>
       <FieldDescription>
-        Se perder o autenticador e todos os códigos, procure o suporte. Não há
-        recuperação por e-mail nesta versão.
+        Se perder o autenticador e todos os códigos, procure o suporte.
+        Recuperar a senha por e-mail não libera esta etapa.
       </FieldDescription>
     </div>
   )

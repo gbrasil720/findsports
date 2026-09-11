@@ -208,6 +208,14 @@ function LoginPage() {
                   required
                   showPassword={showPassword}
                   onToggle={() => setShowPassword((v) => !v)}
+                  extraLabel={
+                    <Link
+                      to="/forgot-password"
+                      className="font-semibold text-[var(--onside-muted)] text-xs underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
+                    >
+                      Esqueci minha senha
+                    </Link>
+                  }
                 />
               )}
             </form.Field>
