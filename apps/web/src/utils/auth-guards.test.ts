@@ -42,6 +42,7 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/admin')).toBe(true)
     expect(requiresAuthentication('/admin/billing')).toBe(true)
     expect(requiresAuthentication('/plan')).toBe(true)
+    expect(requiresAuthentication('/plan/confirmed')).toBe(true)
     expect(requiresAuthentication('/internal')).toBe(true)
     expect(requiresAuthentication('/internal/waitlist')).toBe(true)
     expect(requiresAuthentication('/onboarding/fan')).toBe(true)
@@ -127,6 +128,11 @@ describe('applyAuthGuards', () => {
   test('separa as superfícies de fan, bar e admin por papel', () => {
     expect(() => applyAuthGuards(session('fan'), '/admin')).toThrow()
     expect(() => applyAuthGuards(session('fan'), '/plan')).toThrow()
+    // WEB-59: o recibo mora sob `/plan` justamente para herdar este corte.
+    expect(() => applyAuthGuards(session('fan'), '/plan/confirmed')).toThrow()
+    expect(() =>
+      applyAuthGuards(session('pub'), '/plan/confirmed')
+    ).not.toThrow()
     expect(() => applyAuthGuards(session('fan'), '/internal')).toThrow()
     expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
     expect(() => applyAuthGuards(session('pub'), '/internal')).toThrow()
