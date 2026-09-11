@@ -90,11 +90,28 @@ export function SessionSettings() {
         </Button>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3" aria-live="polite">
+      <div
+        className="mt-5 flex flex-col gap-3"
+        aria-busy={sessions.isLoading || undefined}
+        aria-live="polite"
+      >
         {sessions.isLoading ? (
           <>
-            <Skeleton className="h-24 rounded-none" />
-            <Skeleton className="h-24 rounded-none" />
+            <span className="sr-only">Carregando acessos ativos…</span>
+            {[1, 2].map((item) => (
+              <article
+                key={item}
+                className="flex min-h-[132px] flex-col gap-4 border border-[var(--onside-line)] bg-[var(--onside-stone)] p-4 sm:flex-row sm:items-center"
+              >
+                <Skeleton className="size-[18px] shrink-0" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40 max-w-full" />
+                  <Skeleton className="h-3 w-3/4 max-w-full" />
+                  <Skeleton className="h-3 w-full max-w-[28rem]" />
+                </div>
+                <Skeleton className="h-11 w-24 shrink-0" />
+              </article>
+            ))}
           </>
         ) : sessions.isError ? (
           <div className="onside-callout onside-callout-danger" role="alert">

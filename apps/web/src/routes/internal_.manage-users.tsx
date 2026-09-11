@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@findsports_oficial/ui/components/select'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import {
   Table,
   TableBody,
@@ -139,7 +140,8 @@ function ManageUsersPage() {
   const {
     data: usersData,
     isLoading,
-    isError
+    isError,
+    isFetching
   } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
@@ -241,18 +243,17 @@ function ManageUsersPage() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div
+          className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+          aria-busy={isLoading || undefined}
+        >
           <div className="flex items-center gap-4 rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)] p-5">
             <div className="grid size-10 shrink-0 place-items-center rounded-none bg-[var(--onside-stone)]">
               <Users className="size-5 text-[var(--onside-ink)]" />
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
-                {isLoading ? (
-                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
-                ) : (
-                  total
-                )}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : total}
               </div>
               <div className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                 Total de usuários
@@ -265,11 +266,7 @@ function ManageUsersPage() {
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
-                {isLoading ? (
-                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
-                ) : (
-                  adminCount
-                )}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : adminCount}
               </div>
               <div className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                 Admins
@@ -282,11 +279,7 @@ function ManageUsersPage() {
             </div>
             <div>
               <div className="font-bold font-heading text-2xl">
-                {isLoading ? (
-                  <Loader className="size-5 animate-spin text-[var(--onside-muted)]" />
-                ) : (
-                  bannedCount
-                )}
+                {isLoading ? <Skeleton className="h-8 w-12" /> : bannedCount}
               </div>
               <div className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
                 Banidos
@@ -323,7 +316,14 @@ function ManageUsersPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)]">
+        <div
+          className="overflow-hidden rounded-none border border-[var(--onside-line)] bg-[var(--onside-paper)]"
+          aria-busy={isFetching || undefined}
+          aria-live={isLoading ? 'polite' : undefined}
+        >
+          {isLoading ? (
+            <span className="sr-only">Carregando usuários…</span>
+          ) : null}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -362,11 +362,43 @@ function ManageUsersPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-12 text-center">
-                      <Loader className="mx-auto size-6 animate-spin text-[var(--onside-muted)]" />
-                    </TableCell>
-                  </TableRow>
+                  [
+                    'loading-1',
+                    'loading-2',
+                    'loading-3',
+                    'loading-4',
+                    'loading-5'
+                  ].map((key) => (
+                    <TableRow
+                      key={key}
+                      className="border-[var(--onside-line)] border-b"
+                      aria-hidden="true"
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="size-8 shrink-0" />
+                          <Skeleton className="h-4 w-28" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-40 max-w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Skeleton className="size-9" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : isError ? (
                   <TableRow>
                     <TableCell
@@ -527,8 +559,8 @@ function ManageUsersPage() {
             </Table>
           </div>
           <div className="border-[var(--onside-line)] border-t px-4 py-3 text-muted-foreground text-xs">
-            {isLoading
-              ? 'Carregando usuários...'
+            {isFetching
+              ? 'Atualizando usuários...'
               : `Exibindo ${filtered.length} de ${allUsers.length} usuários`}
           </div>
         </div>

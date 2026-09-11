@@ -6,7 +6,6 @@ import { Activity, useEffect, useRef, useState } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
-import Loader from 'reicon-react/icons/Loader'
 import { AccountSettings } from '@/components/account/account-settings'
 import type {
   AnalyticsEntitlementsData,
@@ -153,15 +152,19 @@ function AnalyticsPeriodSelector({
           <p className="font-semibold text-[var(--onside-ink)] text-sm">
             {formatAnalyticsPeriod(range.from, range.to)}
           </p>
-          <p className="mt-1 text-[var(--onside-ink)] text-xs opacity-60">
-            {loadingEntitlements
-              ? 'Carregando o limite do seu plano…'
-              : entitlements
-                ? entitlements.maxDaysRetention === null
-                  ? 'Seu plano permite todo o histórico disponível.'
-                  : `Seu plano permite até ${entitlements.maxDaysRetention} dias.`
-                : 'Não foi possível verificar o limite do seu plano.'}
-          </p>
+          <div className="mt-1 text-[var(--onside-ink)] text-xs opacity-60">
+            {loadingEntitlements ? (
+              <Skeleton className="h-3 w-36 bg-[var(--onside-ink)]/20" />
+            ) : entitlements ? (
+              entitlements.maxDaysRetention === null ? (
+                'Seu plano permite todo o histórico disponível.'
+              ) : (
+                `Seu plano permite até ${entitlements.maxDaysRetention} dias.`
+              )
+            ) : (
+              'Não foi possível verificar o limite do seu plano.'
+            )}
+          </div>
         </div>
         {isFetching && (
           <span className="text-[var(--onside-ink)] text-xs" role="status">
@@ -171,9 +174,15 @@ function AnalyticsPeriodSelector({
       </div>
 
       {loadingEntitlements ? (
-        <p className="mt-4 text-[var(--onside-ink)] text-sm opacity-70">
-          Carregando períodos disponíveis…
-        </p>
+        <div className="mt-4" role="status" aria-live="polite">
+          <span className="sr-only">Carregando períodos disponíveis…</span>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-11 w-20 bg-[var(--onside-ink)]/20" />
+            <Skeleton className="h-11 w-24 bg-[var(--onside-ink)]/20" />
+            <Skeleton className="h-11 w-28 bg-[var(--onside-ink)]/20" />
+            <Skeleton className="h-11 w-32 bg-[var(--onside-ink)]/20" />
+          </div>
+        </div>
       ) : entitlementsError ? (
         <div className="onside-callout onside-callout-danger mt-4" role="alert">
           <p className="flex-1 text-sm">
@@ -273,6 +282,89 @@ function AnalyticsPeriodSelector({
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
+
+function AdminDashboardSkeleton() {
+  return (
+    <div
+      className="space-y-6 py-6"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando painel do bar…</span>
+      <div className="border-[var(--onside-ink)] border-b pb-4">
+        <Skeleton className="mb-3 h-3 w-32 bg-[var(--onside-stone)]" />
+        <Skeleton className="h-12 w-48 bg-[var(--onside-stone)]" />
+        <Skeleton className="mt-3 h-3 w-32 bg-[var(--onside-stone)]" />
+      </div>
+      <div className="onside-admin-grid">
+        <nav className="onside-admin-nav" aria-hidden="true">
+          <div className="space-y-2">
+            <Skeleton className="h-11 w-full bg-[var(--onside-stone)]" />
+            <Skeleton className="h-11 w-full bg-[var(--onside-stone)]" />
+            <Skeleton className="h-11 w-full bg-[var(--onside-stone)]" />
+            <Skeleton className="h-11 w-full bg-[var(--onside-stone)]" />
+          </div>
+          <Skeleton className="mt-4 h-11 w-full bg-[var(--onside-stone)]" />
+        </nav>
+        <div className="min-w-0 space-y-4">
+          <div>
+            <Skeleton className="mb-2 h-8 w-36 bg-[var(--onside-stone)]" />
+            <Skeleton className="h-4 w-72 max-w-full bg-[var(--onside-stone)]" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="onside-stat" aria-hidden="true">
+                <Skeleton className="mb-3 h-3 w-24 bg-[var(--onside-stone)]" />
+                <Skeleton className="h-10 w-14 bg-[var(--onside-stone)]" />
+                <Skeleton className="mt-2 h-3 w-20 bg-[var(--onside-stone)]" />
+              </div>
+            ))}
+          </div>
+          <div className="onside-panel-acid space-y-4 p-4" aria-hidden="true">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-28 bg-[var(--onside-stone)]" />
+                <Skeleton className="h-4 w-40 bg-[var(--onside-stone)]" />
+              </div>
+              <Skeleton className="h-3 w-20 bg-[var(--onside-stone)]" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-11 w-20 bg-[var(--onside-stone)]" />
+              <Skeleton className="h-11 w-24 bg-[var(--onside-stone)]" />
+              <Skeleton className="h-11 w-28 bg-[var(--onside-stone)]" />
+              <Skeleton className="h-11 w-32 bg-[var(--onside-stone)]" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="onside-panel-acid p-4">
+              <Skeleton className="mb-3 h-5 w-36 bg-[var(--onside-stone)]" />
+              <Skeleton className="h-40 w-full bg-[var(--onside-stone)]" />
+            </div>
+            <div className="onside-panel-acid p-4">
+              <Skeleton className="mb-3 h-5 w-40 bg-[var(--onside-stone)]" />
+              <Skeleton className="h-10 w-full bg-[var(--onside-stone)]" />
+              <Skeleton className="mt-3 h-10 w-full bg-[var(--onside-stone)]" />
+              <Skeleton className="mt-3 h-10 w-full bg-[var(--onside-stone)]" />
+            </div>
+          </div>
+          <div className="onside-panel-acid p-4" aria-hidden="true">
+            <Skeleton className="mb-3 h-5 w-44 bg-[var(--onside-stone)]" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="space-y-2">
+                  <Skeleton className="h-3 w-16 bg-[var(--onside-stone)]" />
+                  <Skeleton className="h-6 w-12 bg-[var(--onside-stone)]" />
+                  <Skeleton className="h-3 w-14 bg-[var(--onside-stone)]" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function PubDashboard() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
@@ -626,24 +718,7 @@ function PubDashboard() {
   if (loadingBar) {
     return (
       <AppShell variant="pub">
-        <div className="space-y-6 py-6" aria-busy="true" aria-live="polite">
-          <Skeleton className="h-10 w-48 bg-[var(--onside-stone)]" />
-          <Skeleton className="h-6 w-32 bg-[var(--onside-stone)]" />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Skeleton className="h-24 bg-[var(--onside-stone)]" />
-            <Skeleton className="h-24 bg-[var(--onside-stone)]" />
-            <Skeleton className="h-24 bg-[var(--onside-stone)]" />
-          </div>
-          <div className="flex items-center gap-2 text-[var(--onside-muted)] text-sm">
-            <Loader
-              size={18}
-              color="currentColor"
-              className="animate-spin"
-              aria-hidden="true"
-            />
-            Carregando painel…
-          </div>
-        </div>
+        <AdminDashboardSkeleton />
       </AppShell>
     )
   }
@@ -828,22 +903,43 @@ function PubDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div
+                className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+                aria-busy={loadingEvents || loadingSub || undefined}
+                aria-live="polite"
+              >
+                {loadingEvents || loadingSub ? (
+                  <span className="sr-only">Carregando resumo do painel…</span>
+                ) : null}
                 <div className="onside-stat">
                   <div className="onside-stat-value tabular-nums">
-                    {loadingEvents ? '…' : totalCount}
+                    {loadingEvents ? (
+                      <Skeleton className="h-10 w-14" />
+                    ) : (
+                      totalCount
+                    )}
                   </div>
                   <div className="onside-stat-label">Jogos na grade</div>
                 </div>
                 <div className="onside-stat">
                   <div className="onside-stat-value tabular-nums">
-                    {loadingEvents ? '…' : liveEvent ? 1 : 0}
+                    {loadingEvents ? (
+                      <Skeleton className="h-10 w-14" />
+                    ) : liveEvent ? (
+                      1
+                    ) : (
+                      0
+                    )}
                   </div>
                   <div className="onside-stat-label">Ao vivo</div>
                 </div>
                 <div className="onside-stat">
                   <div className="onside-stat-value uppercase">
-                    {loadingSub ? '…' : (planLabel ?? '—')}
+                    {loadingSub ? (
+                      <Skeleton className="h-7 w-24" />
+                    ) : (
+                      (planLabel ?? '—')
+                    )}
                   </div>
                   <div className="onside-stat-label">
                     {isStarter && eventsRemaining !== null

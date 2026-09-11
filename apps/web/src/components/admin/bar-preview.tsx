@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Eye from 'reicon-react/icons/Eye'
 import { OnsideMap } from '@/components/app/onside-map'
 import { BarCard } from '@/components/dashboard/bar-card'
@@ -108,12 +109,26 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
               onBlur={() => {}}
               onFavorite={() => {}}
             />
-          ) : (
+          ) : eventsState.status === 'error' || planState.status === 'error' ? (
             <p className="py-8 text-center text-[var(--onside-muted)] text-sm">
-              {eventsState.status === 'error' || planState.status === 'error'
-                ? 'Preview indisponível.'
-                : 'Carregando preview…'}
+              Preview indisponível.
             </p>
+          ) : (
+            <div
+              className="grid min-h-[158px] grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">Carregando preview…</span>
+              <Skeleton className="size-16 shrink-0" />
+              <div className="col-span-1 min-w-0 space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-5 w-40 max-w-full" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <Skeleton className="size-11 shrink-0" />
+            </div>
           )}
         </div>
 
@@ -135,16 +150,28 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
               />
             </div>
           ) : (
-            <div className="onside-map-frame grid h-[180px] place-items-center text-[var(--onside-muted)] text-sm">
-              {planState.status === 'error'
-                ? 'Mapa indisponível.'
-                : 'Carregando plano…'}
+            <div
+              className="onside-map-frame relative h-[180px]"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">
+                {planState.status === 'error'
+                  ? 'Mapa indisponível.'
+                  : 'Carregando plano…'}
+              </span>
+              {planState.status === 'error' ? (
+                <div className="grid h-full place-items-center text-[var(--onside-muted)] text-sm">
+                  Mapa indisponível.
+                </div>
+              ) : (
+                <Skeleton className="size-full" />
+              )}
             </div>
           )}
           {planState.status === 'loading' ? (
-            <p className="mt-2 text-[var(--onside-muted)] text-xs">
-              Carregando plano…
-            </p>
+            <Skeleton className="mt-2 h-3 w-28" />
           ) : planState.status === 'ready' && plan === 'starter' ? (
             <p className="mt-2 text-[var(--onside-muted)] text-xs">
               Pin padrão · Faça upgrade para Pro e ganhe pin destacado no mapa.

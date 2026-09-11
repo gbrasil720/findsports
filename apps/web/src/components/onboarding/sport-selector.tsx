@@ -29,15 +29,20 @@ export function SportSelector({
     return (
       <div
         className="grid grid-cols-2 gap-3 md:grid-cols-3"
+        role="status"
         aria-busy="true"
         aria-live="polite"
       >
         <span className="sr-only">Carregando esportes…</span>
         {['a', 'b', 'c', 'd', 'e', 'f'].map((id) => (
-          <Skeleton
+          <div
             key={id}
-            className="h-[108px] rounded-none bg-[rgb(241_238_230_/_10%)]"
-          />
+            className="onside-choice onside-choice-ink flex min-h-[108px] flex-col items-center justify-center"
+            aria-hidden="true"
+          >
+            <Skeleton className="mb-2 size-6 bg-[rgb(241_238_230_/_18%)]" />
+            <Skeleton className="h-5 w-24 bg-[rgb(241_238_230_/_18%)]" />
+          </div>
         ))}
       </div>
     )

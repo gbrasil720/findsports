@@ -6,6 +6,7 @@ import {
   FieldLabel
 } from '@findsports_oficial/ui/components/field'
 import { Input } from '@findsports_oficial/ui/components/input'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import {
   ToggleGroup,
@@ -125,8 +126,23 @@ function TwoFactorPage() {
           </p>
 
           {checking ? (
-            <div className="mt-8 flex items-center gap-2" role="status">
-              <Spinner /> Verificando desafio…
+            <div
+              className="mt-8 space-y-5"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">Verificando desafio…</span>
+              <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+                <Skeleton className="h-11 w-full" />
+                <Skeleton className="h-11 w-full" />
+              </div>
+              <div className="space-y-2" aria-hidden="true">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+              <Skeleton className="h-5 w-56 max-w-full" />
+              <Skeleton className="h-12 w-full" />
             </div>
           ) : (
             <form className="mt-8 flex flex-col gap-5" onSubmit={submit}>

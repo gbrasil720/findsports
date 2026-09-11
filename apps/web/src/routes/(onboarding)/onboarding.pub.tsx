@@ -197,7 +197,13 @@ function PubOnboarding() {
         )}
 
         {step === 1 && (
-          <div>
+          <div
+            aria-busy={configQuery.isLoading || undefined}
+            aria-live={configQuery.isLoading ? 'polite' : undefined}
+          >
+            {configQuery.isLoading ? (
+              <span className="sr-only">Verificando cidades disponíveis…</span>
+            ) : null}
             <h2
               ref={headingRef}
               tabIndex={-1}

@@ -6,6 +6,7 @@ import {
   FieldLabel
 } from '@findsports_oficial/ui/components/field'
 import { Input } from '@findsports_oficial/ui/components/input'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import { useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
@@ -25,7 +26,7 @@ type Props = {
 }
 
 export function AccountSettings({ surface }: Props) {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending } = authClient.useSession()
   const signOut = useSignOut('/login')
   const [passwordOpen, setPasswordOpen] = useState(false)
 
@@ -53,7 +54,13 @@ export function AccountSettings({ surface }: Props) {
           <AccountActionRow
             icon={Envelope}
             title="E-mail de acesso"
-            description={session?.user.email ?? 'Carregando…'}
+            description={
+              isPending ? (
+                <Skeleton className="h-3.5 w-40" />
+              ) : (
+                (session?.user.email ?? '—')
+              )
+            }
             action={
               <span className="inline-flex min-h-8 items-center border border-[var(--onside-line)] px-3 font-bold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]">
                 Somente leitura

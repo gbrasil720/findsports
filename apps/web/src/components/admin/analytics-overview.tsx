@@ -72,7 +72,13 @@ function hasComparisonData(data: AnalyticsOverviewData): boolean {
 
 function OverviewSkeleton() {
   return (
-    <section aria-label="Visão geral carregando">
+    <section
+      aria-label="Visão geral carregando"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando desempenho do bar…</span>
       <header className="mb-6">
         <Skeleton className="mb-2 h-7 w-48" />
         <Skeleton className="h-4 w-32" />
@@ -83,6 +89,8 @@ function OverviewSkeleton() {
           <div key={i} className="onside-panel-acid p-4">
             <Skeleton className="mb-2 h-4 w-20" />
             <Skeleton className="h-7 w-16" />
+            <Skeleton className="mt-2 h-3 w-28" />
+            <Skeleton className="mt-2 h-3 w-24" />
           </div>
         ))}
       </div>
@@ -90,14 +98,39 @@ function OverviewSkeleton() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="onside-panel-acid p-4">
           <Skeleton className="mb-3 h-5 w-36" />
-          <Skeleton className="h-48 w-full" />
+          <div className="relative h-[160px] space-y-7 pt-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-px w-full" />
+            ))}
+            <Skeleton className="absolute right-0 bottom-6 left-0 h-1" />
+          </div>
+          <div className="mt-2 flex gap-4">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-24" />
+          </div>
         </div>
         <div className="onside-panel-acid p-4">
           <Skeleton className="mb-3 h-5 w-40" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="mb-3">
-              <Skeleton className="mb-1 h-4 w-24" />
-              <Skeleton className="h-3 w-full" />
+              <div className="mb-1 flex justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+              <Skeleton className="h-2 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="onside-panel-acid mt-6 p-4">
+        <Skeleton className="mb-3 h-5 w-44" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-6 w-12" />
+              <Skeleton className="h-3 w-14" />
             </div>
           ))}
         </div>

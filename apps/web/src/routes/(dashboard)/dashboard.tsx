@@ -418,6 +418,7 @@ function FanDashboard() {
         sort={sort}
         onSortChange={setSort}
         canSortByRating={canSortByRating}
+        loadingSortByRating={appConfigQuery.isLoading}
         sportsState={sportsState}
         activeFilters={activeFilters}
         onReset={reset}
@@ -456,7 +457,9 @@ function FanDashboard() {
         hoveredId={hoveredId}
         favoriteIds={favoriteIds}
         favoritePending={
-          favoriteMutation.isPending || unfavoriteMutation.isPending
+          favoritesQuery.isLoading ||
+          favoriteMutation.isPending ||
+          unfavoriteMutation.isPending
         }
         classicPlacementGuaranteed={classicPlacementGuaranteed}
         onHover={setHoveredId}

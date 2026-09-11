@@ -1,7 +1,7 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Check from 'reicon-react/icons/Check'
 import Compass from 'reicon-react/icons/Compass'
 import Edit from 'reicon-react/icons/Edit'
-import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import Medal from 'reicon-react/icons/Medal'
 import { AccountSettings } from '@/components/account/account-settings'
@@ -37,7 +37,10 @@ type Props = {
 export function ProfileSettings(props: Props) {
   return (
     <div className="space-y-4">
-      <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
+      <section
+        className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6"
+        aria-busy={props.loadingPreferences || undefined}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold text-lg">
             <Medal
@@ -51,6 +54,7 @@ export function ProfileSettings(props: Props) {
             <button
               type="button"
               onClick={props.onStartEditingSports}
+              disabled={props.loadingPreferences}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-none px-3 py-1.5 font-bold text-[var(--onside-muted)] text-xs hover:bg-[var(--onside-stone)] hover:text-[var(--onside-ink)]"
             >
               <Edit size={14} color="currentColor" /> Editar
@@ -59,11 +63,17 @@ export function ProfileSettings(props: Props) {
         </div>
 
         {props.loadingPreferences ? (
-          <Loader
-            size={16}
-            color="currentColor"
-            className="animate-spin text-[var(--onside-muted)]"
-          />
+          <div
+            className="flex flex-wrap gap-2"
+            role="status"
+            aria-busy="true"
+            aria-live="polite"
+          >
+            <span className="sr-only">Carregando esportes favoritos…</span>
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-20" />
+          </div>
         ) : props.editingSports ? (
           <div className="onside-profile-sports-editor">
             <SportsEditor {...props} />

@@ -135,10 +135,32 @@ function BillingPage() {
             <h2 className="onside-display mb-4 text-2xl">Plano atual</h2>
 
             {loadingSub ? (
-              <div className="space-y-3" aria-busy="true" aria-live="polite">
+              <div aria-busy="true" aria-live="polite">
                 <span className="sr-only">Carregando assinatura…</span>
-                <Skeleton className="h-24 rounded-none" />
-                <Skeleton className="h-10 w-48 rounded-none" />
+                <div
+                  className="onside-panel-stone mb-4 space-y-4 p-5"
+                  aria-hidden="true"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="size-10" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-6 w-32" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-6 w-24" />
+                  </div>
+                  <ul className="space-y-2">
+                    {[1, 2, 3, 4].map((item) => (
+                      <li key={item} className="flex items-center gap-2">
+                        <Skeleton className="size-4" />
+                        <Skeleton className="h-4 w-48 max-w-full" />
+                      </li>
+                    ))}
+                  </ul>
+                  <Skeleton className="h-3 w-48" />
+                </div>
               </div>
             ) : subscriptionQuery.isError ? (
               <div
@@ -294,11 +316,23 @@ function BillingPage() {
             </h2>
 
             {paymentsQuery.isLoading ? (
-              <div className="space-y-3" aria-busy="true">
+              <div aria-busy="true" aria-live="polite">
                 <span className="sr-only">Carregando pagamentos…</span>
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-12 rounded-none" />
-                ))}
+                <ul className="min-w-[280px] divide-y divide-[var(--onside-line)]">
+                  {[1, 2, 3].map((i) => (
+                    <li
+                      key={i}
+                      className="flex items-center justify-between gap-4 py-3"
+                      aria-hidden="true"
+                    >
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : paymentsQuery.isError ? (
               <div

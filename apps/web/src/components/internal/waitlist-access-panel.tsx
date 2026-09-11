@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
@@ -26,6 +27,7 @@ type Props = {
   convitesAtivos: number
   convitesExpirados: number
   ativados: number
+  loading?: boolean
 }
 
 function Interruptor({
@@ -82,7 +84,8 @@ export function WaitlistAccessPanel({
   pendentes,
   convitesAtivos,
   convitesExpirados,
-  ativados
+  ativados,
+  loading = false
 }: Props) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -189,27 +192,44 @@ export function WaitlistAccessPanel({
           : null
 
   return (
-    <section className="onside-panel mb-8 p-5 sm:p-6" aria-label="Acesso">
+    <section
+      className="onside-panel mb-8 p-5 sm:p-6"
+      aria-label="Acesso"
+      aria-busy={loading || carregando || salvando || undefined}
+    >
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="onside-display text-xl">Acesso à plataforma</h2>
-        <p className="font-mono text-[11px] text-[var(--onside-muted)]">
-          {countLabel(liberados, 'liberado', 'liberados')} ·{' '}
-          {countLabel(pendentes, 'pendente', 'pendentes')} ·{' '}
-          {countLabel(convitesAtivos, 'convite ativo', 'convites ativos')} ·{' '}
-          {countLabel(convitesExpirados, 'expirado', 'expirados')} ·{' '}
-          {countLabel(ativados, 'ativado', 'ativados')}
-        </p>
+        <div className="font-mono text-[11px] text-[var(--onside-muted)]">
+          {loading ? (
+            <Skeleton className="h-3 w-80 max-w-[60vw]" />
+          ) : (
+            <>
+              {countLabel(liberados, 'liberado', 'liberados')} ·{' '}
+              {countLabel(pendentes, 'pendente', 'pendentes')} ·{' '}
+              {countLabel(convitesAtivos, 'convite ativo', 'convites ativos')} ·{' '}
+              {countLabel(convitesExpirados, 'expirado', 'expirados')} ·{' '}
+              {countLabel(ativados, 'ativado', 'ativados')}
+            </>
+          )}
+        </div>
       </header>
 
       {carregando ? (
-        <div className="flex items-center gap-2 text-sm text-[var(--onside-muted)]">
-          <Loader
-            size={16}
-            color="currentColor"
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          Lendo o estado do portão…
+        <div
+          className="flex flex-col gap-3 border border-[var(--onside-ink)] p-4"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Lendo o estado do portão…</span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-7 w-28" />
+            </div>
+            <Skeleton className="h-11 w-20" />
+          </div>
+          <Skeleton className="h-10 w-full" />
         </div>
       ) : portao ? (
         <>
@@ -241,7 +261,10 @@ export function WaitlistAccessPanel({
         </p>
       )}
 
-      <div className="mt-6 border-[var(--onside-line)] border-t pt-5">
+      <div
+        className="mt-6 border-[var(--onside-line)] border-t pt-5"
+        aria-busy={campaignQuery.isLoading || undefined}
+      >
         <label
           htmlFor={emailId}
           className="onside-kicker mb-2 block text-[var(--onside-ink)]"

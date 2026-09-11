@@ -193,26 +193,36 @@ function SignupPage() {
             </p>
           </div>
 
-          {portaoFechado ? (
-            <div
-              className="onside-callout onside-callout-warn mb-6"
-              role="status"
-            >
-              <p className="text-sm font-semibold">
-                A Onside está abrindo por convite.
-              </p>
-              <p className="text-sm">
-                Só quem já teve o acesso liberado consegue criar conta agora.{' '}
-                <Link
-                  to="/"
-                  className="font-semibold underline underline-offset-2"
-                >
-                  Entre na lista de espera
-                </Link>{' '}
-                e avisamos assim que for a sua vez.
-              </p>
-            </div>
-          ) : null}
+          <div
+            aria-busy={configQuery.isLoading || undefined}
+            aria-live={configQuery.isLoading ? 'polite' : undefined}
+          >
+            {configQuery.isLoading ? (
+              <span className="sr-only" role="status">
+                Verificando disponibilidade do cadastro…
+              </span>
+            ) : null}
+            {portaoFechado ? (
+              <div
+                className="onside-callout onside-callout-warn mb-6"
+                role="status"
+              >
+                <p className="text-sm font-semibold">
+                  A Onside está abrindo por convite.
+                </p>
+                <p className="text-sm">
+                  Só quem já teve o acesso liberado consegue criar conta agora.{' '}
+                  <Link
+                    to="/"
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    Entre na lista de espera
+                  </Link>{' '}
+                  e avisamos assim que for a sua vez.
+                </p>
+              </div>
+            ) : null}
+          </div>
 
           <form
             ref={formRef}

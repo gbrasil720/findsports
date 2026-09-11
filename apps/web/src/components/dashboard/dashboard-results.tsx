@@ -1,7 +1,7 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Basketball from 'reicon-react/icons/Basketball'
 import ChevronRight from 'reicon-react/icons/ChevronRight'
 import Football from 'reicon-react/icons/Football'
-import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import LocationSlash from 'reicon-react/icons/LocationSlash'
 import Store from 'reicon-react/icons/Store'
@@ -152,24 +152,43 @@ function Suggestions({ onSuggestion }: Pick<Props, 'onSuggestion'>) {
   )
 }
 
+function ResultsSkeleton() {
+  return (
+    <div
+      className="space-y-3"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Buscando bares…</span>
+      {[1, 2, 3].map((item) => (
+        <div
+          key={item}
+          className="grid min-h-[104px] grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4 sm:gap-4"
+        >
+          <div className="col-span-2 grid min-w-0 grid-cols-[auto_1fr] items-center gap-3 sm:gap-4">
+            <Skeleton className="size-16 shrink-0" />
+            <div className="min-w-0 space-y-2">
+              <Skeleton className="h-3 w-28 max-w-full" />
+              <Skeleton className="h-5 w-40 max-w-full" />
+              <div className="flex gap-3">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          </div>
+          <Skeleton className="col-start-3 row-start-1 size-11 shrink-0" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ResultContent(props: Props) {
   const { resultState } = props
 
   if (resultState.status === 'loading') {
-    return (
-      <div
-        className="flex items-center justify-center border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] py-16 text-[var(--onside-muted)]"
-        aria-live="polite"
-      >
-        <Loader
-          size={24}
-          color="currentColor"
-          className="mr-2 animate-spin"
-          aria-hidden="true"
-        />
-        <span className="text-sm">Buscando bares...</span>
-      </div>
-    )
+    return <ResultsSkeleton />
   }
 
   if (resultState.status === 'error') {
@@ -239,7 +258,7 @@ export function DashboardResults(props: Props) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-5 lg:gap-y-0 lg:items-stretch">
       <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-        <BarResultsHeader count={bars.length} />
+        <BarResultsHeader count={bars.length} loading={loading} />
       </div>
 
       <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-2">

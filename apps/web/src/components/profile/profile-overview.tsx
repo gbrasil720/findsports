@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
@@ -19,6 +20,7 @@ type Props = {
   completionScore: number
   favoritesCount: number
   preferencesCount: number
+  loadingPreferences: boolean
   radiusKm: number
   loadingFavorites: boolean
   upcomingEvents: FavoriteEvent[]
@@ -37,6 +39,7 @@ export function ProfileOverview({
   completionScore,
   favoritesCount,
   preferencesCount,
+  loadingPreferences,
   radiusKm,
   loadingFavorites,
   upcomingEvents,
@@ -72,7 +75,17 @@ export function ProfileOverview({
   ]
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6"
+      aria-busy={loadingFavorites || loadingPreferences || undefined}
+    >
+      {loadingFavorites || loadingPreferences ? (
+        <span className="sr-only" role="status" aria-live="polite">
+          {loadingFavorites
+            ? 'Carregando favoritos e próximos jogos…'
+            : 'Carregando seus esportes favoritos…'}
+        </span>
+      ) : null}
       {completionScore < 100 ? (
         <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5">
           <div className="mb-3 flex items-center justify-between">
@@ -130,7 +143,15 @@ export function ProfileOverview({
               className="mb-3 text-[var(--onside-live-text)]"
               aria-hidden="true"
             />
-            <div className="font-bold text-3xl">{value}</div>
+            <div className="font-bold text-3xl">
+              {loadingFavorites && label === 'Favoritos' ? (
+                <Skeleton className="h-9 w-14" />
+              ) : loadingPreferences && label === 'Esportes' ? (
+                <Skeleton className="h-9 w-14" />
+              ) : (
+                value
+              )}
+            </div>
             <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--onside-muted)] uppercase tracking-widest">
               {label}
               <ArrowRight
@@ -143,7 +164,9 @@ export function ProfileOverview({
         ))}
       </div>
 
-      {loadingFavorites ? null : upcomingEvents.length > 0 ? (
+      {loadingFavorites ? (
+        <UpcomingEventsSkeleton />
+      ) : upcomingEvents.length > 0 ? (
         <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
           <h2 className="mb-4 flex items-center gap-2 font-bold text-lg">
             <Fire
@@ -226,6 +249,37 @@ export function ProfileOverview({
         onDismiss={onDismissRecommendation}
       />
     </div>
+  )
+}
+
+function UpcomingEventsSkeleton() {
+  return (
+    <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <Fire
+          size={18}
+          color="currentColor"
+          className="text-[var(--onside-live)]"
+          aria-hidden="true"
+        />
+        <span className="font-bold text-lg">Próximos jogos nos seus bares</span>
+      </div>
+      <ul className="divide-y divide-[var(--onside-line)]">
+        {[1, 2, 3].map((item) => (
+          <li key={item} className="flex items-center gap-3 py-3">
+            <Skeleton className="size-9 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4 max-w-full" />
+              <Skeleton className="h-3 w-1/2 max-w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-2.5 w-12" />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

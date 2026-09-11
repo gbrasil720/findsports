@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
@@ -125,16 +126,14 @@ function ActivateInvitePage() {
         <OnboardingHeader label="Ativação de convite" />
         <main
           className="onside-panel onside-shadow-acid mx-auto w-full max-w-lg p-6 sm:p-8"
-          aria-busy
+          role="status"
+          aria-busy="true"
           aria-live="polite"
         >
-          <p className="onside-kicker">Convite Onside</p>
-          <h1 className="onside-display mt-3 text-4xl">
-            Verificando seu convite…
-          </h1>
-          <p className="mt-3 text-sm text-[var(--onside-muted)]">
-            Só um instante.
-          </p>
+          <span className="sr-only">Verificando seu convite…</span>
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-3 h-12 w-80 max-w-full" />
+          <Skeleton className="mt-3 h-4 w-24" />
         </main>
       </OnboardingLayout>
     )

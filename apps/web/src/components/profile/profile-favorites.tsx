@@ -1,8 +1,8 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Heart from 'reicon-react/icons/Heart'
 import List from 'reicon-react/icons/List'
-import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 import Sort from 'reicon-react/icons/Sort'
 import { type MapBar, OnsideMap } from '@/components/app/onside-map'
@@ -52,7 +52,7 @@ export function ProfileFavorites(props: Props) {
   } = props
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={loading || undefined}>
       {favorites.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-1">
@@ -121,8 +121,25 @@ export function ProfileFavorites(props: Props) {
       ) : null}
 
       {loading ? (
-        <div className="flex justify-center py-12 text-[var(--onside-muted)]">
-          <Loader size={24} color="currentColor" className="animate-spin" />
+        <div role="status" aria-busy="true" aria-live="polite">
+          <span className="sr-only">Carregando favoritos…</span>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div
+                key={item}
+                className="relative min-h-[154px] overflow-hidden border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4"
+              >
+                <Skeleton className="mb-2 h-5 w-3/4 max-w-full" />
+                <Skeleton className="mb-4 h-3 w-2/3 max-w-full" />
+                <div className="space-y-2 bg-[var(--onside-stone)] p-3">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="absolute top-3 right-3 size-7" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

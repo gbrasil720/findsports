@@ -3,6 +3,7 @@ import {
   AMENITY_GROUPS,
   MAX_AMENITY_FILTER
 } from '@findsports_oficial/api/lib/amenities'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useState } from 'react'
 import AngleDown from 'reicon-react/icons/AngleDown'
 import Crosshairs from 'reicon-react/icons/Crosshairs'
@@ -56,6 +57,7 @@ type Props = {
    * fazer nada.
    */
   canSortByRating: boolean
+  loadingSortByRating: boolean
   sportsState: SportsState
   activeFilters: ActiveFilter[]
   onReset: () => void
@@ -76,6 +78,7 @@ export function SearchFilterBar({
   sort,
   onSortChange,
   canSortByRating,
+  loadingSortByRating,
   sportsState,
   activeFilters,
   onReset,
@@ -187,18 +190,16 @@ export function SearchFilterBar({
               Todos
             </button>
             {sportsState.status === 'loading' ? (
-              <span
-                className="inline-flex min-h-11 items-center gap-2 text-[var(--onside-muted)] text-xs"
+              <div
+                className="inline-flex min-h-11 items-center gap-2"
+                role="status"
                 aria-live="polite"
               >
-                <Loader
-                  size={14}
-                  color="currentColor"
-                  className="animate-spin"
-                  aria-hidden="true"
-                />
-                Carregando esportes…
-              </span>
+                <span className="sr-only">Carregando esportes…</span>
+                <Skeleton className="h-11 w-20" />
+                <Skeleton className="h-11 w-24" />
+                <Skeleton className="h-11 w-16" />
+              </div>
             ) : null}
             {sportsState.status === 'error' ? (
               <span className="inline-flex min-h-11 flex-wrap items-center gap-2 text-xs">
@@ -255,23 +256,38 @@ export function SearchFilterBar({
           aria-hidden="true"
         />
 
-        {canSortByRating ? (
-          <fieldset className="shrink-0">
+        {canSortByRating || loadingSortByRating ? (
+          <fieldset
+            className="shrink-0"
+            aria-busy={loadingSortByRating || undefined}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <legend className="onside-kicker m-0 shrink-0 pr-1">Ordem</legend>
-              <div className="flex flex-wrap gap-2">
-                {(['relevance', 'rating'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => onSortChange(option)}
-                    aria-pressed={sort === option}
-                    className="onside-chip onside-chip-ink"
-                  >
-                    {SORT_LABELS[option]}
-                  </button>
-                ))}
-              </div>
+              {loadingSortByRating ? (
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="sr-only">Carregando opções de ordem…</span>
+                  <Skeleton className="h-11 w-28" />
+                  <Skeleton className="h-11 w-32" />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(['relevance', 'rating'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => onSortChange(option)}
+                      aria-pressed={sort === option}
+                      className="onside-chip onside-chip-ink"
+                    >
+                      {SORT_LABELS[option]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </fieldset>
         ) : null}

@@ -1,7 +1,7 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
-import Loader from 'reicon-react/icons/Loader'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 
@@ -29,6 +29,7 @@ type Props = {
   onSave: (form: EventForm) => void
   onCancel: () => void
   isSaving: boolean
+  loadingSports: boolean
   error?: string
 }
 
@@ -38,6 +39,7 @@ export function EventFormComponent({
   onSave,
   onCancel,
   isSaving,
+  loadingSports,
   error
 }: Props) {
   const trpc = useTRPC()
@@ -79,14 +81,17 @@ export function EventFormComponent({
 
   return (
     <div className="max-h-[70dvh] space-y-4 overflow-y-auto overscroll-contain pr-1">
-      <label className="block">
+      <label className="block" aria-busy={loadingSports || undefined}>
         <span className="onside-label mb-1.5 block">Esporte *</span>
         <select
           value={form.sportId}
           onChange={(e) => handleSportChange(e.target.value)}
+          disabled={loadingSports}
           className="onside-select font-semibold"
         >
-          <option value="">Selecione um esporte</option>
+          <option value="">
+            {loadingSports ? 'Carregando esportes…' : 'Selecione um esporte'}
+          </option>
           {sports.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -138,9 +143,16 @@ export function EventFormComponent({
           </span>
 
           {loadingTeams ? (
-            <div className="flex items-center gap-2 text-[var(--onside-muted)] text-sm py-2">
-              <Loader size={16} color="currentColor" className="animate-spin" />{' '}
-              Carregando times...
+            <div
+              className="flex flex-wrap gap-2 py-2"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">Carregando times…</span>
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-28" />
+              <Skeleton className="h-9 w-20" />
             </div>
           ) : teams.length > 0 ? (
             <>

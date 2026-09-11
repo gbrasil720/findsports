@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@findsports_oficial/ui/components/select'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import {
   Table,
   TableBody,
@@ -250,6 +251,7 @@ function AdminWaitlistPage() {
         convitesAtivos={access.convitesAtivos}
         convitesExpirados={access.convitesExpirados}
         ativados={access.ativados}
+        loading={isLoading}
       />
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -276,14 +278,17 @@ function AdminWaitlistPage() {
         </button>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div
+        className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3"
+        aria-busy={isLoading || undefined}
+      >
         <div className="onside-stat">
           <div className="mb-2 flex items-center gap-2">
             <Users size={16} color="currentColor" aria-hidden="true" />
             <span className="onside-stat-label">Total de inscritos</span>
           </div>
           <div className="onside-stat-value tabular-nums" aria-live="polite">
-            {isLoading ? '…' : total}
+            {isLoading ? <Skeleton className="h-8 w-14" /> : total}
           </div>
         </div>
         <div className="onside-stat">
@@ -292,7 +297,7 @@ function AdminWaitlistPage() {
             <span className="onside-stat-label">{rolePluralLabel('fan')}</span>
           </div>
           <div className="onside-stat-value tabular-nums" aria-live="polite">
-            {isLoading ? '…' : fanCount}
+            {isLoading ? <Skeleton className="h-8 w-14" /> : fanCount}
           </div>
         </div>
         <div className="onside-stat">
@@ -301,7 +306,7 @@ function AdminWaitlistPage() {
             <span className="onside-stat-label">{rolePluralLabel('pub')}</span>
           </div>
           <div className="onside-stat-value tabular-nums" aria-live="polite">
-            {isLoading ? '…' : pubCount}
+            {isLoading ? <Skeleton className="h-8 w-14" /> : pubCount}
           </div>
         </div>
       </div>
@@ -365,17 +370,89 @@ function AdminWaitlistPage() {
 
       {isLoading ? (
         <div
-          className="onside-panel flex items-center justify-center gap-2 py-16 text-sm text-[var(--onside-muted)]"
+          className="grid gap-3"
           role="status"
+          aria-busy="true"
           aria-live="polite"
         >
-          <Loader
-            size={18}
-            color="currentColor"
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          Carregando inscritos…
+          <span className="sr-only">Carregando inscritos…</span>
+          {isMobile ? (
+            <ul className="space-y-3" aria-hidden="true">
+              {['mobile-1', 'mobile-2', 'mobile-3', 'mobile-4'].map((key) => (
+                <li key={key} className="onside-panel space-y-4 p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="size-10 shrink-0" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-44 max-w-full" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-3/5" />
+                    <Skeleton className="h-11 w-full" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="onside-panel overflow-x-auto" aria-hidden="true">
+              <Table className="min-w-[68rem]">
+                <TableHeader>
+                  <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Estabelecimento</TableHead>
+                    <TableHead>Cidade</TableHead>
+                    <TableHead>Data de inscrição</TableHead>
+                    <TableHead>Acesso</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[
+                    'desktop-1',
+                    'desktop-2',
+                    'desktop-3',
+                    'desktop-4',
+                    'desktop-5',
+                    'desktop-6'
+                  ].map((key) => (
+                    <TableRow
+                      key={key}
+                      className="border-[var(--onside-line)] border-b"
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="size-8 shrink-0" />
+                          <Skeleton className="h-4 w-40" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-11 w-28" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </div>
       ) : isError ? (
         <div
