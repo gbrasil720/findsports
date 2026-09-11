@@ -413,7 +413,11 @@ export function createAuth() {
               { productId: 'pdt_0NgxglMLDZdpaXIuRAiCE', slug: 'pro' },
               { productId: 'pdt_0NgxgzP6hnGWg1brokOcU', slug: 'elite' }
             ],
-            successUrl: '/admin',
+            // WEB-59: o retorno do provedor cai no recibo, não no painel. O
+            // webhook `onSubscriptionActive` é quem confirma a assinatura, e
+            // pode chegar depois deste redirect — `/plan/confirmed` é a tela
+            // que espera por ele em vez de mostrar um painel sem plano.
+            successUrl: '/plan/confirmed',
             authenticatedUsersOnly: true
           }),
           portal(),

@@ -20,6 +20,7 @@ import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
 import { Route as AccessPendingRouteImport } from './routes/access-pending'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
@@ -95,6 +96,11 @@ const SplatRoute = SplatRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
+  id: '/plan_/confirmed',
+  path: '/plan/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
@@ -227,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
+  '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
+  '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
+  '/plan_/confirmed': typeof PlanConfirmedRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
+    | '/plan/confirmed'
     | '/dashboard/profile'
     | '/onboarding/fan'
     | '/onboarding/pub'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
+    | '/plan/confirmed'
     | '/dashboard/profile'
     | '/onboarding/fan'
     | '/onboarding/pub'
@@ -400,6 +411,7 @@ export interface FileRouteTypes {
     | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
+    | '/plan_/confirmed'
     | '/(dashboard)/dashboard_/profile'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
@@ -435,6 +447,7 @@ export interface RootRouteChildren {
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
+  PlanConfirmedRoute: typeof PlanConfirmedRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
@@ -524,6 +537,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan_/confirmed': {
+      id: '/plan_/confirmed'
+      path: '/plan/confirmed'
+      fullPath: '/plan/confirmed'
+      preLoaderRoute: typeof PlanConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/internal_/waitlist': {
@@ -699,6 +719,7 @@ const rootRouteChildren: RootRouteChildren = {
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
+  PlanConfirmedRoute: PlanConfirmedRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,

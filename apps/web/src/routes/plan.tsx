@@ -18,6 +18,7 @@ import {
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
+import { markCheckoutIntent } from '@/lib/subscription-receipt'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -90,6 +91,10 @@ function PlanSelection() {
     }
 
     analytics.checkoutStarted(selected)
+    // WEB-59: marca nossa, não do provedor. É o que permite a `/plan/confirmed`
+    // distinguir quem está voltando do checkout — e merece esperar o webhook —
+    // de quem abriu a URL do recibo sem ter assinatura.
+    markCheckoutIntent(selected)
     setLoading(true)
     setError(null)
 

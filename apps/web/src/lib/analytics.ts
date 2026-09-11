@@ -160,6 +160,25 @@ export const analytics = {
     void withPosthog((posthog) => posthog.capture('checkout_started', { plan }))
   },
 
+  /**
+   * A tela de recibo (WEB-59) atravessa a janela entre o redirect do provedor
+   * e o webhook `onSubscriptionActive`. Os dois eventos juntos respondem se a
+   * janela é curta o bastante: quantas assinaturas confirmam ali mesmo e
+   * quantas estouram o teto e caem na saída de demora — com quantos segundos
+   * de espera, que é o número que decide se o teto está no lugar certo.
+   */
+  subscriptionConfirmed: (plan: BarPlan) => {
+    void withPosthog((posthog) =>
+      posthog.capture('subscription_confirmed', { plan })
+    )
+  },
+
+  subscriptionConfirmationDelayed: (waited_seconds: number) => {
+    void withPosthog((posthog) =>
+      posthog.capture('subscription_confirmation_delayed', { waited_seconds })
+    )
+  },
+
   upgradeClicked: (current_plan: string, target_plan: string) => {
     void withPosthog((posthog) =>
       posthog.capture('upgrade_clicked', { current_plan, target_plan })

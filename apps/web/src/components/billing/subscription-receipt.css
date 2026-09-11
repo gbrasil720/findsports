@@ -1,0 +1,578 @@
+/**
+ * Impressora térmica de comprovante (WEB-59).
+ *
+ * A tela tem dois corpos: a máquina, que é um objeto ink com visor e fenda, e
+ * o papel, que sai de dentro dela. O estágio manda no visual inteiro pelo
+ * `data-stage` da seção — visor, fenda e carimbo saem todos dele, em vez de
+ * cada pedaço carregar a própria classe de estado.
+ *
+ * O movimento é o da referência do ticket, em CSS: o papel já existe inteiro e
+ * **desliza** de `translateY(-100%)` até `0`, enquanto a janela de saída cresce
+ * no mesmo compasso. As duas animações usam `steps(--onside-receipt-steps)`:
+ * um passo por linha impressa, que é o motor da impressora e não um enfeite —
+ * recibo com mais linhas leva mais tempo para sair. Como a janela cresce na
+ * mesma medida em que o papel desce, a borda serrilhada fica sempre na boca da
+ * fenda e nenhuma folha em branco é reservada na página.
+ */
+
+/*
+ * A largura manda no conjunto: o corpo da máquina é a medida de fora, e o
+ * papel é sempre ele menos a chapa que sobra dos dois lados. Derivar um do
+ * outro é o que mantém fenda e folha do mesmo tamanho em qualquer tela — com
+ * dois valores soltos, no celular o papel saía mais largo que a própria fenda.
+ */
+.onside-receipt {
+  --onside-receipt-machine: min(100%, 456px);
+  --onside-receipt-width: calc(var(--onside-receipt-machine) - 36px);
+  --onside-receipt-tooth: 18px;
+  --onside-receipt-teeth:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    50% / var(--onside-receipt-tooth) 100%;
+  /* Sobrescritos pelo componente com a duração e os passos reais. */
+  --onside-receipt-feed: 1600ms;
+  --onside-receipt-steps: 16;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* ─── Máquina ─── */
+
+/*
+ * O corpo é mais largo que o papel, como impressora de verdade: é o que faz a
+ * fenda ser uma boca no meio do aparelho, e não a borda dele.
+ */
+.onside-receipt-machine {
+  position: relative;
+  z-index: 2;
+  width: var(--onside-receipt-machine);
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-ink);
+  /*
+   * Sombra macia, e não o deslocamento duro do resto do app: aqui ela cai
+   * sobre o papel que sai por baixo, e um retângulo preto deslocado leria como
+   * defeito no encontro dos dois corpos, não como volume.
+   */
+  filter: drop-shadow(0 12px 16px rgb(18 18 15 / 26%));
+}
+
+/*
+ * Vinco de plástico: a linha clara no topo e a sombra interna embaixo dão
+ * volume ao corpo sem nenhuma imagem — é o mesmo truque do chanfro da
+ * referência, com a paleta daqui.
+ */
+.onside-receipt-machine::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--onside-paper) 22%, transparent),
+    inset 0 -18px 24px -22px rgb(0 0 0 / 90%);
+}
+
+.onside-receipt-machine-face {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 14px;
+}
+
+.onside-receipt-plate {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+.onside-receipt-plate-brand {
+  font-family: var(--onside-display);
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--onside-paper);
+}
+
+.onside-receipt-plate-model {
+  font-family: var(--onside-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--onside-muted-on-ink);
+}
+
+/* O visor: retângulo afundado, texto em acid, como um display de terminal. */
+.onside-receipt-screen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 10px;
+  background: #05050a;
+  border: 1px solid color-mix(in srgb, var(--onside-paper) 16%, transparent);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 80%);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--onside-acid);
+}
+
+.onside-receipt[data-stage="delayed"] .onside-receipt-screen {
+  color: var(--onside-muted-on-ink);
+}
+
+.onside-receipt-screen-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.onside-receipt-screen-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.onside-receipt-screen-dots {
+  display: inline-flex;
+  gap: 3px;
+  flex: none;
+}
+
+.onside-receipt-screen-dots span {
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+.onside-receipt[data-stage="done"] .onside-receipt-screen-dots,
+.onside-receipt[data-stage="delayed"] .onside-receipt-screen-dots {
+  visibility: hidden;
+}
+
+/*
+ * Lábio da fenda: a faixa clara é a aresta do plástico pegando luz, e o rasgo
+ * preto abaixo dela é por onde o papel aparece.
+ */
+/*
+ * O lábio é a chapa de metal em volta da fenda: a fenda tem a largura do papel
+ * e fica centrada, então a folha sai do meio do aparelho.
+ */
+.onside-receipt-lip {
+  display: flex;
+  justify-content: center;
+  padding: 0 18px 10px;
+}
+
+.onside-receipt-slot {
+  position: relative;
+  display: block;
+  /*
+   * A fenda mede o que sobra do lábio, que é a mesma conta do papel (corpo
+   * menos a chapa dos dois lados). Pedir a largura do papel aqui dava, em
+   * tela estreita, uma fenda menor que a folha que sai dela.
+   */
+  width: 100%;
+  flex: none;
+  height: 14px;
+  overflow: hidden;
+  background: #000;
+  border-top: 1px solid color-mix(in srgb, var(--onside-paper) 34%, transparent);
+  box-shadow: inset 0 4px 7px rgb(0 0 0 / 95%);
+}
+
+/* Filete correndo dentro da fenda enquanto a máquina trabalha. */
+.onside-receipt-feed {
+  position: absolute;
+  inset: 4px auto 4px 0;
+  width: 32%;
+  background: color-mix(in srgb, var(--onside-paper) 50%, transparent);
+  opacity: 0;
+}
+
+.onside-receipt[data-stage="processing"] .onside-receipt-feed,
+.onside-receipt[data-stage="printing"] .onside-receipt-feed {
+  opacity: 1;
+}
+
+/* ─── Saída do papel ─── */
+
+/*
+ * A janela de saída encosta na fenda (`margin-top` negativo esconde o topo da
+ * folha atrás do corpo) e tem a altura do papel já medido.
+ *
+ * O corte é `clip-path`, não `overflow: hidden`: precisa cortar rente em cima
+ * — onde fica a boca da fenda — e sobrar nas laterais e embaixo, senão a
+ * sombra da folha é decepada junto. `overflow` não sabe fazer essa distinção.
+ */
+.onside-receipt-output {
+  position: relative;
+  width: var(--onside-receipt-width);
+  margin-top: -12px;
+  clip-path: inset(0 -28px -28px -28px);
+}
+
+/* Antes da medida não há janela: a folha inteira apareceria de uma vez. */
+.onside-receipt-output:not([data-ready="true"]) {
+  height: 0;
+}
+
+.onside-receipt-output[data-ready="true"] {
+  height: var(--onside-receipt-paper-h);
+}
+
+.onside-receipt-output-shade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 16px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgb(18 18 15 / 34%),
+    rgb(18 18 15 / 0%)
+  );
+}
+
+/* ─── Papel ─── */
+
+/*
+ * O recuo de cima é margem de papel em branco, não respiro tipográfico: os
+ * primeiros 12px da folha ficam atrás do corpo da máquina, e é esse sobrar que
+ * impede o título de nascer decepado pela fenda.
+ */
+.onside-receipt-paper {
+  position: relative;
+  padding: 32px 18px 26px;
+  color: var(--onside-ink);
+  font-family: var(--onside-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  /*
+   * Textura de papel térmico: faixas horizontais de 3px, quase invisíveis,
+   * que tiram do papel o branco chapado de caixa de diálogo.
+   */
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(18 18 15 / 3%) 0 1px,
+      rgb(18 18 15 / 0%) 1px 3px
+    ),
+    #fffdf6;
+  /*
+   * A primeira sombra é dura e de 1px: é ela que desenha o contorno do papel,
+   * serrilha inclusive, contra um fundo quase da mesma cor. A segunda é o
+   * peso, que descola a folha da página.
+   */
+  filter: drop-shadow(0 1px 0 rgb(18 18 15 / 30%))
+    drop-shadow(0 12px 16px rgb(18 18 15 / 18%));
+  /*
+   * Serrilha: o papel é recortado embaixo como se tivesse sido destacado do
+   * rolo. Um cone de 90° repetido na largura come triângulos da borda — a
+   * altura do dente sai da geometria, metade da largura do passo.
+   */
+  -webkit-mask: var(--onside-receipt-teeth);
+  mask: var(--onside-receipt-teeth);
+}
+
+.onside-receipt-paper-head {
+  padding-bottom: 12px;
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--onside-ink) 45%, transparent);
+}
+
+.onside-receipt-title {
+  margin: 0;
+  font-family: var(--onside-display);
+  font-size: 21px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.onside-receipt-meta {
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+.onside-receipt-rows {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--onside-ink) 45%, transparent);
+}
+
+.onside-receipt-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.onside-receipt-row dt {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+/*
+ * A linha pontilhada acompanha o valor, não o rótulo: é o valor que estica
+ * até a margem direita e quebra em telas estreitas, e a pontilhada precisa
+ * quebrar junto para a linha continuar lendo como recibo.
+ */
+.onside-receipt-row dd {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  border-bottom: 1px dotted
+    color-mix(in srgb, var(--onside-ink) 30%, transparent);
+}
+
+.onside-receipt-section {
+  margin: 12px 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--onside-muted);
+}
+
+.onside-receipt-features {
+  margin: 0;
+  padding: 0 0 12px;
+  list-style: none;
+  border-bottom: 1px dashed
+    color-mix(in srgb, var(--onside-ink) 45%, transparent);
+}
+
+.onside-receipt-feature {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  text-wrap: pretty;
+}
+
+.onside-receipt-feature span {
+  flex: none;
+  color: var(--onside-live-text);
+  font-weight: 600;
+}
+
+.onside-receipt-foot {
+  padding-top: 12px;
+}
+
+.onside-receipt-ref,
+.onside-receipt-legal {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--onside-muted);
+  overflow-wrap: anywhere;
+}
+
+.onside-receipt-legal {
+  margin-top: 6px;
+  text-wrap: pretty;
+}
+
+.onside-receipt-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 5px 10px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-acid);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: rotate(-2deg) scale(0.96);
+}
+
+.onside-receipt-stamp[data-printed="true"] {
+  opacity: 1;
+  transform: rotate(-2deg) scale(1);
+  transition:
+    opacity var(--onside-motion-base) var(--onside-ease-out),
+    transform var(--onside-motion-base) var(--onside-ease-out);
+}
+
+/* ─── Espera e demora ─── */
+
+.onside-receipt-waiting {
+  width: var(--onside-receipt-width);
+  margin-top: 16px;
+  padding: 16px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-stone);
+  text-wrap: pretty;
+}
+
+.onside-receipt-waiting h2 {
+  margin: 0 0 8px;
+  font-family: var(--onside-display);
+  font-size: 20px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.onside-receipt-waiting p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--onside-muted);
+}
+
+.onside-receipt-waiting p + p {
+  margin-top: 8px;
+}
+
+.onside-receipt-error {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--onside-live-text);
+}
+
+.onside-receipt-retry {
+  min-height: 44px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--onside-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--onside-live);
+  cursor: pointer;
+}
+
+.onside-receipt-retry:disabled {
+  color: var(--onside-muted);
+  cursor: progress;
+}
+
+.onside-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: var(--onside-receipt-width);
+  margin-top: 18px;
+}
+
+.onside-receipt-actions > * {
+  flex: 1 1 180px;
+}
+
+@media (min-width: 640px) {
+  .onside-receipt-paper {
+    font-size: 13px;
+    padding: 36px 22px 30px;
+  }
+}
+
+/* ─── Movimento ─── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * Janela e papel andam juntos, no mesmo número de passos: a janela abre de
+   * `0fr` a `1fr` enquanto a folha sobe de `-100%` a `0`. Fora de sincronia,
+   * o papel apareceria antes da boca da fenda ou sobraria papel em branco.
+   */
+  .onside-receipt-output[data-ready="true"] {
+    animation: onside-receipt-open var(--onside-receipt-feed)
+      steps(var(--onside-receipt-steps), end) both;
+  }
+
+  .onside-receipt-output[data-ready="true"] .onside-receipt-paper {
+    animation: onside-receipt-feed-out var(--onside-receipt-feed)
+      steps(var(--onside-receipt-steps), end) both;
+  }
+
+  .onside-receipt-feed {
+    animation: onside-receipt-feed-line 1.1s linear infinite;
+  }
+
+  .onside-receipt-screen-dots span {
+    animation: onside-receipt-dot 1.2s ease-in-out infinite;
+  }
+
+  .onside-receipt-screen-dots span:nth-child(2) {
+    animation-delay: 160ms;
+  }
+
+  .onside-receipt-screen-dots span:nth-child(3) {
+    animation-delay: 320ms;
+  }
+}
+
+/*
+ * Sem movimento, o recibo já está na mesa: mesma informação, mesma ordem, sem
+ * espera fabricada. O que fica é o estado — visor, carimbo e o texto do
+ * estágio, que são conteúdo, não enfeite.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .onside-receipt-output,
+  .onside-receipt-paper {
+    animation: none;
+  }
+
+  .onside-receipt-stamp {
+    transition: none;
+  }
+}
+
+@keyframes onside-receipt-open {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--onside-receipt-paper-h);
+  }
+}
+
+@keyframes onside-receipt-feed-out {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes onside-receipt-feed-line {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes onside-receipt-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
