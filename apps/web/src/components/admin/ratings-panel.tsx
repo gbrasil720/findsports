@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import type { inferRouterOutputs } from '@trpc/server'
 import Check from 'reicon-react/icons/Check'
 import EyeSlash from 'reicon-react/icons/EyeSlash'
@@ -29,10 +30,25 @@ type Props = {
 export function RatingsPanel({ state }: Props) {
   if (state.status === 'loading') {
     return (
-      <section className="onside-panel p-5 md:p-6">
-        <p className="text-[var(--onside-muted)] text-sm">
-          Carregando avaliações…
-        </p>
+      <section
+        className="onside-panel p-5 md:p-6"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span className="sr-only">Carregando avaliações…</span>
+        <Skeleton className="mb-2 h-3 w-24" />
+        <Skeleton className="h-8 w-64 max-w-full" />
+        <div className="mt-4 flex gap-6">
+          <Skeleton className="h-12 w-16" />
+          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-10 w-10" />
+        </div>
+        <div className="mt-5 space-y-2">
+          {[1, 2, 3].map((item) => (
+            <Skeleton key={item} className="h-12 w-full" />
+          ))}
+        </div>
       </section>
     )
   }

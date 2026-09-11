@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
@@ -386,16 +387,39 @@ function FlagsPage() {
 
       {listaQuery.isLoading ? (
         <div
-          className="flex items-center gap-2 text-sm text-[var(--onside-muted)]"
+          className="grid max-w-3xl gap-5"
+          role="status"
+          aria-busy="true"
           aria-live="polite"
         >
-          <Loader
-            size={18}
-            color="currentColor"
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          Carregando configuração…
+          <span className="sr-only">Carregando configuração…</span>
+          {['flag-1', 'flag-2', 'flag-3'].map((key) => (
+            <article
+              key={key}
+              className="onside-panel onside-shadow flex flex-col gap-4 p-5 sm:p-6"
+              aria-hidden="true"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-full max-w-xl" />
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              </div>
+              <Skeleton className="h-11 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-3 w-36" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-11 w-28" />
+                  <Skeleton className="h-11 w-20" />
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
       ) : null}
 

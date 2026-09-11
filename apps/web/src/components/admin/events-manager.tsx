@@ -60,12 +60,14 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const [showModal, setShowModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  const { data: sports = [] } = useQuery({
+  const { data: sports = [], isLoading: loadingSports } = useQuery({
     ...trpc.pubs.getSports.queryOptions(),
     ...CATALOG_QUERY
   })
   const events = eventsState.status === 'ready' ? eventsState.events : []
-  const blockReason = getCreateBlockReason(policyState)
+  const blockReason =
+    getCreateBlockReason(policyState) ??
+    (loadingSports ? 'Carregando esportes…' : null)
   const createBlocked = blockReason !== null
 
   const invalidateEvents = () =>
@@ -253,14 +255,20 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
-                className="flex min-h-[76px] items-center gap-3 border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3"
+                className="onside-event-row min-h-[76px] border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3"
               >
-                <Skeleton className="h-11 w-12 shrink-0 bg-[var(--onside-stone)]" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Skeleton className="h-4 w-2/3 bg-[var(--onside-stone)]" />
+                <div className="space-y-2 text-center">
+                  <Skeleton className="mx-auto h-3 w-12 bg-[var(--onside-stone)]" />
+                  <Skeleton className="mx-auto h-6 w-14 bg-[var(--onside-stone)]" />
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <Skeleton className="h-5 w-2/3 bg-[var(--onside-stone)]" />
                   <Skeleton className="h-3 w-1/3 bg-[var(--onside-stone)]" />
                 </div>
-                <Skeleton className="size-9 shrink-0 bg-[var(--onside-stone)]" />
+                <div className="flex gap-1">
+                  <Skeleton className="size-11 bg-[var(--onside-stone)]" />
+                  <Skeleton className="size-11 bg-[var(--onside-stone)]" />
+                </div>
               </div>
             ))}
           </div>
@@ -317,6 +325,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
               : EMPTY_FORM
           }
           sports={sports}
+          loadingSports={loadingSports}
           onSave={handleSave}
           onCancel={closeModal}
           isSaving={isSaving}

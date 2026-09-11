@@ -1,8 +1,8 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import type { inferRouterOutputs } from '@trpc/server'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Check from 'reicon-react/icons/Check'
-import Loader from 'reicon-react/icons/Loader'
 
 type Status =
   inferRouterOutputs<AppRouter>['recommendations']['getMyBarQualityStatus']
@@ -20,10 +20,17 @@ export function RecommendationQualityStatus(props: Props) {
       <div
         className="onside-callout"
         role="status"
-        aria-label="Carregando status das sugestões"
+        aria-busy="true"
+        aria-live="polite"
       >
-        <Loader size={18} color="currentColor" className="animate-spin" />
-        <p className="text-sm">Verificando elegibilidade nas sugestões…</p>
+        <span className="sr-only">
+          Verificando elegibilidade nas sugestões…
+        </span>
+        <Skeleton className="size-5 shrink-0" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-4 w-64 max-w-full" />
+          <Skeleton className="h-3 w-80 max-w-full" />
+        </div>
       </div>
     )
   }

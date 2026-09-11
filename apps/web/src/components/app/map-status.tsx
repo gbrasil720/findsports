@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Component, type ReactNode, type Ref } from 'react'
 
 /**
@@ -63,12 +64,12 @@ export function MapCanvas({
       {!ready ? (
         <div
           className="absolute inset-0 z-[1] grid place-items-center bg-[var(--onside-stone)]"
+          role="status"
           aria-busy="true"
           aria-live="polite"
         >
-          <span className="text-sm text-[var(--onside-muted)]">
-            Carregando mapa…
-          </span>
+          <Skeleton className="absolute inset-4 bg-[var(--onside-paper)]/25" />
+          <span className="sr-only">Carregando mapa…</span>
         </div>
       ) : null}
       <div ref={containerRef} className="h-full w-full" />

@@ -1,10 +1,10 @@
 import { avatarPathname } from '@findsports_oficial/api/lib/blob-avatar'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { upload } from '@vercel/blob/client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
-import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
 import { ProfileFavorites } from '@/components/profile/profile-favorites'
 import { ProfileHeader } from '@/components/profile/profile-header'
@@ -295,9 +295,7 @@ function ProfilePage() {
   if (sessionQuery.isLoading) {
     return (
       <AppShell variant="fan">
-        <div className="flex items-center justify-center py-24 text-[var(--onside-muted)]">
-          <Loader size={24} color="currentColor" className="animate-spin" />
-        </div>
+        <ProfilePageSkeleton />
       </AppShell>
     )
   }
@@ -364,6 +362,7 @@ function ProfilePage() {
             completionScore={getCompletionScore(completionItems)}
             favoritesCount={favorites.length}
             preferencesCount={preferences.length}
+            loadingPreferences={preferencesQuery.isLoading}
             radiusKm={normalizeRadiusKm(user?.searchRadiusKm)}
             loadingFavorites={favoritesQuery.isLoading}
             upcomingEvents={upcomingEvents}
@@ -462,5 +461,88 @@ function ProfilePage() {
         ) : null}
       </div>
     </AppShell>
+  )
+}
+
+function ProfilePageSkeleton() {
+  return (
+    <div
+      className="space-y-6"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando perfil…</span>
+      <Skeleton className="h-5 w-20" />
+      <section className="onside-panel-ink onside-shadow-acid p-8 md:p-10">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          <Skeleton className="size-24 shrink-0 bg-[var(--onside-paper)]/20" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <Skeleton className="h-3 w-32 bg-[var(--onside-paper)]/20" />
+            <Skeleton className="h-10 w-64 max-w-full bg-[var(--onside-paper)]/20" />
+            <Skeleton className="h-4 w-52 max-w-full bg-[var(--onside-paper)]/20" />
+          </div>
+          <Skeleton className="h-11 w-28 bg-[var(--onside-paper)]/20" />
+        </div>
+      </section>
+      <div className="flex gap-2" aria-hidden="true">
+        <Skeleton className="h-11 w-28" />
+        <Skeleton className="h-11 w-24" />
+        <Skeleton className="h-11 w-32" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        {[1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5"
+            aria-hidden="true"
+          >
+            <Skeleton className="mb-3 size-5" />
+            <Skeleton className="h-9 w-14" />
+            <Skeleton className="mt-2 h-3 w-20" />
+          </div>
+        ))}
+      </div>
+      <section
+        className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6"
+        aria-hidden="true"
+      >
+        <Skeleton className="mb-4 h-6 w-56" />
+        <div className="divide-y divide-[var(--onside-line)]">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="flex items-center gap-3 py-3">
+              <Skeleton className="size-9 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4 max-w-full" />
+                <Skeleton className="h-3 w-1/2 max-w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-2.5 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section
+        className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6"
+        aria-hidden="true"
+      >
+        <Skeleton className="mb-2 h-6 w-48" />
+        <Skeleton className="mb-4 h-3 w-72 max-w-full" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="space-y-3 border border-[var(--onside-line)] p-4"
+            >
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-11 w-full" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   )
 }

@@ -76,6 +76,87 @@ function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
   }
 }
 
+function PubPageSkeleton() {
+  return (
+    <div
+      className="onside-pub-page space-y-4 md:space-y-5"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando perfil do bar…</span>
+      <section className="onside-panel overflow-hidden">
+        <Skeleton className="h-[300px] w-full md:h-[360px]" />
+        <div className="flex items-start justify-between gap-4 p-5 md:p-6">
+          <div className="min-w-0 flex-1 space-y-3">
+            <Skeleton className="h-9 w-2/3 max-w-full" />
+            <Skeleton className="h-3 w-40 max-w-full" />
+          </div>
+          <Skeleton className="h-11 w-28 shrink-0" />
+        </div>
+      </section>
+
+      <section className="onside-panel p-5 md:p-6">
+        <div className="mb-4 flex gap-2">
+          <Skeleton className="h-7 w-28" />
+          <Skeleton className="h-7 w-36" />
+        </div>
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-10 shrink-0" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-7 w-2/3 max-w-full" />
+            <Skeleton className="h-3 w-1/2 max-w-full" />
+          </div>
+        </div>
+      </section>
+
+      <section className="onside-panel p-5 md:p-6">
+        <Skeleton className="mb-4 h-7 w-36" />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Skeleton className="h-12 w-full sm:flex-1" />
+          <Skeleton className="h-12 w-full sm:w-32" />
+          <Skeleton className="h-12 w-full sm:w-32" />
+        </div>
+      </section>
+
+      <section className="onside-panel p-5 md:p-6">
+        <Skeleton className="mb-4 h-7 w-32" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="flex min-h-[58px] items-center gap-3 border border-[var(--onside-line)] p-3"
+            >
+              <Skeleton className="h-4 w-12 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-2/3 max-w-full" />
+                <Skeleton className="h-3 w-1/2 max-w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="onside-panel p-5 md:p-6">
+        <Skeleton className="mb-4 h-7 w-48" />
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-4 w-3/4 max-w-full" />
+            <Skeleton className="h-4 w-2/3 max-w-full" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function PubPage() {
   const { pubId } = Route.useParams()
   const navigate = useNavigate()
@@ -143,7 +224,7 @@ function PubPage() {
 
   const canFavorite = canFavoriteBars(session?.user?.role)
 
-  const { data: favoriteData } = useQuery({
+  const { data: favoriteData, isLoading: favoriteLoading } = useQuery({
     ...trpc.pubs.isFavorited.queryOptions({ barId: pubId }),
     enabled: canFavorite && Boolean(normalizedPub)
   })
@@ -305,11 +386,7 @@ function PubPage() {
           aria-hidden={!isAuthed}
         >
           {isLoadingPub ? (
-            <div className="space-y-4">
-              <Skeleton className="h-[260px] w-full" />
-              <Skeleton className="h-[140px] w-full" />
-              <Skeleton className="h-[200px] w-full" />
-            </div>
+            <PubPageSkeleton />
           ) : normalizedPub ? (
             <div className="onside-pub-page space-y-4 md:space-y-5">
               {isOwner && (
@@ -326,7 +403,9 @@ function PubPage() {
                 plan={normalizedPub.plan}
                 canFavorite={canFavorite}
                 isFavorited={isFavorited}
-                favoritePending={favoritePending}
+                favoritePending={
+                  favoritePending || (canFavorite && favoriteLoading)
+                }
                 onToggleFavorite={handleToggleFavorite}
                 isOwner={isOwner}
               />

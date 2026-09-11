@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -126,36 +127,35 @@ function PlanSelection() {
     <OnboardingLayout variant="plan">
       <OnboardingHeader label={roleAccountLabel('pub')} mb="mb-10" />
 
-      <div className="mx-auto mb-10 max-w-2xl text-center">
-        <p className="onside-kicker onside-kicker-acid mb-3">
-          {hasActivePlan ? 'Alterar plano' : 'Último passo'}
-        </p>
-        <h1 className="onside-display mb-4 text-4xl text-[var(--onside-paper)] md:text-5xl">
-          {hasActivePlan
-            ? 'Escolha seu novo plano.'
-            : 'Escolha o plano do seu bar.'}
-        </h1>
-        <p className="onside-text-muted-on-ink text-lg">
-          {hasActivePlan
-            ? 'A mudança entra em vigor no próximo ciclo de cobrança.'
-            : 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'}
-        </p>
-      </div>
-
       {subscriptionQuery.isLoading ? (
         <div
-          className="mb-8 flex items-center justify-center gap-2 text-[var(--onside-paper)]"
+          className="mx-auto mb-10 max-w-2xl text-center"
+          role="status"
+          aria-busy="true"
           aria-live="polite"
         >
-          <Loader
-            size={18}
-            color="currentColor"
-            className="animate-spin"
-            aria-hidden="true"
-          />
-          <span className="text-sm">Carregando assinatura…</span>
+          <span className="sr-only">Carregando assinatura…</span>
+          <Skeleton className="mx-auto mb-3 h-3 w-24" />
+          <Skeleton className="mx-auto mb-4 h-12 w-80 max-w-full" />
+          <Skeleton className="mx-auto h-6 w-full max-w-xl" />
         </div>
-      ) : null}
+      ) : (
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="onside-kicker onside-kicker-acid mb-3">
+            {hasActivePlan ? 'Alterar plano' : 'Último passo'}
+          </p>
+          <h1 className="onside-display mb-4 text-4xl text-[var(--onside-paper)] md:text-5xl">
+            {hasActivePlan
+              ? 'Escolha seu novo plano.'
+              : 'Escolha o plano do seu bar.'}
+          </h1>
+          <p className="onside-text-muted-on-ink text-lg">
+            {hasActivePlan
+              ? 'A mudança entra em vigor no próximo ciclo de cobrança.'
+              : 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'}
+          </p>
+        </div>
+      )}
 
       {subscriptionQuery.isError ? (
         <div className="onside-callout onside-callout-danger mx-auto mb-8 max-w-2xl">
@@ -237,7 +237,15 @@ function PlanSelection() {
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3"
+        aria-busy={configQuery.isLoading || undefined}
+      >
+        {configQuery.isLoading ? (
+          <span className="sr-only">
+            Verificando disponibilidade da contratação…
+          </span>
+        ) : null}
         <Link
           to={exitLink.to}
           className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"

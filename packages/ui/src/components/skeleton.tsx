@@ -1,10 +1,11 @@
 import { cn } from '@findsports_oficial/ui/lib/utils'
 
-function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
+function Skeleton({ className, ...props }: React.ComponentProps<'span'>) {
   return (
-    <div
+    <span
       data-slot="skeleton"
-      className={cn('animate-pulse rounded-none bg-muted', className)}
+      className={cn('block animate-pulse rounded-none bg-muted', className)}
+      aria-hidden="true"
       {...props}
     />
   )

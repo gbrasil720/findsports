@@ -62,7 +62,12 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
       <p className="font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-live-text)] uppercase tracking-[0.14em]">
         Zona de exclusão
       </p>
-      <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+        aria-busy={
+          surface === 'pub' && eligibility.isLoading ? true : undefined
+        }
+      >
         <div className="flex min-w-0 gap-3">
           <Trash
             size={20}
@@ -99,6 +104,12 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
           </Button>
         )}
       </div>
+
+      {surface === 'pub' && eligibility.isLoading ? (
+        <p className="sr-only" role="status" aria-live="polite">
+          Verificando a assinatura antes de liberar a exclusão da conta…
+        </p>
+      ) : null}
 
       {blocked ? (
         <div className="onside-callout onside-callout-warn mt-4" role="status">

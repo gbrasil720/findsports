@@ -287,8 +287,31 @@ function ComparisonResult({
   if (!mode || mode === 'previous_period') return null
   if (loading && !comparison) {
     return (
-      <div className="onside-panel mb-4 p-4 text-sm text-[var(--onside-muted)]">
-        Calculando comparação com os dados do bar…
+      <div
+        className="onside-panel mb-4 space-y-4 p-4"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <span className="sr-only">
+          Calculando comparação com os dados do bar…
+        </span>
+        <Skeleton className="h-5 w-44" />
+        <Skeleton className="h-3 w-3/4 max-w-full" />
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-3 gap-3 border-b border-[var(--onside-line)] pb-2">
+            {[1, 2, 3].map((item) => (
+              <Skeleton key={item} className="h-3 w-full" />
+            ))}
+          </div>
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="grid grid-cols-3 gap-3 py-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3 justify-self-end" />
+              <Skeleton className="h-4 w-2/3 justify-self-end" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -420,13 +443,34 @@ function ComparisonResult({
 
 function PerformanceSkeleton() {
   return (
-    <div className="onside-panel-acid p-4">
-      <h3 className="onside-heading mb-3">
-        {getMetric('eventPerformance').label}
-      </h3>
-      <div className="space-y-3">
-        {[1, 2].map((i) => (
-          <Skeleton key={i} className="h-12 w-full bg-[var(--onside-paper)]" />
+    <div
+      className="onside-panel-acid p-4"
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only">Carregando desempenho por jogo…</span>
+      <Skeleton className="mb-2 h-6 w-48 bg-[var(--onside-paper)]" />
+      <Skeleton className="mb-4 h-3 w-56 bg-[var(--onside-paper)]" />
+      <div className="grid grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 border-[var(--onside-line)] border-b pb-1.5 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]">
+        <Skeleton className="h-3 w-20 bg-[var(--onside-paper)]" />
+        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-paper)] sm:block" />
+        <Skeleton className="h-3 w-12 justify-self-end bg-[var(--onside-paper)]" />
+        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-paper)] sm:block" />
+        <span />
+      </div>
+      <div className="space-y-1">
+        {[1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 px-2 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]"
+          >
+            <Skeleton className="h-4 w-3/4 bg-[var(--onside-paper)]" />
+            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-paper)] sm:block" />
+            <Skeleton className="h-4 w-8 justify-self-end bg-[var(--onside-paper)]" />
+            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-paper)] sm:block" />
+            <Skeleton className="size-3 bg-[var(--onside-paper)]" />
+          </div>
         ))}
       </div>
     </div>

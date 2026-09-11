@@ -1,7 +1,7 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Compass from 'reicon-react/icons/Compass'
-import Loader from 'reicon-react/icons/Loader'
 import Location from 'reicon-react/icons/Location'
 
 import type { BarRecommendation } from './profile-model'
@@ -37,11 +37,24 @@ export function ProfileRecommendations(props: Props) {
 
       {props.loading ? (
         <div
-          className="flex min-h-28 items-center justify-center text-[var(--onside-muted)]"
+          className="grid gap-3 sm:grid-cols-3"
           role="status"
-          aria-label="Carregando sugestões"
+          aria-busy="true"
+          aria-live="polite"
         >
-          <Loader size={22} color="currentColor" className="animate-spin" />
+          <span className="sr-only">Carregando sugestões…</span>
+          {[1, 2, 3].map((item) => (
+            <div
+              key={item}
+              className="flex min-h-[190px] flex-col border border-[var(--onside-line)] bg-[var(--onside-stone)] p-4"
+            >
+              <Skeleton className="mb-2 h-4 w-3/4 max-w-full" />
+              <Skeleton className="mb-4 h-3 w-1/2 max-w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="mt-auto h-3 w-2/3" />
+              <Skeleton className="mt-4 h-11 w-full" />
+            </div>
+          ))}
         </div>
       ) : null}
 

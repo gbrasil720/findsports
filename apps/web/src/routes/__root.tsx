@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/style/noHeadElement: The root shell must render the document head directly. */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: PostHog lifecycle effects intentionally use guarded route state. */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -226,7 +227,24 @@ function RootDocument() {
         >
           <PostHogProvider />
           {impersonatedBy ? (
-            <Suspense fallback={null}>
+            <Suspense
+              fallback={
+                <div
+                  className="onside-banner sticky top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)]"
+                  role="status"
+                  aria-busy="true"
+                  aria-live="polite"
+                >
+                  <span className="sr-only">
+                    Carregando aviso de personificação…
+                  </span>
+                  <div className="mx-auto flex min-h-11 w-full max-w-[var(--onside-max)] items-center gap-2.5 px-4 py-2.5">
+                    <Skeleton className="size-7 bg-[var(--onside-ink)]/20" />
+                    <Skeleton className="h-4 w-64 max-w-[calc(100vw-5rem)] bg-[var(--onside-ink)]/20" />
+                  </div>
+                </div>
+              }
+            >
               <ImpersonationBanner />
             </Suspense>
           ) : null}

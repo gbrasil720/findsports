@@ -7,7 +7,7 @@ type Props = {
     'aria-hidden'?: boolean | 'true' | 'false'
   }>
   title: string
-  description: string
+  description: ReactNode
   action: ReactNode
 }
 

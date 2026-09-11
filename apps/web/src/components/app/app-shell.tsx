@@ -98,6 +98,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
               <button
                 type="button"
                 aria-label={menuLabel}
+                aria-busy={isPending || undefined}
+                disabled={isPending}
                 className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
               />
             }
@@ -119,17 +121,26 @@ export function AppShell({ variant, userMeta, children }: Props) {
               </Avatar>
             )}
             <div className="hidden min-w-0 leading-tight text-left sm:block">
-              {/* O chip do cabeçalho é estreito de propósito; o nome inteiro
-                  aparece no cabeçalho do menu, que tem largura para ele. */}
-              <div
-                className="max-w-[140px] truncate font-bold text-xs"
-                title={name || undefined}
-              >
-                {name || '…'}
-              </div>
-              <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-                {userMeta ?? accountLabel}
-              </div>
+              {isPending ? (
+                <div className="space-y-1.5">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-2.5 w-14" />
+                </div>
+              ) : (
+                <>
+                  {/* O chip do cabeçalho é estreito de propósito; o nome inteiro
+                      aparece no cabeçalho do menu, que tem largura para ele. */}
+                  <div
+                    className="max-w-[140px] truncate font-bold text-xs"
+                    title={name || undefined}
+                  >
+                    {name || '…'}
+                  </div>
+                  <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                    {userMeta ?? accountLabel}
+                  </div>
+                </>
+              )}
             </div>
             <ChevronDown
               size={14}
