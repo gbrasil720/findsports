@@ -218,6 +218,13 @@
       "when": 1788962757165,
       "tag": "0031_mature_mikhail_rasputin",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789077905946,
+      "tag": "0032_magical_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

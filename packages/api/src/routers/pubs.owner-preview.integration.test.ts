@@ -16,11 +16,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-function contextFor(
-  userId: string,
-  role: 'pub' | 'fan',
-  now = new Date()
-) {
+function contextFor(userId: string, role: 'pub' | 'fan', now = new Date()) {
   return {
     auth: null,
     clientIp: '127.0.0.1',

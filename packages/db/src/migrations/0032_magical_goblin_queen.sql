@@ -1,0 +1,3 @@
+CREATE INDEX "bar_commercial_daily_rollup_pending_idx" ON "bar_commercial_daily_rollup" USING btree ("commercial_day") WHERE is_finalized = false;--> statement-breakpoint
+CREATE INDEX "bar_commercial_event_commercialDay_idx" ON "bar_commercial_event" USING btree ("commercial_day");--> statement-breakpoint
+CREATE INDEX "bar_commercial_event_daily_rollup_pending_idx" ON "bar_commercial_event_daily_rollup" USING btree ("commercial_day") WHERE is_finalized = false;

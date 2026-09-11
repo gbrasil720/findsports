@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { and, eq, inArray } from '@findsports_oficial/db'
+import { and, eq, inArray, sql } from '@findsports_oficial/db'
 import {
   barCommercialDailyRollup,
   barCommercialEvent,
@@ -185,6 +185,269 @@ integrationTest(
   }
 )
 
+// WEB-110: a consolidação não varre mais a tabela de brutos inteira — cada
+// projeção começa no primeiro dia que ela própria ainda não fechou. O piso é o
+// MENOR dia pendente, não o maior dia já consolidado: um dia antigo pendente
+// continua sendo consolidado mesmo com dia mais novo já finalizado. E o dia já
+// finalizado que cai dentro da faixa segue protegido pelo `ON CONFLICT`.
+integrationTest(
+  'WEB-110: o piso da consolidação é o dia pendente mais antigo, e não reescreve dia já fechado',
+  async () => {
+    const [{ db }, { runAnalyticsRetention }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('../lib/commercial-analytics/recorder')
+    ])
+
+    const dia = (offsetDias: number): Date => {
+      const d = new Date()
+      d.setUTCHours(12, 0, 0, 0)
+      d.setUTCDate(d.getUTCDate() + offsetDias)
+      return d
+    }
+    const iso = (d: Date) => d.toISOString().slice(0, 10)
+
+    const diaPendente = dia(-10)
+    const diaFechado = dia(-3)
+
+    const barId = crypto.randomUUID()
+    const pubUserId = crypto.randomUUID()
+    const jogoId = crypto.randomUUID()
+    const fanIds = [crypto.randomUUID(), crypto.randomUUID()] as const
+
+    const rawRow = (
+      actorUserId: string,
+      type: CommercialEventType,
+      occurredAt: Date,
+      sourceEventId?: string
+    ) => ({
+      id: crypto.randomUUID(),
+      barId,
+      actorUserId,
+      type,
+      sourceEventId,
+      occurredAt,
+      commercialDay: getCommercialDay(occurredAt),
+      createdAt: occurredAt
+    })
+
+    try {
+      await db.insert(user).values([
+        {
+          id: pubUserId,
+          name: 'Pub WEB-110',
+          email: `pub-${pubUserId}@web110.invalid`,
+          emailVerified: true,
+          role: 'pub' as const,
+          onboardingCompleted: true
+        },
+        ...fanIds.map((id, i) => ({
+          id,
+          name: `Fan WEB-110 ${i}`,
+          email: `fan-${id}@web110.invalid`,
+          emailVerified: true,
+          role: 'fan' as const,
+          onboardingCompleted: true
+        }))
+      ])
+      await db.insert(bar).values({
+        id: barId,
+        userId: pubUserId,
+        name: 'Bar WEB-110',
+        address: 'Rua Central, 110',
+        neighborhood: 'Centro',
+        city: 'São Paulo',
+        latitude: '-23.55000000',
+        longitude: '-46.63000000',
+        isActive: true
+      })
+
+      await db
+        .insert(barCommercialEvent)
+        .values([
+          rawRow(fanIds[0], 'profile_view', diaPendente),
+          rawRow(fanIds[0], 'phone_clicked', diaPendente, jogoId),
+          rawRow(fanIds[1], 'profile_view', diaPendente, jogoId),
+          rawRow(fanIds[1], 'profile_view', diaFechado)
+        ])
+
+      // Dia antigo pendente, como o gravador o deixa; dia mais novo já
+      // fechado, com contador propositalmente errado para provar que a
+      // consolidação não o reescreve mesmo caindo dentro da faixa varrida.
+      await db.insert(barCommercialDailyRollup).values([
+        { barId, commercialDay: iso(diaPendente), isFinalized: false },
+        {
+          barId,
+          commercialDay: iso(diaFechado),
+          profileViews: 99,
+          uniqueVisitors: 99,
+          isFinalized: true
+        }
+      ])
+      await db.insert(barCommercialEventDailyRollup).values({
+        barId,
+        eventId: jogoId,
+        commercialDay: iso(diaPendente),
+        isFinalized: false
+      })
+
+      await runAnalyticsRetention({ retentionDays: 365 })
+
+      const [pendente] = await db
+        .select()
+        .from(barCommercialDailyRollup)
+        .where(
+          and(
+            eq(barCommercialDailyRollup.barId, barId),
+            eq(barCommercialDailyRollup.commercialDay, iso(diaPendente))
+          )
+        )
+      expect(pendente?.isFinalized).toBe(true)
+      expect(pendente?.profileViews).toBe(2)
+      expect(pendente?.phoneClicked).toBe(1)
+      expect(pendente?.uniqueVisitors).toBe(2)
+      expect(pendente?.interestedPeople).toBe(1)
+      expect(pendente?.highIntentActions).toBe(1)
+
+      const [porJogo] = await db
+        .select()
+        .from(barCommercialEventDailyRollup)
+        .where(eq(barCommercialEventDailyRollup.barId, barId))
+      expect(porJogo?.isFinalized).toBe(true)
+      expect(porJogo?.profileViews).toBe(1)
+      expect(porJogo?.phoneClicked).toBe(1)
+
+      const [fechado] = await db
+        .select()
+        .from(barCommercialDailyRollup)
+        .where(
+          and(
+            eq(barCommercialDailyRollup.barId, barId),
+            eq(barCommercialDailyRollup.commercialDay, iso(diaFechado))
+          )
+        )
+      expect(fechado?.profileViews).toBe(99)
+      expect(fechado?.uniqueVisitors).toBe(99)
+    } finally {
+      await db
+        .delete(barCommercialEventDailyRollup)
+        .where(eq(barCommercialEventDailyRollup.barId, barId))
+      await db
+        .delete(barCommercialDailyRollup)
+        .where(eq(barCommercialDailyRollup.barId, barId))
+      await db
+        .delete(barCommercialEvent)
+        .where(eq(barCommercialEvent.barId, barId))
+      await db.delete(user).where(inArray(user.id, [pubUserId, ...fanIds]))
+    }
+  }
+)
+
+// WEB-110: `commercial_day` é gravado em America/Sao_Paulo e o servidor roda em
+// UTC. Com `CURRENT_DATE` como teto, das 21h à meia-noite de São Paulo o dia
+// corrente já contava como fechado e era consolidado enquanto ainda recebia
+// evento. O teto passou a ser o dia comercial do instante de referência.
+integrationTest(
+  'WEB-110: o teto da consolidação é o dia comercial, não a data UTC do servidor',
+  async () => {
+    const [{ db }, { runAnalyticsRetention }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('../lib/commercial-analytics/recorder')
+    ])
+
+    // meio-dia UTC = 09h em São Paulo: mesmo dia comercial do offset
+    const dia = (offsetDias: number): Date => {
+      const d = new Date()
+      d.setUTCHours(12, 0, 0, 0)
+      d.setUTCDate(d.getUTCDate() + offsetDias)
+      return d
+    }
+
+    const diaCorrente = getCommercialDay(dia(-2))
+    const diaAnterior = getCommercialDay(dia(-3))
+    // 22h30 em São Paulo do dia corrente = 01h30 UTC do dia seguinte. É a
+    // janela em que a data do servidor e o dia comercial discordam.
+    const agora = new Date(`${diaCorrente}T22:30:00.000-03:00`)
+
+    const barId = crypto.randomUUID()
+    const pubUserId = crypto.randomUUID()
+    const fanId = crypto.randomUUID()
+
+    const rawRow = (occurredAt: Date) => ({
+      id: crypto.randomUUID(),
+      barId,
+      actorUserId: fanId,
+      type: 'profile_view' as const,
+      occurredAt,
+      commercialDay: getCommercialDay(occurredAt),
+      createdAt: occurredAt
+    })
+
+    try {
+      await db.insert(user).values([
+        {
+          id: pubUserId,
+          name: 'Pub WEB-110 fuso',
+          email: `pub-${pubUserId}@web110tz.invalid`,
+          emailVerified: true,
+          role: 'pub' as const,
+          onboardingCompleted: true
+        },
+        {
+          id: fanId,
+          name: 'Fan WEB-110 fuso',
+          email: `fan-${fanId}@web110tz.invalid`,
+          emailVerified: true,
+          role: 'fan' as const,
+          onboardingCompleted: true
+        }
+      ])
+      await db.insert(bar).values({
+        id: barId,
+        userId: pubUserId,
+        name: 'Bar WEB-110 fuso',
+        address: 'Rua Central, 111',
+        neighborhood: 'Centro',
+        city: 'São Paulo',
+        latitude: '-23.55000000',
+        longitude: '-46.63000000',
+        isActive: true
+      })
+      await db
+        .insert(barCommercialEvent)
+        .values([rawRow(dia(-3)), rawRow(dia(-2))])
+      await db.insert(barCommercialDailyRollup).values([
+        { barId, commercialDay: diaAnterior, isFinalized: false },
+        { barId, commercialDay: diaCorrente, isFinalized: false }
+      ])
+
+      await runAnalyticsRetention({ retentionDays: 365, agora })
+
+      const rollups = await db
+        .select()
+        .from(barCommercialDailyRollup)
+        .where(eq(barCommercialDailyRollup.barId, barId))
+      const anterior = rollups.find((r) => r.commercialDay === diaAnterior)
+      const corrente = rollups.find((r) => r.commercialDay === diaCorrente)
+
+      // Dia já fechado às 22h30 de São Paulo: consolidado.
+      expect(anterior?.isFinalized).toBe(true)
+      expect(anterior?.profileViews).toBe(1)
+      // Dia ainda em curso naquele instante: intocado, mesmo com a data UTC
+      // do servidor já apontando para depois dele.
+      expect(corrente?.isFinalized).toBe(false)
+      expect(corrente?.profileViews).toBe(0)
+    } finally {
+      await db
+        .delete(barCommercialDailyRollup)
+        .where(eq(barCommercialDailyRollup.barId, barId))
+      await db
+        .delete(barCommercialEvent)
+        .where(eq(barCommercialEvent.barId, barId))
+      await db.delete(user).where(inArray(user.id, [pubUserId, fanId]))
+    }
+  }
+)
+
 // WEB-98: depois de podar eventos brutos, o painel continua servido pelos
 // rollups diários finalizados. Antes desta correção, `getMyAnalyticsOverview`
 // lia só `bar_commercial_event`, e um período podado voltava zerado mesmo com
@@ -355,6 +618,29 @@ integrationTest(
         rawRow(fanIds[4], 'whatsapp_opened', recentDay),
         rawRow(fanIds[5], 'profile_view', recentDay, recentEventId)
       ])
+
+      // WEB-110: em produção a linha do rollup nasce no mesmo comando do
+      // evento bruto, e a consolidação passou a começar no primeiro dia que
+      // cada projeção ainda não fechou. O fixture insere bruto direto, então
+      // registra os dias do mesmo jeito que o gravador faria — sem finalizar,
+      // que é justamente o que a retenção abaixo vai fazer.
+      await db.execute(sql`
+        INSERT INTO bar_commercial_daily_rollup (bar_id, commercial_day, is_finalized)
+        SELECT DISTINCT bar_id, commercial_day, false
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+        ON CONFLICT (bar_id, commercial_day) DO NOTHING
+      `)
+      await db.execute(sql`
+        INSERT INTO bar_commercial_event_daily_rollup (
+          bar_id, event_id, commercial_day, is_finalized
+        )
+        SELECT DISTINCT bar_id, source_event_id, commercial_day, false
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+          AND source_event_id IS NOT NULL
+        ON CONFLICT (bar_id, event_id, commercial_day) DO NOTHING
+      `)
 
       // ------------------------- Fase A: leitura exata --------------------
       const antes = await getMyAnalyticsOverview(barId, from, to)
