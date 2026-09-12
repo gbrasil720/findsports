@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import { Loader } from './components/loader'
 import { NotFoundPage } from './components/not-found/not-found-page'
+import { getUserFacingError } from './lib/user-facing-error'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
@@ -32,12 +33,21 @@ export const getRouter = () => {
     queryCache: new QueryCache({
       onError: (error, query) => {
         if (query.meta?.errorToast === false) return
-        toast.error(error.message, {
-          action: {
-            label: 'Tentar novamente',
-            onClick: () => query.invalidate()
-          }
-        })
+        const feedback = getUserFacingError(
+          error,
+          'Não foi possível carregar este conteúdo.'
+        )
+        toast.error(
+          feedback.message,
+          feedback.retryable
+            ? {
+                action: {
+                  label: 'Tentar novamente',
+                  onClick: () => query.invalidate()
+                }
+              }
+            : undefined
+        )
       }
     }),
     defaultOptions: { queries: { staleTime: 60 * 1000 } }

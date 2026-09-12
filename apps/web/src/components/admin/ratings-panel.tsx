@@ -11,7 +11,7 @@ type Ratings = inferRouterOutputs<AppRouter>['pub']['getMyRatings']
 type Props = {
   state:
     | { status: 'loading' }
-    | { status: 'error'; retry: () => void }
+    | { status: 'error'; retry: () => void; retryable: boolean }
     | { status: 'ready'; ratings: Ratings }
 }
 
@@ -55,17 +55,19 @@ export function RatingsPanel({ state }: Props) {
 
   if (state.status === 'error') {
     return (
-      <section className="onside-panel p-5 md:p-6">
+      <section className="onside-panel p-5 md:p-6" role="alert">
         <p className="text-[var(--onside-live-text)] text-sm">
           Não foi possível carregar as avaliações.
         </p>
-        <button
-          type="button"
-          onClick={state.retry}
-          className="mt-2 min-h-11 font-bold text-[var(--onside-ink)] text-sm underline underline-offset-2"
-        >
-          Tentar de novo
-        </button>
+        {state.retryable ? (
+          <button
+            type="button"
+            onClick={state.retry}
+            className="mt-2 min-h-11 font-bold text-[var(--onside-ink)] text-sm underline underline-offset-2"
+          >
+            Tentar de novo
+          </button>
+        ) : null}
       </section>
     )
   }

@@ -34,6 +34,7 @@ import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard')({
@@ -91,7 +92,7 @@ function FanDashboard() {
         setLocationState('granted')
       },
       (error) => {
-        console.log('Geolocation error:', error.code, error.message)
+        console.debug('Geolocation unavailable:', error.code)
         setLocationState(error.code === 1 ? 'denied' : 'unavailable')
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60 * 1000 }
@@ -119,7 +120,8 @@ function FanDashboard() {
 
   const sportsQuery = useQuery({
     ...trpc.pubs.getSports.queryOptions(),
-    ...CATALOG_QUERY
+    ...CATALOG_QUERY,
+    meta: { errorToast: false }
   })
 
   // A ordenação por nota só existe quando a nota é pública. Falha de leitura
@@ -129,8 +131,8 @@ function FanDashboard() {
   const canSortByRating =
     appConfigQuery.data?.['rating.public_display'] === true
   const searchCenter = coords ?? SAO_PAULO_FALLBACK
-  const primaryQuery = useQuery(
-    trpc.pubs.search.queryOptions({
+  const primaryQuery = useQuery({
+    ...trpc.pubs.search.queryOptions({
       ...searchCenter,
       radiusKm,
       sportId,
@@ -138,8 +140,9 @@ function FanDashboard() {
       amenities: amenities.length > 0 ? amenities : undefined,
       sort,
       limit: 30
-    })
-  )
+    }),
+    meta: { errorToast: false }
+  })
   // Termo, esporte ou característica marcada é pedido explícito. Com um deles
   // no ar, "todos os bares por perto" não responde à pergunta feita.
   const hasSearchIntent =
@@ -153,7 +156,8 @@ function FanDashboard() {
       radiusKm,
       limit: 30
     }),
-    enabled: primaryEmpty && !hasSearchIntent
+    enabled: primaryEmpty && !hasSearchIntent,
+    meta: { errorToast: false }
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
 
@@ -171,7 +175,13 @@ function FanDashboard() {
           queryKey: trpc.ratings.getPending.queryKey()
         })
       },
-      onError: (err) => toast.error(err.message || 'Erro ao avaliar')
+      onError: (err) =>
+        toast.error(
+          getUserFacingMessage(
+            err,
+            'Não foi possível registrar sua avaliação. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -189,7 +199,11 @@ function FanDashboard() {
   const sportsState: SportsState = sportsQuery.isLoading
     ? { status: 'loading' }
     : sportsQuery.isError || !sportsQuery.data
-      ? { status: 'error', retry: () => void sportsQuery.refetch() }
+      ? {
+          status: 'error',
+          retry: () => void sportsQuery.refetch(),
+          retryable: isRetryableError(sportsQuery.error)
+        }
       : { status: 'ready', sports: sportsQuery.data }
   const sports = sportsState.status === 'ready' ? sportsState.sports : []
   const favoriteIds = useMemo(
@@ -254,11 +268,17 @@ function FanDashboard() {
       setFavoriteOverrides((current) => ({ ...current, [barId]: true }))
       return { previous }
     },
-    onError: (_error, { barId }, context) => {
+    onError: (error, { barId }, context) => {
       setFavoriteOverrides((current) => ({
         ...current,
         [barId]: context?.previous
       }))
+      toast.error(
+        getUserFacingMessage(
+          error,
+          'Não foi possível adicionar o bar aos favoritos. Tente novamente.'
+        )
+      )
     },
     onSettled: async (_data, _error, { barId }) => {
       await queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
@@ -272,11 +292,17 @@ function FanDashboard() {
       setFavoriteOverrides((current) => ({ ...current, [barId]: false }))
       return { previous }
     },
-    onError: (_error, { barId }, context) => {
+    onError: (error, { barId }, context) => {
       setFavoriteOverrides((current) => ({
         ...current,
         [barId]: context?.previous
       }))
+      toast.error(
+        getUserFacingMessage(
+          error,
+          'Não foi possível remover o bar dos favoritos. Tente novamente.'
+        )
+      )
     },
     onSettled: async (_data, _error, { barId }) => {
       await queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
@@ -383,6 +409,9 @@ function FanDashboard() {
     if (resultState.source === 'primary') void primaryQuery.refetch()
     else void fallbackQuery.refetch()
   }
+  const retryableResults = primaryQuery.isError
+    ? isRetryableError(primaryQuery.error)
+    : isRetryableError(fallbackQuery.error)
   const toggleFavorite = (barId: string) => {
     if (favoriteIds.has(barId)) {
       unfavoriteMutation.mutate({ barId })
@@ -468,6 +497,7 @@ function FanDashboard() {
         onRadiusChange={handleRadiusChange}
         onReset={reset}
         onRetry={retryResults}
+        retryable={retryableResults}
         onSuggestion={applySuggestion}
         onSelectMapBar={(barId) => {
           const bar = displayedBars.find((item) => item.id === barId)

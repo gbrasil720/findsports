@@ -21,12 +21,19 @@ type Props = {
   favoritesCount: number
   preferencesCount: number
   loadingPreferences: boolean
+  preferencesError: string | null
+  preferencesRetryable: boolean
+  onRetryPreferences: () => void
   radiusKm: number
   loadingFavorites: boolean
+  favoritesError: string | null
+  favoritesRetryable: boolean
+  onRetryFavorites: () => void
   upcomingEvents: FavoriteEvent[]
   recommendations: BarRecommendation[]
   loadingRecommendations: boolean
   recommendationsError: boolean
+  recommendationsRetryable: boolean
   dismissingRecommendation: boolean
   onRetryRecommendations: () => void
   onOpenRecommendation: (barId: string) => void
@@ -40,12 +47,19 @@ export function ProfileOverview({
   favoritesCount,
   preferencesCount,
   loadingPreferences,
+  preferencesError,
+  preferencesRetryable,
+  onRetryPreferences,
   radiusKm,
   loadingFavorites,
+  favoritesError,
+  favoritesRetryable,
+  onRetryFavorites,
   upcomingEvents,
   recommendations,
   loadingRecommendations,
   recommendationsError,
+  recommendationsRetryable,
   dismissingRecommendation,
   onRetryRecommendations,
   onOpenRecommendation,
@@ -55,7 +69,7 @@ export function ProfileOverview({
   const completedItems = completionItems.filter((item) => item.done).length
   const stats = [
     {
-      value: String(favoritesCount),
+      value: favoritesError ? '—' : String(favoritesCount),
       label: 'Favoritos',
       Icon: Heart,
       tab: 'Favoritos' as const
@@ -67,7 +81,7 @@ export function ProfileOverview({
       tab: 'Configurações' as const
     },
     {
-      value: String(preferencesCount),
+      value: preferencesError ? '—' : String(preferencesCount),
       label: 'Esportes',
       Icon: Medal,
       tab: 'Configurações' as const
@@ -85,6 +99,38 @@ export function ProfileOverview({
             ? 'Carregando favoritos e próximos jogos…'
             : 'Carregando seus esportes favoritos…'}
         </span>
+      ) : null}
+      {favoritesError || preferencesError ? (
+        <div className="onside-callout onside-callout-danger" role="alert">
+          {favoritesError ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm">{favoritesError}</p>
+              {favoritesRetryable ? (
+                <button
+                  type="button"
+                  onClick={onRetryFavorites}
+                  className="onside-btn onside-btn-outline min-h-11 shrink-0"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {preferencesError ? (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm">{preferencesError}</p>
+              {preferencesRetryable ? (
+                <button
+                  type="button"
+                  onClick={onRetryPreferences}
+                  className="onside-btn onside-btn-outline min-h-11 shrink-0"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {completionScore < 100 ? (
         <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5">
@@ -166,7 +212,7 @@ export function ProfileOverview({
 
       {loadingFavorites ? (
         <UpcomingEventsSkeleton />
-      ) : upcomingEvents.length > 0 ? (
+      ) : favoritesError ? null : upcomingEvents.length > 0 ? (
         <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
           <h2 className="mb-4 flex items-center gap-2 font-bold text-lg">
             <Fire
@@ -243,6 +289,7 @@ export function ProfileOverview({
         recommendations={recommendations}
         loading={loadingRecommendations}
         error={recommendationsError}
+        retryable={recommendationsRetryable}
         dismissing={dismissingRecommendation}
         onRetry={onRetryRecommendations}
         onOpen={onOpenRecommendation}

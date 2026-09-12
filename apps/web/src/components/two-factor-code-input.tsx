@@ -20,7 +20,8 @@ export function TwoFactorCodeInput({
   onComplete,
   invalid = false,
   autoFocus = false,
-  disabled = false
+  disabled = false,
+  describedBy
 }: {
   id: string
   value: string
@@ -29,6 +30,7 @@ export function TwoFactorCodeInput({
   invalid?: boolean
   autoFocus?: boolean
   disabled?: boolean
+  describedBy?: string
 }) {
   return (
     <InputOTP
@@ -41,6 +43,7 @@ export function TwoFactorCodeInput({
       inputMode="numeric"
       autoComplete="one-time-code"
       aria-invalid={invalid}
+      aria-describedby={describedBy}
       autoFocus={autoFocus}
       disabled={disabled}
       required

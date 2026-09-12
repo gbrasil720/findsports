@@ -17,6 +17,10 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 import { AccountActionRow } from './account-action-row'
 
 const qrCodeModule = QRCodeModule as unknown
@@ -109,7 +113,12 @@ function EnableTwoFactorDialog({
     const result = await authClient.twoFactor.enable({ password })
     setSaving(false)
     if (result.error || !result.data) {
-      setError(result.error?.message ?? 'Não foi possível iniciar a ativação.')
+      setError(
+        getUserFacingMessage(
+          result.error,
+          'Não foi possível iniciar a ativação.'
+        )
+      )
       return
     }
     setTotpUri(result.data.totpURI)
@@ -131,8 +140,14 @@ function EnableTwoFactorDialog({
       })
       if (result.error) {
         setCode('')
+        const feedback = getUserFacingError(
+          result.error,
+          'Código inválido. Tente o código atual.'
+        )
         setError(
-          result.error.message ?? 'Código inválido. Tente o código atual.'
+          feedback.retryable
+            ? 'Não foi possível validar o código. Tente novamente.'
+            : feedback.message
         )
         return
       }
@@ -175,11 +190,12 @@ function EnableTwoFactorDialog({
               type="password"
               autoComplete="current-password"
               aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'two-factor-password-error' : undefined}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
-            <FieldError>{error}</FieldError>
+            <FieldError id="two-factor-password-error">{error}</FieldError>
           </Field>
           <DialogActions
             saving={saving}
@@ -217,12 +233,13 @@ function EnableTwoFactorDialog({
             <TwoFactorCodeInput
               id="two-factor-code"
               invalid={Boolean(error)}
+              describedBy={error ? 'two-factor-code-error' : undefined}
               value={code}
               onChange={setCode}
               onComplete={(value) => void verifyCode(value)}
               disabled={saving}
             />
-            <FieldError>{error}</FieldError>
+            <FieldError id="two-factor-code-error">{error}</FieldError>
           </Field>
           <DialogActions
             saving={saving}
@@ -272,7 +289,12 @@ function ManageTwoFactorDialog({
     const result = await authClient.twoFactor.generateBackupCodes({ password })
     setSaving(false)
     if (result.error || !result.data) {
-      setError(result.error?.message ?? 'Não foi possível gerar novos códigos.')
+      setError(
+        getUserFacingMessage(
+          result.error,
+          'Não foi possível gerar novos códigos.'
+        )
+      )
       return
     }
     setCodes(result.data.backupCodes)
@@ -285,7 +307,9 @@ function ManageTwoFactorDialog({
     const result = await authClient.twoFactor.disable({ password })
     setSaving(false)
     if (result.error) {
-      setError(result.error.message ?? 'Não foi possível desativar o 2FA.')
+      setError(
+        getUserFacingMessage(result.error, 'Não foi possível desativar o 2FA.')
+      )
       return
     }
     toast.success('Autenticação em dois fatores desativada.')
@@ -330,11 +354,12 @@ function ManageTwoFactorDialog({
               type="password"
               autoComplete="current-password"
               aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'manage-two-factor-error' : undefined}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
-            <FieldError>{error}</FieldError>
+            <FieldError id="manage-two-factor-error">{error}</FieldError>
           </Field>
           <DialogActions
             saving={saving}

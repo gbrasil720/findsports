@@ -19,6 +19,7 @@ import {
   createTwoFactorChallenge,
   TWO_FACTOR_CHALLENGE_KEY
 } from '@/lib/two-factor-challenge'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
@@ -74,7 +75,11 @@ function LoginPage() {
       setIsLoading(false)
       if (error) {
         toast.error(
-          error.message ?? 'Credenciais inválidas. Verifique e tente novamente.'
+          getUserFacingMessage(
+            error,
+            'Não foi possível entrar. Tente novamente.',
+            'credentials'
+          )
         )
         return
       }

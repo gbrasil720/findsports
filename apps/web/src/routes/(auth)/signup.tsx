@@ -25,6 +25,7 @@ import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
@@ -138,7 +139,12 @@ function SignupPage() {
       })
       setIsLoading(false)
       if (error) {
-        toast.error(error.message ?? 'Erro ao criar conta. Tente novamente.')
+        toast.error(
+          getUserFacingMessage(
+            error,
+            'Não foi possível criar sua conta. Tente novamente.'
+          )
+        )
         return
       }
       analytics.signupCompleted(role)

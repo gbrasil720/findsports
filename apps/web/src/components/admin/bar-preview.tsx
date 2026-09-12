@@ -110,9 +110,30 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
               onFavorite={() => {}}
             />
           ) : eventsState.status === 'error' || planState.status === 'error' ? (
-            <p className="py-8 text-center text-[var(--onside-muted)] text-sm">
-              Preview indisponível.
-            </p>
+            <div
+              className="flex flex-col items-center gap-3 py-8 text-center text-[var(--onside-muted)] text-sm"
+              role="alert"
+            >
+              <p>Preview indisponível.</p>
+              {eventsState.status === 'error' && eventsState.retryable ? (
+                <button
+                  type="button"
+                  onClick={eventsState.retry}
+                  className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+              {planState.status === 'error' && planState.retryable ? (
+                <button
+                  type="button"
+                  onClick={planState.retry}
+                  className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+            </div>
           ) : (
             <div
               className="grid min-h-[158px] grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4"
@@ -162,8 +183,20 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
                   : 'Carregando plano…'}
               </span>
               {planState.status === 'error' ? (
-                <div className="grid h-full place-items-center text-[var(--onside-muted)] text-sm">
-                  Mapa indisponível.
+                <div
+                  className="flex h-full flex-col items-center justify-center gap-3 text-[var(--onside-muted)] text-sm"
+                  role="alert"
+                >
+                  <p>Mapa indisponível.</p>
+                  {planState.retryable ? (
+                    <button
+                      type="button"
+                      onClick={planState.retry}
+                      className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
+                    >
+                      Tentar novamente
+                    </button>
+                  ) : null}
                 </div>
               ) : (
                 <Skeleton className="size-full" />

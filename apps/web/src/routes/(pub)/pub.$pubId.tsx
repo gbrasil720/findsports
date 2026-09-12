@@ -3,6 +3,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
+  Link,
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
@@ -31,6 +32,7 @@ import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { buildDirectionsUrl } from '@/lib/maps-link'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { buildWhatsAppLink } from '@/lib/whatsapp-link'
 import { useTRPC } from '@/utils/trpc'
 
@@ -173,7 +175,9 @@ function PubPage() {
   const {
     data: pub,
     isLoading: isLoadingPub,
-    isError
+    isError,
+    error: pubQueryError,
+    refetch: refetchPub
   } = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: pubId }),
     enabled: Boolean(session),
@@ -183,6 +187,11 @@ function PubPage() {
   })
 
   const normalizedPub = useMemo(() => normalizePub(pub), [pub])
+  const pubErrorRetryable = isRetryableError(pubQueryError)
+  const pubErrorMessage = getUserFacingMessage(
+    pubQueryError,
+    'Não foi possível carregar este bar. Tente novamente.'
+  )
 
   // Extract eventId from URL search params (stable — no re-run on navigation)
   useEffect(() => {
@@ -216,11 +225,18 @@ function PubPage() {
    */
   const viewerRole = session?.user?.role
   useEffect(() => {
-    if (!isLoadingPub && !normalizedPub && isError) {
+    if (!isLoadingPub && !normalizedPub && isError && !pubErrorRetryable) {
       toast.error('Bar não encontrado.')
       navigate({ to: viewerRole === 'pub' ? '/admin' : '/dashboard' })
     }
-  }, [isLoadingPub, normalizedPub, isError, navigate, viewerRole])
+  }, [
+    isLoadingPub,
+    normalizedPub,
+    isError,
+    navigate,
+    pubErrorRetryable,
+    viewerRole
+  ])
 
   const canFavorite = canFavoriteBars(session?.user?.role)
 
@@ -239,7 +255,13 @@ function PubPage() {
         toast.success('Adicionado aos favoritos')
         setIsFavorited(true)
       },
-      onError: (err) => toast.error(err.message || 'Erro ao favoritar')
+      onError: (err) =>
+        toast.error(
+          getUserFacingMessage(
+            err,
+            'Não foi possível adicionar aos favoritos. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -249,7 +271,13 @@ function PubPage() {
         toast.success('Removido dos favoritos')
         setIsFavorited(false)
       },
-      onError: (err) => toast.error(err.message || 'Erro ao remover favorito')
+      onError: (err) =>
+        toast.error(
+          getUserFacingMessage(
+            err,
+            'Não foi possível remover dos favoritos. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -449,6 +477,34 @@ function PubPage() {
               />
 
               <BarActions {...actions} variant="bar" isOwner={isOwner} />
+            </div>
+          ) : isError && pubErrorRetryable ? (
+            <div
+              className="onside-panel mx-auto max-w-xl p-6 text-center sm:p-8"
+              role="alert"
+            >
+              <p className="onside-kicker">Falha temporária</p>
+              <h1 className="onside-display mt-3 text-3xl">
+                Não conseguimos carregar este bar.
+              </h1>
+              <p className="mt-3 text-sm text-[var(--onside-muted)]">
+                {pubErrorMessage}
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  className="onside-btn onside-btn-acid min-h-11"
+                  onClick={() => void refetchPub()}
+                >
+                  Tentar novamente
+                </button>
+                <Link
+                  to={viewerRole === 'pub' ? '/admin' : '/dashboard'}
+                  className="onside-btn onside-btn-outline min-h-11"
+                >
+                  Voltar
+                </Link>
+              </div>
             </div>
           ) : null}
         </div>

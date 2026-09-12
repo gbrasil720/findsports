@@ -25,6 +25,7 @@ import {
   resolveReceiptWait,
   shouldLeaveReceipt
 } from '@/lib/subscription-receipt'
+import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/plan_/confirmed')({
@@ -264,14 +265,19 @@ function SubscriptionConfirmed() {
               </p>
               {subscriptionQuery.isError ? (
                 <p role="alert" className="onside-receipt-error">
-                  Não conseguimos consultar sua assinatura agora.{' '}
-                  <button
-                    type="button"
-                    className="onside-receipt-retry"
-                    onClick={() => void subscriptionQuery.refetch()}
-                  >
-                    Tentar novamente
-                  </button>
+                  Não conseguimos consultar sua assinatura agora.
+                  {isRetryableError(subscriptionQuery.error) ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="onside-receipt-retry"
+                        onClick={() => void subscriptionQuery.refetch()}
+                      >
+                        Tentar novamente
+                      </button>
+                    </>
+                  ) : null}
                 </p>
               ) : null}
             </>

@@ -25,6 +25,7 @@ import {
   TWO_FACTOR_CHALLENGE_KEY,
   type TwoFactorChallenge
 } from '@/lib/two-factor-challenge'
+import { getUserFacingError } from '@/lib/user-facing-error'
 
 export const Route = createFileRoute('/(auth)/two-factor')({
   head: () => ({
@@ -81,12 +82,16 @@ function TwoFactorPage() {
           })
     setSubmitting(false)
     if (result.error) {
+      const feedback = getUserFacingError(
+        result.error,
+        method === 'totp'
+          ? 'Código inválido. Digite o código atual do autenticador.'
+          : 'Código de recuperação inválido ou já utilizado.'
+      )
       setError(
-        result.error.status === 429
-          ? 'Muitas tentativas. Aguarde antes de tentar novamente.'
-          : method === 'totp'
-            ? 'Código inválido. Digite o código atual do autenticador.'
-            : 'Código de recuperação inválido ou já utilizado.'
+        feedback.retryable
+          ? 'Não foi possível confirmar o código. Tente novamente.'
+          : feedback.message
       )
       return
     }
@@ -185,6 +190,9 @@ function TwoFactorPage() {
                     value={code}
                     onChange={setCode}
                     invalid={Boolean(error)}
+                    describedBy={
+                      error ? 'two-factor-login-code-error' : undefined
+                    }
                     autoFocus
                     disabled={submitting}
                   />
@@ -194,13 +202,18 @@ function TwoFactorPage() {
                     inputMode="text"
                     autoComplete="one-time-code"
                     aria-invalid={Boolean(error)}
+                    aria-describedby={
+                      error ? 'two-factor-login-code-error' : undefined
+                    }
                     value={code}
                     onChange={(event) => setCode(event.target.value)}
                     required
                     autoFocus
                   />
                 )}
-                <FieldError>{error}</FieldError>
+                <FieldError id="two-factor-login-code-error">
+                  {error}
+                </FieldError>
               </Field>
 
               <Field orientation="horizontal">

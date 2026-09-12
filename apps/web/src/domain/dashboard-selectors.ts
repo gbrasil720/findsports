@@ -31,7 +31,7 @@ export type Sport = RouterOutputs['pubs']['getSports'][number]
 
 export type SportsState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; sports: Sport[] }
 
 export type QuerySnapshot<T> = {

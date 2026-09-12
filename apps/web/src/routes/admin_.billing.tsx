@@ -16,6 +16,7 @@ import {
 } from '@/lib/dodo-customer-client'
 import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/billing')({
@@ -91,6 +92,18 @@ function BillingPage() {
     queryFn: listCustomerPayments,
     meta: { errorToast: false }
   })
+  const subscriptionErrorFeedback = subscriptionQuery.error
+    ? getUserFacingError(
+        subscriptionQuery.error,
+        'Não foi possível carregar a assinatura. Tente novamente.'
+      )
+    : null
+  const paymentsErrorFeedback = paymentsQuery.error
+    ? getUserFacingError(
+        paymentsQuery.error,
+        'Não foi possível carregar os pagamentos. Tente novamente.'
+      )
+    : null
 
   const handleOpenPortal = async () => {
     setOpeningPortal(true)
@@ -167,16 +180,16 @@ function BillingPage() {
                 className="onside-callout onside-callout-danger"
                 role="alert"
               >
-                <p className="text-sm">
-                  Não foi possível carregar a assinatura.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => subscriptionQuery.refetch()}
-                  className="onside-btn onside-btn-outline min-h-11"
-                >
-                  Tentar novamente
-                </button>
+                <p className="text-sm">{subscriptionErrorFeedback?.message}</p>
+                {subscriptionErrorFeedback?.retryable ? (
+                  <button
+                    type="button"
+                    onClick={() => subscriptionQuery.refetch()}
+                    className="onside-btn onside-btn-outline min-h-11"
+                  >
+                    Tentar novamente
+                  </button>
+                ) : null}
               </div>
             ) : planInfo ? (
               <div className="onside-panel-stone mb-4 p-5">
@@ -339,14 +352,16 @@ function BillingPage() {
                 className="onside-callout onside-callout-danger"
                 role="alert"
               >
-                <p className="text-sm">Erro ao carregar pagamentos.</p>
-                <button
-                  type="button"
-                  onClick={() => paymentsQuery.refetch()}
-                  className="onside-btn onside-btn-outline min-h-11"
-                >
-                  Tentar novamente
-                </button>
+                <p className="text-sm">{paymentsErrorFeedback?.message}</p>
+                {paymentsErrorFeedback?.retryable ? (
+                  <button
+                    type="button"
+                    onClick={() => paymentsQuery.refetch()}
+                    className="onside-btn onside-btn-outline min-h-11"
+                  >
+                    Tentar novamente
+                  </button>
+                ) : null}
               </div>
             ) : !paymentsQuery.data?.length ? (
               <p className="py-4 text-sm text-[var(--onside-muted)]">

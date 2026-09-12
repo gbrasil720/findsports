@@ -13,6 +13,10 @@ import { useState } from 'react'
 import Trash from 'reicon-react/icons/Trash'
 import { Modal } from '@/components/admin/modal'
 import { authClient } from '@/lib/auth-client'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 const CONFIRMATION = 'EXCLUIR MINHA CONTA'
@@ -27,9 +31,16 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   const [error, setError] = useState<string | null>(null)
   const eligibility = useQuery({
     ...trpc.pub.getAccountDeletionEligibility.queryOptions(),
-    enabled: surface === 'pub'
+    enabled: surface === 'pub',
+    meta: { errorToast: false }
   })
   const blocked = surface === 'pub' && eligibility.data?.allowed === false
+  const eligibilityErrorFeedback = eligibility.error
+    ? getUserFacingError(
+        eligibility.error,
+        'Não foi possível verificar a assinatura. A exclusão permanece indisponível por segurança.'
+      )
+    : null
 
   const close = () => {
     setPassword('')
@@ -49,7 +60,9 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
     const result = await authClient.deleteUser({ password, callbackURL: '/' })
     setDeleting(false)
     if (result.error) {
-      setError(result.error.message ?? 'Não foi possível excluir a conta.')
+      setError(
+        getUserFacingMessage(result.error, 'Não foi possível excluir a conta.')
+      )
       if (surface === 'pub') void eligibility.refetch()
       return
     }
@@ -120,8 +133,15 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
       ) : null}
       {surface === 'pub' && eligibility.isError ? (
         <div className="onside-callout onside-callout-danger mt-4" role="alert">
-          Não foi possível verificar a assinatura. A exclusão permanece
-          indisponível por segurança.
+          <p>{eligibilityErrorFeedback?.message}</p>
+          {eligibilityErrorFeedback?.retryable ? (
+            <Button
+              variant="outline"
+              onClick={() => void eligibility.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -152,11 +172,12 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
                 id="delete-account-confirmation"
                 autoComplete="off"
                 aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'delete-account-error' : undefined}
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
                 required
               />
-              <FieldError>{error}</FieldError>
+              <FieldError id="delete-account-error">{error}</FieldError>
             </Field>
           </FieldGroup>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

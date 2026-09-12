@@ -17,6 +17,9 @@ type Props = {
   sports: Sport[]
   preferences: Preference[]
   loadingPreferences: boolean
+  preferencesError: string | null
+  preferencesRetryable: boolean
+  onRetryPreferences: () => void
   editingSports: boolean
   selectedSportIds: string[]
   savingSports: boolean
@@ -73,6 +76,19 @@ export function ProfileSettings(props: Props) {
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-32" />
             <Skeleton className="h-8 w-20" />
+          </div>
+        ) : props.preferencesError ? (
+          <div className="onside-callout onside-callout-danger" role="alert">
+            <p className="text-sm">{props.preferencesError}</p>
+            {props.preferencesRetryable ? (
+              <button
+                type="button"
+                onClick={props.onRetryPreferences}
+                className="onside-btn onside-btn-outline mt-3 min-h-11"
+              >
+                Tentar novamente
+              </button>
+            ) : null}
           </div>
         ) : props.editingSports ? (
           <div className="onside-profile-sports-editor">

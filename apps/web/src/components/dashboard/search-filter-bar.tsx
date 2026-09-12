@@ -206,13 +206,15 @@ export function SearchFilterBar({
                 <span className="text-[var(--onside-live-text)]">
                   Não foi possível carregar os esportes.
                 </span>
-                <button
-                  type="button"
-                  onClick={sportsState.retry}
-                  className="min-h-11 font-bold text-[var(--onside-ink)] underline underline-offset-2"
-                >
-                  Tentar de novo
-                </button>
+                {sportsState.retryable ? (
+                  <button
+                    type="button"
+                    onClick={sportsState.retry}
+                    className="min-h-11 font-bold text-[var(--onside-ink)] underline underline-offset-2"
+                  >
+                    Tentar de novo
+                  </button>
+                ) : null}
               </span>
             ) : null}
             {sportsState.status === 'ready' &&

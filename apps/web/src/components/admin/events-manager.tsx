@@ -10,6 +10,7 @@ import {
 } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { CATALOG_QUERY } from '@/lib/query-cache'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { EventsState, PolicyState } from './admin-model'
 import { EmptyEventsState } from './empty-events-state'
@@ -60,14 +61,29 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const [showModal, setShowModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  const { data: sports = [], isLoading: loadingSports } = useQuery({
+  const {
+    data: sports = [],
+    isLoading: loadingSports,
+    error: sportsError,
+    refetch: refetchSports
+  } = useQuery({
     ...trpc.pubs.getSports.queryOptions(),
-    ...CATALOG_QUERY
+    ...CATALOG_QUERY,
+    meta: { errorToast: false }
   })
   const events = eventsState.status === 'ready' ? eventsState.events : []
+  const policyBlockReason = getCreateBlockReason(policyState)
+  const sportsErrorMessage = sportsError
+    ? getUserFacingMessage(
+        sportsError,
+        'Não foi possível carregar os esportes. Tente novamente.'
+      )
+    : null
+  const sportsErrorVisible =
+    policyBlockReason === null && !loadingSports && sportsErrorMessage !== null
   const blockReason =
-    getCreateBlockReason(policyState) ??
-    (loadingSports ? 'Carregando esportes…' : null)
+    policyBlockReason ??
+    (loadingSports ? 'Carregando esportes…' : sportsErrorMessage)
   const createBlocked = blockReason !== null
 
   const invalidateEvents = () =>
@@ -223,7 +239,14 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
             Novo evento
           </button>
           {blockReason ? (
-            <p className="max-w-[16rem] text-right text-xs text-[var(--onside-live-text)]">
+            <p
+              className="max-w-[16rem] text-right text-xs text-[var(--onside-live-text)]"
+              role={
+                policyState.status === 'error' || sportsErrorVisible
+                  ? 'alert'
+                  : undefined
+              }
+            >
               {blockReason}{' '}
               {policyState.status === 'ready' &&
               policyState.policy.status === 'limited' ? (
@@ -234,10 +257,19 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   Fazer upgrade
                 </a>
               ) : null}
-              {policyState.status === 'error' ? (
+              {policyState.status === 'error' && policyState.retryable ? (
                 <button
                   type="button"
                   onClick={policyState.retry}
+                  className="font-bold underline underline-offset-2"
+                >
+                  Tentar novamente
+                </button>
+              ) : null}
+              {sportsErrorVisible && isRetryableError(sportsError) ? (
+                <button
+                  type="button"
+                  onClick={() => void refetchSports()}
                   className="font-bold underline underline-offset-2"
                 >
                   Tentar novamente
@@ -275,13 +307,15 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         ) : eventsState.status === 'error' ? (
           <div className="onside-callout onside-callout-danger" role="alert">
             <p className="text-sm">Não foi possível carregar a grade.</p>
-            <button
-              type="button"
-              onClick={eventsState.retry}
-              className="font-bold text-sm underline underline-offset-2"
-            >
-              Tentar novamente
-            </button>
+            {eventsState.retryable ? (
+              <button
+                type="button"
+                onClick={eventsState.retry}
+                className="font-bold text-sm underline underline-offset-2"
+              >
+                Tentar novamente
+              </button>
+            ) : null}
           </div>
         ) : sortedEvents.length === 0 ? (
           <EmptyEventsState onCreate={openCreate} blockReason={blockReason} />
@@ -329,7 +363,19 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           onSave={handleSave}
           onCancel={closeModal}
           isSaving={isSaving}
-          error={createMutation.error?.message ?? updateMutation.error?.message}
+          error={
+            createMutation.error
+              ? getUserFacingMessage(
+                  createMutation.error,
+                  'Não foi possível criar o jogo. Verifique os dados e tente novamente.'
+                )
+              : updateMutation.error
+                ? getUserFacingMessage(
+                    updateMutation.error,
+                    'Não foi possível atualizar o jogo. Verifique os dados e tente novamente.'
+                  )
+                : undefined
+          }
         />
       </Modal>
     </>

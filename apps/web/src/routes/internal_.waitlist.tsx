@@ -30,6 +30,7 @@ import { WaitlistAccessPanel } from '@/components/internal/waitlist-access-panel
 import { getUser } from '@/functions/get-user'
 import { analytics } from '@/lib/analytics'
 import { roleLabel, rolePluralLabel } from '@/lib/roles'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
@@ -142,16 +143,22 @@ function AdminWaitlistPage() {
         })
       },
       onError: async (erro) => {
-        toast.error(erro.message)
+        toast.error(
+          getUserFacingMessage(
+            erro,
+            'Não foi possível atualizar o acesso. Tente novamente.'
+          )
+        )
         await queryClient.invalidateQueries({
           queryKey: trpc.waitlist.getAll.queryKey()
         })
       }
     })
   )
-  const { data, isLoading, isError, isFetching, refetch } = useQuery(
-    trpc.waitlist.getAll.queryOptions(queryInput)
-  )
+  const { data, isLoading, isError, isFetching, error, refetch } = useQuery({
+    ...trpc.waitlist.getAll.queryOptions(queryInput),
+    meta: { errorToast: false }
+  })
 
   const subscribers = data?.entries ?? []
   const total = data?.total ?? 0
@@ -466,22 +473,24 @@ function AdminWaitlistPage() {
               Não foi possível carregar a lista de espera.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
-          >
-            {isFetching ? (
-              <Loader
-                size={14}
-                color="currentColor"
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : null}
-            Tentar novamente
-          </button>
+          {isRetryableError(error) ? (
+            <button
+              type="button"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
+            >
+              {isFetching ? (
+                <Loader
+                  size={14}
+                  color="currentColor"
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              ) : null}
+              Tentar novamente
+            </button>
+          ) : null}
         </div>
       ) : subscribers.length === 0 ? (
         <div className="onside-panel py-16 text-center text-sm text-[var(--onside-muted)]">

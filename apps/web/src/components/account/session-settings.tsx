@@ -7,6 +7,10 @@ import Monitor from 'reicon-react/icons/Monitor'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { describeDevice } from '@/lib/describe-device'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 
 type AccountSession = NonNullable<
   Awaited<ReturnType<typeof authClient.listSessions>>['data']
@@ -26,17 +30,29 @@ export function SessionSettings() {
     queryKey: ['account-sessions'],
     queryFn: async () => {
       const result = await authClient.listSessions()
-      if (result.error) throw new Error(result.error.message)
+      if (result.error) throw result.error
       return result.data ?? []
-    }
+    },
+    meta: { errorToast: false }
   })
+  const sessionsErrorFeedback = sessions.error
+    ? getUserFacingError(
+        sessions.error,
+        'Não foi possível carregar os acessos. Tente novamente.'
+      )
+    : null
 
   const revoke = async (session: AccountSession) => {
     setRevoking(session.token)
     const result = await authClient.revokeSession({ token: session.token })
     setRevoking(null)
     if (result.error) {
-      toast.error(result.error.message ?? 'Não foi possível encerrar o acesso.')
+      toast.error(
+        getUserFacingMessage(
+          result.error,
+          'Não foi possível encerrar o acesso.'
+        )
+      )
       return
     }
     toast.success('Acesso encerrado.')
@@ -49,7 +65,10 @@ export function SessionSettings() {
     setRevoking(null)
     if (result.error) {
       toast.error(
-        result.error.message ?? 'Não foi possível encerrar os outros acessos.'
+        getUserFacingMessage(
+          result.error,
+          'Não foi possível encerrar os outros acessos.'
+        )
       )
       return
     }
@@ -115,10 +134,12 @@ export function SessionSettings() {
           </>
         ) : sessions.isError ? (
           <div className="onside-callout onside-callout-danger" role="alert">
-            <p>Não foi possível carregar os acessos.</p>
-            <Button variant="outline" onClick={() => void sessions.refetch()}>
-              Tentar novamente
-            </Button>
+            <p>{sessionsErrorFeedback?.message}</p>
+            {sessionsErrorFeedback?.retryable ? (
+              <Button variant="outline" onClick={() => void sessions.refetch()}>
+                Tentar novamente
+              </Button>
+            ) : null}
           </div>
         ) : ordered.length === 0 ? (
           <p className="text-[var(--onside-muted)] text-sm">

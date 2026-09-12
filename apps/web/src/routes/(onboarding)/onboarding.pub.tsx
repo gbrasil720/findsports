@@ -23,6 +23,7 @@ import {
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { roleAccountLabel } from '@/lib/roles'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -95,7 +96,13 @@ function PubOnboarding() {
         await refreshSessionCache().catch(() => {})
         navigate({ to: '/plan' })
       },
-      onError: (err) => setError(err.message)
+      onError: (err) =>
+        setError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar o cadastro do bar. Tente novamente.'
+          )
+        )
     })
   )
 

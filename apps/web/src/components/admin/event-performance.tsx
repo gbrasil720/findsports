@@ -483,10 +483,12 @@ function PerformanceSkeleton() {
 
 function PerformanceError({
   message,
-  onRetry
+  onRetry,
+  retryable
 }: {
   message?: string
   onRetry: () => void
+  retryable: boolean
 }) {
   return (
     <div className="onside-callout onside-callout-danger" role="alert">
@@ -499,13 +501,15 @@ function PerformanceError({
       <p className="flex-1">
         {message || 'Não foi possível carregar o desempenho dos jogos.'}
       </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="onside-btn onside-btn-ink shrink-0"
-      >
-        Tentar novamente
-      </button>
+      {retryable ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="onside-btn onside-btn-ink shrink-0"
+        >
+          Tentar novamente
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -637,6 +641,7 @@ export function EventPerformance({
       <PerformanceError
         message={eventAnalyticsState.message}
         onRetry={eventAnalyticsState.retry}
+        retryable={eventAnalyticsState.retryable}
       />
     )
 

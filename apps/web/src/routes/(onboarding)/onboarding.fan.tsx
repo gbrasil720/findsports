@@ -16,6 +16,7 @@ import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { CATALOG_QUERY } from '@/lib/query-cache'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
@@ -57,7 +58,8 @@ function FanOnboarding() {
 
   const sportsQuery = useQuery({
     ...trpc.pubs.getSports.queryOptions(),
-    ...CATALOG_QUERY
+    ...CATALOG_QUERY,
+    meta: { errorToast: false }
   })
   const sports = sportsQuery.data ?? []
 
@@ -78,7 +80,13 @@ function FanOnboarding() {
         await refreshSessionCache().catch(() => {})
         navigate({ to: '/dashboard' })
       },
-      onError: (err) => setError(err.message)
+      onError: (err) =>
+        setError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar suas preferências. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -154,6 +162,7 @@ function FanOnboarding() {
               onToggle={toggleSport}
               isLoading={sportsQuery.isLoading}
               isError={sportsQuery.isError}
+              retryable={isRetryableError(sportsQuery.error)}
               onRetry={() => sportsQuery.refetch()}
             />
             <p className="onside-text-muted-on-ink mt-6 text-xs">

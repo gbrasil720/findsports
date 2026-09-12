@@ -11,6 +11,7 @@ type Props = {
   status: Status | undefined
   loading: boolean
   error: boolean
+  retryable: boolean
   onRetry: () => void
 }
 
@@ -44,13 +45,15 @@ export function RecommendationQualityStatus(props: Props) {
             Não foi possível verificar as sugestões personalizadas.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={props.onRetry}
-          className="onside-btn onside-btn-ink min-h-11 px-4 text-xs"
-        >
-          Tentar novamente
-        </button>
+        {props.retryable ? (
+          <button
+            type="button"
+            onClick={props.onRetry}
+            className="onside-btn onside-btn-ink min-h-11 px-4 text-xs"
+          >
+            Tentar novamente
+          </button>
+        ) : null}
       </div>
     )
   }

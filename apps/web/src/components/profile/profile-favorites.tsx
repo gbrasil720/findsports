@@ -17,6 +17,9 @@ type Props = {
   mapBars: MapBar[]
   coords: Coordinates | null
   loading: boolean
+  error: string | null
+  retryable: boolean
+  onRetry: () => void
   sortBy: FavoriteSort
   viewMode: FavoriteView
   filterWithEvents: boolean
@@ -44,12 +47,32 @@ export function ProfileFavorites(props: Props) {
     mapBars,
     coords,
     loading,
+    error,
+    retryable,
+    onRetry,
     sortBy,
     viewMode,
     filterWithEvents,
     hoveredBarId,
     unfavoritePending
   } = props
+
+  if (!loading && error) {
+    return (
+      <section className="onside-callout onside-callout-danger" role="alert">
+        <p className="text-sm">{error}</p>
+        {retryable ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="onside-btn onside-btn-outline min-h-11"
+          >
+            Tentar novamente
+          </button>
+        ) : null}
+      </section>
+    )
+  }
 
   return (
     <div className="space-y-4" aria-busy={loading || undefined}>

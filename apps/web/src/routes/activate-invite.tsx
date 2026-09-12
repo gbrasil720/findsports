@@ -11,6 +11,10 @@ import {
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics, type WaitlistInviteStatus } from '@/lib/analytics'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 /** Mesmo mínimo exigido pelo procedimento; abaixo disso o link já não é link. */
@@ -71,7 +75,8 @@ function ActivateInvitePage() {
   const invite = useQuery({
     ...trpc.waitlist.inviteDetails.queryOptions({ token }),
     enabled: tokenUtilizavel,
-    retry: false
+    retry: false,
+    meta: { errorToast: false }
   })
   const status = tokenUtilizavel
     ? (invite.data?.status ?? null)
@@ -95,6 +100,10 @@ function ActivateInvitePage() {
   // em `data`, o que sobra em `error` é rede ou servidor, e dizer "seu link
   // expirou" nessa hora seria mentira.
   if (invite.isError) {
+    const feedback = getUserFacingError(
+      invite.error,
+      'Não foi possível conferir o convite. Tente novamente.'
+    )
     return (
       <InviteStatePage
         kicker="Falha na verificação"
@@ -104,11 +113,16 @@ function ActivateInvitePage() {
         score="Situação: indefinida"
         visual={MARCA.inteira}
       >
-        <InviteStateCta
-          label={invite.isFetching ? 'Verificando…' : 'Tentar de novo'}
-          disabled={invite.isFetching}
-          onClick={() => void invite.refetch()}
-        />
+        {feedback.retryable ? (
+          <InviteStateCta
+            label={invite.isFetching ? 'Verificando…' : 'Tentar de novo'}
+            disabled={invite.isFetching}
+            onClick={() => void invite.refetch()}
+          />
+        ) : null}
+        <p role="alert" className="onside-invite-error">
+          {feedback.message}
+        </p>
         <Link to="/" className={INVITE_ACTION.secondary}>
           Voltar para a home
           <InviteStateArrow size={14} />
@@ -162,6 +176,12 @@ function ActivateInvitePage() {
 function ConviteExpirado({ token }: { token: string }) {
   const trpc = useTRPC()
   const resend = useMutation(trpc.waitlist.resendInvite.mutationOptions())
+  const errorFeedback = resend.error
+    ? getUserFacingError(
+        resend.error,
+        'Não foi possível reenviar o convite. Tente novamente.'
+      )
+    : null
 
   if (resend.isSuccess) {
     return (
@@ -206,14 +226,16 @@ function ConviteExpirado({ token }: { token: string }) {
     >
       {resend.error ? (
         <p role="alert" className="onside-invite-error">
-          {resend.error.message}
+          {errorFeedback?.message}
         </p>
       ) : null}
-      <InviteStateCta
-        label={resend.isPending ? 'Enviando…' : 'Reenviar convite'}
-        disabled={resend.isPending}
-        onClick={() => resend.mutate({ token })}
-      />
+      {!errorFeedback || errorFeedback.retryable ? (
+        <InviteStateCta
+          label={resend.isPending ? 'Enviando…' : 'Reenviar convite'}
+          disabled={resend.isPending}
+          onClick={() => resend.mutate({ token })}
+        />
+      ) : null}
       <Link to="/" className={INVITE_ACTION.secondary}>
         Voltar para a home
         <InviteStateArrow size={14} />
@@ -346,7 +368,12 @@ function FormularioDeAtivacao({
       user?: { role?: 'fan' | 'pub' }
     }
     if (!response.ok) {
-      setError(body.message ?? 'Não foi possível ativar a conta.')
+      setError(
+        getUserFacingMessage(
+          { status: response.status, message: body.message },
+          'Não foi possível ativar a conta. Tente novamente.'
+        )
+      )
       setPending(false)
       return
     }

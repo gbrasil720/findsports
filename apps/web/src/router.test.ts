@@ -15,6 +15,7 @@ interface AcaoDoToast {
 }
 
 const acoesCapturadas: AcaoDoToast[] = []
+const mensagensCapturadas: string[] = []
 
 // Proxy: qualquer `toast.X` chamado pelo app vira no-op; `toast.error` captura
 // a ação do retry para o teste acioná-la. `Toaster` (usado pelo wrapper de UI
@@ -25,7 +26,8 @@ const toastFalso = new Proxy(
   {
     get(_alvo, propriedade: string | symbol) {
       if (propriedade === 'error') {
-        return (_mensagem: string, opcoes?: { action?: AcaoDoToast }) => {
+        return (mensagem: string, opcoes?: { action?: AcaoDoToast }) => {
+          mensagensCapturadas.push(mensagem)
           if (opcoes?.action) acoesCapturadas.push(opcoes.action)
         }
       }
@@ -49,6 +51,7 @@ beforeAll(() => {
 
 afterEach(() => {
   acoesCapturadas.length = 0
+  mensagensCapturadas.length = 0
 })
 
 describe('router SSR', () => {
@@ -136,5 +139,27 @@ describe('router SSR', () => {
     // A ação invalida justamente a query que falhou.
     const query = queryClient.getQueryCache().find({ queryKey })
     expect(query?.state.isInvalidated).toBe(true)
+  })
+
+  test('o toast global não expõe erro técnico nem oferece retry para 4xx', async () => {
+    const { getRouter } = await import('./router')
+    const { queryClient } = getRouter().options.context
+
+    await expect(
+      queryClient.fetchQuery({
+        queryKey: ['sem-permissao'],
+        queryFn: () =>
+          Promise.reject(
+            Object.assign(new Error('database credentials leaked'), {
+              status: 403
+            })
+          )
+      })
+    ).rejects.toThrow('database credentials leaked')
+
+    expect(mensagensCapturadas.at(-1)).toBe(
+      'Você não tem permissão para realizar esta ação.'
+    )
+    expect(acoesCapturadas).toHaveLength(0)
   })
 })

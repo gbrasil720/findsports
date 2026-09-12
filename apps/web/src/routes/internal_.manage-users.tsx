@@ -51,6 +51,7 @@ import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
 import { roleLabel } from '@/lib/roles'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 
 export const Route = createFileRoute('/internal_/manage-users')({
   head: () => ({
@@ -141,14 +142,17 @@ function ManageUsersPage() {
     data: usersData,
     isLoading,
     isError,
-    isFetching
+    isFetching,
+    error: usersError,
+    refetch: refetchUsers
   } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
       const res = await authClient.admin.listUsers({ query: { limit: 200 } })
-      if (res.error) throw new Error(res.error.message)
+      if (res.error) throw res.error
       return res.data
-    }
+    },
+    meta: { errorToast: false }
   })
 
   const allUsers = (usersData?.users ?? []) as AdminUser[]
@@ -170,7 +174,12 @@ function ManageUsersPage() {
   async function handleImpersonate(user: AdminUser) {
     const res = await authClient.admin.impersonateUser({ userId: user.id })
     if (res.error || !res.data) {
-      toast.error(res.error?.message ?? 'Falha ao impersonar usuário.')
+      toast.error(
+        getUserFacingMessage(
+          res.error,
+          'Não foi possível impersonar o usuário.'
+        )
+      )
       return
     }
     // Hard reload — forces browser to send the new impersonation cookie on the next request.
@@ -187,7 +196,9 @@ function ManageUsersPage() {
         banReason: banReason || undefined
       })
       if (res.error) {
-        toast.error(`Erro ao banir: ${res.error.message}`)
+        toast.error(
+          getUserFacingMessage(res.error, 'Não foi possível banir o usuário.')
+        )
         return
       }
       toast.success(`${banDialogUser.name} foi banido.`)
@@ -202,7 +213,9 @@ function ManageUsersPage() {
   async function handleUnban(user: AdminUser) {
     const res = await authClient.admin.unbanUser({ userId: user.id })
     if (res.error) {
-      toast.error(`Erro ao desbanir: ${res.error.message}`)
+      toast.error(
+        getUserFacingMessage(res.error, 'Não foi possível desbanir o usuário.')
+      )
       return
     }
     toast.success(`${user.name} foi desbanido.`)
@@ -219,7 +232,9 @@ function ManageUsersPage() {
         role: newRole as any
       })
       if (res.error) {
-        toast.error(`Erro ao alterar role: ${res.error.message}`)
+        toast.error(
+          getUserFacingMessage(res.error, 'Não foi possível alterar o perfil.')
+        )
         return
       }
       toast.success(
@@ -403,9 +418,29 @@ function ManageUsersPage() {
                   <TableRow>
                     <TableCell
                       colSpan={6}
-                      className="py-12 text-center text-[var(--onside-live-text)] text-sm"
+                      className="py-12 text-center text-sm"
                     >
-                      Erro ao carregar usuários. Tente novamente.
+                      <div
+                        className="flex flex-col items-center gap-2 text-[var(--onside-live-text)]"
+                        role="alert"
+                      >
+                        <p>
+                          {getUserFacingMessage(
+                            usersError,
+                            'Não foi possível carregar os usuários.'
+                          )}
+                        </p>
+                        {isRetryableError(usersError) ? (
+                          <button
+                            type="button"
+                            disabled={isFetching}
+                            onClick={() => void refetchUsers()}
+                            className="font-bold underline underline-offset-2"
+                          >
+                            Tentar novamente
+                          </button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (

@@ -30,17 +30,17 @@ export type EventComparisonData = NonNullable<EventAnalyticsData['comparison']>
 
 export type EventsState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; events: AdminEvent[] }
 
 export type PolicyState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
+  | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; policy: EventCreationPolicy }
 
 export type PlanState =
   | { status: 'loading' }
-  | { status: 'error' }
+  | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; plan: SubscriptionPlan }
 
 /* ------------------------------------------------------------------ */
@@ -49,14 +49,24 @@ export type PlanState =
 
 export type AnalyticsOverviewState =
   | { status: 'loading' }
-  | { status: 'error'; message?: string; retry: () => void }
+  | {
+      status: 'error'
+      message?: string
+      retry: () => void
+      retryable: boolean
+    }
   | { status: 'empty' }
   | { status: 'partial'; data: AnalyticsOverviewData }
   | { status: 'ready'; data: AnalyticsOverviewData }
 
 export type EventAnalyticsState =
   | { status: 'loading' }
-  | { status: 'error'; message?: string; retry: () => void }
+  | {
+      status: 'error'
+      message?: string
+      retry: () => void
+      retryable: boolean
+    }
   | { status: 'blocked' }
   | { status: 'empty' }
   | {

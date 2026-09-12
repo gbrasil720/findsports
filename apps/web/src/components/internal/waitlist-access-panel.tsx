@@ -6,6 +6,10 @@ import { toast } from 'sonner'
 import { analytics } from '@/lib/analytics'
 import { countLabel } from '@/lib/plural'
 import { roleLabel } from '@/lib/roles'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 /**
@@ -93,12 +97,30 @@ export function WaitlistAccessPanel({
   const [convite, setConvite] = useState('')
   const [papel, setPapel] = useState<'fan' | 'pub'>('pub')
 
-  const configQuery = useQuery(trpc.appConfig.list.queryOptions())
+  const configQuery = useQuery({
+    ...trpc.appConfig.list.queryOptions(),
+    meta: { errorToast: false }
+  })
   const portaoEntry = configQuery.data?.find(
     (entrada) => entrada.key === 'launch.waitlist_gate'
   )
   const portao = portaoEntry?.valor as { signup: boolean } | undefined
-  const campaignQuery = useQuery(trpc.waitlist.campaignPreview.queryOptions())
+  const campaignQuery = useQuery({
+    ...trpc.waitlist.campaignPreview.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const configErrorFeedback = configQuery.error
+    ? getUserFacingError(
+        configQuery.error,
+        'Não foi possível ler o estado do portão.'
+      )
+    : null
+  const campaignErrorFeedback = campaignQuery.error
+    ? getUserFacingError(
+        campaignQuery.error,
+        'Não foi possível ler quem está elegível.'
+      )
+    : null
 
   async function recarregarConfig() {
     await queryClient.invalidateQueries({
@@ -109,7 +131,10 @@ export function WaitlistAccessPanel({
   const salvarPortao = useMutation(
     trpc.appConfig.set.mutationOptions({
       onSuccess: recarregarConfig,
-      onError: (erro) => toast.error(erro.message)
+      onError: (erro) =>
+        toast.error(
+          getUserFacingMessage(erro, 'Não foi possível salvar o portão.')
+        )
     })
   )
 
@@ -128,7 +153,12 @@ export function WaitlistAccessPanel({
         })
       },
       onError: async (erro) => {
-        toast.error(erro.message)
+        toast.error(
+          getUserFacingMessage(
+            erro,
+            'Não foi possível enviar o convite. Tente novamente.'
+          )
+        )
         await queryClient.invalidateQueries({
           queryKey: trpc.waitlist.getAll.queryKey()
         })
@@ -151,7 +181,13 @@ export function WaitlistAccessPanel({
           queryKey: trpc.waitlist.campaignPreview.queryKey()
         })
       },
-      onError: (erro) => toast.error(erro.message)
+      onError: (erro) =>
+        toast.error(
+          getUserFacingMessage(
+            erro,
+            'Não foi possível enviar o aviso. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -184,7 +220,8 @@ export function WaitlistAccessPanel({
   const bloqueioCampanha = campaignQuery.isLoading
     ? 'Lendo quem está elegível…'
     : campaignQuery.isError
-      ? 'Não foi possível ler quem está elegível.'
+      ? (campaignErrorFeedback?.message ??
+        'Não foi possível ler quem está elegível.')
       : portao?.signup !== false
         ? 'Abra o cadastro antes de enviar: o aviso leva as pessoas para uma tela de cadastro fechada.'
         : elegiveis === 0
@@ -256,9 +293,20 @@ export function WaitlistAccessPanel({
           ) : null}
         </>
       ) : (
-        <p className="text-sm text-[var(--onside-live-text)]">
-          Não foi possível ler o estado do portão.
-        </p>
+        <div className="flex flex-wrap items-center gap-3" role="alert">
+          <p className="text-sm text-[var(--onside-live-text)]">
+            {configErrorFeedback?.message}
+          </p>
+          {configErrorFeedback?.retryable ? (
+            <button
+              type="button"
+              className="font-bold text-sm underline underline-offset-2"
+              onClick={() => void configQuery.refetch()}
+            >
+              Tentar novamente
+            </button>
+          ) : null}
+        </div>
       )}
 
       <div
@@ -356,8 +404,18 @@ export function WaitlistAccessPanel({
           <p
             id="campanha-bloqueio"
             className="mt-2 max-w-prose text-xs text-[var(--onside-live-text)]"
+            role={campaignQuery.isError ? 'alert' : undefined}
           >
             {bloqueioCampanha}
+            {campaignErrorFeedback?.retryable ? (
+              <button
+                type="button"
+                className="ml-2 font-bold underline underline-offset-2"
+                onClick={() => void campaignQuery.refetch()}
+              >
+                Tentar novamente
+              </button>
+            ) : null}
           </p>
         ) : null}
       </div>

@@ -15,7 +15,7 @@ function reason(state: PolicyState): string | null {
 describe('event create availability', () => {
   test('blocks while loading and exposes retry on error state', () => {
     expect(reason({ status: 'loading' })).toBe('Verificando disponibilidade…')
-    expect(reason({ status: 'error', retry: () => {} })).toBe(
+    expect(reason({ status: 'error', retry: () => {}, retryable: true })).toBe(
       'Não foi possível verificar a disponibilidade.'
     )
   })
