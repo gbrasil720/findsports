@@ -34,6 +34,7 @@ type Props = {
   onRadiusChange: (radiusKm: RadiusKm) => void
   onReset: () => void
   onRetry: () => void
+  retryable: boolean
   onSuggestion: (kind: SuggestionKind) => void
   onSelectMapBar: (barId: string) => void
 }
@@ -197,13 +198,15 @@ function ResultContent(props: Props) {
         <p className="text-sm">
           Não foi possível carregar os bares. Tente novamente.
         </p>
-        <button
-          type="button"
-          onClick={props.onRetry}
-          className="font-bold text-sm underline underline-offset-2"
-        >
-          Tentar de novo
-        </button>
+        {props.retryable ? (
+          <button
+            type="button"
+            onClick={props.onRetry}
+            className="font-bold text-sm underline underline-offset-2"
+          >
+            Tentar de novo
+          </button>
+        ) : null}
       </div>
     )
   }

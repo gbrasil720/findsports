@@ -3,11 +3,13 @@ import AlertTriangle from 'reicon-react/icons/AlertTriangle'
 import Loader from 'reicon-react/icons/Loader'
 import Users from 'reicon-react/icons/Users'
 import { authClient } from '@/lib/auth-client'
+import { getUserFacingError } from '@/lib/user-facing-error'
 
 export function ImpersonationBanner() {
   const { data: session } = authClient.useSession()
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [retryable, setRetryable] = useState(false)
   const bannerRef = useRef<HTMLDivElement>(null)
 
   const impersonatedBy = (
@@ -42,12 +44,28 @@ export function ImpersonationBanner() {
   async function handleStop() {
     setStopping(true)
     setError(null)
+    setRetryable(false)
     try {
-      await authClient.admin.stopImpersonating()
+      const result = await authClient.admin.stopImpersonating()
+      if (result.error) {
+        setStopping(false)
+        const feedback = getUserFacingError(
+          result.error,
+          'Não foi possível encerrar a personificação. Tente novamente.'
+        )
+        setError(feedback.message)
+        setRetryable(feedback.retryable)
+        return
+      }
       window.location.href = '/internal/manage-users'
-    } catch {
+    } catch (reason) {
       setStopping(false)
-      setError('Não foi possível encerrar a personificação. Tente novamente.')
+      const feedback = getUserFacingError(
+        reason,
+        'Não foi possível encerrar a personificação. Tente novamente.'
+      )
+      setError(feedback.message)
+      setRetryable(feedback.retryable)
     }
   }
 
@@ -79,7 +97,10 @@ export function ImpersonationBanner() {
               ({session?.user?.email})
             </span>
             {error ? (
-              <p className="mt-1 flex items-start gap-1.5 text-xs font-semibold text-[var(--onside-live-text)]">
+              <p
+                className="mt-1 flex items-start gap-1.5 text-xs font-semibold text-[var(--onside-live-text)]"
+                role="alert"
+              >
                 <AlertTriangle
                   size={14}
                   color="currentColor"
@@ -107,7 +128,7 @@ export function ImpersonationBanner() {
           ) : null}
           {stopping
             ? 'Encerrando…'
-            : error
+            : error && retryable
               ? 'Tentar novamente'
               : 'Encerrar sessão'}
         </button>

@@ -15,6 +15,7 @@ type Props = {
   isLoading: boolean
   isError?: boolean
   onRetry?: () => void
+  retryable?: boolean
 }
 
 export function SportSelector({
@@ -23,7 +24,8 @@ export function SportSelector({
   onToggle,
   isLoading,
   isError,
-  onRetry
+  onRetry,
+  retryable = true
 }: Props) {
   if (isLoading) {
     return (
@@ -55,7 +57,7 @@ export function SportSelector({
         role="alert"
       >
         <p className="text-sm">Não foi possível carregar os esportes.</p>
-        {onRetry ? (
+        {onRetry && retryable ? (
           <button
             type="button"
             onClick={onRetry}

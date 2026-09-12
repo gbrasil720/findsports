@@ -145,10 +145,12 @@ function OverviewSkeleton() {
 
 function OverviewError({
   message,
-  onRetry
+  onRetry,
+  retryable
 }: {
   message?: string
   onRetry: () => void
+  retryable: boolean
 }) {
   return (
     <section aria-label="Visão geral">
@@ -163,13 +165,15 @@ function OverviewError({
           {message ||
             'Não foi possível carregar as analytics. Tente novamente.'}
         </p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="onside-btn onside-btn-ink shrink-0"
-        >
-          Tentar novamente
-        </button>
+        {retryable ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="onside-btn onside-btn-ink shrink-0"
+          >
+            Tentar novamente
+          </button>
+        ) : null}
       </div>
     </section>
   )
@@ -615,6 +619,7 @@ export function AnalyticsOverview({
       <OverviewError
         message={overviewState.message}
         onRetry={overviewState.retry}
+        retryable={overviewState.retryable}
       />
     )
 

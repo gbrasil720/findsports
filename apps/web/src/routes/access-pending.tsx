@@ -4,6 +4,7 @@ import { type FormEvent, useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/access-pending')({
@@ -132,7 +133,10 @@ function AccessPendingPage() {
               </div>
               {join.error ? (
                 <p role="alert" className="onside-field-error">
-                  {join.error.message}
+                  {getUserFacingMessage(
+                    join.error,
+                    'Não foi possível entrar na waitlist. Tente novamente.'
+                  )}
                 </p>
               ) : null}
               <button

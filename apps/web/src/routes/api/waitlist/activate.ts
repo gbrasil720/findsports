@@ -45,7 +45,10 @@ async function activate(request: Request) {
       : Response.json({ existingAccount: true, activated: true })
   } catch (error) {
     if (error instanceof InvalidWaitlistInviteError) {
-      return Response.json({ message: error.message }, { status: 400 })
+      return Response.json(
+        { message: 'Este link não é válido ou já expirou.' },
+        { status: 400 }
+      )
     }
     console.error(JSON.stringify({ event: 'waitlist_activation_failed' }))
     return Response.json(

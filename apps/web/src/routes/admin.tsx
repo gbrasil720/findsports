@@ -42,6 +42,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin')({
@@ -69,10 +70,12 @@ const PLAN_LABEL: Record<string, string> = {
 
 function QueryError({
   message,
-  onRetry
+  onRetry,
+  retryable
 }: {
   message: string
   onRetry: () => void
+  retryable: boolean
 }) {
   return (
     <div className="onside-callout onside-callout-danger" role="alert">
@@ -85,16 +88,20 @@ function QueryError({
       <div className="min-w-0 flex-1">
         <p className="mb-0.5 font-semibold text-sm">{message}</p>
         <p className="text-sm opacity-90">
-          Tente novamente. Se o problema continuar, volte mais tarde.
+          {retryable
+            ? 'Tente novamente. Se o problema continuar, volte mais tarde.'
+            : 'Verifique o acesso à sua conta ou volte mais tarde.'}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
-      >
-        Tentar de novo
-      </button>
+      {retryable ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+        >
+          Tentar de novo
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -112,6 +119,7 @@ function AnalyticsPeriodSelector({
   loadingEntitlements,
   entitlementsError,
   onRetryEntitlements,
+  retryableEntitlements,
   range,
   preset,
   customRange,
@@ -125,6 +133,7 @@ function AnalyticsPeriodSelector({
   loadingEntitlements: boolean
   entitlementsError: boolean
   onRetryEntitlements: () => void
+  retryableEntitlements: boolean
   range: AnalyticsDateRange
   preset: AnalyticsPeriodPreset
   customRange: AnalyticsDateRange
@@ -188,13 +197,15 @@ function AnalyticsPeriodSelector({
           <p className="flex-1 text-sm">
             Não foi possível carregar os períodos disponíveis.
           </p>
-          <button
-            type="button"
-            onClick={onRetryEntitlements}
-            className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
-          >
-            Tentar de novo
-          </button>
+          {retryableEntitlements ? (
+            <button
+              type="button"
+              onClick={onRetryEntitlements}
+              className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+            >
+              Tentar de novo
+            </button>
+          ) : null}
         </div>
       ) : (
         <>
@@ -406,44 +417,68 @@ function PubDashboard() {
     data: bar,
     isLoading: loadingBar,
     isError: barError,
+    error: barQueryError,
     refetch: refetchBar
-  } = useQuery(trpc.pub.getMe.queryOptions())
+  } = useQuery({
+    ...trpc.pub.getMe.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const {
     data: events,
     isLoading: loadingEvents,
     isError: eventsError,
+    error: eventsQueryError,
     refetch: refetchEvents
-  } = useQuery(trpc.pub.getMyEvents.queryOptions())
+  } = useQuery({
+    ...trpc.pub.getMyEvents.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const {
     data: ratings,
     isLoading: loadingRatings,
     isError: ratingsError,
+    error: ratingsQueryError,
     refetch: refetchRatings
-  } = useQuery(trpc.pub.getMyRatings.queryOptions())
+  } = useQuery({
+    ...trpc.pub.getMyRatings.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const {
     data: recommendationQualityStatus,
     isLoading: loadingRecommendationQuality,
     isError: recommendationQualityError,
+    error: recommendationQualityQueryError,
     refetch: refetchRecommendationQuality
-  } = useQuery(trpc.recommendations.getMyBarQualityStatus.queryOptions())
+  } = useQuery({
+    ...trpc.recommendations.getMyBarQualityStatus.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const {
     data: subscription,
     isLoading: loadingSub,
     isError: subError,
+    error: subscriptionQueryError,
     isFetched: subFetched,
     refetch: refetchSub
-  } = useQuery(trpc.pub.getMySubscription.queryOptions())
+  } = useQuery({
+    ...trpc.pub.getMySubscription.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const {
     data: analyticsEntitlements,
     isLoading: loadingEntitlements,
     isError: entitlementsError,
+    error: entitlementsQueryError,
     refetch: refetchEntitlements
-  } = useQuery(trpc.commercialAnalytics.getMyEntitlements.queryOptions())
+  } = useQuery({
+    ...trpc.commercialAnalytics.getMyEntitlements.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   const [analyticsDates, setAnalyticsDates] = useState(getAnalyticsDates)
   const [analyticsPreset, setAnalyticsPreset] =
@@ -503,8 +538,12 @@ function PubDashboard() {
     data: creationPolicy,
     isLoading: loadingPolicy,
     isError: policyError,
+    error: policyQueryError,
     refetch: refetchPolicy
-  } = useQuery(trpc.pub.getMyEventCreationPolicy.queryOptions())
+  } = useQuery({
+    ...trpc.pub.getMyEventCreationPolicy.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   /* Analytics queries */
   const periodStart = Date.parse(analyticsDates.from)
@@ -530,12 +569,13 @@ function PubDashboard() {
     error: analyticsOverviewError,
     isFetching: fetchingAnalytics,
     refetch: refetchAnalytics
-  } = useQuery(
-    trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions({
+  } = useQuery({
+    ...trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions({
       from: analyticsDates.from,
       to: analyticsDates.to
-    })
-  )
+    }),
+    meta: { errorToast: false }
+  })
 
   const {
     data: eventAnalytics,
@@ -544,15 +584,16 @@ function PubDashboard() {
     isError: eventAnalyticsError,
     error: eventAnalyticsQueryError,
     refetch: refetchEventAnalytics
-  } = useQuery(
-    trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
+  } = useQuery({
+    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
       from: analyticsDates.from,
       to: analyticsDates.to,
       ...(requestedComparisonTarget
         ? { comparisonTarget: requestedComparisonTarget }
         : {})
-    })
-  )
+    }),
+    meta: { errorToast: false }
+  })
 
   /* Mutations */
   const updateMeMutation = useMutation(
@@ -563,7 +604,10 @@ function PubDashboard() {
       },
       onError: (err) => {
         setProfileError(
-          err.message || 'Não foi possível salvar o perfil. Tente novamente.'
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar o perfil. Tente novamente.'
+          )
         )
       }
     })
@@ -578,6 +622,7 @@ function PubDashboard() {
     : eventsError || !events
       ? {
           status: 'error',
+          retryable: isRetryableError(eventsQueryError),
           retry: () => {
             void refetchEvents()
           }
@@ -589,6 +634,7 @@ function PubDashboard() {
     : policyError || !creationPolicy
       ? {
           status: 'error',
+          retryable: isRetryableError(policyQueryError),
           retry: () => {
             void refetchPolicy()
           }
@@ -598,7 +644,13 @@ function PubDashboard() {
   const planState: PlanState = loadingSub
     ? { status: 'loading' }
     : subError
-      ? { status: 'error' }
+      ? {
+          status: 'error',
+          retryable: isRetryableError(subscriptionQueryError),
+          retry: () => {
+            void refetchSub()
+          }
+        }
       : { status: 'ready', plan: subscription?.plan ?? 'starter' }
 
   /* Analytics overview state machine */
@@ -607,7 +659,11 @@ function PubDashboard() {
     : analyticsError
       ? {
           status: 'error',
-          message: analyticsOverviewError?.message,
+          message: getUserFacingMessage(
+            analyticsOverviewError,
+            'Não foi possível carregar as métricas. Tente novamente.'
+          ),
+          retryable: isRetryableError(analyticsOverviewError),
           retry: () => {
             void refetchAnalytics()
           }
@@ -622,6 +678,7 @@ function PubDashboard() {
     : entitlementsError || !analyticsEntitlements
       ? {
           status: 'error',
+          retryable: isRetryableError(entitlementsQueryError),
           retry: () => {
             void refetchEntitlements()
           }
@@ -633,7 +690,11 @@ function PubDashboard() {
           : eventAnalyticsError
             ? {
                 status: 'error',
-                message: eventAnalyticsQueryError?.message,
+                message: getUserFacingMessage(
+                  eventAnalyticsQueryError,
+                  'Não foi possível carregar o desempenho dos jogos. Tente novamente.'
+                ),
+                retryable: isRetryableError(eventAnalyticsQueryError),
                 retry: () => {
                   void refetchEventAnalytics()
                 }
@@ -697,7 +758,12 @@ function PubDashboard() {
         queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
       },
       onError: (err) => {
-        setProfileError(err.message || 'Não foi possível confirmar o WhatsApp.')
+        setProfileError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível confirmar o WhatsApp. Tente novamente.'
+          )
+        )
       }
     })
   )
@@ -727,7 +793,11 @@ function PubDashboard() {
     return (
       <AppShell variant="pub">
         <QueryError
-          message="Não foi possível carregar os dados do bar."
+          message={getUserFacingMessage(
+            barQueryError,
+            'Não foi possível carregar os dados do bar.'
+          )}
+          retryable={isRetryableError(barQueryError)}
           onRetry={() => {
             void refetchBar()
           }}
@@ -779,7 +849,11 @@ function PubDashboard() {
 
               {subError && (
                 <QueryError
-                  message="Não foi possível carregar a assinatura."
+                  message={getUserFacingMessage(
+                    subscriptionQueryError,
+                    'Não foi possível carregar a assinatura.'
+                  )}
+                  retryable={isRetryableError(subscriptionQueryError)}
                   onRetry={() => {
                     void refetchSub()
                   }}
@@ -788,7 +862,11 @@ function PubDashboard() {
 
               {eventsError && (
                 <QueryError
-                  message="Não foi possível carregar os eventos."
+                  message={getUserFacingMessage(
+                    eventsQueryError,
+                    'Não foi possível carregar os eventos.'
+                  )}
+                  retryable={isRetryableError(eventsQueryError)}
                   onRetry={() => {
                     void refetchEvents()
                   }}
@@ -797,7 +875,11 @@ function PubDashboard() {
 
               {policyError && (
                 <QueryError
-                  message="Não foi possível verificar a disponibilidade de eventos."
+                  message={getUserFacingMessage(
+                    policyQueryError,
+                    'Não foi possível verificar a disponibilidade de eventos.'
+                  )}
+                  retryable={isRetryableError(policyQueryError)}
                   onRetry={() => {
                     void refetchPolicy()
                   }}
@@ -840,6 +922,7 @@ function PubDashboard() {
                 status={recommendationQualityStatus}
                 loading={loadingRecommendationQuality}
                 error={recommendationQualityError}
+                retryable={isRetryableError(recommendationQualityQueryError)}
                 onRetry={() => {
                   void refetchRecommendationQuality()
                 }}
@@ -954,6 +1037,7 @@ function PubDashboard() {
                 entitlements={analyticsEntitlements}
                 loadingEntitlements={loadingEntitlements}
                 entitlementsError={entitlementsError}
+                retryableEntitlements={isRetryableError(entitlementsQueryError)}
                 onRetryEntitlements={() => {
                   void refetchEntitlements()
                 }}
@@ -1059,6 +1143,7 @@ function PubDashboard() {
                     : ratingsError || !ratings
                       ? {
                           status: 'error',
+                          retryable: isRetryableError(ratingsQueryError),
                           retry: () => {
                             void refetchRatings()
                           }

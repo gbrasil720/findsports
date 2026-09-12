@@ -20,6 +20,7 @@ import {
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
 import { markCheckoutIntent } from '@/lib/subscription-receipt'
+import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { authClient } from '../lib/auth-client'
 
@@ -50,7 +51,10 @@ function PlanSelection() {
   const [error, setError] = useState<string | null>(null)
   const userTouched = useRef(false)
 
-  const subscriptionQuery = useQuery(trpc.pub.getMySubscription.queryOptions())
+  const subscriptionQuery = useQuery({
+    ...trpc.pub.getMySubscription.queryOptions(),
+    meta: { errorToast: false }
+  })
   // ESC-19: a contratação pode estar fechada. Quem decide é o servidor — ver
   // `api/auth/$` — mas descobrir isso só depois do clique, num erro genérico,
   // seria trabalhar contra o dono do bar. Aqui a tela avisa antes.
@@ -66,6 +70,12 @@ function PlanSelection() {
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
   const exitLink = getPlanExitLink(origin)
+  const subscriptionErrorFeedback = subscriptionQuery.error
+    ? getUserFacingError(
+        subscriptionQuery.error,
+        'Não foi possível carregar sua assinatura. Tente novamente.'
+      )
+    : null
 
   const [selected, setSelected] = useState<Plan['id']>('pro')
 
@@ -106,13 +116,13 @@ function PlanSelection() {
         })
 
       if (checkoutError || !data?.url) {
-        setError('Erro ao iniciar pagamento. Tente novamente.')
+        setError('Não foi possível iniciar o pagamento. Tente novamente.')
         return
       }
 
       window.location.href = data.url
     } catch {
-      setError('Erro ao iniciar pagamento. Tente novamente.')
+      setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -158,15 +168,20 @@ function PlanSelection() {
       )}
 
       {subscriptionQuery.isError ? (
-        <div className="onside-callout onside-callout-danger mx-auto mb-8 max-w-2xl">
-          <p className="text-sm">Não foi possível carregar sua assinatura.</p>
-          <button
-            type="button"
-            onClick={() => subscriptionQuery.refetch()}
-            className="onside-btn onside-btn-outline min-h-11"
-          >
-            Tentar novamente
-          </button>
+        <div
+          className="onside-callout onside-callout-danger mx-auto mb-8 max-w-2xl"
+          role="alert"
+        >
+          <p className="text-sm">{subscriptionErrorFeedback?.message}</p>
+          {subscriptionErrorFeedback?.retryable ? (
+            <button
+              type="button"
+              onClick={() => subscriptionQuery.refetch()}
+              className="onside-btn onside-btn-outline min-h-11"
+            >
+              Tentar novamente
+            </button>
+          ) : null}
         </div>
       ) : null}
 

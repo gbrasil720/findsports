@@ -20,6 +20,7 @@ import {
 } from '@/domain/geo-circle'
 import { env } from '@/lib/env'
 import { criarEstiloDoMapa } from '@/lib/map-style'
+import { isRetryableError } from '@/lib/user-facing-error'
 import {
   aplicarPino,
   criarConteudoDePino,
@@ -167,19 +168,15 @@ async function carregarMapLibre(): Promise<MapLibreModulo> {
  * chave. Era global, permanente e chegava DEPOIS de o mapa existir, então o
  * componente precisava de um observador global e de um estado que nunca
  * voltava. Sem chave e sem faturamento, esse estado deixou de existir: os
- * tiles são um arquivo público, e falha de arquivo público é falha de rede —
- * sempre vale tentar de novo.
+ * tiles são um arquivo público, e uma falha nele pode ser transitória ou
+ * definitiva: só o classificador libera a tentativa de novo para falhas
+ * temporárias.
  */
-type MapError = { message: string; retriable: boolean }
+type MapError = { retriable: boolean }
 
-function reportarFalhaDoMapa(reason: unknown): string {
+function reportarFalhaDoMapa(reason: unknown): MapError {
   console.error('Erro do MapLibre isolado no componente:', reason)
-  return 'Mapa temporariamente indisponível'
-}
-
-function getLoadError(error: unknown): string {
-  if (import.meta.env.DEV && error instanceof Error) return error.message
-  return 'Mapa temporariamente indisponível'
+  return { retriable: isRetryableError(reason) }
 }
 
 /**
@@ -238,9 +235,6 @@ function MapaDaOnside({
     const tilesUrl = env.VITE_MAP_TILES_URL
     if (!tilesUrl) {
       setError({
-        message: import.meta.env.DEV
-          ? 'Falta VITE_MAP_TILES_URL: sem o arquivo PMTiles o mapa fica vazio.'
-          : 'Mapa temporariamente indisponível',
         retriable: false
       })
       return
@@ -357,9 +351,6 @@ function MapaDaOnside({
         tempoLimite = setTimeout(() => {
           if (!cancelado) {
             setError({
-              message: import.meta.env.DEV
-                ? 'Tempo esgotado ao carregar os tiles. Ver o console.'
-                : 'Mapa temporariamente indisponível',
               retriable: true
             })
           }
@@ -367,7 +358,7 @@ function MapaDaOnside({
       })
       .catch((reason: unknown) => {
         if (!cancelado) {
-          setError({ message: getLoadError(reason), retriable: true })
+          setError({ retriable: isRetryableError(reason) })
         }
       })
 
@@ -457,7 +448,7 @@ function MapaDaOnside({
     } catch (reason) {
       // Degradar para o cartão de erro custa o mapa. Deixar subir custa a
       // rota inteira.
-      setError({ message: reportarFalhaDoMapa(reason), retriable: true })
+      setError(reportarFalhaDoMapa(reason))
     }
   }, [center, radiusKm, ready, showUserLocation])
 
@@ -565,14 +556,14 @@ function MapaDaOnside({
         markersRef.current.delete(id)
       }
     } catch (reason) {
-      setError({ message: reportarFalhaDoMapa(reason), retriable: true })
+      setError(reportarFalhaDoMapa(reason))
     }
   }, [bars, hoveredId, ready])
 
   if (error) {
     return (
       <MapLoadError
-        message={error.message}
+        message="Mapa temporariamente indisponível"
         onRetry={
           error.retriable ? () => setRetryKey((key) => key + 1) : undefined
         }

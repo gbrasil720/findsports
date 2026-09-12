@@ -10,6 +10,7 @@ type Props = {
   recommendations: BarRecommendation[]
   loading: boolean
   error: boolean
+  retryable: boolean
   dismissing: boolean
   onRetry: () => void
   onOpen: (barId: string) => void
@@ -63,13 +64,15 @@ export function ProfileRecommendations(props: Props) {
           <p className="mb-3 text-[var(--onside-muted)] text-sm" role="alert">
             Não foi possível carregar suas sugestões.
           </p>
-          <button
-            type="button"
-            onClick={props.onRetry}
-            className="min-h-11 bg-[var(--onside-ink)] px-4 py-2 font-bold text-[var(--onside-paper)] text-xs"
-          >
-            Tentar novamente
-          </button>
+          {props.retryable ? (
+            <button
+              type="button"
+              onClick={props.onRetry}
+              className="min-h-11 bg-[var(--onside-ink)] px-4 py-2 font-bold text-[var(--onside-paper)] text-xs"
+            >
+              Tentar novamente
+            </button>
+          ) : null}
         </div>
       ) : null}
 

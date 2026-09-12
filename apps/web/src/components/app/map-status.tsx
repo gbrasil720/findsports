@@ -1,5 +1,6 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Component, type ReactNode, type Ref } from 'react'
+import { isRetryableError } from '@/lib/user-facing-error'
 
 /**
  * `onRetry` é opcional porque nem toda falha é passageira: chave recusada e
@@ -14,7 +15,10 @@ export function MapLoadError({
   onRetry?: () => void
 }) {
   return (
-    <div className="absolute inset-0 grid place-items-center bg-[var(--onside-stone)] p-6 text-center">
+    <div
+      className="absolute inset-0 grid place-items-center bg-[var(--onside-stone)] p-6 text-center"
+      role="alert"
+    >
       <div>
         <div className="font-bold text-[var(--onside-ink)] text-sm">
           Mapa indisponível
@@ -98,16 +102,17 @@ export function MapCanvas({
  */
 export class MapBoundary extends Component<
   { children: ReactNode },
-  { falhou: boolean }
+  { falhou: boolean; retryable: boolean }
 > {
-  state = { falhou: false }
+  state = { falhou: false, retryable: false }
 
   static getDerivedStateFromError() {
-    return { falhou: true }
+    return { falhou: true, retryable: false }
   }
 
   componentDidCatch(error: unknown) {
     console.error('Mapa falhou e foi isolado da página:', error)
+    this.setState({ retryable: isRetryableError(error) })
   }
 
   render() {
@@ -115,7 +120,11 @@ export class MapBoundary extends Component<
       return (
         <MapLoadError
           message="Mapa temporariamente indisponível"
-          onRetry={() => this.setState({ falhou: false })}
+          onRetry={
+            this.state.retryable
+              ? () => this.setState({ falhou: false, retryable: false })
+              : undefined
+          }
         />
       )
     }

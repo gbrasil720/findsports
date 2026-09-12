@@ -5,6 +5,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { upload } from '@vercel/blob/client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
 import { ProfileFavorites } from '@/components/profile/profile-favorites'
 import { ProfileHeader } from '@/components/profile/profile-header'
@@ -38,6 +39,11 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
+import {
+  getUserFacingError,
+  getUserFacingMessage,
+  isRetryableError
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
@@ -96,15 +102,34 @@ function ProfilePage() {
     ...trpc.pubs.getSports.queryOptions(),
     ...CATALOG_QUERY
   })
-  const preferencesQuery = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const preferencesQuery = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const favoritesQuery = useQuery({
+    ...trpc.pubs.getFavorites.queryOptions(),
+    meta: { errorToast: false }
+  })
   const user = sessionQuery.data?.data?.user
   const favorites = favoritesQuery.data ?? []
   const preferences = preferencesQuery.data ?? []
   const sports = sportsQuery.data ?? []
+  const favoritesErrorFeedback = favoritesQuery.error
+    ? getUserFacingError(
+        favoritesQuery.error,
+        'Não foi possível carregar seus favoritos. Tente novamente.'
+      )
+    : null
+  const preferencesErrorFeedback = preferencesQuery.error
+    ? getUserFacingError(
+        preferencesQuery.error,
+        'Não foi possível carregar seus esportes. Tente novamente.'
+      )
+    : null
   const recommendationsQuery = useQuery({
     ...trpc.recommendations.get.queryOptions(coords ?? SAO_PAULO_FALLBACK),
-    enabled: tab === 'Visão geral'
+    enabled: tab === 'Visão geral',
+    meta: { errorToast: false }
   })
 
   const recordImpressions = useMutation(
@@ -177,7 +202,7 @@ function ProfilePage() {
             .find({ queryKey: favoritesQueryKey })
         }
       },
-      onError: (_error, _variables, context) => {
+      onError: (error, _variables, context) => {
         if (
           context?.previous &&
           context.query ===
@@ -185,6 +210,12 @@ function ProfilePage() {
         ) {
           queryClient.setQueryData(favoritesQueryKey, context.previous)
         }
+        toast.error(
+          getUserFacingMessage(
+            error,
+            'Não foi possível remover o bar dos favoritos. Tente novamente.'
+          )
+        )
       },
       onSettled: () => {
         void queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
@@ -363,12 +394,21 @@ function ProfilePage() {
             favoritesCount={favorites.length}
             preferencesCount={preferences.length}
             loadingPreferences={preferencesQuery.isLoading}
+            preferencesError={preferencesErrorFeedback?.message ?? null}
+            preferencesRetryable={preferencesErrorFeedback?.retryable ?? false}
+            onRetryPreferences={() => void preferencesQuery.refetch()}
             radiusKm={normalizeRadiusKm(user?.searchRadiusKm)}
             loadingFavorites={favoritesQuery.isLoading}
+            favoritesError={favoritesErrorFeedback?.message ?? null}
+            favoritesRetryable={favoritesErrorFeedback?.retryable ?? false}
+            onRetryFavorites={() => void favoritesQuery.refetch()}
             upcomingEvents={upcomingEvents}
             recommendations={recommendationsQuery.data?.recommendations ?? []}
             loadingRecommendations={recommendationsQuery.isLoading}
             recommendationsError={recommendationsQuery.isError}
+            recommendationsRetryable={isRetryableError(
+              recommendationsQuery.error
+            )}
             dismissingRecommendation={dismissRecommendation.isPending}
             onRetryRecommendations={() => void recommendationsQuery.refetch()}
             onOpenRecommendation={(barId) => {
@@ -401,6 +441,9 @@ function ProfilePage() {
             mapBars={mapBars}
             coords={coords}
             loading={favoritesQuery.isLoading}
+            error={favoritesErrorFeedback?.message ?? null}
+            retryable={favoritesErrorFeedback?.retryable ?? false}
+            onRetry={() => void favoritesQuery.refetch()}
             sortBy={sortBy}
             viewMode={viewMode}
             filterWithEvents={filterWithEvents}
@@ -432,16 +475,31 @@ function ProfilePage() {
             sports={sports}
             preferences={preferences}
             loadingPreferences={preferencesQuery.isLoading}
+            preferencesError={preferencesErrorFeedback?.message ?? null}
+            preferencesRetryable={preferencesErrorFeedback?.retryable ?? false}
+            onRetryPreferences={() => void preferencesQuery.refetch()}
             editingSports={editingSports}
             selectedSportIds={selectedSportIds}
             savingSports={updatePreferences.isPending}
-            sportsError={updatePreferences.error?.message ?? null}
+            sportsError={
+              updatePreferences.error
+                ? getUserFacingMessage(
+                    updatePreferences.error,
+                    'Não foi possível salvar seus esportes. Tente novamente.'
+                  )
+                : null
+            }
             savingRadius={savingRadius}
             radiusError={radiusError}
             resettingRecommendations={resetRecommendations.isPending}
             recommendationsReset={resetRecommendations.isSuccess}
             recommendationsResetError={
-              resetRecommendations.error?.message ?? null
+              resetRecommendations.error
+                ? getUserFacingMessage(
+                    resetRecommendations.error,
+                    'Não foi possível recomeçar suas sugestões. Tente novamente.'
+                  )
+                : null
             }
             onStartEditingSports={openEditSports}
             onCancelEditingSports={() => setEditingSports(false)}

@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { authClient } from '@/lib/auth-client'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { AccountActionRow } from './account-action-row'
 import { DeleteAccountSettings } from './delete-account-settings'
 import { SessionSettings } from './session-settings'
@@ -122,17 +123,21 @@ function PasswordDialog({
   const [confirmation, setConfirmation] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const close = () => {
     setCurrentPassword('')
     setNewPassword('')
     setConfirmation('')
     setError(null)
+    setActionError(null)
     onOpenChange(false)
   }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    setError(null)
+    setActionError(null)
     if (newPassword.length < 8) {
       setError('A nova senha deve ter pelo menos 8 caracteres.')
       return
@@ -143,7 +148,6 @@ function PasswordDialog({
     }
 
     setSaving(true)
-    setError(null)
     const result = await authClient.changePassword({
       currentPassword,
       newPassword,
@@ -152,7 +156,13 @@ function PasswordDialog({
     setSaving(false)
 
     if (result.error) {
-      setError(result.error.message ?? 'Não foi possível alterar a senha.')
+      setActionError(
+        getUserFacingMessage(
+          result.error,
+          'Não foi possível alterar a senha. Tente novamente.',
+          'credentials'
+        )
+      )
       return
     }
     toast.success('Senha alterada. Os outros acessos foram encerrados.')
@@ -196,13 +206,19 @@ function PasswordDialog({
               autoComplete="new-password"
               minLength={8}
               aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'change-password-error' : undefined}
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               required
             />
-            <FieldError>{error}</FieldError>
+            <FieldError id="change-password-error">{error}</FieldError>
           </Field>
         </FieldGroup>
+        {actionError ? (
+          <p className="text-[var(--onside-live-text)] text-sm" role="alert">
+            {actionError}
+          </p>
+        ) : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" size="lg" onClick={close}>
             Cancelar

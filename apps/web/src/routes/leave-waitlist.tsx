@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
+import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/leave-waitlist')({
@@ -20,6 +21,12 @@ function LeaveWaitlistPage() {
       onSuccess: () => analytics.waitlistCancelled()
     })
   )
+  const errorFeedback = leave.error
+    ? getUserFacingError(
+        leave.error,
+        'Não foi possível sair da lista. Tente novamente.'
+      )
+    : null
   return (
     <OnboardingLayout>
       <OnboardingHeader label="Lista de espera" />
@@ -37,18 +44,22 @@ function LeaveWaitlistPage() {
             role="alert"
             className="mt-4 text-sm text-[var(--onside-live-text)]"
           >
-            {leave.error.message}
+            {errorFeedback?.message}
           </p>
         ) : null}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          {!leave.isSuccess ? (
+          {!leave.isSuccess && (!leave.isError || errorFeedback?.retryable) ? (
             <button
               type="button"
               disabled={leave.isPending || !token}
               onClick={() => leave.mutate({ token })}
               className="onside-btn onside-btn-acid"
             >
-              {leave.isPending ? 'Saindo…' : 'Confirmar saída'}
+              {leave.isPending
+                ? 'Saindo…'
+                : errorFeedback?.retryable
+                  ? 'Tentar novamente'
+                  : 'Confirmar saída'}
             </button>
           ) : null}
           <Link to="/" className="onside-btn onside-btn-outline inline-flex">

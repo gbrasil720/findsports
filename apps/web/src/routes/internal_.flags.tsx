@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
 import { ControleCidades } from '@/components/internal/controle-cidades'
 import { getUser } from '@/functions/get-user'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/internal_/flags')({
@@ -338,7 +339,10 @@ function FlagsPage() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
 
-  const listaQuery = useQuery(trpc.appConfig.list.queryOptions())
+  const listaQuery = useQuery({
+    ...trpc.appConfig.list.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   async function recarregar() {
     await queryClient.invalidateQueries({
@@ -352,7 +356,10 @@ function FlagsPage() {
         toast.success(`${resultado.key} salvo.`)
         await recarregar()
       },
-      onError: (erro) => toast.error(erro.message)
+      onError: (erro) =>
+        toast.error(
+          getUserFacingMessage(erro, 'Não foi possível salvar a configuração.')
+        )
     })
   )
 
@@ -362,7 +369,13 @@ function FlagsPage() {
         toast.success(`${resultado.key} voltou ao padrão.`)
         await recarregar()
       },
-      onError: (erro) => toast.error(erro.message)
+      onError: (erro) =>
+        toast.error(
+          getUserFacingMessage(
+            erro,
+            'Não foi possível restaurar a configuração.'
+          )
+        )
     })
   )
 
@@ -424,15 +437,20 @@ function FlagsPage() {
       ) : null}
 
       {listaQuery.isError ? (
-        <div className="onside-callout onside-callout-danger max-w-3xl">
+        <div
+          className="onside-callout onside-callout-danger max-w-3xl"
+          role="alert"
+        >
           <p className="text-sm">Não foi possível carregar a configuração.</p>
-          <button
-            type="button"
-            onClick={() => listaQuery.refetch()}
-            className="onside-btn onside-btn-outline min-h-11"
-          >
-            Tentar novamente
-          </button>
+          {isRetryableError(listaQuery.error) ? (
+            <button
+              type="button"
+              onClick={() => listaQuery.refetch()}
+              className="onside-btn onside-btn-outline min-h-11"
+            >
+              Tentar novamente
+            </button>
+          ) : null}
         </div>
       ) : null}
 

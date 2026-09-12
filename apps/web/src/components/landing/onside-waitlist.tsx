@@ -154,13 +154,14 @@ export function OnsideFanWaitlistForm() {
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
+            aria-describedby={fieldErrors.city ? 'fan-city-error' : undefined}
             required
             className="onside-input"
           />
           <span aria-hidden="true">⌖</span>
         </div>
         {fieldErrors.city ? (
-          <FieldError className="onside-field-error">
+          <FieldError id="fan-city-error" className="onside-field-error">
             {fieldErrors.city}
           </FieldError>
         ) : null}
@@ -186,13 +187,14 @@ export function OnsideFanWaitlistForm() {
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'fan-email-error' : undefined}
             required
             className="onside-input"
           />
           <span aria-hidden="true">@</span>
         </div>
         {fieldErrors.email ? (
-          <FieldError className="onside-field-error">
+          <FieldError id="fan-email-error" className="onside-field-error">
             {fieldErrors.email}
           </FieldError>
         ) : null}
@@ -343,11 +345,14 @@ export function OnsideBarInterestForm() {
               setPubName(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.pubName)}
+            aria-describedby={
+              fieldErrors.pubName ? 'bar-pub-name-error' : undefined
+            }
             required
             className="onside-bar-input"
           />
           {fieldErrors.pubName ? (
-            <FieldError className="onside-field-error">
+            <FieldError id="bar-pub-name-error" className="onside-field-error">
               {fieldErrors.pubName}
             </FieldError>
           ) : null}
@@ -369,11 +374,12 @@ export function OnsideBarInterestForm() {
               setCity(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.city)}
+            aria-describedby={fieldErrors.city ? 'bar-city-error' : undefined}
             required
             className="onside-bar-input"
           />
           {fieldErrors.city ? (
-            <FieldError className="onside-field-error">
+            <FieldError id="bar-city-error" className="onside-field-error">
               {fieldErrors.city}
             </FieldError>
           ) : null}
@@ -396,11 +402,12 @@ export function OnsideBarInterestForm() {
               setEmail(event.target.value)
             }}
             aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'bar-email-error' : undefined}
             required
             className="onside-bar-input"
           />
           {fieldErrors.email ? (
-            <FieldError className="onside-field-error">
+            <FieldError id="bar-email-error" className="onside-field-error">
               {fieldErrors.email}
             </FieldError>
           ) : null}
