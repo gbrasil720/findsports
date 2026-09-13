@@ -1,5 +1,6 @@
 import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import {
   bar,
   event,
@@ -18,8 +19,13 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
+import { getCurrentPlan } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
+import {
+  assertCanConfigureHouseOffer,
+  parseHouseOfferInput
+} from '../lib/house-offer'
 import { STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
   hasPublicRating,
@@ -144,27 +150,6 @@ async function getBarByUserId(userId: string) {
   }
 
   return result
-}
-
-type SubscriptionForPlan = Pick<
-  typeof subscription.$inferSelect,
-  'plan' | 'status' | 'currentPeriodEnd'
->
-
-export function getCurrentPlan(
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-) {
-  if (!subscription) return null
-  if (subscription.status === 'active') return subscription.plan
-  if (
-    subscription.status === 'trialing' &&
-    subscription.currentPeriodEnd !== null &&
-    subscription.currentPeriodEnd > now
-  ) {
-    return subscription.plan
-  }
-  return null
 }
 
 export const pubRouter = router({
@@ -296,6 +281,49 @@ export const pubRouter = router({
         phoneRevoked: whatsappResolution?.value === false,
         phoneAcceptsWhatsappConfirmed: whatsappResolution?.value === true
       }
+    }),
+
+  /**
+   * Oferta da casa (WEB-120): salva, edita ou limpa (`null` ou texto em
+   * branco).
+   *
+   * Fica fora de `updateMe` porque é recurso pago: o plano é conferido aqui,
+   * a partir da assinatura, antes de qualquer escrita — o painel esconder o
+   * campo não impede ninguém de chamar o procedimento direto.
+   *
+   * Não toca em reserva nenhuma. `reservation.offer_snapshot` é cópia feita
+   * na criação e não se atualiza a partir daqui.
+   */
+  updateHouseOffer: protectedProcedure
+    .input(
+      z.object({
+        // Teto de payload, não a regra: o limite vale sobre o texto já
+        // normalizado, em `parseHouseOfferInput`.
+        houseOffer: z
+          .string()
+          .max(HOUSE_OFFER_MAX_LENGTH * 4)
+          .nullable()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'pub') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas contas de bar podem acessar este recurso.'
+        })
+      }
+
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      assertCanConfigureHouseOffer(existingBar.subscription ?? null)
+      const houseOffer = parseHouseOfferInput(input.houseOffer)
+
+      const [updated] = await db
+        .update(bar)
+        .set({ houseOffer })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ houseOffer: bar.houseOffer })
+
+      return { houseOffer: updated?.houseOffer ?? null }
     }),
 
   /**

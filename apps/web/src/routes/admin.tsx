@@ -33,6 +33,7 @@ import { BarPreview } from '@/components/admin/bar-preview'
 import { ConversionReadiness } from '@/components/admin/conversion-readiness'
 import { EventPerformance } from '@/components/admin/event-performance'
 import { EventsManager } from '@/components/admin/events-manager'
+import { HouseOfferEditor } from '@/components/admin/house-offer-editor'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { RatingsPanel } from '@/components/admin/ratings-panel'
 import { RecommendationQualityStatus } from '@/components/admin/recommendation-quality-status'
@@ -388,6 +389,7 @@ function PubDashboard() {
     EventComparisonTarget | undefined
   >()
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [houseOfferError, setHouseOfferError] = useState<string | null>(null)
   const limitTracked = useRef(false)
 
   useEffect(() => {
@@ -607,6 +609,25 @@ function PubDashboard() {
           getUserFacingMessage(
             err,
             'Não foi possível salvar o perfil. Tente novamente.'
+          )
+        )
+      }
+    })
+  )
+
+  const updateHouseOfferMutation = useMutation(
+    trpc.pub.updateHouseOffer.mutationOptions({
+      onMutate: () => {
+        setHouseOfferError(null)
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+      },
+      onError: (err) => {
+        setHouseOfferError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar a oferta. Tente novamente.'
           )
         )
       }
@@ -1134,6 +1155,30 @@ function PubDashboard() {
                     queryKey: trpc.pub.getMe.queryKey()
                   })
                 }}
+              />
+
+              <HouseOfferEditor
+                houseOffer={bar.houseOffer}
+                access={
+                  loadingSub
+                    ? { status: 'loading' }
+                    : subError
+                      ? {
+                          status: 'error',
+                          retry: () => {
+                            void refetchSub()
+                          }
+                        }
+                      : {
+                          status: 'ready',
+                          eligible: subscription?.currentPlan === 'elite'
+                        }
+                }
+                isSaving={updateHouseOfferMutation.isPending}
+                saveError={houseOfferError}
+                onSave={(houseOffer) =>
+                  updateHouseOfferMutation.mutateAsync({ houseOffer })
+                }
               />
 
               <RatingsPanel

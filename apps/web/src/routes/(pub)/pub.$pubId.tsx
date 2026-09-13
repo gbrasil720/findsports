@@ -18,6 +18,7 @@ import { BarCover } from '@/components/pub/bar-cover'
 import { BarLocationBlock } from '@/components/pub/bar-location-block'
 import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
+import { HouseOfferSection } from '@/components/pub/house-offer-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
 import { buildBarFacts } from '@/domain/bar-facts'
 import {
@@ -444,6 +445,8 @@ function PubPage() {
                   fromSearch={Boolean(eventId) && heroEvent.id === eventId}
                 />
               )}
+
+              <HouseOfferSection offer={normalizedPub.houseOffer} />
 
               <BarActions {...actions} variant="panel" isOwner={isOwner} />
 
