@@ -1,10 +1,13 @@
 import { and, db, eq, sql } from '@findsports_oficial/db'
+import {
+  DEFAULT_EVENT_DURATION_INTERVAL,
+  getEventEnd
+} from '@findsports_oficial/db/event-window'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { protectedProcedure, router } from '../index'
-import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
 
 /**
@@ -79,10 +82,7 @@ async function checkEligibility(input: {
     }
   }
 
-  const startsAt = new Date(row.starts_at)
-  const endsAt = row.ends_at
-    ? new Date(row.ends_at)
-    : new Date(startsAt.getTime() + EVENT_LIVE_WINDOW_MS)
+  const endsAt = getEventEnd({ startsAt: row.starts_at, endsAt: row.ends_at })
 
   if (endsAt.getTime() > input.now.getTime()) {
     return { ok: false, reason: 'O jogo ainda não acabou.' }
@@ -135,11 +135,11 @@ export const ratingsRouter = router({
         -- Jogo acabado: fim informado, ou início mais a janela ao vivo.
         AND COALESCE(
           e.ends_at,
-          e.starts_at + ${`${EVENT_LIVE_WINDOW_MS} milliseconds`}::interval
+          e.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval
         ) <= NOW()
         AND COALESCE(
           e.ends_at,
-          e.starts_at + ${`${EVENT_LIVE_WINDOW_MS} milliseconds`}::interval
+          e.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval
         ) > NOW() - ${`${RATING_WINDOW_DAYS} days`}::interval
         AND NOT EXISTS (
           SELECT 1 FROM bar_rating r
