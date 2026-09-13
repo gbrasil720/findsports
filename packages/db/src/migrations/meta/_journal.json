@@ -232,6 +232,13 @@
       "when": 1789340719988,
       "tag": "0033_reservation",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789342111659,
+      "tag": "0034_reservation_code_guards",
+      "breakpoints": true
     }
   ]
 }

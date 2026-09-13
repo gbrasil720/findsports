@@ -118,6 +118,15 @@ export const reservation = pgTable(
  * `used_count` é mantido por trigger a partir de `reservation_code_use`
  * (migration 0033). Ninguém no TypeScript escreve esse número; a restrição
  * `used_count <= max_uses` faz o insert do uso excedente falhar no banco.
+ *
+ * Guardas da migration 0034, todas no banco:
+ * - `used_count` só muda pela trigger de uso; escrita direta é recusada
+ *   (`reservation_code_used_count_derived`).
+ * - `max_uses` precisa ser igual a `reservation.party_size` na emissão e
+ *   acompanha mudanças da reserva
+ *   (`reservation_code_max_uses_matches_party_size`).
+ * - Código aposentado não aceita uso novo
+ *   (`reservation_code_use_code_not_retired`).
  */
 export const reservationCode = pgTable(
   'reservation_code',
