@@ -14,6 +14,7 @@ import {
   text,
   timestamp
 } from 'drizzle-orm/pg-core'
+import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { user } from './auth'
 import { barRating } from './rating'
 
@@ -79,6 +80,12 @@ export const bar = pgTable(
     amenities: integer('amenities').array().default(sql`'{}'`).notNull(),
     // Só exibição. A busca não filtra por número de telas.
     screenCount: smallint('screen_count'),
+    // Oferta da casa (WEB-120). Guardada independente do plano: perder o
+    // Elite esconde o texto do perfil público, mas não o apaga. Quem decide
+    // se aparece é `packages/api/src/lib/house-offer.ts`. Fica fora de
+    // `PUBLIC_BAR_COLUMNS` de propósito. A reserva copia o valor em
+    // `reservation.offer_snapshot` e nunca volta a ler esta coluna.
+    houseOffer: text('house_offer'),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui.
@@ -130,7 +137,13 @@ export const bar = pgTable(
       .where(sql`is_active AND plan = 'pro'`),
     index('bar_geo_starter_idx')
       .using('gist', table.geo)
-      .where(sql`is_active AND plan = 'starter'`)
+      .where(sql`is_active AND plan = 'starter'`),
+    // Mesma regra de `normalizeHouseOffer`: vazio é `null`, nunca string
+    // vazia, e o limite é o do formulário.
+    check(
+      'bar_house_offer_length',
+      sql`${table.houseOffer} IS NULL OR char_length(${table.houseOffer}) BETWEEN 1 AND ${sql.raw(String(HOUSE_OFFER_MAX_LENGTH))}` // sql-raw-permitido: constante de limite em CHECK
+    )
   ]
 )
 

@@ -114,3 +114,12 @@ recuperação autônoma quando o autenticador não está disponível.
 Momento em que uma assinatura externa já não possui período contratado
 vigente. Uma solicitação de cancelamento ainda dentro do período pago não é
 encerramento efetivo e não autoriza excluir a conta do bar.
+
+## Oferta da casa
+
+Texto curto e opcional em que o bar diz o que oferece a quem chega pela
+Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
+valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`,
+ou `trialing` dentro do período); sem ele o texto some do perfil público, mas
+continua guardado. Uma reserva copia o texto na criação e não acompanha
+mudanças posteriores.

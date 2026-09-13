@@ -1,8 +1,8 @@
 import { describe, expect, it, test } from 'bun:test'
 import { TRPCError } from '@trpc/server'
+import { getCurrentPlan } from '../lib/current-plan'
 import {
   assertEventIntervalValid,
-  getCurrentPlan,
   resolveEventEndsAt,
   resolvePhoneAcceptsWhatsapp
 } from './pub'

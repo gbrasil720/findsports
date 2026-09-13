@@ -15,6 +15,7 @@ import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import { resolvePublicHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -270,9 +271,15 @@ export const pubsRouter = router({
           // inativo nem sai da consulta.
           isActive: true,
           ratingCount: true,
-          ratingPositive: true
+          ratingPositive: true,
+          houseOffer: true
         },
         with: {
+          // Só para decidir se a oferta da casa aparece; sai da resposta.
+          // `plan` acima é projeção que ignora o status da assinatura.
+          subscription: {
+            columns: { plan: true, status: true, currentPeriodEnd: true }
+          },
           events: {
             // Jogo ao vivo continua na página: o corte é o fim provável do
             // jogo, não o início. Ver `event-profile-window.ts`.
@@ -313,7 +320,18 @@ export const pubsRouter = router({
       // exibição está desligada ou quando o bar não atingiu o piso, e nunca
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
-      const { userId, ratingCount, ratingPositive, ...publicBar } = result
+      //
+      // A oferta da casa segue a mesma lógica: sem Elite vigente o cliente
+      // recebe `null`, não o texto com um aviso para esconder. Vale também
+      // para a prévia do dono — ela mostra o que o torcedor vê.
+      const {
+        userId,
+        ratingCount,
+        ratingPositive,
+        houseOffer,
+        subscription,
+        ...publicBar
+      } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
       const rating =
@@ -325,7 +343,16 @@ export const pubsRouter = router({
             }
           : null
 
-      return { ...publicBar, rating, isOwner: userId === ctx.session.user.id }
+      return {
+        ...publicBar,
+        rating,
+        houseOffer: resolvePublicHouseOffer(
+          houseOffer,
+          subscription ?? null,
+          now
+        ),
+        isOwner: userId === ctx.session.user.id
+      }
     }),
 
   favorite: protectedProcedure
