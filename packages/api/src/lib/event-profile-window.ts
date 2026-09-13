@@ -1,20 +1,25 @@
+import {
+  DEFAULT_EVENT_DURATION_HOURS,
+  DEFAULT_EVENT_DURATION_MS,
+  getEventEnd
+} from '@findsports_oficial/db/event-window'
+
 /**
  * Janela em que um jogo ainda aparece no perfil público do bar.
  *
  * O perfil listava só `startsAt >= now()`. Um jogo que começou cinco minutos
  * atrás sumia da página — justamente quando o torcedor está saindo de casa e
  * a intenção é máxima. A janela mantém o jogo visível enquanto ele plausível
- * mente rola: até `endsAt`, quando o bar informou, ou três horas depois do
- * apito quando não informou.
+ * mente rola: até o fim derivado do evento.
  *
- * O mesmo número vive em `apps/web/src/domain/events.ts` (`LIVE_WINDOW_MS`),
- * que decide o rótulo "ao vivo" na interface. Os dois precisam concordar: se
- * a janela do servidor for menor, o jogo some antes do rótulo expirar; se for
- * maior, a página mostra como futuro um jogo que já acabou.
+ * O número em si vive em `@findsports_oficial/db/event-window`, a fonte única
+ * que também decide o rótulo "ao vivo" em `apps/web/src/domain/events.ts` e a
+ * janela de validação de reserva. Estes nomes ficam como apelidos para as
+ * queries que precisam do corte em SQL.
  */
-export const EVENT_LIVE_WINDOW_HOURS = 3
+export const EVENT_LIVE_WINDOW_HOURS = DEFAULT_EVENT_DURATION_HOURS
 
-export const EVENT_LIVE_WINDOW_MS = EVENT_LIVE_WINDOW_HOURS * 60 * 60 * 1000
+export const EVENT_LIVE_WINDOW_MS = DEFAULT_EVENT_DURATION_MS
 
 /**
  * Espelho em TypeScript do predicado SQL usado em `pubs.getById`. Existe para
@@ -26,6 +31,5 @@ export function isEventVisibleOnProfile(
   endsAt: Date | null,
   now: Date = new Date()
 ): boolean {
-  const end = endsAt ?? new Date(startsAt.getTime() + EVENT_LIVE_WINDOW_MS)
-  return end.getTime() >= now.getTime()
+  return getEventEnd({ startsAt, endsAt }).getTime() >= now.getTime()
 }

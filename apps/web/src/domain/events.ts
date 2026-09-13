@@ -1,4 +1,10 @@
-export const LIVE_WINDOW_MS = 3 * 60 * 60 * 1000
+import {
+  DEFAULT_EVENT_DURATION_MS,
+  getEventEnd
+} from '@findsports_oficial/db/event-window'
+
+// Fim derivado vem da fonte única compartilhada com o servidor (WEB-119).
+export const LIVE_WINDOW_MS = DEFAULT_EVENT_DURATION_MS
 
 export type EventTemporalState = 'upcoming' | 'live' | 'past'
 
@@ -8,9 +14,7 @@ export function getEventTemporalState(
   now: string | Date | number = Date.now()
 ): EventTemporalState {
   const startsAtMs = new Date(startsAt).getTime()
-  const endsAtMs = endsAt
-    ? new Date(endsAt).getTime()
-    : startsAtMs + LIVE_WINDOW_MS
+  const endsAtMs = getEventEnd({ startsAt, endsAt }).getTime()
   const nowMs = typeof now === 'number' ? now : new Date(now).getTime()
 
   if (nowMs < startsAtMs) return 'upcoming'
