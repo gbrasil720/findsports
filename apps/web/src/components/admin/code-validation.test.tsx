@@ -264,6 +264,13 @@ async function arrive(times = 1) {
   await click('Confirmar chegada', times)
 }
 
+/** Os `requestId` enviados, na ordem das chamadas. */
+function requestIds(api: Api): string[] {
+  return api.registerArrival.mock.calls.map(
+    ([input]) => (input as { requestId: string }).requestId
+  )
+}
+
 async function find(api: Api, options?: Parameters<typeof render>[1]) {
   await render(api, options)
   await type('ab3k9x')
@@ -418,9 +425,7 @@ describe('registro de chegada', () => {
     await arrive()
     await arrive()
 
-    const [first, second] = api.registerArrival.mock.calls.map(
-      ([input]) => (input as { requestId: string }).requestId
-    )
+    const [first, second] = requestIds(api)
     expect(first).not.toBe(second)
   })
 
@@ -438,9 +443,7 @@ describe('registro de chegada', () => {
     expect(alertText()).toContain('Não foi possível registrar a chegada')
 
     await arrive()
-    const [first, second] = api.registerArrival.mock.calls.map(
-      ([input]) => (input as { requestId: string }).requestId
-    )
+    const [first, second] = requestIds(api)
     expect(second).toBe(first)
     expect(document.body.textContent).toContain('1 de 3 validados')
     expect(document.querySelector('[role="alert"]')).toBeNull()
@@ -484,9 +487,7 @@ describe('desfazer', () => {
     const api = fakeApi()
     await find(api)
     await arrive()
-    const { requestId } = api.registerArrival.mock.calls[0]?.[0] as {
-      requestId: string
-    }
+    const [requestId] = requestIds(api)
     await click('Desfazer a última chegada')
 
     expect(api.undoArrival).toHaveBeenCalledWith({ useId: requestId })
