@@ -9,8 +9,11 @@ import {
   timestamp,
   uniqueIndex
 } from 'drizzle-orm/pg-core'
+import { RESERVATION_CODE_PATTERN } from '../reservation-code'
 import { user } from './auth'
 import { event } from './platform'
+
+export { RESERVATION_CODE_PATTERN }
 
 /**
  * Reserva de mesa (WEB-119). Só a camada de dados: quem pode criar, aceitar,
@@ -40,9 +43,6 @@ export const ACTIVE_RESERVATION_STATUSES = [
 
 /** Limite da observação livre. Recado para o bar, não conversa. */
 export const RESERVATION_NOTE_MAX_LENGTH = 280
-
-/** Formato do código: maiúsculas e dígitos, curto o bastante para ditar. */
-export const RESERVATION_CODE_PATTERN = '^[A-Z0-9]{4,12}$'
 
 // Os `sql.raw` deste arquivo só inlinam constantes do próprio código em DDL:
 // predicado de índice e CHECK não aceitam parâmetro, e escrever o literal à
