@@ -15,7 +15,6 @@ import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
-import { resolvePublicHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -25,6 +24,7 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import { receivesReservations } from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
 
@@ -272,10 +272,12 @@ export const pubsRouter = router({
           isActive: true,
           ratingCount: true,
           ratingPositive: true,
-          houseOffer: true
+          houseOffer: true,
+          acceptsReservations: true
         },
         with: {
-          // Só para decidir se a oferta da casa aparece; sai da resposta.
+          // Só para decidir o recebimento de reservas e a oferta da casa; sai
+          // da resposta.
           // `plan` acima é projeção que ignora o status da assinatura.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
@@ -321,14 +323,16 @@ export const pubsRouter = router({
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
       //
-      // A oferta da casa segue a mesma lógica: sem Elite vigente o cliente
-      // recebe `null`, não o texto com um aviso para esconder. Vale também
-      // para a prévia do dono — ela mostra o que o torcedor vê.
+      // Recebimento de reservas e oferta da casa seguem a mesma lógica: o
+      // cliente recebe o efetivo (quer E pode), nunca o interruptor cru nem o
+      // texto com um aviso para esconder. Vale também para a prévia do dono —
+      // ela mostra o que o torcedor vê.
       const {
         userId,
         ratingCount,
         ratingPositive,
         houseOffer,
+        acceptsReservations,
         subscription,
         ...publicBar
       } = result
@@ -343,14 +347,18 @@ export const pubsRouter = router({
             }
           : null
 
+      const receiving = receivesReservations(
+        acceptsReservations,
+        subscription ?? null,
+        now
+      )
       return {
         ...publicBar,
         rating,
-        houseOffer: resolvePublicHouseOffer(
-          houseOffer,
-          subscription ?? null,
-          now
-        ),
+        // O único resgate da oferta é o código de uma reserva: sem
+        // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
+        houseOffer: receiving ? houseOffer : null,
+        acceptsReservations: receiving,
         isOwner: userId === ctx.session.user.id
       }
     }),
