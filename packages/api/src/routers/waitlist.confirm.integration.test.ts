@@ -233,7 +233,14 @@ integrationTest(
     // Sem tocar no rate limit compartilhado: cada execução de `join`
     // incrementaria `waitlist:ip:127.0.0.1` no banco de dev e envenenaria as
     // janelas dos demais testes de integração.
+    //
+    // `mock.module` vale para o processo inteiro e o `bun test` não o
+    // desfaz: sem devolver o módulo real no `finally`, qualquer arquivo que
+    // rode depois deste recebe o dublê — e a ordem dos arquivos muda de uma
+    // máquina para outra.
+    const limiteReal = { ...(await import('../lib/waitlist-rate-limit')) }
     mock.module('../lib/waitlist-rate-limit', () => ({
+      ...limiteReal,
       consumirLimitesWaitlist: async () => ({
         allowed: true,
         retryAfterMs: 0,
@@ -313,6 +320,7 @@ integrationTest(
       expect(final.role).toBe('pub')
       expect(final.city).toBe('Cidade nova')
     } finally {
+      mock.module('../lib/waitlist-rate-limit', () => limiteReal)
       await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
     }
   }
