@@ -119,7 +119,17 @@ encerramento efetivo e não autoriza excluir a conta do bar.
 
 Texto curto e opcional em que o bar diz o que oferece a quem chega pela
 Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
-valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`,
-ou `trialing` dentro do período); sem ele o texto some do perfil público, mas
-continua guardado. Uma reserva copia o texto na criação e não acompanha
-mudanças posteriores.
+valida o conteúdo. Configurar exige plano Elite vigente (`active`, ou
+`trialing` dentro do período); exibir exige também o recebimento de reservas
+ligado, porque o único resgate da oferta é o código de uma reserva. Sem uma das
+duas coisas o texto some do perfil público, mas continua guardado. Uma reserva
+copia o texto na criação e não acompanha mudanças posteriores.
+
+## Recebimento de reservas
+
+Interruptor do bar, no painel, que diz se ele **quer** receber pedidos de
+reserva pela Onside. Desligado por padrão: assinar Elite dá a capacidade, não
+inscreve o bar numa operação que ele não pediu. Ligar exige Elite vigente; o
+recebimento efetivo exige as duas coisas. Desligar só barra pedidos novos —
+reservas já criadas continuam legíveis, canceláveis e com código válido dentro
+da janela. Não é teto por jogo (WEB-132).
