@@ -4,9 +4,7 @@ import {
   assertCanValidateReservations,
   assertReservationConfirmed,
   assertWindowOpen,
-  canValidateReservations,
   codeNotFoundError,
-  getValidationWindowState,
   translateArrivalWriteError
 } from './reservation-validation'
 
@@ -15,48 +13,39 @@ const now = new Date('2026-09-12T21:00:00.000Z')
 const future = new Date(now.getTime() + 24 * HOUR)
 const past = new Date(now.getTime() - 24 * HOUR)
 
-describe('canValidateReservations', () => {
+describe('assertCanValidateReservations', () => {
+  const allows = (
+    subscription: Parameters<typeof assertCanValidateReservations>[0]
+  ) => {
+    try {
+      assertCanValidateReservations(subscription, now)
+      return true
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'FORBIDDEN' })
+      return false
+    }
+  }
+
   test('Elite ativo ou em trial vigente valida', () => {
     expect(
-      canValidateReservations(
-        { plan: 'elite', status: 'active', currentPeriodEnd: null },
-        now
-      )
+      allows({ plan: 'elite', status: 'active', currentPeriodEnd: null })
     ).toBe(true)
     expect(
-      canValidateReservations(
-        { plan: 'elite', status: 'trialing', currentPeriodEnd: future },
-        now
-      )
+      allows({ plan: 'elite', status: 'trialing', currentPeriodEnd: future })
     ).toBe(true)
   })
 
   test('sem assinatura, outro plano, trial vencido ou cobrança pendente não', () => {
-    expect(canValidateReservations(null, now)).toBe(false)
+    expect(allows(null)).toBe(false)
     expect(
-      canValidateReservations(
-        { plan: 'pro', status: 'active', currentPeriodEnd: future },
-        now
-      )
+      allows({ plan: 'pro', status: 'active', currentPeriodEnd: future })
     ).toBe(false)
     expect(
-      canValidateReservations(
-        { plan: 'elite', status: 'trialing', currentPeriodEnd: past },
-        now
-      )
+      allows({ plan: 'elite', status: 'trialing', currentPeriodEnd: past })
     ).toBe(false)
     expect(
-      canValidateReservations(
-        { plan: 'elite', status: 'past_due', currentPeriodEnd: future },
-        now
-      )
+      allows({ plan: 'elite', status: 'past_due', currentPeriodEnd: future })
     ).toBe(false)
-  })
-
-  test('a recusa é FORBIDDEN', () => {
-    expect(() => assertCanValidateReservations(null, now)).toThrow(
-      expect.objectContaining({ code: 'FORBIDDEN' })
-    )
   })
 })
 
@@ -71,52 +60,22 @@ describe('assertReservationConfirmed', () => {
   })
 })
 
-describe('getValidationWindowState', () => {
+describe('assertWindowOpen', () => {
   const event = {
     startsAt: new Date('2026-09-12T19:00:00.000Z'),
     endsAt: null
   }
-
-  test('abre 3h antes e fecha 3h depois do fim derivado, inclusive', () => {
-    const opensAt = new Date('2026-09-12T16:00:00.000Z')
-    const closesAt = new Date('2026-09-13T01:00:00.000Z')
-
-    expect(getValidationWindowState(event, opensAt)).toEqual({
-      status: 'open',
-      opensAt,
-      closesAt
-    })
-    expect(getValidationWindowState(event, closesAt).status).toBe('open')
-    expect(
-      getValidationWindowState(event, new Date(opensAt.getTime() - 1)).status
-    ).toBe('not_open')
-    expect(
-      getValidationWindowState(event, new Date(closesAt.getTime() + 1)).status
-    ).toBe('closed')
-  })
-
-  test('fim informado pelo bar desloca o fechamento', () => {
-    const state = getValidationWindowState(
-      { ...event, endsAt: new Date('2026-09-12T21:00:00.000Z') },
-      now
-    )
-    expect(state.closesAt).toEqual(new Date('2026-09-13T00:00:00.000Z'))
-  })
-})
-
-describe('assertWindowOpen', () => {
   const opensAt = new Date('2026-09-12T16:00:00.000Z')
   const closesAt = new Date('2026-09-13T01:00:00.000Z')
 
-  test('janela aberta passa', () => {
-    expect(() =>
-      assertWindowOpen({ status: 'open', opensAt, closesAt })
-    ).not.toThrow()
+  test('abre 3h antes e fecha 3h depois do fim derivado, inclusive', () => {
+    expect(() => assertWindowOpen(event, opensAt)).not.toThrow()
+    expect(() => assertWindowOpen(event, closesAt)).not.toThrow()
   })
 
   test('diz quando o código passa a valer, no horário de Brasília', () => {
     expect(() =>
-      assertWindowOpen({ status: 'not_open', opensAt, closesAt })
+      assertWindowOpen(event, new Date(opensAt.getTime() - 1))
     ).toThrow(
       expect.objectContaining({
         code: 'PRECONDITION_FAILED',
@@ -127,13 +86,22 @@ describe('assertWindowOpen', () => {
 
   test('diz até quando o código valia', () => {
     expect(() =>
-      assertWindowOpen({ status: 'closed', opensAt, closesAt })
+      assertWindowOpen(event, new Date(closesAt.getTime() + 1))
     ).toThrow(
       expect.objectContaining({
         code: 'PRECONDITION_FAILED',
         message: expect.stringMatching(/expirou.*12\/09,? 22:00/)
       })
     )
+  })
+
+  test('fim informado pelo bar desloca o fechamento', () => {
+    const shorter = { ...event, endsAt: new Date('2026-09-12T21:00:00.000Z') }
+    const midnight = new Date('2026-09-13T00:00:00.000Z')
+    expect(() => assertWindowOpen(shorter, midnight)).not.toThrow()
+    expect(() =>
+      assertWindowOpen(shorter, new Date(midnight.getTime() + 1))
+    ).toThrow()
   })
 })
 

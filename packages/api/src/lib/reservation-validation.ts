@@ -34,13 +34,6 @@ export function validationAttemptKey(userId: string): string {
  */
 export const ARRIVAL_UNDO_GRACE_MS = 5_000
 
-export function canValidateReservations(
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return getCurrentPlan(subscription, now) === 'elite'
-}
-
 /**
  * Depende só da assinatura de quem chama, nunca do código digitado: recusar
  * aqui não revela nada sobre código nenhum.
@@ -49,7 +42,7 @@ export function assertCanValidateReservations(
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): void {
-  if (!canValidateReservations(subscription, now)) {
+  if (getCurrentPlan(subscription, now) !== 'elite') {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A validação de reservas é um recurso do plano Elite.'
@@ -66,14 +59,6 @@ export function codeNotFoundError(): TRPCError {
   return new TRPCError({
     code: 'NOT_FOUND',
     message: 'Código não encontrado. Confira com o torcedor e tente de novo.'
-  })
-}
-
-export function tooManyAttemptsError(): TRPCError {
-  return new TRPCError({
-    code: 'TOO_MANY_REQUESTS',
-    message:
-      'Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.'
   })
 }
 
@@ -96,29 +81,7 @@ export function assertReservationConfirmed(status: ReservationStatus): void {
   })
 }
 
-export type ValidationWindowStatus = 'not_open' | 'open' | 'closed'
-
-export type ValidationWindowState = {
-  status: ValidationWindowStatus
-  opensAt: Date
-  closesAt: Date
-}
-
-export function getValidationWindowState(
-  event: { startsAt: Date; endsAt: Date | null },
-  now = new Date()
-): ValidationWindowState {
-  const { opensAt, closesAt } = getValidationWindow(event)
-  const nowMs = now.getTime()
-  const status: ValidationWindowStatus =
-    nowMs < opensAt.getTime()
-      ? 'not_open'
-      : nowMs > closesAt.getTime()
-        ? 'closed'
-        : 'open'
-  return { status, opensAt, closesAt }
-}
-
+/** "12/09, 18:30", no fuso em que os bares operam. */
 const windowDateFormat = new Intl.DateTimeFormat('pt-BR', {
   timeZone: COMMERCIAL_TIME_ZONE,
   day: '2-digit',
@@ -127,20 +90,24 @@ const windowDateFormat = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit'
 })
 
-/** "12/09, 18:30", no fuso em que os bares operam. */
-export function formatWindowDate(date: Date): string {
-  return windowDateFormat.format(date)
-}
-
-export function assertWindowOpen(state: ValidationWindowState): void {
-  if (state.status === 'open') return
-  throw new TRPCError({
-    code: 'PRECONDITION_FAILED',
-    message:
-      state.status === 'not_open'
-        ? `Este código ainda não abriu. Ele vale a partir de ${formatWindowDate(state.opensAt)}.`
-        : `Este código expirou. Ele valia até ${formatWindowDate(state.closesAt)}.`
-  })
+/** Os dois limites da janela são inclusivos. */
+export function assertWindowOpen(
+  event: { startsAt: Date; endsAt: Date | null },
+  now = new Date()
+): void {
+  const { opensAt, closesAt } = getValidationWindow(event)
+  if (now < opensAt) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: `Este código ainda não abriu. Ele vale a partir de ${windowDateFormat.format(opensAt)}.`
+    })
+  }
+  if (now > closesAt) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: `Este código expirou. Ele valia até ${windowDateFormat.format(closesAt)}.`
+    })
+  }
 }
 
 const CHECK_VIOLATION = '23514'

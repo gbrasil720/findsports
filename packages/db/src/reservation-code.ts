@@ -11,8 +11,6 @@
 /** Formato do código: maiúsculas e dígitos, curto o bastante para ditar. */
 export const RESERVATION_CODE_PATTERN = '^[A-Z0-9]{4,12}$'
 
-export const RESERVATION_CODE_MAX_LENGTH = 12
-
 /**
  * Tamanho do código na página de validação: o campo tem uma casa por
  * caractere, e casa exige número fixo. O formato da coluna aceita de 4 a 12;

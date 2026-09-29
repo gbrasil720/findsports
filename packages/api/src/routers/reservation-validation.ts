@@ -28,8 +28,6 @@ import {
   assertReservationConfirmed,
   assertWindowOpen,
   codeNotFoundError,
-  getValidationWindowState,
-  tooManyAttemptsError,
   translateArrivalWriteError,
   VALIDATION_ATTEMPT_LIMIT,
   validationAttemptKey
@@ -139,7 +137,6 @@ const hasLaterArrival = sql<boolean>`EXISTS (
   SELECT 1 FROM reservation_code_use later
   WHERE later.code_id = ${reservationCodeUse.codeId}
     AND later.undone_at IS NULL
-    AND later.id <> ${reservationCodeUse.id}
     AND (later.used_at, later.id) > (${reservationCodeUse.usedAt}, ${reservationCodeUse.id})
 )`
 
@@ -162,7 +159,13 @@ export const reservationValidationRouter = router({
         attemptKey,
         VALIDATION_ATTEMPT_LIMIT
       )
-      if (!attempt.allowed) throw tooManyAttemptsError()
+      if (!attempt.allowed) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message:
+            'Muitas tentativas seguidas. Aguarde alguns minutos e tente novamente.'
+        })
+      }
 
       const code = normalizeReservationCode(input.code)
       const found = isReservationCodeShaped(code)
@@ -223,7 +226,7 @@ export const reservationValidationRouter = router({
         if (!found) throw codeNotFoundError()
 
         assertReservationConfirmed(found.reservationStatus)
-        assertWindowOpen(getValidationWindowState(found))
+        assertWindowOpen(found)
 
         const [inserted] = await tx
           .insert(reservationCodeUse)

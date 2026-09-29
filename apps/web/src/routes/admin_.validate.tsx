@@ -1,11 +1,11 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { AppShell } from '@/components/app/app-shell'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { useTRPC } from '@/utils/trpc'
+import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/validate')({
   head: () => ({
@@ -29,17 +29,9 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
 
-  // `retry: false` de propósito: quem decide repetir é a pessoa, e o `+1`
-  // repetido reusa o `requestId` que o componente guarda.
-  const lookup = useMutation(
-    trpc.reservationValidation.lookup.mutationOptions({ retry: false })
-  )
-  const registerArrival = useMutation(
-    trpc.reservationValidation.registerArrival.mutationOptions({ retry: false })
-  )
-  const undoArrival = useMutation(
-    trpc.reservationValidation.undoArrival.mutationOptions({ retry: false })
-  )
+  // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
+  // repetir é decisão de quem está no balcão, nunca retry automático.
+  const { reservationValidation } = useTRPCClient()
 
   return (
     <AppShell variant="pub" userMeta="Validar código">
@@ -72,9 +64,9 @@ function ValidatePage() {
                 }
         }
         now={now}
-        lookup={lookup.mutateAsync}
-        registerArrival={registerArrival.mutateAsync}
-        undoArrival={undoArrival.mutateAsync}
+        lookup={reservationValidation.lookup.mutate}
+        registerArrival={reservationValidation.registerArrival.mutate}
+        undoArrival={reservationValidation.undoArrival.mutate}
       />
     </AppShell>
   )

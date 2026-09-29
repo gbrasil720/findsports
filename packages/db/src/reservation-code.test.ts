@@ -2,8 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   isReservationCodeComplete,
   isReservationCodeShaped,
-  normalizeReservationCode,
-  RESERVATION_CODE_MAX_LENGTH
+  normalizeReservationCode
 } from './reservation-code'
 
 describe('normalizeReservationCode', () => {
@@ -30,16 +29,12 @@ describe('isReservationCodeComplete', () => {
 describe('isReservationCodeShaped', () => {
   test('aceita o formato do CHECK da coluna', () => {
     expect(isReservationCodeShaped('AB3K')).toBe(true)
-    expect(
-      isReservationCodeShaped('A'.repeat(RESERVATION_CODE_MAX_LENGTH))
-    ).toBe(true)
+    expect(isReservationCodeShaped('A'.repeat(12))).toBe(true)
   })
 
   test('recusa curto, longo, minúscula e símbolo', () => {
     expect(isReservationCodeShaped('AB3')).toBe(false)
-    expect(
-      isReservationCodeShaped('A'.repeat(RESERVATION_CODE_MAX_LENGTH + 1))
-    ).toBe(false)
+    expect(isReservationCodeShaped('A'.repeat(13))).toBe(false)
     expect(isReservationCodeShaped('ab3k')).toBe(false)
     expect(isReservationCodeShaped('AB3K9Ç')).toBe(false)
     expect(isReservationCodeShaped('')).toBe(false)
