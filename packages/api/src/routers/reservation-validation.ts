@@ -225,27 +225,38 @@ export const reservationValidationRouter = router({
         )
         if (!found) throw codeNotFoundError()
 
-        assertReservationConfirmed(found.reservationStatus)
-        assertWindowOpen(found)
-
-        const [inserted] = await tx
-          .insert(reservationCodeUse)
-          .values({
-            id: input.requestId,
-            codeId: found.codeId,
-            validatedByUserId: userId
-          })
-          .onConflictDoNothing({ target: reservationCodeUse.id })
-          .returning()
-          .catch((error: unknown) => {
-            throw translateArrivalWriteError(error, found.maxUses) ?? error
-          })
-
-        const use =
-          inserted ??
-          (await tx.query.reservationCodeUse.findFirst({
+        const recorded = () =>
+          tx.query.reservationCodeUse.findFirst({
             where: eq(reservationCodeUse.id, input.requestId)
-          }))
+          })
+
+        // Repetição vem antes das regras: a chegada que gravou no último
+        // minuto da janela e perdeu a resposta precisa ser reconhecida na
+        // segunda tentativa, e não recusada como código expirado.
+        const existing = await recorded()
+
+        const register = async () => {
+          assertReservationConfirmed(found.reservationStatus)
+          assertWindowOpen(found)
+
+          const [row] = await tx
+            .insert(reservationCodeUse)
+            .values({
+              id: input.requestId,
+              codeId: found.codeId,
+              validatedByUserId: userId
+            })
+            .onConflictDoNothing({ target: reservationCodeUse.id })
+            .returning()
+            .catch((error: unknown) => {
+              throw translateArrivalWriteError(error, found.maxUses) ?? error
+            })
+          return row
+        }
+        const inserted = existing ? undefined : await register()
+        // Sem linha inserida nem encontrada antes, um envio simultâneo do
+        // mesmo pedido ganhou a corrida.
+        const use = existing ?? inserted ?? (await recorded())
 
         // `requestId` já usado em outra chegada: não é repetição deste
         // pedido, e não há o que devolver sem inventar.

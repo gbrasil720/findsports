@@ -422,6 +422,43 @@ integrationTest('duplo envio do +1 registra uma chegada só', async () => {
 })
 
 integrationTest(
+  'repetição de chegada já gravada é reconhecida mesmo com a janela fechada',
+  async () => {
+    const ctx = await seed()
+    try {
+      const input = { codeId: ctx.codeId, requestId: crypto.randomUUID() }
+      const first = await ctx.owner.registerArrival(input)
+      expect(first).toMatchObject({ usedCount: 1, replayed: false })
+
+      // A resposta se perdeu e, até a repetição chegar, a janela fechou.
+      await ctx.db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() - 12 * HOUR) })
+        .where(eq(event.barId, ctx.barId))
+
+      const retry = await ctx.owner.registerArrival(input)
+      expect(retry).toMatchObject({
+        useId: input.requestId,
+        usedCount: 1,
+        replayed: true
+      })
+
+      // Pedido novo continua recusado pela janela.
+      const fresh = await refusal(
+        ctx.owner.registerArrival({
+          codeId: ctx.codeId,
+          requestId: crypto.randomUUID()
+        })
+      )
+      expect(fresh.code).toBe('PRECONDITION_FAILED')
+      expect(await counterOf(ctx)).toBe(1)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'requestId de outra chegada não é aceito como repetição',
   async () => {
     const ctx = await seed()
