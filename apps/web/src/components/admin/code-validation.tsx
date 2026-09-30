@@ -257,6 +257,10 @@ function ValidationPanel({
             .filter(Boolean)
             .join(' ')
         )
+        // Foco no título, não no `+1`: o leitor de tela começa por quem é a
+        // reserva. No Safari o Tab daqui cai no menu da conta porque, por
+        // padrão, ele só visita campos e menus pop-up; Option+Tab chega ao
+        // `+1`. Vale para todo botão do site, não só este (WEB-134).
         setFocusTarget('summary')
       } catch (error) {
         setLookupError(getLookupErrorMessage(error))
