@@ -123,3 +123,23 @@ valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`,
 ou `trialing` dentro do período); sem ele o texto some do perfil público, mas
 continua guardado. Uma reserva copia o texto na criação e não acompanha
 mudanças posteriores.
+
+## Código de validação
+
+Código curto emitido com a reserva, digitado pelo bar para provar que o
+torcedor veio da Onside e liberar a oferta da casa. Resolve o bar sozinho, mas
+só é aceito de uma sessão dona daquele bar. Admite tantos usos quanto a
+quantidade de pessoas da reserva, porque o grupo chega escalonado.
+
+## Janela de validação
+
+Intervalo em que o código é aceito: de 3 horas antes de `startsAt` até 3 horas
+depois do fim derivado. Abre cedo para cobrir o pré-jogo e fecha tarde para
+sobreviver a queda de rede em dia de clássico.
+
+## Chegada
+
+Uma pessoa da reserva registrada pelo bar na página de validação — um `+1` no
+código. Só se registra em reserva confirmada e dentro da janela de validação.
+Pode ser desfeita por um prazo curto; desfazer devolve o uso ao código e
+mantém o registro para auditoria.
