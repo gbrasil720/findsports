@@ -1,12 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 
-import { getAdminSectionFromHash, getNextAdminSection } from './admin-tabs'
+import {
+  getAdminSectionFromHash,
+  getAdminSections,
+  getNextAdminSection
+} from './admin-tabs'
 
 describe('admin tabs keyboard navigation', () => {
   test('moves through adjacent tabs and wraps at both ends', () => {
     expect(getNextAdminSection('admin-visao', 'ArrowRight')).toBe('admin-grade')
     expect(getNextAdminSection('admin-grade', 'ArrowDown')).toBe('admin-espaco')
     expect(getNextAdminSection('admin-espaco', 'ArrowRight')).toBe(
+      'admin-reservas'
+    )
+    expect(getNextAdminSection('admin-reservas', 'ArrowRight')).toBe(
       'admin-configuracoes'
     )
     expect(getNextAdminSection('admin-configuracoes', 'ArrowRight')).toBe(
@@ -35,5 +42,13 @@ describe('admin tabs keyboard navigation', () => {
     expect(getAdminSectionFromHash('#admin-grade')).toBe('admin-grade')
     expect(getAdminSectionFromHash('admin-espaco')).toBe('admin-espaco')
     expect(getAdminSectionFromHash('#configuracoes')).toBeNull()
+  })
+
+  test('shows the reservations tab only to bars that receive reservations', () => {
+    const ids = (receives: boolean) =>
+      getAdminSections(receives).map((section) => section.id)
+    expect(ids(true)).toContain('admin-reservas')
+    expect(ids(false)).not.toContain('admin-reservas')
+    expect(ids(false)).toContain('admin-configuracoes')
   })
 })

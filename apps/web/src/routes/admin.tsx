@@ -2,16 +2,18 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { AccountSettings } from '@/components/account/account-settings'
-import { useMyBar } from '@/components/admin/admin-queries'
+import { useMyBar, useMySubscription } from '@/components/admin/admin-queries'
 import {
   type AdminSectionId,
   AdminTabPanel,
   AdminTabs,
-  getAdminSectionFromHash
+  getAdminSectionFromHash,
+  getAdminSections
 } from '@/components/admin/admin-tabs'
 import { getAnalyticsRange } from '@/components/admin/analytics-period'
 import { OverviewTab } from '@/components/admin/overview-tab'
 import { QueryError } from '@/components/admin/query-error'
+import { ReservationsTab } from '@/components/admin/reservations-tab'
 import { ScheduleTab } from '@/components/admin/schedule-tab'
 import { SpaceTab } from '@/components/admin/space-tab'
 import { AppShell } from '@/components/app/app-shell'
@@ -154,6 +156,7 @@ function PubDashboard() {
     error: barQueryError,
     refetch: refetchBar
   } = useMyBar()
+  const { data: subscription } = useMySubscription()
 
   if (loadingBar) {
     return (
@@ -180,6 +183,15 @@ function PubDashboard() {
     )
   }
 
+  // O servidor confere o plano de novo; aqui só decide se a aba existe.
+  const receivesReservations =
+    bar.acceptsReservations && subscription?.currentPlan === 'elite'
+  const sections = getAdminSections(receivesReservations)
+  // Link para uma aba que não existe para este bar cai na Visão geral.
+  const shownSection = sections.some(({ id }) => id === activeSection)
+    ? activeSection
+    : 'admin-visao'
+
   // Cada aba é dona das próprias queries (WEB-138).
   return (
     <AppShell variant="pub" userMeta={bar.name}>
@@ -196,26 +208,33 @@ function PubDashboard() {
       </div>
 
       <div className="onside-admin-grid">
-        <AdminTabs activeSection={activeSection} onChange={changeSection} />
+        <AdminTabs
+          sections={sections}
+          activeSection={shownSection}
+          onChange={changeSection}
+        />
 
         <div className="min-w-0">
           <OverviewTab
-            active={activeSection === 'admin-visao'}
+            active={shownSection === 'admin-visao'}
             analyticsRange={analyticsRange}
             onAnalyticsRangeChange={setAnalyticsRange}
             onCreateEvent={() => changeSection('admin-grade')}
           />
           <ScheduleTab
-            active={activeSection === 'admin-grade'}
+            active={shownSection === 'admin-grade'}
             analyticsRange={analyticsRange}
           />
           <SpaceTab
-            active={activeSection === 'admin-espaco'}
+            active={shownSection === 'admin-espaco'}
             onCreateEvent={() => changeSection('admin-grade')}
           />
+          {receivesReservations ? (
+            <ReservationsTab active={shownSection === 'admin-reservas'} />
+          ) : null}
           <AdminTabPanel
             id="admin-configuracoes"
-            active={activeSection === 'admin-configuracoes'}
+            active={shownSection === 'admin-configuracoes'}
           >
             <div className="mb-6">
               <h2 className="onside-display text-2xl">Configurações</h2>

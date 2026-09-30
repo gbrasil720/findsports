@@ -6,16 +6,31 @@ export const ADMIN_SECTIONS = [
   { id: 'admin-visao', label: 'Visão geral' },
   { id: 'admin-grade', label: 'Minha grade' },
   { id: 'admin-espaco', label: 'Meu espaço' },
+  { id: 'admin-reservas', label: 'Reservas' },
   { id: 'admin-configuracoes', label: 'Configurações' }
 ] as const
 
 export type AdminSectionId = (typeof ADMIN_SECTIONS)[number]['id']
+type AdminSection = (typeof ADMIN_SECTIONS)[number]
+
+/**
+ * A fila de reservas (WEB-125) só existe para bar que recebe reservas: Elite
+ * vigente e interruptor ligado. Para o resto, a aba não aparece.
+ */
+export function getAdminSections(
+  receivesReservations: boolean
+): readonly AdminSection[] {
+  return receivesReservations
+    ? ADMIN_SECTIONS
+    : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-reservas')
+}
 
 const ADMIN_SECTION_IDS = ADMIN_SECTIONS.map(
   (section) => section.id
 ) as AdminSectionId[]
 
 type Props = {
+  sections: readonly AdminSection[]
   activeSection: AdminSectionId
   onChange: (section: AdminSectionId) => void
 }
@@ -36,11 +51,11 @@ export function getNextAdminSection(
   return getNextTabId(ADMIN_SECTION_IDS, currentSection, key)
 }
 
-export function AdminTabs({ activeSection, onChange }: Props) {
+export function AdminTabs({ sections, activeSection, onChange }: Props) {
   return (
     <nav className="onside-admin-nav" aria-label="Navegação do painel">
       <RovingTabs
-        tabs={ADMIN_SECTIONS}
+        tabs={sections}
         activeId={activeSection}
         onChange={onChange}
         label="Seções do painel"
