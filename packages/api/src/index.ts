@@ -112,3 +112,14 @@ export const pubProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx })
 })
+
+/** Mesmo raciocínio do `pubProcedure`, para torcedor. */
+export const fanProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== 'fan') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Apenas torcedores podem acessar este recurso.'
+    })
+  }
+  return next({ ctx })
+})

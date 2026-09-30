@@ -42,6 +42,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
+import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -209,6 +210,12 @@ const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
   path: '/onboarding/fan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardDashboardReservationsRoute =
+  dashboardDashboardReservationsRouteImport.update({
+    id: '/(dashboard)/dashboard_/reservations',
+    path: '/dashboard/reservations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const dashboardDashboardProfileRoute =
   dashboardDashboardProfileRouteImport.update({
     id: '/(dashboard)/dashboard_/profile',
@@ -242,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -278,6 +286,7 @@ export interface FileRoutesByTo {
   '/internal/waitlist': typeof InternalWaitlistRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -315,6 +324,7 @@ export interface FileRoutesById {
   '/internal_/waitlist': typeof InternalWaitlistRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
+  '/(dashboard)/dashboard_/reservations': typeof dashboardDashboardReservationsRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/internal/waitlist'
     | '/plan/confirmed'
     | '/dashboard/profile'
+    | '/dashboard/reservations'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/internal/waitlist'
     | '/plan/confirmed'
     | '/dashboard/profile'
+    | '/dashboard/reservations'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -425,6 +437,7 @@ export interface FileRouteTypes {
     | '/internal_/waitlist'
     | '/plan_/confirmed'
     | '/(dashboard)/dashboard_/profile'
+    | '/(dashboard)/dashboard_/reservations'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
@@ -462,6 +475,7 @@ export interface RootRouteChildren {
   InternalWaitlistRoute: typeof InternalWaitlistRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
+  dashboardDashboardReservationsRoute: typeof dashboardDashboardReservationsRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
@@ -706,6 +720,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof onboardingOnboardingFanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(dashboard)/dashboard_/reservations': {
+      id: '/(dashboard)/dashboard_/reservations'
+      path: '/dashboard/reservations'
+      fullPath: '/dashboard/reservations'
+      preLoaderRoute: typeof dashboardDashboardReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(dashboard)/dashboard_/profile': {
       id: '/(dashboard)/dashboard_/profile'
       path: '/dashboard/profile'
@@ -742,6 +763,7 @@ const rootRouteChildren: RootRouteChildren = {
   InternalWaitlistRoute: InternalWaitlistRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
+  dashboardDashboardReservationsRoute: dashboardDashboardReservationsRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,

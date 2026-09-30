@@ -1,3 +1,4 @@
+import Calendar from 'reicon-react/icons/Calendar'
 import Chat from 'reicon-react/icons/Chat'
 import Phone from 'reicon-react/icons/Phone'
 import Route from 'reicon-react/icons/Route'
@@ -11,6 +12,22 @@ export type BarActions = {
   onWhatsApp: () => void
   onDirections: () => void
   onPhone: () => void
+  /**
+   * Presente só quando o torcedor pode pedir mesa agora: bar recebendo
+   * reservas (quer e pode), jogo futuro na agenda e conta de torcedor.
+   */
+  onReserve: (() => void) | null
+}
+
+type Action = {
+  key: string
+  icon: typeof Chat
+  /** Texto quando é a ação principal. */
+  label: string
+  /** Texto quando desce para secundária. */
+  shortLabel: string
+  onClick: () => void
+  href?: string
 }
 
 /**
@@ -21,8 +38,9 @@ export type BarActions = {
  * um botão desabilitado: o torcedor não tem culpa do cadastro incompleto, e um
  * botão morto vale menos que um botão que leva.
  *
- * O componente é o ponto único de troca: quando a reserva na plataforma
- * existir, ela vira o primário aqui e nada mais no layout muda.
+ * O componente é o ponto único de troca: com reserva disponível (WEB-124),
+ * "Reservar mesa" vira o primário e o WhatsApp desce para secundário. Sem
+ * ela, nada muda — nenhum botão morto.
  */
 export function BarActions({
   whatsappUrl,
@@ -31,64 +49,78 @@ export function BarActions({
   onWhatsApp,
   onDirections,
   onPhone,
+  onReserve,
   variant,
   isOwner
 }: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
-  const primaryIsWhatsApp = Boolean(whatsappUrl)
   const isBar = variant === 'bar'
 
-  const primary = primaryIsWhatsApp ? (
-    <a
-      href={whatsappUrl ?? '#'}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onWhatsApp}
-      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm"
-    >
-      <Chat size={16} color="currentColor" aria-hidden="true" />
-      <span className="ml-2">Falar com o bar</span>
-    </a>
-  ) : directionsUrl ? (
-    <a
-      href={directionsUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onDirections}
-      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm"
-    >
-      <Route size={16} color="currentColor" aria-hidden="true" />
-      <span className="ml-2">Como chegar</span>
-    </a>
+  // Em ordem de preferência: a primeira disponível é a principal, as outras
+  // descem para secundárias. Telefone nunca é principal.
+  const [primaryAction, ...otherActions] = [
+    onReserve && {
+      key: 'reserve',
+      icon: Calendar,
+      label: 'Reservar mesa',
+      shortLabel: 'Reservar mesa',
+      onClick: onReserve
+    },
+    whatsappUrl && {
+      key: 'whatsapp',
+      icon: Chat,
+      label: 'Falar com o bar',
+      shortLabel: 'WhatsApp',
+      onClick: onWhatsApp,
+      href: whatsappUrl
+    },
+    directionsUrl && {
+      key: 'directions',
+      icon: Route,
+      label: 'Como chegar',
+      shortLabel: 'Rota',
+      onClick: onDirections,
+      href: directionsUrl
+    }
+  ].filter((action): action is Action => Boolean(action))
+
+  const secondaryActions: Action[] = phone
+    ? [
+        ...otherActions,
+        {
+          key: 'phone',
+          icon: Phone,
+          label: 'Ligar',
+          shortLabel: isBar ? 'Ligar' : formatStoredPhone(phone),
+          onClick: onPhone,
+          href: `tel:${phone}`
+        }
+      ]
+    : otherActions
+
+  // Na barra fixa do celular, quatro botões com texto não cabem: com reserva,
+  // os secundários ficam só com ícone (o nome segue para leitor de tela).
+  const compact = isBar && secondaryActions.length > 2
+
+  const primary = primaryAction ? (
+    <ActionButton
+      action={primaryAction}
+      text={primaryAction.label}
+      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center whitespace-nowrap text-sm"
+      iconOnly={false}
+      hideIcon={compact}
+    />
   ) : null
 
-  const secondaries = (
-    <>
-      {primaryIsWhatsApp && directionsUrl && (
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onDirections}
-          className="onside-btn onside-btn-outline min-h-12 justify-center text-sm"
-        >
-          <Route size={16} color="currentColor" aria-hidden="true" />
-          <span className="ml-2">Rota</span>
-        </a>
-      )}
-      {phone && (
-        <a
-          href={`tel:${phone}`}
-          onClick={onPhone}
-          className="onside-btn onside-btn-outline min-h-12 justify-center text-sm"
-        >
-          <Phone size={16} color="currentColor" aria-hidden="true" />
-          <span className="ml-2">
-            {isBar ? 'Ligar' : formatStoredPhone(phone)}
-          </span>
-        </a>
-      )}
-    </>
-  )
+  const secondaries = secondaryActions.map((action) => (
+    <ActionButton
+      key={action.key}
+      action={action}
+      text={action.shortLabel}
+      className={`onside-btn onside-btn-outline min-h-12 justify-center text-sm${compact ? ' onside-pub-actionbar-icon' : ''}`}
+      iconOnly={compact}
+      hideIcon={false}
+    />
+  ))
 
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.
@@ -124,7 +156,7 @@ export function BarActions({
         {primary}
         {secondaries}
       </div>
-      {!primaryIsWhatsApp &&
+      {!whatsappUrl &&
         (isOwner ? (
           <OwnerNudge
             action={{ label: 'Liberar', to: '/admin', hash: 'admin-espaco' }}
@@ -138,5 +170,49 @@ export function BarActions({
           </p>
         ))}
     </section>
+  )
+}
+
+function ActionButton({
+  action,
+  text,
+  className,
+  iconOnly,
+  hideIcon
+}: {
+  action: Action
+  text: string
+  className: string
+  iconOnly: boolean
+  hideIcon: boolean
+}) {
+  const Icon = action.icon
+  const content = (
+    <>
+      {!hideIcon && <Icon size={16} color="currentColor" aria-hidden="true" />}
+      <span className={iconOnly ? 'sr-only' : hideIcon ? undefined : 'ml-2'}>
+        {text}
+      </span>
+    </>
+  )
+  if (!action.href) {
+    return (
+      <button type="button" onClick={action.onClick} className={className}>
+        {content}
+      </button>
+    )
+  }
+  // `tel:` abre o discador; o resto sai do app.
+  const external = !action.href.startsWith('tel:')
+  return (
+    <a
+      href={action.href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+      onClick={action.onClick}
+      className={className}
+    >
+      {content}
+    </a>
   )
 }

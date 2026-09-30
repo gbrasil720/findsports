@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  generateReservationCode,
   isReservationCodeComplete,
   isReservationCodeShaped,
   normalizeReservationCode
@@ -38,5 +39,21 @@ describe('isReservationCodeShaped', () => {
     expect(isReservationCodeShaped('ab3k')).toBe(false)
     expect(isReservationCodeShaped('AB3K9Ç')).toBe(false)
     expect(isReservationCodeShaped('')).toBe(false)
+  })
+})
+
+describe('generateReservationCode', () => {
+  test('emite no tamanho do campo de validação e no formato da coluna', () => {
+    for (let i = 0; i < 200; i++) {
+      const code = generateReservationCode()
+      expect(isReservationCodeComplete(code)).toBe(true)
+    }
+  })
+
+  test('não se repete numa amostra pequena', () => {
+    const codes = new Set(
+      Array.from({ length: 1000 }, () => generateReservationCode())
+    )
+    expect(codes.size).toBe(1000)
   })
 })

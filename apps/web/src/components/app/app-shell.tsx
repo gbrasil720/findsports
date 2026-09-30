@@ -185,6 +185,21 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 </DropdownMenuItem>
               ) : null}
 
+              {variant === 'fan' ? (
+                <DropdownMenuItem
+                  className={accountMenuItemClass}
+                  render={<Link to="/dashboard/reservations" />}
+                >
+                  <Ticket
+                    size={16}
+                    color="currentColor"
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
+                  />
+                  Minhas reservas
+                </DropdownMenuItem>
+              ) : null}
+
               {variant === 'pub' ? (
                 <>
                   <DropdownMenuItem
