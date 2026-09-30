@@ -142,7 +142,11 @@ export const twoFactor = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    verified: boolean('verified').default(true).notNull()
+    verified: boolean('verified').default(true).notNull(),
+    failedVerificationCount: integer('failed_verification_count')
+      .default(0)
+      .notNull(),
+    lockedUntil: timestamp('locked_until')
   },
   (table) => [index('two_factor_userId_idx').on(table.userId)]
 )
