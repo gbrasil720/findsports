@@ -93,6 +93,7 @@ export {
   gte,
   inArray,
   isNull,
+  notInArray,
   or,
   type SQL,
   sql

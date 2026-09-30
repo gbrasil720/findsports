@@ -12,6 +12,12 @@ import { RadiusSelector } from '@/components/onboarding/radius-selector'
 import { SportSelector } from '@/components/onboarding/sport-selector'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import {
+  confirmDroppingTeams,
+  type FavoriteTeam,
+  TeamPicker,
+  toggleFavoriteTeam
+} from '@/components/sports/team-picker'
 import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
@@ -26,7 +32,7 @@ export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
       {
         name: 'description',
         content:
-          'Personalize sua experiência: escolha seus esportes e defina o raio de busca. Leva menos de 1 minuto.'
+          'Personalize sua experiência: escolha seus esportes, quem você acompanha e o raio de busca. Leva menos de 1 minuto.'
       },
       { name: 'robots', content: 'noindex' }
     ]
@@ -37,6 +43,7 @@ export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
 const STEPS = [
   'Boas-vindas',
   'Seus esportes',
+  'Quem você acompanha',
   'Onde você assiste',
   'Revisão'
 ] as const
@@ -53,6 +60,7 @@ function FanOnboarding() {
 
   const [step, setStep] = useState(0)
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
+  const [selectedTeams, setSelectedTeams] = useState<FavoriteTeam[]>([])
   const [radius, setRadius] = useState<RadiusKm>(3)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,15 +70,14 @@ function FanOnboarding() {
     meta: { errorToast: false }
   })
   const sports = sportsQuery.data ?? []
+  const selectedSports = sports.filter((s) => selectedSportIds.includes(s.id))
 
   const completeMutation = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
       onSuccess: async () => {
         analytics.onboardingCompleted({
           role: 'fan',
-          sports: sports
-            .filter((s) => selectedSportIds.includes(s.id))
-            .map((s) => s.slug),
+          sports: selectedSports.map((s) => s.slug),
           radius_km: radius
         })
         // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
@@ -97,7 +104,7 @@ function FanOnboarding() {
   const canAdvance = (() => {
     if (step === 0) return true
     if (step === 1) return selectedSportIds.length > 0
-    if (step === 2) return radius > 0
+    if (step === 3) return radius > 0
     return true
   })()
 
@@ -109,17 +116,24 @@ function FanOnboarding() {
     } else {
       completeMutation.mutate({
         sportIds: selectedSportIds,
-        searchRadiusKm: radius
+        searchRadiusKm: radius,
+        teamIds: selectedTeams.map((t) => t.id)
       })
     }
   }
 
   const back = () => step > 0 && setStep((s) => s - 1)
 
-  const toggleSport = (id: string) =>
-    setSelectedSportIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
+  const toggleSport = (id: string) => {
+    if (selectedSportIds.includes(id)) {
+      if (!confirmDroppingTeams(selectedTeams.filter((t) => t.sportId === id)))
+        return
+      setSelectedTeams((prev) => prev.filter((t) => t.sportId !== id))
+      setSelectedSportIds((prev) => prev.filter((x) => x !== id))
+    } else {
+      setSelectedSportIds((prev) => [...prev, id])
+    }
+  }
 
   return (
     <OnboardingLayout variant="fan">
@@ -139,7 +153,7 @@ function FanOnboarding() {
                 pro seu jogo.
               </>
             }
-            subtitle="Em 2 passos a gente calibra sua busca: esportes favoritos e raio de localização."
+            subtitle="Em 3 passos a gente calibra sua busca: esportes favoritos, quem você acompanha e raio de localização."
             features={WELCOME_FEATURES}
           />
         )}
@@ -173,6 +187,28 @@ function FanOnboarding() {
         )}
 
         {step === 2 && (
+          <div className="text-[var(--onside-paper)]">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="onside-display mb-2 text-3xl outline-none"
+            >
+              Quem você acompanha?
+            </h2>
+            <p className="onside-text-muted-on-ink mb-6">
+              Opcional — marque quantos quiser em cada esporte, ou pule.
+            </p>
+            <TeamPicker
+              sports={selectedSports}
+              selected={selectedTeams}
+              onToggle={(team) =>
+                setSelectedTeams((prev) => toggleFavoriteTeam(prev, team))
+              }
+            />
+          </div>
+        )}
+
+        {step === 3 && (
           <div>
             <h2
               ref={headingRef}
@@ -192,7 +228,7 @@ function FanOnboarding() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="py-4 text-center md:py-6">
             <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
               <Check size={40} color="currentColor" aria-hidden="true" />
@@ -209,16 +245,14 @@ function FanOnboarding() {
               o mapa de bares.
             </p>
             <div className="inline-flex flex-wrap justify-center gap-2">
-              {sports
-                .filter((s) => selectedSportIds.includes(s.id))
-                .map((s) => (
-                  <span
-                    key={s.id}
-                    className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]"
-                  >
-                    {s.name}
-                  </span>
-                ))}
+              {[...selectedSports, ...selectedTeams].map((s) => (
+                <span
+                  key={s.id}
+                  className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]"
+                >
+                  {s.name}
+                </span>
+              ))}
               <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
                 {radius} km
               </span>
@@ -244,6 +278,9 @@ function FanOnboarding() {
         onBack={back}
         onNext={next}
         lastLabel="Salvar e encontrar bares"
+        nextLabel={
+          step === 2 && selectedTeams.length === 0 ? 'Pular' : undefined
+        }
       />
     </OnboardingLayout>
   )

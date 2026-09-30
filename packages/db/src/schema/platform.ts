@@ -4,6 +4,7 @@ import {
   check,
   customType,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   numeric,
@@ -264,6 +265,39 @@ export const userPreferenceSports = pgTable(
     primaryKey({ columns: [table.userId, table.sportId] }),
     // Mesma razão: a PK composta começa por user_id.
     index('user_preference_sports_sportId_idx').on(table.sportId)
+  ]
+)
+
+/**
+ * WEB-68: quem o torcedor acompanha, dentro dos esportes que ele marcou.
+ *
+ * `sport_id` é copiado do time pelo servidor e existe para a FK composta:
+ * ela obriga o esporte do time a estar em `user_preference_sports` e, ao
+ * desmarcar o esporte, leva os times junto na mesma transação.
+ */
+export const userFavoriteTeams = pgTable(
+  'user_favorite_teams',
+  {
+    userId: text('user_id').notNull(),
+    sportId: text('sport_id').notNull(),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' })
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.teamId] }),
+    foreignKey({
+      // O nome gerado passaria dos 63 caracteres do Postgres.
+      name: 'user_favorite_teams_user_sport_fk',
+      columns: [table.userId, table.sportId],
+      foreignColumns: [
+        userPreferenceSports.userId,
+        userPreferenceSports.sportId
+      ]
+    }).onDelete('cascade'),
+    // A PK composta começa por user_id; cascatear a remoção de um time
+    // precisa deste.
+    index('user_favorite_teams_teamId_idx').on(table.teamId)
   ]
 )
 

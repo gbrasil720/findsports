@@ -31,6 +31,7 @@ import {
 import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { persistProfileUser } from '@/components/profile/profile-user-update'
+import { confirmDroppingTeams } from '@/components/sports/team-picker'
 import {
   normalizeRadiusKm,
   type RadiusKm,
@@ -177,6 +178,10 @@ function ProfilePage() {
         void queryClient.invalidateQueries({
           queryKey: trpc.pubs.getMyPreferences.queryKey()
         })
+        // Esporte desmarcado leva seus times junto no servidor.
+        void queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getMyTeams.queryKey()
+        })
         void queryClient.invalidateQueries({
           queryKey: trpc.recommendations.get.queryKey()
         })
@@ -304,6 +309,14 @@ function ProfilePage() {
   }
   const saveSports = () => {
     if (selectedSportIds.length === 0) return
+    const myTeams =
+      queryClient.getQueryData(trpc.pubs.getMyTeams.queryKey()) ?? []
+    if (
+      !confirmDroppingTeams(
+        myTeams.filter((team) => !selectedSportIds.includes(team.sportId))
+      )
+    )
+      return
     updatePreferences.mutate({ sportIds: selectedSportIds })
   }
   const saveRadius = async (radiusKm: RadiusKm) => {

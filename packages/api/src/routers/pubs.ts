@@ -1,9 +1,10 @@
-import { and, db, eq, or, sql } from '@findsports_oficial/db'
+import { and, db, eq, notInArray, or, sql } from '@findsports_oficial/db'
 import {
   bar,
   sport,
   team,
   userFavoriteBars,
+  userFavoriteTeams,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
@@ -16,6 +17,10 @@ import { getAppConfig } from '../lib/app-config'
 import { resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import {
+  favoriteTeamIdsSchema,
+  replaceFavoriteTeams
+} from '../lib/favorite-teams'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -551,14 +556,54 @@ export const pubsRouter = router({
       }
 
       await db.transaction(async (tx) => {
+        // Remove só os esportes desmarcados: a FK de `user_favorite_teams`
+        // leva junto os times deles, e os dos esportes mantidos ficam.
         await tx
           .delete(userPreferenceSports)
-          .where(eq(userPreferenceSports.userId, userId))
+          .where(
+            and(
+              eq(userPreferenceSports.userId, userId),
+              notInArray(userPreferenceSports.sportId, input.sportIds)
+            )
+          )
         await tx
           .insert(userPreferenceSports)
           .values(input.sportIds.map((sportId) => ({ userId, sportId })))
           .onConflictDoNothing()
       })
+
+      return { success: true }
+    }),
+
+  getMyTeams: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== 'fan') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Apenas torcedores acompanham times.'
+      })
+    }
+
+    return db
+      .select({ id: team.id, name: team.name, sportId: team.sportId })
+      .from(userFavoriteTeams)
+      .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
+      .where(eq(userFavoriteTeams.userId, ctx.session.user.id))
+      .orderBy(team.name)
+  }),
+
+  updateMyTeams: protectedProcedure
+    .input(z.object({ teamIds: favoriteTeamIdsSchema }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'fan') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas torcedores acompanham times.'
+        })
+      }
+
+      await db.transaction((tx) =>
+        replaceFavoriteTeams(tx, ctx.session.user.id, input.teamIds)
+      )
 
       return { success: true }
     }),
