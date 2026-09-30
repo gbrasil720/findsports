@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { Activity, type ReactNode } from 'react'
 import { getNextTabId, RovingTabs } from '@/components/app/roving-tabs'
 
 export const ADMIN_SECTIONS = [
@@ -54,6 +55,33 @@ export function AdminTabs({ activeSection, onChange }: Props) {
   )
 }
 
-export function getAdminTabId(section: AdminSectionId): string {
-  return tabId(section)
+/**
+ * Painel de uma aba. Fica montado quando a aba está escondida: `Activity`
+ * preserva o que o dono digitou ao trocar de aba (WEB-140). As queries moram
+ * no componente da aba, fora do `Activity`, então continuam assinadas e
+ * buscando mesmo com a aba escondida.
+ */
+export function AdminTabPanel({
+  id,
+  active,
+  className,
+  children
+}: {
+  id: AdminSectionId
+  active: boolean
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <Activity mode={active ? 'visible' : 'hidden'}>
+      <section
+        id={id}
+        role="tabpanel"
+        aria-labelledby={tabId(id)}
+        className={className}
+      >
+        {children}
+      </section>
+    </Activity>
+  )
 }
