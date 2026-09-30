@@ -24,6 +24,7 @@ import {
   parseAverageSpendCentsInput,
   parseMenuUrlInput
 } from '../lib/bar-menu'
+import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import { getCurrentPlan } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
@@ -216,6 +217,19 @@ export const pubRouter = router({
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'URL de foto inválida.'
+        })
+      }
+
+      // Só o telefone que mudou: um número antigo fora do padrão não pode
+      // travar a edição do resto do perfil.
+      const motivoTelefone =
+        input.phone !== undefined &&
+        input.phone !== existingBar.phone &&
+        motivoTelefoneInvalido(input.phone)
+      if (motivoTelefone) {
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: motivoTelefone
         })
       }
 

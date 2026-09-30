@@ -1,5 +1,7 @@
 import { TRPCError } from '@trpc/server'
 
+import { mensagemEnderecoNaoEncontrado } from './bar-profile-validation'
+import { normalizarCidade } from './city-match'
 import { createTtlCache } from './ttl-cache'
 
 /**
@@ -268,11 +270,16 @@ class FalhaTransitoria extends Error {
   }
 }
 
-/** Endereço realmente não encontrado: é o usuário que precisa agir. */
-function enderecoNaoEncontrado(): TRPCError {
+/**
+ * Endereço realmente não encontrado: é o usuário que precisa agir.
+ *
+ * `UNPROCESSABLE_CONTENT`, e não `BAD_REQUEST`, para o formulário separar esta
+ * recusa do erro de validação do zod e escrever a mensagem certa (WEB-115).
+ */
+function enderecoNaoEncontrado(city: string): TRPCError {
   return new TRPCError({
-    code: 'BAD_REQUEST',
-    message: 'Endereço não encontrado. Verifique e tente novamente.'
+    code: 'UNPROCESSABLE_CONTENT',
+    message: mensagemEnderecoNaoEncontrado(city)
   })
 }
 
@@ -305,6 +312,8 @@ type LocationIqResultado = {
   display_name?: string
   address?: {
     road?: string
+    /** Vem sempre preenchido com `normalizecity=1`. */
+    city?: string
     /** O bairro. `suburb` é o campo usual; os outros aparecem conforme a base. */
     suburb?: string
     neighbourhood?: string
@@ -396,7 +405,7 @@ async function consultarProvedor(
   // 404 é como a LocationIQ diz "não achei" — é o `ZERO_RESULTS` do Google, e
   // é o único 4xx que fala do endereço, não da nossa configuração.
   if (res.status === 404) {
-    throw enderecoNaoEncontrado()
+    throw enderecoNaoEncontrado(city)
   }
   if (!res.ok) {
     throw falhaDeConfiguracao(`HTTP ${res.status}`)
@@ -419,23 +428,28 @@ async function consultarProvedor(
   }
 
   const candidatos = data as LocationIqResultado[]
-  if (candidatos.length === 0) throw enderecoNaoEncontrado()
+  if (candidatos.length === 0) throw enderecoNaoEncontrado(city)
 
-  // Fora os que não são da rua pedida. É o usuário quem resolve — conferindo o
-  // que digitou —, então sobrar nada dá a mesma mensagem de endereço não
-  // encontrado. Gravar a coordenada de outra rua seria muito pior que recusar.
-  const daRuaCerta = candidatos.filter((c) =>
-    ruaConfere(street, c.address?.road)
+  // Fora os que não são da rua pedida, ou que são dela mas em outra cidade —
+  // a busca estruturada devolve rua homônima do município vizinho (WEB-115).
+  // É o usuário quem resolve — conferindo o que digitou —, então sobrar nada
+  // dá a mesma mensagem de endereço não encontrado. Gravar a coordenada de
+  // outra rua seria muito pior que recusar.
+  const daRuaCerta = candidatos.filter(
+    (c) =>
+      ruaConfere(street, c.address?.road) &&
+      (!c.address?.city ||
+        normalizarCidade(c.address.city) === normalizarCidade(city))
   )
   if (daRuaCerta.length === 0) {
     console.warn(
-      `Geocoding descartado por não bater a rua: pedido "${street}", devolvido "${candidatos[0]?.display_name ?? '(sem nome)'}"`
+      `Geocoding descartado por não bater rua e cidade: pedido "${street}, ${city}", devolvido "${candidatos[0]?.display_name ?? '(sem nome)'}"`
     )
-    throw enderecoNaoEncontrado()
+    throw enderecoNaoEncontrado(city)
   }
 
   const primeiro = escolherMelhor(daRuaCerta, neighborhood)
-  if (!primeiro) throw enderecoNaoEncontrado()
+  if (!primeiro) throw enderecoNaoEncontrado(city)
 
   const latitude = Number.parseFloat(primeiro.lat ?? '')
   const longitude = Number.parseFloat(primeiro.lon ?? '')

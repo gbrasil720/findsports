@@ -15,6 +15,7 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
+import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
 import { cidadeLiberada } from '../lib/city-match'
 import { geocodeAddress } from '../lib/geocode-address'
 
@@ -42,6 +43,14 @@ export const onboardingRouter = router({
         throw new TRPCError({
           code: 'CONFLICT',
           message: 'Onboarding já concluído.'
+        })
+      }
+
+      const motivoTelefone = input.phone && motivoTelefoneInvalido(input.phone)
+      if (motivoTelefone) {
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: motivoTelefone
         })
       }
 
