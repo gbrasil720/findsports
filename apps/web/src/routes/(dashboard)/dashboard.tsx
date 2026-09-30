@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
 import { InstallAppCard } from '@/components/app/install-app-card'
+import { AttendanceReportCard } from '@/components/dashboard/attendance-report-card'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import {
   DashboardResults,
@@ -451,6 +452,7 @@ function FanDashboard() {
         count={displayedBars.length}
         locationState={locationState}
       />
+      {session?.user.role === 'fan' ? <AttendanceReportCard /> : null}
       {pendingRatingsQuery.data && pendingRatingsQuery.data.length > 0 ? (
         <PendingRatingCard
           pending={pendingRatingsQuery.data}

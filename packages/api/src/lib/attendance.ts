@@ -1,10 +1,18 @@
-import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
-import { attendance } from '@findsports_oficial/db/schema/attendance'
-import { event } from '@findsports_oficial/db/schema/platform'
+import { and, db, eq, inArray, type SQL, sql } from '@findsports_oficial/db'
+import {
+  DEFAULT_EVENT_DURATION_INTERVAL,
+  VALIDATION_WINDOW_MARGIN_HOURS
+} from '@findsports_oficial/db/event-window'
+import {
+  attendance,
+  attendanceReport
+} from '@findsports_oficial/db/schema/attendance'
+import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
-  reservation
+  reservation,
+  reservationCode,
+  reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 
 /**
@@ -12,6 +20,9 @@ import {
  * servidor já resolvidos: o torcedor recebe a contagem a partir do piso, e o
  * bar recebe só o sinal relativo, nunca a contagem.
  */
+
+/** Fim derivado em SQL, o mesmo de `getEventEnd`. */
+const eventEnd = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval)`
 
 /** Piso de exibição (WEB-123). Abaixo dele, só o botão. */
 export const ATTENDANCE_DISPLAY_FLOOR = 15
@@ -117,7 +128,7 @@ export async function readInterestSignal(
   const games = await db
     .select({
       eventId: event.id,
-      ended: sql<boolean>`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) <= now()`,
+      ended: sql<boolean>`${eventEnd} <= now()`,
       count: sql<number>`count(${attendance.userId})::int`
     })
     .from(event)
@@ -125,4 +136,116 @@ export async function readInterestSignal(
     .where(eq(event.barId, barId))
     .groupBy(event.id)
   return interestSignal(games)
+}
+
+/**
+ * Por quanto tempo depois do jogo o torcedor ainda recebe a pergunta "você
+ * foi?" (WEB-128). Mesma razão de `RATING_WINDOW_DAYS`: depois disso é
+ * memória, não observação.
+ */
+export const ATTENDANCE_REPORT_WINDOW_DAYS = 14
+
+/**
+ * Jogos em que o padrão "torcedor diz que foi, bar não registrou" precisa se
+ * repetir para o bar entrar no alerta interno. Palpite, como os números da
+ * ADR 0003: um jogo isolado é ruído de resposta.
+ */
+export const UNREGISTERED_ALERT_MIN_GAMES = 3
+
+/**
+ * Perguntas pós-jogo que o torcedor ainda pode responder: jogos em que ele
+ * marcou presença (reserva também marca), já encerrados e dentro da janela.
+ * `offer` vem da reserva confirmada com oferta congelada; sem ela, só se
+ * pergunta se foi — presença nunca dá brinde.
+ */
+export async function readAttendanceQuestions(
+  userId: string,
+  eventId?: string
+) {
+  return db
+    .select({
+      eventId: event.id,
+      championship: event.championship,
+      startsAt: event.startsAt,
+      barName: bar.name,
+      neighborhood: bar.neighborhood,
+      offer: reservation.offerSnapshot,
+      answered: sql<boolean>`${attendanceReport.userId} IS NOT NULL`
+    })
+    .from(attendance)
+    .innerJoin(event, eq(event.id, attendance.eventId))
+    .innerJoin(bar, eq(bar.id, event.barId))
+    .leftJoin(
+      reservation,
+      and(
+        eq(reservation.userId, attendance.userId),
+        eq(reservation.eventId, attendance.eventId),
+        eq(reservation.status, 'confirmed')
+      )
+    )
+    .leftJoin(
+      attendanceReport,
+      and(
+        eq(attendanceReport.userId, attendance.userId),
+        eq(attendanceReport.eventId, attendance.eventId)
+      )
+    )
+    .where(
+      and(
+        eq(attendance.userId, userId),
+        eventId ? eq(attendance.eventId, eventId) : undefined,
+        eq(bar.isActive, true),
+        sql`${eventEnd} <= now()`,
+        sql`${eventEnd} > now() - ${`${ATTENDANCE_REPORT_WINDOW_DAYS} days`}::interval`
+      )
+    )
+    .orderBy(sql`${event.startsAt} desc`)
+}
+
+/**
+ * Alerta interno (WEB-128): bares em que o torcedor diz que foi e o bar não
+ * registrou, repetidamente. Só entra jogo com a janela de validação fechada —
+ * antes disso o bar ainda pode registrar. Não julga nem sanciona: mostra o
+ * cruzamento das quatro leituras por bar, sem nenhuma resposta individual.
+ */
+export function readUnregisteredAlerts() {
+  const registered = sql`exists (
+    select 1 from ${reservationCodeUse}
+    join ${reservationCode} on ${reservationCode.id} = ${reservationCodeUse.codeId}
+    where ${reservationCode.reservationId} = ${reservation.id}
+      and ${reservationCodeUse.undoneAt} is null
+  )`
+  const went = attendanceReport.attended
+  const tally = (reading: SQL) =>
+    sql<number>`(count(*) filter (where ${reading}))::int`
+  const unregisteredGames = sql<number>`(count(distinct ${event.id}) filter (where ${went} and not ${registered}))::int`
+  return db
+    .select({
+      barId: bar.id,
+      barName: bar.name,
+      unregisteredGames,
+      bothRegistered: tally(sql`${went} and ${registered}`),
+      unregistered: tally(sql`${went} and not ${registered}`),
+      burned: tally(sql`not ${went} and ${registered}`),
+      noShow: tally(sql`not ${went} and not ${registered}`)
+    })
+    .from(reservation)
+    .innerJoin(
+      attendanceReport,
+      and(
+        eq(attendanceReport.userId, reservation.userId),
+        eq(attendanceReport.eventId, reservation.eventId)
+      )
+    )
+    .innerJoin(event, eq(event.id, reservation.eventId))
+    .innerJoin(bar, eq(bar.id, event.barId))
+    .where(
+      and(
+        eq(reservation.status, 'confirmed'),
+        sql`${eventEnd} + ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`}::interval < now()`
+      )
+    )
+    .groupBy(bar.id)
+    .having(sql`${unregisteredGames} >= ${UNREGISTERED_ALERT_MIN_GAMES}`)
+    .orderBy(sql`${unregisteredGames} desc`, bar.name)
 }

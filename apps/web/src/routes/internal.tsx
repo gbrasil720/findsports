@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Settings from 'reicon-react/icons/Settings'
 import SliderH from 'reicon-react/icons/SliderH'
 import Users from 'reicon-react/icons/Users'
@@ -104,6 +105,31 @@ function InternalHallPage() {
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Desligue caminhos de código, ajuste limites e libere cobrança sem
               deploy.
+            </p>
+          </div>
+          <span className="onside-kicker text-[var(--onside-ink)]">
+            Acessar →
+          </span>
+        </Link>
+
+        <Link
+          to="/internal/attendance"
+          className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"
+        >
+          <div className="grid size-14 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
+            <AlertCircle
+              size={28}
+              color="var(--onside-ink)"
+              aria-hidden="true"
+            />
+          </div>
+          <div>
+            <h2 className="onside-display text-2xl tracking-tight">
+              Comparecimento
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
+              Bares em que o torcedor diz que foi e o bar repetidamente não
+              registra o código.
             </p>
           </div>
           <span className="onside-kicker text-[var(--onside-ink)]">

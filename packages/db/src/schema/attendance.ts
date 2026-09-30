@@ -1,4 +1,7 @@
+import { sql } from 'drizzle-orm'
 import {
+  boolean,
+  check,
   index,
   pgTable,
   primaryKey,
@@ -34,5 +37,46 @@ export const attendance = pgTable(
     primaryKey({ columns: [table.userId, table.eventId] }),
     // Contagem por jogo e cascade de `event`.
     index('attendance_eventId_idx').on(table.eventId)
+  ]
+)
+
+/**
+ * Segunda fonte de comparecimento (WEB-128, ADR 0003 "Comparecimento"): o que
+ * o torcedor diz depois do jogo. A primeira fonte é o registro do bar em
+ * `reservation_code_use`; as duas vivem em tabelas separadas para uma nunca
+ * sobrescrever a outra.
+ *
+ * Nenhuma superfície do bar lê esta tabela: a resposta individual não pode
+ * chegar a quem ela avalia.
+ */
+export const attendanceReport = pgTable(
+  'attendance_report',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => event.id, { onDelete: 'cascade' }),
+    attended: boolean('attended').notNull(),
+    // Só é perguntado quando a reserva confirmada tinha oferta congelada.
+    // Nulo em presença, em reserva sem oferta e em quem não foi.
+    offerReceived: boolean('offer_received'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.eventId] }),
+    // Cruzamento por jogo e cascade de `event`.
+    index('attendance_report_eventId_idx').on(table.eventId),
+    check(
+      'attendance_report_offer_only_if_attended',
+      sql`${table.attended} OR ${table.offerReceived} IS NULL`
+    )
   ]
 )
