@@ -12,7 +12,7 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 export type FanReservation =
   inferRouterOutputs<AppRouter>['reservations']['mine'][number]
 
-export type ReservationStatus = FanReservation['status']
+type ReservationStatus = FanReservation['status']
 
 export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   pending: 'Pendente',

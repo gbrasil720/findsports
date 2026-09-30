@@ -19,6 +19,17 @@ export type BarActions = {
   onReserve: (() => void) | null
 }
 
+type Action = {
+  key: string
+  icon: typeof Chat
+  /** Texto quando é a ação principal. */
+  label: string
+  /** Texto quando desce para secundária. */
+  shortLabel: string
+  onClick: () => void
+  href?: string
+}
+
 /**
  * As três ações que a página inteira serve — falar, chegar, ligar.
  *
@@ -31,17 +42,6 @@ export type BarActions = {
  * "Reservar mesa" vira o primário e o WhatsApp desce para secundário. Sem
  * ela, nada muda — nenhum botão morto.
  */
-type Action = {
-  key: string
-  icon: typeof Chat
-  /** Texto quando é a ação principal. */
-  label: string
-  /** Texto quando desce para secundária. */
-  shortLabel: string
-  onClick: () => void
-  href?: string
-}
-
 export function BarActions({
   whatsappUrl,
   directionsUrl,
