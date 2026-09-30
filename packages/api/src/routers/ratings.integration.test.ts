@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { inArray } from '@findsports_oficial/db'
+import { inArray, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -10,6 +10,7 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { wilsonLowerBound } from '../lib/rating'
+import { contextFor, load } from './integration-seed'
 
 /**
  * O que este teste trava, e por que cada coisa precisa de banco de verdade:
@@ -32,46 +33,10 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 const ORIGIN_LAT = -35.75
 const ORIGIN_LNG = -37.25
 
-function sessionFor(userId: string, role: 'fan' | 'pub', now: Date) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Usuário ${userId}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
 integrationTest(
   'portão de elegibilidade, contadores por trigger e Wilson da coluna gerada',
   async () => {
-    const [{ db, sql }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
 
     const now = new Date()
     const ownerId = crypto.randomUUID()
@@ -179,21 +144,21 @@ integrationTest(
       // Quem nunca demonstrou interesse não avalia.
       await expect(
         appRouter
-          .createCaller(sessionFor(semIntencao, 'fan', now))
+          .createCaller(contextFor(semIntencao, 'fan', now))
           .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
       ).rejects.toThrow(/demonstrou interesse/i)
 
       // Jogo que ainda não acabou não avalia, mesmo com intenção.
       await expect(
         appRouter
-          .createCaller(sessionFor(comIntencao, 'fan', now))
+          .createCaller(contextFor(comIntencao, 'fan', now))
           .ratings.submit({ barId, eventId: jogoFuturoId, wouldReturn: true })
       ).rejects.toThrow(/ainda não acabou/i)
 
       // Conta de bar não avalia.
       await expect(
         appRouter
-          .createCaller(sessionFor(ownerId, 'pub', now))
+          .createCaller(contextFor(ownerId, 'pub', now))
           .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
       ).rejects.toThrow(/torcedores/i)
 
@@ -202,25 +167,25 @@ integrationTest(
       // --- contadores por trigger ---------------------------------------
 
       await appRouter
-        .createCaller(sessionFor(comIntencao, 'fan', now))
+        .createCaller(contextFor(comIntencao, 'fan', now))
         .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
       expect(await contadores()).toEqual({ ratingCount: 1, ratingPositive: 1 })
 
       // Reenviar CORRIGE em vez de somar: a amostra não infla com quem mudou
       // de ideia.
       await appRouter
-        .createCaller(sessionFor(comIntencao, 'fan', now))
+        .createCaller(contextFor(comIntencao, 'fan', now))
         .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: false })
       expect(await contadores()).toEqual({ ratingCount: 1, ratingPositive: 0 })
 
       await appRouter
-        .createCaller(sessionFor(comIntencao, 'fan', now))
+        .createCaller(contextFor(comIntencao, 'fan', now))
         .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
       expect(await contadores()).toEqual({ ratingCount: 1, ratingPositive: 1 })
 
       for (const fanId of [extra1, extra2]) {
         await appRouter
-          .createCaller(sessionFor(fanId, 'fan', now))
+          .createCaller(contextFor(fanId, 'fan', now))
           .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
       }
       expect(await contadores()).toEqual({ ratingCount: 3, ratingPositive: 3 })
@@ -242,7 +207,7 @@ integrationTest(
 
       // Quem já avaliou não recebe pendência do mesmo jogo.
       const pendentesDeQuemAvaliou = await appRouter
-        .createCaller(sessionFor(comIntencao, 'fan', now))
+        .createCaller(contextFor(comIntencao, 'fan', now))
         .ratings.getPending()
       expect(pendentesDeQuemAvaliou.map((item) => item.eventId)).not.toContain(
         jogoPassadoId
@@ -258,7 +223,7 @@ integrationTest(
         )
       `)
       const pendentes = await appRouter
-        .createCaller(sessionFor(semIntencao, 'fan', now))
+        .createCaller(contextFor(semIntencao, 'fan', now))
         .ratings.getPending()
       expect(pendentes.map((item) => item.eventId)).toContain(jogoPassadoId)
       expect(pendentes[0]?.barName).toBe('Bar da avaliação')
@@ -266,7 +231,7 @@ integrationTest(
       // --- remoção -------------------------------------------------------
 
       await appRouter
-        .createCaller(sessionFor(extra2, 'fan', now))
+        .createCaller(contextFor(extra2, 'fan', now))
         .ratings.remove({ barId, eventId: jogoPassadoId })
       expect(await contadores()).toEqual({ ratingCount: 2, ratingPositive: 2 })
     } finally {

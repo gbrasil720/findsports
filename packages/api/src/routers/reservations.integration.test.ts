@@ -11,6 +11,7 @@ import {
 import { reservationCode } from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
+import { contextFor, load, refusal } from './integration-seed'
 
 /**
  * Pedido de reserva do torcedor (WEB-124) contra o banco de verdade. Cada
@@ -24,44 +25,8 @@ type Role = 'pub' | 'fan'
 
 const HOUR = 3_600_000
 
-function contextFor(userId: string, role: Role, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + HOUR),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Conta ${role}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
 async function seed(options: { acceptsReservations?: boolean } = {}) {
-  const [{ db }, { appRouter }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index')
-  ])
+  const { db, appRouter } = await load()
   const ownerId = crypto.randomUUID()
   const fanId = crypto.randomUUID()
   const otherFanId = crypto.randomUUID()
@@ -147,16 +112,6 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
       await db.delete(sport).where(eq(sport.id, sportId))
     }
   }
-}
-
-async function refusal(promise: Promise<unknown>) {
-  const error = await promise.then(
-    () => undefined,
-    (e: unknown) => e
-  )
-  expect(error).toBeInstanceOf(TRPCError)
-  const { code, message } = error as TRPCError
-  return { code, message }
 }
 
 integrationTest(

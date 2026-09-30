@@ -16,81 +16,14 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { TRPCError } from '@trpc/server'
 import { getCommercialDay } from '../lib/commercial-analytics/commercial-day'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
+import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-function fanContext(userId: string, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: 'Fan de integração',
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role: 'fan' as const,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
-function pubContext(userId: string, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: 'Pub de integração',
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        role: 'pub' as const,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
 
 integrationTest(
   'WEB-96: serializa registros paralelos e não aceita o 31º evento na janela',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const fanUserId = crypto.randomUUID()
     const pubUserId = crypto.randomUUID()
     const barId = crypto.randomUUID()
@@ -146,7 +79,7 @@ integrationTest(
       }))
       await db.insert(event).values(sourceEvents)
 
-      const caller = appRouter.createCaller(fanContext(fanUserId, now))
+      const caller = appRouter.createCaller(contextFor(fanUserId, 'fan', now))
       const results = await Promise.allSettled(
         sourceEvents.map((ev) =>
           caller.commercialAnalytics.recordCommercialEvent({
@@ -765,10 +698,7 @@ integrationTest(
 integrationTest(
   'WEB-103: comparação fica isolada no bar e mascara canais do Pro',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const pubUserId = crypto.randomUUID()
     const otherPubUserId = crypto.randomUUID()
     const fanUserId = crypto.randomUUID()
@@ -925,7 +855,7 @@ integrationTest(
       ])
 
       const result = await appRouter
-        .createCaller(pubContext(pubUserId, now))
+        .createCaller(contextFor(pubUserId, 'pub', now))
         .commercialAnalytics.getMyEventAnalytics({
           from: '2026-09-01',
           to: '2026-09-30',

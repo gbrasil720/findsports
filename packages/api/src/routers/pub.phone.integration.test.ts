@@ -3,6 +3,7 @@ import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 /**
  * Telefone de bar no salvamento (WEB-115): número fora do padrão brasileiro é
@@ -15,45 +16,8 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 /** O telefone do cadastro incoerente de produção: "55" digitado duas vezes. */
 const TELEFONE_LEGADO = '+5555512345678'
 
-function contextFor(userId: string, onboardingCompleted: boolean) {
-  const now = new Date()
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: 'Dono de integração',
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role: 'pub' as const,
-        banned: false,
-        onboardingCompleted,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
 async function seedOwner(withBar: boolean) {
-  const [{ db }, { appRouter }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index')
-  ])
+  const { db, appRouter } = await load()
   const ownerId = crypto.randomUUID()
   await db.insert(user).values({
     id: ownerId,
@@ -78,7 +42,9 @@ async function seedOwner(withBar: boolean) {
   return {
     db,
     ownerId,
-    caller: appRouter.createCaller(contextFor(ownerId, withBar)),
+    caller: appRouter.createCaller(
+      contextFor(ownerId, 'pub', new Date(), withBar)
+    ),
     storedPhone: async () =>
       (
         await db

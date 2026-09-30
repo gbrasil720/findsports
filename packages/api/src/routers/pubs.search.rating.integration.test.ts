@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { inArray } from '@findsports_oficial/db'
+import { inArray, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -8,6 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 /**
  * O modo "melhor avaliados" tem três decisões que quebram em silêncio:
@@ -30,12 +31,8 @@ const ORIGIN_LNG = -35.75
 integrationTest(
   'ordem por nota usa Wilson, mantém bar sem nota no fim e não vaza para o padrão',
   async () => {
-    const [{ db, sql }, { appRouter }, { resetAppConfig, setAppConfig }] =
-      await Promise.all([
-        import('@findsports_oficial/db'),
-        import('./index'),
-        import('../lib/app-config')
-      ])
+    const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
+      await Promise.all([load(), import('../lib/app-config')])
 
     const now = new Date()
     const fanId = crypto.randomUUID()
@@ -174,36 +171,7 @@ integrationTest(
 
       await setAppConfig('rating.public_display', true, null)
 
-      const caller = appRouter.createCaller({
-        auth: null,
-        clientIp: '127.0.0.1',
-        session: {
-          session: {
-            id: crypto.randomUUID(),
-            token: crypto.randomUUID(),
-            userId: fanId,
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: new Date(now.getTime() + 3_600_000),
-            ipAddress: null,
-            userAgent: null
-          },
-          user: {
-            id: fanId,
-            name: 'Torcedor',
-            email: `${fanId}@integration.invalid`,
-            emailVerified: true,
-            image: null,
-            role: 'fan',
-            banned: false,
-            onboardingCompleted: true,
-            searchRadiusKm: 3,
-            twoFactorEnabled: false,
-            createdAt: now,
-            updatedAt: now
-          }
-        }
-      })
+      const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
       const buscar = async (
         sort: 'relevance' | 'rating',

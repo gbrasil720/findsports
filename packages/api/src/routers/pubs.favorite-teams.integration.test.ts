@@ -7,47 +7,14 @@ import {
   userFavoriteTeams
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import type { Context } from '../context'
+import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-function fanContext(userId: string): Context {
-  const now = new Date()
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 60_000)
-      },
-      user: {
-        id: userId,
-        name: 'Fan de times',
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        role: 'fan',
-        onboardingCompleted: false,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  } as unknown as Context
-}
 
 integrationTest(
   'times favoritos ficam dentro dos esportes do torcedor (WEB-68)',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const suffix = crypto.randomUUID()
     const footballId = crypto.randomUUID()
     const f1Id = crypto.randomUUID()
@@ -76,7 +43,9 @@ integrationTest(
       }))
     )
 
-    const fan = appRouter.createCaller(fanContext(withTeamsId))
+    const fan = appRouter.createCaller(
+      contextFor(withTeamsId, 'fan', new Date(), false)
+    )
     const teamIds = async () =>
       (await fan.pubs.getMyTeams()).map((row) => row.id).sort()
 
@@ -101,7 +70,7 @@ integrationTest(
 
       // Sem times: onboarding conclui do mesmo jeito.
       await appRouter
-        .createCaller(fanContext(withoutTeamsId))
+        .createCaller(contextFor(withoutTeamsId, 'fan', new Date(), false))
         .onboarding.completeFan({ sportIds: [footballId], searchRadiusKm: 5 })
       const [withoutTeams] = await db
         .select({ done: user.onboardingCompleted })
