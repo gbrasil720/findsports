@@ -96,8 +96,14 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
     (loadingSports ? 'Carregando esportes…' : sportsErrorMessage)
   const createBlocked = blockReason !== null
 
+  // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`.
   const invalidateEvents = () =>
-    queryClient.invalidateQueries({ queryKey: trpc.pub.getMyEvents.queryKey() })
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: trpc.pub.getMyEvents.queryKey()
+      }),
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+    ])
   const invalidateEventsAndPolicy = () =>
     Promise.all([
       invalidateEvents(),

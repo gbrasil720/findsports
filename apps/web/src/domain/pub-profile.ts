@@ -1,3 +1,7 @@
+import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import type { inferRouterOutputs } from '@trpc/server'
+import { buildDirectionsUrl } from '@/lib/maps-link'
+import { buildWhatsAppLink } from '@/lib/whatsapp-link'
 import { getEventTemporalState } from './events'
 
 /**
@@ -21,6 +25,95 @@ export type ProfileEvent = {
   participantFreeText: string | null
   sport: { name: string; slug: string }
   participants: { team: ProfileTeam }[]
+}
+
+export type PubOutput = NonNullable<
+  inferRouterOutputs<AppRouter>['pubs']['getById']
+>
+
+export type ProfileGame = ProfileEvent & {
+  reservationsSoldOut: boolean
+  attendance: PubOutput['events'][number]['attendance']
+}
+
+export type NormalizedPub = Omit<PubOutput, 'events'> & {
+  events: ProfileGame[]
+}
+
+/**
+ * tRPC serializa `Date` como string. A normalização acontece uma vez, aqui,
+ * para que os componentes recebam `Date` e nenhum deles precise adivinhar o
+ * formato.
+ */
+export function normalizePub(raw: PubOutput): NormalizedPub {
+  return {
+    ...raw,
+    events: raw.events.map((event) => ({
+      id: event.id,
+      championship: event.championship,
+      startsAt: new Date(event.startsAt),
+      endsAt: event.endsAt ? new Date(event.endsAt) : null,
+      participantFreeText: event.participantFreeText,
+      reservationsSoldOut: event.reservationsSoldOut,
+      attendance: event.attendance,
+      sport: { name: event.sport.name, slug: event.sport.slug },
+      participants: event.participants.map((participant) => ({
+        team: {
+          name: participant.team.name,
+          logoUrl: participant.team.logoUrl
+        }
+      }))
+    }))
+  }
+}
+
+/**
+ * O que "Garanta seu lugar" oferece a quem visita. O perfil e a prévia do dono
+ * no painel passam por aqui, para a prévia não divergir do que o torcedor vê.
+ *
+ * `acceptsReservations` já vem efetivo do servidor (quer E pode). Reserva só
+ * para jogo que ainda não começou e conta de torcedor; o servidor confere de
+ * novo ao gravar.
+ */
+export function resolveProfileActions(
+  pub: NormalizedPub,
+  heroEvent: ProfileEvent | null,
+  viewerRole: string | null | undefined,
+  now: number = Date.now()
+) {
+  const reservableEvents = pub.events.filter(
+    (event) => event.startsAt.getTime() > now
+  )
+  const offersReservation =
+    pub.acceptsReservations &&
+    viewerRole === 'fan' &&
+    reservableEvents.length > 0
+  const canReserve =
+    offersReservation &&
+    reservableEvents.some((event) => !event.reservationsSoldOut)
+
+  return {
+    whatsappUrl: buildWhatsAppLink({
+      phone: pub.phone,
+      acceptsWhatsapp: pub.phoneAcceptsWhatsapp,
+      event: heroEvent
+        ? {
+            matchup: formatMatchup(heroEvent),
+            when: `${formatDayLabel(heroEvent.startsAt).toLowerCase()} às ${formatEventTime(heroEvent.startsAt)}`
+          }
+        : null
+    }),
+    directionsUrl: buildDirectionsUrl({
+      latitude: pub.latitude,
+      longitude: pub.longitude,
+      name: pub.name,
+      address: pub.address
+    }),
+    phone: pub.phone,
+    reservableEvents,
+    canReserve,
+    reservationsSoldOut: offersReservation && !canReserve
+  }
 }
 
 /**

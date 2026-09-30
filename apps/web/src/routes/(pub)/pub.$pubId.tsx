@@ -1,4 +1,3 @@
-import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -7,11 +6,13 @@ import {
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import type { inferRouterOutputs } from '@trpc/server'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
-import { AttendanceControl } from '@/components/pub/attendance-control'
+import {
+  AttendanceControl,
+  HeroAttendance
+} from '@/components/pub/attendance-control'
 import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
 import { BarActions } from '@/components/pub/bar-action-bar'
 import { BarCharacteristics } from '@/components/pub/bar-characteristics'
@@ -21,24 +22,19 @@ import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { HouseOfferSection } from '@/components/pub/house-offer-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
-import {
-  type ReservableEvent,
-  ReservationRequestDialog
-} from '@/components/pub/reservation-request-dialog'
+import { ReservationRequestDialog } from '@/components/pub/reservation-request-dialog'
 import { buildBarFacts } from '@/domain/bar-facts'
 import {
-  formatDayLabel,
-  formatEventTime,
   formatMatchup,
-  resolveHeroEvent
+  normalizePub,
+  resolveHeroEvent,
+  resolveProfileActions
 } from '@/domain/pub-profile'
 import { canFavoriteBars, shellVariantForViewer } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
-import { buildDirectionsUrl } from '@/lib/maps-link'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
-import { buildWhatsAppLink } from '@/lib/whatsapp-link'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(pub)/pub/$pubId')({
@@ -50,46 +46,6 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
   }),
   component: PubPage
 })
-
-type RouterOutputs = inferRouterOutputs<AppRouter>
-type PubOutput = NonNullable<RouterOutputs['pubs']['getById']>
-
-type ProfileGame = ReservableEvent & {
-  attendance: PubOutput['events'][number]['attendance']
-}
-
-type NormalizedPub = Omit<PubOutput, 'events'> & {
-  events: ProfileGame[]
-}
-
-/**
- * tRPC serializa `Date` como string. A normalização acontece uma vez, aqui,
- * para que os componentes recebam `Date` e nenhum deles precise adivinhar o
- * formato.
- */
-function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
-  if (!raw) return undefined
-
-  return {
-    ...raw,
-    events: raw.events.map((event) => ({
-      id: event.id,
-      championship: event.championship,
-      startsAt: new Date(event.startsAt),
-      endsAt: event.endsAt ? new Date(event.endsAt) : null,
-      participantFreeText: event.participantFreeText,
-      reservationsSoldOut: event.reservationsSoldOut,
-      attendance: event.attendance,
-      sport: { name: event.sport.name, slug: event.sport.slug },
-      participants: event.participants.map((participant) => ({
-        team: {
-          name: participant.team.name,
-          logoUrl: participant.team.logoUrl
-        }
-      }))
-    }))
-  }
-}
 
 function PubPageSkeleton() {
   return (
@@ -200,7 +156,7 @@ function PubPage() {
     meta: { errorToast: false }
   })
 
-  const normalizedPub = useMemo(() => normalizePub(pub), [pub])
+  const normalizedPub = useMemo(() => pub && normalizePub(pub), [pub])
   const pubErrorRetryable = isRetryableError(pubQueryError)
   const pubErrorMessage = getUserFacingMessage(
     pubQueryError,
@@ -338,27 +294,15 @@ function PubPage() {
     [normalizedPub]
   )
 
-  const whatsappUrl = normalizedPub
-    ? buildWhatsAppLink({
-        phone: normalizedPub.phone,
-        acceptsWhatsapp: normalizedPub.phoneAcceptsWhatsapp,
-        event: heroEvent
-          ? {
-              matchup: formatMatchup(heroEvent),
-              when: `${formatDayLabel(heroEvent.startsAt).toLowerCase()} às ${formatEventTime(heroEvent.startsAt)}`
-            }
-          : null
-      })
-    : null
-
-  const directionsUrl = normalizedPub
-    ? buildDirectionsUrl({
-        latitude: normalizedPub.latitude,
-        longitude: normalizedPub.longitude,
-        name: normalizedPub.name,
-        address: normalizedPub.address
-      })
-    : null
+  const profileActions = useMemo(
+    () =>
+      normalizedPub &&
+      resolveProfileActions(normalizedPub, heroEvent, viewerRole),
+    [normalizedPub, heroEvent, viewerRole]
+  )
+  const whatsappUrl = profileActions?.whatsappUrl ?? null
+  const directionsUrl = profileActions?.directionsUrl ?? null
+  const canReserve = profileActions?.canReserve ?? false
 
   // O jogo de origem contextualiza toda ação comercial: o bar precisa saber
   // qual jogo trouxe o contato, não só que houve contato.
@@ -401,35 +345,6 @@ function PubPage() {
   // torcedor não pode receber a navegação do painel do bar.
   const shellVariant = shellVariantForViewer(session?.user?.role)
 
-  // Reserva só para jogo que ainda não começou; o servidor confere de novo.
-  const reservableEvents = useMemo(() => {
-    const now = Date.now()
-    return (
-      normalizedPub?.events.filter((event) => event.startsAt.getTime() > now) ??
-      []
-    )
-  }, [normalizedPub])
-  const offersReservation =
-    normalizedPub?.acceptsReservations === true &&
-    viewerRole === 'fan' &&
-    reservableEvents.length > 0
-  const canReserve =
-    offersReservation &&
-    reservableEvents.some((event) => !event.reservationsSoldOut)
-
-  // `attendance` só vem onde o botão cabe; o servidor decide (WEB-127).
-  const presenceFor = (game: ProfileGame, compact: boolean) =>
-    game.attendance && (
-      <AttendanceControl
-        eventId={game.id}
-        attending={game.attendance.attending}
-        count={game.attendance.count}
-        gameLabel={formatMatchup(game)}
-        compact={compact}
-      />
-    )
-  const heroPresence = heroEvent && presenceFor(heroEvent, false)
-
   const actions = {
     whatsappUrl,
     directionsUrl,
@@ -438,7 +353,7 @@ function PubPage() {
     onDirections: handleOpenDirections,
     onPhone: handlePhoneClick,
     onReserve: canReserve ? () => setReserveOpen(true) : null,
-    reservationsSoldOut: offersReservation && !canReserve
+    reservationsSoldOut: profileActions?.reservationsSoldOut ?? false
   }
 
   return (
@@ -495,17 +410,12 @@ function PubPage() {
               <BarActions
                 {...actions}
                 presence={
-                  heroPresence && (
-                    <>
-                      {heroPresence}
-                      {canReserve && (
-                        <p className="mt-2 text-[var(--onside-muted)] text-xs">
-                          “Vou assistir aqui” não reserva mesa: só avisa ao bar
-                          que você vai. Para garantir lugar, use “Reservar
-                          mesa”.
-                        </p>
-                      )}
-                    </>
+                  heroEvent?.attendance && (
+                    <HeroAttendance
+                      game={heroEvent}
+                      attendance={heroEvent.attendance}
+                      canReserve={canReserve}
+                    />
                   )
                 }
                 variant="panel"
@@ -531,7 +441,18 @@ function PubPage() {
                 whatsappUrl={whatsappUrl}
                 onWhatsApp={handleWhatsAppClick}
                 isOwner={isOwner}
-                renderPresence={(game) => presenceFor(game, true)}
+                // `attendance` só vem onde o botão cabe; o servidor decide (WEB-127).
+                renderPresence={(game) =>
+                  game.attendance && (
+                    <AttendanceControl
+                      eventId={game.id}
+                      attending={game.attendance.attending}
+                      count={game.attendance.count}
+                      gameLabel={formatMatchup(game)}
+                      compact
+                    />
+                  )
+                }
               />
 
               <BarCharacteristics
@@ -550,7 +471,7 @@ function PubPage() {
                 <ReservationRequestDialog
                   onClose={() => setReserveOpen(false)}
                   barName={normalizedPub.name}
-                  events={reservableEvents}
+                  events={profileActions?.reservableEvents ?? []}
                   initialEventId={heroEvent?.id ?? null}
                   houseOffer={normalizedPub.houseOffer}
                 />
