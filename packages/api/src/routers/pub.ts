@@ -13,7 +13,7 @@ import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
@@ -174,20 +174,9 @@ async function getBarByUserId(userId: string) {
 }
 
 export const pubRouter = router({
-  getMe: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id
+  getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
 
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
-
-    return getBarByUserId(userId)
-  }),
-
-  updateMe: protectedProcedure
+  updateMe: pubProcedure
     .input(
       z.object({
         name: z.string().min(2).max(100).optional(),
@@ -214,13 +203,6 @@ export const pubRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
 
       const existingBar = await getBarByUserId(userId)
 
@@ -313,7 +295,7 @@ export const pubRouter = router({
    * Não toca em reserva nenhuma. `reservation.offer_snapshot` é cópia feita
    * na criação e não se atualiza a partir daqui.
    */
-  updateHouseOffer: protectedProcedure
+  updateHouseOffer: pubProcedure
     .input(
       z.object({
         // Teto de payload, não a regra: o limite vale sobre o texto já
@@ -325,13 +307,6 @@ export const pubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
-
       const existingBar = await getBarByUserId(ctx.session.user.id)
       assertCanConfigureHouseOffer(existingBar.subscription ?? null)
       const houseOffer = parseHouseOfferInput(input.houseOffer)
@@ -353,7 +328,7 @@ export const pubRouter = router({
    * o plano é conferido aqui, a partir da assinatura, antes de qualquer
    * escrita.
    */
-  updateMenuInfo: protectedProcedure
+  updateMenuInfo: pubProcedure
     .input(
       z
         .object({
@@ -374,13 +349,6 @@ export const pubRouter = router({
         )
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
-
       const existingBar = await getBarByUserId(ctx.session.user.id)
       assertCanConfigureBarMenu(existingBar.subscription ?? null)
 
@@ -417,16 +385,9 @@ export const pubRouter = router({
    * Só decide pedidos novos: não toca em reserva existente, código emitido nem
    * `offer_snapshot`.
    */
-  updateAcceptsReservations: protectedProcedure
+  updateAcceptsReservations: pubProcedure
     .input(z.object({ acceptsReservations: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
-
       const existingBar = await getBarByUserId(ctx.session.user.id)
       if (input.acceptsReservations) {
         assertCanEnableReservations(existingBar.subscription ?? null)
@@ -453,14 +414,7 @@ export const pubRouter = router({
    * nome ao lado de um "não voltaria" transformaria avaliação em conflito
    * pessoal, e o dono tem o telefone dessa pessoa.
    */
-  getMyRatings: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
-
+  getMyRatings: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
 
     const rows = await db.execute(sql`
@@ -501,15 +455,8 @@ export const pubRouter = router({
     }
   }),
 
-  getMyEvents: protectedProcedure.query(async ({ ctx }) => {
+  getMyEvents: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
 
     const existingBar = await getBarByUserId(userId)
 
@@ -525,21 +472,14 @@ export const pubRouter = router({
     })
   }),
 
-  getMyEventCreationPolicy: protectedProcedure.query(async ({ ctx }) => {
+  getMyEventCreationPolicy: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
 
     const existingBar = await getBarByUserId(userId)
     return getEventCreationPolicy(db, existingBar)
   }),
 
-  createEvent: protectedProcedure
+  createEvent: pubProcedure
     .input(
       z.object({
         sportId: z.string().uuid(),
@@ -552,13 +492,6 @@ export const pubRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
 
       assertEventIntervalValid(
         new Date(input.startsAt),
@@ -647,7 +580,7 @@ export const pubRouter = router({
       return { success: true }
     }),
 
-  updateEvent: protectedProcedure
+  updateEvent: pubProcedure
     .input(
       z.object({
         eventId: z.string().uuid(),
@@ -661,13 +594,6 @@ export const pubRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
 
       const existingBar = await getBarByUserId(userId)
 
@@ -733,17 +659,10 @@ export const pubRouter = router({
       return { success: true }
     }),
 
-  deleteEvent: protectedProcedure
+  deleteEvent: pubProcedure
     .input(z.object({ eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar este recurso.'
-        })
-      }
 
       const existingBar = await getBarByUserId(userId)
 
@@ -764,15 +683,8 @@ export const pubRouter = router({
     }),
 
   // Retorna o plano e status atual da subscription do bar
-  getMySubscription: protectedProcedure.query(async ({ ctx }) => {
+  getMySubscription: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
 
     const existingBar = await getBarByUserId(userId)
 
@@ -784,14 +696,7 @@ export const pubRouter = router({
       : null
   }),
 
-  getAccountDeletionEligibility: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar este recurso.'
-      })
-    }
-
+  getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
     const block = getBarAccountDeletionBlock(existingBar.subscription ?? null)
 

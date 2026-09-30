@@ -95,3 +95,20 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   }
   return next({ ctx })
 })
+
+/**
+ * WEB-137: o mesmo raciocínio do `adminProcedure`, para bar. Antes cada
+ * procedimento de bar repetia a checagem de papel no handler, e um novo que
+ * esquecesse ficava aberto a qualquer conta logada.
+ *
+ * Papel não é posse: quem precisa de um bar específico ainda confere o dono.
+ */
+export const pubProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.session.user.role !== 'pub') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Apenas contas de bar podem acessar este recurso.'
+    })
+  }
+  return next({ ctx })
+})
