@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { protectedProcedure, router } from '../index'
 import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
+import { resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
@@ -273,11 +274,13 @@ export const pubsRouter = router({
           ratingCount: true,
           ratingPositive: true,
           houseOffer: true,
+          menuUrl: true,
+          averageSpendCents: true,
           acceptsReservations: true
         },
         with: {
-          // Só para decidir o recebimento de reservas e a oferta da casa; sai
-          // da resposta.
+          // Só para decidir o recebimento de reservas, a oferta da casa, o
+          // cardápio e o gasto médio; sai da resposta.
           // `plan` acima é projeção que ignora o status da assinatura.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
@@ -326,12 +329,15 @@ export const pubsRouter = router({
       // Recebimento de reservas e oferta da casa seguem a mesma lógica: o
       // cliente recebe o efetivo (quer E pode), nunca o interruptor cru nem o
       // texto com um aviso para esconder. Vale também para a prévia do dono —
-      // ela mostra o que o torcedor vê.
+      // ela mostra o que o torcedor vê. Cardápio e gasto médio idem, com Pro
+      // ou Elite.
       const {
         userId,
         ratingCount,
         ratingPositive,
         houseOffer,
+        menuUrl,
+        averageSpendCents,
         acceptsReservations,
         subscription,
         ...publicBar
@@ -359,6 +365,11 @@ export const pubsRouter = router({
         // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
         houseOffer: receiving ? houseOffer : null,
         acceptsReservations: receiving,
+        ...resolvePublicBarMenu(
+          { menuUrl, averageSpendCents },
+          subscription ?? null,
+          now
+        ),
         isOwner: userId === ctx.session.user.id
       }
     }),

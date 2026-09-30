@@ -1,4 +1,9 @@
 import { amenitiesByGroup } from '@findsports_oficial/api/lib/amenities'
+import {
+  formatAverageSpend,
+  menuUrlHost
+} from '@findsports_oficial/db/bar-menu'
+import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
 import Check from 'reicon-react/icons/Check'
 import Display from 'reicon-react/icons/Display'
 import type { Fact } from '@/domain/bar-facts'
@@ -8,6 +13,9 @@ type Props = {
   amenities: number[]
   screenCount: number | null
   description: string | null
+  /** `null` quando não informado ou sem Pro/Elite — o servidor decide. */
+  menuUrl: string | null
+  averageSpendCents: number | null
   facts: Fact[]
   isOwner: boolean
 }
@@ -25,19 +33,24 @@ type Props = {
  * `domain/bar-facts.ts`.
  *
  * Fica no fim de propósito: quem chegou por um jogo já decidiu antes daqui, e
- * quem está explorando lê. É também onde cardápio e avaliações entram quando
- * existirem — a seção nasce como o lugar deles.
+ * quem está explorando lê. O cardápio e o gasto médio (WEB-39) entram aqui,
+ * como declaração do bar e não como dado da Onside.
  */
 export function BarCharacteristics({
   amenities,
   screenCount,
   description,
+  menuUrl,
+  averageSpendCents,
   facts,
   isOwner
 }: Props) {
   const groups = amenitiesByGroup(amenities)
   const hasScreenCount = screenCount !== null && screenCount > 0
-  const hasDeclared = groups.length > 0 || hasScreenCount
+  // O aviso ao dono é sobre características e telas; cardápio não o cala.
+  const hasAmenities = groups.length > 0 || hasScreenCount
+  const hasDeclared =
+    hasAmenities || Boolean(menuUrl) || Boolean(averageSpendCents)
   const isEmpty = !hasDeclared && !description && facts.length === 0
 
   // Sem nada declarado, sem texto e sem agenda, a seção não tem o que dizer —
@@ -51,6 +64,11 @@ export function BarCharacteristics({
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,280px)]">
         <div className="min-w-0 space-y-5">
+          <BarMenuInfo
+            menuUrl={menuUrl}
+            averageSpendCents={averageSpendCents}
+          />
+
           {hasScreenCount && (
             <div className="flex items-center gap-3 border border-[var(--onside-line)] bg-[var(--onside-stone)]/55 px-4 py-3">
               <Display
@@ -100,7 +118,7 @@ export function BarCharacteristics({
             </p>
           ) : null}
 
-          {isOwner && !hasDeclared ? (
+          {isOwner && !hasAmenities ? (
             <OwnerNudge
               action={{ label: 'Marcar', to: '/admin', hash: 'admin-espaco' }}
             >
@@ -134,5 +152,65 @@ export function BarCharacteristics({
         </p>
       )}
     </section>
+  )
+}
+
+/**
+ * Gasto médio e link do cardápio. Também é a prévia do painel, para o dono ver
+ * o formato exato antes de salvar.
+ *
+ * `0` e `null` não desenham nada: melhor sem bloco do que um `R$ 0,00` que
+ * parece preço. O rótulo diz que o valor é do bar, não uma média da Onside.
+ */
+export function BarMenuInfo({
+  menuUrl,
+  averageSpendCents
+}: {
+  menuUrl: string | null
+  averageSpendCents: number | null
+}) {
+  if (!menuUrl && !averageSpendCents) return null
+  const host = menuUrl ? menuUrlHost(menuUrl) : ''
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
+      {averageSpendCents ? (
+        <div className="min-w-0 border border-[var(--onside-line)] bg-[var(--onside-stone)]/55 px-4 py-3">
+          <p className="font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.16em]">
+            Preço médio por pessoa informado pelo bar
+          </p>
+          <p className="onside-display text-2xl tabular-nums">
+            {formatAverageSpend(averageSpendCents)}
+          </p>
+        </div>
+      ) : null}
+
+      {menuUrl ? (
+        <a
+          href={menuUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="onside-btn onside-btn-outline min-h-12 min-w-0 justify-between gap-3 px-4 text-left sm:self-center"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm">Ver cardápio</span>
+            {/* Quebra em vez de cortar: o fim do domínio é o que diz para
+                onde o link leva. */}
+            {host ? (
+              <span className="block font-normal text-[var(--onside-muted)] text-xs normal-case tracking-normal [overflow-wrap:anywhere]">
+                {host}
+              </span>
+            ) : null}
+          </span>
+          <span className="sr-only">(site externo, abre em nova aba)</span>
+          <ArrowUpRight
+            size={16}
+            color="currentColor"
+            className="shrink-0"
+            aria-hidden="true"
+          />
+        </a>
+      ) : null}
+    </div>
   )
 }

@@ -30,6 +30,7 @@ import {
   getAnalyticsRange,
   getAvailableAnalyticsPeriods
 } from '@/components/admin/analytics-period'
+import { BarMenuEditor } from '@/components/admin/bar-menu-editor'
 import { BarPreview } from '@/components/admin/bar-preview'
 import { ConversionReadiness } from '@/components/admin/conversion-readiness'
 import { EventPerformance } from '@/components/admin/event-performance'
@@ -391,6 +392,7 @@ function PubDashboard() {
     EventComparisonTarget | undefined
   >()
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [barMenuError, setBarMenuError] = useState<string | null>(null)
   const limitTracked = useRef(false)
 
   useEffect(() => {
@@ -629,6 +631,41 @@ function PubDashboard() {
     trpc.pub.updateAcceptsReservations.mutationOptions({
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+      }
+    })
+  )
+
+  const updateMenuInfoMutation = useMutation(
+    trpc.pub.updateMenuInfo.mutationOptions({
+      onMutate: () => {
+        setBarMenuError(null)
+      },
+      // Devolver a promessa faz o `mutateAsync` esperar o refetch: o
+      // formulário só diz "salvos" quando já recebeu o valor gravado. O perfil
+      // público também muda, então a prévia do dono não pode ficar em cache.
+      onSuccess: () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMe.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pubs.getById.pathKey()
+          })
+        ]),
+      onError: (err) => {
+        // Recusa por plano quer dizer que a assinatura mudou com o painel
+        // aberto: reler o plano troca o formulário pelo estado bloqueado.
+        if (err.data?.code === 'FORBIDDEN') {
+          void queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMySubscription.queryKey()
+          })
+        }
+        setBarMenuError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar o cardápio e o preço médio. Tente novamente.'
+          )
+        )
       }
     })
   )
@@ -1167,6 +1204,35 @@ function PubDashboard() {
                     queryKey: trpc.pub.getMe.queryKey()
                   })
                 }}
+              />
+
+              <BarMenuEditor
+                menuUrl={bar.menuUrl}
+                averageSpendCents={bar.averageSpendCents}
+                // Dado em cache vence erro de refetch em segundo plano: trocar
+                // o formulário pelo aviso de erro apagaria o que o dono digitou.
+                access={
+                  subscription !== undefined
+                    ? {
+                        status: 'ready',
+                        eligible:
+                          subscription?.currentPlan === 'pro' ||
+                          subscription?.currentPlan === 'elite'
+                      }
+                    : subError
+                      ? {
+                          status: 'error',
+                          retry: () => {
+                            void refetchSub()
+                          }
+                        }
+                      : { status: 'loading' }
+                }
+                isSaving={updateMenuInfoMutation.isPending}
+                saveError={barMenuError}
+                onSave={(changes) =>
+                  updateMenuInfoMutation.mutateAsync(changes)
+                }
               />
 
               <ReservationIntakeCard
