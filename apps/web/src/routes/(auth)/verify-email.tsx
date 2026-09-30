@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
@@ -9,6 +9,7 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import {
+  mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
@@ -45,6 +46,7 @@ function VerifyEmailPage() {
   const [email, setEmail] = useState('')
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
+  const [pubError, setPubError] = useState<string | null>(null)
   const { mutateAsync: completePub } = useMutation(
     trpc.onboarding.completePub.mutationOptions()
   )
@@ -53,6 +55,7 @@ function VerifyEmailPage() {
     if (continuing.current) return
     continuing.current = true
     setChecking(true)
+    setPubError(null)
     try {
       const { data } = await authClient.getSession({
         query: { disableCookieCache: true }
@@ -71,7 +74,14 @@ function VerifyEmailPage() {
           navigate({ to: '/onboarding/pub' })
           return
         }
-        await completePub(draft)
+        try {
+          await completePub(draft)
+        } catch (err) {
+          // O rascunho fica: o link abaixo leva de volta ao formulário, que
+          // o carrega para corrigir.
+          setPubError(mensagemFalhaCadastroBar(err, draft))
+          return
+        }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
         navigate({ to: '/plan' })
@@ -174,6 +184,17 @@ function VerifyEmailPage() {
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>
           </div>
+          {pubError ? (
+            <div
+              className="onside-callout onside-callout-warn mt-6"
+              role="alert"
+            >
+              <p className="text-sm font-semibold">{pubError}</p>
+              <Link to="/onboarding/pub" className="text-sm underline">
+                Corrigir o cadastro do bar
+              </Link>
+            </div>
+          ) : null}
           <p className="mt-6 text-xs text-[var(--onside-muted)]">
             Não reconhece este cadastro? Você pode simplesmente ignorar o
             e-mail.

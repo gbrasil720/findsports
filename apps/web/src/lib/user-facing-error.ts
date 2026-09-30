@@ -49,7 +49,7 @@ function getErrorText(error: unknown): string {
   return ''
 }
 
-function getErrorCode(error: unknown): string | undefined {
+export function getErrorCode(error: unknown): string | undefined {
   for (const value of getErrorValues(error)) {
     const record = asRecord(value)
     if (typeof record?.code === 'string') return record.code.toUpperCase()

@@ -137,3 +137,31 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'completePub recusa cidade fora do lançamento sem dizer que falta permissão',
+  async () => {
+    const ctx = await seedOwner(false)
+    const { resetAppConfig, setAppConfig } = await import('../lib/app-config')
+    await setAppConfig('launch.pub_cities', ['Curitiba'], null)
+    try {
+      // `FORBIDDEN` o app traduz em "sem permissão"; aqui falta a cidade abrir.
+      await expect(
+        ctx.caller.onboarding.completePub({
+          name: 'Bar novo',
+          neighborhood: 'Vila Madalena',
+          city: 'São Paulo',
+          address: 'Rua Aspicuelta, 123'
+        })
+      ).rejects.toMatchObject({
+        code: 'PRECONDITION_FAILED',
+        message:
+          'A Onside ainda não abriu em São Paulo. Avisamos assim que chegarmos aí.'
+      })
+      expect(await ctx.storedPhone()).toBeUndefined()
+    } finally {
+      await resetAppConfig('launch.pub_cities')
+      await ctx.cleanup()
+    }
+  }
+)
