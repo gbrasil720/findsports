@@ -1,30 +1,7 @@
 import type { auth } from '@findsports_oficial/auth'
 import { redirect } from '@tanstack/react-router'
 
-export type AuthSession = {
-  session: {
-    id: string
-    userId: string
-    expiresAt: Date
-    createdAt: Date
-    updatedAt: Date
-    impersonatedBy?: string | null
-  }
-  user: {
-    id: string
-    name: string
-    email: string
-    emailVerified: boolean
-    image?: string | null
-    createdAt: Date
-    updatedAt: Date
-    role: 'fan' | 'pub' | 'admin'
-    onboardingCompleted: boolean
-    admittedAt?: Date | null
-    searchRadiusKm: number
-    twoFactorEnabled: boolean
-  }
-} | null
+export type AuthSession = ReturnType<typeof toClientSession>
 
 const AUTHENTICATED_PREFIXES = [
   '/dashboard',
@@ -153,7 +130,11 @@ export function applyAuthGuards(
   }
 }
 
-type SessionLocation = { pathname: string; searchStr: string; hash: string }
+export type SessionLocation = {
+  pathname: string
+  searchStr: string
+  hash: string
+}
 
 /**
  * Se a sessão conferida em `previous` ainda vale para `next` sem nova ida ao

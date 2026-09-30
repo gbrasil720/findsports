@@ -27,7 +27,8 @@ import { authMiddleware } from '../middleware/auth'
 import {
   type AuthSession,
   applyAuthGuards,
-  isHashOnlyChange
+  isHashOnlyChange,
+  type SessionLocation
 } from '../utils/auth-guards'
 
 export interface RouterAppContext {
@@ -37,8 +38,8 @@ export interface RouterAppContext {
   // Última sessão conferida pelo `beforeLoad` da raiz, por instância de router.
   lastSessionCheck: {
     current?: {
-      location: { pathname: string; searchStr: string; hash: string }
-      session: Awaited<ReturnType<typeof getSession>>
+      location: SessionLocation
+      session: AuthSession
     }
   }
   session?: AuthSession
@@ -62,7 +63,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         : await getSession()
     context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
-    applyAuthGuards(session as AuthSession, location.pathname, location.search)
+    applyAuthGuards(session, location.pathname, location.search)
     return { session }
   },
   head: () => ({
