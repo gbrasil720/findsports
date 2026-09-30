@@ -28,6 +28,7 @@ import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
+import { sessionTokenGuard } from './session-token'
 import { buildTrustedOrigins } from './trusted-origins'
 import {
   publicEmailUrl,
@@ -430,6 +431,7 @@ export function createAuth() {
           })
         ]
       }),
+      sessionTokenGuard(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
       // (twoFactor, admin) teria o `Set-Cookie` perdido.

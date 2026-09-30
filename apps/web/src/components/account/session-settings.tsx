@@ -43,8 +43,8 @@ export function SessionSettings() {
     : null
 
   const revoke = async (session: AccountSession) => {
-    setRevoking(session.token)
-    const result = await authClient.revokeSession({ token: session.token })
+    setRevoking(session.id)
+    const result = await authClient.revokeSessionById({ id: session.id })
     setRevoking(null)
     if (result.error) {
       toast.error(
@@ -77,15 +77,15 @@ export function SessionSettings() {
   }
 
   const ordered = [...(sessions.data ?? [])].sort((left, right) =>
-    left.token === current?.session.token
+    left.id === current?.session.id
       ? -1
-      : right.token === current?.session.token
+      : right.id === current?.session.id
         ? 1
         : new Date(right.updatedAt).getTime() -
           new Date(left.updatedAt).getTime()
   )
   const otherCount = ordered.filter(
-    (session) => session.token !== current?.session.token
+    (session) => session.id !== current?.session.id
   ).length
 
   return (
@@ -147,7 +147,7 @@ export function SessionSettings() {
           </p>
         ) : (
           ordered.map((session) => {
-            const isCurrent = session.token === current?.session.token
+            const isCurrent = session.id === current?.session.id
             const device = describeDevice(session.userAgent)
             return (
               <article
@@ -196,7 +196,7 @@ export function SessionSettings() {
                     disabled={revoking !== null}
                     onClick={() => void revoke(session)}
                   >
-                    {revoking === session.token ? (
+                    {revoking === session.id ? (
                       <Spinner data-icon="inline-start" />
                     ) : null}
                     Encerrar
