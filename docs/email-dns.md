@@ -44,9 +44,9 @@ send.mail.onside.sh               MX   10 feedback-smtp.sa-east-1.amazonses.com
 contato@onside.sh` (`sendEmailWithResend`, em `packages/auth`). Sem isso, a
 resposta de quem recebe o e-mail voltaria com bounce.
 
-O domínio antigo `onside.sh` continua verificado no Resend e seus registros
-(`resend._domainkey`, `send.onside.sh`) continuam publicados; remova-os só
-depois que nenhum ambiente usar mais `RESEND_FROM_EMAIL=…@onside.sh`.
+Os registros de envio do domínio raiz (`resend._domainkey`, `send.onside.sh`
+TXT e MX) e o domínio `onside.sh` no Resend foram removidos em 30/09/2026,
+depois do deploy que passou produção para `mail.onside.sh`.
 
 Para enviar localmente com Resend, use `RESEND_FROM_EMAIL=contato@mail.onside.sh`
 no `.env`.
