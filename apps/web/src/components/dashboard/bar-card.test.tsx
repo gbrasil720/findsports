@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test'
+import { formatAverageSpend } from '@findsports_oficial/db/bar-menu'
 import { JSDOM } from 'jsdom'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -230,5 +231,14 @@ describe('plano e estado ao vivo', () => {
     ).querySelector('div[class*="size-16"]')
 
     expect(aoVivo?.className).toContain('onside-live')
+  })
+})
+
+describe('preço médio (WEB-144)', () => {
+  test('mostra o valor com o rótulo de informado pelo bar', () => {
+    const texto = renderizar({ ...criarBar('pro'), averageSpendCents: 6000 })
+      .body.textContent
+    expect(texto).toContain(`${formatAverageSpend(6000)} por pessoa`)
+    expect(texto).toContain('informado pelo bar')
   })
 })

@@ -1,4 +1,5 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
+import { formatAverageSpend } from '@findsports_oficial/db/bar-menu'
 import { Link } from '@tanstack/react-router'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
@@ -269,6 +270,14 @@ export function BarCard({
                 title={`${bar.rating.positive} de ${bar.rating.total} torcedores voltariam`}
               >
                 {bar.rating.percentage}% voltariam
+              </span>
+            ) : null}
+            {/* Só chega preenchido com Pro/Elite vigente — o servidor aplica a
+                regra do perfil (WEB-144). O rótulo diz que o valor é do bar. */}
+            {bar.averageSpendCents ? (
+              <span className="text-[var(--bar-card-muted)] text-xs tabular-nums">
+                {formatAverageSpend(bar.averageSpendCents)} por pessoa,
+                informado pelo bar
               </span>
             ) : null}
           </div>
