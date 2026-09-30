@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { protectedProcedure, router } from '../index'
 import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
+import { resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { resolvePublicHouseOffer } from '../lib/house-offer'
@@ -272,10 +273,13 @@ export const pubsRouter = router({
           isActive: true,
           ratingCount: true,
           ratingPositive: true,
-          houseOffer: true
+          houseOffer: true,
+          menuUrl: true,
+          averageSpendCents: true
         },
         with: {
-          // Só para decidir se a oferta da casa aparece; sai da resposta.
+          // Só para decidir se a oferta da casa, o cardápio e o gasto médio
+          // aparecem; sai da resposta.
           // `plan` acima é projeção que ignora o status da assinatura.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
@@ -323,12 +327,15 @@ export const pubsRouter = router({
       //
       // A oferta da casa segue a mesma lógica: sem Elite vigente o cliente
       // recebe `null`, não o texto com um aviso para esconder. Vale também
-      // para a prévia do dono — ela mostra o que o torcedor vê.
+      // para a prévia do dono — ela mostra o que o torcedor vê. Cardápio e
+      // gasto médio idem, com Pro ou Elite.
       const {
         userId,
         ratingCount,
         ratingPositive,
         houseOffer,
+        menuUrl,
+        averageSpendCents,
         subscription,
         ...publicBar
       } = result
@@ -348,6 +355,11 @@ export const pubsRouter = router({
         rating,
         houseOffer: resolvePublicHouseOffer(
           houseOffer,
+          subscription ?? null,
+          now
+        ),
+        ...resolvePublicBarMenu(
+          { menuUrl, averageSpendCents },
           subscription ?? null,
           now
         ),

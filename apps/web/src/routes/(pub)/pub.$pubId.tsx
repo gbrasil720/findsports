@@ -475,6 +475,8 @@ function PubPage() {
                 amenities={normalizedPub.amenities}
                 screenCount={normalizedPub.screenCount}
                 description={normalizedPub.description}
+                menuUrl={normalizedPub.menuUrl}
+                averageSpendCents={normalizedPub.averageSpendCents}
                 facts={barFacts}
                 isOwner={isOwner}
               />

@@ -14,6 +14,7 @@ import {
   text,
   timestamp
 } from 'drizzle-orm/pg-core'
+import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { user } from './auth'
 import { barRating } from './rating'
@@ -86,6 +87,12 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS` de propósito. A reserva copia o valor em
     // `reservation.offer_snapshot` e nunca volta a ler esta coluna.
     houseOffer: text('house_offer'),
+    // Cardápio e gasto médio por pessoa (WEB-39), declarados pelo bar. Mesma
+    // regra da oferta: perder Pro/Elite esconde do perfil sem apagar, quem
+    // decide é `packages/api/src/lib/bar-menu.ts`, e as colunas ficam fora de
+    // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
+    menuUrl: text('menu_url'),
+    averageSpendCents: integer('average_spend_cents'),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui.
@@ -143,6 +150,15 @@ export const bar = pgTable(
     check(
       'bar_house_offer_length',
       sql`${table.houseOffer} IS NULL OR char_length(${table.houseOffer}) BETWEEN 1 AND ${sql.raw(String(HOUSE_OFFER_MAX_LENGTH))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    // Última barreira de `parseMenuUrl`: só http(s), nunca vazio, com teto.
+    check(
+      'bar_menu_url_valid',
+      sql`${table.menuUrl} IS NULL OR (${table.menuUrl} ~ '^https?://' AND char_length(${table.menuUrl}) <= ${sql.raw(String(MENU_URL_MAX_LENGTH))})` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    check(
+      'bar_average_spend_cents_range',
+      sql`${table.averageSpendCents} IS NULL OR ${table.averageSpendCents} BETWEEN 1 AND ${sql.raw(String(AVERAGE_SPEND_MAX_CENTS))}` // sql-raw-permitido: constante de limite em CHECK
     )
   ]
 )

@@ -123,3 +123,14 @@ valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`,
 ou `trialing` dentro do período); sem ele o texto some do perfil público, mas
 continua guardado. Uma reserva copia o texto na criação e não acompanha
 mudanças posteriores.
+
+## Cardápio e preço médio
+
+Link público para o cardápio do bar e gasto médio por pessoa com comida e
+bebida, sem taxa de serviço. Os dois são declarados pelo bar: o perfil mostra
+"Preço médio por pessoa informado pelo bar", nunca como média calculada pela
+Onside. Configurar e exibir exigem Pro ou Elite vigente (`active`, ou
+`trialing` dentro do período); sem ele os dados somem do perfil público, mas
+continuam guardados. O link aceita só `http`/`https`. O teto do gasto médio é
+R$ 1.000,00 por pessoa — provisório, sem definição comercial ainda — e vive
+só em `packages/db/src/bar-menu.ts`.
