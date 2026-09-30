@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
-import { attendance } from '@findsports_oficial/db/schema/attendance'
+import { generateReservationCode } from '@findsports_oficial/db/reservation-code'
+import {
+  attendance,
+  attendanceReport
+} from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -8,9 +12,18 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import {
+  reservation,
+  reservationCode,
+  reservationCodeUse
+} from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
-import { ATTENDANCE_DISPLAY_FLOOR } from '../lib/attendance'
+import {
+  ATTENDANCE_DISPLAY_FLOOR,
+  ATTENDANCE_REPORT_WINDOW_DAYS,
+  UNREGISTERED_ALERT_MIN_GAMES
+} from '../lib/attendance'
 
 /**
  * "Vou assistir aqui" (WEB-127) contra o banco de verdade: unicidade pela
@@ -20,7 +33,7 @@ import { ATTENDANCE_DISPLAY_FLOOR } from '../lib/attendance'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-type Role = 'pub' | 'fan'
+type Role = 'pub' | 'fan' | 'admin'
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
@@ -140,6 +153,41 @@ async function seed(
             .insert(attendance)
             .values(fans.map((userId) => ({ userId, eventId })))
         : Promise.resolve(),
+    /**
+     * Reserva confirmada com presença, como a API deixaria. `registered`
+     * grava um uso do código: a fonte do bar.
+     */
+    reserve: async (
+      eventId: string,
+      userId: string,
+      options: { offer?: string; registered?: boolean } = {}
+    ) => {
+      const [created] = await db
+        .insert(reservation)
+        .values({
+          eventId,
+          userId,
+          partySize: 1,
+          status: 'confirmed',
+          offerSnapshot: options.offer ?? null
+        })
+        .returning({ id: reservation.id })
+      const [code] = await db
+        .insert(reservationCode)
+        .values({
+          code: generateReservationCode(),
+          reservationId: created?.id as string,
+          maxUses: 1
+        })
+        .returning({ id: reservationCode.id })
+      await db.insert(attendance).values({ userId, eventId })
+      if (options.registered) {
+        await db
+          .insert(reservationCodeUse)
+          .values({ codeId: code?.id as string })
+      }
+      return code?.id as string
+    },
     presences: (eventId: string) =>
       db.select().from(attendance).where(eq(attendance.eventId, eventId)),
     cleanup: async () => {
@@ -272,6 +320,156 @@ integrationTest(
         status: 'ready',
         events: [{ eventId: upcoming, ratio: 2 }]
       })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'pergunta pós-jogo: brinde só com oferta congelada, e as fontes ficam separadas',
+  async () => {
+    const ctx = await seed({
+      elite: true,
+      fans: 3,
+      offsets: [DAY, -DAY, -(ATTENDANCE_REPORT_WINDOW_DAYS + 1) * DAY]
+    })
+    const [future, ended, stale] = ctx.gameIds as [string, string, string]
+    const [withOffer, presenceOnly, noOffer] = ctx.fanIds as [
+      string,
+      string,
+      string
+    ]
+    try {
+      const codeId = await ctx.reserve(ended, withOffer, {
+        offer: 'Chopp em dobro',
+        registered: true
+      })
+      await ctx.reserve(ended, noOffer)
+      await ctx.attend(ended, [presenceOnly])
+      // Jogo futuro e jogo fora da janela não perguntam nada.
+      await ctx.attend(future, [presenceOnly])
+      await ctx.attend(stale, [presenceOnly])
+
+      const offerOf = async (index: number) =>
+        (await ctx.fan(index).attendance.pendingReports()).map(
+          ({ eventId, offer }) => ({ eventId, offer })
+        )
+      expect(await offerOf(0)).toEqual([
+        { eventId: ended, offer: 'Chopp em dobro' }
+      ])
+      expect(await offerOf(1)).toEqual([{ eventId: ended, offer: null }])
+      expect(await offerOf(2)).toEqual([{ eventId: ended, offer: null }])
+
+      // Pergunta que não foi feita não grava resposta.
+      expect(
+        await ctx.fan(1).attendance.report({
+          eventId: ended,
+          attended: true,
+          offerReceived: true
+        })
+      ).toEqual({ attended: true, offerReceived: null })
+      expect(
+        await ctx.fan(0).attendance.report({
+          eventId: ended,
+          attended: false,
+          offerReceived: true
+        })
+      ).toEqual({ attended: false, offerReceived: null })
+      // Corrigir troca a resposta, sem somar outra.
+      await ctx.fan(0).attendance.report({
+        eventId: ended,
+        attended: true,
+        offerReceived: false
+      })
+      const reports = await ctx.db
+        .select()
+        .from(attendanceReport)
+        .where(eq(attendanceReport.eventId, ended))
+      expect(
+        reports.find((row) => row.userId === withOffer)?.offerReceived
+      ).toBe(false)
+      expect(reports).toHaveLength(2)
+      expect(await ctx.fan(0).attendance.pendingReports()).toEqual([])
+
+      // "Não fui" do torcedor não desfaz o registro do bar.
+      const [code] = await ctx.db
+        .select({ usedCount: reservationCode.usedCount })
+        .from(reservationCode)
+        .where(eq(reservationCode.id, codeId))
+      expect(code?.usedCount).toBe(1)
+
+      expect(
+        await refusal(
+          ctx.fan(1).attendance.report({ eventId: future, attended: true })
+        )
+      ).toBe('NOT_FOUND')
+      expect(
+        await refusal(
+          ctx.fan(1).attendance.report({ eventId: stale, attended: true })
+        )
+      ).toBe('NOT_FOUND')
+      expect(await refusal(ctx.owner.attendance.pendingReports())).toBe(
+        'FORBIDDEN'
+      )
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'alerta interno só com "foi, mas o bar não registrou" repetido',
+  async () => {
+    const offsets = Array.from(
+      { length: UNREGISTERED_ALERT_MIN_GAMES },
+      (_, i) => -(i + 2) * DAY
+    )
+    // Encerrado há uma hora: a janela de validação ainda está aberta.
+    const ctx = await seed({
+      elite: true,
+      fans: 2,
+      offsets: [...offsets, -4 * HOUR]
+    })
+    const games = ctx.gameIds.slice(0, UNREGISTERED_ALERT_MIN_GAMES)
+    const [recent] = ctx.gameIds.slice(UNREGISTERED_ALERT_MIN_GAMES)
+    const [fan, other] = ctx.fanIds as [string, string]
+    const admin = (await import('./index')).appRouter.createCaller(
+      contextFor(crypto.randomUUID(), 'admin')
+    ).attendance
+    const alertFor = async () =>
+      (await admin.unregisteredAlerts()).find(
+        ({ barId }) => barId === ctx.barId
+      )
+    const said = (eventId: string, userId: string, attended: boolean) =>
+      ctx.db.insert(attendanceReport).values({ eventId, userId, attended })
+    try {
+      for (const game of games.slice(0, -1)) {
+        await ctx.reserve(game, fan)
+        await said(game, fan, true)
+      }
+      await ctx.reserve(recent as string, fan)
+      await said(recent as string, fan, true)
+      await ctx.reserve(games[0] as string, other, { registered: true })
+      await said(games[0] as string, other, false)
+      expect(await alertFor()).toBeUndefined()
+
+      const last = games.at(-1) as string
+      await ctx.reserve(last, fan)
+      await said(last, fan, true)
+      expect(await alertFor()).toEqual({
+        barId: ctx.barId,
+        barName: 'Bar da presença',
+        unregisteredGames: UNREGISTERED_ALERT_MIN_GAMES,
+        bothRegistered: 0,
+        unregistered: UNREGISTERED_ALERT_MIN_GAMES,
+        burned: 1,
+        noShow: 0
+      })
+
+      expect(await refusal(ctx.owner.attendance.unregisteredAlerts())).toBe(
+        'FORBIDDEN'
+      )
     } finally {
       await ctx.cleanup()
     }

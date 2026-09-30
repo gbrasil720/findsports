@@ -24,6 +24,7 @@ import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
+import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
@@ -118,6 +119,11 @@ const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
 const InternalFlagsRoute = InternalFlagsRouteImport.update({
   id: '/internal_/flags',
   path: '/internal/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
+  id: '/internal_/attendance',
+  path: '/internal/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminValidateRoute = AdminValidateRouteImport.update({
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/internal/attendance': typeof InternalAttendanceRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/internal/attendance': typeof InternalAttendanceRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -319,6 +327,7 @@ export interface FileRoutesById {
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/admin_/validate': typeof AdminValidateRoute
+  '/internal_/attendance': typeof InternalAttendanceRoute
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/internal/attendance'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -395,6 +405,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/internal/attendance'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/admin_/validate'
+    | '/internal_/attendance'
     | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
@@ -470,6 +482,7 @@ export interface RootRouteChildren {
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
+  InternalAttendanceRoute: typeof InternalAttendanceRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       path: '/internal/flags'
       fullPath: '/internal/flags'
       preLoaderRoute: typeof InternalFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internal_/attendance': {
+      id: '/internal_/attendance'
+      path: '/internal/attendance'
+      fullPath: '/internal/attendance'
+      preLoaderRoute: typeof InternalAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/validate': {
@@ -758,6 +778,7 @@ const rootRouteChildren: RootRouteChildren = {
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
+  InternalAttendanceRoute: InternalAttendanceRoute,
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
