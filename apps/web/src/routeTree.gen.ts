@@ -24,6 +24,7 @@ import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
+import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
@@ -116,6 +117,11 @@ const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
 const InternalFlagsRoute = InternalFlagsRouteImport.update({
   id: '/internal_/flags',
   path: '/internal/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminValidateRoute = AdminValidateRouteImport.update({
+  id: '/admin_/validate',
+  path: '/admin/validate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
@@ -230,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/validate': typeof AdminValidateRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/validate': typeof AdminValidateRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
+  '/admin_/validate': typeof AdminValidateRoute
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
@@ -338,6 +347,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/validate'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -373,6 +383,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/validate'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -408,6 +419,7 @@ export interface FileRouteTypes {
     | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
+    | '/admin_/validate'
     | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
@@ -444,6 +456,7 @@ export interface RootRouteChildren {
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
+  AdminValidateRoute: typeof AdminValidateRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
@@ -565,6 +578,13 @@ declare module '@tanstack/react-router' {
       path: '/internal/flags'
       fullPath: '/internal/flags'
       preLoaderRoute: typeof InternalFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/validate': {
+      id: '/admin_/validate'
+      path: '/admin/validate'
+      fullPath: '/admin/validate'
+      preLoaderRoute: typeof AdminValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/billing': {
@@ -716,6 +736,7 @@ const rootRouteChildren: RootRouteChildren = {
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
+  AdminValidateRoute: AdminValidateRoute,
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,

@@ -281,11 +281,23 @@ describe('profilePerks', () => {
     }
   })
 
+  test('cardápio e preço médio são entregues em Pro e Elite, não no Starter', () => {
+    const perk = {
+      label: 'Link do cardápio e preço médio no perfil',
+      status: 'live'
+    } as const
+    expect(getPlan('pro').profilePerks).toContainEqual(perk)
+    expect(getPlan('elite').profilePerks).toContainEqual(perk)
+    expect(
+      getPlan('starter').profilePerks.some((p) => /cardápio/i.test(p.label))
+    ).toBe(false)
+  })
+
   test('o que ainda não existe está marcado como tal', () => {
     const roadmap = PLAN_CATALOG.flatMap((plan) =>
       plan.profilePerks.filter((perk) => perk.status === 'soon')
     )
-    // Galeria, cardápio e reserva dependem de schema que ainda não existe.
+    // Galeria, promoções e reserva dependem de schema que ainda não existe.
     expect(roadmap.length).toBeGreaterThan(0)
     expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
   })

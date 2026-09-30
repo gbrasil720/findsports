@@ -43,6 +43,16 @@ export type PlanState =
   | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; plan: SubscriptionPlan }
 
+/**
+ * Acesso aos recursos Elite do painel. `eligible` vem de
+ * `getMySubscription().currentPlan === 'elite'` — o plano vigente, com status,
+ * e não `bar.plan`. Só decide o que desenhar: o servidor confere de novo.
+ */
+export type EliteAccess =
+  | { status: 'loading' }
+  | { status: 'error'; retry: () => void }
+  | { status: 'ready'; eligible: boolean }
+
 /* ------------------------------------------------------------------ */
 /* Analytics state machines                                            */
 /* ------------------------------------------------------------------ */
