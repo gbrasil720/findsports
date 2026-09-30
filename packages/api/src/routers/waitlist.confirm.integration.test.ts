@@ -1,9 +1,10 @@
 import { expect, mock, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { eq, inArray } from '@findsports_oficial/db'
+import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-
 import type { Context } from '../context'
+import * as emailReal from '../lib/waitlist-email'
 
 /**
  * ONS-46: a confirmação apagava `confirmation_token_hash` e só depois mandava
@@ -30,6 +31,10 @@ let falharEnvio = true
  */
 function mockarEnvioDeEmail() {
   mock.module('../lib/waitlist-email', () => ({
+    // O resto do módulo segue real: `mock.module` vale para o processo
+    // inteiro, e `waitlist-email.test.ts` importa `createWaitlistEmail` e
+    // `buildWaitlistUrl` daqui quando roda depois deste arquivo.
+    ...emailReal,
     waitlistUrl: (path: string, token?: string) =>
       `https://onside.invalid${path}${token ? `?token=${token}` : ''}`,
     sendWaitlistEmail: async (input: {
@@ -230,6 +235,12 @@ integrationTest(
   'join autenticado encerra a confirmação pendente e o link antigo não reverte',
   async () => {
     mockarEnvioDeEmail()
+    // IP e e-mail únicos, com as chaves apagadas no fim: o `join` passa pelo
+    // rate limit de verdade sem envenenar a janela de `127.0.0.1` dos demais
+    // testes. Não usar `mock.module` aqui — ele vale para o processo inteiro
+    // e trocava `consumirLimitesWaitlist` também em
+    // `waitlist-rate-limit.test.ts` quando este arquivo rodava antes.
+    const clientIp = `integration-${crypto.randomUUID()}`
     const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
       import('@findsports_oficial/db'),
       import('./index'),
@@ -254,12 +265,7 @@ integrationTest(
 
     const caller = appRouter.createCaller({
       auth: null,
-      // IP e e-mail únicos: o `join` passa pelo rate limit real sem somar na
-      // janela de `waitlist:ip:127.0.0.1` que os outros testes usam. Trocar
-      // `waitlist-rate-limit` por `mock.module` não serve — o mock vale para
-      // o processo inteiro do bun e quebrava `waitlist-rate-limit.test.ts`
-      // quando ele rodava depois deste arquivo.
-      clientIp: `integration-${crypto.randomUUID()}`,
+      clientIp,
       session: {
         session: { id: 's', userId: 'u', token: 't' },
         user: {
@@ -309,6 +315,14 @@ integrationTest(
       expect(final.city).toBe('Cidade nova')
     } finally {
       await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+      await db
+        .delete(rateLimit)
+        .where(
+          inArray(rateLimit.key, [
+            `waitlist:email:${email}`,
+            `waitlist:ip:${clientIp}`
+          ])
+        )
     }
   }
 )

@@ -1183,13 +1183,16 @@ function PubDashboard() {
                 saveError={profileError}
                 onSave={async (data) => {
                   setProfileError(null)
+                  // Nome e endereço são obrigatórios (o servidor recusa ''),
+                  // então vazio vira "não mexer". Telefone e descrição são
+                  // opcionais: '' vai como está e limpa o campo (WEB-143).
                   await updateMeMutation.mutateAsync({
                     name: data.name || undefined,
                     address: data.address || undefined,
                     neighborhood: data.neighborhood || undefined,
                     city: data.city || undefined,
-                    phone: data.phone || undefined,
-                    description: data.description || undefined,
+                    phone: data.phone,
+                    description: data.description,
                     amenities: data.amenities,
                     screenCount: data.screenCount
                   })

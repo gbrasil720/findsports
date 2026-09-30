@@ -87,6 +87,20 @@ export function resolvePhoneAcceptsWhatsapp(
 }
 
 /**
+ * O painel manda o endereço inteiro a cada salvar, mudado ou não. Geocodificar
+ * só quando algum campo difere do gravado: cada chamada gasta cota do
+ * LocationIQ e segura o salvar esperando a resposta.
+ */
+export function addressFieldsChanged(
+  input: { address?: string; neighborhood?: string; city?: string },
+  existing: { address: string; neighborhood: string; city: string }
+): boolean {
+  return (['address', 'neighborhood', 'city'] as const).some(
+    (field) => input[field] !== undefined && input[field] !== existing[field]
+  )
+}
+
+/**
  * Enforce the event time invariant: an effective endsAt, when present, must
  * be strictly after the effective startsAt. createEvent and updateEvent call
  * this with the values that will actually be persisted, so the check runs
@@ -231,9 +245,7 @@ export const pubRouter = router({
       )
 
       let coordinates: { latitude: string; longitude: string } | undefined
-      const addressChanged = input.address || input.neighborhood || input.city
-
-      if (addressChanged) {
+      if (addressFieldsChanged(input, existingBar)) {
         const apiKey = env.LOCATIONIQ_API_KEY
         if (!apiKey) {
           throw new TRPCError({
