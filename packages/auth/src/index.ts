@@ -372,7 +372,6 @@ export function createAuth() {
       }
     },
     plugins: [
-      tanstackStartCookies(),
       twoFactor({ issuer: 'Onside' }),
       admin({
         adminRoles: ['admin'],
@@ -430,7 +429,11 @@ export function createAuth() {
             onSubscriptionCancelled: handleSubscriptionCancelled
           })
         ]
-      })
+      }),
+      // Por último: o plugin repassa ao TanStack Start os cookies que os
+      // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
+      // (twoFactor, admin) teria o `Set-Cookie` perdido.
+      tanstackStartCookies()
     ]
   })
 }
