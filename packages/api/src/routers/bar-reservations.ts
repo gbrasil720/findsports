@@ -56,6 +56,42 @@ const ownEvents = (barId: string, extra?: SQL) =>
 /** Jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
 const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
 
+/**
+ * O `UPDATE` condicional não alterou nada: passa só se o pedido já está na
+ * resposta pedida (repetição). Outro estado é recusa, e pedido de outro bar
+ * é inexistente.
+ */
+async function assertAlreadyAnswered(
+  own: SQL | undefined,
+  answer: 'confirmed' | 'declined'
+) {
+  const [current] = await db
+    .select({ status: reservation.status })
+    .from(reservation)
+    .where(own)
+    .limit(1)
+  if (!current) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Pedido não encontrado.'
+    })
+  }
+  if (current.status === answer) return
+  if (current.status === 'cancelled') {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'O torcedor cancelou este pedido.'
+    })
+  }
+  throw new TRPCError({
+    code: 'CONFLICT',
+    message:
+      current.status === 'declined'
+        ? 'Este pedido já foi recusado.'
+        : 'Este pedido já foi confirmado.'
+  })
+}
+
 export const barReservationsRouter = router({
   /**
    * Pedidos dos jogos que ainda não acabaram, pendentes primeiro e, dentro de
@@ -146,35 +182,7 @@ export const barReservationsRouter = router({
         }
         return true
       })
-      if (changed)
-        return { id: input.reservationId, status: input.status, changed }
-
-      const [current] = await db
-        .select({ status: reservation.status })
-        .from(reservation)
-        .where(own)
-        .limit(1)
-      if (!current) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Pedido não encontrado.'
-        })
-      }
-      if (current.status === input.status) {
-        return { id: input.reservationId, status: input.status, changed }
-      }
-      if (current.status === 'cancelled') {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'O torcedor cancelou este pedido.'
-        })
-      }
-      throw new TRPCError({
-        code: 'CONFLICT',
-        message:
-          current.status === 'declined'
-            ? 'Este pedido já foi recusado.'
-            : 'Este pedido já foi confirmado.'
-      })
+      if (!changed) await assertAlreadyAnswered(own, input.status)
+      return { status: input.status, changed }
     })
 })
