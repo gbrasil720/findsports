@@ -178,9 +178,11 @@ function FanDashboard() {
     }).data ?? []
 
   // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
-  // busca — o card some e a tela segue fazendo o trabalho principal.
+  // busca — o card some e a tela segue fazendo o trabalho principal. Admin
+  // também abre o /dashboard, e o procedimento recusa quem não é torcedor.
   const pendingRatingsQuery = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
+    enabled: session?.user.role === 'fan',
     retry: false
   })
   const submitRatingMutation = useMutation(

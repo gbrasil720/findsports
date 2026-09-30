@@ -542,10 +542,9 @@ export const pubsRouter = router({
       return { success: true }
     }),
 
-  isFavorited: protectedProcedure
+  isFavorited: fanProcedure
     .input(z.object({ barId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'fan') return { isFavorited: false }
       const result = await db.query.userFavoriteBars.findFirst({
         where: sql`${userFavoriteBars.userId} = ${ctx.session.user.id} AND ${userFavoriteBars.barId} = ${input.barId}`
       })
