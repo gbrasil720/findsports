@@ -302,6 +302,13 @@
       "when": 1790773475441,
       "tag": "0043_two_factor_lockout",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790774427068,
+      "tag": "0044_two_factor_secret_index",
+      "breakpoints": true
     }
   ]
 }

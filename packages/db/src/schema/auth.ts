@@ -148,5 +148,8 @@ export const twoFactor = pgTable(
       .notNull(),
     lockedUntil: timestamp('locked_until')
   },
-  (table) => [index('two_factor_userId_idx').on(table.userId)]
+  (table) => [
+    index('two_factor_secret_idx').on(table.secret),
+    index('two_factor_userId_idx').on(table.userId)
+  ]
 )
