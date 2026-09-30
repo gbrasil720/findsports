@@ -22,6 +22,7 @@ function makeBar(id: string, startsAt?: string): SearchBar {
     longitude: '-46.6',
     photo_url: null,
     created_at: '2026-08-01T00:00:00.000Z',
+    averageSpendCents: null,
     rating: null,
     distance_km: 1,
     plan: 'starter',
@@ -121,6 +122,7 @@ describe('deriveDiscoveryResultState', () => {
       longitude: '-46.6',
       photo_url: null,
       created_at: '2026-08-01T00:00:00.000Z',
+      averageSpendCents: null,
       plan: 'starter' as const,
       distance_km: 1
     }
@@ -182,6 +184,7 @@ describe('deriveDiscoveryResultState', () => {
       longitude: '-46.6',
       photo_url: null,
       created_at: '2026-08-01T00:00:00.000Z',
+      averageSpendCents: null,
       plan: 'starter' as const,
       distance_km: 1
     }
@@ -299,6 +302,7 @@ describe('dashboard display selectors', () => {
           longitude: '-46.6',
           photo_url: null,
           created_at: '2026-08-01T00:00:00.000Z',
+          averageSpendCents: null,
           plan: 'pro',
           distance_km: 1
         }

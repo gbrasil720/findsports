@@ -1,7 +1,16 @@
-import { and, db, eq, notInArray, or, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  inArray,
+  notInArray,
+  or,
+  sql
+} from '@findsports_oficial/db'
 import {
   bar,
   sport,
+  subscription,
   team,
   userFavoriteBars,
   userFavoriteTeams,
@@ -14,7 +23,7 @@ import { z } from 'zod'
 import { protectedProcedure, router } from '../index'
 import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { resolvePublicBarMenu } from '../lib/bar-menu'
+import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import {
@@ -167,6 +176,47 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
   }
 }
 
+/**
+ * Gasto médio declarado dos bares de uma página de busca (WEB-144), pela
+ * regra do perfil: só com Pro/Elite vigente pela assinatura (`canShowBarMenu`),
+ * nunca por `bar.plan`, que ignora o status (WEB-129).
+ *
+ * Roda depois do cache, pelo mesmo motivo da nota: um trial que vence ou uma
+ * assinatura que vira `past_due` esconde o valor na hora, e não um TTL depois.
+ */
+async function comGastoMedio<T extends { id: string }>(bars: T[]) {
+  const rows = bars.length
+    ? await db
+        .select({
+          id: bar.id,
+          averageSpendCents: bar.averageSpendCents,
+          subscription: {
+            plan: subscription.plan,
+            status: subscription.status,
+            currentPeriodEnd: subscription.currentPeriodEnd
+          }
+        })
+        .from(bar)
+        .leftJoin(subscription, eq(subscription.barId, bar.id))
+        .where(
+          inArray(
+            bar.id,
+            bars.map((achado) => achado.id)
+          )
+        )
+    : []
+  const gasto = new Map(
+    rows.map((row) => [
+      row.id,
+      canShowBarMenu(row.subscription) ? row.averageSpendCents : null
+    ])
+  )
+  return bars.map((achado) => ({
+    ...achado,
+    averageSpendCents: gasto.get(achado.id) ?? null
+  }))
+}
+
 export const pubsRouter = router({
   search: protectedProcedure
     .input(
@@ -232,11 +282,12 @@ export const pubsRouter = router({
       // depois de a exibição ser desligada — e desligar exibição costuma ser
       // a reação a um problema, ou seja, exatamente a hora em que a demora
       // não é aceitável.
-      if (notaPublica) return pagina
-
+      const bars = await comGastoMedio(pagina.bars)
       return {
         ...pagina,
-        bars: pagina.bars.map((achado) => ({ ...achado, rating: null }))
+        bars: notaPublica
+          ? bars
+          : bars.map((achado) => ({ ...achado, rating: null }))
       }
     }),
 
@@ -627,9 +678,10 @@ export const pubsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      return cacheLocal.get(chaveBuscaLocal(input), () =>
+      const pagina = await cacheLocal.get(chaveBuscaLocal(input), () =>
         executarBuscaLocal(input)
       )
+      return { ...pagina, bars: await comGastoMedio(pagina.bars) }
     }),
 
   getSports: protectedProcedure.query(async () => {

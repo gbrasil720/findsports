@@ -2,7 +2,12 @@ import { expect, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { AVERAGE_SPEND_MAX_CENTS } from '@findsports_oficial/db/bar-menu'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  event,
+  sport,
+  subscription
+} from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 /**
@@ -372,6 +377,56 @@ integrationTest(
       expect(profile).not.toHaveProperty('userId')
     } finally {
       await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'busca mostra o valor pela assinatura vigente, não por bar.plan (WEB-144)',
+  async () => {
+    const ctx = await seedBar('pro')
+    const sportId = crypto.randomUUID()
+    const championship = `Copa ${sportId}`
+    try {
+      await ctx.owner.pub.updateMenuInfo({ averageSpendCents: 4550 })
+      await ctx.db.insert(sport).values({
+        id: sportId,
+        name: `Esporte ${sportId}`,
+        slug: `bar-menu-${sportId}`
+      })
+      await ctx.db.insert(event).values({
+        barId: ctx.barId,
+        sportId,
+        championship,
+        startsAt: new Date(Date.now() + 3_600_000)
+      })
+
+      // Mesma entrada nas duas leituras: a segunda sai do cache, e o valor
+      // ainda assim tem de sumir.
+      const gasto = async () => {
+        const origem = { lat: -23.55052, lng: -46.633308, radiusKm: 1 as const }
+        const [busca, local] = await Promise.all([
+          ctx.fan.pubs.search({ ...origem, championship, limit: 50 }),
+          ctx.fan.pubs.searchByLocation({ ...origem, limit: 50 })
+        ])
+        return [busca, local].map(
+          (pagina) =>
+            pagina.bars.find((achado) => achado.id === ctx.barId)
+              ?.averageSpendCents
+        )
+      }
+
+      expect(await gasto()).toEqual([4550, 4550])
+
+      // `past_due` mantém `bar.plan = 'pro'` e ainda assim esconde.
+      await ctx.db
+        .update(subscription)
+        .set({ status: 'past_due' })
+        .where(eq(subscription.barId, ctx.barId))
+      expect(await gasto()).toEqual([null, null])
+    } finally {
+      await ctx.cleanup()
+      await ctx.db.delete(sport).where(eq(sport.id, sportId))
     }
   }
 )
