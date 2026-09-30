@@ -1,5 +1,7 @@
 import { dodopaymentsClient } from '@dodopayments/better-auth'
 import type { auth } from '@findsports_oficial/auth'
+import type { sessionTokenGuard } from '@findsports_oficial/auth/session-token'
+import type { BetterAuthClientPlugin } from 'better-auth/client'
 import {
   adminClient,
   inferAdditionalFields,
@@ -12,7 +14,12 @@ export const authClient = createAuthClient({
     inferAdditionalFields<typeof auth>(),
     twoFactorClient(),
     adminClient(),
-    dodopaymentsClient()
+    dodopaymentsClient(),
+    // Tipa `authClient.revokeSessionById` (WEB-150).
+    {
+      id: 'session-token-guard',
+      $InferServerPlugin: {} as ReturnType<typeof sessionTokenGuard>
+    } satisfies BetterAuthClientPlugin
   ]
 })
 
