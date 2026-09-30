@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { eq, inArray } from '@findsports_oficial/db'
+import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
@@ -230,16 +231,12 @@ integrationTest(
   'join autenticado encerra a confirmação pendente e o link antigo não reverte',
   async () => {
     mockarEnvioDeEmail()
-    // Sem tocar no rate limit compartilhado: cada execução de `join`
-    // incrementaria `waitlist:ip:127.0.0.1` no banco de dev e envenenaria as
-    // janelas dos demais testes de integração.
-    mock.module('../lib/waitlist-rate-limit', () => ({
-      consumirLimitesWaitlist: async () => ({
-        allowed: true,
-        retryAfterMs: 0,
-        count: 0
-      })
-    }))
+    // IP e e-mail únicos, com as chaves apagadas no fim: o `join` passa pelo
+    // rate limit de verdade sem envenenar a janela de `127.0.0.1` dos demais
+    // testes. Não usar `mock.module` aqui — ele vale para o processo inteiro
+    // e trocava `consumirLimitesWaitlist` também em
+    // `waitlist-rate-limit.test.ts` quando este arquivo rodava antes.
+    const clientIp = `integration-${crypto.randomUUID()}`
     const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
       import('@findsports_oficial/db'),
       import('./index'),
@@ -264,7 +261,7 @@ integrationTest(
 
     const caller = appRouter.createCaller({
       auth: null,
-      clientIp: '127.0.0.1',
+      clientIp,
       session: {
         session: { id: 's', userId: 'u', token: 't' },
         user: {
@@ -314,6 +311,14 @@ integrationTest(
       expect(final.city).toBe('Cidade nova')
     } finally {
       await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+      await db
+        .delete(rateLimit)
+        .where(
+          inArray(rateLimit.key, [
+            `waitlist:email:${email}`,
+            `waitlist:ip:${clientIp}`
+          ])
+        )
     }
   }
 )
