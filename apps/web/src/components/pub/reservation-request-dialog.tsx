@@ -31,8 +31,8 @@ import {
 import { useTRPC } from '@/utils/trpc'
 
 type Props = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  /** O pai monta o diálogo aberto e desmonta ao fechar: cada abertura começa do zero. */
+  onClose: () => void
   barName: string
   /** Só jogos que ainda não começaram. */
   events: ProfileEvent[]
@@ -47,8 +47,7 @@ type Props = {
  * vê jogo, horário, quantidade e oferta antes de mandar, sem um passo a mais.
  */
 export function ReservationRequestDialog({
-  open,
-  onOpenChange,
+  onClose,
   barName,
   events,
   initialEventId,
@@ -88,10 +87,6 @@ export function ReservationRequestDialog({
         void queryClient.invalidateQueries({
           queryKey: trpc.reservations.mine.queryKey()
         })
-      },
-      onError: (err) => {
-        if (wasAnsweredByServer(err)) setRequestId(crypto.randomUUID())
-        setError(getCreateErrorMessage(err, selected?.startsAt ?? new Date(0)))
       }
     })
   )
@@ -101,24 +96,24 @@ export function ReservationRequestDialog({
     if (!selected || !partySizeValid || noteTooLong) return
     if (createMutation.isPending) return
     setError(null)
-    createMutation.mutate({
-      requestId,
-      eventId: selected.id,
-      partySize,
-      note: normalizeReservationNote(note)
-    })
-  }
-
-  const handleOpenChange = (next: boolean) => {
-    if (!next) {
-      setCreated(null)
-      setError(null)
-    }
-    onOpenChange(next)
+    createMutation.mutate(
+      {
+        requestId,
+        eventId: selected.id,
+        partySize,
+        note: normalizeReservationNote(note)
+      },
+      {
+        onError: (err) => {
+          if (wasAnsweredByServer(err)) setRequestId(crypto.randomUUID())
+          setError(getCreateErrorMessage(err, selected.startsAt))
+        }
+      }
+    )
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="onside-dialog max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6">
         <DialogTitle className="onside-display text-2xl">
           {created ? 'Pedido enviado' : 'Reservar mesa'}

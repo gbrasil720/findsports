@@ -31,6 +31,17 @@ export type BarActions = {
  * "Reservar mesa" vira o primário e o WhatsApp desce para secundário. Sem
  * ela, nada muda — nenhum botão morto.
  */
+type Action = {
+  key: string
+  icon: typeof Chat
+  /** Texto quando é a ação principal. */
+  label: string
+  /** Texto quando desce para secundária. */
+  shortLabel: string
+  onClick: () => void
+  href?: string
+}
+
 export function BarActions({
   whatsappUrl,
   directionsUrl,
@@ -42,85 +53,74 @@ export function BarActions({
   variant,
   isOwner
 }: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
-  const primaryIsWhatsApp = !onReserve && Boolean(whatsappUrl)
   const isBar = variant === 'bar'
+
+  // Em ordem de preferência: a primeira disponível é a principal, as outras
+  // descem para secundárias. Telefone nunca é principal.
+  const [primaryAction, ...otherActions] = [
+    onReserve && {
+      key: 'reserve',
+      icon: Calendar,
+      label: 'Reservar mesa',
+      shortLabel: 'Reservar mesa',
+      onClick: onReserve
+    },
+    whatsappUrl && {
+      key: 'whatsapp',
+      icon: Chat,
+      label: 'Falar com o bar',
+      shortLabel: 'WhatsApp',
+      onClick: onWhatsApp,
+      href: whatsappUrl
+    },
+    directionsUrl && {
+      key: 'directions',
+      icon: Route,
+      label: 'Como chegar',
+      shortLabel: 'Rota',
+      onClick: onDirections,
+      href: directionsUrl
+    }
+  ].filter((action): action is Action => Boolean(action))
+
+  const secondaryActions: Action[] = phone
+    ? [
+        ...otherActions,
+        {
+          key: 'phone',
+          icon: Phone,
+          label: 'Ligar',
+          shortLabel: isBar ? 'Ligar' : formatStoredPhone(phone),
+          onClick: onPhone,
+          href: `tel:${phone}`
+        }
+      ]
+    : otherActions
+
   // Na barra fixa do celular, quatro botões com texto não cabem: com reserva,
   // os secundários ficam só com ícone (o nome segue para leitor de tela).
-  const compact = isBar && Boolean(onReserve)
-  const secondaryLabel = compact ? 'sr-only' : 'ml-2'
-  const secondaryClass = `onside-btn onside-btn-outline min-h-12 justify-center text-sm${compact ? ' onside-pub-actionbar-icon' : ''}`
+  const compact = isBar && secondaryActions.length > 2
 
-  const primary = onReserve ? (
-    <button
-      type="button"
-      onClick={onReserve}
+  const primary = primaryAction ? (
+    <ActionButton
+      action={primaryAction}
+      text={primaryAction.label}
       className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center whitespace-nowrap text-sm"
-    >
-      {!compact && (
-        <Calendar size={16} color="currentColor" aria-hidden="true" />
-      )}
-      <span className={compact ? undefined : 'ml-2'}>Reservar mesa</span>
-    </button>
-  ) : primaryIsWhatsApp ? (
-    <a
-      href={whatsappUrl ?? '#'}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onWhatsApp}
-      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm"
-    >
-      <Chat size={16} color="currentColor" aria-hidden="true" />
-      <span className="ml-2">Falar com o bar</span>
-    </a>
-  ) : directionsUrl ? (
-    <a
-      href={directionsUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onDirections}
-      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm"
-    >
-      <Route size={16} color="currentColor" aria-hidden="true" />
-      <span className="ml-2">Como chegar</span>
-    </a>
+      iconOnly={false}
+      hideIcon={compact}
+    />
   ) : null
 
-  const secondaries = (
-    <>
-      {onReserve && whatsappUrl && (
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onWhatsApp}
-          className={secondaryClass}
-        >
-          <Chat size={16} color="currentColor" aria-hidden="true" />
-          <span className={secondaryLabel}>WhatsApp</span>
-        </a>
-      )}
-      {(onReserve || primaryIsWhatsApp) && directionsUrl && (
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onDirections}
-          className={secondaryClass}
-        >
-          <Route size={16} color="currentColor" aria-hidden="true" />
-          <span className={secondaryLabel}>Rota</span>
-        </a>
-      )}
-      {phone && (
-        <a href={`tel:${phone}`} onClick={onPhone} className={secondaryClass}>
-          <Phone size={16} color="currentColor" aria-hidden="true" />
-          <span className={secondaryLabel}>
-            {isBar ? 'Ligar' : formatStoredPhone(phone)}
-          </span>
-        </a>
-      )}
-    </>
-  )
+  const secondaries = secondaryActions.map((action) => (
+    <ActionButton
+      key={action.key}
+      action={action}
+      text={action.shortLabel}
+      className={`onside-btn onside-btn-outline min-h-12 justify-center text-sm${compact ? ' onside-pub-actionbar-icon' : ''}`}
+      iconOnly={compact}
+      hideIcon={false}
+    />
+  ))
 
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.
@@ -170,5 +170,49 @@ export function BarActions({
           </p>
         ))}
     </section>
+  )
+}
+
+function ActionButton({
+  action,
+  text,
+  className,
+  iconOnly,
+  hideIcon
+}: {
+  action: Action
+  text: string
+  className: string
+  iconOnly: boolean
+  hideIcon: boolean
+}) {
+  const Icon = action.icon
+  const content = (
+    <>
+      {!hideIcon && <Icon size={16} color="currentColor" aria-hidden="true" />}
+      <span className={iconOnly ? 'sr-only' : hideIcon ? undefined : 'ml-2'}>
+        {text}
+      </span>
+    </>
+  )
+  if (!action.href) {
+    return (
+      <button type="button" onClick={action.onClick} className={className}>
+        {content}
+      </button>
+    )
+  }
+  // `tel:` abre o discador; o resto sai do app.
+  const external = !action.href.startsWith('tel:')
+  return (
+    <a
+      href={action.href}
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noopener noreferrer' : undefined}
+      onClick={action.onClick}
+      className={className}
+    >
+      {content}
+    </a>
   )
 }

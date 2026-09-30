@@ -44,7 +44,7 @@ const CODE_ATTEMPTS = 5
 const HISTORY_LIMIT = 50
 
 function isActive(status: ReservationStatus) {
-  return (ACTIVE_RESERVATION_STATUSES as readonly string[]).includes(status)
+  return ACTIVE_RESERVATION_STATUSES.some((active) => active === status)
 }
 
 async function readOwnReservations(userId: string, reservationId?: string) {

@@ -501,8 +501,7 @@ function PubPage() {
 
               {reserveOpen && (
                 <ReservationRequestDialog
-                  open
-                  onOpenChange={setReserveOpen}
+                  onClose={() => setReserveOpen(false)}
                   barName={normalizedPub.name}
                   events={reservableEvents}
                   initialEventId={heroEvent?.id ?? null}
