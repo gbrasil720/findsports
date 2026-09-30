@@ -44,6 +44,34 @@ describe('chave de cache da busca', () => {
     expect(chaveBusca({ ...base, amenities: [1] })).not.toBe(chaveBusca(base))
   })
 
+  /**
+   * WEB-67: `teamIds` vem dos favoritos de cada conta. Listas diferentes não
+   * podem dividir página; a mesma lista (já ordenada pelo roteador) divide.
+   */
+  it('separa listas de times diferentes e junta as iguais', () => {
+    const base = {
+      modo: MODO,
+      lat: -23.55,
+      lng: -46.63,
+      radiusKm: 3,
+      limit: 20
+    }
+    const a = '11111111-1111-4111-8111-111111111111'
+    const b = '22222222-2222-4222-8222-222222222222'
+
+    expect(chaveBusca({ ...base, teamIds: [a, b] })).toBe(
+      chaveBusca({ ...base, teamIds: [a, b] })
+    )
+    expect(
+      new Set([
+        chaveBusca(base),
+        chaveBusca({ ...base, teamIds: [a] }),
+        chaveBusca({ ...base, teamIds: [b] }),
+        chaveBusca({ ...base, teamIds: [a, b] })
+      ]).size
+    ).toBe(4)
+  })
+
   it('não mistura raios, filtros nem página', () => {
     const base = {
       modo: MODO,

@@ -46,6 +46,7 @@ export async function executarBuscaLinear(
     origin,
     radiusMeters,
     sportFilter,
+    teamFilter,
     dateFilter,
     champBarFilter,
     amenityFilter
@@ -133,6 +134,7 @@ export async function executarBuscaLinear(
       WHERE e.bar_id = n.id
         AND e.starts_at >= NOW()
         ${sportFilter}
+        ${teamFilter}
         ${champBarFilterN}
         ${dateFilter}
       ORDER BY e.starts_at ASC, e.id ASC

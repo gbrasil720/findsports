@@ -44,6 +44,7 @@ export async function executarBuscaPorNota(
     origin,
     radiusMeters,
     sportFilter,
+    teamFilter,
     champFilter,
     dateFilter,
     champBarFilter,
@@ -96,6 +97,7 @@ export async function executarBuscaPorNota(
         WHERE e.bar_id = b.id
           AND e.starts_at >= NOW()
           ${sportFilter}
+          ${teamFilter}
           ${champBarFilterB}
           ${dateFilter}
       ) agg ON agg.next_event_at IS NOT NULL
@@ -131,6 +133,7 @@ export async function executarBuscaPorNota(
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
         ${sportFilter}
+        ${teamFilter}
         ${champBarFilterR}
         ${dateFilter}
     ) cnt ON true
@@ -150,6 +153,7 @@ export async function executarBuscaPorNota(
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
         ${sportFilter}
+        ${teamFilter}
         ${champFilter}
         ${dateFilter}
       ORDER BY e.starts_at ASC

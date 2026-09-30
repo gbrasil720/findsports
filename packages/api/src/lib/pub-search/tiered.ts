@@ -58,6 +58,7 @@ export async function executarBuscaEmCamadas(
     origin,
     radiusMeters,
     sportFilter,
+    teamFilter,
     dateFilter,
     champBarFilter,
     amenityFilter
@@ -150,6 +151,7 @@ export async function executarBuscaEmCamadas(
         WHERE e.bar_id = b.id
           AND e.starts_at >= NOW()
           ${sportFilter}
+          ${teamFilter}
           ${champBarFilterB}
           ${dateFilter}
         ORDER BY e.starts_at ASC, e.id ASC
@@ -195,6 +197,7 @@ export async function executarBuscaEmCamadas(
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
         ${sportFilter}
+        ${teamFilter}
         ${champBarFilterR}
         ${dateFilter}
     ) cnt ON true

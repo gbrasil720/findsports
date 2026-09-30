@@ -267,6 +267,13 @@
       "when": 1790736888972,
       "tag": "0038_user_favorite_teams",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790737513174,
+      "tag": "0039_search_unaccent",
+      "breakpoints": true
     }
   ]
 }
