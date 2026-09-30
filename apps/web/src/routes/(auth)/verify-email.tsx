@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
+import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -77,10 +78,14 @@ function VerifyEmailPage() {
         try {
           await completePub(draft)
         } catch (err) {
-          // O rascunho fica: o link abaixo leva de volta ao formulário, que
-          // o carrega para corrigir.
-          setPubError(mensagemFalhaCadastroBar(err, draft))
-          return
+          const concluido = mensagemOnboardingJaConcluido(err)
+          if (!concluido) {
+            // O rascunho fica: o link abaixo leva de volta ao formulário, que
+            // o carrega para corrigir.
+            setPubError(mensagemFalhaCadastroBar(err, draft))
+            return
+          }
+          toast.info(concluido)
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()

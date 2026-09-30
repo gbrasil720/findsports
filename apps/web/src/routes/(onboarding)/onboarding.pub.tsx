@@ -8,6 +8,7 @@ import Check from 'reicon-react/icons/Check'
 import Location from 'reicon-react/icons/Location'
 import Search from 'reicon-react/icons/Search'
 import Store from 'reicon-react/icons/Store'
+import { toast } from 'sonner'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -18,6 +19,7 @@ import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
+import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -88,19 +90,31 @@ function PubOnboarding() {
   const cidadesAbertas = configQuery.data?.['launch.pub_cities'] ?? []
   const cidadePermitida = cidadeLiberada(city, cidadesAbertas)
 
+  const seguirParaPlano = async () => {
+    localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+    // `onboardingCompleted` mudou no banco por fora do better-auth; sem
+    // regravar o cache de sessão o guard da rota devolveria o usuário
+    // para cá. Se a releitura falhar, seguimos assim mesmo — o guard
+    // revalida no servidor e o pior caso é ver o onboarding de novo.
+    await refreshSessionCache().catch(() => {})
+    navigate({ to: '/plan' })
+  }
+
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
       onSuccess: async () => {
         analytics.onboardingCompleted({ role: 'pub' })
-        localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
-        // `onboardingCompleted` mudou no banco por fora do better-auth; sem
-        // regravar o cache de sessão o guard da rota devolveria o usuário
-        // para cá. Se a releitura falhar, seguimos assim mesmo — o guard
-        // revalida no servidor e o pior caso é ver o onboarding de novo.
-        await refreshSessionCache().catch(() => {})
-        navigate({ to: '/plan' })
+        await seguirParaPlano()
       },
-      onError: (err, draft) => setError(mensagemFalhaCadastroBar(err, draft))
+      onError: async (err, draft) => {
+        const concluido = mensagemOnboardingJaConcluido(err)
+        if (!concluido) {
+          setError(mensagemFalhaCadastroBar(err, draft))
+          return
+        }
+        toast.info(concluido)
+        await seguirParaPlano()
+      }
     })
   )
 
