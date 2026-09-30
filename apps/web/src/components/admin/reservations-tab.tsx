@@ -32,6 +32,8 @@ export function ReservationsTab({ active }: { active: boolean }) {
   const trpc = useTRPC()
   const query = useQuery({
     ...trpc.barReservations.list.queryOptions(),
+    // Painel aberto no balcão vê pedido novo; pausa com a aba em segundo plano.
+    refetchInterval: 30_000,
     meta: { errorToast: false }
   })
   const [announcement, setAnnouncement] = useState('')
