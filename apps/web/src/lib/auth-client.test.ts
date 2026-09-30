@@ -5,7 +5,12 @@ mock.module('better-auth/react', () => ({
   createAuthClient: () => ({ getSession })
 }))
 
-const { refreshSessionCache } = await import('./auth-client')
+// A query força uma instância nova do módulo: se outro arquivo de teste já
+// carregou `auth-client`, o client dele foi criado sem o mock acima.
+const fresh = './auth-client?mocked'
+const { refreshSessionCache }: typeof import('./auth-client') = await import(
+  fresh
+)
 
 test('refreshSessionCache resolves when the session request fails', async () => {
   // Roda depois de o cadastro já estar gravado (/verify-email, onboarding):
