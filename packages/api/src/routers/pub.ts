@@ -174,11 +174,7 @@ async function getBarByUserId(userId: string) {
 }
 
 export const pubRouter = router({
-  getMe: pubProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id
-
-    return getBarByUserId(userId)
-  }),
+  getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
 
   updateMe: pubProcedure
     .input(

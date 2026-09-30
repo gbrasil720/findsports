@@ -239,9 +239,7 @@ export const commercialAnalyticsRouter = router({
    * Get entitlements for the authenticated pub's plan.
    */
   getMyEntitlements: pubProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id
-
-    const { plan } = await resolveBarAndPlan(userId)
+    const { plan } = await resolveBarAndPlan(ctx.session.user.id)
     return getAnalyticsEntitlements(plan)
   }),
 
@@ -251,9 +249,7 @@ export const commercialAnalyticsRouter = router({
   canViewEventType: pubProcedure
     .input(z.object({ eventType: z.string() }))
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-
-      const { plan } = await resolveBarAndPlan(userId)
+      const { plan } = await resolveBarAndPlan(ctx.session.user.id)
       return canViewEventType(plan, input.eventType)
     }),
 

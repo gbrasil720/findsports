@@ -14,9 +14,7 @@ function context(role: 'fan' | 'admin'): Context {
       user: {
         id: 'user',
         emailVerified: true,
-        role,
-        admittedAt: new Date(),
-        onboardingCompleted: false
+        role
       }
     }
   } as unknown as Context
