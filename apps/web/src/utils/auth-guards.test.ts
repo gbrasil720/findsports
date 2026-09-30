@@ -16,7 +16,6 @@ function session(
       id: 's1',
       userId: 'u1',
       expiresAt: new Date('2030-01-01'),
-      token: 't',
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01')
     },

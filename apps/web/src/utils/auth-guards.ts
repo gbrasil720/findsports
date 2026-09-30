@@ -1,3 +1,4 @@
+import type { auth } from '@findsports_oficial/auth'
 import { redirect } from '@tanstack/react-router'
 
 export type AuthSession = {
@@ -5,11 +6,9 @@ export type AuthSession = {
     id: string
     userId: string
     expiresAt: Date
-    token: string
-    ipAddress?: string | null
-    userAgent?: string | null
     createdAt: Date
     updatedAt: Date
+    impersonatedBy?: string | null
   }
   user: {
     id: string
@@ -172,4 +171,21 @@ export function isHashOnlyChange(
     previous.searchStr === next.searchStr &&
     previous.hash !== next.hash
   )
+}
+
+/**
+ * A sessão que sai do servidor. `getSession` e `getUser` devolvem este
+ * contexto ao cliente — no SSR, serializado no HTML da página —, então só
+ * passa o que o cliente usa. `token` é o valor do cookie httpOnly (WEB-149).
+ */
+export function toClientSession(
+  session: Awaited<ReturnType<typeof auth.api.getSession>>
+) {
+  if (!session) return null
+  const { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy } =
+    session.session
+  return {
+    user: session.user,
+    session: { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy }
+  }
 }

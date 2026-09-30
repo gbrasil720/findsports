@@ -217,9 +217,7 @@ function PostHogProvider() {
 
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
-  const impersonatedBy = (
-    session?.session as { impersonatedBy?: string | null } | undefined
-  )?.impersonatedBy
+  const impersonatedBy = session?.session.impersonatedBy
   const isDev = import.meta.env.DEV
 
   return (

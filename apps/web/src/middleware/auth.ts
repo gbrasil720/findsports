@@ -1,6 +1,8 @@
 import { auth } from '@findsports_oficial/auth'
 import { createMiddleware } from '@tanstack/react-start'
 
+import { toClientSession } from '@/utils/auth-guards'
+
 export const authMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     try {
@@ -8,7 +10,7 @@ export const authMiddleware = createMiddleware().server(
         headers: request.headers
       })
       return next({
-        context: { session }
+        context: { session: toClientSession(session) }
       })
     } catch {
       // A session lookup failure must not prevent public routes from rendering.
