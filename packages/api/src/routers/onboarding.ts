@@ -64,7 +64,6 @@ export const onboardingRouter = router({
       // Vem ANTES do geocoding de propósito: geocodificar é chamada externa
       // paga, e não faz sentido pagar por um endereço que vai ser recusado.
       const cidadesLiberadas = await getAppConfig('launch.pub_cities')
-      //
       // `PRECONDITION_FAILED`, e não `FORBIDDEN`: o app traduz `FORBIDDEN` em
       // "sem permissão", e o que falta aqui é a cidade abrir.
       if (!cidadeLiberada(input.city, cidadesLiberadas)) {

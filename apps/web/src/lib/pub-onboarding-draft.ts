@@ -3,7 +3,7 @@ import {
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { mensagemCidadeNaoLiberada } from '@findsports_oficial/api/lib/city-match'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 
 export const PUB_ONBOARDING_DRAFT_KEY = 'onside:pub-onboarding-draft'
 const DRAFT_TTL_MS = 2 * 60 * 60 * 1000
@@ -65,7 +65,7 @@ export function mensagemFalhaCadastroBar(
   error: unknown,
   draft: PubOnboardingDraft
 ): string {
-  const code = (error as { data?: { code?: unknown } } | null)?.data?.code
+  const code = getErrorCode(error)
   const city = draft.city ?? 'São Paulo'
   if (code === 'PRECONDITION_FAILED') return mensagemCidadeNaoLiberada(city)
   if (code === 'UNPROCESSABLE_CONTENT') {

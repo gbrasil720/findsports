@@ -100,7 +100,6 @@ async function main(aplicar: boolean) {
   console.log(
     `\n${bares.length} bares; ${divergentes} ${aplicar ? 'atualizados' : 'divergem'}; ${recusados} recusados pelo geocoding atual.`
   )
-  if (!aplicar && divergentes > 0) console.log('Rode com --apply para gravar.')
 }
 
 if (import.meta.main) {
