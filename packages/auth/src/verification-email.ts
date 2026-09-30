@@ -177,6 +177,12 @@ export async function sendVerificationEmailWithResend(input: {
   await sendEmailWithResend({ ...input, ...email })
 }
 
+/**
+ * O envio sai de `mail.onside.sh` (WEB-109), que não tem MX: resposta ao
+ * remetente voltaria com bounce. As respostas vão para a caixa do Workspace.
+ */
+const REPLY_TO_EMAIL = 'contato@onside.sh'
+
 export async function sendEmailWithResend(input: {
   apiKey: string | undefined
   fromEmail: string | undefined
@@ -211,6 +217,7 @@ export async function sendEmailWithResend(input: {
       body: JSON.stringify({
         from: `Onside <${input.fromEmail}>`,
         to: [input.to],
+        reply_to: REPLY_TO_EMAIL,
         subject: input.subject,
         html: input.html,
         text: input.text

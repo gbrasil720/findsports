@@ -93,7 +93,8 @@ describe('e-mail de verificação Onside', () => {
     const body = await request?.json()
     expect(body).toMatchObject({
       from: 'Onside <contato@onside.app>',
-      to: ['ana@example.com']
+      to: ['ana@example.com'],
+      reply_to: 'contato@onside.sh'
     })
     expect(JSON.stringify(body)).not.toContain('re_test')
   })

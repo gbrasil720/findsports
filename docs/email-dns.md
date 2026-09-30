@@ -13,43 +13,50 @@ ambiente local que dispara e-mails reais.
 O asset `apps/web/public/og-image.jpg` já existe no branch e em produção; não
 use `og-image.png`, que não é um fallback válido.
 
-## Ação do dono: DMARC
-
-O registro `_dmarc.onside.sh` estava ausente. Publique uma política inicial
-`p=none` depois de escolher um endereço que realmente receba relatórios:
+## DMARC — publicado
 
 ```text
-Host: _dmarc.onside.sh
-Tipo: TXT
-Valor: "v=DMARC1; p=none; rua=mailto:<caixa-ou-agregador>; fo=1"
+_dmarc.onside.sh  TXT  "v=DMARC1; p=none; rua=mailto:contato@onside.sh; fo=1"
 ```
 
-O registro sugerido originalmente usava `rua=mailto:dmarc@onside.sh`, mas
-`onside.sh` não tem MX; o MX existente em `send.onside.sh` é de bounce do SES.
-Essa caixa precisa existir e receber mensagens, ou `rua=` deve apontar para um
-agregador de relatórios DMARC. Sem isso, os relatórios vão para o vazio.
+Publicado em 29/09/2026 no DNS da Vercel (WEB-109). `contato@onside.sh` recebe
+de fato: `onside.sh` tem MX do Google Workspace (`1 smtp.google.com`). O
+registro vale também para `mail.onside.sh`, que não tem `_dmarc` próprio: sem
+`sp=`, o subdomínio herda o `p=` do domínio organizacional.
 
-DKIM, SPF e o MX de bounce do Resend/SES já estavam corretos. Após algumas
-semanas de relatórios, revisar a transição de `p=none` para `quarantine` e
-depois `reject`.
+Após algumas semanas lendo os relatórios, e confirmando que só o Resend (DKIM
+`mail.onside.sh`) e o Google Workspace assinam pelo domínio, apertar para
+`p=quarantine` e depois `p=reject`.
 
-## Ação do dono: `mail.onside.sh`
+## Domínio de envio: `mail.onside.sh`
 
-Se o subdomínio dedicado for adotado antes do volume de abertura:
+O envio transacional sai de `contato@mail.onside.sh` (`RESEND_FROM_EMAIL` na
+Vercel), separado da reputação do domínio raiz, que é o do Google Workspace.
+Domínio verificado no Resend, região `sa-east-1`, com os registros:
 
-1. Verifique `mail.onside.sh` no Resend.
-2. Publique o novo DKIM, SPF e MX de bounce fornecidos pelo Resend.
-3. Troque `RESEND_FROM_EMAIL` no ambiente local e na Vercel para o novo domínio.
-4. Publique DMARC para o subdomínio, ou use `sp=` no registro DMARC de
-   `onside.sh`.
+```text
+resend._domainkey.mail.onside.sh  TXT  "p=MIGfMA0GCSq…"   (DKIM, valor no painel do Resend)
+send.mail.onside.sh               TXT  "v=spf1 include:amazonses.com ~all"
+send.mail.onside.sh               MX   10 feedback-smtp.sa-east-1.amazonses.com
+```
 
-Essa mudança separa a reputação de envio transacional da reputação do domínio
-raiz, mas exige uma nova configuração completa no Resend.
+`mail.onside.sh` não tem MX, então todo envio leva `reply_to:
+contato@onside.sh` (`sendEmailWithResend`, em `packages/auth`). Sem isso, a
+resposta de quem recebe o e-mail voltaria com bounce.
+
+O domínio antigo `onside.sh` continua verificado no Resend e seus registros
+(`resend._domainkey`, `send.onside.sh`) continuam publicados; remova-os só
+depois que nenhum ambiente usar mais `RESEND_FROM_EMAIL=…@onside.sh`.
+
+Para enviar localmente com Resend, use `RESEND_FROM_EMAIL=contato@mail.onside.sh`
+no `.env`.
 
 ## Verificação
 
 ```bash
 dig +short TXT _dmarc.onside.sh @1.1.1.1
+dig +short TXT resend._domainkey.mail.onside.sh @1.1.1.1
+dig +short MX send.mail.onside.sh @1.1.1.1
 curl -sI https://www.onside.sh/og-image.jpg  # deve ser 200 image/jpeg
 ```
 
@@ -57,5 +64,5 @@ curl -sI https://www.onside.sh/og-image.jpg  # deve ser 200 image/jpeg
 confirme a chegada na caixa de entrada e confira que nenhum link ou `<img src>`
 contém `localhost`.
 
-DNS, Resend e Vercel continuam fora da execução do agente; este documento é o
-runbook para o dono aplicar e verificar essas mudanças.
+DNS, Resend e Vercel não têm CLI configurada neste repositório; as mudanças
+acima foram feitas pelos painéis.
