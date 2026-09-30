@@ -24,12 +24,23 @@ import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
 import { initPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
-import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
+import {
+  type AuthSession,
+  applyAuthGuards,
+  isHashOnlyChange
+} from '../utils/auth-guards'
 
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
   syncSession: (userId: string | null) => void
+  // Última sessão conferida pelo `beforeLoad` da raiz, por instância de router.
+  lastSessionCheck: {
+    current?: {
+      location: { pathname: string; searchStr: string; hash: string }
+      session: Awaited<ReturnType<typeof getSession>>
+    }
+  }
   session?: AuthSession
 }
 
@@ -44,7 +55,12 @@ const ONSIDE_DESCRIPTION =
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location, context }) => {
-    const session = await getSession()
+    const last = context.lastSessionCheck.current
+    const session =
+      last && isHashOnlyChange(last.location, location)
+        ? last.session
+        : await getSession()
+    context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
     applyAuthGuards(session as AuthSession, location.pathname, location.search)
     return { session }

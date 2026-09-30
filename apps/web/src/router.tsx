@@ -79,6 +79,7 @@ export const getRouter = () => {
     context: {
       trpc,
       queryClient,
+      lastSessionCheck: {},
       syncSession(userId: string | null) {
         if (cachedUserId === userId) return
         // clear also cancels pending queries so an old response cannot refill

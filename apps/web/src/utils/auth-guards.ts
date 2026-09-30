@@ -153,3 +153,23 @@ export function applyAuthGuards(
     throw redirect({ to: '/dashboard' })
   }
 }
+
+type SessionLocation = { pathname: string; searchStr: string; hash: string }
+
+/**
+ * Se a sessão conferida em `previous` ainda vale para `next` sem nova ida ao
+ * servidor. Só a troca de hash — as abas do /admin — reaproveita (WEB-140):
+ * com path e query iguais o guard decide igual, e sign-out e login sempre
+ * trocam o path. A mesma URL de novo (`router.invalidate`, clique repetido)
+ * confere outra vez.
+ */
+export function isHashOnlyChange(
+  previous: SessionLocation,
+  next: SessionLocation
+) {
+  return (
+    previous.pathname === next.pathname &&
+    previous.searchStr === next.searchStr &&
+    previous.hash !== next.hash
+  )
+}

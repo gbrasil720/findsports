@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   type AuthSession,
   applyAuthGuards,
+  isHashOnlyChange,
   requiresAuthentication
 } from './auth-guards'
 
@@ -222,5 +223,25 @@ describe('applyAuthGuards', () => {
 
   test('sem onboarding na landing vai para o onboarding do papel', () => {
     expect(() => applyAuthGuards(session('fan', false), '/')).toThrow()
+  })
+})
+
+describe('isHashOnlyChange', () => {
+  const admin = { pathname: '/admin', searchStr: '', hash: 'admin-grade' }
+
+  test('só a troca de hash reaproveita a sessão', () => {
+    expect(isHashOnlyChange(admin, { ...admin, hash: 'admin-espaco' })).toBe(
+      true
+    )
+  })
+
+  test('mesma URL, outro path ou outra query conferem de novo', () => {
+    expect(isHashOnlyChange(admin, { ...admin })).toBe(false)
+    expect(isHashOnlyChange(admin, { ...admin, pathname: '/login' })).toBe(
+      false
+    )
+    expect(isHashOnlyChange(admin, { ...admin, searchStr: '?public=1' })).toBe(
+      false
+    )
   })
 })
