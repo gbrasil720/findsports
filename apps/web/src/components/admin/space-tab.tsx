@@ -6,7 +6,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
-import { getLapsedPlan } from '@/lib/lapsed-plan'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { PlanState, ProfileState } from './admin-model'
@@ -154,8 +153,7 @@ export function SpaceTab({
       ? {
           status: 'ready',
           plan: subscription?.plan ?? 'starter',
-          currentPlan: subscription?.currentPlan ?? null,
-          lapsed: getLapsedPlan(subscription)
+          standing: subscription?.standing ?? null
         }
       : subError
         ? { status: 'error' }

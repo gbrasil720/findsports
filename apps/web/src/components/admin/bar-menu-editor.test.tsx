@@ -45,7 +45,7 @@ function renderizar(
 describe('BarMenuEditor', () => {
   test('sem Pro/Elite não oferece campos e aponta para os planos', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: null, lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'ended' },
       null,
       null
     )
@@ -56,7 +56,7 @@ describe('BarMenuEditor', () => {
 
   test('sem plano avisa que os dados continuam guardados', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: null, lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'ended' },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -68,7 +68,7 @@ describe('BarMenuEditor', () => {
 
   test('com um item guardado a frase fica no singular', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: null, lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'ended' },
       null,
       4550
     )
@@ -79,7 +79,7 @@ describe('BarMenuEditor', () => {
 
   test('com plano os campos têm rótulo, dica e valor gravado', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -98,7 +98,7 @@ describe('BarMenuEditor', () => {
 
   test('mostra a prévia do formato final', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -109,7 +109,7 @@ describe('BarMenuEditor', () => {
 
   test('sem dados não mostra prévia vazia', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       null,
       null
     )
@@ -118,7 +118,7 @@ describe('BarMenuEditor', () => {
 
   test('erro do servidor é anunciado', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       null,
       null,
       'Não foi possível salvar.'
@@ -130,7 +130,7 @@ describe('BarMenuEditor', () => {
 
   test('Elite também libera o cardápio', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
+      { status: 'ready', plan: 'elite', standing: 'current' },
       null,
       null
     )
@@ -139,7 +139,7 @@ describe('BarMenuEditor', () => {
 
   test('plano contratado sem vigência não libera', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: null, lapsed: null },
+      { status: 'ready', plan: 'elite', standing: 'ended' },
       null,
       null
     )
@@ -152,8 +152,7 @@ describe('BarMenuEditor', () => {
       {
         status: 'ready',
         plan: 'pro',
-        currentPlan: null,
-        lapsed: { plan: 'pro', reason: 'past_due' }
+        standing: 'past_due'
       },
       'https://bar.com.br/cardapio',
       4550
@@ -171,8 +170,7 @@ describe('BarMenuEditor', () => {
       {
         status: 'ready',
         plan: 'elite',
-        currentPlan: null,
-        lapsed: { plan: 'elite', reason: 'trial_ended' }
+        standing: 'trial_ended'
       },
       null,
       null

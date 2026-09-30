@@ -27,7 +27,7 @@ import {
 } from '../lib/bar-menu'
 import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
-import { getCurrentPlan } from '../lib/current-plan'
+import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
@@ -706,11 +706,13 @@ export const pubRouter = router({
     const userId = ctx.session.user.id
 
     const existingBar = await getBarByUserId(userId)
+    const now = new Date()
 
     return existingBar.subscription
       ? {
           ...existingBar.subscription,
-          currentPlan: getCurrentPlan(existingBar.subscription)
+          currentPlan: getCurrentPlan(existingBar.subscription, now),
+          standing: getSubscriptionStanding(existingBar.subscription, now)
         }
       : null
   }),

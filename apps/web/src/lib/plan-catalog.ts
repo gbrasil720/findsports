@@ -1,5 +1,6 @@
 import { getAnalyticsEntitlements } from '@findsports_oficial/api/lib/commercial-analytics/entitlements'
 import type { AnalyticsComparisonMode } from '@findsports_oficial/api/lib/commercial-analytics/types'
+import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import { STARTER_EVENT_LIMIT } from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
@@ -10,6 +11,7 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import Fire from 'reicon-react/icons/Fire'
 import Star from 'reicon-react/icons/Star'
 import Trophy from 'reicon-react/icons/Trophy'
+import { LAPSED_COPY } from './lapsed-plan'
 
 export type PlanFeature = string
 
@@ -201,6 +203,53 @@ export function getPlanExitLink(origin: PlanOrigin | undefined) {
       return { label: 'Voltar', to: '/admin/billing' as const }
     default:
       return { label: 'Ver planos depois', to: '/admin' as const }
+  }
+}
+
+/**
+ * Cabeçalho de `/plan` pela situação da assinatura (WEB-170). Plano parado
+ * regulariza em vez de contratar: checkout do provedor sempre abre assinatura
+ * nova, e a parada seguiria cobrando quando o cartão voltasse. Quem já teve
+ * assinatura não está no "último passo" do cadastro.
+ */
+export function getPlanHeader(
+  subscription:
+    | { plan: SubscriptionPlan; standing: SubscriptionStanding | null }
+    | null
+    | undefined
+): { kicker: string; title: string; text: string } {
+  const name = subscription ? getPlan(subscription.plan).name : ''
+  switch (subscription?.standing) {
+    case 'past_due':
+      return {
+        kicker: LAPSED_COPY.past_due.label,
+        title: `Regularize seu plano ${name}.`,
+        text: `${LAPSED_COPY.past_due.cause} Atualize o método de pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
+      }
+    case 'trial_ended':
+      return {
+        kicker: LAPSED_COPY.trial_ended.label,
+        title: `Continue no plano ${name}.`,
+        text: `${LAPSED_COPY.trial_ended.cause} Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
+      }
+    case 'current':
+      return {
+        kicker: 'Alterar plano',
+        title: 'Escolha seu novo plano.',
+        text: 'A mudança entra em vigor no próximo ciclo de cobrança.'
+      }
+    case 'ended':
+      return {
+        kicker: 'Reativar plano',
+        title: 'Escolha um plano para voltar.',
+        text: 'Seu bar volta a aparecer nas buscas e no mapa assim que o pagamento for confirmado.'
+      }
+    default:
+      return {
+        kicker: 'Último passo',
+        title: 'Escolha o plano do seu bar.',
+        text: 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'
+      }
   }
 }
 

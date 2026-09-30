@@ -43,7 +43,7 @@ function renderizar(
 describe('HouseOfferEditor', () => {
   test('sem Elite não oferece campo e aponta para os planos', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       null
     )
     expect(doc.querySelector('textarea')).toBeNull()
@@ -56,8 +56,7 @@ describe('HouseOfferEditor', () => {
       {
         status: 'ready',
         plan: 'pro',
-        currentPlan: null,
-        lapsed: { plan: 'pro', reason: 'past_due' }
+        standing: 'past_due'
       },
       null
     )
@@ -67,7 +66,7 @@ describe('HouseOfferEditor', () => {
 
   test('sem Elite avisa que o texto salvo continua guardado', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
+      { status: 'ready', plan: 'pro', standing: 'current' },
       'Chopp em dobro'
     )
     expect(doc.body.textContent).toContain('Chopp em dobro')
@@ -76,7 +75,7 @@ describe('HouseOfferEditor', () => {
 
   test('com Elite o campo tem rótulo e dica associados', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
+      { status: 'ready', plan: 'elite', standing: 'current' },
       'Chopp em dobro'
     )
     const campo = doc.querySelector('textarea')
@@ -99,7 +98,7 @@ describe('HouseOfferEditor', () => {
 
   test('erro do servidor é anunciado e ligado ao campo', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
+      { status: 'ready', plan: 'elite', standing: 'current' },
       null,
       'A oferta da casa é um recurso do plano Elite.'
     )
@@ -114,7 +113,7 @@ describe('HouseOfferEditor', () => {
 
   test('sem oferta gravada não mostra o botão de remover', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
+      { status: 'ready', plan: 'elite', standing: 'current' },
       null
     )
     const botoes = Array.from(doc.querySelectorAll('button')).map(
@@ -128,8 +127,7 @@ describe('HouseOfferEditor dentro da aba', () => {
   const elite: PlanState = {
     status: 'ready',
     plan: 'elite',
-    currentPlan: 'elite',
-    lapsed: null
+    standing: 'current'
   }
   let dom: JSDOM | undefined
   let root: Root | undefined

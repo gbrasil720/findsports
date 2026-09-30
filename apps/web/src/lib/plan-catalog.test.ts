@@ -7,6 +7,7 @@ import {
   getAnalyticsEntitlement,
   getPlan,
   getPlanExitLink,
+  getPlanHeader,
   getPlanSelectionState,
   isDowngrade,
   PLAN_CATALOG,
@@ -300,5 +301,33 @@ describe('profilePerks', () => {
     // Galeria, promoções e reserva dependem de schema que ainda não existe.
     expect(roadmap.length).toBeGreaterThan(0)
     expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
+  })
+})
+
+describe('getPlanHeader', () => {
+  test('sem assinatura é o último passo do cadastro', () => {
+    expect(getPlanHeader(null).kicker).toBe('Último passo')
+  })
+
+  test('plano parado manda regularizar, com o nome do plano', () => {
+    expect(getPlanHeader({ plan: 'pro', standing: 'past_due' })).toMatchObject({
+      kicker: 'Pagamento pendente',
+      title: 'Regularize seu plano Pro.'
+    })
+    expect(
+      getPlanHeader({ plan: 'elite', standing: 'trial_ended' })
+    ).toMatchObject({
+      kicker: 'Trial encerrado',
+      title: 'Continue no plano Elite.'
+    })
+  })
+
+  test('vigente troca e encerrado reativa', () => {
+    expect(getPlanHeader({ plan: 'pro', standing: 'current' }).kicker).toBe(
+      'Alterar plano'
+    )
+    expect(getPlanHeader({ plan: 'pro', standing: 'ended' }).kicker).toBe(
+      'Reativar plano'
+    )
   })
 })

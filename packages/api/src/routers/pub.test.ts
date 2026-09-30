@@ -1,6 +1,6 @@
 import { describe, expect, it, test } from 'bun:test'
 import { TRPCError } from '@trpc/server'
-import { getCurrentPlan } from '../lib/current-plan'
+import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import {
   addressFieldsChanged,
   assertEventIntervalValid,
@@ -68,6 +68,30 @@ describe('getCurrentPlan', () => {
 
   test('retorna sem plano quando não há assinatura', () => {
     expect(getCurrentPlan(null, now)).toBeNull()
+  })
+})
+
+describe('getSubscriptionStanding', () => {
+  const now = new Date('2026-09-08T12:00:00.000Z')
+  const past = new Date('2026-09-07T12:00:00.000Z')
+  const future = new Date('2026-09-09T12:00:00.000Z')
+
+  test.each([
+    ['active', null, 'current'],
+    ['trialing', future, 'current'],
+    ['past_due', future, 'past_due'],
+    ['trialing', past, 'trial_ended'],
+    ['trialing', null, 'trial_ended'],
+    ['inactive', null, 'ended'],
+    ['cancelled', null, 'ended']
+  ] as const)('%s até %s é %s', (status, currentPeriodEnd, expected) => {
+    expect(
+      getSubscriptionStanding({ plan: 'pro', status, currentPeriodEnd }, now)
+    ).toBe(expected)
+  })
+
+  test('sem assinatura não tem situação', () => {
+    expect(getSubscriptionStanding(null, now)).toBeNull()
   })
 })
 

@@ -10,10 +10,10 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
-import { getLapsedPlan } from '@/lib/lapsed-plan'
+import { isLapsed } from '@/lib/lapsed-plan'
 import {
-  getPlan,
   getPlanExitLink,
+  getPlanHeader,
   getPlanSelectionState,
   PLAN_CATALOG,
   type Plan,
@@ -71,41 +71,8 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
-  const lapsed = getLapsedPlan(subscription)
-  const lapsedName = lapsed ? getPlan(lapsed.plan).name : null
-  // Cada estado pede uma ação diferente. Plano parado não passa pelo checkout:
-  // checkout do Dodo sempre abre assinatura nova, e a parada seguiria cobrando
-  // quando o cartão voltasse (WEB-141). Quem já teve assinatura não está no
-  // "último passo" do cadastro.
-  const header = lapsed
-    ? lapsed.reason === 'past_due'
-      ? {
-          kicker: 'Pagamento pendente',
-          title: `Regularize seu plano ${lapsedName}.`,
-          text: 'O último pagamento não foi confirmado. Atualize o método de pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.'
-        }
-      : {
-          kicker: 'Trial encerrado',
-          title: `Continue no plano ${lapsedName}.`,
-          text: 'O trial gratuito terminou sem pagamento confirmado. Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.'
-        }
-    : hasActivePlan
-      ? {
-          kicker: 'Alterar plano',
-          title: 'Escolha seu novo plano.',
-          text: 'A mudança entra em vigor no próximo ciclo de cobrança.'
-        }
-      : subscription
-        ? {
-            kicker: 'Reativar plano',
-            title: 'Escolha um plano para voltar.',
-            text: 'Seu bar volta a aparecer nas buscas e no mapa assim que o pagamento for confirmado.'
-          }
-        : {
-            kicker: 'Último passo',
-            title: 'Escolha o plano do seu bar.',
-            text: 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'
-          }
+  const lapsed = isLapsed(subscription?.standing)
+  const header = getPlanHeader(subscription)
   const exitLink = getPlanExitLink(origin)
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
@@ -248,7 +215,7 @@ function PlanSelection() {
             key={plan.id}
             plan={plan}
             isSelected={selected === plan.id}
-            isCurrent={(currentPlan ?? lapsed?.plan) === plan.id}
+            isCurrent={(lapsed ? subscription?.plan : currentPlan) === plan.id}
             onSelect={handleSelectPlan}
           />
         ))}
@@ -307,15 +274,9 @@ function PlanSelection() {
           {exitLink.label}
         </Link>
 
-        {lapsed ? (
-          <Link
-            to="/admin/billing"
-            className="onside-btn onside-btn-acid min-h-11"
-          >
-            Regularizar assinatura
-            <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-          </Link>
-        ) : (
+        {/* Plano parado não passa pelo checkout: o topo já leva a
+            regularizar (WEB-170). */}
+        {lapsed ? null : (
           <button
             type="button"
             onClick={handleCheckout}
