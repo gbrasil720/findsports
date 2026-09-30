@@ -94,9 +94,8 @@ function PubOnboarding() {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     // `onboardingCompleted` mudou no banco por fora do better-auth; sem
     // regravar o cache de sessão o guard da rota devolveria o usuário
-    // para cá. Se a releitura falhar, seguimos assim mesmo — o guard
-    // revalida no servidor e o pior caso é ver o onboarding de novo.
-    await refreshSessionCache().catch(() => {})
+    // para cá.
+    await refreshSessionCache()
     navigate({ to: '/plan' })
   }
 

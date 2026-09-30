@@ -76,9 +76,8 @@ function FanOnboarding() {
   const seguirParaDashboard = async () => {
     // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
     // do better-auth; sem regravar o cache de sessão o guard da rota
-    // devolveria o usuário para cá. Se a releitura falhar, seguimos
-    // assim mesmo — o guard revalida no servidor.
-    await refreshSessionCache().catch(() => {})
+    // devolveria o usuário para cá.
+    await refreshSessionCache()
     navigate({ to: '/dashboard' })
   }
 
