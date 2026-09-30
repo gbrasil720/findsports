@@ -31,7 +31,10 @@ import {
 import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { persistProfileUser } from '@/components/profile/profile-user-update'
-import { confirmDroppingTeams } from '@/components/sports/team-picker'
+import {
+  confirmDroppingTeams,
+  type FavoriteTeam
+} from '@/components/sports/team-picker'
 import {
   normalizeRadiusKm,
   type RadiusKm,
@@ -307,16 +310,28 @@ function ProfilePage() {
         : [...current, sportId]
     )
   }
-  const saveSports = () => {
+  const saveSports = async () => {
     if (selectedSportIds.length === 0) return
-    const myTeams =
-      queryClient.getQueryData(trpc.pubs.getMyTeams.queryKey()) ?? []
-    if (
-      !confirmDroppingTeams(
-        myTeams.filter((team) => !selectedSportIds.includes(team.sportId))
+    // Esporte desmarcado leva seus times junto: sem a lista não dá para
+    // avisar quais, então não salva às cegas.
+    let myTeams: FavoriteTeam[]
+    try {
+      myTeams = await queryClient.fetchQuery(
+        trpc.pubs.getMyTeams.queryOptions()
       )
-    )
+    } catch (error) {
+      toast.error(
+        getUserFacingMessage(
+          error,
+          'Não foi possível conferir quem você acompanha. Tente novamente.'
+        )
+      )
       return
+    }
+    const dropped = myTeams.filter(
+      (team) => !selectedSportIds.includes(team.sportId)
+    )
+    if (!confirmDroppingTeams(dropped)) return
     updatePreferences.mutate({ sportIds: selectedSportIds })
   }
   const saveRadius = async (radiusKm: RadiusKm) => {
@@ -517,7 +532,7 @@ function ProfilePage() {
             onStartEditingSports={openEditSports}
             onCancelEditingSports={() => setEditingSports(false)}
             onToggleSport={toggleSport}
-            onSaveSports={saveSports}
+            onSaveSports={() => void saveSports()}
             onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
             onResetRecommendations={() => {
               if (

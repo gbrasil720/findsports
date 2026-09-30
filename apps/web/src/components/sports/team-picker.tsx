@@ -9,10 +9,10 @@ type Props = {
   /** Só os esportes que o torcedor marcou — WEB-68. */
   sports: { id: string; name: string }[]
   selected: FavoriteTeam[]
-  onToggle: (team: FavoriteTeam) => void
+  onChange: (selected: FavoriteTeam[]) => void
 }
 
-export function toggleFavoriteTeam(
+function toggleFavoriteTeam(
   selected: FavoriteTeam[],
   team: FavoriteTeam
 ): FavoriteTeam[] {
@@ -26,7 +26,7 @@ export function toggleFavoriteTeam(
  * catálogo do formulário de evento: são no máximo seis, e o servidor guarda
  * cada lista em `cacheTimes`.
  */
-export function TeamPicker({ sports, selected, onToggle }: Props) {
+export function TeamPicker({ sports, selected, onChange }: Props) {
   const trpc = useTRPC()
   const queries = useQueries({
     queries: sports.map((sport) => ({
@@ -66,7 +66,7 @@ export function TeamPicker({ sports, selected, onToggle }: Props) {
                     key={team.id}
                     type="button"
                     aria-pressed={selectedIds.has(team.id)}
-                    onClick={() => onToggle(team)}
+                    onClick={() => onChange(toggleFavoriteTeam(selected, team))}
                     className="onside-chip"
                   >
                     {team.name}

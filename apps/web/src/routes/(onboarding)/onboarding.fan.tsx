@@ -15,8 +15,7 @@ import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import {
   confirmDroppingTeams,
   type FavoriteTeam,
-  TeamPicker,
-  toggleFavoriteTeam
+  TeamPicker
 } from '@/components/sports/team-picker'
 import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
@@ -201,9 +200,7 @@ function FanOnboarding() {
             <TeamPicker
               sports={selectedSports}
               selected={selectedTeams}
-              onToggle={(team) =>
-                setSelectedTeams((prev) => toggleFavoriteTeam(prev, team))
-              }
+              onChange={setSelectedTeams}
             />
           </div>
         )}

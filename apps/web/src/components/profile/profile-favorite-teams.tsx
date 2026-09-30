@@ -3,11 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Edit from 'reicon-react/icons/Edit'
 import Flag from 'reicon-react/icons/Flag'
-import {
-  type FavoriteTeam,
-  TeamPicker,
-  toggleFavoriteTeam
-} from '@/components/sports/team-picker'
+import { type FavoriteTeam, TeamPicker } from '@/components/sports/team-picker'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { Preference } from './profile-model'
@@ -101,9 +97,7 @@ export function ProfileFavoriteTeams({
           <TeamPicker
             sports={preferences.map((preference) => preference.sport)}
             selected={selected}
-            onToggle={(team) =>
-              setSelected((current) => toggleFavoriteTeam(current, team))
-            }
+            onChange={setSelected}
           />
           {update.error ? (
             <p
