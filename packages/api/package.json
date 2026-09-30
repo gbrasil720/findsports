@@ -17,6 +17,7 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit",
+    "bars:regeocode": "bun --env-file=../../apps/web/.env run scripts/regeocode-bars.ts",
     "test": "bun test --preload=../../test-env.preload.ts"
   },
   "dependencies": {
