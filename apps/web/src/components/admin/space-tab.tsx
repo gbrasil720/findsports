@@ -90,9 +90,7 @@ export function SpaceTab({
 
   const confirmWhatsAppMutation = useMutation(
     trpc.pub.updateMe.mutationOptions({
-      onSuccess: () => {
-        invalidateBar()
-      },
+      onSuccess: () => void invalidateBar(),
       onError: (err) => {
         setProfileError(
           getUserFacingMessage(
@@ -107,17 +105,13 @@ export function SpaceTab({
   // O erro de cada card é o da própria mutation: um novo envio o limpa.
   const updateHouseOfferMutation = useMutation(
     trpc.pub.updateHouseOffer.mutationOptions({
-      onSuccess: () => {
-        invalidateBar()
-      }
+      onSuccess: () => void invalidateBar()
     })
   )
 
   const updateAcceptsReservationsMutation = useMutation(
     trpc.pub.updateAcceptsReservations.mutationOptions({
-      onSuccess: () => {
-        invalidateBar()
-      }
+      onSuccess: () => void invalidateBar()
     })
   )
 
