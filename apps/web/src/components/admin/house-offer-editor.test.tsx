@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import type { EliteAccess } from './admin-model'
+import type { PlanState } from './admin-model'
 import { HouseOfferEditor } from './house-offer-editor'
 
 mock.module('@tanstack/react-router', () => ({
@@ -23,14 +23,14 @@ mock.module('@tanstack/react-router', () => ({
 }))
 
 function renderizar(
-  access: EliteAccess,
+  plan: PlanState,
   houseOffer: string | null,
   saveError: string | null = null
 ) {
   const markup = renderToStaticMarkup(
     <HouseOfferEditor
       houseOffer={houseOffer}
-      access={access}
+      plan={plan}
       isSaving={false}
       saveError={saveError}
       onSave={async () => undefined}
@@ -41,14 +41,17 @@ function renderizar(
 
 describe('HouseOfferEditor', () => {
   test('sem Elite não oferece campo e aponta para os planos', () => {
-    const doc = renderizar({ status: 'ready', eligible: false }, null)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      null
+    )
     expect(doc.querySelector('textarea')).toBeNull()
     expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
   })
 
   test('sem Elite avisa que o texto salvo continua guardado', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: false },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
       'Chopp em dobro'
     )
     expect(doc.body.textContent).toContain('Chopp em dobro')
@@ -57,7 +60,7 @@ describe('HouseOfferEditor', () => {
 
   test('com Elite o campo tem rótulo e dica associados', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
       'Chopp em dobro'
     )
     const campo = doc.querySelector('textarea')
@@ -80,7 +83,7 @@ describe('HouseOfferEditor', () => {
 
   test('erro do servidor é anunciado e ligado ao campo', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
       null,
       'A oferta da casa é um recurso do plano Elite.'
     )
@@ -94,7 +97,10 @@ describe('HouseOfferEditor', () => {
   })
 
   test('sem oferta gravada não mostra o botão de remover', () => {
-    const doc = renderizar({ status: 'ready', eligible: true }, null)
+    const doc = renderizar(
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      null
+    )
     const botoes = Array.from(doc.querySelectorAll('button')).map(
       (botao) => botao.textContent
     )

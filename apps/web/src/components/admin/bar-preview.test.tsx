@@ -39,12 +39,16 @@ const BAR = {
   photoUrl: null
 }
 
-function renderizar(plan: SubscriptionPlan) {
+function renderizar(plan: SubscriptionPlan | 'error') {
   const markup = renderToStaticMarkup(
     <BarPreview
       bar={BAR}
       eventsState={{ status: 'ready', events: [] as AdminEvent[] }}
-      planState={{ status: 'ready', plan }}
+      planState={
+        plan === 'error'
+          ? { status: 'error' }
+          : { status: 'ready', plan, currentPlan: plan }
+      }
     />
   )
   return new JSDOM(markup).window.document
@@ -72,5 +76,13 @@ describe('preview do dono em /admin', () => {
 
   test('starter não ganha selo no preview, como no card do torcedor', () => {
     expect(selo(renderizar('starter'))).toBeNull()
+  })
+
+  // A falha é anunciada uma vez só, pela aba (WEB-142).
+  test('falha ao ler o plano não vira alerta nem botão no preview', () => {
+    const doc = renderizar('error')
+    expect(doc.querySelector('[role="alert"]')).toBeNull()
+    expect(doc.querySelector('button')).toBeNull()
+    expect(doc.body.textContent).toContain('Preview indisponível.')
   })
 })

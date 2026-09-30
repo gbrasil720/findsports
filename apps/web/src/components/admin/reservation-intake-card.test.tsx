@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import type { EliteAccess } from './admin-model'
+import type { PlanState } from './admin-model'
 import { ReservationIntakeCard } from './reservation-intake-card'
 
 mock.module('@tanstack/react-router', () => ({
@@ -23,7 +23,7 @@ mock.module('@tanstack/react-router', () => ({
 }))
 
 function renderizar(
-  access: EliteAccess,
+  plan: PlanState,
   acceptsReservations: boolean,
   saveError: string | null = null
 ) {
@@ -31,7 +31,7 @@ function renderizar(
     <ReservationIntakeCard
       acceptsReservations={acceptsReservations}
       hasHouseOffer
-      access={access}
+      plan={plan}
       isSaving={false}
       saveError={saveError}
       onChange={async () => undefined}
@@ -42,7 +42,10 @@ function renderizar(
 
 describe('ReservationIntakeCard', () => {
   test('sem Elite e desligado aponta para os planos e não deixa ligar', () => {
-    const doc = renderizar({ status: 'ready', eligible: false }, false)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      false
+    )
     expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
     const chave = doc.querySelector('button[role="switch"]')
     expect(chave?.getAttribute('aria-checked')).toBe('false')
@@ -50,7 +53,10 @@ describe('ReservationIntakeCard', () => {
   })
 
   test('com Elite o interruptor é um botão rotulado, com estado e dica', () => {
-    const doc = renderizar({ status: 'ready', eligible: true }, false)
+    const doc = renderizar(
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      false
+    )
     const chave = doc.querySelector('button[role="switch"]')
     expect(chave?.getAttribute('aria-checked')).toBe('false')
     expect(chave?.hasAttribute('disabled')).toBe(false)
@@ -68,7 +74,10 @@ describe('ReservationIntakeCard', () => {
   })
 
   test('sem Elite com o interruptor ligado ainda deixa desligar', () => {
-    const doc = renderizar({ status: 'ready', eligible: false }, true)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      true
+    )
     const chave = doc.querySelector('button[role="switch"]')
     expect(chave?.getAttribute('aria-checked')).toBe('true')
     expect(chave?.hasAttribute('disabled')).toBe(false)
@@ -76,7 +85,7 @@ describe('ReservationIntakeCard', () => {
 
   test('erro do servidor é anunciado e ligado ao interruptor', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
       false,
       'Receber reservas é um recurso do plano Elite.'
     )

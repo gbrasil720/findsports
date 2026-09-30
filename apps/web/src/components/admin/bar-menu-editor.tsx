@@ -6,21 +6,10 @@ import {
   parseMenuUrl
 } from '@findsports_oficial/db/bar-menu'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { Link } from '@tanstack/react-router'
 import { type FormEvent, useId, useState } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
-import CircleInfo from 'reicon-react/icons/CircleInfo'
 import { BarMenuInfo } from '@/components/pub/bar-characteristics'
-
-/**
- * `eligible` vem de `getMySubscription().currentPlan` ser `pro` ou `elite` —
- * o plano vigente, com status, e não `bar.plan`. É só para decidir o que
- * desenhar: o procedimento confere o plano de novo antes de gravar.
- */
-export type BarMenuAccess =
-  | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
-  | { status: 'ready'; eligible: boolean }
+import type { PlanState } from './admin-model'
+import { PaidFeatureCard } from './paid-feature-card'
 
 export type BarMenuValues = {
   menuUrl: string | null
@@ -28,79 +17,53 @@ export type BarMenuValues = {
 }
 
 type Props = BarMenuValues & {
-  access: BarMenuAccess
+  plan: PlanState
   isSaving: boolean
   saveError: string | null
   /** Só os campos que mudaram; `null` remove. Rejeita quando o servidor recusa. */
   onSave: (changes: Partial<BarMenuValues>) => Promise<unknown>
 }
 
-const TITLE_ID = 'admin-bar-menu-title'
-
 /** Cardápio e gasto médio por pessoa no painel (WEB-39). */
 export function BarMenuEditor({
   menuUrl,
   averageSpendCents,
-  access,
-  isSaving,
-  saveError,
-  onSave
+  plan,
+  ...form
 }: Props) {
   return (
-    <section
+    <PaidFeatureCard
       id="admin-bar-menu"
-      className="onside-panel scroll-mt-6 p-5 md:p-6"
-      aria-labelledby={TITLE_ID}
+      tier="pro"
+      title="Cardápio e preço médio"
+      description="Aparecem nas características do seu bar, no perfil público, como informação declarada por você."
+      plan={plan}
+      loadingLabel="Carregando cardápio e preço médio…"
+      skeleton={
+        <>
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-48" />
+          <Skeleton className="h-11 w-36" />
+        </>
+      }
+      locked={
+        <LockedBarMenu
+          menuUrl={menuUrl}
+          averageSpendCents={averageSpendCents}
+        />
+      }
     >
-      <p className="onside-kicker mb-2">Planos Pro e Elite</p>
-      <h2 id={TITLE_ID} className="onside-display text-2xl">
-        Cardápio e preço médio
-      </h2>
-      <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
-        Aparecem nas características do seu bar, no perfil público, como
-        informação declarada por você.
-      </p>
-
-      <div className="mt-5">
-        {access.status === 'loading' ? (
-          <div className="space-y-3" role="status" aria-busy="true">
-            <span className="sr-only">Carregando cardápio e preço médio…</span>
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-48" />
-            <Skeleton className="h-11 w-36" />
-          </div>
-        ) : access.status === 'error' ? (
-          <div className="onside-callout onside-callout-danger" role="alert">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm">
-                Não foi possível conferir o seu plano.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={access.retry}
-              className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-            >
-              Tentar de novo
-            </button>
-          </div>
-        ) : access.eligible ? (
+      {(eligible) =>
+        eligible ? (
           <BarMenuForm
             menuUrl={menuUrl}
             averageSpendCents={averageSpendCents}
-            isSaving={isSaving}
-            saveError={saveError}
-            onSave={onSave}
+            {...form}
           />
-        ) : (
-          <LockedBarMenu
-            menuUrl={menuUrl}
-            averageSpendCents={averageSpendCents}
-          />
-        )}
-      </div>
-    </section>
+        ) : null
+      }
+    </PaidFeatureCard>
   )
 }
 
@@ -112,52 +75,27 @@ function LockedBarMenu({ menuUrl, averageSpendCents }: BarMenuValues) {
       : null
   ].filter(Boolean)
 
-  return (
-    <div className="onside-callout onside-callout-stone">
-      <CircleInfo
-        size={20}
-        color="currentColor"
-        className="mt-0.5 shrink-0"
-        aria-hidden="true"
-      />
-      {/* Base mínima: no celular o botão desce para a linha de baixo em vez
-          de espremer o texto numa coluna de poucas palavras. */}
-      <div className="min-w-0 flex-1 basis-60">
-        <p className="mb-0.5 font-semibold text-sm">
-          Disponível nos planos Pro e Elite
-        </p>
-        {preserved.length === 2 ? (
-          <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
-            Continuam guardados {preserved.join(' e ')}, mas não aparecem no
-            perfil enquanto o plano Pro ou Elite não estiver ativo. Ao voltar
-            para um deles, reaparecem sem precisar preencher de novo.
-          </p>
-        ) : preserved.length === 1 ? (
-          <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
-            Continua guardado {preserved[0]}, mas não aparece no perfil enquanto
-            o plano Pro ou Elite não estiver ativo. Ao voltar para um deles,
-            reaparece sem precisar preencher de novo.
-          </p>
-        ) : (
-          <p className="text-sm opacity-90">
-            Com o Pro ou o Elite, você informa o link do cardápio e o preço
-            médio por pessoa, e os dois aparecem no perfil do bar.
-          </p>
-        )}
-      </div>
-      <Link
-        to="/plan"
-        search={{ origin: 'admin' }}
-        className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-      >
-        Ver planos
-        <ArrowRight size={13} color="currentColor" aria-hidden="true" />
-      </Link>
-    </div>
+  return preserved.length === 2 ? (
+    <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
+      Continuam guardados {preserved.join(' e ')}, mas não aparecem no perfil
+      enquanto o plano Pro ou Elite não estiver ativo. Ao voltar para um deles,
+      reaparecem sem precisar preencher de novo.
+    </p>
+  ) : preserved.length === 1 ? (
+    <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
+      Continua guardado {preserved[0]}, mas não aparece no perfil enquanto o
+      plano Pro ou Elite não estiver ativo. Ao voltar para um deles, reaparece
+      sem precisar preencher de novo.
+    </p>
+  ) : (
+    <p className="text-sm opacity-90">
+      Com o Pro ou o Elite, você informa o link do cardápio e o preço médio por
+      pessoa, e os dois aparecem no perfil do bar.
+    </p>
   )
 }
 
-type FormProps = Omit<Props, 'access'>
+type FormProps = Omit<Props, 'plan'>
 
 function BarMenuForm({
   menuUrl,

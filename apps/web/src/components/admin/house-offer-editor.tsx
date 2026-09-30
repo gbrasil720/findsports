@@ -5,20 +5,18 @@ import {
 } from '@findsports_oficial/db/house-offer'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { type FormEvent, useEffect, useId, useState } from 'react'
-import type { EliteAccess } from './admin-model'
-import { EliteLockedCallout, PlanCheckError } from './elite-callouts'
+import type { PlanState } from './admin-model'
+import { PaidFeatureCard } from './paid-feature-card'
 
 type Props = {
   /** Texto gravado. Continua existindo mesmo sem Elite. */
   houseOffer: string | null
-  access: EliteAccess
+  plan: PlanState
   isSaving: boolean
   saveError: string | null
   /** `null` limpa a oferta. Rejeita quando o servidor recusa. */
   onSave: (houseOffer: string | null) => Promise<unknown>
 }
-
-const TITLE_ID = 'admin-house-offer-title'
 
 /**
  * Oferta da casa no painel (WEB-120).
@@ -26,73 +24,44 @@ const TITLE_ID = 'admin-house-offer-title'
  * Sem exemplos no placeholder de propósito: a Onside não sugere o que o bar
  * oferece. O texto de apoio diz só onde aparece e de quem é a promessa.
  */
-export function HouseOfferEditor({
-  houseOffer,
-  access,
-  isSaving,
-  saveError,
-  onSave
-}: Props) {
+export function HouseOfferEditor({ houseOffer, plan, ...form }: Props) {
   return (
-    <section
+    <PaidFeatureCard
       id="admin-house-offer"
-      className="onside-panel scroll-mt-6 p-5 md:p-6"
-      aria-labelledby={TITLE_ID}
-    >
-      <p className="onside-kicker mb-2">Plano Elite</p>
-      <h2 id={TITLE_ID} className="onside-display text-2xl">
-        Oferta da casa
-      </h2>
-      <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
-        O que você oferece a quem chega pela Onside. Aparece no perfil público
-        do seu bar enquanto o recebimento de reservas estiver ligado. A promessa
-        é sua com o cliente: a Onside não define nem confere o conteúdo.
-      </p>
-
-      <div className="mt-5">
-        {access.status === 'loading' ? (
-          <div className="space-y-3" role="status" aria-busy="true">
-            <span className="sr-only">Carregando oferta da casa…</span>
-            <Skeleton className="h-3 w-32" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-11 w-36" />
-          </div>
-        ) : access.status === 'error' ? (
-          <PlanCheckError retry={access.retry} />
-        ) : access.eligible ? (
-          <HouseOfferForm
-            houseOffer={houseOffer}
-            isSaving={isSaving}
-            saveError={saveError}
-            onSave={onSave}
-          />
+      tier="elite"
+      title="Oferta da casa"
+      description="O que você oferece a quem chega pela Onside. Aparece no perfil público do seu bar enquanto o recebimento de reservas estiver ligado. A promessa é sua com o cliente: a Onside não define nem confere o conteúdo."
+      plan={plan}
+      loadingLabel="Carregando oferta da casa…"
+      skeleton={
+        <>
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-11 w-36" />
+        </>
+      }
+      locked={
+        houseOffer ? (
+          <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
+            Sua oferta continua guardada — “{houseOffer}” — mas não aparece no
+            perfil enquanto o plano Elite não estiver ativo.
+          </p>
         ) : (
-          <LockedHouseOffer houseOffer={houseOffer} />
-        )}
-      </div>
-    </section>
+          <p className="text-sm opacity-90">
+            Com o Elite, você escreve o que oferece a quem chega pela Onside e o
+            texto aparece no perfil do bar.
+          </p>
+        )
+      }
+    >
+      {(eligible) =>
+        eligible ? <HouseOfferForm houseOffer={houseOffer} {...form} /> : null
+      }
+    </PaidFeatureCard>
   )
 }
 
-function LockedHouseOffer({ houseOffer }: { houseOffer: string | null }) {
-  return (
-    <EliteLockedCallout>
-      {houseOffer ? (
-        <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
-          Sua oferta continua guardada — “{houseOffer}” — mas não aparece no
-          perfil enquanto o plano Elite não estiver ativo.
-        </p>
-      ) : (
-        <p className="text-sm opacity-90">
-          Com o Elite, você escreve o que oferece a quem chega pela Onside e o
-          texto aparece no perfil do bar.
-        </p>
-      )}
-    </EliteLockedCallout>
-  )
-}
-
-type FormProps = Omit<Props, 'access'>
+type FormProps = Omit<Props, 'plan'>
 
 function HouseOfferForm({
   houseOffer,
