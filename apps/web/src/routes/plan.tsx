@@ -12,6 +12,7 @@ import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
 import { getLapsedPlan } from '@/lib/lapsed-plan'
 import {
+  getPlan,
   getPlanExitLink,
   getPlanSelectionState,
   PLAN_CATALOG,
@@ -71,6 +72,40 @@ function PlanSelection() {
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
   const lapsed = getLapsedPlan(subscription)
+  const lapsedName = lapsed ? getPlan(lapsed.plan).name : null
+  // Cada estado pede uma ação diferente. Plano parado não passa pelo checkout:
+  // checkout do Dodo sempre abre assinatura nova, e a parada seguiria cobrando
+  // quando o cartão voltasse (WEB-141). Quem já teve assinatura não está no
+  // "último passo" do cadastro.
+  const header = lapsed
+    ? lapsed.reason === 'past_due'
+      ? {
+          kicker: 'Pagamento pendente',
+          title: `Regularize seu plano ${lapsedName}.`,
+          text: 'O último pagamento não foi confirmado. Atualize o método de pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.'
+        }
+      : {
+          kicker: 'Trial encerrado',
+          title: `Continue no plano ${lapsedName}.`,
+          text: 'O trial gratuito terminou sem pagamento confirmado. Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.'
+        }
+    : hasActivePlan
+      ? {
+          kicker: 'Alterar plano',
+          title: 'Escolha seu novo plano.',
+          text: 'A mudança entra em vigor no próximo ciclo de cobrança.'
+        }
+      : subscription
+        ? {
+            kicker: 'Reativar plano',
+            title: 'Escolha um plano para voltar.',
+            text: 'Seu bar volta a aparecer nas buscas e no mapa assim que o pagamento for confirmado.'
+          }
+        : {
+            kicker: 'Último passo',
+            title: 'Escolha o plano do seu bar.',
+            text: 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'
+          }
   const exitLink = getPlanExitLink(origin)
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
@@ -153,19 +188,20 @@ function PlanSelection() {
         </div>
       ) : (
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="onside-kicker onside-kicker-acid mb-3">
-            {hasActivePlan ? 'Alterar plano' : 'Último passo'}
-          </p>
-          <h1 className="onside-display mb-4 text-4xl text-[var(--onside-paper)] md:text-5xl">
-            {hasActivePlan
-              ? 'Escolha seu novo plano.'
-              : 'Escolha o plano do seu bar.'}
+          <p className="onside-kicker mb-3">{header.kicker}</p>
+          <h1 className="onside-display mb-4 text-4xl md:text-5xl">
+            {header.title}
           </h1>
-          <p className="onside-text-muted-on-ink text-lg">
-            {hasActivePlan
-              ? 'A mudança entra em vigor no próximo ciclo de cobrança.'
-              : 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'}
-          </p>
+          <p className="text-[var(--onside-muted)] text-lg">{header.text}</p>
+          {lapsed ? (
+            <Link
+              to="/admin/billing"
+              className="onside-btn onside-btn-ink mt-6 min-h-11"
+            >
+              Regularizar assinatura
+              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+            </Link>
+          ) : null}
         </div>
       )}
 
@@ -184,39 +220,6 @@ function PlanSelection() {
               Tentar novamente
             </button>
           ) : null}
-        </div>
-      ) : null}
-
-      {/* WEB-141: quem tem plano parado chega aqui pelo painel ou pelo
-          bookmark. Contratar de novo não conserta a assinatura que existe. */}
-      {lapsed ? (
-        <div className="onside-callout onside-callout-warn mx-auto mb-8 max-w-2xl">
-          <CircleInfo
-            size={20}
-            color="currentColor"
-            className="mt-0.5 shrink-0"
-            aria-hidden="true"
-          />
-          <p className="min-w-0 flex-1 basis-60 text-sm">
-            {lapsed.reason === 'past_due'
-              ? 'Seu plano '
-              : 'O trial do seu plano '}
-            <span className="font-bold">
-              {PLAN_CATALOG.find((p) => p.id === lapsed.plan)?.name}
-            </span>
-            {lapsed.reason === 'past_due'
-              ? ' está com pagamento pendente.'
-              : ' terminou sem pagamento confirmado.'}{' '}
-            Para manter o plano, regularize a assinatura em vez de contratar de
-            novo.
-          </p>
-          <Link
-            to="/admin/billing"
-            className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-          >
-            Regularizar assinatura
-            <ArrowRight size={13} color="currentColor" aria-hidden="true" />
-          </Link>
         </div>
       ) : null}
 
@@ -245,7 +248,7 @@ function PlanSelection() {
             key={plan.id}
             plan={plan}
             isSelected={selected === plan.id}
-            isCurrent={currentPlan === plan.id}
+            isCurrent={(currentPlan ?? lapsed?.plan) === plan.id}
             onSelect={handleSelectPlan}
           />
         ))}
@@ -298,47 +301,57 @@ function PlanSelection() {
         ) : null}
         <Link
           to={exitLink.to}
-          className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"
+          className="onside-btn onside-btn-outline min-h-11"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
           {exitLink.label}
         </Link>
 
-        <button
-          type="button"
-          onClick={handleCheckout}
-          disabled={
-            loading ||
-            isSamePlan ||
-            subscriptionQuery.isLoading ||
-            !checkoutLiberado
-          }
-          title={
-            !checkoutLiberado
-              ? 'Contratação temporariamente indisponível'
-              : isSamePlan
-                ? 'Este já é seu plano atual'
-                : undefined
-          }
-          className="onside-btn onside-btn-acid min-h-11"
-        >
-          {loading ? (
-            <Loader
-              size={16}
-              color="currentColor"
-              className="animate-spin"
-              aria-hidden="true"
-            />
-          ) : null}
-          {loading
-            ? 'Redirecionando…'
-            : isSamePlan
-              ? 'Plano atual'
-              : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-          {!isSamePlan && !loading ? (
+        {lapsed ? (
+          <Link
+            to="/admin/billing"
+            className="onside-btn onside-btn-acid min-h-11"
+          >
+            Regularizar assinatura
             <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-          ) : null}
-        </button>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={
+              loading ||
+              isSamePlan ||
+              subscriptionQuery.isLoading ||
+              !checkoutLiberado
+            }
+            title={
+              !checkoutLiberado
+                ? 'Contratação temporariamente indisponível'
+                : isSamePlan
+                  ? 'Este já é seu plano atual'
+                  : undefined
+            }
+            className="onside-btn onside-btn-acid min-h-11"
+          >
+            {loading ? (
+              <Loader
+                size={16}
+                color="currentColor"
+                className="animate-spin"
+                aria-hidden="true"
+              />
+            ) : null}
+            {loading
+              ? 'Redirecionando…'
+              : isSamePlan
+                ? 'Plano atual'
+                : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
+            {!isSamePlan && !loading ? (
+              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+            ) : null}
+          </button>
+        )}
       </div>
     </OnboardingLayout>
   )
