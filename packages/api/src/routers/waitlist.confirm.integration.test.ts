@@ -230,16 +230,6 @@ integrationTest(
   'join autenticado encerra a confirmação pendente e o link antigo não reverte',
   async () => {
     mockarEnvioDeEmail()
-    // Sem tocar no rate limit compartilhado: cada execução de `join`
-    // incrementaria `waitlist:ip:127.0.0.1` no banco de dev e envenenaria as
-    // janelas dos demais testes de integração.
-    mock.module('../lib/waitlist-rate-limit', () => ({
-      consumirLimitesWaitlist: async () => ({
-        allowed: true,
-        retryAfterMs: 0,
-        count: 0
-      })
-    }))
     const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
       import('@findsports_oficial/db'),
       import('./index'),
@@ -264,7 +254,12 @@ integrationTest(
 
     const caller = appRouter.createCaller({
       auth: null,
-      clientIp: '127.0.0.1',
+      // IP e e-mail únicos: o `join` passa pelo rate limit real sem somar na
+      // janela de `waitlist:ip:127.0.0.1` que os outros testes usam. Trocar
+      // `waitlist-rate-limit` por `mock.module` não serve — o mock vale para
+      // o processo inteiro do bun e quebrava `waitlist-rate-limit.test.ts`
+      // quando ele rodava depois deste arquivo.
+      clientIp: `integration-${crypto.randomUUID()}`,
       session: {
         session: { id: 's', userId: 'u', token: 't' },
         user: {
