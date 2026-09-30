@@ -47,6 +47,8 @@ function formatEventDate(startsAt: string | Date): {
 
 type Props = {
   event: AdminEvent
+  /** Presenças do jogo sobre a média do bar; ausente sem histórico. */
+  interestRatio?: number
   onEdit: (id: string) => void
   onDelete: (id: string) => void
   isDeleting: boolean
@@ -54,6 +56,7 @@ type Props = {
 
 export function EventListItem({
   event: e,
+  interestRatio,
   onEdit,
   onDelete,
   isDeleting
@@ -130,6 +133,12 @@ export function EventListItem({
         >
           {participants || e.championship}
         </div>
+        {interestRatio !== undefined && (
+          <div className="mt-1 text-[var(--onside-muted)] text-xs">
+            Interesse: {interestRatio.toLocaleString('pt-BR')}x a média deste
+            bar
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 gap-1">

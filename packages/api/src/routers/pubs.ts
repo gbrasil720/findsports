@@ -23,6 +23,7 @@ import { z } from 'zod'
 import { protectedProcedure, router } from '../index'
 import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
+import { readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
@@ -429,6 +430,7 @@ export const pubsRouter = router({
       // Como o recebimento, o teto sai resolvido: o torcedor sabe se o jogo
       // esgotou, não quantos lugares o dono definiu.
       const games = await withSeatAvailability(events, defaultCap)
+      const attendance = await readFanAttendance(ctx.session.user, events, now)
       return {
         ...publicBar,
         events: games.map(
@@ -440,7 +442,9 @@ export const pubsRouter = router({
             ...game
           }) => ({
             ...game,
-            reservationsSoldOut: receiving && soldOut
+            reservationsSoldOut: receiving && soldOut,
+            // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
+            attendance: attendance.get(game.id) ?? null
           })
         ),
         rating,

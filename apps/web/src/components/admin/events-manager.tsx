@@ -71,6 +71,16 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
     ...CATALOG_QUERY,
     meta: { errorToast: false }
   })
+  // Sinal relativo, nunca contagem (WEB-127). Falhou, a grade segue sem ele.
+  const { data: interest } = useQuery({
+    ...trpc.pub.getMyInterest.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const interestByEvent = new Map(
+    interest?.status === 'ready'
+      ? interest.events.map((item) => [item.eventId, item.ratio])
+      : []
+  )
   const events = eventsState.status === 'ready' ? eventsState.events : []
   const policyBlockReason = getCreateBlockReason(policyState)
   const sportsErrorMessage = sportsError
@@ -320,19 +330,28 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         ) : sortedEvents.length === 0 ? (
           <EmptyEventsState onCreate={openCreate} blockReason={blockReason} />
         ) : (
-          <ul className="space-y-2">
-            {sortedEvents.map((item) => (
-              <EventListItem
-                key={item.id}
-                event={item}
-                onEdit={openEdit}
-                onDelete={(id) => {
-                  deleteMutation.mutate({ eventId: id })
-                }}
-                isDeleting={deleteMutation.isPending}
-              />
-            ))}
-          </ul>
+          <>
+            {interest?.status === 'gathering' && (
+              <p className="mb-3 text-[var(--onside-muted)] text-sm">
+                Estamos reunindo dados sobre o interesse no seu bar. O sinal
+                aparece depois dos primeiros jogos.
+              </p>
+            )}
+            <ul className="space-y-2">
+              {sortedEvents.map((item) => (
+                <EventListItem
+                  key={item.id}
+                  event={item}
+                  interestRatio={interestByEvent.get(item.id)}
+                  onEdit={openEdit}
+                  onDelete={(id) => {
+                    deleteMutation.mutate({ eventId: id })
+                  }}
+                  isDeleting={deleteMutation.isPending}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </section>
 

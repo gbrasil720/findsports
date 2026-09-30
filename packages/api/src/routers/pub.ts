@@ -19,6 +19,7 @@ import {
   MAX_SCREEN_COUNT,
   normalizeAmenityIds
 } from '../lib/amenities'
+import { readInterestSignal } from '../lib/attendance'
 import {
   assertCanConfigureBarMenu,
   parseAverageSpendCentsInput,
@@ -482,6 +483,12 @@ export const pubRouter = router({
       },
       orderBy: (event, { asc }) => [asc(event.startsAt)]
     })
+  }),
+
+  /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
+  getMyInterest: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readInterestSignal(existingBar.id)
   }),
 
   getMyEventCreationPolicy: pubProcedure.query(async ({ ctx }) => {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Chat from 'reicon-react/icons/Chat'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
@@ -9,13 +10,15 @@ import {
 } from '@/domain/pub-profile'
 import { OwnerNudge } from './owner-notice'
 
-type Props = {
-  events: ProfileEvent[]
+type Props<T extends ProfileEvent> = {
+  events: T[]
   /** O jogo já mostrado no topo — não se repete na agenda. */
   highlightedEventId: string | null
   whatsappUrl: string | null
   onWhatsApp: () => void
   isOwner: boolean
+  /** "Vou assistir aqui" de cada jogo, quando cabe (WEB-127). */
+  renderPresence?: (event: T) => ReactNode
 }
 
 function EmptyAgenda({
@@ -82,13 +85,14 @@ function EmptyAgenda({
  * return null`) — o buraco que deixava a página parecendo inacabada. Agora a
  * ausência de agenda também é uma resposta, e leva a uma conversa.
  */
-export function EventsList({
+export function EventsList<T extends ProfileEvent>({
   events,
   highlightedEventId,
   whatsappUrl,
   onWhatsApp,
-  isOwner
-}: Props) {
+  isOwner,
+  renderPresence
+}: Props<T>) {
   const now = useMinuteNow()
   const rest = events.filter((event) => event.id !== highlightedEventId)
   const groups = groupEventsByDay(rest, new Date(now))
@@ -140,6 +144,7 @@ export function EventsList({
                           Ao vivo
                         </span>
                       )}
+                      {renderPresence?.(event)}
                     </li>
                   )
                 })}

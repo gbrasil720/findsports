@@ -281,6 +281,13 @@
       "when": 1790772871149,
       "tag": "0040_reservation_cap",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790773042383,
+      "tag": "0041_attendance",
+      "breakpoints": true
     }
   ]
 }

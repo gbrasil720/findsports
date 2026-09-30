@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
 import { appConfigRouter } from './app-config'
+import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { onboardingRouter } from './onboarding'
@@ -31,6 +32,7 @@ export const appRouter = router({
   ratings: ratingsRouter,
   reservationValidation: reservationValidationRouter,
   reservations: reservationsRouter,
-  barReservations: barReservationsRouter
+  barReservations: barReservationsRouter,
+  attendance: attendanceRouter
 })
 export type AppRouter = typeof appRouter
