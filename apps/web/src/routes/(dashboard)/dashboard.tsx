@@ -63,6 +63,7 @@ function toggled<T>(list: T[], item: T): T[] {
 
 function FanDashboard() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
+  const isFan = session?.user.role === 'fan'
   const navigate = useNavigate()
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -182,7 +183,7 @@ function FanDashboard() {
   // também abre o /dashboard, e o procedimento recusa quem não é torcedor.
   const pendingRatingsQuery = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
-    enabled: session?.user.role === 'fan',
+    enabled: isFan,
     retry: false
   })
   const submitRatingMutation = useMutation(
@@ -454,7 +455,7 @@ function FanDashboard() {
         count={displayedBars.length}
         locationState={locationState}
       />
-      {session?.user.role === 'fan' ? <AttendanceReportCard /> : null}
+      {isFan ? <AttendanceReportCard /> : null}
       {pendingRatingsQuery.data && pendingRatingsQuery.data.length > 0 ? (
         <PendingRatingCard
           pending={pendingRatingsQuery.data}
