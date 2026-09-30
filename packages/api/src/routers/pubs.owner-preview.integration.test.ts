@@ -3,6 +3,7 @@ import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 /**
  * `bar.is_active` nasce `false`, e `pubs.getById` respondia `NOT_FOUND` para
@@ -16,46 +17,10 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-function contextFor(userId: string, role: 'pub' | 'fan', now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Conta ${role}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
 integrationTest(
   'o dono abre a prévia do próprio bar inativo; mais ninguém abre',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const ownerId = crypto.randomUUID()
     const fanId = crypto.randomUUID()
     const barId = crypto.randomUUID()
