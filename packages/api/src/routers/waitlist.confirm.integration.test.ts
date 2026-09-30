@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { eq, inArray } from '@findsports_oficial/db'
+import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
@@ -230,16 +231,11 @@ integrationTest(
   'join autenticado encerra a confirmação pendente e o link antigo não reverte',
   async () => {
     mockarEnvioDeEmail()
-    // Sem tocar no rate limit compartilhado: cada execução de `join`
-    // incrementaria `waitlist:ip:127.0.0.1` no banco de dev e envenenaria as
-    // janelas dos demais testes de integração.
-    mock.module('../lib/waitlist-rate-limit', () => ({
-      consumirLimitesWaitlist: async () => ({
-        allowed: true,
-        retryAfterMs: 0,
-        count: 0
-      })
-    }))
+    // IP próprio desta execução: com `127.0.0.1`, cada `join` incrementaria a
+    // janela compartilhada no banco de dev e envenenaria os demais testes de
+    // integração. Sem `mock.module` do rate limit: ele é global no processo e
+    // trocava `consumirLimitesWaitlist` também em `waitlist-rate-limit.test.ts`.
+    const clientIp = `confirm-test-${crypto.randomUUID()}`
     const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
       import('@findsports_oficial/db'),
       import('./index'),
@@ -247,6 +243,7 @@ integrationTest(
     ])
 
     const email = `revert-${crypto.randomUUID()}@integration.invalid`
+    const rateLimitKeys = [`waitlist:email:${email}`, `waitlist:ip:${clientIp}`]
     const confirmation = await createWaitlistToken()
 
     // Estado pré-existente: inscrição feita por formulário anônimo, com o
@@ -264,7 +261,7 @@ integrationTest(
 
     const caller = appRouter.createCaller({
       auth: null,
-      clientIp: '127.0.0.1',
+      clientIp,
       session: {
         session: { id: 's', userId: 'u', token: 't' },
         user: {
@@ -314,6 +311,7 @@ integrationTest(
       expect(final.city).toBe('Cidade nova')
     } finally {
       await db.delete(waitlistEntries).where(eq(waitlistEntries.email, email))
+      await db.delete(rateLimit).where(inArray(rateLimit.key, rateLimitKeys))
     }
   }
 )
