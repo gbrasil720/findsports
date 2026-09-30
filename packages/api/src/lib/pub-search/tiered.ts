@@ -54,15 +54,8 @@ export async function executarBuscaEmCamadas(
   input: SearchInput
 ): Promise<SearchPage> {
   const { cursor, limit } = input
-  const {
-    origin,
-    radiusMeters,
-    sportFilter,
-    teamFilter,
-    dateFilter,
-    champBarFilter,
-    amenityFilter
-  } = montarFiltrosBusca(input)
+  const { origin, radiusMeters, eventFilter, champBarFilter, amenityFilter } =
+    montarFiltrosBusca(input)
 
   const champBarFilterB = champBarFilter(sql`b.name`)
   const champBarFilterR = champBarFilter(sql`r.name`)
@@ -150,10 +143,8 @@ export async function executarBuscaEmCamadas(
         ${classicRuleLateral(sql`e`)}
         WHERE e.bar_id = b.id
           AND e.starts_at >= NOW()
-          ${sportFilter}
-          ${teamFilter}
+          ${eventFilter}
           ${champBarFilterB}
-          ${dateFilter}
         ORDER BY e.starts_at ASC, e.id ASC
         LIMIT 1
       ) agg ON agg.next_event_at IS NOT NULL
@@ -196,10 +187,8 @@ export async function executarBuscaEmCamadas(
       FROM event e
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
-        ${sportFilter}
-        ${teamFilter}
+        ${eventFilter}
         ${champBarFilterR}
-        ${dateFilter}
     ) cnt ON true
     LEFT JOIN LATERAL (
       SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants

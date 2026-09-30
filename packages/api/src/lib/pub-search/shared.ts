@@ -158,12 +158,14 @@ export type FiltrosBusca = {
   /** Ponto de busca como geography, casado com os índices GiST (0013/0018). */
   origin: SQL
   radiusMeters: number
-  sportFilter: SQL
-  /** Jogo com ao menos um dos times escolhidos (OU). */
-  teamFilter: SQL
+  /**
+   * Recortes que só olham o jogo: esporte, data e times (jogo com ao menos
+   * um dos escolhidos). Um fragmento só, porque todo lugar que procura jogo
+   * aplica os três juntos.
+   */
+  eventFilter: SQL
   /** Texto do jogo: campeonato, time participante ou `participant_free_text`. */
   champFilter: SQL
-  dateFilter: SQL
   /**
    * Texto do jogo OU nome do bar. O alias da
    * tabela do bar muda conforme a query, então entra como fragmento montado
@@ -219,19 +221,24 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   return {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
     radiusMeters: radiusKm * 1000,
-    sportFilter: sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
-    teamFilter: teamIds?.length
-      ? sql`AND EXISTS (
-          SELECT 1 FROM event_participants ep
-          WHERE ep.event_id = e.id
-            AND ep.team_id IN (${sql.join(
-              teamIds.map((id) => sql`${id}`),
-              sql`, `
-            )})
-        )`
-      : sql``,
+    eventFilter: sql.join(
+      [
+        sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
+        date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
+        teamIds?.length
+          ? sql`AND EXISTS (
+              SELECT 1 FROM event_participants ep
+              WHERE ep.event_id = e.id
+                AND ep.team_id IN (${sql.join(
+                  teamIds.map((id) => sql`${id}`),
+                  sql`, `
+                )})
+            )`
+          : sql``
+      ],
+      sql` `
+    ),
     champFilter: championship ? sql`AND ${textoDoJogo}` : sql``,
-    dateFilter: date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
     champBarFilter: (nomeDoBar) =>
       championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``,
     amenityFilter: (barAlias) =>

@@ -54,6 +54,12 @@ export const Route = createFileRoute('/(dashboard)/dashboard')({
   component: FanDashboard
 })
 
+function toggled<T>(list: T[], item: T): T[] {
+  return list.includes(item)
+    ? list.filter((it) => it !== item)
+    : [...list, item]
+}
+
 function FanDashboard() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const navigate = useNavigate()
@@ -164,11 +170,11 @@ function FanDashboard() {
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
   // Falha aqui só esconde o filtro de times; a busca segue.
-  const myTeamsQuery = useQuery({
-    ...trpc.pubs.getMyTeams.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const myTeams = myTeamsQuery.data ?? []
+  const myTeams =
+    useQuery({
+      ...trpc.pubs.getMyTeams.queryOptions(),
+      meta: { errorToast: false }
+    }).data ?? []
 
   // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
   // busca — o card some e a tela segue fazendo o trabalho principal.
@@ -336,18 +342,10 @@ function FanDashboard() {
     setSort('relevance')
   }
   const toggleAmenity = (id: number) => {
-    setAmenities((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    )
+    setAmenities((current) => toggled(current, id))
   }
   const toggleTeam = (id: string) => {
-    setTeamIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    )
+    setTeamIds((current) => toggled(current, id))
   }
   const applySuggestion = (kind: SuggestionKind) => {
     if (kind === 'brasileirao') {

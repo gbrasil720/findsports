@@ -42,15 +42,8 @@ export async function executarBuscaLinear(
   input: SearchInput
 ): Promise<SearchPage> {
   const { cursor, limit } = input
-  const {
-    origin,
-    radiusMeters,
-    sportFilter,
-    teamFilter,
-    dateFilter,
-    champBarFilter,
-    amenityFilter
-  } = montarFiltrosBusca(input)
+  const { origin, radiusMeters, eventFilter, champBarFilter, amenityFilter } =
+    montarFiltrosBusca(input)
 
   const champBarFilterN = champBarFilter(sql`n.name`)
   const amenityFilterB = amenityFilter(sql`b`)
@@ -133,10 +126,8 @@ export async function executarBuscaLinear(
       ${classicRuleLateral(sql`e`)}
       WHERE e.bar_id = n.id
         AND e.starts_at >= NOW()
-        ${sportFilter}
-        ${teamFilter}
+        ${eventFilter}
         ${champBarFilterN}
-        ${dateFilter}
       ORDER BY e.starts_at ASC, e.id ASC
       LIMIT 1
     ) agg ON agg.event_count > 0
