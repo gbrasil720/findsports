@@ -322,3 +322,30 @@ export const rollupCheckpointRelations = relations(
     })
   })
 )
+
+/* ------------------------------------------------------------------ */
+/*  analytics_retention_run — registro de cada execução (WEB-117)     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Uma linha por execução de `runAnalyticsRetention`, com sucesso ou falha.
+ * Antes não havia como saber se a retenção já tinha rodado alguma vez; a
+ * última linha é a resposta. Contadores nulos quando a execução falhou.
+ */
+export const analyticsRetentionRun = pgTable('analytics_retention_run', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  trigger: text('trigger', { enum: ['cron', 'admin'] }).notNull(),
+  retentionDays: integer('retention_days').notNull(),
+  apagarEventosBrutos: boolean('apagar_eventos_brutos').notNull(),
+  ok: boolean('ok').notNull(),
+  diasFinalizados: integer('dias_finalizados'),
+  eventosPodaveis: integer('eventos_podaveis'),
+  eventosApagados: integer('eventos_apagados'),
+  error: text('error'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true })
+    .defaultNow()
+    .notNull()
+})
