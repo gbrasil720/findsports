@@ -20,7 +20,7 @@ import { recommendationEvent } from '@findsports_oficial/db/schema/recommendatio
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { fanProcedure, protectedProcedure, router } from '../index'
 import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
@@ -436,7 +436,7 @@ export const pubsRouter = router({
       }
     }),
 
-  favorite: protectedProcedure
+  favorite: fanProcedure
     .input(
       z.object({
         barId: z.string().uuid(),
@@ -445,13 +445,6 @@ export const pubsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores podem favoritar bares.'
-        })
-      }
 
       const visibleBar = await db.query.bar.findFirst({
         where: and(eq(bar.id, input.barId), eq(bar.isActive, true)),
@@ -493,7 +486,7 @@ export const pubsRouter = router({
       return { success: true }
     }),
 
-  unfavorite: protectedProcedure
+  unfavorite: fanProcedure
     .input(
       z.object({
         barId: z.string().uuid(),
@@ -502,13 +495,6 @@ export const pubsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores podem favoritar bares.'
-        })
-      }
 
       await db.transaction(async (tx) => {
         const removed = await tx
@@ -541,15 +527,8 @@ export const pubsRouter = router({
       return { isFavorited: !!result }
     }),
 
-  getFavorites: protectedProcedure.query(async ({ ctx }) => {
+  getFavorites: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'fan') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas torcedores podem acessar favoritos.'
-      })
-    }
 
     const favorites = await db.query.userFavoriteBars.findMany({
       where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
@@ -578,15 +557,8 @@ export const pubsRouter = router({
     return favorites
   }),
 
-  getMyPreferences: protectedProcedure.query(async ({ ctx }) => {
+  getMyPreferences: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'fan') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas torcedores têm preferências de esporte.'
-      })
-    }
 
     return db.query.userPreferenceSports.findMany({
       where: eq(userPreferenceSports.userId, userId),
@@ -594,7 +566,7 @@ export const pubsRouter = router({
     })
   }),
 
-  updateMyPreferences: protectedProcedure
+  updateMyPreferences: fanProcedure
     .input(
       z.object({
         sportIds: z
@@ -604,13 +576,6 @@ export const pubsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores podem atualizar preferências.'
-        })
-      }
 
       await db.transaction(async (tx) => {
         // Remove só os esportes desmarcados: a FK de `user_favorite_teams`
@@ -632,14 +597,7 @@ export const pubsRouter = router({
       return { success: true }
     }),
 
-  getMyTeams: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'fan') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas torcedores acompanham times.'
-      })
-    }
-
+  getMyTeams: fanProcedure.query(async ({ ctx }) => {
     return db
       .select({ id: team.id, name: team.name, sportId: team.sportId })
       .from(userFavoriteTeams)
@@ -648,16 +606,9 @@ export const pubsRouter = router({
       .orderBy(team.name)
   }),
 
-  updateMyTeams: protectedProcedure
+  updateMyTeams: fanProcedure
     .input(z.object({ teamIds: favoriteTeamIdsSchema }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores acompanham times.'
-        })
-      }
-
       await db.transaction((tx) =>
         replaceFavoriteTeams(tx, ctx.session.user.id, input.teamIds)
       )

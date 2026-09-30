@@ -7,7 +7,7 @@ import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { fanProcedure, protectedProcedure, router } from '../index'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
 
 /**
@@ -180,7 +180,7 @@ export const ratingsRouter = router({
    * `(bar, torcedor, jogo)`, e a trigger de contadores trata `UPDATE`
    * mexendo só no numerador. Quem mudou de ideia não infla a amostra.
    */
-  submit: protectedProcedure
+  submit: fanProcedure
     .input(
       z.object({
         barId: z.string().uuid(),
@@ -189,13 +189,6 @@ export const ratingsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.session.user.role !== 'fan') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas torcedores podem avaliar bares.'
-        })
-      }
-
       const eligibility = await checkEligibility({
         userId: ctx.session.user.id,
         barId: input.barId,

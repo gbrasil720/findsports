@@ -1,12 +1,7 @@
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import {
-  adminProcedure,
-  protectedProcedure,
-  pubProcedure,
-  router
-} from '../index'
+import { adminProcedure, fanProcedure, pubProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
@@ -131,7 +126,7 @@ export const commercialAnalyticsRouter = router({
    * Record a commercial event (fan action on a bar profile).
    * Authenticated fan only. No impersonation.
    */
-  recordCommercialEvent: protectedProcedure
+  recordCommercialEvent: fanProcedure
     .input(
       z.object({
         pubId: z.string().uuid(),

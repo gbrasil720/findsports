@@ -6,7 +6,7 @@ import {
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, pubProcedure, router } from '../index'
+import { fanProcedure, pubProcedure, router } from '../index'
 import { loadRecommendationCandidates } from '../lib/recommendations/load-candidates'
 import {
   isQualityProtected,
@@ -27,15 +27,6 @@ const runEventSchema = z.object({
   runId: z.string().uuid(),
   barId: z.string().uuid()
 })
-
-function assertFan(role: string): void {
-  if (role !== 'fan') {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'Apenas torcedores recebem sugestões personalizadas.'
-    })
-  }
-}
 
 function normalizedRadius(value: number): 1 | 3 | 5 | 10 {
   return value === 1 || value === 3 || value === 5 || value === 10 ? value : 3
@@ -61,45 +52,42 @@ function reasonLabel(item: ScoredRecommendation): string {
 }
 
 export const recommendationsRouter = router({
-  get: protectedProcedure
-    .input(coordinatesSchema)
-    .query(async ({ ctx, input }) => {
-      assertFan(ctx.session.user.role)
-      const now = new Date()
-      const radiusKm = normalizedRadius(ctx.session.user.searchRadiusKm)
-      const candidates = await loadRecommendationCandidates({
-        userId: ctx.session.user.id,
-        lat: input.lat,
-        lng: input.lng,
-        radiusKm,
-        now
-      })
-      const ranked = rankRecommendations(candidates, { now, radiusKm })
+  get: fanProcedure.input(coordinatesSchema).query(async ({ ctx, input }) => {
+    const now = new Date()
+    const radiusKm = normalizedRadius(ctx.session.user.searchRadiusKm)
+    const candidates = await loadRecommendationCandidates({
+      userId: ctx.session.user.id,
+      lat: input.lat,
+      lng: input.lng,
+      radiusKm,
+      now
+    })
+    const ranked = rankRecommendations(candidates, { now, radiusKm })
 
-      return {
-        runId: crypto.randomUUID(),
-        radiusKm,
-        recommendations: ranked.map((item) => ({
-          bar: {
-            id: item.bar.id,
-            name: item.bar.name,
-            neighborhood: item.bar.neighborhood,
-            city: item.bar.city,
-            latitude: item.bar.latitude,
-            longitude: item.bar.longitude,
-            photoUrl: item.bar.photoUrl,
-            distanceKm: item.bar.distanceKm,
-            eventCount: item.bar.eventCount,
-            nextEvent: item.bar.nextEvent
-          },
-          reason: item.reason,
-          reasonLabel: reasonLabel(item),
-          isExpandedRadius: item.isExpandedRadius
-        }))
-      }
-    }),
+    return {
+      runId: crypto.randomUUID(),
+      radiusKm,
+      recommendations: ranked.map((item) => ({
+        bar: {
+          id: item.bar.id,
+          name: item.bar.name,
+          neighborhood: item.bar.neighborhood,
+          city: item.bar.city,
+          latitude: item.bar.latitude,
+          longitude: item.bar.longitude,
+          photoUrl: item.bar.photoUrl,
+          distanceKm: item.bar.distanceKm,
+          eventCount: item.bar.eventCount,
+          nextEvent: item.bar.nextEvent
+        },
+        reason: item.reason,
+        reasonLabel: reasonLabel(item),
+        isExpandedRadius: item.isExpandedRadius
+      }))
+    }
+  }),
 
-  recordImpressions: protectedProcedure
+  recordImpressions: fanProcedure
     .input(
       z.object({
         runId: z.string().uuid(),
@@ -117,7 +105,6 @@ export const recommendationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      assertFan(ctx.session.user.role)
       await db
         .insert(recommendationEvent)
         .values(
@@ -135,10 +122,9 @@ export const recommendationsRouter = router({
       return { success: true }
     }),
 
-  recordOpen: protectedProcedure
+  recordOpen: fanProcedure
     .input(runEventSchema)
     .mutation(async ({ ctx, input }) => {
-      assertFan(ctx.session.user.role)
       await db
         .insert(recommendationEvent)
         .values({
@@ -151,10 +137,9 @@ export const recommendationsRouter = router({
       return { success: true }
     }),
 
-  dismiss: protectedProcedure
+  dismiss: fanProcedure
     .input(runEventSchema)
     .mutation(async ({ ctx, input }) => {
-      assertFan(ctx.session.user.role)
       const result = await db.execute(sql`
         WITH inserted AS (
           INSERT INTO recommendation_event (
@@ -187,8 +172,7 @@ export const recommendationsRouter = router({
       return { success: true }
     }),
 
-  reset: protectedProcedure.mutation(async ({ ctx }) => {
-    assertFan(ctx.session.user.role)
+  reset: fanProcedure.mutation(async ({ ctx }) => {
     const now = new Date()
     await db.transaction(async (tx) => {
       await tx
