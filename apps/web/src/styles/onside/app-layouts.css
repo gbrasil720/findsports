@@ -277,8 +277,8 @@
   max-height: min(90dvh, 900px);
 }
 
-/* ─── Hint popover surface ─── */
-.onside-hint {
+/* ─── Popover surface (portalado para fora de .onside-app) ─── */
+.onside-popover {
   border: 1.5px solid var(--onside-ink) !important;
   border-radius: 0 !important;
   background: var(--onside-paper) !important;
