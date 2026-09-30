@@ -48,6 +48,7 @@ export function AdminTabs({ activeSection, onChange }: Props) {
         className="onside-admin-tablist"
       />
 
+      <Link to="/admin/validate">Validar código</Link>
       <Link to="/admin/billing">Assinatura e pagamentos</Link>
     </nav>
   )

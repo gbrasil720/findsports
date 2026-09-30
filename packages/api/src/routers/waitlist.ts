@@ -5,16 +5,13 @@ import { z } from 'zod'
 import { adminProcedure, publicProcedure, router } from '../index'
 import { getAppConfig } from '../lib/app-config'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
+import { incrementWindow } from '../lib/rate-limit-store'
 import { sendWaitlistEmail, waitlistUrl } from '../lib/waitlist-email'
 import {
   deriveWaitlistInviteStatus,
   type WaitlistInviteStatus
 } from '../lib/waitlist-invite-status'
-import {
-  consumirLimitesWaitlist,
-  type DecisaoRateLimit,
-  type JanelaLimite
-} from '../lib/waitlist-rate-limit'
+import { consumirLimitesWaitlist } from '../lib/waitlist-rate-limit'
 import {
   createWaitlistToken,
   hashWaitlistToken,
@@ -98,35 +95,6 @@ function localPreviewUrl(delivered: boolean, url: string) {
   return !delivered && process.env.NODE_ENV !== 'production' ? url : undefined
 }
 
-async function incrementarWaitlist(
-  key: string,
-  limite: JanelaLimite
-): Promise<DecisaoRateLimit> {
-  const now = Date.now()
-  const result = await db.execute(sql`
-    INSERT INTO rate_limit (id, key, count, last_request)
-    VALUES (${crypto.randomUUID()}, ${key}, 1, ${now})
-    ON CONFLICT (key) DO UPDATE SET
-      count = CASE
-        WHEN ${now} - rate_limit.last_request >= ${limite.windowMs} THEN 1
-        ELSE rate_limit.count + 1
-      END,
-      last_request = CASE
-        WHEN ${now} - rate_limit.last_request >= ${limite.windowMs} THEN ${now}
-        ELSE rate_limit.last_request
-      END
-    RETURNING count
-  `)
-  const count = Number(
-    (result.rows[0] as { count: string | number } | undefined)?.count ?? 0
-  )
-  return {
-    allowed: count <= limite.max,
-    retryAfterMs: count <= limite.max ? 0 : limite.windowMs,
-    count
-  }
-}
-
 type LinhaDeConvite = {
   id: string
   email: string
@@ -171,13 +139,13 @@ async function lerConvitePorHash(hash: string) {
 async function limitarReenvioDeConvite(args: { ip: string; hash: string }) {
   const limites = await getAppConfig('waitlist.rate_limit')
   if (!limites.enabled) return
-  const porConvite = await incrementarWaitlist(
+  const porConvite = await incrementWindow(
     `waitlist:invite-resend:${args.hash}`,
     limites.email
   )
   const decisao =
     porConvite.allowed && args.ip && args.ip !== 'unknown'
-      ? await incrementarWaitlist(
+      ? await incrementWindow(
           `waitlist:invite-resend-ip:${args.ip}`,
           limites.ip
         )
@@ -551,7 +519,7 @@ export const waitlistRouter = router({
         ip: ctx.clientIp,
         email,
         limites: limits,
-        incrementar: incrementarWaitlist
+        incrementar: incrementWindow
       })
       if (!decision.allowed) {
         throw new TRPCError({

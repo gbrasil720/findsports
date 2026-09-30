@@ -82,8 +82,9 @@ export const bar = pgTable(
     // Só exibição. A busca não filtra por número de telas.
     screenCount: smallint('screen_count'),
     // Oferta da casa (WEB-120). Guardada independente do plano: perder o
-    // Elite esconde o texto do perfil público, mas não o apaga. Quem decide
-    // se aparece é `packages/api/src/lib/house-offer.ts`. Fica fora de
+    // Elite ou desligar o recebimento de reservas esconde o texto do perfil
+    // público, mas não o apaga. Quem decide se aparece é `pubs.getById`,
+    // pela regra de `packages/api/src/lib/reservation-intake.ts`. Fica fora de
     // `PUBLIC_BAR_COLUMNS` de propósito. A reserva copia o valor em
     // `reservation.offer_snapshot` e nunca volta a ler esta coluna.
     houseOffer: text('house_offer'),
@@ -93,6 +94,13 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
     menuUrl: text('menu_url'),
     averageSpendCents: integer('average_spend_cents'),
+    // Disposição de receber reservas (WEB-131): o bar QUER, além de PODER
+    // (Elite vigente). Desligado por padrão — assinar Elite não inscreve
+    // ninguém em reserva. O recebimento efetivo exige as duas coisas; a
+    // regra vive em `packages/api/src/lib/reservation-intake.ts`.
+    acceptsReservations: boolean('accepts_reservations')
+      .default(false)
+      .notNull(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui.

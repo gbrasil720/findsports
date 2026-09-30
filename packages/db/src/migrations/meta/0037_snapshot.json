@@ -1,6 +1,6 @@
 {
-  "id": "1884bd53-9dd7-41eb-ac42-e13e9d3d5d34",
-  "prevId": "f8ce4dfe-273e-44d1-91ac-0042117207db",
+  "id": "98c91ebe-9e81-4a93-b249-77ac619912d6",
+  "prevId": "1884bd53-9dd7-41eb-ac42-e13e9d3d5d34",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1641,6 +1641,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "menu_url": {
+          "name": "menu_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "average_spend_cents": {
+          "name": "average_spend_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "accepts_reservations": {
           "name": "accepts_reservations",
           "type": "boolean",
@@ -1865,6 +1877,14 @@
         "bar_house_offer_length": {
           "name": "bar_house_offer_length",
           "value": "\"bar\".\"house_offer\" IS NULL OR char_length(\"bar\".\"house_offer\") BETWEEN 1 AND 140"
+        },
+        "bar_menu_url_valid": {
+          "name": "bar_menu_url_valid",
+          "value": "\"bar\".\"menu_url\" IS NULL OR (\"bar\".\"menu_url\" ~ '^https?://' AND char_length(\"bar\".\"menu_url\") <= 2048)"
+        },
+        "bar_average_spend_cents_range": {
+          "name": "bar_average_spend_cents_range",
+          "value": "\"bar\".\"average_spend_cents\" IS NULL OR \"bar\".\"average_spend_cents\" BETWEEN 1 AND 100000"
         }
       },
       "isRLSEnabled": false

@@ -119,10 +119,40 @@ encerramento efetivo e não autoriza excluir a conta do bar.
 
 Texto curto e opcional em que o bar diz o que oferece a quem chega pela
 Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
-valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`,
-ou `trialing` dentro do período); sem ele o texto some do perfil público, mas
-continua guardado. Uma reserva copia o texto na criação e não acompanha
-mudanças posteriores.
+valida o conteúdo. Configurar exige plano Elite vigente (`active`, ou
+`trialing` dentro do período); exibir exige também o recebimento de reservas
+ligado, porque o único resgate da oferta é o código de uma reserva. Sem uma das
+duas coisas o texto some do perfil público, mas continua guardado. Uma reserva
+copia o texto na criação e não acompanha mudanças posteriores.
+
+## Recebimento de reservas
+
+Interruptor do bar, no painel, que diz se ele **quer** receber pedidos de
+reserva pela Onside. Desligado por padrão: assinar Elite dá a capacidade, não
+inscreve o bar numa operação que ele não pediu. Ligar exige Elite vigente; o
+recebimento efetivo exige as duas coisas. Desligar só barra pedidos novos —
+reservas já criadas continuam legíveis, canceláveis e com código válido dentro
+da janela. Não é teto por jogo (WEB-132).
+
+## Código de validação
+
+Código curto emitido com a reserva, digitado pelo bar para provar que o
+torcedor veio da Onside e liberar a oferta da casa. Resolve o bar sozinho, mas
+só é aceito de uma sessão dona daquele bar. Admite tantos usos quanto a
+quantidade de pessoas da reserva, porque o grupo chega escalonado.
+
+## Janela de validação
+
+Intervalo em que o código é aceito: de 3 horas antes de `startsAt` até 3 horas
+depois do fim derivado. Abre cedo para cobrir o pré-jogo e fecha tarde para
+sobreviver a queda de rede em dia de clássico.
+
+## Chegada
+
+Uma pessoa da reserva registrada pelo bar na página de validação — um `+1` no
+código. Só se registra em reserva confirmada e dentro da janela de validação.
+Pode ser desfeita por um prazo curto; desfazer devolve o uso ao código e
+mantém o registro para auditoria.
 
 ## Cardápio e preço médio
 

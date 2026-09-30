@@ -38,6 +38,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
+import { assertCanEnableReservations } from '../lib/reservation-intake'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -393,6 +394,39 @@ export const pubRouter = router({
         menuUrl: updated?.menuUrl ?? null,
         averageSpendCents: updated?.averageSpendCents ?? null
       }
+    }),
+
+  /**
+   * Interruptor de recebimento de reservas (WEB-131).
+   *
+   * Ligar exige Elite vigente, conferido aqui a partir da assinatura. Desligar
+   * vale sempre — inclusive para quem perdeu o plano com o interruptor ligado.
+   *
+   * Só decide pedidos novos: não toca em reserva existente, código emitido nem
+   * `offer_snapshot`.
+   */
+  updateAcceptsReservations: protectedProcedure
+    .input(z.object({ acceptsReservations: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'pub') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas contas de bar podem acessar este recurso.'
+        })
+      }
+
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      if (input.acceptsReservations) {
+        assertCanEnableReservations(existingBar.subscription ?? null)
+      }
+
+      const [updated] = await db
+        .update(bar)
+        .set({ acceptsReservations: input.acceptsReservations })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ acceptsReservations: bar.acceptsReservations })
+
+      return { acceptsReservations: updated?.acceptsReservations ?? false }
     }),
 
   /**

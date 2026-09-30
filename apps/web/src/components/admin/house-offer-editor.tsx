@@ -4,25 +4,14 @@ import {
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { Link } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useId, useState } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
-import CircleInfo from 'reicon-react/icons/CircleInfo'
-
-/**
- * `eligible` vem de `getMySubscription().currentPlan === 'elite'` — o plano
- * vigente, com status, e não `bar.plan`. É só para decidir o que desenhar: o
- * procedimento confere o plano de novo antes de gravar.
- */
-export type HouseOfferAccess =
-  | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
-  | { status: 'ready'; eligible: boolean }
+import type { EliteAccess } from './admin-model'
+import { EliteLockedCallout, PlanCheckError } from './elite-callouts'
 
 type Props = {
   /** Texto gravado. Continua existindo mesmo sem Elite. */
   houseOffer: string | null
-  access: HouseOfferAccess
+  access: EliteAccess
   isSaving: boolean
   saveError: string | null
   /** `null` limpa a oferta. Rejeita quando o servidor recusa. */
@@ -56,8 +45,8 @@ export function HouseOfferEditor({
       </h2>
       <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
         O que você oferece a quem chega pela Onside. Aparece no perfil público
-        do seu bar. A promessa é sua com o cliente: a Onside não define nem
-        confere o conteúdo.
+        do seu bar enquanto o recebimento de reservas estiver ligado. A promessa
+        é sua com o cliente: a Onside não define nem confere o conteúdo.
       </p>
 
       <div className="mt-5">
@@ -69,20 +58,7 @@ export function HouseOfferEditor({
             <Skeleton className="h-11 w-36" />
           </div>
         ) : access.status === 'error' ? (
-          <div className="onside-callout onside-callout-danger" role="alert">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm">
-                Não foi possível conferir o seu plano.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={access.retry}
-              className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-            >
-              Tentar de novo
-            </button>
-          </div>
+          <PlanCheckError retry={access.retry} />
         ) : access.eligible ? (
           <HouseOfferForm
             houseOffer={houseOffer}
@@ -100,38 +76,19 @@ export function HouseOfferEditor({
 
 function LockedHouseOffer({ houseOffer }: { houseOffer: string | null }) {
   return (
-    <div className="onside-callout onside-callout-stone">
-      <CircleInfo
-        size={20}
-        color="currentColor"
-        className="mt-0.5 shrink-0"
-        aria-hidden="true"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="mb-0.5 font-semibold text-sm">
-          Disponível no plano Elite
+    <EliteLockedCallout>
+      {houseOffer ? (
+        <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
+          Sua oferta continua guardada — “{houseOffer}” — mas não aparece no
+          perfil enquanto o plano Elite não estiver ativo.
         </p>
-        {houseOffer ? (
-          <p className="text-sm opacity-90 [overflow-wrap:anywhere]">
-            Sua oferta continua guardada — “{houseOffer}” — mas não aparece no
-            perfil enquanto o plano Elite não estiver ativo.
-          </p>
-        ) : (
-          <p className="text-sm opacity-90">
-            Com o Elite, você escreve o que oferece a quem chega pela Onside e o
-            texto aparece no perfil do bar.
-          </p>
-        )}
-      </div>
-      <Link
-        to="/plan"
-        search={{ origin: 'admin' }}
-        className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-      >
-        Ver planos
-        <ArrowRight size={13} color="currentColor" aria-hidden="true" />
-      </Link>
-    </div>
+      ) : (
+        <p className="text-sm opacity-90">
+          Com o Elite, você escreve o que oferece a quem chega pela Onside e o
+          texto aparece no perfil do bar.
+        </p>
+      )}
+    </EliteLockedCallout>
   )
 }
 

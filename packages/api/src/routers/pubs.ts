@@ -16,7 +16,6 @@ import { getAppConfig } from '../lib/app-config'
 import { resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
-import { resolvePublicHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -26,6 +25,7 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import { receivesReservations } from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
 
@@ -275,11 +275,12 @@ export const pubsRouter = router({
           ratingPositive: true,
           houseOffer: true,
           menuUrl: true,
-          averageSpendCents: true
+          averageSpendCents: true,
+          acceptsReservations: true
         },
         with: {
-          // Só para decidir se a oferta da casa, o cardápio e o gasto médio
-          // aparecem; sai da resposta.
+          // Só para decidir o recebimento de reservas, a oferta da casa, o
+          // cardápio e o gasto médio; sai da resposta.
           // `plan` acima é projeção que ignora o status da assinatura.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
@@ -325,10 +326,11 @@ export const pubsRouter = router({
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
       //
-      // A oferta da casa segue a mesma lógica: sem Elite vigente o cliente
-      // recebe `null`, não o texto com um aviso para esconder. Vale também
-      // para a prévia do dono — ela mostra o que o torcedor vê. Cardápio e
-      // gasto médio idem, com Pro ou Elite.
+      // Recebimento de reservas e oferta da casa seguem a mesma lógica: o
+      // cliente recebe o efetivo (quer E pode), nunca o interruptor cru nem o
+      // texto com um aviso para esconder. Vale também para a prévia do dono —
+      // ela mostra o que o torcedor vê. Cardápio e gasto médio idem, com Pro
+      // ou Elite.
       const {
         userId,
         ratingCount,
@@ -336,6 +338,7 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
+        acceptsReservations,
         subscription,
         ...publicBar
       } = result
@@ -350,14 +353,18 @@ export const pubsRouter = router({
             }
           : null
 
+      const receiving = receivesReservations(
+        acceptsReservations,
+        subscription ?? null,
+        now
+      )
       return {
         ...publicBar,
         rating,
-        houseOffer: resolvePublicHouseOffer(
-          houseOffer,
-          subscription ?? null,
-          now
-        ),
+        // O único resgate da oferta é o código de uma reserva: sem
+        // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
+        houseOffer: receiving ? houseOffer : null,
+        acceptsReservations: receiving,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
           subscription ?? null,

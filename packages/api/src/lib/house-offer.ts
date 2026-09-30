@@ -47,16 +47,3 @@ export function parseHouseOfferInput(input: string | null): string | null {
   }
   return value
 }
-
-/**
- * O que o perfil público mostra. Sem Elite vigente, `null` — o texto continua
- * gravado e volta a aparecer se o plano voltar.
- */
-export function resolvePublicHouseOffer(
-  houseOffer: string | null,
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): string | null {
-  if (!houseOffer) return null
-  return canConfigureHouseOffer(subscription, now) ? houseOffer : null
-}
