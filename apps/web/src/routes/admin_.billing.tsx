@@ -14,6 +14,7 @@ import {
   getCustomerPortalUrl,
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
+import { getLapsedPlan, LAPSED_LABEL } from '@/lib/lapsed-plan'
 import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingError } from '@/lib/user-facing-error'
@@ -123,8 +124,15 @@ function BillingPage() {
   }
 
   const plan = subscription?.currentPlan
-  const planInfo = plan ? getPlan(plan) : null
-  const statusInfo = STATUS_LABEL[subscription?.status ?? '']
+  // Plano parado continua sendo o plano do bar: é aqui que o dono regulariza
+  // (WEB-141). Sem isso a página dizia "nenhuma assinatura" para quem deve.
+  const lapsed = getLapsedPlan(subscription)
+  const shownPlan = plan ?? lapsed?.plan
+  const planInfo = shownPlan ? getPlan(shownPlan) : null
+  const statusInfo =
+    lapsed?.reason === 'trial_ended'
+      ? { ...STATUS_LABEL.past_due, label: LAPSED_LABEL.trial_ended }
+      : STATUS_LABEL[subscription?.status ?? '']
 
   return (
     <AppShell variant="pub" userMeta="Assinatura">
@@ -240,7 +248,16 @@ function BillingPage() {
                   ))}
                 </ul>
 
-                {subscription?.currentPeriodEnd ? (
+                {lapsed ? (
+                  <p className="mt-4 text-sm text-[var(--onside-live-text)]">
+                    {lapsed.reason === 'past_due'
+                      ? 'O último pagamento não foi confirmado.'
+                      : 'O trial gratuito terminou sem pagamento confirmado.'}{' '}
+                    Recursos do plano, como o cardápio no perfil, ficam
+                    suspensos até a assinatura ser regularizada. Atualize o
+                    método de pagamento em “Gerenciar assinatura”.
+                  </p>
+                ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
                     {subscription.status === 'trialing'
                       ? `Trial gratuito até ${formatDate(subscription.currentPeriodEnd)}`

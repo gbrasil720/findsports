@@ -105,7 +105,7 @@ function renderizar(
         planState={
           plan === 'error'
             ? { status: 'error' }
-            : { status: 'ready', plan, currentPlan: plan }
+            : { status: 'ready', plan, currentPlan: plan, lapsed: null }
         }
         profileState={profileState}
       />

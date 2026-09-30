@@ -43,16 +43,31 @@ function renderizar(
 describe('HouseOfferEditor', () => {
   test('sem Elite não oferece campo e aponta para os planos', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
       null
     )
     expect(doc.querySelector('textarea')).toBeNull()
     expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
   })
 
+  // WEB-141: Pro parado não dá Elite; regularizar não libera a oferta.
+  test('Pro com pagamento pendente continua indo para os planos', () => {
+    const doc = renderizar(
+      {
+        status: 'ready',
+        plan: 'pro',
+        currentPlan: null,
+        lapsed: { plan: 'pro', reason: 'past_due' }
+      },
+      null
+    )
+    expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
+    expect(doc.querySelector('a[href="/admin/billing"]')).toBeNull()
+  })
+
   test('sem Elite avisa que o texto salvo continua guardado', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
       'Chopp em dobro'
     )
     expect(doc.body.textContent).toContain('Chopp em dobro')
@@ -61,7 +76,7 @@ describe('HouseOfferEditor', () => {
 
   test('com Elite o campo tem rótulo e dica associados', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
       'Chopp em dobro'
     )
     const campo = doc.querySelector('textarea')
@@ -84,7 +99,7 @@ describe('HouseOfferEditor', () => {
 
   test('erro do servidor é anunciado e ligado ao campo', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
       null,
       'A oferta da casa é um recurso do plano Elite.'
     )
@@ -99,7 +114,7 @@ describe('HouseOfferEditor', () => {
 
   test('sem oferta gravada não mostra o botão de remover', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
       null
     )
     const botoes = Array.from(doc.querySelectorAll('button')).map(
@@ -113,7 +128,8 @@ describe('HouseOfferEditor dentro da aba', () => {
   const elite: PlanState = {
     status: 'ready',
     plan: 'elite',
-    currentPlan: 'elite'
+    currentPlan: 'elite',
+    lapsed: null
   }
   let dom: JSDOM | undefined
   let root: Root | undefined

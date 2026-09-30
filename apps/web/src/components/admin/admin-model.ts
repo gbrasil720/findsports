@@ -6,6 +6,7 @@ import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { SubscriptionPlan as DbSubscriptionPlan } from '@findsports_oficial/db'
 import type { inferRouterOutputs } from '@trpc/server'
 import type { PubOutput } from '@/domain/pub-profile'
+import type { LapsedPlan } from '@/lib/lapsed-plan'
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
 
@@ -42,8 +43,10 @@ export type PolicyState =
 /**
  * Assinatura lida por `getMySubscription`. `plan` é o contratado, que o preview
  * usa para o selo; `currentPlan` é o vigente, com status, e é o que libera os
- * recursos pagos — nunca `bar.plan`. A falha não traz `retry`: a aba mostra
- * esse erro uma vez só (WEB-142).
+ * recursos pagos — nunca `bar.plan`. `lapsed` é o contratado parado por
+ * pagamento pendente ou trial vencido, que manda regularizar em vez de
+ * contratar (WEB-141). A falha não traz `retry`: a aba mostra esse erro uma
+ * vez só (WEB-142).
  */
 export type PlanState =
   | { status: 'loading' }
@@ -52,6 +55,7 @@ export type PlanState =
       status: 'ready'
       plan: SubscriptionPlan
       currentPlan: SubscriptionPlan | null
+      lapsed: LapsedPlan | null
     }
 
 /**

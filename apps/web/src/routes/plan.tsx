@@ -10,6 +10,7 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
+import { getLapsedPlan } from '@/lib/lapsed-plan'
 import {
   getPlanExitLink,
   getPlanSelectionState,
@@ -69,6 +70,7 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
+  const lapsed = getLapsedPlan(subscription)
   const exitLink = getPlanExitLink(origin)
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
@@ -182,6 +184,39 @@ function PlanSelection() {
               Tentar novamente
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* WEB-141: quem tem plano parado chega aqui pelo painel ou pelo
+          bookmark. Contratar de novo não conserta a assinatura que existe. */}
+      {lapsed ? (
+        <div className="onside-callout onside-callout-warn mx-auto mb-8 max-w-2xl">
+          <CircleInfo
+            size={20}
+            color="currentColor"
+            className="mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
+          <p className="min-w-0 flex-1 basis-60 text-sm">
+            {lapsed.reason === 'past_due'
+              ? 'Seu plano '
+              : 'O trial do seu plano '}
+            <span className="font-bold">
+              {PLAN_CATALOG.find((p) => p.id === lapsed.plan)?.name}
+            </span>
+            {lapsed.reason === 'past_due'
+              ? ' está com pagamento pendente.'
+              : ' terminou sem pagamento confirmado.'}{' '}
+            Para manter o plano, regularize a assinatura em vez de contratar de
+            novo.
+          </p>
+          <Link
+            to="/admin/billing"
+            className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+          >
+            Regularizar assinatura
+            <ArrowRight size={13} color="currentColor" aria-hidden="true" />
+          </Link>
         </div>
       ) : null}
 

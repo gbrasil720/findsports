@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
-import type { PlanState } from './admin-model'
+import { getPlan } from '@/lib/plan-catalog'
+import type { PlanState, SubscriptionPlan } from './admin-model'
 
 /*
  * Plano mínimo de cada recurso pago do painel. Só decide o que desenhar: o
@@ -17,6 +18,10 @@ const TIERS: Record<'pro' | 'elite', { kicker: string; locked: string }> = {
     kicker: 'Plano Elite',
     locked: 'Disponível no plano Elite'
   }
+}
+
+function covers(plan: SubscriptionPlan | null, tier: keyof typeof TIERS) {
+  return plan === 'elite' || (tier === 'pro' && plan === 'pro')
 }
 
 type Props = {
@@ -58,10 +63,14 @@ export function PaidFeatureCard({
 }: Props) {
   const copy = TIERS[tier]
   const titleId = `${id}-title`
-  const eligible =
-    plan.status === 'ready' &&
-    (plan.currentPlan === 'elite' ||
-      (tier === 'pro' && plan.currentPlan === 'pro'))
+  const eligible = plan.status === 'ready' && covers(plan.currentPlan, tier)
+  // Plano que daria acesso, parado por pagamento: o caminho é regularizar a
+  // assinatura, não contratar de novo (WEB-141). Pro parado num recurso Elite
+  // continua sendo upgrade, e vai para os planos.
+  const lapsed =
+    plan.status === 'ready' && plan.lapsed && covers(plan.lapsed.plan, tier)
+      ? plan.lapsed
+      : null
 
   return (
     <section
@@ -90,7 +99,9 @@ export function PaidFeatureCard({
         ) : (
           <div className="space-y-4">
             {eligible ? null : (
-              <div className="onside-callout onside-callout-stone">
+              <div
+                className={`onside-callout ${lapsed ? 'onside-callout-warn' : 'onside-callout-stone'}`}
+              >
                 <CircleInfo
                   size={20}
                   color="currentColor"
@@ -100,21 +111,48 @@ export function PaidFeatureCard({
                 {/* Base mínima: no celular o botão desce para a linha de
                     baixo em vez de espremer o texto numa coluna estreita. */}
                 <div className="min-w-0 flex-1 basis-60">
-                  <p className="mb-0.5 font-semibold text-sm">{copy.locked}</p>
-                  {locked}
+                  <p className="mb-0.5 font-semibold text-sm">
+                    {lapsed?.reason === 'past_due'
+                      ? `Plano ${getPlan(lapsed.plan).name} com pagamento pendente`
+                      : lapsed
+                        ? `Trial do plano ${getPlan(lapsed.plan).name} encerrado`
+                        : copy.locked}
+                  </p>
+                  {lapsed ? (
+                    <p className="text-sm opacity-90">
+                      Volta a funcionar assim que a assinatura for regularizada,
+                      sem precisar preencher nada de novo.
+                    </p>
+                  ) : (
+                    locked
+                  )}
                 </div>
-                <Link
-                  to="/plan"
-                  search={{ origin: 'admin' }}
-                  className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-                >
-                  Ver planos
-                  <ArrowRight
-                    size={13}
-                    color="currentColor"
-                    aria-hidden="true"
-                  />
-                </Link>
+                {lapsed ? (
+                  <Link
+                    to="/admin/billing"
+                    className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+                  >
+                    Regularizar assinatura
+                    <ArrowRight
+                      size={13}
+                      color="currentColor"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                ) : (
+                  <Link
+                    to="/plan"
+                    search={{ origin: 'admin' }}
+                    className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+                  >
+                    Ver planos
+                    <ArrowRight
+                      size={13}
+                      color="currentColor"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                )}
               </div>
             )}
             {children(eligible)}

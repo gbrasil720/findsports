@@ -43,7 +43,7 @@ function renderizar(
 describe('ReservationIntakeCard', () => {
   test('sem Elite e desligado aponta para os planos e não deixa ligar', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
       false
     )
     expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
@@ -54,7 +54,7 @@ describe('ReservationIntakeCard', () => {
 
   test('com Elite o interruptor é um botão rotulado, com estado e dica', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
       false
     )
     const chave = doc.querySelector('button[role="switch"]')
@@ -75,7 +75,7 @@ describe('ReservationIntakeCard', () => {
 
   test('sem Elite com o interruptor ligado ainda deixa desligar', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro', lapsed: null },
       true
     )
     const chave = doc.querySelector('button[role="switch"]')
@@ -85,7 +85,7 @@ describe('ReservationIntakeCard', () => {
 
   test('erro do servidor é anunciado e ligado ao interruptor', () => {
     const doc = renderizar(
-      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      { status: 'ready', plan: 'elite', currentPlan: 'elite', lapsed: null },
       false,
       'Receber reservas é um recurso do plano Elite.'
     )
