@@ -1,5 +1,6 @@
 import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import {
   bar,
@@ -18,6 +19,11 @@ import {
   MAX_SCREEN_COUNT,
   normalizeAmenityIds
 } from '../lib/amenities'
+import {
+  assertCanConfigureBarMenu,
+  parseAverageSpendCentsInput,
+  parseMenuUrlInput
+} from '../lib/bar-menu'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import { getCurrentPlan } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
@@ -32,6 +38,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
+import { assertCanEnableReservations } from '../lib/reservation-intake'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -77,6 +84,20 @@ export function resolvePhoneAcceptsWhatsapp(
   }
 
   return { value: inputAccepts, changed: true }
+}
+
+/**
+ * O painel manda o endereço inteiro a cada salvar, mudado ou não. Geocodificar
+ * só quando algum campo difere do gravado: cada chamada gasta cota do
+ * LocationIQ e segura o salvar esperando a resposta.
+ */
+export function addressFieldsChanged(
+  input: { address?: string; neighborhood?: string; city?: string },
+  existing: { address: string; neighborhood: string; city: string }
+): boolean {
+  return (['address', 'neighborhood', 'city'] as const).some(
+    (field) => input[field] !== undefined && input[field] !== existing[field]
+  )
 }
 
 /**
@@ -224,9 +245,7 @@ export const pubRouter = router({
       )
 
       let coordinates: { latitude: string; longitude: string } | undefined
-      const addressChanged = input.address || input.neighborhood || input.city
-
-      if (addressChanged) {
+      if (addressFieldsChanged(input, existingBar)) {
         const apiKey = env.LOCATIONIQ_API_KEY
         if (!apiKey) {
           throw new TRPCError({
@@ -324,6 +343,102 @@ export const pubRouter = router({
         .returning({ houseOffer: bar.houseOffer })
 
       return { houseOffer: updated?.houseOffer ?? null }
+    }),
+
+  /**
+   * Cardápio e gasto médio por pessoa (WEB-39). Update parcial: campo
+   * omitido não muda; `null` (ou link em branco) remove.
+   *
+   * Fora de `updateMe` pelo mesmo motivo da oferta da casa: é recurso pago, e
+   * o plano é conferido aqui, a partir da assinatura, antes de qualquer
+   * escrita.
+   */
+  updateMenuInfo: protectedProcedure
+    .input(
+      z
+        .object({
+          // Teto de payload, não a regra: o limite vale sobre a URL já
+          // normalizada, em `parseMenuUrlInput`.
+          menuUrl: z
+            .string()
+            .max(MENU_URL_MAX_LENGTH * 2)
+            .nullable()
+            .optional(),
+          averageSpendCents: z.number().nullable().optional()
+        })
+        .refine(
+          (input) =>
+            input.menuUrl !== undefined ||
+            input.averageSpendCents !== undefined,
+          { message: 'Informe o cardápio ou o preço médio.' }
+        )
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'pub') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas contas de bar podem acessar este recurso.'
+        })
+      }
+
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      assertCanConfigureBarMenu(existingBar.subscription ?? null)
+
+      const [updated] = await db
+        .update(bar)
+        .set({
+          ...(input.menuUrl !== undefined && {
+            menuUrl: parseMenuUrlInput(input.menuUrl)
+          }),
+          ...(input.averageSpendCents !== undefined && {
+            averageSpendCents: parseAverageSpendCentsInput(
+              input.averageSpendCents
+            )
+          })
+        })
+        .where(eq(bar.id, existingBar.id))
+        .returning({
+          menuUrl: bar.menuUrl,
+          averageSpendCents: bar.averageSpendCents
+        })
+
+      return {
+        menuUrl: updated?.menuUrl ?? null,
+        averageSpendCents: updated?.averageSpendCents ?? null
+      }
+    }),
+
+  /**
+   * Interruptor de recebimento de reservas (WEB-131).
+   *
+   * Ligar exige Elite vigente, conferido aqui a partir da assinatura. Desligar
+   * vale sempre — inclusive para quem perdeu o plano com o interruptor ligado.
+   *
+   * Só decide pedidos novos: não toca em reserva existente, código emitido nem
+   * `offer_snapshot`.
+   */
+  updateAcceptsReservations: protectedProcedure
+    .input(z.object({ acceptsReservations: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== 'pub') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Apenas contas de bar podem acessar este recurso.'
+        })
+      }
+
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      if (input.acceptsReservations) {
+        assertCanEnableReservations(existingBar.subscription ?? null)
+      }
+
+      const [updated] = await db
+        .update(bar)
+        .set({ acceptsReservations: input.acceptsReservations })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ acceptsReservations: bar.acceptsReservations })
+
+      return { acceptsReservations: updated?.acceptsReservations ?? false }
     }),
 
   /**

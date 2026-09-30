@@ -115,7 +115,6 @@
   .onside-app,
   .onside-banner,
   .onside-dialog,
-  .onside-hint,
   .onside-menu
 ) {
   --onside-ink: #12120f;
@@ -183,7 +182,6 @@
   .onside-app,
   .onside-banner,
   .onside-dialog,
-  .onside-hint,
   .onside-menu
 ) {
   --onside-focus-width: 3px;

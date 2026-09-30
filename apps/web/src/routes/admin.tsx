@@ -10,6 +10,7 @@ import { AccountSettings } from '@/components/account/account-settings'
 import type {
   AnalyticsEntitlementsData,
   AnalyticsOverviewState,
+  EliteAccess,
   EventAnalyticsState,
   EventsState,
   PlanState,
@@ -29,6 +30,7 @@ import {
   getAnalyticsRange,
   getAvailableAnalyticsPeriods
 } from '@/components/admin/analytics-period'
+import { BarMenuEditor } from '@/components/admin/bar-menu-editor'
 import { BarPreview } from '@/components/admin/bar-preview'
 import { ConversionReadiness } from '@/components/admin/conversion-readiness'
 import { EventPerformance } from '@/components/admin/event-performance'
@@ -37,6 +39,7 @@ import { HouseOfferEditor } from '@/components/admin/house-offer-editor'
 import { PubHeroSection } from '@/components/admin/pub-hero-section'
 import { RatingsPanel } from '@/components/admin/ratings-panel'
 import { RecommendationQualityStatus } from '@/components/admin/recommendation-quality-status'
+import { ReservationIntakeCard } from '@/components/admin/reservation-intake-card'
 import { AppShell } from '@/components/app/app-shell'
 import { InstallAppCard } from '@/components/app/install-app-card'
 import { useMinuteNow } from '@/components/app/minute-tick'
@@ -389,7 +392,7 @@ function PubDashboard() {
     EventComparisonTarget | undefined
   >()
   const [profileError, setProfileError] = useState<string | null>(null)
-  const [houseOfferError, setHouseOfferError] = useState<string | null>(null)
+  const [barMenuError, setBarMenuError] = useState<string | null>(null)
   const limitTracked = useRef(false)
 
   useEffect(() => {
@@ -615,19 +618,52 @@ function PubDashboard() {
     })
   )
 
+  // O erro de cada card é o da própria mutation: um novo envio o limpa.
   const updateHouseOfferMutation = useMutation(
     trpc.pub.updateHouseOffer.mutationOptions({
-      onMutate: () => {
-        setHouseOfferError(null)
-      },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+      }
+    })
+  )
+
+  const updateAcceptsReservationsMutation = useMutation(
+    trpc.pub.updateAcceptsReservations.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+      }
+    })
+  )
+
+  const updateMenuInfoMutation = useMutation(
+    trpc.pub.updateMenuInfo.mutationOptions({
+      onMutate: () => {
+        setBarMenuError(null)
       },
+      // Devolver a promessa faz o `mutateAsync` esperar o refetch: o
+      // formulário só diz "salvos" quando já recebeu o valor gravado. O perfil
+      // público também muda, então a prévia do dono não pode ficar em cache.
+      onSuccess: () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMe.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pubs.getById.pathKey()
+          })
+        ]),
       onError: (err) => {
-        setHouseOfferError(
+        // Recusa por plano quer dizer que a assinatura mudou com o painel
+        // aberto: reler o plano troca o formulário pelo estado bloqueado.
+        if (err.data?.code === 'FORBIDDEN') {
+          void queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMySubscription.queryKey()
+          })
+        }
+        setBarMenuError(
           getUserFacingMessage(
             err,
-            'Não foi possível salvar a oferta. Tente novamente.'
+            'Não foi possível salvar o cardápio e o preço médio. Tente novamente.'
           )
         )
       }
@@ -673,6 +709,19 @@ function PubDashboard() {
           }
         }
       : { status: 'ready', plan: subscription?.plan ?? 'starter' }
+
+  // Plano vigente, com status — não `bar.plan`. Os cards Elite só decidem o
+  // que desenhar; o servidor confere de novo antes de gravar.
+  const eliteAccess: EliteAccess = loadingSub
+    ? { status: 'loading' }
+    : subError
+      ? {
+          status: 'error',
+          retry: () => {
+            void refetchSub()
+          }
+        }
+      : { status: 'ready', eligible: subscription?.currentPlan === 'elite' }
 
   /* Analytics overview state machine */
   const analyticsOverviewState: AnalyticsOverviewState = loadingAnalytics
@@ -1134,13 +1183,16 @@ function PubDashboard() {
                 saveError={profileError}
                 onSave={async (data) => {
                   setProfileError(null)
+                  // Nome e endereço são obrigatórios (o servidor recusa ''),
+                  // então vazio vira "não mexer". Telefone e descrição são
+                  // opcionais: '' vai como está e limpa o campo (WEB-143).
                   await updateMeMutation.mutateAsync({
                     name: data.name || undefined,
                     address: data.address || undefined,
                     neighborhood: data.neighborhood || undefined,
                     city: data.city || undefined,
-                    phone: data.phone || undefined,
-                    description: data.description || undefined,
+                    phone: data.phone,
+                    description: data.description,
                     amenities: data.amenities,
                     screenCount: data.screenCount
                   })
@@ -1157,11 +1209,19 @@ function PubDashboard() {
                 }}
               />
 
-              <HouseOfferEditor
-                houseOffer={bar.houseOffer}
+              <BarMenuEditor
+                menuUrl={bar.menuUrl}
+                averageSpendCents={bar.averageSpendCents}
+                // Dado em cache vence erro de refetch em segundo plano: trocar
+                // o formulário pelo aviso de erro apagaria o que o dono digitou.
                 access={
-                  loadingSub
-                    ? { status: 'loading' }
+                  subscription !== undefined
+                    ? {
+                        status: 'ready',
+                        eligible:
+                          subscription?.currentPlan === 'pro' ||
+                          subscription?.currentPlan === 'elite'
+                      }
                     : subError
                       ? {
                           status: 'error',
@@ -1169,13 +1229,47 @@ function PubDashboard() {
                             void refetchSub()
                           }
                         }
-                      : {
-                          status: 'ready',
-                          eligible: subscription?.currentPlan === 'elite'
-                        }
+                      : { status: 'loading' }
                 }
+                isSaving={updateMenuInfoMutation.isPending}
+                saveError={barMenuError}
+                onSave={(changes) =>
+                  updateMenuInfoMutation.mutateAsync(changes)
+                }
+              />
+
+              <ReservationIntakeCard
+                acceptsReservations={bar.acceptsReservations}
+                hasHouseOffer={bar.houseOffer !== null}
+                access={eliteAccess}
+                isSaving={updateAcceptsReservationsMutation.isPending}
+                saveError={
+                  updateAcceptsReservationsMutation.error
+                    ? getUserFacingMessage(
+                        updateAcceptsReservationsMutation.error,
+                        'Não foi possível mudar o recebimento de reservas. Tente novamente.'
+                      )
+                    : null
+                }
+                onChange={(acceptsReservations) =>
+                  updateAcceptsReservationsMutation.mutateAsync({
+                    acceptsReservations
+                  })
+                }
+              />
+
+              <HouseOfferEditor
+                houseOffer={bar.houseOffer}
+                access={eliteAccess}
                 isSaving={updateHouseOfferMutation.isPending}
-                saveError={houseOfferError}
+                saveError={
+                  updateHouseOfferMutation.error
+                    ? getUserFacingMessage(
+                        updateHouseOfferMutation.error,
+                        'Não foi possível salvar a oferta. Tente novamente.'
+                      )
+                    : null
+                }
                 onSave={(houseOffer) =>
                   updateHouseOfferMutation.mutateAsync({ houseOffer })
                 }

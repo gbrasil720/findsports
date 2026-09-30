@@ -277,16 +277,11 @@
   max-height: min(90dvh, 900px);
 }
 
-/* ─── Hint popover surface ─── */
-.onside-hint {
-  border: 1.5px solid var(--onside-ink) !important;
-  border-radius: 0 !important;
-  background: var(--onside-paper) !important;
-  color: var(--onside-ink);
-  font-family: var(--onside-body);
-  box-shadow: 6px 6px 0 var(--onside-ink) !important;
-}
-
+/* ─── Popover surface ───
+ * O ProductFrame (WEB-66) monta os portais dentro de `.onside-app`, então o
+ * popover herda os tokens e esta regra basta. Sem classe própria sem escopo:
+ * foi ela que vazou para `.onside-hint` (WEB-133).
+ */
 .onside-app [data-slot="popover-content"] {
   border: 1.5px solid var(--onside-ink);
   border-radius: 0;
