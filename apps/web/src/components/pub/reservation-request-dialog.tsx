@@ -94,6 +94,10 @@ export function ReservationRequestDialog({
         void queryClient.invalidateQueries({
           queryKey: trpc.reservations.mine.queryKey()
         })
+        // Reserva marca presença e esconde "Vou assistir aqui".
+        void queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getById.queryKey()
+        })
       }
     })
   )

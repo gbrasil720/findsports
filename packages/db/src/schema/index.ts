@@ -1,4 +1,5 @@
 export * from './analytics'
+export * from './attendance'
 export * from './auth'
 export * from './classic'
 export * from './config'

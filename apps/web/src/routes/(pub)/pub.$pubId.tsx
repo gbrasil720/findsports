@@ -11,6 +11,7 @@ import type { inferRouterOutputs } from '@trpc/server'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
+import { AttendanceControl } from '@/components/pub/attendance-control'
 import { AuthRequiredDialog } from '@/components/pub/auth-required-dialog'
 import { BarActions } from '@/components/pub/bar-action-bar'
 import { BarCharacteristics } from '@/components/pub/bar-characteristics'
@@ -53,8 +54,12 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
 type RouterOutputs = inferRouterOutputs<AppRouter>
 type PubOutput = NonNullable<RouterOutputs['pubs']['getById']>
 
+type ProfileGame = ReservableEvent & {
+  attendance: PubOutput['events'][number]['attendance']
+}
+
 type NormalizedPub = Omit<PubOutput, 'events'> & {
-  events: ReservableEvent[]
+  events: ProfileGame[]
 }
 
 /**
@@ -74,6 +79,7 @@ function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
       endsAt: event.endsAt ? new Date(event.endsAt) : null,
       participantFreeText: event.participantFreeText,
       reservationsSoldOut: event.reservationsSoldOut,
+      attendance: event.attendance,
       sport: { name: event.sport.name, slug: event.sport.slug },
       participants: event.participants.map((participant) => ({
         team: {
@@ -411,6 +417,19 @@ function PubPage() {
     offersReservation &&
     reservableEvents.some((event) => !event.reservationsSoldOut)
 
+  // `attendance` só vem onde o botão cabe; o servidor decide (WEB-127).
+  const presenceFor = (game: ProfileGame, compact: boolean) =>
+    game.attendance && (
+      <AttendanceControl
+        eventId={game.id}
+        attending={game.attendance.attending}
+        count={game.attendance.count}
+        gameLabel={formatMatchup(game)}
+        compact={compact}
+      />
+    )
+  const heroPresence = heroEvent && presenceFor(heroEvent, false)
+
   const actions = {
     whatsappUrl,
     directionsUrl,
@@ -473,7 +492,25 @@ function PubPage() {
 
               <HouseOfferSection offer={normalizedPub.houseOffer} />
 
-              <BarActions {...actions} variant="panel" isOwner={isOwner} />
+              <BarActions
+                {...actions}
+                presence={
+                  heroPresence && (
+                    <>
+                      {heroPresence}
+                      {canReserve && (
+                        <p className="mt-2 text-[var(--onside-muted)] text-xs">
+                          “Vou assistir aqui” não reserva mesa: só avisa ao bar
+                          que você vai. Para garantir lugar, use “Reservar
+                          mesa”.
+                        </p>
+                      )}
+                    </>
+                  )
+                }
+                variant="panel"
+                isOwner={isOwner}
+              />
 
               <BarLocationBlock
                 barId={normalizedPub.id}
@@ -494,6 +531,7 @@ function PubPage() {
                 whatsappUrl={whatsappUrl}
                 onWhatsApp={handleWhatsAppClick}
                 isOwner={isOwner}
+                renderPresence={(game) => presenceFor(game, true)}
               />
 
               <BarCharacteristics

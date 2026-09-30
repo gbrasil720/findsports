@@ -7,6 +7,7 @@ import {
   RESERVATION_PARTY_SIZE_MAX,
   reservationNoteLength
 } from '@findsports_oficial/db/reservation-limits'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
@@ -235,6 +236,11 @@ export const reservationsRouter = router({
             // feita a este torcedor não muda.
             offerSnapshot: game.bar.houseOffer
           })
+          // Reserva implica presença (ADR 0003). Cancelar não desfaz.
+          await tx
+            .insert(attendance)
+            .values({ userId, eventId: input.eventId })
+            .onConflictDoNothing()
           for (let attempt = 1; ; attempt++) {
             const [issued] = await tx
               .insert(reservationCode)

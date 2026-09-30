@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Calendar from 'reicon-react/icons/Calendar'
 import Chat from 'reicon-react/icons/Chat'
 import Phone from 'reicon-react/icons/Phone'
@@ -22,6 +23,11 @@ export type BarActions = {
    * "Reservar mesa" mostra o esgotado, e os contatos continuam.
    */
   reservationsSoldOut: boolean
+  /**
+   * "Vou assistir aqui" do jogo em destaque (WEB-127), ao lado de "Reservar
+   * mesa" e sem subordinação a ela. Só no painel.
+   */
+  presence?: ReactNode
 }
 
 type Action = {
@@ -57,6 +63,7 @@ export function BarActions({
   onPhone,
   onReserve,
   reservationsSoldOut,
+  presence,
   variant,
   isOwner
 }: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
@@ -141,7 +148,7 @@ export function BarActions({
 
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.
-  if (!primary && !phone) {
+  if (!primary && !phone && !presence) {
     return isOwner && !isBar ? (
       <section className="onside-panel p-5 md:p-6">
         <p className="onside-kicker mb-1">Garanta seu lugar</p>
@@ -173,6 +180,7 @@ export function BarActions({
         {primary}
         {secondaries}
       </div>
+      {presence && <div className="mt-4">{presence}</div>}
       {!whatsappUrl &&
         (isOwner ? (
           <OwnerNudge
