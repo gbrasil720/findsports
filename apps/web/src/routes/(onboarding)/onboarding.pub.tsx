@@ -1,8 +1,5 @@
 import { findAmenity } from '@findsports_oficial/api/lib/amenities'
-import {
-  mensagemEnderecoNaoEncontrado,
-  motivoTelefoneInvalido
-} from '@findsports_oficial/api/lib/bar-profile-validation'
+import { motivoTelefoneInvalido } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -22,12 +19,13 @@ import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import {
+  mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
   type PubOnboardingDraft,
+  parsePubOnboardingDraft,
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { roleAccountLabel } from '@/lib/roles'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -94,6 +92,7 @@ function PubOnboarding() {
     trpc.onboarding.completePub.mutationOptions({
       onSuccess: async () => {
         analytics.onboardingCompleted({ role: 'pub' })
+        localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         // `onboardingCompleted` mudou no banco por fora do better-auth; sem
         // regravar o cache de sessão o guard da rota devolveria o usuário
         // para cá. Se a releitura falhar, seguimos assim mesmo — o guard
@@ -101,18 +100,28 @@ function PubOnboarding() {
         await refreshSessionCache().catch(() => {})
         navigate({ to: '/plan' })
       },
-      onError: (err, draft) =>
-        setError(
-          // O telefone já foi conferido aqui; sobra a recusa do endereço.
-          err.data?.code === 'UNPROCESSABLE_CONTENT'
-            ? mensagemEnderecoNaoEncontrado(draft.city ?? 'São Paulo')
-            : getUserFacingMessage(
-                err,
-                'Não foi possível salvar o cadastro do bar. Tente novamente.'
-              )
-        )
+      onError: (err, draft) => setError(mensagemFalhaCadastroBar(err, draft))
     })
   )
+
+  // `/verify-email` manda de volta para cá quando o servidor recusa o
+  // rascunho: os campos voltam preenchidos, no passo que dá para corrigir.
+  useEffect(() => {
+    const draft = parsePubOnboardingDraft(
+      localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY)
+    )
+    if (!draft) return
+    setName(draft.name)
+    setAddress(draft.address)
+    setNeighborhood(draft.neighborhood)
+    setCity(draft.city ?? 'São Paulo')
+    setPhone(draft.phone ?? '')
+    setDescription(draft.description ?? '')
+    setAmenities(draft.amenities ?? [])
+    setScreenCount(draft.screenCount ?? null)
+    setPhoneError(motivoTelefoneInvalido(draft.phone))
+    setStep(1)
+  }, [])
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: step === 0 })

@@ -31,3 +31,12 @@ export function cidadeLiberada(cidade: string, liberadas: string[]): boolean {
   if (alvo.length === 0) return false
   return liberadas.some((liberada) => normalizarCidade(liberada) === alvo)
 }
+
+/**
+ * A recusa de cidade fora do lançamento. Mora aqui, com a regra, porque o app
+ * escreve a mensagem a partir do código (padrão do WEB-118) e o servidor usa o
+ * mesmo texto.
+ */
+export function mensagemCidadeNaoLiberada(cidade: string): string {
+  return `A Onside ainda não abriu em ${cidade.trim()}. Avisamos assim que chegarmos aí.`
+}
