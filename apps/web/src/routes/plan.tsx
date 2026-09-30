@@ -10,8 +10,10 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
+import { isLapsed } from '@/lib/lapsed-plan'
 import {
   getPlanExitLink,
+  getPlanHeader,
   getPlanSelectionState,
   PLAN_CATALOG,
   type Plan,
@@ -69,6 +71,8 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
+  const lapsed = isLapsed(subscription?.standing)
+  const header = getPlanHeader(subscription)
   const exitLink = getPlanExitLink(origin)
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
@@ -151,19 +155,20 @@ function PlanSelection() {
         </div>
       ) : (
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="onside-kicker onside-kicker-acid mb-3">
-            {hasActivePlan ? 'Alterar plano' : 'Último passo'}
-          </p>
-          <h1 className="onside-display mb-4 text-4xl text-[var(--onside-paper)] md:text-5xl">
-            {hasActivePlan
-              ? 'Escolha seu novo plano.'
-              : 'Escolha o plano do seu bar.'}
+          <p className="onside-kicker mb-3">{header.kicker}</p>
+          <h1 className="onside-display mb-4 text-4xl md:text-5xl">
+            {header.title}
           </h1>
-          <p className="onside-text-muted-on-ink text-lg">
-            {hasActivePlan
-              ? 'A mudança entra em vigor no próximo ciclo de cobrança.'
-              : 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'}
-          </p>
+          <p className="text-[var(--onside-muted)] text-lg">{header.text}</p>
+          {lapsed ? (
+            <Link
+              to="/admin/billing"
+              className="onside-btn onside-btn-ink mt-6 min-h-11"
+            >
+              Regularizar assinatura
+              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+            </Link>
+          ) : null}
         </div>
       )}
 
@@ -210,7 +215,7 @@ function PlanSelection() {
             key={plan.id}
             plan={plan}
             isSelected={selected === plan.id}
-            isCurrent={currentPlan === plan.id}
+            isCurrent={(lapsed ? subscription?.plan : currentPlan) === plan.id}
             onSelect={handleSelectPlan}
           />
         ))}
@@ -263,47 +268,51 @@ function PlanSelection() {
         ) : null}
         <Link
           to={exitLink.to}
-          className="onside-btn onside-btn-outline min-h-11 text-[var(--onside-paper)] border-[var(--onside-paper)]"
+          className="onside-btn onside-btn-outline min-h-11"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
           {exitLink.label}
         </Link>
 
-        <button
-          type="button"
-          onClick={handleCheckout}
-          disabled={
-            loading ||
-            isSamePlan ||
-            subscriptionQuery.isLoading ||
-            !checkoutLiberado
-          }
-          title={
-            !checkoutLiberado
-              ? 'Contratação temporariamente indisponível'
+        {/* Plano parado não passa pelo checkout: o topo já leva a
+            regularizar (WEB-170). */}
+        {lapsed ? null : (
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={
+              loading ||
+              isSamePlan ||
+              subscriptionQuery.isLoading ||
+              !checkoutLiberado
+            }
+            title={
+              !checkoutLiberado
+                ? 'Contratação temporariamente indisponível'
+                : isSamePlan
+                  ? 'Este já é seu plano atual'
+                  : undefined
+            }
+            className="onside-btn onside-btn-acid min-h-11"
+          >
+            {loading ? (
+              <Loader
+                size={16}
+                color="currentColor"
+                className="animate-spin"
+                aria-hidden="true"
+              />
+            ) : null}
+            {loading
+              ? 'Redirecionando…'
               : isSamePlan
-                ? 'Este já é seu plano atual'
-                : undefined
-          }
-          className="onside-btn onside-btn-acid min-h-11"
-        >
-          {loading ? (
-            <Loader
-              size={16}
-              color="currentColor"
-              className="animate-spin"
-              aria-hidden="true"
-            />
-          ) : null}
-          {loading
-            ? 'Redirecionando…'
-            : isSamePlan
-              ? 'Plano atual'
-              : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-          {!isSamePlan && !loading ? (
-            <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-          ) : null}
-        </button>
+                ? 'Plano atual'
+                : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
+            {!isSamePlan && !loading ? (
+              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+            ) : null}
+          </button>
+        )}
       </div>
     </OnboardingLayout>
   )

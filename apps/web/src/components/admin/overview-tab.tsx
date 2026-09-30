@@ -8,6 +8,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { AnalyticsOverviewState } from './admin-model'
@@ -199,6 +200,7 @@ export function OverviewTab({
   const plan = planKnown ? (subscription?.plan ?? 'starter') : null
   const planLabel = plan ? (PLAN_LABEL[plan] ?? plan) : null
   const isStarter = plan === 'starter'
+  const standing = planKnown ? subscription?.standing : null
   const limitedPolicy =
     creationPolicy?.status === 'limited' ? creationPolicy : null
   const eventsUsed = limitedPolicy?.used ?? 0
@@ -394,7 +396,9 @@ export function OverviewTab({
           <div className="onside-stat-label">
             {isStarter && eventsRemaining !== null
               ? `${eventsRemaining} restantes`
-              : 'Plano atual'}
+              : isLapsed(standing)
+                ? LAPSED_COPY[standing].label
+                : 'Plano atual'}
           </div>
         </div>
       </div>

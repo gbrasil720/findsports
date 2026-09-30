@@ -2,6 +2,8 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
+import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
+import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
 import type { PlanState } from './admin-model'
 
 /*
@@ -58,10 +60,36 @@ export function PaidFeatureCard({
 }: Props) {
   const copy = TIERS[tier]
   const titleId = `${id}-title`
-  const eligible =
+  const reaches =
     plan.status === 'ready' &&
-    (plan.currentPlan === 'elite' ||
-      (tier === 'pro' && plan.currentPlan === 'pro'))
+    PLAN_TIER_ORDER[plan.plan] >= PLAN_TIER_ORDER[tier]
+  const eligible = reaches && plan.standing === 'current'
+  // Plano que daria acesso, parado por pagamento: o caminho é regularizar a
+  // assinatura, não contratar de novo (WEB-141). Pro parado num recurso Elite
+  // não alcança o recurso, e continua indo para os planos.
+  const notice =
+    reaches && isLapsed(plan.standing)
+      ? {
+          tone: 'onside-callout-warn',
+          title: LAPSED_COPY[plan.standing].title(getPlan(plan.plan).name),
+          body: (
+            <p className="text-sm opacity-90">
+              Volta a funcionar assim que a assinatura for regularizada, sem
+              precisar preencher nada de novo.
+            </p>
+          ),
+          link: { to: '/admin/billing', label: 'Regularizar assinatura' }
+        }
+      : {
+          tone: 'onside-callout-stone',
+          title: copy.locked,
+          body: locked,
+          link: {
+            to: '/plan',
+            search: { origin: 'admin' as const },
+            label: 'Ver planos'
+          }
+        }
 
   return (
     <section
@@ -90,7 +118,7 @@ export function PaidFeatureCard({
         ) : (
           <div className="space-y-4">
             {eligible ? null : (
-              <div className="onside-callout onside-callout-stone">
+              <div className={`onside-callout ${notice.tone}`}>
                 <CircleInfo
                   size={20}
                   color="currentColor"
@@ -100,15 +128,15 @@ export function PaidFeatureCard({
                 {/* Base mínima: no celular o botão desce para a linha de
                     baixo em vez de espremer o texto numa coluna estreita. */}
                 <div className="min-w-0 flex-1 basis-60">
-                  <p className="mb-0.5 font-semibold text-sm">{copy.locked}</p>
-                  {locked}
+                  <p className="mb-0.5 font-semibold text-sm">{notice.title}</p>
+                  {notice.body}
                 </div>
                 <Link
-                  to="/plan"
-                  search={{ origin: 'admin' }}
+                  to={notice.link.to}
+                  search={notice.link.search}
                   className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
                 >
-                  Ver planos
+                  {notice.link.label}
                   <ArrowRight
                     size={13}
                     color="currentColor"

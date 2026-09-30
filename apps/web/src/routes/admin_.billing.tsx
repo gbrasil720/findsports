@@ -14,6 +14,7 @@ import {
   getCustomerPortalUrl,
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
+import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingError } from '@/lib/user-facing-error'
@@ -47,6 +48,10 @@ function formatCurrency(amount: number): string {
   }).format(amount / 100)
 }
 
+const PENDING_BADGE =
+  'onside-badge border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_12%,var(--onside-paper))] text-[var(--onside-live-text)]'
+
+/** Por `status`, mais `trial_ended`, que o servidor distingue de `trialing`. */
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   active: {
     label: 'Ativo',
@@ -56,10 +61,10 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
     label: 'Trial gratuito',
     className: 'onside-badge onside-badge-ink'
   },
-  past_due: {
-    label: 'Pagamento pendente',
-    className:
-      'onside-badge border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_12%,var(--onside-paper))] text-[var(--onside-live-text)]'
+  past_due: { label: LAPSED_COPY.past_due.label, className: PENDING_BADGE },
+  trial_ended: {
+    label: LAPSED_COPY.trial_ended.label,
+    className: PENDING_BADGE
   },
   inactive: {
     label: 'Inativo',
@@ -123,8 +128,16 @@ function BillingPage() {
   }
 
   const plan = subscription?.currentPlan
-  const planInfo = plan ? getPlan(plan) : null
-  const statusInfo = STATUS_LABEL[subscription?.status ?? '']
+  // Plano parado continua sendo o plano do bar: é aqui que o dono regulariza
+  // (WEB-141). Sem isso a página dizia "nenhuma assinatura" para quem deve.
+  const standing = subscription?.standing
+  const lapsed = isLapsed(standing) ? standing : null
+  const shownPlan = plan ?? (lapsed ? subscription?.plan : null)
+  const planInfo = shownPlan ? getPlan(shownPlan) : null
+  const statusInfo =
+    STATUS_LABEL[
+      standing === 'trial_ended' ? standing : (subscription?.status ?? '')
+    ]
 
   return (
     <AppShell variant="pub" userMeta="Assinatura">
@@ -240,7 +253,14 @@ function BillingPage() {
                   ))}
                 </ul>
 
-                {subscription?.currentPeriodEnd ? (
+                {lapsed ? (
+                  <p className="mt-4 text-sm text-[var(--onside-live-text)]">
+                    {LAPSED_COPY[lapsed].cause} Recursos do plano, como o
+                    cardápio no perfil, ficam suspensos até a assinatura ser
+                    regularizada. Atualize o método de pagamento em “Gerenciar
+                    assinatura”.
+                  </p>
+                ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
                     {subscription.status === 'trialing'
                       ? `Trial gratuito até ${formatDate(subscription.currentPeriodEnd)}`

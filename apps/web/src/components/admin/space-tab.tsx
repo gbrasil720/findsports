@@ -153,7 +153,7 @@ export function SpaceTab({
       ? {
           status: 'ready',
           plan: subscription?.plan ?? 'starter',
-          currentPlan: subscription?.currentPlan ?? null
+          standing: subscription?.standing ?? null
         }
       : subError
         ? { status: 'error' }
