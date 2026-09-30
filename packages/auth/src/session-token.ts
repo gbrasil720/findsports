@@ -12,11 +12,26 @@ function withoutToken<T extends WithToken>({ token: _token, ...rest }: T) {
   return rest
 }
 
+const TOKEN_RETURNING_PATHS = new Set([
+  '/get-session',
+  '/list-sessions',
+  '/sign-in/email',
+  '/sign-up/email',
+  '/change-password',
+  '/two-factor/verify-totp',
+  '/two-factor/verify-otp',
+  '/two-factor/verify-backup-code',
+  '/admin/list-user-sessions',
+  '/admin/impersonate-user',
+  '/admin/stop-impersonating'
+])
+
 /**
  * WEB-150: o token da sessão é o valor do cookie `httpOnly`. O better-auth o
- * devolve em `get-session` (sessão atual) e em `list-sessions` (todas as
- * sessões da conta, de todos os aparelhos), o que entregava a um XSS o que o
- * `httpOnly` existe para esconder.
+ * devolve em toda rota que cria, lê ou lista sessão — `get-session`,
+ * `list-sessions` (todos os aparelhos da conta), o login e as rotas de admin —,
+ * o que entregava a um XSS o que o `httpOnly` existe para esconder. Quem
+ * precisa da sessão nova a recebe pelo `Set-Cookie`.
  *
  * O corte é na resposta, não no schema: `returned: false` no campo `token`
  * também o tiraria de `ctx.context.session` quando a sessão vem do cookie
@@ -30,24 +45,22 @@ export const sessionTokenGuard = () =>
     hooks: {
       after: [
         {
-          matcher: (ctx) =>
-            ctx.path === '/get-session' || ctx.path === '/list-sessions',
+          matcher: (ctx) => TOKEN_RETURNING_PATHS.has(ctx.path ?? ''),
           handler: createAuthMiddleware(async (ctx) => {
-            // `list-sessions` devolve a lista; `get-session`, `{ session,
-            // user }` ou `null`. Erro (`APIError`) passa sem ser tocado.
+            // Formatos: lista de sessões, `{ sessions }`, `{ session, user }`
+            // ou `{ token, user }`. `null` e erro (`APIError`) passam intactos.
             const returned = ctx.context.returned as
               | WithToken[]
-              | { session?: WithToken }
+              | (WithToken & { session?: WithToken; sessions?: WithToken[] })
               | null
             if (Array.isArray(returned)) {
               return ctx.json(returned.map(withoutToken))
             }
-            if (returned?.session) {
-              return ctx.json({
-                ...returned,
-                session: withoutToken(returned.session)
-              })
-            }
+            if (!returned || returned instanceof Error) return
+            const body = withoutToken(returned)
+            if (body.session) body.session = withoutToken(body.session)
+            if (body.sessions) body.sessions = body.sessions.map(withoutToken)
+            return ctx.json(body)
           })
         }
       ]
