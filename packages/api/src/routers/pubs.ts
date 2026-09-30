@@ -180,6 +180,9 @@ export const pubsRouter = router({
         championship: z.string().optional(),
         date: z.string().date().optional(),
         amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
+        // WEB-67: vem do cliente, nunca da sessão — a página vai para um cache
+        // compartilhado entre contas.
+        teamIds: favoriteTeamIdsSchema.optional(),
         sort: z.enum(['relevance', 'rating']).default('relevance'),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
@@ -209,6 +212,9 @@ export const pubsRouter = router({
         sort: porNota ? ('rating' as const) : ('relevance' as const),
         amenities: input.amenities?.length
           ? normalizeAmenityIds(input.amenities)
+          : undefined,
+        teamIds: input.teamIds?.length
+          ? [...new Set(input.teamIds)].sort()
           : undefined
       }
 

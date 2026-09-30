@@ -49,6 +49,10 @@ type Props = {
   onRadiusChange: (value: RadiusKm) => void
   amenities: number[]
   onToggleAmenity: (id: number) => void
+  /** Times que o torcedor acompanha (WEB-68); vazio esconde o filtro. */
+  teams: { id: string; name: string }[]
+  teamIds: string[]
+  onToggleTeam: (id: string) => void
   sort: SearchSort
   onSortChange: (value: SearchSort) => void
   /**
@@ -75,6 +79,9 @@ export function SearchFilterBar({
   onRadiusChange,
   amenities,
   onToggleAmenity,
+  teams,
+  teamIds,
+  onToggleTeam,
   sort,
   onSortChange,
   canSortByRating,
@@ -320,6 +327,27 @@ export function SearchFilterBar({
           </div>
         </fieldset>
       </div>
+
+      {teams.length > 0 ? (
+        <fieldset className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <legend className="onside-kicker m-0 shrink-0 pr-1">
+              Seus times
+            </legend>
+            {teams.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => onToggleTeam(team.id)}
+                aria-pressed={teamIds.includes(team.id)}
+                className="onside-chip"
+              >
+                {team.name}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <div className="min-w-0">
         <button

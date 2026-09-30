@@ -54,6 +54,12 @@ export const Route = createFileRoute('/(dashboard)/dashboard')({
   component: FanDashboard
 })
 
+function toggled<T>(list: T[], item: T): T[] {
+  return list.includes(item)
+    ? list.filter((it) => it !== item)
+    : [...list, item]
+}
+
 function FanDashboard() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const navigate = useNavigate()
@@ -74,6 +80,7 @@ function FanDashboard() {
   const preferredRadiusKm = normalizeRadiusKm(session?.user.searchRadiusKm)
   const [radiusKm, setRadiusKm] = useState<RadiusKm>(preferredRadiusKm)
   const [amenities, setAmenities] = useState<number[]>([])
+  const [teamIds, setTeamIds] = useState<string[]>([])
   const [sort, setSort] = useState<SearchSort>('relevance')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
@@ -138,6 +145,7 @@ function FanDashboard() {
       sportId,
       championship: championship || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
+      teamIds: teamIds.length > 0 ? teamIds : undefined,
       sort,
       limit: 30
     }),
@@ -148,7 +156,8 @@ function FanDashboard() {
   const hasSearchIntent =
     championship.trim().length > 0 ||
     sportId !== undefined ||
-    amenities.length > 0
+    amenities.length > 0 ||
+    teamIds.length > 0
   const primaryEmpty = primaryQuery.data?.bars.length === 0
   const fallbackQuery = useQuery({
     ...trpc.pubs.searchByLocation.queryOptions({
@@ -160,6 +169,12 @@ function FanDashboard() {
     meta: { errorToast: false }
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
+  // Falha aqui só esconde o filtro de times; a busca segue.
+  const myTeams =
+    useQuery({
+      ...trpc.pubs.getMyTeams.queryOptions(),
+      meta: { errorToast: false }
+    }).data ?? []
 
   // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
   // busca — o card some e a tela segue fazendo o trabalho principal.
@@ -323,14 +338,14 @@ function FanDashboard() {
     setFavoritesOnly(false)
     setGamesTodayOnly(false)
     setAmenities([])
+    setTeamIds([])
     setSort('relevance')
   }
   const toggleAmenity = (id: number) => {
-    setAmenities((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    )
+    setAmenities((current) => toggled(current, id))
+  }
+  const toggleTeam = (id: string) => {
+    setTeamIds((current) => toggled(current, id))
   }
   const applySuggestion = (kind: SuggestionKind) => {
     if (kind === 'brasileirao') {
@@ -394,6 +409,15 @@ function FanDashboard() {
       clear: () => setGamesTodayOnly(false)
     })
   }
+  for (const id of teamIds) {
+    const selectedTeam = myTeams.find((item) => item.id === id)
+    if (!selectedTeam) continue
+
+    activeFilters.push({
+      label: selectedTeam.name,
+      clear: () => setTeamIds((current) => current.filter((it) => it !== id))
+    })
+  }
   for (const id of amenities) {
     const amenity = findAmenity(id)
     if (!amenity) continue
@@ -444,6 +468,9 @@ function FanDashboard() {
         onRadiusChange={handleRadiusChange}
         amenities={amenities}
         onToggleAmenity={toggleAmenity}
+        teams={myTeams}
+        teamIds={teamIds}
+        onToggleTeam={toggleTeam}
         sort={sort}
         onSortChange={setSort}
         canSortByRating={canSortByRating}

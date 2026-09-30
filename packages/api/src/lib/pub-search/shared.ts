@@ -25,6 +25,8 @@ export type SearchInput = {
   date?: string
   /** Ids do vocabulário de `../amenities`, já normalizados pelo roteador. */
   amenities?: number[]
+  /** Ids de time, já sem repetido e ordenados pelo roteador. */
+  teamIds?: string[]
   /**
    * `relevance` é a ordem de sempre — plano, próximo jogo, distância. Só o
    * torcedor pode pedir `rating`, e é nesse pedido explícito que o plano sai
@@ -156,12 +158,16 @@ export type FiltrosBusca = {
   /** Ponto de busca como geography, casado com os índices GiST (0013/0018). */
   origin: SQL
   radiusMeters: number
-  sportFilter: SQL
-  /** Só o campeonato do jogo. */
-  champFilter: SQL
-  dateFilter: SQL
   /**
-   * Campeonato OU nome do bar — comportamento original da busca. O alias da
+   * Recortes que só olham o jogo: esporte, data e times (jogo com ao menos
+   * um dos escolhidos). Um fragmento só, porque todo lugar que procura jogo
+   * aplica os três juntos.
+   */
+  eventFilter: SQL
+  /** Texto do jogo: campeonato, time participante ou `participant_free_text`. */
+  champFilter: SQL
+  /**
+   * Texto do jogo OU nome do bar. O alias da
    * tabela do bar muda conforme a query, então entra como fragmento montado
    * pelo chamador; nunca como texto interpolado.
    */
@@ -178,9 +184,29 @@ export type FiltrosBusca = {
 }
 
 export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
-  const { lat, lng, radiusKm, sportId, championship, date, amenities } = input
+  const {
+    lat,
+    lng,
+    radiusKm,
+    sportId,
+    championship,
+    date,
+    amenities,
+    teamIds
+  } = input
 
-  const padraoCampeonato = championship ? `%${championship.toLowerCase()}%` : ''
+  // `search_normalize` (migration 0039) tira acento e caixa dos dois lados,
+  // então `gremio` casa com `Grêmio`. Texto de evento montado uma vez só, para
+  // os três caminhos compararem as mesmas colunas.
+  const padrao = sql`'%' || search_normalize(${championship ?? ''}) || '%'`
+  const casa = (coluna: SQL) => sql`search_normalize(${coluna}) LIKE ${padrao}`
+  const textoDoJogo = sql`(${casa(sql`e.championship`)}
+    OR ${casa(sql`e.participant_free_text`)}
+    OR EXISTS (
+      SELECT 1 FROM event_participants ep
+      JOIN team t ON t.id = ep.team_id
+      WHERE ep.event_id = e.id AND ${casa(sql`t.name`)}
+    ))`
 
   // Cada id vai como parâmetro ligado, nunca interpolado no texto do SQL —
   // mesma regra do campeonato, ainda que aqui a entrada já esteja reduzida a
@@ -195,15 +221,26 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   return {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
     radiusMeters: radiusKm * 1000,
-    sportFilter: sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
-    champFilter: championship
-      ? sql`AND LOWER(e.championship) LIKE ${padraoCampeonato}`
-      : sql``,
-    dateFilter: date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
+    eventFilter: sql.join(
+      [
+        sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
+        date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
+        teamIds?.length
+          ? sql`AND EXISTS (
+              SELECT 1 FROM event_participants ep
+              WHERE ep.event_id = e.id
+                AND ep.team_id IN (${sql.join(
+                  teamIds.map((id) => sql`${id}`),
+                  sql`, `
+                )})
+            )`
+          : sql``
+      ],
+      sql` `
+    ),
+    champFilter: championship ? sql`AND ${textoDoJogo}` : sql``,
     champBarFilter: (nomeDoBar) =>
-      championship
-        ? sql`AND (LOWER(e.championship) LIKE ${padraoCampeonato} OR LOWER(${nomeDoBar}) LIKE ${padraoCampeonato})`
-        : sql``,
+      championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``,
     amenityFilter: (barAlias) =>
       listaAmenidades
         ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`

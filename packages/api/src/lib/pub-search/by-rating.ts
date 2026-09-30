@@ -43,9 +43,8 @@ export async function executarBuscaPorNota(
   const {
     origin,
     radiusMeters,
-    sportFilter,
+    eventFilter,
     champFilter,
-    dateFilter,
     champBarFilter,
     amenityFilter
   } = montarFiltrosBusca(input)
@@ -95,9 +94,8 @@ export async function executarBuscaPorNota(
         FROM event e
         WHERE e.bar_id = b.id
           AND e.starts_at >= NOW()
-          ${sportFilter}
+          ${eventFilter}
           ${champBarFilterB}
-          ${dateFilter}
       ) agg ON agg.next_event_at IS NOT NULL
       WHERE b.is_active
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
@@ -130,9 +128,8 @@ export async function executarBuscaPorNota(
       FROM event e
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
-        ${sportFilter}
+        ${eventFilter}
         ${champBarFilterR}
-        ${dateFilter}
     ) cnt ON true
     LEFT JOIN LATERAL (
       SELECT
@@ -149,9 +146,8 @@ export async function executarBuscaPorNota(
       ${classicRuleLateral(sql`e`)}
       WHERE e.bar_id = r.id
         AND e.starts_at >= NOW()
-        ${sportFilter}
+        ${eventFilter}
         ${champFilter}
-        ${dateFilter}
       ORDER BY e.starts_at ASC
       LIMIT 1
     ) nxt ON true
