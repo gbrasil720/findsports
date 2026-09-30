@@ -45,21 +45,27 @@ const pubOnly: [string, string][] = [
   ['reservationValidation', 'lookup']
 ]
 
-// `pubs.isFavorited` e `ratings.getPending` ficam de fora de propósito: para
-// quem não é torcedor devolvem vazio, não FORBIDDEN.
+// `pubs.isFavorited` e `ratings.getPending` devolviam vazio para quem não é
+// torcedor, e `ratings.remove` não olhava papel. Nenhuma tela depende disso: o
+// perfil do bar só pergunta `isFavorited` quando `canFavoriteBars`, o card de
+// avaliação do /dashboard só busca para torcedor, e `remove` não tem chamador.
+// Resposta vazia para bar ou admin escondia um cliente chamando o que não devia.
 const fanOnly: [string, string][] = [
   ...all('reservations', reservationsRouter._def.procedures),
   ...all('recommendations', recommendationsRouter._def.procedures).filter(
     ([, procedure]) => procedure !== 'getMyBarQualityStatus'
   ),
   ['pubs', 'favorite'],
+  ['pubs', 'isFavorited'],
   ['pubs', 'unfavorite'],
   ['pubs', 'getFavorites'],
   ['pubs', 'getMyPreferences'],
   ['pubs', 'updateMyPreferences'],
   ['pubs', 'getMyTeams'],
   ['pubs', 'updateMyTeams'],
+  ['ratings', 'getPending'],
   ['ratings', 'submit'],
+  ['ratings', 'remove'],
   ['onboarding', 'completeFan'],
   ['commercialAnalytics', 'recordCommercialEvent']
 ]

@@ -7,7 +7,7 @@ import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { fanProcedure, protectedProcedure, router } from '../index'
+import { fanProcedure, router } from '../index'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
 
 /**
@@ -109,9 +109,7 @@ export const ratingsRouter = router({
    * A janela e o portão de intenção são os mesmos de `submit` — mas escritos
    * uma vez só, em SQL, porque aqui a pergunta é "quais", não "este pode".
    */
-  getPending: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'fan') return []
-
+  getPending: fanProcedure.query(async ({ ctx }) => {
     const rows = await db.execute(sql`
       SELECT DISTINCT ON (e.id)
         e.id AS event_id,
@@ -217,7 +215,7 @@ export const ratingsRouter = router({
     }),
 
   /** Desfaz a própria avaliação. */
-  remove: protectedProcedure
+  remove: fanProcedure
     .input(z.object({ barId: z.string().uuid(), eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await db
