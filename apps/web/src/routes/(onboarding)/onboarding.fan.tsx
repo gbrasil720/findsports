@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Fire from 'reicon-react/icons/Fire'
 import Location from 'reicon-react/icons/Location'
+import { toast } from 'sonner'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -20,6 +21,7 @@ import {
 import { type RadiusKm, SEARCH_RADII } from '@/domain/discovery'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
+import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -71,6 +73,15 @@ function FanOnboarding() {
   const sports = sportsQuery.data ?? []
   const selectedSports = sports.filter((s) => selectedSportIds.includes(s.id))
 
+  const seguirParaDashboard = async () => {
+    // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
+    // do better-auth; sem regravar o cache de sessão o guard da rota
+    // devolveria o usuário para cá. Se a releitura falhar, seguimos
+    // assim mesmo — o guard revalida no servidor.
+    await refreshSessionCache().catch(() => {})
+    navigate({ to: '/dashboard' })
+  }
+
   const completeMutation = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
       onSuccess: async () => {
@@ -79,20 +90,22 @@ function FanOnboarding() {
           sports: selectedSports.map((s) => s.slug),
           radius_km: radius
         })
-        // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
-        // do better-auth; sem regravar o cache de sessão o guard da rota
-        // devolveria o usuário para cá. Se a releitura falhar, seguimos
-        // assim mesmo — o guard revalida no servidor.
-        await refreshSessionCache().catch(() => {})
-        navigate({ to: '/dashboard' })
+        await seguirParaDashboard()
       },
-      onError: (err) =>
-        setError(
-          getUserFacingMessage(
-            err,
-            'Não foi possível salvar suas preferências. Tente novamente.'
+      onError: async (err) => {
+        const concluido = mensagemOnboardingJaConcluido(err)
+        if (!concluido) {
+          setError(
+            getUserFacingMessage(
+              err,
+              'Não foi possível salvar suas preferências. Tente novamente.'
+            )
           )
-        )
+          return
+        }
+        toast.info(concluido)
+        await seguirParaDashboard()
+      }
     })
   )
 
