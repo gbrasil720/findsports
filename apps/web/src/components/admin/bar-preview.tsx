@@ -109,13 +109,13 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
               onBlur={() => {}}
               onFavorite={() => {}}
             />
-          ) : eventsState.status === 'error' || planState.status === 'error' ? (
+          ) : eventsState.status === 'error' ? (
             <div
               className="flex flex-col items-center gap-3 py-8 text-center text-[var(--onside-muted)] text-sm"
               role="alert"
             >
               <p>Preview indisponível.</p>
-              {eventsState.status === 'error' && eventsState.retryable ? (
+              {eventsState.retryable ? (
                 <button
                   type="button"
                   onClick={eventsState.retry}
@@ -124,16 +124,12 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
                   Tentar novamente
                 </button>
               ) : null}
-              {planState.status === 'error' && planState.retryable ? (
-                <button
-                  type="button"
-                  onClick={planState.retry}
-                  className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
-                >
-                  Tentar novamente
-                </button>
-              ) : null}
             </div>
+          ) : planState.status === 'error' ? (
+            // O erro do plano já é anunciado uma vez na aba (WEB-142).
+            <p className="py-8 text-center text-[var(--onside-muted)] text-sm">
+              Preview indisponível.
+            </p>
           ) : (
             <div
               className="grid min-h-[158px] grid-cols-[auto_1fr_auto] items-center gap-3 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-4"
@@ -170,6 +166,10 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
                 center={{ lat, lng }}
               />
             </div>
+          ) : planState.status === 'error' ? (
+            <div className="onside-map-frame relative grid h-[180px] place-items-center text-[var(--onside-muted)] text-sm">
+              <p>Mapa indisponível.</p>
+            </div>
           ) : (
             <div
               className="onside-map-frame relative h-[180px]"
@@ -177,30 +177,8 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
               aria-busy="true"
               aria-live="polite"
             >
-              <span className="sr-only">
-                {planState.status === 'error'
-                  ? 'Mapa indisponível.'
-                  : 'Carregando plano…'}
-              </span>
-              {planState.status === 'error' ? (
-                <div
-                  className="flex h-full flex-col items-center justify-center gap-3 text-[var(--onside-muted)] text-sm"
-                  role="alert"
-                >
-                  <p>Mapa indisponível.</p>
-                  {planState.retryable ? (
-                    <button
-                      type="button"
-                      onClick={planState.retry}
-                      className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
-                    >
-                      Tentar novamente
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <Skeleton className="size-full" />
-              )}
+              <span className="sr-only">Carregando plano…</span>
+              <Skeleton className="size-full" />
             </div>
           )}
           {planState.status === 'loading' ? (

@@ -8,7 +8,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import type { EliteAccess, PlanState } from './admin-model'
+import type { PlanState } from './admin-model'
 import { useEventsState, useMyBar, useMySubscription } from './admin-queries'
 import { AdminTabPanel } from './admin-tabs'
 import { BarMenuEditor } from './bar-menu-editor'
@@ -16,6 +16,7 @@ import { BarPreview } from './bar-preview'
 import { ConversionReadiness } from './conversion-readiness'
 import { HouseOfferEditor } from './house-offer-editor'
 import { PubHeroSection } from './pub-hero-section'
+import { QueryError } from './query-error'
 import { RatingsPanel } from './ratings-panel'
 import { ReservationIntakeCard } from './reservation-intake-card'
 
@@ -37,7 +38,6 @@ export function SpaceTab({
 
   const {
     data: subscription,
-    isLoading: loadingSub,
     isError: subError,
     error: subscriptionQueryError,
     refetch: refetchSub
@@ -146,30 +146,19 @@ export function SpaceTab({
   // A página só monta as abas com o bar carregado; o cache não o perde depois.
   if (!bar) return null
 
-  const planState: PlanState = loadingSub
-    ? { status: 'loading' }
-    : subError
+  // Plano vigente, com status — não `bar.plan`. Dado em cache vence erro de
+  // refetch em segundo plano: trocar o formulário pelo aviso apagaria o que o
+  // dono digitou.
+  const planState: PlanState =
+    subscription !== undefined
       ? {
-          status: 'error',
-          retryable: isRetryableError(subscriptionQueryError),
-          retry: () => {
-            void refetchSub()
-          }
+          status: 'ready',
+          plan: subscription?.plan ?? 'starter',
+          currentPlan: subscription?.currentPlan ?? null
         }
-      : { status: 'ready', plan: subscription?.plan ?? 'starter' }
-
-  // Plano vigente, com status — não `bar.plan`. Os cards Elite só decidem o
-  // que desenhar; o servidor confere de novo antes de gravar.
-  const eliteAccess: EliteAccess = loadingSub
-    ? { status: 'loading' }
-    : subError
-      ? {
-          status: 'error',
-          retry: () => {
-            void refetchSub()
-          }
-        }
-      : { status: 'ready', eligible: subscription?.currentPlan === 'elite' }
+      : subError
+        ? { status: 'error' }
+        : { status: 'loading' }
 
   const eventList = eventsState.status === 'ready' ? eventsState.events : []
   const hasUpcomingEvent = eventList.some(
@@ -243,28 +232,22 @@ export function SpaceTab({
         }}
       />
 
+      {/* Os cards pagos e o preview dependem da mesma consulta: a falha
+          aparece uma vez só, aqui, e não em cada card (WEB-142). */}
+      {planState.status === 'error' ? (
+        <QueryError
+          message="Não foi possível conferir o seu plano."
+          retryable={isRetryableError(subscriptionQueryError)}
+          onRetry={() => {
+            void refetchSub()
+          }}
+        />
+      ) : null}
+
       <BarMenuEditor
         menuUrl={bar.menuUrl}
         averageSpendCents={bar.averageSpendCents}
-        // Dado em cache vence erro de refetch em segundo plano: trocar
-        // o formulário pelo aviso de erro apagaria o que o dono digitou.
-        access={
-          subscription !== undefined
-            ? {
-                status: 'ready',
-                eligible:
-                  subscription?.currentPlan === 'pro' ||
-                  subscription?.currentPlan === 'elite'
-              }
-            : subError
-              ? {
-                  status: 'error',
-                  retry: () => {
-                    void refetchSub()
-                  }
-                }
-              : { status: 'loading' }
-        }
+        plan={planState}
         isSaving={updateMenuInfoMutation.isPending}
         saveError={barMenuError}
         onSave={(changes) => updateMenuInfoMutation.mutateAsync(changes)}
@@ -273,7 +256,7 @@ export function SpaceTab({
       <ReservationIntakeCard
         acceptsReservations={bar.acceptsReservations}
         hasHouseOffer={bar.houseOffer !== null}
-        access={eliteAccess}
+        plan={planState}
         isSaving={updateAcceptsReservationsMutation.isPending}
         saveError={
           updateAcceptsReservationsMutation.error
@@ -292,7 +275,7 @@ export function SpaceTab({
 
       <HouseOfferEditor
         houseOffer={bar.houseOffer}
-        access={eliteAccess}
+        plan={planState}
         isSaving={updateHouseOfferMutation.isPending}
         saveError={
           updateHouseOfferMutation.error

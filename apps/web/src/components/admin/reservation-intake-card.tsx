@@ -1,21 +1,19 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useId, useState } from 'react'
-import type { EliteAccess } from './admin-model'
-import { EliteLockedCallout, PlanCheckError } from './elite-callouts'
+import type { PlanState } from './admin-model'
+import { PaidFeatureCard } from './paid-feature-card'
 
 type Props = {
   /** Interruptor gravado. Continua existindo mesmo sem Elite. */
   acceptsReservations: boolean
   /** Só para avisar que a oferta some do perfil com o recebimento desligado. */
   hasHouseOffer: boolean
-  access: EliteAccess
+  plan: PlanState
   isSaving: boolean
   saveError: string | null
   /** Rejeita quando o servidor recusa. */
   onChange: (acceptsReservations: boolean) => Promise<unknown>
 }
-
-const TITLE_ID = 'admin-reservation-intake-title'
 
 /**
  * Interruptor de recebimento de reservas (WEB-131).
@@ -23,62 +21,27 @@ const TITLE_ID = 'admin-reservation-intake-title'
  * Elite diz que o bar pode; este card diz se ele quer. Desligado é o padrão.
  * O servidor confere o plano de novo antes de ligar.
  */
-export function ReservationIntakeCard({
-  acceptsReservations,
-  hasHouseOffer,
-  access,
-  isSaving,
-  saveError,
-  onChange
-}: Props) {
+export function ReservationIntakeCard({ plan, ...intake }: Props) {
   return (
-    <section
+    <PaidFeatureCard
       id="admin-reservation-intake"
-      className="onside-panel scroll-mt-6 p-5 md:p-6"
-      aria-labelledby={TITLE_ID}
+      tier="elite"
+      title="Reservas pela Onside"
+      description="Ligado, o torcedor pode pedir mesa pelo perfil do seu bar e a oferta da casa aparece junto. Desligado, o perfil mostra só o contato e a rota."
+      plan={plan}
+      loadingLabel="Carregando recebimento de reservas…"
+      skeleton={<Skeleton className="h-11 w-64" />}
+      locked={
+        <p className="text-sm opacity-90">
+          Com o Elite, você decide se recebe pedidos de reserva pelo perfil.
+        </p>
+      }
     >
-      <p className="onside-kicker mb-2">Plano Elite</p>
-      <h2 id={TITLE_ID} className="onside-display text-2xl">
-        Reservas pela Onside
-      </h2>
-      <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
-        Ligado, o torcedor pode pedir mesa pelo perfil do seu bar e a oferta da
-        casa aparece junto. Desligado, o perfil mostra só o contato e a rota.
-      </p>
-
-      <div className="mt-5">
-        {access.status === 'loading' ? (
-          <div className="space-y-3" role="status" aria-busy="true">
-            <span className="sr-only">Carregando recebimento de reservas…</span>
-            <Skeleton className="h-11 w-64" />
-          </div>
-        ) : access.status === 'error' ? (
-          <PlanCheckError retry={access.retry} />
-        ) : (
-          // O interruptor fica montado mesmo sem Elite: quem perdeu o plano
-          // com ele ligado precisa conseguir desligar, e o anúncio do
-          // resultado não pode sumir junto com o componente.
-          <div className="space-y-4">
-            {access.eligible ? null : (
-              <EliteLockedCallout>
-                <p className="text-sm opacity-90">
-                  Com o Elite, você decide se recebe pedidos de reserva pelo
-                  perfil.
-                </p>
-              </EliteLockedCallout>
-            )}
-            <IntakeSwitch
-              acceptsReservations={acceptsReservations}
-              hasHouseOffer={hasHouseOffer}
-              eligible={access.eligible}
-              isSaving={isSaving}
-              saveError={saveError}
-              onChange={onChange}
-            />
-          </div>
-        )}
-      </div>
-    </section>
+      {/* O interruptor fica montado mesmo sem Elite: quem perdeu o plano com
+          ele ligado precisa conseguir desligar, e o anúncio do resultado não
+          pode sumir junto com o componente. */}
+      {(eligible) => <IntakeSwitch {...intake} eligible={eligible} />}
+    </PaidFeatureCard>
   )
 }
 
@@ -89,7 +52,7 @@ function IntakeSwitch({
   isSaving,
   saveError,
   onChange
-}: Omit<Props, 'access'> & { eligible: boolean }) {
+}: Omit<Props, 'plan'> & { eligible: boolean }) {
   const id = useId()
   const labelId = `${id}-label`
   const hintId = `${id}-hint`

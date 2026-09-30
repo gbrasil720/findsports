@@ -38,20 +38,20 @@ export type PolicyState =
   | { status: 'error'; retry: () => void; retryable: boolean }
   | { status: 'ready'; policy: EventCreationPolicy }
 
+/**
+ * Assinatura lida por `getMySubscription`. `plan` é o contratado, que o preview
+ * usa para o selo; `currentPlan` é o vigente, com status, e é o que libera os
+ * recursos pagos — nunca `bar.plan`. A falha não traz `retry`: a aba mostra
+ * esse erro uma vez só (WEB-142).
+ */
 export type PlanState =
   | { status: 'loading' }
-  | { status: 'error'; retry: () => void; retryable: boolean }
-  | { status: 'ready'; plan: SubscriptionPlan }
-
-/**
- * Acesso aos recursos Elite do painel. `eligible` vem de
- * `getMySubscription().currentPlan === 'elite'` — o plano vigente, com status,
- * e não `bar.plan`. Só decide o que desenhar: o servidor confere de novo.
- */
-export type EliteAccess =
-  | { status: 'loading' }
-  | { status: 'error'; retry: () => void }
-  | { status: 'ready'; eligible: boolean }
+  | { status: 'error' }
+  | {
+      status: 'ready'
+      plan: SubscriptionPlan
+      currentPlan: SubscriptionPlan | null
+    }
 
 /* ------------------------------------------------------------------ */
 /* Analytics state machines                                            */

@@ -21,10 +21,10 @@ mock.module('@tanstack/react-router', () => ({
 
 const { BarMenuEditor } = await import('./bar-menu-editor')
 
-type Access = Parameters<typeof BarMenuEditor>[0]['access']
+type Plan = Parameters<typeof BarMenuEditor>[0]['plan']
 
 function renderizar(
-  access: Access,
+  plan: Plan,
   menuUrl: string | null,
   averageSpendCents: number | null,
   saveError: string | null = null
@@ -33,7 +33,7 @@ function renderizar(
     <BarMenuEditor
       menuUrl={menuUrl}
       averageSpendCents={averageSpendCents}
-      access={access}
+      plan={plan}
       isSaving={false}
       saveError={saveError}
       onSave={async () => undefined}
@@ -44,7 +44,11 @@ function renderizar(
 
 describe('BarMenuEditor', () => {
   test('sem Pro/Elite não oferece campos e aponta para os planos', () => {
-    const doc = renderizar({ status: 'ready', eligible: false }, null, null)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: null },
+      null,
+      null
+    )
     expect(doc.querySelector('input')).toBeNull()
     expect(doc.querySelector('a[href="/plan"]')).not.toBeNull()
     expect(doc.body.textContent).toContain('Pro e Elite')
@@ -52,7 +56,7 @@ describe('BarMenuEditor', () => {
 
   test('sem plano avisa que os dados continuam guardados', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: false },
+      { status: 'ready', plan: 'pro', currentPlan: null },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -63,7 +67,11 @@ describe('BarMenuEditor', () => {
   })
 
   test('com um item guardado a frase fica no singular', () => {
-    const doc = renderizar({ status: 'ready', eligible: false }, null, 4550)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: null },
+      null,
+      4550
+    )
     const texto = (doc.body.textContent ?? '').replace(/\s/g, ' ')
     expect(texto).toContain('Continua guardado o preço médio de R$ 45,50')
     expect(texto).toContain('não aparece no perfil')
@@ -71,7 +79,7 @@ describe('BarMenuEditor', () => {
 
   test('com plano os campos têm rótulo, dica e valor gravado', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -90,7 +98,7 @@ describe('BarMenuEditor', () => {
 
   test('mostra a prévia do formato final', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
       'https://bar.com.br/cardapio',
       4550
     )
@@ -100,13 +108,17 @@ describe('BarMenuEditor', () => {
   })
 
   test('sem dados não mostra prévia vazia', () => {
-    const doc = renderizar({ status: 'ready', eligible: true }, null, null)
+    const doc = renderizar(
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
+      null,
+      null
+    )
     expect(doc.body.textContent).not.toContain('Como aparece no perfil')
   })
 
   test('erro do servidor é anunciado', () => {
     const doc = renderizar(
-      { status: 'ready', eligible: true },
+      { status: 'ready', plan: 'pro', currentPlan: 'pro' },
       null,
       null,
       'Não foi possível salvar.'
@@ -114,5 +126,31 @@ describe('BarMenuEditor', () => {
     expect(doc.querySelector('[role="alert"]')?.textContent).toBe(
       'Não foi possível salvar.'
     )
+  })
+
+  test('Elite também libera o cardápio', () => {
+    const doc = renderizar(
+      { status: 'ready', plan: 'elite', currentPlan: 'elite' },
+      null,
+      null
+    )
+    expect(doc.querySelector('input')).not.toBeNull()
+  })
+
+  test('plano contratado sem vigência não libera', () => {
+    const doc = renderizar(
+      { status: 'ready', plan: 'elite', currentPlan: null },
+      null,
+      null
+    )
+    expect(doc.querySelector('input')).toBeNull()
+  })
+
+  // A falha é anunciada uma vez só, pela aba (WEB-142).
+  test('falha ao ler o plano não vira alerta nem botão no card', () => {
+    const doc = renderizar({ status: 'error' }, null, null)
+    expect(doc.querySelector('[role="alert"]')).toBeNull()
+    expect(doc.querySelector('button')).toBeNull()
+    expect(doc.querySelector('input')).toBeNull()
   })
 })
