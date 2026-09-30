@@ -29,3 +29,12 @@ export const HIGHLIGHTS_QUERY = {
   staleTime: 60_000,
   gcTime: 5 * 60_000
 } as const
+
+/**
+ * Fila e teto de reservas do bar (WEB-158). O pedido chega de outro usuário,
+ * sem nenhum clique aqui: o painel aberto no balcão consulta sozinho. O React
+ * Query pausa o intervalo com a aba do navegador em segundo plano.
+ */
+export const BAR_RESERVATIONS_QUERY = {
+  refetchInterval: 30_000
+} as const

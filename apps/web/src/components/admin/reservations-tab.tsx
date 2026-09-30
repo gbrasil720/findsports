@@ -11,6 +11,7 @@ import {
   type ReservationAnswer
 } from '@/domain/reservations'
 import { countLabel } from '@/lib/plural'
+import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { AdminTabPanel } from './admin-tabs'
@@ -32,8 +33,7 @@ export function ReservationsTab({ active }: { active: boolean }) {
   const trpc = useTRPC()
   const query = useQuery({
     ...trpc.barReservations.list.queryOptions(),
-    // Painel aberto no balcão vê pedido novo; pausa com a aba em segundo plano.
-    refetchInterval: 30_000,
+    ...BAR_RESERVATIONS_QUERY,
     meta: { errorToast: false }
   })
   const [announcement, setAnnouncement] = useState('')
@@ -105,11 +105,15 @@ function ReservationRequest({
     if (confirmingDecline) declineRef.current?.focus()
   }, [confirmingDecline])
 
-  // Confirmar muda a lotação do jogo, além da fila.
+  // Confirmar muda a lotação do jogo, além da fila, e com ela o "esgotado"
+  // do perfil público e da prévia em "Meu espaço".
   const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.barReservations.pathKey()
-    })
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: trpc.barReservations.pathKey()
+      }),
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+    ])
 
   const respond = useMutation(
     trpc.barReservations.respond.mutationOptions({
