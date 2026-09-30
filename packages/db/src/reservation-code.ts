@@ -21,6 +21,27 @@ export const RESERVATION_CODE_LENGTH = 6
 
 const RESERVATION_CODE_REGEX = new RegExp(RESERVATION_CODE_PATTERN)
 
+const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+// Maior múltiplo do alfabeto que cabe num byte: bytes acima disso são
+// descartados, senão `byte % 36` favoreceria os primeiros caracteres.
+const UNBIASED_BYTE_LIMIT = 256 - (256 % CODE_ALPHABET.length)
+
+/**
+ * Código novo para uma reserva (WEB-124), com `RESERVATION_CODE_LENGTH`
+ * caracteres do gerador criptográfico. Único entre os ativos só o banco
+ * garante: quem grava tenta de novo quando esbarra no índice.
+ */
+export function generateReservationCode(): string {
+  let code = ''
+  while (code.length < RESERVATION_CODE_LENGTH) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(16))) {
+      if (byte < UNBIASED_BYTE_LIMIT && code.length < RESERVATION_CODE_LENGTH)
+        code += CODE_ALPHABET[byte % CODE_ALPHABET.length]
+    }
+  }
+  return code
+}
+
 /**
  * Forma gravada do que foi digitado: sem espaço, sem hífen, em maiúsculas.
  * Quem lê o código do celular do torcedor digita "ab3-k9 x" sem errar nada —

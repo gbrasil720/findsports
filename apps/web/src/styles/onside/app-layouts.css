@@ -384,6 +384,12 @@
   min-width: 0;
 }
 
+/* Secundário só com ícone (com reserva, WEB-124): o texto fica no primário. */
+.onside-app .onside-pub-actionbar > div > .onside-pub-actionbar-icon {
+  flex: 0 0 48px;
+  padding-inline: 0;
+}
+
 /*
  * Espaço para a barra não cobrir o fim do conteúdo — sem isso, a última
  * seção fica permanentemente inalcançável.

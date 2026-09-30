@@ -112,7 +112,7 @@ export function assertWindowOpen(
 
 const CHECK_VIOLATION = '23514'
 
-function pgField(error: unknown, field: 'code' | 'constraint') {
+export function pgField(error: unknown, field: 'code' | 'constraint') {
   let current: unknown = error
   while (current && typeof current === 'object') {
     const value = (current as Record<string, unknown>)[field]

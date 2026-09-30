@@ -1,0 +1,34 @@
+import { describe, expect, test } from 'bun:test'
+import { renderToStaticMarkup } from 'react-dom/server'
+
+import { BarActions } from './bar-action-bar'
+
+const base = {
+  whatsappUrl: 'https://wa.me/5511999999999',
+  directionsUrl: 'https://maps.example/rota',
+  phone: '+5511999999999',
+  onWhatsApp: () => {},
+  onDirections: () => {},
+  onPhone: () => {},
+  isOwner: false
+}
+
+describe('BarActions', () => {
+  test('com reserva disponível, "Reservar mesa" é o primário e o WhatsApp continua', () => {
+    const markup = renderToStaticMarkup(
+      <BarActions {...base} onReserve={() => {}} variant="panel" />
+    )
+    expect(markup).toContain('Reservar mesa')
+    expect(markup).toContain('WhatsApp')
+    expect(markup).not.toContain('Falar com o bar')
+  })
+
+  test('sem reserva, volta ao WhatsApp e à rota, sem botão de reserva', () => {
+    const markup = renderToStaticMarkup(
+      <BarActions {...base} onReserve={null} variant="panel" />
+    )
+    expect(markup).not.toContain('Reservar mesa')
+    expect(markup).toContain('Falar com o bar')
+    expect(markup).toContain('Rota')
+  })
+})

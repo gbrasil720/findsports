@@ -10,6 +10,7 @@ import {
   uniqueIndex
 } from 'drizzle-orm/pg-core'
 import { RESERVATION_CODE_PATTERN } from '../reservation-code'
+import { RESERVATION_NOTE_MAX_LENGTH } from '../reservation-limits'
 import { user } from './auth'
 import { event } from './platform'
 
@@ -40,9 +41,6 @@ export const ACTIVE_RESERVATION_STATUSES = [
   'pending',
   'confirmed'
 ] as const satisfies readonly ReservationStatus[]
-
-/** Limite da observação livre. Recado para o bar, não conversa. */
-export const RESERVATION_NOTE_MAX_LENGTH = 280
 
 // Os `sql.raw` deste arquivo só inlinam constantes do próprio código em DDL:
 // predicado de índice e CHECK não aceitam parâmetro, e escrever o literal à

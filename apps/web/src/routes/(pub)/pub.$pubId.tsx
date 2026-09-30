@@ -20,6 +20,7 @@ import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { HouseOfferSection } from '@/components/pub/house-offer-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
+import { ReservationRequestDialog } from '@/components/pub/reservation-request-dialog'
 import { buildBarFacts } from '@/domain/bar-facts'
 import {
   formatDayLabel,
@@ -168,6 +169,7 @@ function PubPage() {
   const [eventId, setEventId] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(false)
   const [favoritePending, setFavoritePending] = useState(false)
+  const [reserveOpen, setReserveOpen] = useState(false)
   const [recommendationRunId, setRecommendationRunId] = useState<string | null>(
     null
   )
@@ -388,13 +390,27 @@ function PubPage() {
   // torcedor não pode receber a navegação do painel do bar.
   const shellVariant = shellVariantForViewer(session?.user?.role)
 
+  // Reserva só para jogo que ainda não começou; o servidor confere de novo.
+  const reservableEvents = useMemo(() => {
+    const now = Date.now()
+    return (
+      normalizedPub?.events.filter((event) => event.startsAt.getTime() > now) ??
+      []
+    )
+  }, [normalizedPub])
+  const canReserve =
+    normalizedPub?.acceptsReservations === true &&
+    viewerRole === 'fan' &&
+    reservableEvents.length > 0
+
   const actions = {
     whatsappUrl,
     directionsUrl,
     phone: normalizedPub?.phone ?? null,
     onWhatsApp: handleWhatsAppClick,
     onDirections: handleOpenDirections,
-    onPhone: handlePhoneClick
+    onPhone: handlePhoneClick,
+    onReserve: canReserve ? () => setReserveOpen(true) : null
   }
 
   return (
@@ -482,6 +498,17 @@ function PubPage() {
               />
 
               <BarActions {...actions} variant="bar" isOwner={isOwner} />
+
+              {reserveOpen && (
+                <ReservationRequestDialog
+                  open
+                  onOpenChange={setReserveOpen}
+                  barName={normalizedPub.name}
+                  events={reservableEvents}
+                  initialEventId={heroEvent?.id ?? null}
+                  houseOffer={normalizedPub.houseOffer}
+                />
+              )}
             </div>
           ) : isError && pubErrorRetryable ? (
             <div

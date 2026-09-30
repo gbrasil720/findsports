@@ -172,6 +172,7 @@ describe('recorte do manifest', () => {
     expect(declaram).toEqual([
       '(dashboard)/dashboard.tsx',
       '(dashboard)/dashboard_.profile.tsx',
+      '(dashboard)/dashboard_.reservations.tsx',
       'admin.tsx',
       'admin_.billing.tsx',
       'admin_.validate.tsx',

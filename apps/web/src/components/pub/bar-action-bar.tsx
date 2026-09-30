@@ -1,3 +1,4 @@
+import Calendar from 'reicon-react/icons/Calendar'
 import Chat from 'reicon-react/icons/Chat'
 import Phone from 'reicon-react/icons/Phone'
 import Route from 'reicon-react/icons/Route'
@@ -11,6 +12,11 @@ export type BarActions = {
   onWhatsApp: () => void
   onDirections: () => void
   onPhone: () => void
+  /**
+   * Presente só quando o torcedor pode pedir mesa agora: bar recebendo
+   * reservas (quer e pode), jogo futuro na agenda e conta de torcedor.
+   */
+  onReserve: (() => void) | null
 }
 
 /**
@@ -21,8 +27,9 @@ export type BarActions = {
  * um botão desabilitado: o torcedor não tem culpa do cadastro incompleto, e um
  * botão morto vale menos que um botão que leva.
  *
- * O componente é o ponto único de troca: quando a reserva na plataforma
- * existir, ela vira o primário aqui e nada mais no layout muda.
+ * O componente é o ponto único de troca: com reserva disponível (WEB-124),
+ * "Reservar mesa" vira o primário e o WhatsApp desce para secundário. Sem
+ * ela, nada muda — nenhum botão morto.
  */
 export function BarActions({
   whatsappUrl,
@@ -31,13 +38,30 @@ export function BarActions({
   onWhatsApp,
   onDirections,
   onPhone,
+  onReserve,
   variant,
   isOwner
 }: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
-  const primaryIsWhatsApp = Boolean(whatsappUrl)
+  const primaryIsWhatsApp = !onReserve && Boolean(whatsappUrl)
   const isBar = variant === 'bar'
+  // Na barra fixa do celular, quatro botões com texto não cabem: com reserva,
+  // os secundários ficam só com ícone (o nome segue para leitor de tela).
+  const compact = isBar && Boolean(onReserve)
+  const secondaryLabel = compact ? 'sr-only' : 'ml-2'
+  const secondaryClass = `onside-btn onside-btn-outline min-h-12 justify-center text-sm${compact ? ' onside-pub-actionbar-icon' : ''}`
 
-  const primary = primaryIsWhatsApp ? (
+  const primary = onReserve ? (
+    <button
+      type="button"
+      onClick={onReserve}
+      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center whitespace-nowrap text-sm"
+    >
+      {!compact && (
+        <Calendar size={16} color="currentColor" aria-hidden="true" />
+      )}
+      <span className={compact ? undefined : 'ml-2'}>Reservar mesa</span>
+    </button>
+  ) : primaryIsWhatsApp ? (
     <a
       href={whatsappUrl ?? '#'}
       target="_blank"
@@ -63,26 +87,34 @@ export function BarActions({
 
   const secondaries = (
     <>
-      {primaryIsWhatsApp && directionsUrl && (
+      {onReserve && whatsappUrl && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onWhatsApp}
+          className={secondaryClass}
+        >
+          <Chat size={16} color="currentColor" aria-hidden="true" />
+          <span className={secondaryLabel}>WhatsApp</span>
+        </a>
+      )}
+      {(onReserve || primaryIsWhatsApp) && directionsUrl && (
         <a
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={onDirections}
-          className="onside-btn onside-btn-outline min-h-12 justify-center text-sm"
+          className={secondaryClass}
         >
           <Route size={16} color="currentColor" aria-hidden="true" />
-          <span className="ml-2">Rota</span>
+          <span className={secondaryLabel}>Rota</span>
         </a>
       )}
       {phone && (
-        <a
-          href={`tel:${phone}`}
-          onClick={onPhone}
-          className="onside-btn onside-btn-outline min-h-12 justify-center text-sm"
-        >
+        <a href={`tel:${phone}`} onClick={onPhone} className={secondaryClass}>
           <Phone size={16} color="currentColor" aria-hidden="true" />
-          <span className="ml-2">
+          <span className={secondaryLabel}>
             {isBar ? 'Ligar' : formatStoredPhone(phone)}
           </span>
         </a>
@@ -124,7 +156,7 @@ export function BarActions({
         {primary}
         {secondaries}
       </div>
-      {!primaryIsWhatsApp &&
+      {!whatsappUrl &&
         (isOwner ? (
           <OwnerNudge
             action={{ label: 'Liberar', to: '/admin', hash: 'admin-espaco' }}

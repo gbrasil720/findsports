@@ -122,7 +122,7 @@ export function getAllValidatedMessage(maxUses: number): string {
     : `As ${maxUses} pessoas desta reserva já foram validadas.`
 }
 
-function errorCode(error: unknown): string | undefined {
+export function errorCode(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined
   const data = (error as { data?: unknown }).data
   if (typeof data !== 'object' || data === null) return undefined
