@@ -3,7 +3,8 @@ import { JSDOM } from 'jsdom'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { type HouseOfferAccess, HouseOfferEditor } from './house-offer-editor'
+import type { EliteAccess } from './admin-model'
+import { HouseOfferEditor } from './house-offer-editor'
 
 mock.module('@tanstack/react-router', () => ({
   Link: ({
@@ -22,7 +23,7 @@ mock.module('@tanstack/react-router', () => ({
 }))
 
 function renderizar(
-  access: HouseOfferAccess,
+  access: EliteAccess,
   houseOffer: string | null,
   saveError: string | null = null
 ) {

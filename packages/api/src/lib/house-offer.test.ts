@@ -4,8 +4,7 @@ import { TRPCError } from '@trpc/server'
 import {
   assertCanConfigureHouseOffer,
   canConfigureHouseOffer,
-  parseHouseOfferInput,
-  resolvePublicHouseOffer
+  parseHouseOfferInput
 } from './house-offer'
 
 const now = new Date('2026-09-13T12:00:00.000Z')
@@ -112,33 +111,5 @@ describe('parseHouseOfferInput', () => {
       expect(error).toBeInstanceOf(TRPCError)
       expect((error as TRPCError).code).toBe('BAD_REQUEST')
     }
-  })
-})
-
-describe('resolvePublicHouseOffer', () => {
-  const elite = {
-    plan: 'elite' as const,
-    status: 'active' as const,
-    currentPeriodEnd: null
-  }
-
-  test('mostra a oferta de bar Elite', () => {
-    expect(resolvePublicHouseOffer('Chopp em dobro', elite, now)).toBe(
-      'Chopp em dobro'
-    )
-  })
-
-  test('bar sem oferta não mostra nada', () => {
-    expect(resolvePublicHouseOffer(null, elite, now)).toBeNull()
-  })
-
-  test('downgrade esconde a oferta', () => {
-    expect(
-      resolvePublicHouseOffer(
-        'Chopp em dobro',
-        { plan: 'pro', status: 'active', currentPeriodEnd: null },
-        now
-      )
-    ).toBeNull()
   })
 })

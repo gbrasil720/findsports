@@ -246,6 +246,20 @@
       "when": 1789342761292,
       "tag": "0035_bar_house_offer",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790724615973,
+      "tag": "0036_bar_accepts_reservations",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790724787272,
+      "tag": "0037_bar_menu",
+      "breakpoints": true
     }
   ]
 }
