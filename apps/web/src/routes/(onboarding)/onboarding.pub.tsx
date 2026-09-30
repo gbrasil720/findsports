@@ -1,4 +1,8 @@
 import { findAmenity } from '@findsports_oficial/api/lib/amenities'
+import {
+  mensagemEnderecoNaoEncontrado,
+  motivoTelefoneInvalido
+} from '@findsports_oficial/api/lib/bar-profile-validation'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -72,6 +76,7 @@ function PubOnboarding() {
   const [amenities, setAmenities] = useState<number[]>([])
   const [screenCount, setScreenCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
   // `onboarding.completePub`; aqui a tela só evita que o dono do bar preencha
@@ -96,12 +101,15 @@ function PubOnboarding() {
         await refreshSessionCache().catch(() => {})
         navigate({ to: '/plan' })
       },
-      onError: (err) =>
+      onError: (err, draft) =>
         setError(
-          getUserFacingMessage(
-            err,
-            'Não foi possível salvar o cadastro do bar. Tente novamente.'
-          )
+          // O telefone já foi conferido aqui; sobra a recusa do endereço.
+          err.data?.code === 'UNPROCESSABLE_CONTENT'
+            ? mensagemEnderecoNaoEncontrado(draft.city ?? 'São Paulo')
+            : getUserFacingMessage(
+                err,
+                'Não foi possível salvar o cadastro do bar. Tente novamente.'
+              )
         )
     })
   )
@@ -126,6 +134,7 @@ function PubOnboarding() {
         break
       case 'phone':
         setPhone(value)
+        setPhoneError(null)
         break
     }
   }
@@ -152,6 +161,14 @@ function PubOnboarding() {
 
   const next = () => {
     setError(null)
+
+    // Mesma regra do servidor, conferida aqui porque sem e-mail confirmado o
+    // cadastro só é enviado depois, de `/verify-email`, longe deste campo.
+    if (step === 1) {
+      const motivo = motivoTelefoneInvalido(phone)
+      setPhoneError(motivo)
+      if (motivo) return
+    }
 
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
@@ -229,6 +246,7 @@ function PubOnboarding() {
               city={city}
               phone={phone}
               onChange={handleFieldChange}
+              errors={phoneError ? { phone: phoneError } : undefined}
             />
 
             {!cidadePermitida ? (

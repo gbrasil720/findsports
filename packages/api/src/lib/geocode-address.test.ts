@@ -87,7 +87,7 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
       const err = await capturar(
         geocodeAddress(rua('rua forte william 87'), 'k', f.impl)
       )
-      expect(err.code).toBe('BAD_REQUEST')
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
       // Não se repete: o provedor devolveria o mesmo casamento errado.
       expect(f.chamadas()).toBe(1)
     })
@@ -105,7 +105,51 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
         ])
       )
       const err = await capturar(geocodeAddress(rua('Rua X 1'), 'k', f.impl))
-      expect(err.code).toBe('BAD_REQUEST')
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
+    })
+
+    /**
+     * WEB-115: um bar de produção tem `city = "São Paulo"` e coordenadas em
+     * São Caetano do Sul. A rua bate; a cidade, não.
+     */
+    it('recusa a rua certa em outra cidade, dizendo qual cidade conferir', async () => {
+      const f = fetchFalso(
+        resposta([
+          {
+            lat: '-23.62',
+            lon: '-46.56',
+            address: { road: 'Rua Manoel Coelho', city: 'São Caetano do Sul' }
+          }
+        ])
+      )
+      const err = await capturar(
+        geocodeAddress(rua('Rua Manoel Coelho, 600'), 'k', f.impl)
+      )
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
+      expect(err.message).toBe(
+        'Não encontramos esse endereço em São Paulo. Confira a rua, o número e a cidade.'
+      )
+    })
+
+    it('fica com o candidato da cidade pedida, sem ligar para acento', async () => {
+      const f = fetchFalso(
+        resposta([
+          {
+            lat: '1',
+            lon: '1',
+            address: { road: 'Rua Brasil', city: 'São Caetano do Sul' }
+          },
+          {
+            lat: '2',
+            lon: '2',
+            address: { road: 'Rua Brasil', city: 'Sao paulo' }
+          }
+        ])
+      )
+      expect(await geocodeAddress(rua('Rua Brasil, 10'), 'k', f.impl)).toEqual({
+        latitude: '2',
+        longitude: '2'
+      })
     })
 
     it('aceita a abreviação que o dono do bar escreve', async () => {
@@ -159,7 +203,7 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
       const err = await capturar(
         geocodeAddress(rua('Rua 13 de Maio, 500'), 'k', f.impl)
       )
-      expect(err.code).toBe('BAD_REQUEST')
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
     })
 
     it('aceita o número da casa escrito antes do nome', async () => {
@@ -292,7 +336,7 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
           f.impl
         )
       )
-      expect(err.code).toBe('BAD_REQUEST')
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
     })
   })
 
@@ -327,7 +371,7 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
     const err = await capturar(
       geocodeAddress(rua('Rua Inexistente'), 'k', f.impl)
     )
-    expect(err.code).toBe('BAD_REQUEST')
+    expect(err.code).toBe('UNPROCESSABLE_CONTENT')
     // Repetir gastaria tempo do usuário e cota da API sem chance de mudar.
     expect(f.chamadas()).toBe(1)
   })
@@ -335,7 +379,7 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
   it('lista vazia também é endereço não encontrado', async () => {
     const f = fetchFalso(resposta([]))
     const err = await capturar(geocodeAddress(rua('Rua Vazia'), 'k', f.impl))
-    expect(err.code).toBe('BAD_REQUEST')
+    expect(err.code).toBe('UNPROCESSABLE_CONTENT')
     expect(f.chamadas()).toBe(1)
   })
 

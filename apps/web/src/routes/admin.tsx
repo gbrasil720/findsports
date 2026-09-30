@@ -1,3 +1,7 @@
+import {
+  mensagemEnderecoNaoEncontrado,
+  motivoTelefoneInvalido
+} from '@findsports_oficial/api/lib/bar-profile-validation'
 import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -607,12 +611,16 @@ function PubDashboard() {
         setProfileError(null)
         queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
       },
-      onError: (err) => {
+      onError: (err, input) => {
         setProfileError(
-          getUserFacingMessage(
-            err,
-            'Não foi possível salvar o perfil. Tente novamente.'
-          )
+          // O telefone já foi conferido no `onSave`; sobra a recusa do
+          // endereço (WEB-115).
+          err.data?.code === 'UNPROCESSABLE_CONTENT'
+            ? mensagemEnderecoNaoEncontrado(input.city ?? bar?.city ?? '')
+            : getUserFacingMessage(
+                err,
+                'Não foi possível salvar o perfil. Tente novamente.'
+              )
         )
       }
     })
@@ -1182,7 +1190,16 @@ function PubDashboard() {
                 isSaving={updateMeMutation.isPending}
                 saveError={profileError}
                 onSave={async (data) => {
-                  setProfileError(null)
+                  // Mesma regra do servidor, conferida antes de enviar: o
+                  // padrão do WEB-118 não mostra o texto da recusa.
+                  const motivoTelefone = motivoTelefoneInvalido(
+                    data.phone,
+                    bar.phone
+                  )
+                  setProfileError(motivoTelefone)
+                  // Rejeitar mantém o formulário aberto, como a recusa do
+                  // servidor já faz.
+                  if (motivoTelefone) throw new Error(motivoTelefone)
                   // Nome e endereço são obrigatórios (o servidor recusa ''),
                   // então vazio vira "não mexer". Telefone e descrição são
                   // opcionais: '' vai como está e limpa o campo (WEB-143).

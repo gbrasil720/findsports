@@ -1,0 +1,68 @@
+/**
+ * Cadastro de bar coerente (WEB-115).
+ *
+ * O telefone aceitava até 30 caracteres sem checagem, e em produção entrou um
+ * `+55` seguido de `55` digitado de novo e nove dígitos começando com 5 — um
+ * número que não existe e que o link de WhatsApp montaria mesmo assim.
+ *
+ * Mora no pacote da API, e não no app, porque as mensagens são do app: o
+ * padrão do WEB-118 nunca mostra o texto do servidor, então o formulário
+ * confere o telefone e escreve a recusa de endereço com estas mesmas funções
+ * (ver `city-match.ts`, que segue o mesmo desenho).
+ */
+
+/**
+ * A recusa do geocoding: a rua não existe na cidade informada. Quem cai aqui
+ * digitou endereço de outro lugar ou a cidade errada.
+ */
+export function mensagemEnderecoNaoEncontrado(cidade: string): string {
+  return `Não encontramos esse endereço em ${cidade.trim()}. Confira a rua, o número e a cidade.`
+}
+
+/** DDDs em uso segundo o plano de numeração da Anatel. */
+const DDDS = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35,
+  37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64,
+  65, 66, 67, 68, 69, 71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88,
+  89, 91, 92, 93, 94, 95, 96, 97, 98, 99
+])
+
+/**
+ * O que está errado no telefone, pronto para mostrar ao dono do bar, ou
+ * `null` quando o número serve. Vazio ou ausente serve: o campo é opcional.
+ *
+ * Aceita o formato que o formulário grava (`+5511988446094`) e o legado sem
+ * código de país (`11988446094`).
+ *
+ * `gravado` é o telefone que o bar já tem: repeti-lo passa sem conferência,
+ * para um número antigo fora do padrão não travar a edição do resto do
+ * perfil — o formulário reenvia o telefone junto com tudo.
+ */
+export function motivoTelefoneInvalido(
+  telefone: string | undefined,
+  gravado?: string | null
+): string | null {
+  const bruto = telefone?.trim()
+  if (!bruto || telefone === gravado) return null
+  if (bruto.startsWith('+') && !bruto.startsWith('+55')) {
+    return 'Informe um telefone do Brasil (+55).'
+  }
+
+  const digitos = bruto.replace(/^\+55/, '').replace(/\D/g, '')
+  if (digitos.length !== 10 && digitos.length !== 11) {
+    return 'Telefone incompleto. Informe DDD e número: 8 dígitos para fixo ou 9 para celular.'
+  }
+  const ddd = digitos.slice(0, 2)
+  if (!DDDS.has(Number(ddd))) {
+    return `DDD ${ddd} não existe. Confira o telefone.`
+  }
+  if (digitos.length === 11 && digitos[2] !== '9') {
+    return 'Celular deve começar com 9 depois do DDD. Confira o telefone.'
+  }
+  // Fixo começa de 2 a 5; oito dígitos começando com 9 é celular sem o nono
+  // dígito, formato que deixou de existir.
+  if (digitos.length === 10 && !'2345'.includes(digitos[2] as string)) {
+    return 'Telefone fixo começa com 2, 3, 4 ou 5 depois do DDD. Celular tem 9 dígitos.'
+  }
+  return null
+}
