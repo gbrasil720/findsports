@@ -1,6 +1,7 @@
 import { type SQL, sql } from '@findsports_oficial/db'
 import { z } from 'zod'
 
+import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
 
@@ -164,14 +165,20 @@ export type FiltrosBusca = {
    * aplica os três juntos.
    */
   eventFilter: SQL
-  /** Texto do jogo: campeonato, time participante ou `participant_free_text`. */
-  champFilter: SQL
   /**
    * Texto do jogo OU nome do bar. O alias da
    * tabela do bar muda conforme a query, então entra como fragmento montado
    * pelo chamador; nunca como texto interpolado.
    */
   champBarFilter: (nomeDoBar: SQL) => SQL
+  /**
+   * Próximo jogo do bar, com os mesmos recortes que o admitem na busca.
+   *
+   * Vai sem o `SELECT` para o linear poder pôr a contagem por janela na
+   * frente. Um fragmento só, para o jogo exibido não divergir do filtro que
+   * trouxe o bar: bar casado pelo nome precisa vir com o próximo jogo dele.
+   */
+  proximoJogo: (barAlias: SQL) => SQL
   /**
    * Características do bar, com semântica de E: o bar precisa ter todas as
    * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
@@ -218,15 +225,12 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       )
     : null
 
-  return {
-    origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
-    radiusMeters: radiusKm * 1000,
-    eventFilter: sql.join(
-      [
-        sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
-        date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
-        teamIds?.length
-          ? sql`AND EXISTS (
+  const eventFilter = sql.join(
+    [
+      sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
+      date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
+      teamIds?.length
+        ? sql`AND EXISTS (
               SELECT 1 FROM event_participants ep
               WHERE ep.event_id = e.id
                 AND ep.team_id IN (${sql.join(
@@ -234,13 +238,38 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
                   sql`, `
                 )})
             )`
-          : sql``
-      ],
-      sql` `
-    ),
-    champFilter: championship ? sql`AND ${textoDoJogo}` : sql``,
-    champBarFilter: (nomeDoBar) =>
-      championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``,
+        : sql``
+    ],
+    sql` `
+  )
+  const champBarFilter = (nomeDoBar: SQL) =>
+    championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``
+
+  return {
+    origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
+    radiusMeters: radiusKm * 1000,
+    eventFilter,
+    champBarFilter,
+    proximoJogo: (barAlias) => sql`
+      e.id AS next_event_id,
+      e.championship AS next_championship,
+      e.starts_at AS next_event_at,
+      e.starts_at AS next_event_starts_at,
+      s.name AS next_sport_name,
+      s.slug AS next_sport_slug,
+      e.participant_free_text AS next_participant_free_text,
+      classic.classic_rule_id,
+      classic.classic_rule_version AS next_classic_rule_version,
+      classic.classic_rule_reason AS next_classic_rule_reason
+      FROM event e
+      JOIN sport s ON s.id = e.sport_id
+      ${classicRuleLateral(sql`e`)}
+      WHERE e.bar_id = ${barAlias}.id
+        AND e.starts_at >= NOW()
+        ${eventFilter}
+        ${champBarFilter(sql`${barAlias}.name`)}
+      ORDER BY e.starts_at ASC, e.id ASC
+      LIMIT 1`,
     amenityFilter: (barAlias) =>
       listaAmenidades
         ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`

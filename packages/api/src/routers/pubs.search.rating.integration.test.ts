@@ -272,6 +272,22 @@ integrationTest(
       expect(visitados).toEqual(idsPorNota)
       expect(new Set(visitados).size).toBe(fixtures.length)
 
+      // Termo que casa só com o nome do bar: o bar entra na lista, então o
+      // próximo jogo dele também precisa vir — igual aos outros caminhos.
+      const peloNome = await caller.pubs.search({
+        lat: ORIGIN_LAT,
+        lng: ORIGIN_LNG + 0.004,
+        radiusKm: 3,
+        sort: 'rating',
+        championship: 'Bar muitas',
+        limit: 20
+      })
+      const achadoPeloNome = peloNome.bars.find(
+        (achado) => achado.id === porRotulo.get('muitas')
+      )
+      expect(achadoPeloNome?.event_count).toBe(1)
+      expect(achadoPeloNome?.nextEvent?.championship).toBe('Jogo muitas')
+
       // Com a exibição desligada, pedir `rating` cai na ordem padrão em vez
       // de dar erro — e a nota some da resposta.
       await setAppConfig('rating.public_display', false, null)

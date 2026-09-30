@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 
-import { classicRuleLateral, currentClassicRulesCte } from '../classics'
+import { currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -42,10 +42,9 @@ export async function executarBuscaLinear(
   input: SearchInput
 ): Promise<SearchPage> {
   const { cursor, limit } = input
-  const { origin, radiusMeters, eventFilter, champBarFilter, amenityFilter } =
+  const { origin, radiusMeters, proximoJogo, amenityFilter } =
     montarFiltrosBusca(input)
 
-  const champBarFilterN = champBarFilter(sql`n.name`)
   const amenityFilterB = amenityFilter(sql`b`)
 
   const planRankSql = sql`CASE n.plan WHEN 'elite' THEN 1 WHEN 'pro' THEN 2 ELSE 3 END`
@@ -109,27 +108,7 @@ export async function executarBuscaLinear(
       COALESCE(parts.next_participants, '[]'::json) AS next_participants
     FROM nearby n
     JOIN LATERAL (
-      SELECT
-        COUNT(*) OVER ()::int AS event_count,
-        e.id AS next_event_id,
-        e.championship AS next_championship,
-        e.starts_at AS next_event_at,
-        e.starts_at AS next_event_starts_at,
-        s.name AS next_sport_name,
-        s.slug AS next_sport_slug,
-        e.participant_free_text AS next_participant_free_text,
-        classic.classic_rule_id,
-        classic.classic_rule_version AS next_classic_rule_version,
-        classic.classic_rule_reason AS next_classic_rule_reason
-      FROM event e
-      JOIN sport s ON s.id = e.sport_id
-      ${classicRuleLateral(sql`e`)}
-      WHERE e.bar_id = n.id
-        AND e.starts_at >= NOW()
-        ${eventFilter}
-        ${champBarFilterN}
-      ORDER BY e.starts_at ASC, e.id ASC
-      LIMIT 1
+      SELECT COUNT(*) OVER ()::int AS event_count, ${proximoJogo(sql`n`)}
     ) agg ON agg.event_count > 0
     LEFT JOIN LATERAL (
       SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants

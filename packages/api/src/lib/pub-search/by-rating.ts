@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 
-import { classicRuleLateral, currentClassicRulesCte } from '../classics'
+import { currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -44,12 +44,11 @@ export async function executarBuscaPorNota(
     origin,
     radiusMeters,
     eventFilter,
-    champFilter,
     champBarFilter,
+    proximoJogo,
     amenityFilter
   } = montarFiltrosBusca(input)
 
-  const champBarFilterB = champBarFilter(sql`b.name`)
   const champBarFilterR = champBarFilter(sql`r.name`)
   const amenityFilterB = amenityFilter(sql`b`)
 
@@ -87,15 +86,18 @@ export async function executarBuscaPorNota(
         ${sortScore} AS cursor_sort_score,
         ${planRank} AS cursor_plan_rank,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
-        to_char(agg.next_event_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_next_event_at
+        to_char(agg.next_event_at, 'YYYY-MM-DD HH24:MI:SS.US') AS cursor_next_event_at,
+        agg.next_event_id,
+        agg.next_championship,
+        agg.next_event_starts_at,
+        agg.next_sport_name,
+        agg.next_sport_slug,
+        agg.next_participant_free_text,
+        agg.next_classic_rule_version,
+        agg.next_classic_rule_reason
       FROM bar b
       JOIN LATERAL (
-        SELECT MIN(e.starts_at) AS next_event_at
-        FROM event e
-        WHERE e.bar_id = b.id
-          AND e.starts_at >= NOW()
-          ${eventFilter}
-          ${champBarFilterB}
+        SELECT ${proximoJogo(sql`b`)}
       ) agg ON agg.next_event_at IS NOT NULL
       WHERE b.is_active
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
@@ -113,14 +115,6 @@ export async function executarBuscaPorNota(
     SELECT
       r.*,
       cnt.event_count,
-      nxt.next_event_id,
-      nxt.next_championship,
-      nxt.next_event_starts_at,
-      nxt.next_sport_name,
-      nxt.next_sport_slug,
-      nxt.next_participant_free_text,
-      nxt.next_classic_rule_version,
-      nxt.next_classic_rule_reason,
       COALESCE(parts.next_participants, '[]'::json) AS next_participants
     FROM ranked r
     JOIN LATERAL (
@@ -132,30 +126,10 @@ export async function executarBuscaPorNota(
         ${champBarFilterR}
     ) cnt ON true
     LEFT JOIN LATERAL (
-      SELECT
-        e.id AS next_event_id,
-        e.championship AS next_championship,
-        e.starts_at AS next_event_starts_at,
-        s.name AS next_sport_name,
-        s.slug AS next_sport_slug,
-        e.participant_free_text AS next_participant_free_text,
-        classic.classic_rule_version AS next_classic_rule_version,
-        classic.classic_rule_reason AS next_classic_rule_reason
-      FROM event e
-      JOIN sport s ON s.id = e.sport_id
-      ${classicRuleLateral(sql`e`)}
-      WHERE e.bar_id = r.id
-        AND e.starts_at >= NOW()
-        ${eventFilter}
-        ${champFilter}
-      ORDER BY e.starts_at ASC
-      LIMIT 1
-    ) nxt ON true
-    LEFT JOIN LATERAL (
       SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants
       FROM event_participants ep
       JOIN team t ON t.id = ep.team_id
-      WHERE ep.event_id = nxt.next_event_id
+      WHERE ep.event_id = r.next_event_id
     ) parts ON true
     ORDER BY
       r.cursor_bucket ASC,
