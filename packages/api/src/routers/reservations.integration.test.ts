@@ -121,6 +121,8 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
 
   const api = (userId: string, role: Role) =>
     appRouter.createCaller(contextFor(userId, role)).reservations
+  const queue = (userId: string) =>
+    appRouter.createCaller(contextFor(userId, 'pub')).barReservations
 
   return {
     db,
@@ -130,6 +132,8 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
     fan: api(fanId, 'fan'),
     otherFan: api(otherFanId, 'fan'),
     owner: api(ownerId, 'pub'),
+    queue: queue(ownerId),
+    queueOf: queue,
     request: (eventId = future.id) => ({
       requestId: crypto.randomUUID(),
       eventId,
@@ -324,3 +328,169 @@ integrationTest('cancelado, o torcedor pode pedir de novo', async () => {
     await ctx.cleanup()
   }
 })
+
+/* Fila do bar (WEB-125) */
+
+integrationTest(
+  'dono lista pendentes primeiro, sem contato do torcedor, e confirma uma vez',
+  async () => {
+    const ctx = await seed()
+    try {
+      const first = await ctx.fan.create(ctx.request())
+      const second = await ctx.otherFan.create(ctx.request())
+      await ctx.queue.respond({ reservationId: first.id, status: 'confirmed' })
+
+      const list = await ctx.queue.list()
+      expect(list.map(({ id, status }) => ({ id, status }))).toEqual([
+        { id: second.id, status: 'pending' },
+        { id: first.id, status: 'confirmed' }
+      ])
+      expect(list[0]).toMatchObject({
+        guestName: 'Conta fan',
+        partySize: 3,
+        note: 'Mesa perto da TV',
+        event: { participantFreeText: 'Time A × Time B' }
+      })
+      expect(JSON.stringify(list)).not.toContain('@integration.invalid')
+
+      const [mine] = await ctx.fan.mine()
+      expect(mine).toMatchObject({ status: 'confirmed', code: first.code })
+
+      expect(
+        await ctx.queue.respond({
+          reservationId: first.id,
+          status: 'confirmed'
+        })
+      ).toMatchObject({ status: 'confirmed', changed: false })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'duas confirmações simultâneas fazem uma transição',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      const input = { reservationId: created.id, status: 'confirmed' as const }
+      const results = await Promise.all([
+        ctx.queue.respond(input),
+        ctx.queue.respond(input)
+      ])
+      expect(results.map((r) => r.changed).sort()).toEqual([false, true])
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'recusar aposenta o código; responder de novo ou pedido cancelado falha',
+  async () => {
+    const ctx = await seed()
+    try {
+      const declined = await ctx.fan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: declined.id,
+        status: 'declined'
+      })
+      const [mine] = await ctx.fan.mine()
+      expect(mine).toMatchObject({ status: 'declined', code: null })
+      expect(
+        await refusal(
+          ctx.queue.respond({ reservationId: declined.id, status: 'confirmed' })
+        )
+      ).toEqual({ code: 'CONFLICT', message: 'Este pedido já foi recusado.' })
+
+      const cancelled = await ctx.otherFan.create(ctx.request())
+      await ctx.otherFan.cancel({ reservationId: cancelled.id })
+      expect(
+        await refusal(
+          ctx.queue.respond({
+            reservationId: cancelled.id,
+            status: 'confirmed'
+          })
+        )
+      ).toEqual({
+        code: 'PRECONDITION_FAILED',
+        message: 'O torcedor cancelou este pedido.'
+      })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'dono de outro bar não lê nem responde; sem Elite ninguém responde',
+  async () => {
+    const ctx = await seed()
+    const intruderId = crypto.randomUUID()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+
+      await ctx.db.insert(user).values({
+        id: intruderId,
+        role: 'pub',
+        name: 'Outro bar',
+        email: `${intruderId}@integration.invalid`,
+        emailVerified: true,
+        onboardingCompleted: true
+      })
+      const [intruderBar] = await ctx.db
+        .insert(bar)
+        .values({
+          userId: intruderId,
+          name: 'Outro bar',
+          address: 'Rua descartável, 2',
+          neighborhood: 'Teste',
+          city: 'Teste',
+          latitude: '-23.55052000',
+          longitude: '-46.63330800',
+          isActive: true
+        })
+        .returning({ id: bar.id })
+      if (!intruderBar) throw new Error('bar não criado')
+      await ctx.db.insert(subscription).values({
+        barId: intruderBar.id,
+        plan: 'elite',
+        status: 'active',
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * HOUR)
+      })
+      const intruder = ctx.queueOf(intruderId)
+
+      expect(await intruder.list()).toEqual([])
+      expect(
+        (
+          await refusal(
+            intruder.respond({ reservationId: created.id, status: 'declined' })
+          )
+        ).code
+      ).toBe('NOT_FOUND')
+
+      await ctx.db
+        .update(subscription)
+        .set({ status: 'past_due' })
+        .where(eq(subscription.barId, ctx.barId))
+      expect((await refusal(ctx.queue.list())).code).toBe('FORBIDDEN')
+      expect(
+        (
+          await refusal(
+            ctx.queue.respond({
+              reservationId: created.id,
+              status: 'confirmed'
+            })
+          )
+        ).code
+      ).toBe('FORBIDDEN')
+
+      const [mine] = await ctx.fan.mine()
+      expect(mine?.status).toBe('pending')
+    } finally {
+      await ctx.db.delete(user).where(eq(user.id, intruderId))
+      await ctx.cleanup()
+    }
+  }
+)

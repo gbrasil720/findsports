@@ -75,3 +75,33 @@ export function getCancelErrorMessage(error: unknown): string {
       )
   }
 }
+
+/* Fila do bar (WEB-125) */
+
+export type BarReservation =
+  inferRouterOutputs<AppRouter>['barReservations']['list'][number]
+
+export type ReservationAnswer = 'confirmed' | 'declined'
+
+export const ANSWER_RESULT: Record<ReservationAnswer, string> = {
+  confirmed: 'Reserva confirmada. O torcedor já vê a confirmação.',
+  declined: 'Pedido recusado. O torcedor já vê a recusa.'
+}
+
+export function getRespondErrorMessage(error: unknown): string {
+  switch (errorCode(error)) {
+    case 'PRECONDITION_FAILED':
+      return 'O torcedor cancelou este pedido antes da sua resposta.'
+    case 'CONFLICT':
+      return 'Este pedido já tinha sido respondido. A lista foi atualizada.'
+    case 'NOT_FOUND':
+      return 'Pedido não encontrado.'
+    case 'FORBIDDEN':
+      return 'Responder pedidos de reserva é um recurso do plano Elite.'
+    default:
+      return getUserFacingMessage(
+        error,
+        'Não foi possível responder o pedido. Tente novamente.'
+      )
+  }
+}
