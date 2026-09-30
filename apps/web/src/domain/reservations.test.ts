@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import {
   DUPLICATE_REQUEST_MESSAGE,
   getCancelErrorMessage,
-  getCreateErrorMessage
+  getCreateErrorMessage,
+  SOLD_OUT_MESSAGE
 } from './reservations'
 
 const refusal = (code: string) => ({ data: { code } })
@@ -16,6 +17,12 @@ describe('getCreateErrorMessage', () => {
     expect(getCreateErrorMessage(refusal('CONFLICT'), future, now)).toBe(
       DUPLICATE_REQUEST_MESSAGE
     )
+  })
+
+  test('teto atingido no servidor vira o texto de esgotado', () => {
+    expect(
+      getCreateErrorMessage(refusal('UNPROCESSABLE_CONTENT'), future, now)
+    ).toBe(SOLD_OUT_MESSAGE)
   })
 
   test('o horário do jogo separa jogo começado de bar sem recebimento', () => {

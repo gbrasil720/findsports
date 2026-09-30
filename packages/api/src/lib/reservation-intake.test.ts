@@ -3,7 +3,8 @@ import { TRPCError } from '@trpc/server'
 import {
   assertCanEnableReservations,
   assertReceivesReservations,
-  receivesReservations
+  receivesReservations,
+  seatAvailability
 } from './reservation-intake'
 
 const now = new Date('2026-09-29T12:00:00.000Z')
@@ -83,5 +84,21 @@ describe('assertReceivesReservations', () => {
     expect(
       codeOf(() => assertReceivesReservations(true, elite, now))
     ).toBeNull()
+  })
+})
+
+describe('seatAvailability', () => {
+  test('sem teto no bar nem no jogo, nunca esgota', () => {
+    expect(seatAvailability(null, null, 10_000).soldOut).toBe(false)
+  })
+
+  test('o teto do jogo vence o padrão do bar', () => {
+    expect(seatAvailability(10, 4, 6)).toEqual({
+      confirmedSeats: 6,
+      effectiveCap: 10,
+      soldOut: false
+    })
+    expect(seatAvailability(4, 10, 6).soldOut).toBe(true)
+    expect(seatAvailability(null, 6, 6).soldOut).toBe(true)
   })
 })

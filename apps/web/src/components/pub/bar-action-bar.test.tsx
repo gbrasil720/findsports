@@ -10,6 +10,7 @@ const base = {
   onWhatsApp: () => {},
   onDirections: () => {},
   onPhone: () => {},
+  reservationsSoldOut: false,
   isOwner: false
 }
 
@@ -29,6 +30,23 @@ describe('BarActions', () => {
     )
     expect(markup).not.toContain('Reservar mesa')
     expect(markup).toContain('Falar com o bar')
+    expect(markup).toContain('Rota')
+  })
+
+  test('esgotado toma o lugar de "Reservar mesa", sem clique, e os contatos continuam', () => {
+    const markup = renderToStaticMarkup(
+      <BarActions
+        {...base}
+        onReserve={null}
+        reservationsSoldOut
+        variant="panel"
+      />
+    )
+    expect(markup).not.toContain('Reservar mesa')
+    expect(markup).toMatch(
+      /<button[^>]*disabled[^>]*>.*Reservas esgotadas para este jogo/
+    )
+    expect(markup).toContain('WhatsApp')
     expect(markup).toContain('Rota')
   })
 })

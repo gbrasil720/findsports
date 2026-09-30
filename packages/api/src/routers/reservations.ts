@@ -18,7 +18,10 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, router } from '../index'
-import { assertReceivesReservations } from '../lib/reservation-intake'
+import {
+  assertReceivesReservations,
+  withSeatAvailability
+} from '../lib/reservation-intake'
 import { pgField } from '../lib/reservation-validation'
 
 /**
@@ -171,13 +174,14 @@ export const reservationsRouter = router({
       const now = new Date()
       const game = await db.query.event.findFirst({
         where: eq(event.id, input.eventId),
-        columns: { startsAt: true },
+        columns: { startsAt: true, reservationCap: true },
         with: {
           bar: {
             columns: {
               isActive: true,
               acceptsReservations: true,
-              houseOffer: true
+              houseOffer: true,
+              reservationCap: true
             },
             with: {
               subscription: {
@@ -205,6 +209,19 @@ export const reservationsRouter = router({
         game.bar.subscription ?? null,
         now
       )
+      // Contado fora da transação de propósito: duas criações simultâneas não
+      // confirmam nada, então a corrida só deixa passar pedidos `pending` a
+      // mais, e confirmar é sempre do dono.
+      const [availability] = await withSeatAvailability(
+        [{ id: input.eventId, reservationCap: game.reservationCap }],
+        game.bar.reservationCap
+      )
+      if (availability?.soldOut) {
+        throw new TRPCError({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: 'Reservas esgotadas para este jogo.'
+        })
+      }
 
       try {
         await db.transaction(async (tx) => {

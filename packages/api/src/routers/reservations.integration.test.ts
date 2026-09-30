@@ -465,6 +465,13 @@ integrationTest(
       expect(
         (
           await refusal(
+            intruder.setGameCap({ eventId: ctx.futureId, reservationCap: 1 })
+          )
+        ).code
+      ).toBe('NOT_FOUND')
+      expect(
+        (
+          await refusal(
             intruder.respond({ reservationId: created.id, status: 'declined' })
           )
         ).code
@@ -494,3 +501,92 @@ integrationTest(
     }
   }
 )
+
+/* Teto por jogo (WEB-152) */
+
+integrationTest(
+  'teto conta só confirmadas, fecha pedidos novos e libera no cancelamento',
+  async () => {
+    const ctx = await seed()
+    const extraFans = [crypto.randomUUID(), crypto.randomUUID()]
+    try {
+      const { appRouter } = await import('./index')
+      await ctx.db.insert(user).values(
+        extraFans.map((id) => ({
+          id,
+          role: 'fan' as const,
+          name: 'Conta fan',
+          email: `${id}@integration.invalid`,
+          emailVerified: true,
+          onboardingCompleted: true
+        }))
+      )
+      const [third, fourth] = extraFans.map(
+        (id) => appRouter.createCaller(contextFor(id, 'fan')).reservations
+      )
+      if (!third || !fourth) throw new Error('torcedores não criados')
+      const profile = async () => {
+        const pub = await appRouter
+          .createCaller(contextFor(extraFans[0] ?? '', 'fan'))
+          .pubs.getById({ id: ctx.barId })
+        return pub.events.find(({ id }) => id === ctx.futureId)
+      }
+
+      await ctx.queue.setDefaultCap({ reservationCap: 5 })
+
+      // Pendentes não ocupam lugar: 6 pessoas pedindo num teto de 5 passam.
+      const first = await ctx.fan.create(ctx.request())
+      const second = await ctx.otherFan.create(ctx.request())
+      // Confirmar além do teto é permitido; o teto só fecha pedidos novos.
+      for (const { id } of [first, second]) {
+        await ctx.queue.respond({ reservationId: id, status: 'confirmed' })
+      }
+
+      expect(await refusal(third.create(ctx.request()))).toEqual({
+        code: 'UNPROCESSABLE_CONTENT',
+        message: 'Reservas esgotadas para este jogo.'
+      })
+      const soldOut = await profile()
+      expect(soldOut?.reservationsSoldOut).toBe(true)
+      expect(soldOut).not.toHaveProperty('reservationCap')
+      const capacity = await ctx.queue.capacity()
+      expect(capacity.defaultCap).toBe(5)
+      expect(
+        capacity.games.find(({ id }) => id === ctx.futureId)
+      ).toMatchObject({ reservationCap: null, confirmedSeats: 6 })
+
+      // Cancelar uma confirmada libera o lugar.
+      await ctx.fan.cancel({ reservationId: first.id })
+      expect((await profile())?.reservationsSoldOut).toBe(false)
+      await third.create(ctx.request())
+
+      // O override do jogo vence o padrão do bar; `null` volta ao padrão.
+      await ctx.queue.setGameCap({ eventId: ctx.futureId, reservationCap: 3 })
+      expect((await refusal(fourth.create(ctx.request()))).code).toBe(
+        'UNPROCESSABLE_CONTENT'
+      )
+      await ctx.queue.setGameCap({
+        eventId: ctx.futureId,
+        reservationCap: null
+      })
+      await fourth.create(ctx.request())
+    } finally {
+      await ctx.db.delete(user).where(inArray(user.id, extraFans))
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest('sem teto no bar nem no jogo, não há teto', async () => {
+  const ctx = await seed()
+  try {
+    const created = await ctx.fan.create({ ...ctx.request(), partySize: 20 })
+    await ctx.queue.respond({ reservationId: created.id, status: 'confirmed' })
+    await ctx.otherFan.create(ctx.request())
+    await expect(
+      ctx.queue.setDefaultCap({ reservationCap: 0 })
+    ).rejects.toBeInstanceOf(TRPCError)
+  } finally {
+    await ctx.cleanup()
+  }
+})

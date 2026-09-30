@@ -39,7 +39,10 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
-import { receivesReservations } from '../lib/reservation-intake'
+import {
+  receivesReservations,
+  withSeatAvailability
+} from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
 
@@ -338,7 +341,8 @@ export const pubsRouter = router({
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
-          acceptsReservations: true
+          acceptsReservations: true,
+          reservationCap: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -401,7 +405,9 @@ export const pubsRouter = router({
         menuUrl,
         averageSpendCents,
         acceptsReservations,
+        reservationCap: defaultCap,
         subscription,
+        events,
         ...publicBar
       } = result
 
@@ -420,8 +426,23 @@ export const pubsRouter = router({
         subscription ?? null,
         now
       )
+      // Como o recebimento, o teto sai resolvido: o torcedor sabe se o jogo
+      // esgotou, não quantos lugares o dono definiu.
+      const games = await withSeatAvailability(events, defaultCap)
       return {
         ...publicBar,
+        events: games.map(
+          ({
+            reservationCap,
+            confirmedSeats,
+            effectiveCap,
+            soldOut,
+            ...game
+          }) => ({
+            ...game,
+            reservationsSoldOut: receiving && soldOut
+          })
+        ),
         rating,
         // O único resgate da oferta é o código de uma reserva: sem
         // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
@@ -563,6 +584,8 @@ export const pubsRouter = router({
           with: {
             events: {
               where: (event, { gte }) => gte(event.startsAt, new Date()),
+              // O teto do dono não vai para o torcedor (WEB-152).
+              columns: { reservationCap: false },
               with: {
                 sport: true,
                 participants: { with: { team: true } }

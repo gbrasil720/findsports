@@ -8,6 +8,7 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import { RESERVATION_CAP_MAX } from '@findsports_oficial/db/reservation-limits'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
   reservation,
@@ -17,7 +18,10 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
-import { assertCanEnableReservations } from '../lib/reservation-intake'
+import {
+  assertCanEnableReservations,
+  withSeatAvailability
+} from '../lib/reservation-intake'
 
 /**
  * Fila de pedidos de reserva do bar (WEB-125): listar, confirmar, recusar.
@@ -46,6 +50,14 @@ const ownerProcedure = pubProcedure.use(async ({ ctx, next }) => {
   assertCanEnableReservations(ownBar.subscription ?? null)
   return next({ ctx: { ...ctx, barId: ownBar.id } })
 })
+
+/** Teto em pessoas; `null` tira o teto (ou, no jogo, volta ao padrão do bar). */
+const reservationCapInput = z
+  .number()
+  .int()
+  .min(1)
+  .max(RESERVATION_CAP_MAX)
+  .nullable()
 
 const ownEvents = (barId: string, extra?: SQL) =>
   db
@@ -139,6 +151,76 @@ export const barReservationsRouter = router({
       }
     }))
   }),
+
+  /**
+   * Lotação dos jogos que ainda não acabaram (WEB-152): pessoas confirmadas
+   * diante do teto efetivo. O teto só fecha pedidos novos; confirmar além
+   * dele continua permitido, e é por isso que o dono vê o número.
+   */
+  capacity: ownerProcedure.query(async ({ ctx }) => {
+    const ownBar = await db.query.bar.findFirst({
+      where: eq(bar.id, ctx.barId),
+      columns: { reservationCap: true },
+      with: {
+        events: {
+          where: notEnded,
+          columns: {
+            id: true,
+            championship: true,
+            participantFreeText: true,
+            startsAt: true,
+            reservationCap: true
+          },
+          with: {
+            participants: { with: { team: { columns: { name: true } } } }
+          },
+          orderBy: (row, { asc }) => [asc(row.startsAt)]
+        }
+      }
+    })
+    const defaultCap = ownBar?.reservationCap ?? null
+    const games = await withSeatAvailability(ownBar?.events ?? [], defaultCap)
+
+    return {
+      defaultCap,
+      games: games.map(({ participants, ...game }) => ({
+        ...game,
+        participants: participants.map(({ team }) => team.name)
+      }))
+    }
+  }),
+
+  setDefaultCap: ownerProcedure
+    .input(z.object({ reservationCap: reservationCapInput }))
+    .mutation(async ({ ctx, input }) => {
+      await db
+        .update(bar)
+        .set({ reservationCap: input.reservationCap })
+        .where(eq(bar.id, ctx.barId))
+      return { reservationCap: input.reservationCap }
+    }),
+
+  setGameCap: ownerProcedure
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        reservationCap: reservationCapInput
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await db
+        .update(event)
+        .set({ reservationCap: input.reservationCap })
+        .where(and(eq(event.id, input.eventId), eq(event.barId, ctx.barId)))
+        .returning({ id: event.id })
+      if (!updated) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Jogo não encontrado.'
+        })
+      }
+      return { reservationCap: input.reservationCap }
+    }),
 
   /**
    * Só pedido pendente muda. A condição de estado vai no próprio `UPDATE`:
