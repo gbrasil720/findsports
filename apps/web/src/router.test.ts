@@ -96,6 +96,20 @@ describe('router SSR', () => {
     expect(queryClient.getQueryData(['private-pending'])).toBeUndefined()
   })
 
+  test('cliente hidratado conhece a conta do SSR e não limpa o cache na primeira navegação', async () => {
+    const { getRouter } = await import('./router')
+    const router = getRouter()
+    const { queryClient, syncSession } = router.options.context
+
+    await router.options.hydrate?.({ cachedUserId: 'A' })
+    queryClient.setQueryData(['bar'], 'hidratado-do-ssr')
+    syncSession('A')
+    expect(queryClient.getQueryData<string>(['bar'])).toBe('hidratado-do-ssr')
+
+    syncSession('B')
+    expect(queryClient.getQueryData(['bar'])).toBeUndefined()
+  })
+
   test('isola o cache entre instâncias de requisição', async () => {
     const { getRouter } = await import('./router')
     const firstRouter = getRouter()

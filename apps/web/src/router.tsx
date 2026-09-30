@@ -79,6 +79,7 @@ export const getRouter = () => {
     context: {
       trpc,
       queryClient,
+      lastSessionCheck: {},
       syncSession(userId: string | null) {
         if (cachedUserId === userId) return
         // clear also cancels pending queries so an old response cannot refill
@@ -86,6 +87,14 @@ export const getRouter = () => {
         queryClient.clear()
         cachedUserId = userId
       }
+    },
+    // O cache desidratado pertence à conta que o servidor viu. Sem levar essa
+    // conta junto, o cliente começa em `null` — a hidratação não roda
+    // `beforeLoad` — e a primeira navegação limpava o cache inteiro,
+    // remontando a página e apagando o que estava digitado (WEB-140).
+    dehydrate: () => ({ cachedUserId }),
+    hydrate: (dehydrated) => {
+      cachedUserId = dehydrated.cachedUserId
     },
     defaultPendingComponent: () => <Loader />,
     defaultNotFoundComponent: NotFoundPage,

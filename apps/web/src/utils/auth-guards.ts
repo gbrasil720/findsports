@@ -1,31 +1,7 @@
+import type { auth } from '@findsports_oficial/auth'
 import { redirect } from '@tanstack/react-router'
 
-export type AuthSession = {
-  session: {
-    id: string
-    userId: string
-    expiresAt: Date
-    token: string
-    ipAddress?: string | null
-    userAgent?: string | null
-    createdAt: Date
-    updatedAt: Date
-  }
-  user: {
-    id: string
-    name: string
-    email: string
-    emailVerified: boolean
-    image?: string | null
-    createdAt: Date
-    updatedAt: Date
-    role: 'fan' | 'pub' | 'admin'
-    onboardingCompleted: boolean
-    admittedAt?: Date | null
-    searchRadiusKm: number
-    twoFactorEnabled: boolean
-  }
-} | null
+export type AuthSession = ReturnType<typeof toClientSession>
 
 const AUTHENTICATED_PREFIXES = [
   '/dashboard',
@@ -151,5 +127,46 @@ export function applyAuthGuards(
   // /plan é exclusivo para pub — fan vai pro dashboard, não autenticado vai pro sign-in
   if (pathname.startsWith('/plan') && session.user.role !== 'pub') {
     throw redirect({ to: '/dashboard' })
+  }
+}
+
+export type SessionLocation = {
+  pathname: string
+  searchStr: string
+  hash: string
+}
+
+/**
+ * Se a sessão conferida em `previous` ainda vale para `next` sem nova ida ao
+ * servidor. Só a troca de hash — as abas do /admin — reaproveita (WEB-140):
+ * com path e query iguais o guard decide igual, e sign-out e login sempre
+ * trocam o path. A mesma URL de novo (`router.invalidate`, clique repetido)
+ * confere outra vez.
+ */
+export function isHashOnlyChange(
+  previous: SessionLocation,
+  next: SessionLocation
+) {
+  return (
+    previous.pathname === next.pathname &&
+    previous.searchStr === next.searchStr &&
+    previous.hash !== next.hash
+  )
+}
+
+/**
+ * A sessão que sai do servidor. `getSession` e `getUser` devolvem este
+ * contexto ao cliente — no SSR, serializado no HTML da página —, então só
+ * passa o que o cliente usa. `token` é o valor do cookie httpOnly (WEB-149).
+ */
+export function toClientSession(
+  session: Awaited<ReturnType<typeof auth.api.getSession>>
+) {
+  if (!session) return null
+  const { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy } =
+    session.session
+  return {
+    user: session.user,
+    session: { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy }
   }
 }

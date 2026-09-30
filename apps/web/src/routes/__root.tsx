@@ -24,12 +24,24 @@ import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
 import { initPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
-import { type AuthSession, applyAuthGuards } from '../utils/auth-guards'
+import {
+  type AuthSession,
+  applyAuthGuards,
+  isHashOnlyChange,
+  type SessionLocation
+} from '../utils/auth-guards'
 
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
   syncSession: (userId: string | null) => void
+  // Última sessão conferida pelo `beforeLoad` da raiz, por instância de router.
+  lastSessionCheck: {
+    current?: {
+      location: SessionLocation
+      session: AuthSession
+    }
+  }
   session?: AuthSession
 }
 
@@ -44,9 +56,14 @@ const ONSIDE_DESCRIPTION =
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location, context }) => {
-    const session = await getSession()
+    const last = context.lastSessionCheck.current
+    const session =
+      last && isHashOnlyChange(last.location, location)
+        ? last.session
+        : await getSession()
+    context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
-    applyAuthGuards(session as AuthSession, location.pathname, location.search)
+    applyAuthGuards(session, location.pathname, location.search)
     return { session }
   },
   head: () => ({
@@ -201,9 +218,7 @@ function PostHogProvider() {
 
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
-  const impersonatedBy = (
-    session?.session as { impersonatedBy?: string | null } | undefined
-  )?.impersonatedBy
+  const impersonatedBy = session?.session.impersonatedBy
   const isDev = import.meta.env.DEV
 
   return (

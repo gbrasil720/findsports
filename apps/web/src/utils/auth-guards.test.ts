@@ -2,7 +2,9 @@ import { describe, expect, test } from 'bun:test'
 import {
   type AuthSession,
   applyAuthGuards,
-  requiresAuthentication
+  isHashOnlyChange,
+  requiresAuthentication,
+  toClientSession
 } from './auth-guards'
 
 function session(
@@ -15,9 +17,9 @@ function session(
       id: 's1',
       userId: 'u1',
       expiresAt: new Date('2030-01-01'),
-      token: 't',
       createdAt: new Date('2026-01-01'),
-      updatedAt: new Date('2026-01-01')
+      updatedAt: new Date('2026-01-01'),
+      impersonatedBy: null
     },
     user: {
       id: 'u1',
@@ -30,7 +32,8 @@ function session(
       admittedAt,
       onboardingCompleted,
       searchRadiusKm: 5,
-      twoFactorEnabled: false
+      twoFactorEnabled: false,
+      banned: false
     }
   } satisfies NonNullable<AuthSession>
 }
@@ -224,5 +227,63 @@ describe('applyAuthGuards', () => {
 
   test('sem onboarding na landing vai para o onboarding do papel', () => {
     expect(() => applyAuthGuards(session('fan', false), '/')).toThrow()
+  })
+})
+
+describe('isHashOnlyChange', () => {
+  const admin = { pathname: '/admin', searchStr: '', hash: 'admin-grade' }
+
+  test('só a troca de hash reaproveita a sessão', () => {
+    expect(isHashOnlyChange(admin, { ...admin, hash: 'admin-espaco' })).toBe(
+      true
+    )
+  })
+
+  test('mesma URL, outro path ou outra query conferem de novo', () => {
+    expect(isHashOnlyChange(admin, { ...admin })).toBe(false)
+    expect(isHashOnlyChange(admin, { ...admin, pathname: '/login' })).toBe(
+      false
+    )
+    expect(isHashOnlyChange(admin, { ...admin, searchStr: '?public=1' })).toBe(
+      false
+    )
+  })
+})
+
+type BetterAuthSession = Parameters<typeof toClientSession>[0]
+
+describe('toClientSession', () => {
+  test('o token do cookie httpOnly não sai do servidor', () => {
+    const fromBetterAuth = {
+      user: { id: 'u1', role: 'pub' },
+      session: {
+        id: 's1',
+        userId: 'u1',
+        token: 'cookie-httponly',
+        ipAddress: '203.0.113.7',
+        userAgent: 'Mozilla/5.0',
+        expiresAt: new Date('2030-01-01'),
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+        impersonatedBy: 'admin-1'
+      }
+    } as unknown as BetterAuthSession
+
+    const client = toClientSession(fromBetterAuth)
+
+    expect(JSON.stringify(client)).not.toContain('cookie-httponly')
+    expect(client?.session).toEqual({
+      id: 's1',
+      userId: 'u1',
+      expiresAt: new Date('2030-01-01'),
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      impersonatedBy: 'admin-1'
+    })
+    expect(client?.user).toBe(fromBetterAuth?.user)
+  })
+
+  test('sem sessão continua null', () => {
+    expect(toClientSession(null)).toBeNull()
   })
 })
