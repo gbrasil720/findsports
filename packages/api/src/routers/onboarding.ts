@@ -46,7 +46,7 @@ export const onboardingRouter = router({
         })
       }
 
-      const motivoTelefone = input.phone && motivoTelefoneInvalido(input.phone)
+      const motivoTelefone = motivoTelefoneInvalido(input.phone)
       if (motivoTelefone) {
         throw new TRPCError({
           code: 'UNPROCESSABLE_CONTENT',

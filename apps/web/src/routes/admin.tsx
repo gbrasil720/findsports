@@ -1190,12 +1190,13 @@ function PubDashboard() {
                 isSaving={updateMeMutation.isPending}
                 saveError={profileError}
                 onSave={async (data) => {
-                  // Mesma regra do servidor, que só confere o telefone que
-                  // mudou: um número antigo fora do padrão não trava o resto.
-                  const motivoTelefone =
-                    data.phone !== (bar.phone ?? '') &&
-                    motivoTelefoneInvalido(data.phone)
-                  setProfileError(motivoTelefone || null)
+                  // Mesma regra do servidor, conferida antes de enviar: o
+                  // padrão do WEB-118 não mostra o texto da recusa.
+                  const motivoTelefone = motivoTelefoneInvalido(
+                    data.phone,
+                    bar.phone
+                  )
+                  setProfileError(motivoTelefone)
                   // Rejeitar mantém o formulário aberto, como a recusa do
                   // servidor já faz.
                   if (motivoTelefone) throw new Error(motivoTelefone)

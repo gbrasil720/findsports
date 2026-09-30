@@ -9,6 +9,14 @@ test('aceita celular, fixo, formato legado e vazio', () => {
   expect(motivoTelefoneInvalido('(21) 3210-4567')).toBeNull()
   expect(motivoTelefoneInvalido('')).toBeNull()
   expect(motivoTelefoneInvalido('  ')).toBeNull()
+  expect(motivoTelefoneInvalido(undefined)).toBeNull()
+})
+
+test('o telefone que o bar já tem passa sem conferência', () => {
+  expect(motivoTelefoneInvalido('+5555512345678', '+5555512345678')).toBeNull()
+  expect(motivoTelefoneInvalido('+5555512345678', '+5511988446094')).toContain(
+    'Celular'
+  )
 })
 
 test('recusa o telefone do cadastro incoerente de produção', () => {

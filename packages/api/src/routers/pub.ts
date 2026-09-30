@@ -220,12 +220,10 @@ export const pubRouter = router({
         })
       }
 
-      // Só o telefone que mudou: um número antigo fora do padrão não pode
-      // travar a edição do resto do perfil.
-      const motivoTelefone =
-        input.phone !== undefined &&
-        input.phone !== existingBar.phone &&
-        motivoTelefoneInvalido(input.phone)
+      const motivoTelefone = motivoTelefoneInvalido(
+        input.phone,
+        existingBar.phone
+      )
       if (motivoTelefone) {
         throw new TRPCError({
           code: 'UNPROCESSABLE_CONTENT',

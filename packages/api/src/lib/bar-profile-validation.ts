@@ -29,14 +29,21 @@ const DDDS = new Set([
 
 /**
  * O que está errado no telefone, pronto para mostrar ao dono do bar, ou
- * `null` quando o número serve. Vazio serve: o campo é opcional.
+ * `null` quando o número serve. Vazio ou ausente serve: o campo é opcional.
  *
  * Aceita o formato que o formulário grava (`+5511988446094`) e o legado sem
  * código de país (`11988446094`).
+ *
+ * `gravado` é o telefone que o bar já tem: repeti-lo passa sem conferência,
+ * para um número antigo fora do padrão não travar a edição do resto do
+ * perfil — o formulário reenvia o telefone junto com tudo.
  */
-export function motivoTelefoneInvalido(telefone: string): string | null {
-  const bruto = telefone.trim()
-  if (!bruto) return null
+export function motivoTelefoneInvalido(
+  telefone: string | undefined,
+  gravado?: string | null
+): string | null {
+  const bruto = telefone?.trim()
+  if (!bruto || telefone === gravado) return null
   if (bruto.startsWith('+') && !bruto.startsWith('+55')) {
     return 'Informe um telefone do Brasil (+55).'
   }
