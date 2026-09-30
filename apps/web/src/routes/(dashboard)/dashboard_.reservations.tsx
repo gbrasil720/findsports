@@ -31,7 +31,8 @@ const STATUS_BADGE: Record<FanReservation['status'], string> = {
   pending: 'onside-badge onside-badge-stone',
   confirmed: 'onside-badge onside-badge-acid',
   declined: 'onside-badge onside-badge-ink',
-  cancelled: 'onside-badge onside-badge-ink'
+  cancelled: 'onside-badge onside-badge-ink',
+  expired: 'onside-badge onside-badge-ink'
 }
 
 /**

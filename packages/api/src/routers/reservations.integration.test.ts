@@ -590,3 +590,42 @@ integrationTest('sem teto no bar nem no jogo, não há teto', async () => {
     await ctx.cleanup()
   }
 })
+
+integrationTest(
+  'pedido sem resposta até o fim do jogo expira para o torcedor e para o bar',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      // O jogo começou há 5h: o fim derivado (início + duração padrão) passou.
+      await ctx.db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() - 5 * HOUR) })
+        .where(eq(event.id, ctx.futureId))
+
+      const [mine] = await ctx.fan.mine()
+      expect(mine).toMatchObject({
+        id: created.id,
+        status: 'expired',
+        code: null,
+        canCancel: false
+      })
+      expect(await ctx.queue.list()).toEqual([])
+      // Expirado é final: o dono não confirma um jogo que já acabou.
+      expect(
+        (
+          await refusal(
+            ctx.queue.respond({
+              reservationId: created.id,
+              status: 'confirmed'
+            })
+          )
+        ).code
+      ).toBe('PRECONDITION_FAILED')
+      const [after] = await ctx.fan.mine()
+      expect(after?.status).toBe('expired')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
