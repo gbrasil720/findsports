@@ -2,6 +2,7 @@ import { describe, expect, it, test } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 import { getCurrentPlan } from '../lib/current-plan'
 import {
+  addressFieldsChanged,
   assertEventIntervalValid,
   resolveEventEndsAt,
   resolvePhoneAcceptsWhatsapp
@@ -255,5 +256,21 @@ describe('resolveEventEndsAt', () => {
   it('normalizes a datetime string to a Date', () => {
     const iso = '2026-09-05T18:00:00.000Z'
     expect(resolveEventEndsAt(iso)).toEqual(new Date(iso))
+  })
+})
+
+describe('addressFieldsChanged', () => {
+  const existing = { address: 'Rua A, 1', neighborhood: 'Centro', city: 'SP' }
+
+  test('endereço reenviado igual não geocodifica', () => {
+    expect(addressFieldsChanged({ ...existing }, existing)).toBe(false)
+    expect(addressFieldsChanged({}, existing)).toBe(false)
+  })
+
+  test('qualquer campo diferente geocodifica', () => {
+    expect(
+      addressFieldsChanged({ ...existing, neighborhood: 'Sé' }, existing)
+    ).toBe(true)
+    expect(addressFieldsChanged({ city: 'RJ' }, existing)).toBe(true)
   })
 })
