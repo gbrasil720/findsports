@@ -115,9 +115,38 @@ Momento em que uma assinatura externa já não possui período contratado
 vigente. Uma solicitação de cancelamento ainda dentro do período pago não é
 encerramento efetivo e não autoriza excluir a conta do bar.
 
+## Reserva de mesa
+
+Pedido do torcedor para um jogo futuro publicado por um bar, confirmado
+manualmente pelo dono. Promete mesa sem que exista inventário de mesas: a
+garantia vem do julgamento do dono, não da plataforma.
+
+## Presença confirmada
+
+Declaração do torcedor de que pretende assistir a um jogo em um bar. Não gera
+código, não gera brinde e não exige ação do bar. Uma reserva implica presença;
+os dois números nunca se somam. É o termo interno: na interface do torcedor a
+ação se chama "Vou assistir aqui", e a reserva, "Reservar mesa". A contagem só
+aparece ao torcedor a partir de 15 pessoas.
+
+## Sinal de interesse
+
+Forma como a presença chega ao bar: posição relativa, nunca contagem absoluta.
+Existe porque marcar presença e furar são igualmente gratuitos, não há
+verificação possível e um número absoluto inflado levaria o dono a gastar
+estoque e equipe com demanda que não aparece. Compara o jogo com o histórico do
+próprio bar; sem histórico suficiente, o painel mostra que ainda está reunindo
+dados, sem número nem faixa. No painel se chama "Interesse".
+
+## Teto por jogo
+
+Número máximo de pessoas com reserva confirmada num jogo, definido pelo dono
+como padrão do bar e ajustável por jogo. Pedidos pendentes não contam. Ao
+atingir o teto o jogo para de receber pedidos; nada é confirmado sozinho.
+
 ## Oferta da casa
 
-Texto curto e opcional em que o bar diz o que oferece a quem chega pela
+Texto curto e opcional em que o bar decide o que oferece a quem chega pela
 Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
 valida o conteúdo. Configurar exige plano Elite vigente (`active`, ou
 `trialing` dentro do período); exibir exige também o recebimento de reservas
@@ -164,3 +193,16 @@ Onside. Configurar e exibir exigem Pro ou Elite vigente (`active`, ou
 continuam guardados. O link aceita só `http`/`https`. O teto do gasto médio é
 R$ 1.000,00 por pessoa — provisório, sem definição comercial ainda — e vive
 só em `packages/db/src/bar-menu.ts`.
+
+## Fim derivado do evento
+
+`endsAt ?? startsAt + duração padrão`. Existe porque `event.endsAt` é opcional
+no schema e "fim do jogo" precisa ser definido para todo evento. Calculado por
+uma função única.
+
+## Comparecimento
+
+Registro de que o torcedor de fato foi ao bar. Tem duas fontes declaradas e
+independentes — o bar validando o código e o torcedor respondendo depois do
+jogo. A segunda existe porque cada validação custa um brinde ao bar e só rende
+um dado que será usado para cobrar dele: não registrar é gratuito e invisível.
