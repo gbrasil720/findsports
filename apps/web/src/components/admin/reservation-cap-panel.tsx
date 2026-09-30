@@ -5,6 +5,7 @@ import { type FormEvent, useId, useState } from 'react'
 import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import { getGameTitle } from '@/domain/reservation-validation'
 import { countLabel } from '@/lib/plural'
+import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { QueryError } from './query-error'
@@ -18,6 +19,7 @@ export function ReservationCapPanel() {
   const queryClient = useQueryClient()
   const query = useQuery({
     ...trpc.barReservations.capacity.queryOptions(),
+    ...BAR_RESERVATIONS_QUERY,
     meta: { errorToast: false }
   })
   const refresh = () =>
