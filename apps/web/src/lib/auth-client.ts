@@ -31,7 +31,13 @@ export const authClient = createAuthClient({
  * better-auth — hoje, só o onboarding, que escreve em `user` pelo Drizzle.
  * Sem isto o guard leria o estado antigo por até `cookieCache.maxAge` e
  * devolveria o usuário ao onboarding que ele acabou de concluir.
+ *
+ * Nunca rejeita: quem chama já gravou a mutação, e uma falha aqui (rede) não
+ * pode virar erro dela. O guard revalida no servidor; o pior caso é ver o
+ * onboarding de novo.
  */
 export async function refreshSessionCache() {
-  await authClient.getSession({ query: { disableCookieCache: true } })
+  await authClient
+    .getSession({ query: { disableCookieCache: true } })
+    .catch(() => {})
 }
