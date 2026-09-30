@@ -8,7 +8,7 @@ import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { protectedProcedure, pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
@@ -19,7 +19,7 @@ import { cidadeLiberada } from '../lib/city-match'
 import { geocodeAddress } from '../lib/geocode-address'
 
 export const onboardingRouter = router({
-  completePub: protectedProcedure
+  completePub: pubProcedure
     .input(
       z.object({
         name: z.string().min(2).max(100),
@@ -37,14 +37,6 @@ export const onboardingRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      const role = ctx.session.user.role
-
-      if (role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem completar este onboarding.'
-        })
-      }
 
       if (ctx.session.user.onboardingCompleted) {
         throw new TRPCError({

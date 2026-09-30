@@ -1,7 +1,12 @@
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { adminProcedure, protectedProcedure, router } from '../index'
+import {
+  adminProcedure,
+  protectedProcedure,
+  pubProcedure,
+  router
+} from '../index'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
@@ -143,7 +148,7 @@ export const commercialAnalyticsRouter = router({
    * Get analytics overview for the authenticated pub's bar.
    * Tenant-safe: bar derived from session.
    */
-  getMyAnalyticsOverview: protectedProcedure
+  getMyAnalyticsOverview: pubProcedure
     .input(
       z.object({
         from: analyticsDateSchema,
@@ -152,13 +157,6 @@ export const commercialAnalyticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar analytics'
-        })
-      }
 
       const { barId, plan } = await resolveBarAndPlan(userId)
       const entitlements = getAnalyticsEntitlements(plan)
@@ -190,7 +188,7 @@ export const commercialAnalyticsRouter = router({
    * Get per-event analytics for the authenticated pub's bar.
    * Tenant-safe: events filtered by bar derived from session.
    */
-  getMyEventAnalytics: protectedProcedure
+  getMyEventAnalytics: pubProcedure
     .input(
       z.object({
         from: analyticsDateSchema,
@@ -200,13 +198,6 @@ export const commercialAnalyticsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar analytics'
-        })
-      }
 
       const { barId, plan } = await resolveBarAndPlan(userId)
       const entitlements = getAnalyticsEntitlements(plan)
@@ -247,15 +238,8 @@ export const commercialAnalyticsRouter = router({
   /**
    * Get entitlements for the authenticated pub's plan.
    */
-  getMyEntitlements: protectedProcedure.query(async ({ ctx }) => {
+  getMyEntitlements: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar podem acessar analytics'
-      })
-    }
 
     const { plan } = await resolveBarAndPlan(userId)
     return getAnalyticsEntitlements(plan)
@@ -264,17 +248,10 @@ export const commercialAnalyticsRouter = router({
   /**
    * Check if a specific event type is accessible for the pub's plan.
    */
-  canViewEventType: protectedProcedure
+  canViewEventType: pubProcedure
     .input(z.object({ eventType: z.string() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-
-      if (ctx.session.user.role !== 'pub') {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Apenas contas de bar podem acessar analytics'
-        })
-      }
 
       const { plan } = await resolveBarAndPlan(userId)
       return canViewEventType(plan, input.eventType)

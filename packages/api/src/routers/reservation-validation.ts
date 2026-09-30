@@ -20,7 +20,7 @@ import {
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { pubProcedure, router } from '../index'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
 import {
   ARRIVAL_UNDO_GRACE_MS,
@@ -52,14 +52,7 @@ type Reader = Pick<typeof db, 'select'>
  * reservas (WEB-131) é "disposição" e NÃO entra aqui: desligar impede pedidos
  * novos, mas reserva já criada continua com código validável na janela.
  */
-const validatorProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  if (ctx.session.user.role !== 'pub') {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'Apenas contas de bar podem acessar este recurso.'
-    })
-  }
-
+const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
   const ownBar = await db.query.bar.findFirst({
     where: eq(bar.userId, ctx.session.user.id),
     columns: { id: true },

@@ -6,7 +6,7 @@ import {
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { protectedProcedure, router } from '../index'
+import { protectedProcedure, pubProcedure, router } from '../index'
 import { loadRecommendationCandidates } from '../lib/recommendations/load-candidates'
 import {
   isQualityProtected,
@@ -207,13 +207,7 @@ export const recommendationsRouter = router({
     return { success: true }
   }),
 
-  getMyBarQualityStatus: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.session.user.role !== 'pub') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Apenas contas de bar acessam este status.'
-      })
-    }
+  getMyBarQualityStatus: pubProcedure.query(async ({ ctx }) => {
     const rows = await db.execute(sql`
       SELECT
         b.is_active,
