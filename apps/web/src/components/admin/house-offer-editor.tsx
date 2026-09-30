@@ -4,7 +4,7 @@ import {
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { type FormEvent, useEffect, useId, useState } from 'react'
+import { type FormEvent, useId, useState } from 'react'
 import type { PlanState } from './admin-model'
 import { PaidFeatureCard } from './paid-feature-card'
 
@@ -74,12 +74,17 @@ function HouseOfferForm({
   const errorId = `${fieldId}-error`
   const [draft, setDraft] = useState(houseOffer ?? '')
   const [saved, setSaved] = useState<'saved' | 'cleared' | null>(null)
+  const [stored, setStored] = useState(houseOffer)
 
   // O valor gravado muda depois do refetch do `getMe`: o rascunho acompanha
-  // para o botão voltar a ficar desabilitado sem mudança pendente.
-  useEffect(() => {
+  // para o botão voltar a ficar desabilitado sem mudança pendente. A
+  // comparação é na renderização, não em efeito: o painel vive dentro de um
+  // `<Activity>`, que recria efeitos ao voltar para a aba, e um efeito aqui
+  // apagaria o que o dono digitou antes de trocar de aba.
+  if (stored !== houseOffer) {
+    setStored(houseOffer)
     setDraft(houseOffer ?? '')
-  }, [houseOffer])
+  }
 
   const normalized = normalizeHouseOffer(draft)
   const length = houseOfferLength(normalized)
