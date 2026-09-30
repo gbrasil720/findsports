@@ -1,4 +1,5 @@
 import { db, sql } from '@findsports_oficial/db'
+import { analyticsRetentionRun } from '@findsports_oficial/db/schema/analytics'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import type { Context } from '../../context'
@@ -680,4 +681,56 @@ export async function runAnalyticsRetention(options: {
     eventosApagados: apagados.rows.length,
     podou: true
   }
+}
+
+/**
+ * WEB-117: janela dos eventos brutos na execução agendada — 13 meses, o teto
+ * da spec. Um valor só para todos os planos: a poda apaga apenas bruto de dia
+ * já consolidado, e o rollup fica para sempre, então nenhum plano perde o
+ * período; o que se perde depois do corte é a contagem distinta do período
+ * inteiro e a atribuição fina por jogo (ver `getMyAnalyticsOverview`). 13
+ * meses cobre o maior horizonte anunciado (Pro, 365 dias) com folga.
+ */
+export const RETENCAO_BRUTOS_DIAS = 395
+
+/**
+ * Roda a retenção e grava a execução em `analytics_retention_run`, com
+ * sucesso ou falha. A falha é regravada e relançada: quem chamou (cron ou
+ * admin) precisa enxergá-la, e a execução seguinte se recupera sozinha — cada
+ * projeção da consolidação tem o próprio piso.
+ */
+export async function runAndRecordAnalyticsRetention(options: {
+  trigger: 'cron' | 'admin'
+  retentionDays: number
+  apagarEventosBrutos: boolean
+  agora?: Date
+}): Promise<RetentionResult> {
+  const { trigger, ...retencao } = options
+  const execucao = {
+    trigger,
+    retentionDays: retencao.retentionDays,
+    apagarEventosBrutos: retencao.apagarEventosBrutos,
+    startedAt: new Date()
+  }
+
+  let resultado: RetentionResult
+  try {
+    resultado = await runAnalyticsRetention(retencao)
+  } catch (error) {
+    await db.insert(analyticsRetentionRun).values({
+      ...execucao,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    })
+    throw error
+  }
+
+  await db.insert(analyticsRetentionRun).values({
+    ...execucao,
+    ok: true,
+    diasFinalizados: resultado.diasFinalizados,
+    eventosPodaveis: resultado.eventosPodaveis,
+    eventosApagados: resultado.eventosApagados
+  })
+  return resultado
 }

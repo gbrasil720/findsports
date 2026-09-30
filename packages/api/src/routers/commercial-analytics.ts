@@ -15,7 +15,7 @@ import {
   getMyEventAnalytics,
   recordCommercialEvent,
   resolveBarAndPlan,
-  runAnalyticsRetention
+  runAndRecordAnalyticsRetention
 } from '../lib/commercial-analytics'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -256,6 +256,10 @@ export const commercialAnalyticsRouter = router({
    * `apagarEventosBrutos: true` explícito. Rollups nunca são apagados — são o
    * registro de longo prazo, e a versão anterior desta rotina apagava
    * justamente eles.
+   *
+   * WEB-117: a execução diária vem do cron (`/api/cron/analytics-retention`);
+   * esta mutation fica para rodar à mão. As duas gravam a execução em
+   * `analytics_retention_run`.
    */
   cleanupRetention: adminProcedure
     .input(
@@ -266,7 +270,8 @@ export const commercialAnalyticsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      return runAnalyticsRetention({
+      return runAndRecordAnalyticsRetention({
+        trigger: 'admin',
         retentionDays: input.days,
         apagarEventosBrutos: input.apagarEventosBrutos
       })

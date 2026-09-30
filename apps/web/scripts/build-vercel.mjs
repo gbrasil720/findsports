@@ -135,7 +135,11 @@ writeFileSync(
         },
         { handle: 'filesystem' },
         { src: '/(.*)', dest: '/ssr' }
-      ]
+      ],
+      // WEB-117: retenção de analytics diária. 04:00 UTC = 01:00 em São
+      // Paulo — o dia comercial anterior já fechou. No plano Hobby a Vercel
+      // dispara em algum momento dentro da hora, ainda depois da meia-noite.
+      crons: [{ path: '/api/cron/analytics-retention', schedule: '0 4 * * *' }]
     },
     null,
     2
