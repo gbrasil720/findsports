@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 
-import { classicRuleLateral, currentClassicRulesCte } from '../classics'
+import { currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -54,10 +54,15 @@ export async function executarBuscaEmCamadas(
   input: SearchInput
 ): Promise<SearchPage> {
   const { cursor, limit } = input
-  const { origin, radiusMeters, eventFilter, champBarFilter, amenityFilter } =
-    montarFiltrosBusca(input)
+  const {
+    origin,
+    radiusMeters,
+    eventFilter,
+    champBarFilter,
+    proximoJogo,
+    amenityFilter
+  } = montarFiltrosBusca(input)
 
-  const champBarFilterB = champBarFilter(sql`b.name`)
   const champBarFilterR = champBarFilter(sql`r.name`)
   const amenityFilterB = amenityFilter(sql`b`)
 
@@ -127,26 +132,7 @@ export async function executarBuscaEmCamadas(
         agg.next_classic_rule_reason
       FROM bar b
       JOIN LATERAL (
-        SELECT
-          e.id AS next_event_id,
-          e.championship AS next_championship,
-          e.starts_at AS next_event_at,
-          e.starts_at AS next_event_starts_at,
-          s.name AS next_sport_name,
-          s.slug AS next_sport_slug,
-          e.participant_free_text AS next_participant_free_text,
-          classic.classic_rule_version AS next_classic_rule_version,
-          classic.classic_rule_reason AS next_classic_rule_reason,
-          classic.classic_rule_id
-        FROM event e
-        JOIN sport s ON s.id = e.sport_id
-        ${classicRuleLateral(sql`e`)}
-        WHERE e.bar_id = b.id
-          AND e.starts_at >= NOW()
-          ${eventFilter}
-          ${champBarFilterB}
-        ORDER BY e.starts_at ASC, e.id ASC
-        LIMIT 1
+        SELECT ${proximoJogo(sql`b`)}
       ) agg ON agg.next_event_at IS NOT NULL
       WHERE b.is_active
         AND b.plan = ${tier.plan}
