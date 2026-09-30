@@ -1,46 +1,17 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@findsports_oficial/ui/components/dropdown-menu'
 import { useEffect, useState } from 'react'
-import ChevronDown from 'reicon-react/icons/ChevronDown'
 
 import { formatPhone } from '../utils/format-phone'
 
-const COUNTRIES = [
-  { code: 'BR', name: 'Brasil', dial: '+55' },
-  { code: 'NANP', name: 'EUA / Canadá', dial: '+1' },
-  { code: 'PT', name: 'Portugal', dial: '+351' },
-  { code: 'AR', name: 'Argentina', dial: '+54' },
-  { code: 'CL', name: 'Chile', dial: '+56' },
-  { code: 'CO', name: 'Colômbia', dial: '+57' },
-  { code: 'MX', name: 'México', dial: '+52' },
-  { code: 'UY', name: 'Uruguai', dial: '+598' },
-  { code: 'PE', name: 'Peru', dial: '+51' },
-  { code: 'ES', name: 'Espanha', dial: '+34' },
-  { code: 'DE', name: 'Alemanha', dial: '+49' },
-  { code: 'FR', name: 'França', dial: '+33' },
-  { code: 'IT', name: 'Itália', dial: '+39' },
-  { code: 'GB', name: 'Reino Unido', dial: '+44' },
-  { code: 'AU', name: 'Austrália', dial: '+61' },
-  { code: 'JP', name: 'Japão', dial: '+81' },
-  { code: 'IN', name: 'Índia', dial: '+91' },
-  { code: 'ZA', name: 'África do Sul', dial: '+27' }
-] as const
+/**
+ * Só Brasil (WEB-115): o bar é no Brasil — o geocoding já restringe a
+ * `countrycodes=br` — e o servidor recusa telefone sem +55. O seletor de 18
+ * países que ficava aqui só oferecia opções que seriam sempre recusadas.
+ */
+const DDI = '+55'
 
-type Country = (typeof COUNTRIES)[number]
-
-function parsePhone(stored: string): { country: Country; digits: string } {
-  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length)
-  for (const c of sorted) {
-    if (stored.startsWith(c.dial)) {
-      return { country: c, digits: stored.slice(c.dial.length) }
-    }
-  }
-  return { country: COUNTRIES[0], digits: stored.replace(/\D/g, '') }
+/** Aceita o gravado (`+5511…`) e o legado sem código de país (`11…`). */
+function nationalDigits(stored: string): string {
+  return stored.replace(/^\+55/, '').replace(/\D/g, '').slice(0, 11)
 }
 
 /**
@@ -86,77 +57,27 @@ export function PhoneInput({
   invalid,
   describedBy
 }: Props) {
-  const parsed = parsePhone(defaultValue)
-  const [selectedCountry, setSelectedCountry] = useState<Country>(
-    parsed.country
-  )
-  const [digits, setDigits] = useState(parsed.digits)
+  const [digits, setDigits] = useState(nationalDigits(defaultValue))
 
   useEffect(() => {
-    const next = parsePhone(defaultValue)
-    setSelectedCountry(next.country)
-    setDigits(next.digits)
+    setDigits(nationalDigits(defaultValue))
   }, [defaultValue])
 
-  const formatCode =
-    selectedCountry.code === 'NANP' ? 'US' : selectedCountry.code
-
-  const handleCountryChange = (country: Country) => {
-    setSelectedCountry(country)
-    onChange(digits ? `${country.dial}${digits}` : '')
-  }
-
   const handleDigitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const max = selectedCountry.code === 'BR' ? 11 : 15
-    const newDigits = e.target.value.replace(/\D/g, '').slice(0, max)
+    const newDigits = e.target.value.replace(/\D/g, '').slice(0, 11)
     setDigits(newDigits)
-    onChange(newDigits ? `${selectedCountry.dial}${newDigits}` : '')
+    onChange(newDigits ? `${DDI}${newDigits}` : '')
   }
 
   return (
     <div className={TONE_CLASS[tone]} data-invalid={invalid || undefined}>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`Código do país: ${selectedCountry.name} ${selectedCountry.dial}`}
-          className="onside-field-part onside-field-part-lead"
-        >
-          <span className="font-[family-name:var(--onside-mono)] text-xs font-bold tracking-wide">
-            {selectedCountry.code === 'NANP' ? '+1' : selectedCountry.code}
-          </span>
-          <span>{selectedCountry.dial}</span>
-          <ChevronDown
-            size={12}
-            color="currentColor"
-            className="opacity-60"
-            aria-hidden="true"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="onside-menu max-h-60 w-72 overflow-y-auto p-0">
-          <DropdownMenuGroup>
-            {COUNTRIES.map((country) => (
-              <DropdownMenuItem
-                key={country.code}
-                onClick={() => handleCountryChange(country)}
-                className="rounded-none"
-              >
-                <span className="font-[family-name:var(--onside-mono)] text-xs font-bold">
-                  {country.code === 'NANP' ? '+1' : country.code}
-                </span>
-                <span className="flex-1">{country.name}</span>
-                <span className="text-[var(--onside-muted)]">
-                  {country.dial}
-                </span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <span className="onside-field-part onside-field-part-lead">{DDI}</span>
       <input
         id={id}
         name={name}
         type="tel"
         inputMode="tel"
-        value={formatPhone(digits, formatCode)}
+        value={formatPhone(digits, 'BR')}
         onChange={handleDigitsChange}
         placeholder={placeholder}
         autoComplete="tel-national"

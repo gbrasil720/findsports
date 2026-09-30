@@ -314,26 +314,15 @@
 .onside-app .onside-field-part-lead {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   flex: none;
   border-right: 1.5px solid var(--onside-line);
   font-size: 14px;
   color: var(--onside-muted);
-  cursor: pointer;
-  transition: background-color var(--onside-motion-fast) ease;
-}
-
-.onside-app .onside-field-part-lead:hover {
-  background: var(--onside-stone);
 }
 
 .onside-app .onside-field-composite-ink .onside-field-part-lead {
   border-right-color: rgb(241 238 230 / 20%);
   color: color-mix(in srgb, var(--onside-paper) 72%, transparent);
-}
-
-.onside-app .onside-field-composite-ink .onside-field-part-lead:hover {
-  background: rgb(241 238 230 / 6%);
 }
 
 .onside-app .onside-field-composite-ink .onside-field-part::placeholder {
