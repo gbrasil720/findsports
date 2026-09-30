@@ -3,8 +3,8 @@ import { eq, inArray } from '@findsports_oficial/db'
 import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-
 import type { Context } from '../context'
+import * as emailReal from '../lib/waitlist-email'
 
 /**
  * ONS-25: `inviteDetails` filtrava prazo, ativação, aprovação e cancelamento
@@ -28,6 +28,8 @@ let antesDoEnvio: (() => Promise<void>) | null = null
  *  global no processo, então só entra quando o arquivo de fato roda. */
 function mockarEnvioDeEmail() {
   mock.module('../lib/waitlist-email', () => ({
+    // Resto do módulo real: mesmo motivo de `waitlist.confirm.integration.test.ts`.
+    ...emailReal,
     waitlistUrl: (path: string, token?: string) =>
       `https://onside.invalid${path}${token ? `?token=${token}` : ''}`,
     sendWaitlistEmail: async (input: {

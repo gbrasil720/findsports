@@ -3,8 +3,8 @@ import { eq, inArray } from '@findsports_oficial/db'
 import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-
 import type { Context } from '../context'
+import * as emailReal from '../lib/waitlist-email'
 
 /**
  * ONS-46: a confirmação apagava `confirmation_token_hash` e só depois mandava
@@ -31,6 +31,10 @@ let falharEnvio = true
  */
 function mockarEnvioDeEmail() {
   mock.module('../lib/waitlist-email', () => ({
+    // O resto do módulo segue real: `mock.module` vale para o processo
+    // inteiro, e `waitlist-email.test.ts` importa `createWaitlistEmail` e
+    // `buildWaitlistUrl` daqui quando roda depois deste arquivo.
+    ...emailReal,
     waitlistUrl: (path: string, token?: string) =>
       `https://onside.invalid${path}${token ? `?token=${token}` : ''}`,
     sendWaitlistEmail: async (input: {
