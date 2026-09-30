@@ -110,8 +110,9 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Tudo do Starter', status: 'live' },
       { label: 'Selo Pro no perfil', status: 'live' },
       { label: 'Capa em destaque, o dobro da altura', status: 'live' },
+      { label: 'Link do cardápio e preço médio no perfil', status: 'live' },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
-      { label: 'Cardápio e promoções no perfil', status: 'soon' }
+      { label: 'Promoções no perfil', status: 'soon' }
     ],
     analytics: {
       ...analyticsForPlan('pro')
@@ -141,8 +142,9 @@ export const PLAN_CATALOG: Plan[] = [
     profilePerks: [
       { label: 'Tudo do Pro', status: 'live' },
       { label: 'Selo Elite no topo do perfil', status: 'live' },
+      { label: 'Link do cardápio e preço médio no perfil', status: 'live' },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
-      { label: 'Cardápio e promoções no perfil', status: 'soon' },
+      { label: 'Promoções no perfil', status: 'soon' },
       { label: 'Reserva de mesa pela plataforma', status: 'soon' }
     ],
     analytics: {

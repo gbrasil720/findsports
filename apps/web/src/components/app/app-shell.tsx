@@ -19,6 +19,7 @@ import ChevronDown from 'reicon-react/icons/ChevronDown'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Logout from 'reicon-react/icons/Logout'
 import Settings from 'reicon-react/icons/Settings'
+import Ticket from 'reicon-react/icons/Ticket'
 import User from 'reicon-react/icons/User'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import type { ShellVariant } from '@/domain/viewer'
@@ -197,6 +198,18 @@ export function AppShell({ variant, userMeta, children }: Props) {
                       aria-hidden="true"
                     />
                     Painel do bar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={accountMenuItemClass}
+                    render={<Link to="/admin/validate" />}
+                  >
+                    <Ticket
+                      size={16}
+                      color="currentColor"
+                      className="text-[var(--onside-muted)]"
+                      aria-hidden="true"
+                    />
+                    Validar código
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className={accountMenuItemClass}
