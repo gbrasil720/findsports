@@ -20,22 +20,27 @@ import {
   type ProfileEvent
 } from '@/domain/pub-profile'
 import {
+  errorCode,
   formatDateTime,
   wasAnsweredByServer
 } from '@/domain/reservation-validation'
 import {
   type FanReservation,
   getCreateErrorMessage,
-  PENDING_NOTICE
+  PENDING_NOTICE,
+  SOLD_OUT_MESSAGE
 } from '@/domain/reservations'
 import { useTRPC } from '@/utils/trpc'
+
+/** Jogo do perfil com o teto já resolvido pelo servidor (WEB-152). */
+export type ReservableEvent = ProfileEvent & { reservationsSoldOut: boolean }
 
 type Props = {
   /** O pai monta o diálogo aberto e desmonta ao fechar: cada abertura começa do zero. */
   onClose: () => void
   barName: string
-  /** Só jogos que ainda não começaram. */
-  events: ProfileEvent[]
+  /** Só jogos que ainda não começaram. Esgotado aparece, sem escolha. */
+  events: ReservableEvent[]
   initialEventId: string | null
   houseOffer: string | null
 }
@@ -56,12 +61,12 @@ export function ReservationRequestDialog({
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const ids = useId()
-  const [eventId, setEventId] = useState(
-    () =>
-      events.find((event) => event.id === initialEventId)?.id ??
-      events[0]?.id ??
-      ''
-  )
+  const [eventId, setEventId] = useState(() => {
+    const open = events.filter((event) => !event.reservationsSoldOut)
+    return (
+      open.find((event) => event.id === initialEventId)?.id ?? open[0]?.id ?? ''
+    )
+  })
   const [partySize, setPartySize] = useState(2)
   const [note, setNote] = useState('')
   // Um por pedido pretendido. Só muda quando o servidor respondeu: depois de
@@ -71,7 +76,9 @@ export function ReservationRequestDialog({
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<FanReservation | null>(null)
 
-  const selected = events.find((event) => event.id === eventId)
+  const selected = events.find(
+    (event) => event.id === eventId && !event.reservationsSoldOut
+  )
   const noteLength = reservationNoteLength(normalizeReservationNote(note))
   const noteTooLong = noteLength > RESERVATION_NOTE_MAX_LENGTH
   const partySizeValid =
@@ -107,6 +114,12 @@ export function ReservationRequestDialog({
         onError: (err) => {
           if (wasAnsweredByServer(err)) setRequestId(crypto.randomUUID())
           setError(getCreateErrorMessage(err, selected.startsAt))
+          // Esgotou enquanto o perfil estava aberto: o perfil precisa saber.
+          if (errorCode(err) === 'UNPROCESSABLE_CONTENT') {
+            void queryClient.invalidateQueries({
+              queryKey: trpc.pubs.getById.queryKey()
+            })
+          }
         }
       }
     )
@@ -154,13 +167,14 @@ export function ReservationRequestDialog({
                 {events.map((event) => (
                   <label
                     key={event.id}
-                    className="flex cursor-pointer items-center gap-3 border-[1.5px] border-[var(--onside-line)] p-3 has-[:checked]:border-[var(--onside-ink)] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--onside-ink)]"
+                    className="flex cursor-pointer items-center gap-3 border-[1.5px] border-[var(--onside-line)] p-3 has-[:checked]:border-[var(--onside-ink)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[var(--onside-ink)]"
                   >
                     <input
                       type="radio"
                       name={`${ids}-event`}
                       value={event.id}
                       checked={event.id === eventId}
+                      disabled={event.reservationsSoldOut}
                       onChange={() => setEventId(event.id)}
                     />
                     <span className="min-w-0 text-sm">
@@ -171,6 +185,11 @@ export function ReservationRequestDialog({
                         {formatDayLabel(event.startsAt)} ·{' '}
                         {formatEventTime(event.startsAt)}
                       </span>
+                      {event.reservationsSoldOut ? (
+                        <span className="block font-semibold text-xs">
+                          {SOLD_OUT_MESSAGE}
+                        </span>
+                      ) : null}
                     </span>
                   </label>
                 ))}

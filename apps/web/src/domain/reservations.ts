@@ -31,6 +31,8 @@ export const RESERVATION_STATUS_DETAIL: Record<ReservationStatus, string> = {
 export const PENDING_NOTICE =
   'Isto é um pedido: ele só vira reserva quando o bar aceitar.'
 
+export const SOLD_OUT_MESSAGE = 'Reservas esgotadas para este jogo.'
+
 export const DUPLICATE_REQUEST_MESSAGE =
   'Você já tem um pedido ativo para este jogo. Acompanhe em Minhas reservas.'
 
@@ -46,6 +48,8 @@ export function getCreateErrorMessage(
   switch (errorCode(error)) {
     case 'CONFLICT':
       return DUPLICATE_REQUEST_MESSAGE
+    case 'UNPROCESSABLE_CONTENT':
+      return SOLD_OUT_MESSAGE
     case 'PRECONDITION_FAILED':
       return eventStartsAt.getTime() <= now
         ? 'Este jogo já começou. Escolha um jogo que ainda vai acontecer.'

@@ -17,6 +17,11 @@ export type BarActions = {
    * reservas (quer e pode), jogo futuro na agenda e conta de torcedor.
    */
   onReserve: (() => void) | null
+  /**
+   * O bar recebe, mas todo jogo futuro atingiu o teto (WEB-152): o lugar de
+   * "Reservar mesa" mostra o esgotado, e os contatos continuam.
+   */
+  reservationsSoldOut: boolean
 }
 
 type Action = {
@@ -26,7 +31,8 @@ type Action = {
   label: string
   /** Texto quando desce para secundária. */
   shortLabel: string
-  onClick: () => void
+  /** Sem clique, o item só informa: vira botão desabilitado. */
+  onClick?: () => void
   href?: string
 }
 
@@ -50,6 +56,7 @@ export function BarActions({
   onDirections,
   onPhone,
   onReserve,
+  reservationsSoldOut,
   variant,
   isOwner
 }: BarActions & { variant: 'panel' | 'bar'; isOwner: boolean }) {
@@ -57,14 +64,21 @@ export function BarActions({
 
   // Em ordem de preferência: a primeira disponível é a principal, as outras
   // descem para secundárias. Telefone nunca é principal.
-  const [primaryAction, ...otherActions] = [
-    onReserve && {
-      key: 'reserve',
-      icon: Calendar,
-      label: 'Reservar mesa',
-      shortLabel: 'Reservar mesa',
-      onClick: onReserve
-    },
+  const candidates: (Action | false | '' | null)[] = [
+    onReserve
+      ? {
+          key: 'reserve',
+          icon: Calendar,
+          label: 'Reservar mesa',
+          shortLabel: 'Reservar mesa',
+          onClick: onReserve
+        }
+      : reservationsSoldOut && {
+          key: 'sold-out',
+          icon: Calendar,
+          label: 'Reservas esgotadas para este jogo',
+          shortLabel: 'Esgotado'
+        },
     whatsappUrl && {
       key: 'whatsapp',
       icon: Chat,
@@ -81,7 +95,10 @@ export function BarActions({
       onClick: onDirections,
       href: directionsUrl
     }
-  ].filter((action): action is Action => Boolean(action))
+  ]
+  const [primaryAction, ...otherActions] = candidates.filter(
+    (action): action is Action => Boolean(action)
+  )
 
   const secondaryActions: Action[] = phone
     ? [
@@ -105,7 +122,7 @@ export function BarActions({
     <ActionButton
       action={primaryAction}
       text={primaryAction.label}
-      className="onside-btn onside-btn-acid min-h-12 flex-1 justify-center whitespace-nowrap text-sm"
+      className={`onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm${primaryAction.onClick ? ' whitespace-nowrap' : ''}`}
       iconOnly={false}
       hideIcon={compact}
     />
@@ -197,7 +214,12 @@ function ActionButton({
   )
   if (!action.href) {
     return (
-      <button type="button" onClick={action.onClick} className={className}>
+      <button
+        type="button"
+        onClick={action.onClick}
+        disabled={!action.onClick}
+        className={`${className} disabled:opacity-50`}
+      >
         {content}
       </button>
     )

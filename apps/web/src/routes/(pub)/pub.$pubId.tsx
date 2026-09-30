@@ -20,13 +20,15 @@ import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { HouseOfferSection } from '@/components/pub/house-offer-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
-import { ReservationRequestDialog } from '@/components/pub/reservation-request-dialog'
+import {
+  type ReservableEvent,
+  ReservationRequestDialog
+} from '@/components/pub/reservation-request-dialog'
 import { buildBarFacts } from '@/domain/bar-facts'
 import {
   formatDayLabel,
   formatEventTime,
   formatMatchup,
-  type ProfileEvent,
   resolveHeroEvent
 } from '@/domain/pub-profile'
 import { canFavoriteBars, shellVariantForViewer } from '@/domain/viewer'
@@ -51,7 +53,9 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
 type RouterOutputs = inferRouterOutputs<AppRouter>
 type PubOutput = NonNullable<RouterOutputs['pubs']['getById']>
 
-type NormalizedPub = Omit<PubOutput, 'events'> & { events: ProfileEvent[] }
+type NormalizedPub = Omit<PubOutput, 'events'> & {
+  events: ReservableEvent[]
+}
 
 /**
  * tRPC serializa `Date` como string. A normalização acontece uma vez, aqui,
@@ -69,6 +73,7 @@ function normalizePub(raw: PubOutput | undefined): NormalizedPub | undefined {
       startsAt: new Date(event.startsAt),
       endsAt: event.endsAt ? new Date(event.endsAt) : null,
       participantFreeText: event.participantFreeText,
+      reservationsSoldOut: event.reservationsSoldOut,
       sport: { name: event.sport.name, slug: event.sport.slug },
       participants: event.participants.map((participant) => ({
         team: {
@@ -398,10 +403,13 @@ function PubPage() {
       []
     )
   }, [normalizedPub])
-  const canReserve =
+  const offersReservation =
     normalizedPub?.acceptsReservations === true &&
     viewerRole === 'fan' &&
     reservableEvents.length > 0
+  const canReserve =
+    offersReservation &&
+    reservableEvents.some((event) => !event.reservationsSoldOut)
 
   const actions = {
     whatsappUrl,
@@ -410,7 +418,8 @@ function PubPage() {
     onWhatsApp: handleWhatsAppClick,
     onDirections: handleOpenDirections,
     onPhone: handlePhoneClick,
-    onReserve: canReserve ? () => setReserveOpen(true) : null
+    onReserve: canReserve ? () => setReserveOpen(true) : null,
+    reservationsSoldOut: offersReservation && !canReserve
   }
 
   return (

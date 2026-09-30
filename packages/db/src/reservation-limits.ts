@@ -22,6 +22,12 @@ export const RESERVATION_NOTE_MAX_LENGTH = 280
 export const RESERVATION_PARTY_SIZE_MAX = 20
 
 /**
+ * Maior teto de pessoas por jogo (WEB-152). Só barra digitação errada: o
+ * número real é do dono.
+ */
+export const RESERVATION_CAP_MAX = 5000
+
+/**
  * Forma gravada da observação: sem sobra nas pontas, vazia vira `null`. As
  * quebras de linha ficam — o recado é do torcedor.
  */

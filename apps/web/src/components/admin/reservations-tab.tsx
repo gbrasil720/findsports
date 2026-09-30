@@ -15,6 +15,7 @@ import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { AdminTabPanel } from './admin-tabs'
 import { QueryError } from './query-error'
+import { ReservationCapPanel } from './reservation-cap-panel'
 
 const STATUS_BADGE: Record<BarReservation['status'], string> = {
   pending: 'onside-badge onside-badge-acid',
@@ -47,6 +48,7 @@ export function ReservationsTab({ active }: { active: boolean }) {
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
+      <ReservationCapPanel />
 
       {query.isLoading ? (
         <div role="status" aria-busy="true" className="space-y-3">
@@ -101,9 +103,10 @@ function ReservationRequest({
     if (confirmingDecline) declineRef.current?.focus()
   }, [confirmingDecline])
 
+  // Confirmar muda a lotação do jogo, além da fila.
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: trpc.barReservations.list.queryKey()
+      queryKey: trpc.barReservations.pathKey()
     })
 
   const respond = useMutation(
