@@ -133,3 +133,23 @@ inscreve o bar numa operação que ele não pediu. Ligar exige Elite vigente; o
 recebimento efetivo exige as duas coisas. Desligar só barra pedidos novos —
 reservas já criadas continuam legíveis, canceláveis e com código válido dentro
 da janela. Não é teto por jogo (WEB-132).
+
+## Código de validação
+
+Código curto emitido com a reserva, digitado pelo bar para provar que o
+torcedor veio da Onside e liberar a oferta da casa. Resolve o bar sozinho, mas
+só é aceito de uma sessão dona daquele bar. Admite tantos usos quanto a
+quantidade de pessoas da reserva, porque o grupo chega escalonado.
+
+## Janela de validação
+
+Intervalo em que o código é aceito: de 3 horas antes de `startsAt` até 3 horas
+depois do fim derivado. Abre cedo para cobrir o pré-jogo e fecha tarde para
+sobreviver a queda de rede em dia de clássico.
+
+## Chegada
+
+Uma pessoa da reserva registrada pelo bar na página de validação — um `+1` no
+código. Só se registra em reserva confirmada e dentro da janela de validação.
+Pode ser desfeita por um prazo curto; desfazer devolve o uso ao código e
+mantém o registro para auditoria.
