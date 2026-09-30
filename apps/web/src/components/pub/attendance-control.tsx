@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { toast } from 'sonner'
+import { formatMatchup, type ProfileEvent } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -82,5 +83,37 @@ export function AttendanceControl({
         {announcement}
       </span>
     </fieldset>
+  )
+}
+
+/**
+ * "Vou assistir aqui" do jogo em destaque, dentro de "Garanta seu lugar". Com
+ * a reserva à mão, avisa que marcar presença não guarda mesa. O perfil e a
+ * prévia do dono usam este mesmo bloco.
+ */
+export function HeroAttendance({
+  game,
+  attendance,
+  canReserve
+}: {
+  game: ProfileEvent
+  attendance: { attending: boolean; count: number | null }
+  canReserve: boolean
+}) {
+  return (
+    <>
+      <AttendanceControl
+        eventId={game.id}
+        attending={attendance.attending}
+        count={attendance.count}
+        gameLabel={formatMatchup(game)}
+      />
+      {canReserve && (
+        <p className="mt-2 text-[var(--onside-muted)] text-xs">
+          “Vou assistir aqui” não reserva mesa: só avisa ao bar que você vai.
+          Para garantir lugar, use “Reservar mesa”.
+        </p>
+      )}
+    </>
   )
 }

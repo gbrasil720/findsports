@@ -5,8 +5,10 @@ import {
   getBarInitials,
   getPlanPresentation,
   groupEventsByDay,
+  type NormalizedPub,
   type ProfileEvent,
-  resolveHeroEvent
+  resolveHeroEvent,
+  resolveProfileActions
 } from './pub-profile'
 
 const NOW = new Date('2026-08-19T20:00:00.000Z')
@@ -196,5 +198,58 @@ describe('getBarInitials', () => {
 
   it('aguenta nome de uma palavra só', () => {
     expect(getBarInitials('Boteco')).toBe('B')
+  })
+})
+
+describe('resolveProfileActions', () => {
+  const game = (startsAt: Date, reservationsSoldOut = false) => ({
+    ...makeEvent({ startsAt }),
+    reservationsSoldOut,
+    attendance: null
+  })
+  const pub = (
+    events: NormalizedPub['events'],
+    acceptsReservations = true
+  ): NormalizedPub =>
+    ({
+      name: 'Bar',
+      phone: '+5511999999999',
+      phoneAcceptsWhatsapp: true,
+      latitude: '-23.56',
+      longitude: '-46.68',
+      address: 'Rua 1',
+      acceptsReservations,
+      events
+    }) as NormalizedPub
+  const future = new Date(NOW.getTime() + HOUR)
+  const started = new Date(NOW.getTime() - HOUR)
+  const at = NOW.getTime()
+
+  it('oferece reserva ao torcedor quando há jogo futuro com lugar', () => {
+    const actions = resolveProfileActions(pub([game(future)]), null, 'fan', at)
+    expect(actions.canReserve).toBe(true)
+    expect(actions.reservationsSoldOut).toBe(false)
+  })
+
+  it('não oferece reserva a quem não é torcedor nem sem recebimento', () => {
+    expect(
+      resolveProfileActions(pub([game(future)]), null, 'pub', at).canReserve
+    ).toBe(false)
+    expect(
+      resolveProfileActions(pub([game(future)], false), null, 'fan', at)
+        .canReserve
+    ).toBe(false)
+  })
+
+  it('jogo já começado não entra; todos esgotados viram esgotado', () => {
+    const actions = resolveProfileActions(
+      pub([game(started), game(future, true)]),
+      null,
+      'fan',
+      at
+    )
+    expect(actions.reservableEvents).toHaveLength(1)
+    expect(actions.canReserve).toBe(false)
+    expect(actions.reservationsSoldOut).toBe(true)
   })
 })

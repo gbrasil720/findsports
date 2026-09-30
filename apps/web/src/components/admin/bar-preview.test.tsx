@@ -1,9 +1,10 @@
 import { describe, expect, mock, test } from 'bun:test'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { JSDOM } from 'jsdom'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import type { AdminEvent, SubscriptionPlan } from './admin-model'
+import type { AdminEvent, ProfileState, SubscriptionPlan } from './admin-model'
 import { BarPreview } from './bar-preview'
 
 mock.module('@tanstack/react-router', () => ({
@@ -29,6 +30,14 @@ mock.module('@/components/app/onside-map', () => ({
   OnsideMap: () => <div data-testid="mapa" />
 }))
 
+// "Vou assistir aqui" monta a mutation; a prévia só precisa do botão.
+mock.module('@/utils/trpc', () => ({
+  useTRPC: () => ({
+    attendance: { set: { mutationOptions: () => ({}) } },
+    pubs: { getById: { queryKey: () => [] } }
+  })
+}))
+
 const BAR = {
   id: 'bar-1',
   name: 'Bar do Teste',
@@ -39,17 +48,68 @@ const BAR = {
   photoUrl: null
 }
 
-function renderizar(plan: SubscriptionPlan | 'error') {
+const AMANHA = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+type Profile = Extract<ProfileState, { status: 'ready' }>['profile']
+
+/** A resposta de `pubs.getById` para o próprio dono, já resolvida pelo servidor. */
+function perfil(overrides: Partial<Profile> = {}): ProfileState {
+  return {
+    status: 'ready',
+    profile: {
+      ...BAR,
+      description: null,
+      phone: '+5511999999999',
+      phoneAcceptsWhatsapp: true,
+      address: 'Rua dos Pinheiros, 1',
+      amenities: [],
+      screenCount: null,
+      createdAt: AMANHA,
+      updatedAt: AMANHA,
+      plan: 'elite',
+      isActive: true,
+      rating: null,
+      houseOffer: null,
+      acceptsReservations: true,
+      menuUrl: null,
+      averageSpendCents: 6000,
+      isOwner: true,
+      events: [
+        {
+          id: 'jogo-1',
+          championship: 'Brasileirão',
+          startsAt: AMANHA,
+          endsAt: null,
+          participantFreeText: 'Time A × Time B',
+          reservationsSoldOut: false,
+          // O dono nunca recebe presença; a prévia monta a do torcedor.
+          attendance: null,
+          sport: { name: 'Futebol', slug: 'futebol' },
+          participants: []
+        }
+      ],
+      ...overrides
+    } as Profile
+  }
+}
+
+function renderizar(
+  plan: SubscriptionPlan | 'error',
+  profileState: ProfileState = { status: 'loading' }
+) {
   const markup = renderToStaticMarkup(
-    <BarPreview
-      bar={BAR}
-      eventsState={{ status: 'ready', events: [] as AdminEvent[] }}
-      planState={
-        plan === 'error'
-          ? { status: 'error' }
-          : { status: 'ready', plan, currentPlan: plan }
-      }
-    />
+    <QueryClientProvider client={new QueryClient()}>
+      <BarPreview
+        bar={BAR}
+        eventsState={{ status: 'ready', events: [] as AdminEvent[] }}
+        planState={
+          plan === 'error'
+            ? { status: 'error' }
+            : { status: 'ready', plan, currentPlan: plan }
+        }
+        profileState={profileState}
+      />
+    </QueryClientProvider>
   )
   return new JSDOM(markup).window.document
 }
@@ -84,5 +144,50 @@ describe('preview do dono em /admin', () => {
     expect(doc.querySelector('[role="alert"]')).toBeNull()
     expect(doc.querySelector('button')).toBeNull()
     expect(doc.body.textContent).toContain('Preview indisponível.')
+  })
+})
+
+/**
+ * O que o torcedor vê no perfil sai de `pubs.getById`, já resolvido pelo
+ * servidor (preço médio com Pro/Elite vigente, reserva com Elite e recebimento
+ * ligado). A prévia usa a mesma resposta e os mesmos componentes do perfil.
+ */
+describe('prévia do perfil em /admin', () => {
+  test('mostra o preço médio que o servidor liberou', () => {
+    const doc = renderizar('elite', perfil())
+    expect(doc.body.textContent).toContain('por pessoa, informado pelo bar')
+  })
+
+  test('sem preço liberado pelo servidor, a prévia também não mostra', () => {
+    const doc = renderizar('elite', perfil({ averageSpendCents: null }))
+    expect(doc.body.textContent).not.toContain('por pessoa')
+  })
+
+  test('mostra "Reservar mesa" e "Vou assistir aqui" como o torcedor vê', () => {
+    const texto = renderizar('elite', perfil()).body.textContent
+    expect(texto).toContain('Reservar mesa')
+    expect(texto).toContain('Vou assistir aqui')
+    expect(texto).toContain('WhatsApp')
+  })
+
+  test('sem recebimento efetivo, não há "Reservar mesa"', () => {
+    const texto = renderizar('pro', perfil({ acceptsReservations: false })).body
+      .textContent
+    expect(texto).not.toContain('Reservar mesa')
+    expect(texto).toContain('Falar com o bar')
+    expect(texto).toContain('Vou assistir aqui')
+  })
+
+  test('as ações da prévia não disparam nada: ficam inertes', () => {
+    const doc = renderizar('elite', perfil())
+    const reservar = Array.from(doc.querySelectorAll('button')).find((botao) =>
+      botao.textContent?.includes('Reservar mesa')
+    )
+    expect(reservar?.closest('[inert]')).toBeTruthy()
+  })
+
+  test('falha ao ler o perfil vira aviso na prévia', () => {
+    const doc = renderizar('elite', { status: 'error' })
+    expect(doc.body.textContent).toContain('Prévia do perfil indisponível.')
   })
 })

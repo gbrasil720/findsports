@@ -8,7 +8,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import type { PlanState } from './admin-model'
+import type { PlanState, ProfileState } from './admin-model'
 import { useEventsState, useMyBar, useMySubscription } from './admin-queries'
 import { AdminTabPanel } from './admin-tabs'
 import { BarMenuEditor } from './bar-menu-editor'
@@ -43,6 +43,19 @@ export function SpaceTab({
     refetch: refetchSub
   } = useMySubscription()
 
+  // A prévia lê o perfil público, com a resolução de plano e recebimento do
+  // servidor: o que o bar muda aqui muda os dois.
+  const profileQuery = useQuery({
+    ...trpc.pubs.getById.queryOptions({ id: bar?.id ?? '' }),
+    enabled: Boolean(bar),
+    meta: { errorToast: false }
+  })
+  const invalidateBar = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+    ])
+
   const {
     data: ratings,
     isLoading: loadingRatings,
@@ -58,7 +71,7 @@ export function SpaceTab({
     trpc.pub.updateMe.mutationOptions({
       onSuccess: () => {
         setProfileError(null)
-        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+        invalidateBar()
       },
       onError: (err, input) => {
         setProfileError(
@@ -78,7 +91,7 @@ export function SpaceTab({
   const confirmWhatsAppMutation = useMutation(
     trpc.pub.updateMe.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+        invalidateBar()
       },
       onError: (err) => {
         setProfileError(
@@ -95,7 +108,7 @@ export function SpaceTab({
   const updateHouseOfferMutation = useMutation(
     trpc.pub.updateHouseOffer.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+        invalidateBar()
       }
     })
   )
@@ -103,7 +116,7 @@ export function SpaceTab({
   const updateAcceptsReservationsMutation = useMutation(
     trpc.pub.updateAcceptsReservations.mutationOptions({
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() })
+        invalidateBar()
       }
     })
   )
@@ -116,15 +129,7 @@ export function SpaceTab({
       // Devolver a promessa faz o `mutateAsync` esperar o refetch: o
       // formulário só diz "salvos" quando já recebeu o valor gravado. O perfil
       // público também muda, então a prévia do dono não pode ficar em cache.
-      onSuccess: () =>
-        Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: trpc.pub.getMe.queryKey()
-          }),
-          queryClient.invalidateQueries({
-            queryKey: trpc.pubs.getById.pathKey()
-          })
-        ]),
+      onSuccess: invalidateBar,
       onError: (err) => {
         // Recusa por plano quer dizer que a assinatura mudou com o painel
         // aberto: reler o plano troca o formulário pelo estado bloqueado.
@@ -159,6 +164,12 @@ export function SpaceTab({
       : subError
         ? { status: 'error' }
         : { status: 'loading' }
+
+  const profileState: ProfileState = profileQuery.data
+    ? { status: 'ready', profile: profileQuery.data }
+    : profileQuery.isError
+      ? { status: 'error' }
+      : { status: 'loading' }
 
   const eventList = eventsState.status === 'ready' ? eventsState.events : []
   const hasUpcomingEvent = eventList.some(
@@ -318,6 +329,7 @@ export function SpaceTab({
         }}
         eventsState={eventsState}
         planState={planState}
+        profileState={profileState}
       />
     </AdminTabPanel>
   )

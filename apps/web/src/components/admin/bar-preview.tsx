@@ -2,14 +2,22 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Eye from 'reicon-react/icons/Eye'
 import { OnsideMap } from '@/components/app/onside-map'
 import { BarCard } from '@/components/dashboard/bar-card'
+import { HeroAttendance } from '@/components/pub/attendance-control'
+import { BarActions } from '@/components/pub/bar-action-bar'
 import {
   compareEventStartsAscending,
   getEventTemporalState
 } from '@/domain/events'
+import {
+  normalizePub,
+  resolveHeroEvent,
+  resolveProfileActions
+} from '@/domain/pub-profile'
 import type {
   AdminBar,
   EventsState,
   PlanState,
+  ProfileState,
   SubscriptionPlan
 } from './admin-model'
 
@@ -28,13 +36,66 @@ type Props = {
   bar: PreviewBar
   eventsState: EventsState
   planState: PlanState
+  profileState: ProfileState
+}
+
+const noop = () => {}
+
+/**
+ * "Garanta seu lugar" como um torcedor qualquer vê o perfil: os mesmos
+ * componentes e a mesma resposta do servidor, com a conta trocada por uma de
+ * torcedor. A presença é a de quem ainda não marcou; a contagem não chega ao
+ * dono (ADR 0003).
+ */
+function FanActionsPreview({
+  profile
+}: {
+  profile: Extract<ProfileState, { status: 'ready' }>['profile']
+}) {
+  const pub = normalizePub(profile)
+  const heroEvent = resolveHeroEvent(pub.events, null)
+  const { reservableEvents, canReserve, ...actions } = resolveProfileActions(
+    pub,
+    heroEvent,
+    'fan'
+  )
+  return (
+    // Prévia não age: reservar ou marcar presença como dono não faz sentido.
+    <div inert>
+      <BarActions
+        {...actions}
+        onWhatsApp={noop}
+        onDirections={noop}
+        onPhone={noop}
+        onReserve={canReserve ? noop : null}
+        presence={
+          heroEvent &&
+          // Presença só em jogo que não começou, como no servidor.
+          reservableEvents.includes(heroEvent) && (
+            <HeroAttendance
+              game={heroEvent}
+              attendance={{ attending: false, count: null }}
+              canReserve={canReserve}
+            />
+          )
+        }
+        variant="panel"
+        isOwner={false}
+      />
+    </div>
+  )
 }
 
 function getPlanAccent(plan: SubscriptionPlan): 'acid' | 'ink' {
   return plan === 'pro' || plan === 'elite' ? 'acid' : 'ink'
 }
 
-export function BarPreview({ bar, eventsState, planState }: Props) {
+export function BarPreview({
+  bar,
+  eventsState,
+  planState,
+  profileState
+}: Props) {
   const events = eventsState.status === 'ready' ? eventsState.events : null
   const plan = planState.status === 'ready' ? planState.plan : null
   const nextEvent = events
@@ -56,6 +117,10 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
           distance_km: 0,
           plan,
           event_count: events.length,
+          averageSpendCents:
+            profileState.status === 'ready'
+              ? profileState.profile.averageSpendCents
+              : null,
           nextEvent: nextEvent
             ? {
                 id: nextEvent.id,
@@ -195,6 +260,27 @@ export function BarPreview({ bar, eventsState, planState }: Props) {
             <p className="mt-2 text-[var(--onside-live-text)] text-xs">
               Não foi possível verificar o plano.
             </p>
+          )}
+        </div>
+
+        <div className="md:col-span-2">
+          <p className="onside-kicker mb-3">Perfil</p>
+          {profileState.status === 'ready' ? (
+            <FanActionsPreview profile={profileState.profile} />
+          ) : profileState.status === 'error' ? (
+            <p className="onside-panel p-5 text-center text-[var(--onside-muted)] text-sm">
+              Prévia do perfil indisponível.
+            </p>
+          ) : (
+            <div
+              className="onside-panel p-5"
+              role="status"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <span className="sr-only">Carregando prévia do perfil…</span>
+              <Skeleton className="h-12 w-full" />
+            </div>
           )}
         </div>
       </div>
