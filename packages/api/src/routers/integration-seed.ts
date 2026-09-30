@@ -11,7 +11,7 @@ import type { AppRouter } from './index'
  * banco descartável — os arquivos `*.integration.test.ts` decidem isso.
  */
 
-type Role = 'pub' | 'fan' | 'admin'
+export type Role = 'pub' | 'fan' | 'admin'
 export type Plan = 'starter' | 'pro' | 'elite'
 export type Status = 'trialing' | 'active' | 'past_due'
 type Caller = ReturnType<AppRouter['createCaller']>
@@ -20,7 +20,7 @@ export function contextFor(
   userId: string,
   role: Role,
   now = new Date(),
-  onboardingCompleted = true
+  { onboardingCompleted = true } = {}
 ) {
   return {
     auth: null,

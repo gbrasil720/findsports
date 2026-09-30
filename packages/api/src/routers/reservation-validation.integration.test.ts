@@ -22,6 +22,7 @@ import {
   inAMonth,
   load,
   type Plan,
+  type Role,
   refusal,
   type Status
 } from './integration-seed'
@@ -34,8 +35,6 @@ import {
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-type Role = 'pub' | 'fan'
 
 const HOUR = 3_600_000
 

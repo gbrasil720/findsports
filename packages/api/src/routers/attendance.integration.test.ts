@@ -23,7 +23,7 @@ import {
   ATTENDANCE_REPORT_WINDOW_DAYS,
   UNREGISTERED_ALERT_MIN_GAMES
 } from '../lib/attendance'
-import { contextFor, load, refusal } from './integration-seed'
+import { contextFor, load, type Role, refusal } from './integration-seed'
 
 /**
  * "Vou assistir aqui" (WEB-127) contra o banco de verdade: unicidade pela
@@ -32,8 +32,6 @@ import { contextFor, load, refusal } from './integration-seed'
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-type Role = 'pub' | 'fan' | 'admin'
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR

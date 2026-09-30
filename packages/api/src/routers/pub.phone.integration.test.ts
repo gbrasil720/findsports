@@ -43,7 +43,7 @@ async function seedOwner(withBar: boolean) {
     db,
     ownerId,
     caller: appRouter.createCaller(
-      contextFor(ownerId, 'pub', new Date(), withBar)
+      contextFor(ownerId, 'pub', new Date(), { onboardingCompleted: withBar })
     ),
     storedPhone: async () =>
       (

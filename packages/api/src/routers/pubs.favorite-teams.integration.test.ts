@@ -44,7 +44,7 @@ integrationTest(
     )
 
     const fan = appRouter.createCaller(
-      contextFor(withTeamsId, 'fan', new Date(), false)
+      contextFor(withTeamsId, 'fan', new Date(), { onboardingCompleted: false })
     )
     const teamIds = async () =>
       (await fan.pubs.getMyTeams()).map((row) => row.id).sort()
@@ -70,7 +70,11 @@ integrationTest(
 
       // Sem times: onboarding conclui do mesmo jeito.
       await appRouter
-        .createCaller(contextFor(withoutTeamsId, 'fan', new Date(), false))
+        .createCaller(
+          contextFor(withoutTeamsId, 'fan', new Date(), {
+            onboardingCompleted: false
+          })
+        )
         .onboarding.completeFan({ sportIds: [footballId], searchRadiusKm: 5 })
       const [withoutTeams] = await db
         .select({ done: user.onboardingCompleted })

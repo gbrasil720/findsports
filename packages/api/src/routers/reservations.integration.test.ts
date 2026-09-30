@@ -11,7 +11,7 @@ import {
 import { reservationCode } from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
-import { contextFor, load, refusal } from './integration-seed'
+import { contextFor, load, type Role, refusal } from './integration-seed'
 
 /**
  * Pedido de reserva do torcedor (WEB-124) contra o banco de verdade. Cada
@@ -20,8 +20,6 @@ import { contextFor, load, refusal } from './integration-seed'
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-type Role = 'pub' | 'fan'
 
 const HOUR = 3_600_000
 
