@@ -260,6 +260,13 @@
       "when": 1790724787272,
       "tag": "0037_bar_menu",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790736888972,
+      "tag": "0038_user_favorite_teams",
+      "breakpoints": true
     }
   ]
 }

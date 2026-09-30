@@ -32,6 +32,10 @@ import { ProfileSettings } from '@/components/profile/profile-settings'
 import { ProfileTabs } from '@/components/profile/profile-tabs'
 import { persistProfileUser } from '@/components/profile/profile-user-update'
 import {
+  confirmDroppingTeams,
+  type FavoriteTeam
+} from '@/components/sports/team-picker'
+import {
   normalizeRadiusKm,
   type RadiusKm,
   SAO_PAULO_FALLBACK
@@ -177,6 +181,10 @@ function ProfilePage() {
         void queryClient.invalidateQueries({
           queryKey: trpc.pubs.getMyPreferences.queryKey()
         })
+        // Esporte desmarcado leva seus times junto no servidor.
+        void queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getMyTeams.queryKey()
+        })
         void queryClient.invalidateQueries({
           queryKey: trpc.recommendations.get.queryKey()
         })
@@ -302,8 +310,28 @@ function ProfilePage() {
         : [...current, sportId]
     )
   }
-  const saveSports = () => {
+  const saveSports = async () => {
     if (selectedSportIds.length === 0) return
+    // Esporte desmarcado leva seus times junto: sem a lista não dá para
+    // avisar quais, então não salva às cegas.
+    let myTeams: FavoriteTeam[]
+    try {
+      myTeams = await queryClient.fetchQuery(
+        trpc.pubs.getMyTeams.queryOptions()
+      )
+    } catch (error) {
+      toast.error(
+        getUserFacingMessage(
+          error,
+          'Não foi possível conferir quem você acompanha. Tente novamente.'
+        )
+      )
+      return
+    }
+    const dropped = myTeams.filter(
+      (team) => !selectedSportIds.includes(team.sportId)
+    )
+    if (!confirmDroppingTeams(dropped)) return
     updatePreferences.mutate({ sportIds: selectedSportIds })
   }
   const saveRadius = async (radiusKm: RadiusKm) => {
@@ -504,7 +532,7 @@ function ProfilePage() {
             onStartEditingSports={openEditSports}
             onCancelEditingSports={() => setEditingSports(false)}
             onToggleSport={toggleSport}
-            onSaveSports={saveSports}
+            onSaveSports={() => void saveSports()}
             onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
             onResetRecommendations={() => {
               if (

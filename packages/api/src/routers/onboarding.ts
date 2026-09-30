@@ -16,6 +16,10 @@ import {
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { cidadeLiberada } from '../lib/city-match'
+import {
+  favoriteTeamIdsSchema,
+  replaceFavoriteTeams
+} from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
 
 export const onboardingRouter = router({
@@ -124,7 +128,9 @@ export const onboardingRouter = router({
           z.literal(3),
           z.literal(5),
           z.literal(10)
-        ])
+        ]),
+        // WEB-68: opcional — o passo de times pode ser pulado.
+        teamIds: favoriteTeamIdsSchema.default([])
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -150,6 +156,8 @@ export const onboardingRouter = router({
           .insert(userPreferenceSports)
           .values(input.sportIds.map((sportId) => ({ userId, sportId })))
           .onConflictDoNothing()
+
+        await replaceFavoriteTeams(tx, userId, input.teamIds)
 
         await tx
           .update(user)
