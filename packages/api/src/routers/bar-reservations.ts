@@ -95,6 +95,13 @@ async function assertAlreadyAnswered(
       message: 'O torcedor cancelou este pedido.'
     })
   }
+  // Ainda pendente e o `UPDATE` não pegou: o jogo acabou e o pedido expirou.
+  if (current.status === 'pending') {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'O jogo já acabou. Este pedido expirou sem resposta.'
+    })
+  }
   throw new TRPCError({
     code: 'CONFLICT',
     message:
@@ -225,9 +232,10 @@ export const barReservationsRouter = router({
   /**
    * Só pedido pendente muda. A condição de estado vai no próprio `UPDATE`:
    * duas respostas simultâneas disputam a linha no banco, e só a primeira
-   * encontra `pending`. Repetir a MESMA resposta devolve o estado atual com
-   * `changed: false`; responder diferente, ou responder pedido cancelado,
-   * falha.
+   * encontra `pending`. Depois do fim do jogo o pedido expirou (a fila já
+   * não o mostra) e não muda mais. Repetir a MESMA resposta devolve o estado
+   * atual com `changed: false`; responder diferente, ou responder pedido
+   * cancelado ou expirado, falha.
    */
   respond: ownerProcedure
     .input(
@@ -237,16 +245,17 @@ export const barReservationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const own = and(
-        eq(reservation.id, input.reservationId),
-        inArray(reservation.eventId, ownEvents(ctx.barId))
-      )
+      const own = (extra?: SQL) =>
+        and(
+          eq(reservation.id, input.reservationId),
+          inArray(reservation.eventId, ownEvents(ctx.barId, extra))
+        )
 
       const changed = await db.transaction(async (tx) => {
         const [updated] = await tx
           .update(reservation)
           .set({ status: input.status })
-          .where(and(own, eq(reservation.status, 'pending')))
+          .where(and(own(notEnded), eq(reservation.status, 'pending')))
           .returning({ id: reservation.id })
         if (!updated) return false
 
@@ -264,7 +273,7 @@ export const barReservationsRouter = router({
         }
         return true
       })
-      if (!changed) await assertAlreadyAnswered(own, input.status)
+      if (!changed) await assertAlreadyAnswered(own(), input.status)
       return { status: input.status, changed }
     })
 })

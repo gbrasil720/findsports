@@ -18,14 +18,16 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   pending: 'Pendente',
   confirmed: 'Confirmada',
   declined: 'Recusada',
-  cancelled: 'Cancelada'
+  cancelled: 'Cancelada',
+  expired: 'Sem resposta'
 }
 
 export const RESERVATION_STATUS_DETAIL: Record<ReservationStatus, string> = {
   pending: 'Aguardando o bar. O pedido só vira reserva quando o bar aceitar.',
   confirmed: 'O bar aceitou. Mostre o código ao chegar.',
   declined: 'O bar não aceitou este pedido.',
-  cancelled: 'Você cancelou este pedido.'
+  cancelled: 'Você cancelou este pedido.',
+  expired: 'O bar não respondeu até o fim do jogo. O pedido não vale mais.'
 }
 
 export const PENDING_NOTICE =
@@ -95,7 +97,7 @@ export const ANSWER_RESULT: Record<ReservationAnswer, string> = {
 export function getRespondErrorMessage(error: unknown): string {
   switch (errorCode(error)) {
     case 'PRECONDITION_FAILED':
-      return 'O torcedor cancelou este pedido antes da sua resposta.'
+      return 'Este pedido não pode mais ser respondido: o torcedor cancelou ou o jogo acabou.'
     case 'CONFLICT':
       return 'Este pedido já tinha sido respondido. A lista foi atualizada.'
     case 'NOT_FOUND':

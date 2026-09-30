@@ -1,5 +1,8 @@
 import { and, db, eq, isNull } from '@findsports_oficial/db'
-import { getValidationWindow } from '@findsports_oficial/db/event-window'
+import {
+  getEventEnd,
+  getValidationWindow
+} from '@findsports_oficial/db/event-window'
 import { generateReservationCode } from '@findsports_oficial/db/reservation-code'
 import {
   normalizeReservationNote,
@@ -47,7 +50,10 @@ const CODE_ATTEMPTS = 5
 // ponytail: sem paginação; o torcedor vê os 50 pedidos mais recentes.
 const HISTORY_LIMIT = 50
 
-function isActive(status: ReservationStatus) {
+/** Pendente depois do fim derivado do jogo; ver `readOwnReservations`. */
+type FanReservationStatus = ReservationStatus | 'expired'
+
+function isActive(status: FanReservationStatus) {
   return ACTIVE_RESERVATION_STATUSES.some((active) => active === status)
 }
 
@@ -90,11 +96,20 @@ async function readOwnReservations(userId: string, reservationId?: string) {
   })
 
   return rows.map(({ event: game, codes, ...row }) => {
-    const active = isActive(row.status)
-    // Código de pedido recusado ou cancelado não vale no bar: não mostrar.
+    // Pedido que o bar não respondeu até o fim do jogo expira. É leitura
+    // derivada, não transição gravada: o fim derivado já é a regra, e a fila
+    // do bar e `respond` usam o mesmo corte, então ninguém muda o pedido
+    // depois dele e não há job para manter.
+    const status: FanReservationStatus =
+      row.status === 'pending' && getEventEnd(game) <= now
+        ? 'expired'
+        : row.status
+    const active = isActive(status)
+    // Código de pedido recusado, cancelado ou expirado não vale: não mostrar.
     const code = active ? (codes[0]?.code ?? null) : null
     return {
       ...row,
+      status,
       bar: game.bar,
       event: {
         id: game.id,
