@@ -3,17 +3,14 @@ import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import type { Context } from '../context'
+import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 integrationTest(
   'favoritos respeitam atividade e projeção pública',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const fanId = crypto.randomUUID()
     const ownerId = crypto.randomUUID()
     const barId = crypto.randomUUID()
@@ -49,32 +46,7 @@ integrationTest(
       isActive: false
     })
 
-    const caller = appRouter.createCaller({
-      auth: null,
-      clientIp: '127.0.0.1',
-      session: {
-        session: {
-          id: crypto.randomUUID(),
-          token: crypto.randomUUID(),
-          userId: fanId,
-          createdAt: now,
-          updatedAt: now,
-          expiresAt: new Date(now.getTime() + 60_000)
-        },
-        user: {
-          id: fanId,
-          name: 'Fan de segurança',
-          email: `${fanId}@integration.invalid`,
-          emailVerified: true,
-          role: 'fan',
-          onboardingCompleted: true,
-          searchRadiusKm: 3,
-          twoFactorEnabled: false,
-          createdAt: now,
-          updatedAt: now
-        }
-      }
-    } as unknown as Context)
+    const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
     try {
       await expect(caller.pubs.favorite({ barId })).rejects.toMatchObject({

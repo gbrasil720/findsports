@@ -13,11 +13,19 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { TRPCError } from '@trpc/server'
 import {
   VALIDATION_ATTEMPT_LIMIT,
   validationAttemptKey
 } from '../lib/reservation-validation'
+import {
+  contextFor,
+  inAMonth,
+  load,
+  type Plan,
+  type Role,
+  refusal,
+  type Status
+} from './integration-seed'
 
 /**
  * Validação de código de reserva (WEB-126) contra o banco de verdade. Cada
@@ -28,53 +36,7 @@ import {
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-type Role = 'pub' | 'fan'
-type Plan = 'starter' | 'pro' | 'elite'
-type Status = 'trialing' | 'active' | 'past_due'
-
 const HOUR = 3_600_000
-const inAMonth = () => new Date(Date.now() + 30 * 24 * HOUR)
-
-function contextFor(userId: string, role: Role, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + HOUR),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Conta ${role}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
-async function load() {
-  const [{ db }, { appRouter }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index')
-  ])
-  return { db, appRouter }
-}
 
 function newCode() {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()
@@ -205,16 +167,6 @@ async function seed(
 }
 
 type Seeded = Awaited<ReturnType<typeof seed>>
-
-async function refusal(promise: Promise<unknown>) {
-  const error = await promise.then(
-    () => undefined,
-    (e: unknown) => e
-  )
-  expect(error).toBeInstanceOf(TRPCError)
-  const { code, message } = error as TRPCError
-  return { code, message }
-}
 
 async function counterOf(ctx: Seeded) {
   const [row] = await ctx.db

@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { AVERAGE_SPEND_MAX_CENTS } from '@findsports_oficial/db/bar-menu'
-import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   event,
@@ -9,6 +8,13 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import {
+  inAMonth,
+  load,
+  type Plan,
+  type Status,
+  seedBar
+} from './integration-seed'
 
 /**
  * Cardápio e gasto médio (WEB-39) contra o banco de verdade: o plano é
@@ -18,109 +24,20 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-type Role = 'pub' | 'fan'
-type Plan = 'starter' | 'pro' | 'elite'
-type Status = 'trialing' | 'active' | 'past_due'
-
-function contextFor(userId: string, role: Role, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Conta ${role}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
-
-async function load() {
-  const [{ db }, { appRouter }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index')
-  ])
-  return { db, appRouter }
-}
-
-const inAMonth = () => new Date(Date.now() + 30 * 24 * 3_600_000)
-
-/** Cria dono + bar ativo + assinatura, e um torcedor para ler o perfil. */
-async function seedBar(plan: Plan, status: Status = 'active') {
-  const { db, appRouter } = await load()
-  const ownerId = crypto.randomUUID()
-  const fanId = crypto.randomUUID()
-  const barId = crypto.randomUUID()
-
-  await db.insert(user).values([
-    {
-      id: ownerId,
-      name: 'Dono de integração',
-      email: `${ownerId}@integration.invalid`,
-      emailVerified: true,
-      role: 'pub',
-      onboardingCompleted: true
-    },
-    {
-      id: fanId,
-      name: 'Torcedor de integração',
-      email: `${fanId}@integration.invalid`,
-      emailVerified: true,
-      role: 'fan',
-      onboardingCompleted: true
-    }
-  ])
-  await db.insert(bar).values({
-    id: barId,
-    userId: ownerId,
+/** Bar do cardápio, com perfil que o update parcial não pode apagar. */
+async function seedMenuBar(plan: Plan, status: Status = 'active') {
+  const ctx = await seedBar(plan, status, inAMonth(), {
     name: 'Bar do cardápio',
     description: 'Descrição que não pode sumir',
-    address: 'Rua descartável, 1',
-    neighborhood: 'Teste',
-    city: 'Teste',
-    latitude: '-23.55052000',
-    longitude: '-46.63330800',
-    screenCount: 4,
-    isActive: true
+    screenCount: 4
   })
-  await db
-    .insert(subscription)
-    .values({ barId, plan, status, currentPeriodEnd: inAMonth() })
-
   return {
-    db,
-    barId,
-    owner: appRouter.createCaller(contextFor(ownerId, 'pub')),
-    fan: appRouter.createCaller(contextFor(fanId, 'fan')),
+    ...ctx,
     setPlan: (next: Plan) =>
-      db
+      ctx.db
         .update(subscription)
         .set({ plan: next })
-        .where(eq(subscription.barId, barId)),
-    cleanup: async () => {
-      await db.delete(user).where(eq(user.id, ownerId))
-      await db.delete(user).where(eq(user.id, fanId))
-    }
+        .where(eq(subscription.barId, ctx.barId))
   }
 }
 
@@ -144,7 +61,7 @@ for (const plan of ['pro', 'elite'] as const) {
   integrationTest(
     `dono ${plan} salva, edita e remove; o perfil acompanha`,
     async () => {
-      const ctx = await seedBar(plan)
+      const ctx = await seedMenuBar(plan)
       try {
         const saved = await ctx.owner.pub.updateMenuInfo({
           menuUrl: '  bar.com.br/cardapio ',
@@ -182,7 +99,7 @@ for (const plan of ['pro', 'elite'] as const) {
 integrationTest(
   'update parcial não sobrescreve o outro campo nem o resto do bar',
   async () => {
-    const ctx = await seedBar('pro')
+    const ctx = await seedMenuBar('pro')
     try {
       await ctx.owner.pub.updateMenuInfo({
         menuUrl: MENU,
@@ -217,7 +134,7 @@ integrationTest(
 integrationTest(
   'Starter recebe recusa do servidor e nada é gravado',
   async () => {
-    const ctx = await seedBar('starter')
+    const ctx = await seedMenuBar('starter')
     try {
       await expect(
         ctx.owner.pub.updateMenuInfo({ menuUrl: MENU, averageSpendCents: 4550 })
@@ -233,7 +150,7 @@ integrationTest(
 )
 
 integrationTest('Pro em past_due não grava', async () => {
-  const ctx = await seedBar('pro', 'past_due')
+  const ctx = await seedMenuBar('pro', 'past_due')
   try {
     await expect(
       ctx.owner.pub.updateMenuInfo({ averageSpendCents: 4550 })
@@ -246,8 +163,8 @@ integrationTest('Pro em past_due não grava', async () => {
 integrationTest(
   'torcedor e dono de outro bar não alteram os dados',
   async () => {
-    const a = await seedBar('elite')
-    const b = await seedBar('elite')
+    const a = await seedMenuBar('elite')
+    const b = await seedMenuBar('elite')
     try {
       await a.owner.pub.updateMenuInfo({
         menuUrl: MENU,
@@ -276,7 +193,7 @@ integrationTest(
 integrationTest(
   'link e valor inválidos são recusados e nada é gravado',
   async () => {
-    const ctx = await seedBar('pro')
+    const ctx = await seedMenuBar('pro')
     try {
       for (const menuUrl of [
         'javascript:alert(1)',
@@ -309,7 +226,7 @@ integrationTest(
 )
 
 integrationTest('o banco recusa valores gravados por fora', async () => {
-  const ctx = await seedBar('pro')
+  const ctx = await seedMenuBar('pro')
   try {
     // O builder do Drizzle é thenable, não Promise: `rejects` precisa de uma.
     const write = (values: Partial<typeof bar.$inferInsert>) =>
@@ -331,7 +248,7 @@ integrationTest('o banco recusa valores gravados por fora', async () => {
 integrationTest(
   'downgrade esconde sem apagar; upgrade restaura sem novo preenchimento',
   async () => {
-    const ctx = await seedBar('pro')
+    const ctx = await seedMenuBar('pro')
     try {
       await ctx.owner.pub.updateMenuInfo({
         menuUrl: MENU,
@@ -368,7 +285,7 @@ integrationTest(
 integrationTest(
   'payload público não leva assinatura e perfil antigo vem com nulos',
   async () => {
-    const ctx = await seedBar('elite')
+    const ctx = await seedMenuBar('elite')
     try {
       const profile = await ctx.fan.pubs.getById({ id: ctx.barId })
       expect(profile.menuUrl).toBeNull()
@@ -384,7 +301,7 @@ integrationTest(
 integrationTest(
   'busca mostra o valor pela assinatura vigente, não por bar.plan (WEB-144)',
   async () => {
-    const ctx = await seedBar('pro')
+    const ctx = await seedMenuBar('pro')
     const sportId = crypto.randomUUID()
     const championship = `Copa ${sportId}`
     try {

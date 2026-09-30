@@ -8,6 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 /**
  * `pubs.search` passou a avaliar os planos em camadas (migration 0018): cada
@@ -36,10 +37,7 @@ const ORIGIN_LNG = -41.5
 integrationTest(
   'ordena por plano acima de distância e pagina sem pular entre camadas',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
 
     const fanId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
@@ -141,36 +139,7 @@ integrationTest(
         expect(planoPorBar.get(fixture.barId)).toBe(fixture.plan)
       }
 
-      const caller = appRouter.createCaller({
-        auth: null,
-        clientIp: '127.0.0.1',
-        session: {
-          session: {
-            id: crypto.randomUUID(),
-            token: crypto.randomUUID(),
-            userId: fanId,
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: new Date(now.getTime() + 3_600_000),
-            ipAddress: null,
-            userAgent: null
-          },
-          user: {
-            id: fanId,
-            name: 'Torcedor de integração',
-            email: `${fanId}@integration.invalid`,
-            emailVerified: true,
-            image: null,
-            role: 'fan',
-            banned: false,
-            onboardingCompleted: true,
-            searchRadiusKm: 3,
-            twoFactorEnabled: false,
-            createdAt: now,
-            updatedAt: now
-          }
-        }
-      })
+      const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
       // Página cheia: plano manda, distância só desempata dentro do plano.
       const pagina = await caller.pubs.search({

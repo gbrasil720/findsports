@@ -16,6 +16,7 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { encodeCursor } from '../lib/keyset-cursor'
+import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -25,12 +26,8 @@ const ORIGIN_LNG = -37.5
 integrationTest(
   'coloca Elite clássico no topo, pagina sem repetir e mantém a exceção de rating',
   async () => {
-    const [{ db }, { appRouter }, { resetAppConfig, setAppConfig }] =
-      await Promise.all([
-        import('@findsports_oficial/db'),
-        import('./index'),
-        import('../lib/app-config')
-      ])
+    const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
+      await Promise.all([load(), import('../lib/app-config')])
 
     const now = new Date()
     const fanId = crypto.randomUUID()
@@ -206,36 +203,7 @@ integrationTest(
 
       await setAppConfig('rating.public_display', true, null)
 
-      const caller = appRouter.createCaller({
-        auth: null,
-        clientIp: '127.0.0.1',
-        session: {
-          session: {
-            id: crypto.randomUUID(),
-            token: crypto.randomUUID(),
-            userId: fanId,
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: new Date(now.getTime() + 3_600_000),
-            ipAddress: null,
-            userAgent: null
-          },
-          user: {
-            id: fanId,
-            name: 'Torcedor de clássico',
-            email: `${fanId}@integration.invalid`,
-            emailVerified: true,
-            image: null,
-            role: 'fan',
-            banned: false,
-            onboardingCompleted: true,
-            searchRadiusKm: 3,
-            twoFactorEnabled: false,
-            createdAt: now,
-            updatedAt: now
-          }
-        }
-      })
+      const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
       const relevance = await caller.pubs.search({
         lat: ORIGIN_LAT,

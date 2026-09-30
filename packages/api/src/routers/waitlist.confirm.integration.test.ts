@@ -5,6 +5,7 @@ import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import type { Context } from '../context'
 import * as emailReal from '../lib/waitlist-email'
+import { load } from './integration-seed'
 
 /**
  * ONS-46: a confirmação apagava `confirmation_token_hash` e só depois mandava
@@ -70,9 +71,8 @@ integrationTest(
   'confirmação sobrevive à falha do e-mail e o link continua válido',
   async () => {
     mockarEnvioDeEmail()
-    const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index'),
+    const [{ db, appRouter }, { createWaitlistToken }] = await Promise.all([
+      load(),
       import('../lib/waitlist-workflow')
     ])
 
@@ -159,9 +159,8 @@ integrationTest('token desconhecido continua sendo recusado', async () => {
  */
 integrationTest('link expirado se separa de link inexistente', async () => {
   mockarEnvioDeEmail()
-  const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index'),
+  const [{ db, appRouter }, { createWaitlistToken }] = await Promise.all([
+    load(),
     import('../lib/waitlist-workflow')
   ])
 
@@ -193,9 +192,8 @@ integrationTest(
   'quem saiu da lista ouve isso, não "link inválido"',
   async () => {
     mockarEnvioDeEmail()
-    const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index'),
+    const [{ db, appRouter }, { createWaitlistToken }] = await Promise.all([
+      load(),
       import('../lib/waitlist-workflow')
     ])
 
@@ -241,9 +239,8 @@ integrationTest(
     // e trocava `consumirLimitesWaitlist` também em
     // `waitlist-rate-limit.test.ts` quando este arquivo rodava antes.
     const clientIp = `integration-${crypto.randomUUID()}`
-    const [{ db }, { appRouter }, { createWaitlistToken }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index'),
+    const [{ db, appRouter }, { createWaitlistToken }] = await Promise.all([
+      load(),
       import('../lib/waitlist-workflow')
     ])
 

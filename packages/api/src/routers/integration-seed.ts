@@ -1,6 +1,8 @@
+import { expect } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { TRPCError } from '@trpc/server'
 import type { AppRouter } from './index'
 
 /**
@@ -9,12 +11,17 @@ import type { AppRouter } from './index'
  * banco descartável — os arquivos `*.integration.test.ts` decidem isso.
  */
 
-type Role = 'pub' | 'fan'
-type Plan = 'starter' | 'pro' | 'elite'
-type Status = 'trialing' | 'active' | 'past_due'
+export type Role = 'pub' | 'fan' | 'admin'
+export type Plan = 'starter' | 'pro' | 'elite'
+export type Status = 'trialing' | 'active' | 'past_due'
 type Caller = ReturnType<AppRouter['createCaller']>
 
-export function contextFor(userId: string, role: Role, now = new Date()) {
+export function contextFor(
+  userId: string,
+  role: Role,
+  now = new Date(),
+  { onboardingCompleted = true } = {}
+) {
   return {
     auth: null,
     clientIp: '127.0.0.1',
@@ -37,7 +44,7 @@ export function contextFor(userId: string, role: Role, now = new Date()) {
         image: null,
         role,
         banned: false,
-        onboardingCompleted: true,
+        onboardingCompleted,
         searchRadiusKm: 3,
         twoFactorEnabled: false,
         createdAt: now,
@@ -62,7 +69,8 @@ export const inAMonth = () => new Date(Date.now() + 30 * 24 * 3_600_000)
 export async function seedBar(
   plan: Plan,
   status: Status,
-  currentPeriodEnd: Date | null
+  currentPeriodEnd: Date | null,
+  barFields: Partial<typeof bar.$inferInsert> = {}
 ): Promise<{
   db: Awaited<ReturnType<typeof load>>['db']
   barId: string
@@ -103,7 +111,8 @@ export async function seedBar(
     city: 'Teste',
     latitude: '-23.55052000',
     longitude: '-46.63330800',
-    isActive: true
+    isActive: true,
+    ...barFields
   })
   await db
     .insert(subscription)
@@ -129,4 +138,15 @@ export async function storedOffer(barId: string) {
     .from(bar)
     .where(eq(bar.id, barId))
   return row?.houseOffer ?? null
+}
+
+/** Espera a recusa da API e devolve o código e a mensagem do `TRPCError`. */
+export async function refusal(promise: Promise<unknown>) {
+  const error = await promise.then(
+    () => undefined,
+    (e: unknown) => e
+  )
+  expect(error).toBeInstanceOf(TRPCError)
+  const { code, message } = error as TRPCError
+  return { code, message }
 }

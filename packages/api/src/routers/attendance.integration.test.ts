@@ -18,12 +18,12 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { TRPCError } from '@trpc/server'
 import {
   ATTENDANCE_DISPLAY_FLOOR,
   ATTENDANCE_REPORT_WINDOW_DAYS,
   UNREGISTERED_ALERT_MIN_GAMES
 } from '../lib/attendance'
+import { contextFor, load, type Role, refusal } from './integration-seed'
 
 /**
  * "Vou assistir aqui" (WEB-127) contra o banco de verdade: unicidade pela
@@ -33,52 +33,14 @@ import {
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-type Role = 'pub' | 'fan' | 'admin'
-
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
-
-function contextFor(userId: string, role: Role, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + HOUR),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: `Conta ${role}`,
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
 
 /** `offsets` em ms a partir de agora; o padrão é um jogo futuro e um ao vivo. */
 async function seed(
   options: { elite?: boolean; fans?: number; offsets?: number[] } = {}
 ) {
-  const [{ db }, { appRouter }] = await Promise.all([
-    import('@findsports_oficial/db'),
-    import('./index')
-  ])
+  const { db, appRouter } = await load()
   const ownerId = crypto.randomUUID()
   const fanIds = Array.from({ length: options.fans ?? 2 }, () =>
     crypto.randomUUID()
@@ -197,15 +159,6 @@ async function seed(
   }
 }
 
-async function refusal(promise: Promise<unknown>) {
-  const error = await promise.then(
-    () => undefined,
-    (e: unknown) => e
-  )
-  expect(error).toBeInstanceOf(TRPCError)
-  return (error as TRPCError).code
-}
-
 integrationTest(
   'torcedor marca e desmarca presença, uma só por jogo, em bar sem plano',
   async () => {
@@ -228,13 +181,15 @@ integrationTest(
       await api.set({ eventId: future, attending: false })
       expect(await ctx.presences(future)).toHaveLength(0)
 
-      expect(await refusal(api.set({ eventId: past, attending: true }))).toBe(
-        'PRECONDITION_FAILED'
-      )
       expect(
-        await refusal(
-          ctx.owner.attendance.set({ eventId: future, attending: true })
-        )
+        (await refusal(api.set({ eventId: past, attending: true }))).code
+      ).toBe('PRECONDITION_FAILED')
+      expect(
+        (
+          await refusal(
+            ctx.owner.attendance.set({ eventId: future, attending: true })
+          )
+        ).code
       ).toBe('FORBIDDEN')
     } finally {
       await ctx.cleanup()
@@ -400,16 +355,20 @@ integrationTest(
       expect(code?.usedCount).toBe(1)
 
       expect(
-        await refusal(
-          ctx.fan(1).attendance.report({ eventId: future, attended: true })
-        )
+        (
+          await refusal(
+            ctx.fan(1).attendance.report({ eventId: future, attended: true })
+          )
+        ).code
       ).toBe('NOT_FOUND')
       expect(
-        await refusal(
-          ctx.fan(1).attendance.report({ eventId: stale, attended: true })
-        )
+        (
+          await refusal(
+            ctx.fan(1).attendance.report({ eventId: stale, attended: true })
+          )
+        ).code
       ).toBe('NOT_FOUND')
-      expect(await refusal(ctx.owner.attendance.pendingReports())).toBe(
+      expect((await refusal(ctx.owner.attendance.pendingReports())).code).toBe(
         'FORBIDDEN'
       )
     } finally {
@@ -467,9 +426,9 @@ integrationTest(
         noShow: 0
       })
 
-      expect(await refusal(ctx.owner.attendance.unregisteredAlerts())).toBe(
-        'FORBIDDEN'
-      )
+      expect(
+        (await refusal(ctx.owner.attendance.unregisteredAlerts())).code
+      ).toBe('FORBIDDEN')
     } finally {
       await ctx.cleanup()
     }

@@ -11,49 +11,14 @@ import {
   team
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
-
-function pubContext(userId: string, now = new Date()) {
-  return {
-    auth: null,
-    clientIp: '127.0.0.1',
-    session: {
-      session: {
-        id: crypto.randomUUID(),
-        token: crypto.randomUUID(),
-        userId,
-        createdAt: now,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + 3_600_000),
-        ipAddress: null,
-        userAgent: null
-      },
-      user: {
-        id: userId,
-        name: 'Pub de integração',
-        email: `${userId}@integration.invalid`,
-        emailVerified: true,
-        image: null,
-        role: 'pub' as const,
-        banned: false,
-        onboardingCompleted: true,
-        searchRadiusKm: 3,
-        twoFactorEnabled: false,
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  }
-}
 
 integrationTest(
   'serializes concurrent Starter creates at the five-event limit',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const userId = crypto.randomUUID()
     const barId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
@@ -102,7 +67,7 @@ integrationTest(
         }))
       )
 
-      const caller = appRouter.createCaller(pubContext(userId, now))
+      const caller = appRouter.createCaller(contextFor(userId, 'pub', now))
       const startsAt = new Date(now.getTime() + 86_400_000).toISOString()
       const results = await Promise.allSettled([
         caller.pub.createEvent({
@@ -144,10 +109,7 @@ integrationTest(
 integrationTest(
   'rejects teams from another sport and clears them when the sport changes',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const userId = crypto.randomUUID()
     const fanId = crypto.randomUUID()
     const barId = crypto.randomUUID()
@@ -235,7 +197,7 @@ integrationTest(
         teamId: firstTeamId
       })
 
-      const caller = appRouter.createCaller(pubContext(userId, now))
+      const caller = appRouter.createCaller(contextFor(userId, 'pub', now))
 
       await expect(
         caller.pub.createEvent({
@@ -320,10 +282,7 @@ integrationTest(
 integrationTest(
   'rejects moving startsAt past the persisted endsAt and keeps the row intact',
   async () => {
-    const [{ db }, { appRouter }] = await Promise.all([
-      import('@findsports_oficial/db'),
-      import('./index')
-    ])
+    const { db, appRouter } = await load()
     const userId = crypto.randomUUID()
     const barId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
@@ -372,7 +331,7 @@ integrationTest(
         throw new Error('event insert returned no row')
       }
 
-      const caller = appRouter.createCaller(pubContext(userId, now))
+      const caller = appRouter.createCaller(contextFor(userId, 'pub', now))
 
       const pastTheEnd = new Date(endsAt.getTime() + 3_600_000).toISOString()
       await expect(

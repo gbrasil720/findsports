@@ -8,6 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { contextFor, load } from './integration-seed'
 
 /**
  * ESC-19: a busca tem dois caminhos e um interruptor entre eles.
@@ -38,12 +39,8 @@ const ORIGIN_LNG = -42.5
 integrationTest(
   'os dois caminhos da busca concordam, e só o linear resiste a projeção corrompida',
   async () => {
-    const [{ db }, { appRouter }, { resetAppConfig, setAppConfig }] =
-      await Promise.all([
-        import('@findsports_oficial/db'),
-        import('./index'),
-        import('../lib/app-config')
-      ])
+    const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
+      await Promise.all([load(), import('../lib/app-config')])
 
     const fanId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
@@ -128,36 +125,7 @@ integrationTest(
         })
       }
 
-      const caller = appRouter.createCaller({
-        auth: null,
-        clientIp: '127.0.0.1',
-        session: {
-          session: {
-            id: crypto.randomUUID(),
-            token: crypto.randomUUID(),
-            userId: fanId,
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: new Date(now.getTime() + 3_600_000),
-            ipAddress: null,
-            userAgent: null
-          },
-          user: {
-            id: fanId,
-            name: 'Torcedor de integração',
-            email: `${fanId}@integration.invalid`,
-            emailVerified: true,
-            image: null,
-            role: 'fan',
-            banned: false,
-            onboardingCompleted: true,
-            searchRadiusKm: 3,
-            twoFactorEnabled: false,
-            createdAt: now,
-            updatedAt: now
-          }
-        }
-      })
+      const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
       const buscar = (lng: number, cursor?: string, limit = 20) =>
         caller.pubs.search({
