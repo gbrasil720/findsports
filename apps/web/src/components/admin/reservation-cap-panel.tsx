@@ -22,10 +22,14 @@ export function ReservationCapPanel() {
     ...BAR_RESERVATIONS_QUERY,
     meta: { errorToast: false }
   })
+  // O teto decide o "esgotado" do perfil público e da prévia em "Meu espaço".
   const refresh = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.barReservations.capacity.queryKey()
-    })
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: trpc.barReservations.capacity.queryKey()
+      }),
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+    ])
   const setDefaultCap = useMutation(
     trpc.barReservations.setDefaultCap.mutationOptions({ onSuccess: refresh })
   )

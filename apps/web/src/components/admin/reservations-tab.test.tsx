@@ -44,7 +44,9 @@ const RESPONSES: Record<string, unknown> = {
       }
     ]
   },
-  'barReservations.respond': { status: 'confirmed', changed: true }
+  'barReservations.respond': { status: 'confirmed', changed: true },
+  'barReservations.setDefaultCap': { reservationCap: 10 },
+  'barReservations.setGameCap': { reservationCap: 10 }
 }
 
 const fakeServer: TRPCLink<AppRouter> =
@@ -131,6 +133,25 @@ test("answering a request invalidates the bar's public profile", async () => {
   )
   if (!confirm) throw new Error('botão "Confirmar reserva" não está na tela')
   await act(async () => confirm.click())
+  await settle()
+
+  expect(queryClient.getQueryState(profileKey)?.isInvalidated).toBe(true)
+})
+
+// O teto também decide o esgotado: [0] é o padrão do bar, [1] o do jogo.
+test.each([
+  ['default', 0],
+  ['per-game', 1]
+])("saving the %s cap invalidates the bar's public profile", async (_, index) => {
+  const profileKey = trpc.pubs.getById.queryKey({ id: 'bar-1' })
+  queryClient.setQueryData(profileKey, {} as never)
+  await render()
+
+  const save = [...document.querySelectorAll('button')].filter(
+    (button) => button.textContent === 'Salvar'
+  )[index]
+  if (!save) throw new Error('botão "Salvar" não está na tela')
+  await act(async () => save.click())
   await settle()
 
   expect(queryClient.getQueryState(profileKey)?.isInvalidated).toBe(true)
