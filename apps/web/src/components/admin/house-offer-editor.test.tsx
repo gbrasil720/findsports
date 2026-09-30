@@ -1,6 +1,7 @@
-import { describe, expect, mock, test } from 'bun:test'
+import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { JSDOM } from 'jsdom'
-import type { ReactNode } from 'react'
+import { Activity, act, type ReactNode } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import type { PlanState } from './admin-model'
@@ -105,5 +106,99 @@ describe('HouseOfferEditor', () => {
       (botao) => botao.textContent
     )
     expect(botoes).not.toContain('Remover oferta')
+  })
+})
+
+describe('HouseOfferEditor dentro da aba', () => {
+  const elite: PlanState = {
+    status: 'ready',
+    plan: 'elite',
+    currentPlan: 'elite'
+  }
+  let dom: JSDOM | undefined
+  let root: Root | undefined
+
+  afterEach(() => {
+    if (root) act(() => root?.unmount())
+    root = undefined
+    dom?.window.close()
+  })
+
+  function montar() {
+    dom = new JSDOM('<!doctype html><html><body></body></html>')
+    for (const key of ['window', 'document', 'navigator'] as const) {
+      Object.defineProperty(globalThis, key, {
+        value: dom.window[key],
+        configurable: true
+      })
+    }
+    ;(
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true
+    // O React carregou antes do JSDOM e cai no caminho de IE para `input`.
+    Object.assign(dom.window.HTMLTextAreaElement.prototype, {
+      attachEvent() {},
+      detachEvent() {}
+    })
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    const desenhar = (visible: boolean, houseOffer: string | null) =>
+      act(() =>
+        root?.render(
+          <Activity mode={visible ? 'visible' : 'hidden'}>
+            <HouseOfferEditor
+              houseOffer={houseOffer}
+              plan={elite}
+              isSaving={false}
+              saveError={null}
+              onSave={async () => undefined}
+            />
+          </Activity>
+        )
+      )
+    const campo = () =>
+      document.querySelector('textarea') as HTMLTextAreaElement
+    const digitar = (value: string) =>
+      act(() => {
+        const field = campo()
+        field.focus()
+        Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype,
+          'value'
+        )?.set?.call(field, value)
+        field.dispatchEvent(new window.Event('input', { bubbles: true }))
+        field.dispatchEvent(new window.Event('keyup', { bubbles: true }))
+      })
+    return { desenhar, campo, digitar }
+  }
+
+  // O `Activity` destrói os efeitos ao esconder a aba e os recria ao mostrar;
+  // o refetch do `getMe` ao voltar devolve o mesmo valor gravado.
+  test('o rascunho sobrevive a trocar de aba e a um refetch', () => {
+    const { desenhar, campo, digitar } = montar()
+    desenhar(true, 'Chopp em dobro')
+    digitar('Porção grátis')
+    // Botão liberado prova que o React recebeu o que foi digitado.
+    expect(
+      (document.querySelector('button[type="submit"]') as HTMLButtonElement)
+        .disabled
+    ).toBe(false)
+
+    desenhar(false, 'Chopp em dobro')
+    desenhar(true, 'Chopp em dobro')
+    expect(campo().value).toBe('Porção grátis')
+  })
+
+  test('o rascunho acompanha o valor gravado quando ele muda', () => {
+    const { desenhar, campo, digitar } = montar()
+    desenhar(true, null)
+    digitar('Chopp em dobro')
+    desenhar(true, 'Chopp em dobro')
+    expect(campo().value).toBe('Chopp em dobro')
+
+    desenhar(true, 'Porção grátis')
+    expect(campo().value).toBe('Porção grátis')
   })
 })
