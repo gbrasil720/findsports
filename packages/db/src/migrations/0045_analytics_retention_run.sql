@@ -11,5 +11,3 @@ CREATE TABLE "analytics_retention_run" (
 	"started_at" timestamp with time zone NOT NULL,
 	"finished_at" timestamp with time zone DEFAULT now() NOT NULL
 );
---> statement-breakpoint
-CREATE INDEX "analytics_retention_run_startedAt_idx" ON "analytics_retention_run" USING btree ("started_at");

@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
-import { and, eq, inArray, sql } from '@findsports_oficial/db'
+import { and, eq, gte, inArray, sql } from '@findsports_oficial/db'
 import {
+  analyticsRetentionRun,
   barCommercialDailyRollup,
   barCommercialEvent,
   barCommercialEventDailyRollup
@@ -128,7 +129,7 @@ integrationTest(
   async () => {
     const [{ db }, { runAnalyticsRetention }] = await Promise.all([
       import('@findsports_oficial/db'),
-      import('../lib/commercial-analytics/recorder')
+      import('../lib/commercial-analytics/retention')
     ])
 
     const dia = (offsetDias: number): Date => {
@@ -284,7 +285,7 @@ integrationTest(
   async () => {
     const [{ db }, { runAnalyticsRetention }] = await Promise.all([
       import('@findsports_oficial/db'),
-      import('../lib/commercial-analytics/recorder')
+      import('../lib/commercial-analytics/retention')
     ])
 
     // meio-dia UTC = 09h em São Paulo: mesmo dia comercial do offset
@@ -388,13 +389,13 @@ integrationTest(
 integrationTest(
   'WEB-98: consolidação, poda e leitura do mesmo período — o painel volta pelos rollups',
   async () => {
-    const [dbPkg, recorder, queries] = await Promise.all([
+    const [dbPkg, retention, queries] = await Promise.all([
       import('@findsports_oficial/db'),
-      import('../lib/commercial-analytics/recorder'),
+      import('../lib/commercial-analytics/retention'),
       import('../lib/commercial-analytics/queries')
     ])
     const { db } = dbPkg
-    const { runAnalyticsRetention } = recorder
+    const { runAnalyticsRetention } = retention
     const { getMyAnalyticsOverview, getMyEventAnalytics } = queries
 
     // meio-dia UTC = 09h em São Paulo, mesmo dia comercial do offset
@@ -887,6 +888,65 @@ integrationTest(
         .delete(user)
         .where(inArray(user.id, [pubUserId, otherPubUserId, fanUserId]))
       await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
+
+// WEB-117: cada execução deixa uma linha em `analytics_retention_run` — é
+// por ela que se sabe se a rotina rodou. Nenhum outro teste grava a tabela
+// (os demais chamam `runAnalyticsRetention` direto), então o recorte por
+// `started_at` isola as linhas deste.
+integrationTest(
+  'WEB-117: execução da retenção fica registrada, com sucesso ou falha',
+  async () => {
+    const [{ db }, { runAndRecordAnalyticsRetention }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('../lib/commercial-analytics/retention')
+    ])
+    const desde = new Date()
+
+    try {
+      const resultado = await runAndRecordAnalyticsRetention({
+        trigger: 'cron',
+        retentionDays: 395,
+        apagarEventosBrutos: false
+      })
+      // Data inválida quebra antes do SQL: basta para exercitar a falha.
+      await expect(
+        runAndRecordAnalyticsRetention({
+          trigger: 'admin',
+          retentionDays: 30,
+          apagarEventosBrutos: false,
+          agora: new Date(Number.NaN)
+        })
+      ).rejects.toThrow()
+
+      const [sucesso, falha, ...resto] = await db
+        .select()
+        .from(analyticsRetentionRun)
+        .where(gte(analyticsRetentionRun.startedAt, desde))
+        .orderBy(analyticsRetentionRun.startedAt)
+      expect(resto).toHaveLength(0)
+      expect(sucesso).toMatchObject({
+        trigger: 'cron',
+        retentionDays: 395,
+        ok: true,
+        diasFinalizados: resultado.diasFinalizados,
+        eventosPodaveis: resultado.eventosPodaveis,
+        eventosApagados: 0,
+        error: null
+      })
+      expect(falha).toMatchObject({
+        trigger: 'admin',
+        retentionDays: 30,
+        ok: false,
+        diasFinalizados: null
+      })
+      expect(falha?.error).toBeTruthy()
+    } finally {
+      await db
+        .delete(analyticsRetentionRun)
+        .where(gte(analyticsRetentionRun.startedAt, desde))
     }
   }
 )

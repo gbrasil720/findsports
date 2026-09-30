@@ -332,26 +332,20 @@ export const rollupCheckpointRelations = relations(
  * Antes não havia como saber se a retenção já tinha rodado alguma vez; a
  * última linha é a resposta. Contadores nulos quando a execução falhou.
  */
-export const analyticsRetentionRun = pgTable(
-  'analytics_retention_run',
-  {
-    id: text('id')
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    trigger: text('trigger', { enum: ['cron', 'admin'] }).notNull(),
-    retentionDays: integer('retention_days').notNull(),
-    apagarEventosBrutos: boolean('apagar_eventos_brutos').notNull(),
-    ok: boolean('ok').notNull(),
-    diasFinalizados: integer('dias_finalizados'),
-    eventosPodaveis: integer('eventos_podaveis'),
-    eventosApagados: integer('eventos_apagados'),
-    error: text('error'),
-    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
-    finishedAt: timestamp('finished_at', { withTimezone: true })
-      .defaultNow()
-      .notNull()
-  },
-  (table) => [
-    index('analytics_retention_run_startedAt_idx').on(table.startedAt)
-  ]
-)
+export const analyticsRetentionRun = pgTable('analytics_retention_run', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  trigger: text('trigger', { enum: ['cron', 'admin'] }).notNull(),
+  retentionDays: integer('retention_days').notNull(),
+  apagarEventosBrutos: boolean('apagar_eventos_brutos').notNull(),
+  ok: boolean('ok').notNull(),
+  diasFinalizados: integer('dias_finalizados'),
+  eventosPodaveis: integer('eventos_podaveis'),
+  eventosApagados: integer('eventos_apagados'),
+  error: text('error'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true })
+    .defaultNow()
+    .notNull()
+})

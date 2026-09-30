@@ -1,5 +1,5 @@
 {
-  "id": "a161b63a-6530-4ebe-afb1-ceb283d1b0c3",
+  "id": "842c163c-6e39-4885-b116-6df4d9d7f160",
   "prevId": "6a668b9a-dc94-4e68-ab9a-156e24e6121e",
   "version": "7",
   "dialect": "postgresql",
@@ -76,23 +76,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "analytics_retention_run_startedAt_idx": {
-          "name": "analytics_retention_run_startedAt_idx",
-          "columns": [
-            {
-              "expression": "started_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},

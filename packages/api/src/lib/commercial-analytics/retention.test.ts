@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { isCronAuthorized } from './retention-cron'
+import { isCronAuthorized } from './retention'
 
 describe('isCronAuthorized (WEB-117)', () => {
   const secret = 'segredo-de-cron-com-tamanho'

@@ -1,4 +1,4 @@
-import { handleAnalyticsRetentionCron } from '@findsports_oficial/api/lib/commercial-analytics/retention-cron'
+import { handleAnalyticsRetentionCron } from '@findsports_oficial/api/lib/commercial-analytics/retention'
 import { createFileRoute } from '@tanstack/react-router'
 
 // WEB-117: disparada uma vez por dia pelo cron da Vercel
