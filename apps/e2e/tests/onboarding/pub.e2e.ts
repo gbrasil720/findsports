@@ -116,10 +116,11 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
     city: 'São Paulo',
     phone: '+5511987654321',
     description: 'Sinuca no fundo',
+    // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
+    amenities: [1],
     screen_count: 4,
     is_active: false
   })
-  expect(bar?.amenities).toHaveLength(1)
   const [user] = await query(
     'SELECT onboarding_completed FROM "user" WHERE id = $1',
     [owner.id]
@@ -185,11 +186,9 @@ test('falha do geocoding mostra mensagem tratada e não cria o bar', async ({
   })
 
   await button(page, /Escolher meu plano/).click()
-  const alert = page.getByRole('alert')
-  await expect(alert).toHaveText(
+  await expect(page.getByRole('alert')).toHaveText(
     'Não foi possível salvar o cadastro do bar. Tente novamente.'
   )
-  await expect(alert).not.toHaveText(/503|LocationIQ|stub|SERVICE_UNAVAILABLE/i)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   await expect(button(page, /Escolher meu plano/)).toBeEnabled()
 
