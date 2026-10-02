@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
+import { query } from '../../fixtures/db'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
@@ -106,4 +107,23 @@ test('bar sem assinatura', async ({ page }) => {
   await expect(
     page.getByText('Nenhuma assinatura ativa encontrada.')
   ).toBeVisible()
+})
+
+test('a fixture grava current_period_end em UTC em qualquer fuso (WEB-197)', async () => {
+  const end = new Date('2030-01-15T12:00:00.000Z')
+  const tz = process.env.TZ
+  process.env.TZ = 'America/Sao_Paulo'
+  let pub: Awaited<ReturnType<typeof createPub>>
+  try {
+    pub = await createPub({ subscription: { currentPeriodEnd: end } })
+  } finally {
+    if (tz === undefined) delete process.env.TZ
+    else process.env.TZ = tz
+  }
+  const [row] = await query<{ end: string }>(
+    `SELECT to_char(current_period_end, 'YYYY-MM-DD"T"HH24:MI:SS') AS end
+     FROM subscription WHERE bar_id = $1`,
+    [pub.barId]
+  )
+  expect(row?.end).toBe('2030-01-15T12:00:00')
 })
