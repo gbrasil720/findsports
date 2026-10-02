@@ -324,6 +324,7 @@ export function WaitlistAccessPanel({
           que preencha o formulário antes. Fica marcada como “Convite direto”.
         </p>
         <form
+          method="post"
           className="flex flex-wrap items-center gap-2"
           onSubmit={(evento) => {
             evento.preventDefault()

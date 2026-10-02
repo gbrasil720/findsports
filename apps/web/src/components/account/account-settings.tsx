@@ -171,7 +171,11 @@ function PasswordDialog({
 
   return (
     <Modal title="Alterar senha" open={open} onClose={close}>
-      <form className="flex flex-col gap-5 pt-5" onSubmit={submit}>
+      <form
+        method="post"
+        className="flex flex-col gap-5 pt-5"
+        onSubmit={submit}
+      >
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="current-password">Senha atual</FieldLabel>

@@ -146,7 +146,11 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
       ) : null}
 
       <Modal title="Excluir conta permanentemente" open={open} onClose={close}>
-        <form className="flex flex-col gap-5 pt-5" onSubmit={remove}>
+        <form
+          method="post"
+          className="flex flex-col gap-5 pt-5"
+          onSubmit={remove}
+        >
           <div className="onside-callout onside-callout-danger" role="alert">
             Esta ação não pode ser desfeita. Seus dados locais serão apagados.
           </div>

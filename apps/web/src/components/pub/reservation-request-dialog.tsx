@@ -164,7 +164,12 @@ export function ReservationRequestDialog({
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
+          <form
+            method="post"
+            onSubmit={handleSubmit}
+            noValidate
+            className="mt-4 space-y-4"
+          >
             <fieldset>
               <legend className="onside-label">Jogo</legend>
               <div className="space-y-2">

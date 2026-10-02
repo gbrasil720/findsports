@@ -71,7 +71,7 @@ function AccessPendingPage() {
               Entre explicitamente na waitlist. Como você já confirmou este
               e-mail, a inscrição vale na hora.
             </p>
-            <form onSubmit={submit} className="mt-6 grid gap-4">
+            <form method="post" onSubmit={submit} className="mt-6 grid gap-4">
               <div>
                 <label htmlFor="pending-email" className="onside-label">
                   E-mail

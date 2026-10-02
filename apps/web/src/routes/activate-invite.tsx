@@ -398,7 +398,7 @@ function FormularioDeAtivacao({
         Seu e-mail já está ligado ao convite. Defina seu nome e sua senha para
         entrar.
       </p>
-      <form onSubmit={submit} className="mt-6 grid gap-4">
+      <form method="post" onSubmit={submit} className="mt-6 grid gap-4">
         <div>
           <label htmlFor="invite-email" className="onside-label">
             E-mail do convite

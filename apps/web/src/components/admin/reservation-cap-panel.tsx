@@ -148,6 +148,7 @@ function CapForm({
 
   return (
     <form
+      method="post"
       onSubmit={(e) => void handleSubmit(e)}
       className="mt-2 flex flex-wrap items-end gap-2"
     >

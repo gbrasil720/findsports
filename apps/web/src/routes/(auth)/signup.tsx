@@ -231,6 +231,7 @@ function SignupPage() {
           </div>
 
           <form
+            method="post"
             ref={formRef}
             className="flex flex-col gap-4"
             noValidate

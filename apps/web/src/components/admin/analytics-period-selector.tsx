@@ -131,6 +131,7 @@ export function AnalyticsPeriodSelector({
 
           {preset === 'custom' && (
             <form
+              method="post"
               className="mt-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_auto]"
               onSubmit={(event) => {
                 event.preventDefault()
