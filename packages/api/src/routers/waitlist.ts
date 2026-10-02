@@ -172,7 +172,8 @@ async function persistEmailResult(
          * Hash reservado por esta tentativa. O resultado só vale enquanto a
          * linha ainda carrega esse hash: se outra operação (WEB-90) já
          * substituiu o convite, a finalização antiga não pode marcar o novo
-         * como enviado/erro nem limpar o claim dele.
+         * como enviado/erro nem limpar o claim dele. Revogar mantém o hash
+         * (WEB-192), então o resultado também exige aprovação vigente.
          */
         hash: string
         error: string | null
@@ -192,7 +193,7 @@ async function persistEmailResult(
       invite_claimed_at = NULL,
       invite_sent_at = ${input.error ? null : new Date()},
       invite_error = ${input.error}
-    WHERE invite_token_hash = ${input.hash}
+    WHERE invite_token_hash = ${input.hash} AND approved_at IS NOT NULL
   `)
 }
 
