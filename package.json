@@ -24,6 +24,7 @@
     "build": "turbo build",
     "check-types": "turbo check-types",
     "test": "bun test --parallel=1",
+    "test:e2e": "cd apps/e2e && bunx playwright test",
     "dev:web": "turbo -F web dev",
     "dev:load-test": "turbo run dev:load-test --filter=web",
     "build:vercel": "bun run db:migrate:deploy && turbo -F web build && bun apps/web/scripts/build-vercel.mjs",

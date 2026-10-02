@@ -1,0 +1,19 @@
+{
+  "name": "e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@findsports_oficial/config": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "catalog:",
+    "@types/pg": "^8.21.0",
+    "better-auth": "catalog:",
+    "bun-types": "^1.3.14",
+    "pg": "8",
+    "typescript": "catalog:"
+  }
+}
