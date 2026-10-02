@@ -30,7 +30,11 @@ async function activate(request: Request) {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          origin: new URL(request.url).origin
+          origin: new URL(request.url).origin,
+          // O rate limit de login do better-auth (3 por 10s) conta por IP.
+          // Sem o IP do cliente, toda ativação caía no mesmo balde global, e
+          // a quarta em 10s criava a conta mas mandava a pessoa para /login.
+          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? ''
         },
         body: JSON.stringify({
           email: result.email,
