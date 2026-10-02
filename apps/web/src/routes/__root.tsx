@@ -221,6 +221,12 @@ function RootDocument() {
   const impersonatedBy = session?.session.impersonatedBy
   const isDev = import.meta.env.DEV
 
+  // Marca de hidratação para o E2E (WEB-174): antes dela, o formulário ainda
+  // é HTML puro e um clique faz submit nativo. `fixtures/test.ts` espera por ela.
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = ''
+  }, [])
+
   return (
     <>
       <MinuteTickProvider>
