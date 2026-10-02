@@ -225,6 +225,13 @@ serviço Postgres/PostGIS próprio. Instala só o Chromium. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
 
-Ainda não medido: tempo do job com todas as áreas cobertas e o consumo de
-minutos do Actions. Se passar de 10 minutos, o caminho é `--shard` do
-Playwright em matriz.
+O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
+projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os
+serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
+Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
+servidor e o seu Postgres. Num job só, com auth, waitlist e onboarding, a
+suíte já levava 12 min com 2 workers. O artifact de falha sai por parte
+(`playwright-report-N`). Se um shard passar de ~10 min, aumente a matriz.
+
+Spec novo que mexe em `app_config` global continua indo em `*.serial.e2e.ts`;
+a matriz pega sozinha.
