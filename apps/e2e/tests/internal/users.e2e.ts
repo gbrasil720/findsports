@@ -21,6 +21,13 @@ async function openUser(page: Page, user: TestUser) {
   return row
 }
 
+// A personificação troca de página por `window.location`, fora do `page.goto`
+// que espera a hidratação. O banner vem no HTML do servidor (WEB-196), então
+// sem esperar o clique em "Encerrar sessão" pode cair antes do handler.
+async function waitForHydration(page: Page) {
+  await page.locator('html[data-hydrated]').waitFor({ state: 'attached' })
+}
+
 async function openActions(page: Page, user: TestUser) {
   await page.getByRole('button', { name: `Ações de ${user.name}` }).click()
 }
@@ -131,6 +138,7 @@ test('impersonar torcedor mostra o banner; encerrar volta ao painel', async ({
   await page.getByRole('menuitem', { name: 'Impersonar' }).click()
 
   await expect(page).toHaveURL(/\/dashboard$/)
+  await waitForHydration(page)
   const banner = page
     .getByRole('status')
     .filter({ hasText: 'Modo de personificação ativo' })
@@ -158,6 +166,7 @@ test('impersonar dono de bar abre o painel do bar', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Impersonar' }).click()
 
   await expect(page).toHaveURL(/\/admin$/)
+  await waitForHydration(page)
   const banner = page
     .getByRole('status')
     .filter({ hasText: 'Modo de personificação ativo' })

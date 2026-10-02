@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@findsports_oficial/ui/components/dropdown-menu'
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
@@ -23,8 +22,8 @@ import Ticket from 'reicon-react/icons/Ticket'
 import User from 'reicon-react/icons/User'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import type { ShellVariant } from '@/domain/viewer'
+import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
-import { authClient } from '@/lib/auth-client'
 import { ProductFrame } from './product-frame'
 
 type Props = {
@@ -38,7 +37,7 @@ const accountMenuItemClass =
 
 export function AppShell({ variant, userMeta, children }: Props) {
   const signOut = useSignOut()
-  const { data: session, isPending } = authClient.useSession()
+  const session = useSession()
   const hasUser = Boolean(session?.user)
   const accountLabel =
     variant === 'fan' ? 'Torcedor' : variant === 'pub' ? 'Bar' : 'Conta'
@@ -53,11 +52,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
         .slice(0, 2)
     : '…'
 
-  const menuLabel = name
-    ? `Menu da conta de ${name}`
-    : isPending
-      ? 'Carregando conta'
-      : 'Menu da conta'
+  const menuLabel = name ? `Menu da conta de ${name}` : 'Menu da conta'
 
   const header = (
     <>
@@ -77,7 +72,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
         </p>
       )}
 
-      {variant === 'public' && !hasUser && !isPending ? (
+      {variant === 'public' && !hasUser ? (
         <div className="ml-auto flex items-center gap-2">
           <Link
             to="/login"
@@ -99,49 +94,34 @@ export function AppShell({ variant, userMeta, children }: Props) {
               <button
                 type="button"
                 aria-label={menuLabel}
-                aria-busy={isPending || undefined}
-                disabled={isPending}
                 className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
               />
             }
           >
-            {isPending ? (
-              <Skeleton className="size-8 rounded-none" />
-            ) : (
-              <Avatar className="size-8 shrink-0 rounded-none">
-                {session?.user?.image && (
-                  <AvatarImage
-                    src={session.user.image}
-                    alt=""
-                    className="rounded-none"
-                  />
-                )}
-                <AvatarFallback className="rounded-none bg-[var(--onside-ink)] font-bold text-[var(--onside-paper)] text-sm">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <div className="hidden min-w-0 leading-tight text-left sm:block">
-              {isPending ? (
-                <div className="space-y-1.5">
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="h-2.5 w-14" />
-                </div>
-              ) : (
-                <>
-                  {/* O chip do cabeçalho é estreito de propósito; o nome inteiro
-                      aparece no cabeçalho do menu, que tem largura para ele. */}
-                  <div
-                    className="max-w-[140px] truncate font-bold text-xs"
-                    title={name || undefined}
-                  >
-                    {name || '…'}
-                  </div>
-                  <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-                    {userMeta ?? accountLabel}
-                  </div>
-                </>
+            <Avatar className="size-8 shrink-0 rounded-none">
+              {session?.user?.image && (
+                <AvatarImage
+                  src={session.user.image}
+                  alt=""
+                  className="rounded-none"
+                />
               )}
+              <AvatarFallback className="rounded-none bg-[var(--onside-ink)] font-bold text-[var(--onside-paper)] text-sm">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden min-w-0 leading-tight text-left sm:block">
+              {/* O chip do cabeçalho é estreito de propósito; o nome inteiro
+                  aparece no cabeçalho do menu, que tem largura para ele. */}
+              <div
+                className="max-w-[140px] truncate font-bold text-xs"
+                title={name || undefined}
+              >
+                {name || '…'}
+              </div>
+              <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                {userMeta ?? accountLabel}
+              </div>
             </div>
             <ChevronDown
               size={14}

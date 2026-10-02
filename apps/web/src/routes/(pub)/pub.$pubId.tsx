@@ -31,8 +31,8 @@ import {
   resolveProfileActions
 } from '@/domain/pub-profile'
 import { canFavoriteBars, shellVariantForViewer } from '@/domain/viewer'
+import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
-import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -132,7 +132,7 @@ function PubPage() {
   const { pubId } = Route.useParams()
   const navigate = useNavigate()
   const { href } = useLocation()
-  const { data: session } = authClient.useSession()
+  const session = useSession()
   const [eventId, setEventId] = useState<string | null>(null)
   const [isFavorited, setIsFavorited] = useState(false)
   const [favoritePending, setFavoritePending] = useState(false)

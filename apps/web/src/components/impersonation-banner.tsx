@@ -5,16 +5,21 @@ import Users from 'reicon-react/icons/Users'
 import { authClient } from '@/lib/auth-client'
 import { getUserFacingError } from '@/lib/user-facing-error'
 
-export function ImpersonationBanner() {
-  const { data: session } = authClient.useSession()
+/*
+ * Quem está sendo personificado vem da sessão do servidor, pelo contexto da
+ * rota (`__root.tsx`), e não de `authClient.useSession()`: no SSR o hook não
+ * tem sessão e o banner sairia vazio do HTML, enquanto o cliente — hidratando
+ * depois do `lazy` — já tinha a sessão e o desenhava (WEB-196).
+ */
+export function ImpersonationBanner({
+  user
+}: {
+  user: { name: string; email: string }
+}) {
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [retryable, setRetryable] = useState(false)
   const bannerRef = useRef<HTMLDivElement>(null)
-
-  const impersonatedBy = (
-    session?.session as { impersonatedBy?: string | null } | undefined
-  )?.impersonatedBy
 
   const measure = useCallback(() => {
     const el = bannerRef.current
@@ -24,10 +29,6 @@ export function ImpersonationBanner() {
   }, [])
 
   useEffect(() => {
-    if (!impersonatedBy) {
-      document.documentElement.style.setProperty('--onside-banner-h', '0px')
-      return
-    }
     measure()
     const el = bannerRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
@@ -37,9 +38,7 @@ export function ImpersonationBanner() {
       ro.disconnect()
       document.documentElement.style.setProperty('--onside-banner-h', '0px')
     }
-  }, [impersonatedBy, measure])
-
-  if (!impersonatedBy) return null
+  }, [measure])
 
   async function handleStop() {
     setStopping(true)
@@ -90,11 +89,9 @@ export function ImpersonationBanner() {
           </div>
           <div className="min-w-0 text-sm leading-snug">
             <span className="font-medium">Modo de personificação ativo — </span>
-            <span className="font-bold break-words">
-              {session?.user?.name || '…'}
-            </span>{' '}
+            <span className="font-bold break-words">{user.name || '…'}</span>{' '}
             <span className="break-all font-[family-name:var(--onside-mono)] text-xs text-[var(--onside-ink)] opacity-80">
-              ({session?.user?.email})
+              ({user.email})
             </span>
             {error ? (
               <p

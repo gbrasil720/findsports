@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import Monitor from 'reicon-react/icons/Monitor'
 import { toast } from 'sonner'
+import { useSession } from '@/hooks/use-session'
 import { authClient } from '@/lib/auth-client'
 import { describeDevice } from '@/lib/describe-device'
 import {
@@ -24,7 +25,7 @@ function formatDate(value: Date | string) {
 }
 
 export function SessionSettings() {
-  const { data: current } = authClient.useSession()
+  const current = useSession()
   const [revoking, setRevoking] = useState<string | null>(null)
   const sessions = useQuery({
     queryKey: ['account-sessions'],
