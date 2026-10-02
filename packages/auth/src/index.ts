@@ -25,6 +25,7 @@ import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import { DODO_PRODUCTS, planForProduct } from './dodo-plan'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
@@ -46,10 +47,11 @@ export const dodoClient = new DodoPayments({
   environment: process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode'
 })
 
-const PLAN_BY_PRODUCT: Record<string, 'starter' | 'pro' | 'elite'> = {
-  pdt_0NgxgZyV3AKsNe99Ae2ZN: 'starter',
-  pdt_0NgxglMLDZdpaXIuRAiCE: 'pro',
-  pdt_0NgxgzP6hnGWg1brokOcU: 'elite'
+// WEB-194: caso de cobrança que o webhook não aplica. Vai como uma linha JSON
+// no log para dar para filtrar e reconciliar à mão; a resposta segue 200 (ver
+// `handleSubscriptionActivated`).
+function logBillingError(event: string, details: Record<string, unknown>) {
+  console.error(JSON.stringify({ level: 'error', event, ...details }))
 }
 
 // Busca o bar pelo email do customer no payload
@@ -69,9 +71,15 @@ async function getBarByCustomer(
     if (!byEmail?.emailVerified) return null
     if (
       dodoCustomerId &&
-      byEmail?.dodoCustomerId &&
+      byEmail.dodoCustomerId &&
       byEmail.dodoCustomerId !== dodoCustomerId
     ) {
+      logBillingError('dodo_webhook_customer_mismatch', {
+        userId: byEmail.id,
+        email,
+        storedCustomerId: byEmail.dodoCustomerId,
+        payloadCustomerId: dodoCustomerId
+      })
       return null
     }
     foundUser = byEmail
@@ -95,12 +103,36 @@ async function handleSubscriptionActivated(payload: any) {
   const customerId = data?.customer?.customer_id ?? data?.customer_id
   const dodoSubId = data?.subscription_id
   const productId = data?.product_id
-  const plan = productId ? PLAN_BY_PRODUCT[productId] : 'starter'
 
   if (!email || !dodoSubId) return
 
+  // Produto ausente ou fora do mapa não ativa nem troca plano, nem em
+  // renovação: nada é gravado. Responde 200 de propósito — reenvio da Dodo
+  // não conserta produto desconhecido nem customer divergente, só repete o
+  // erro; quem resolve é a reconciliação a partir do log.
+  const plan = planForProduct(productId)
+  if (!plan) {
+    logBillingError('dodo_webhook_unknown_product', {
+      type: payload?.type ?? null,
+      productId: productId ?? null,
+      subscriptionId: dodoSubId,
+      customerId: customerId ?? null,
+      email
+    })
+    return
+  }
+
   const foundBar = await getBarByCustomer(email, customerId)
-  if (!foundBar) return
+  if (!foundBar) {
+    logBillingError('dodo_webhook_bar_not_found', {
+      type: payload?.type ?? null,
+      plan,
+      subscriptionId: dodoSubId,
+      customerId: customerId ?? null,
+      email
+    })
+    return
+  }
 
   // Verifica se já existe subscription para esse bar
   const existing = await db.query.subscription.findFirst({
@@ -113,7 +145,7 @@ async function handleSubscriptionActivated(payload: any) {
       .update(subscription)
       .set({
         status: 'active',
-        plan: plan ?? 'starter',
+        plan,
         dodoSubscriptionId: dodoSubId,
         currentPeriodEnd: data?.next_billing_date
           ? new Date(data.next_billing_date)
@@ -125,7 +157,7 @@ async function handleSubscriptionActivated(payload: any) {
     await db.insert(subscription).values({
       barId: foundBar.id,
       status: 'active',
-      plan: plan ?? 'starter',
+      plan,
       dodoSubscriptionId: dodoSubId,
       currentPeriodEnd: data?.next_billing_date
         ? new Date(data.next_billing_date)
@@ -410,11 +442,7 @@ export function createAuth() {
         createCustomerOnSignUp: false,
         use: [
           checkout({
-            products: [
-              { productId: 'pdt_0NgxgZyV3AKsNe99Ae2ZN', slug: 'starter' },
-              { productId: 'pdt_0NgxglMLDZdpaXIuRAiCE', slug: 'pro' },
-              { productId: 'pdt_0NgxgzP6hnGWg1brokOcU', slug: 'elite' }
-            ],
+            products: DODO_PRODUCTS,
             // WEB-59: o retorno do provedor cai no recibo, não no painel. O
             // webhook `onSubscriptionActive` é quem confirma a assinatura, e
             // pode chegar depois deste redirect — `/plan/confirmed` é a tela
