@@ -17,11 +17,8 @@ const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
  * torcedor que respondeu "fui" — e nenhum código registrado pelo bar.
  */
 async function barWithUnregisteredGames(games: number) {
-  const { barId } = await createPub()
-  const [bar] = await query<{ name: string }>(
-    'SELECT name FROM bar WHERE id = $1',
-    [barId]
-  )
+  const name = `Bar Comparecimento ${randomUUID().slice(0, 8)}`
+  const { barId } = await createPub({ bar: { name } })
   const [sport] = await query<{ id: string }>('SELECT id FROM sport LIMIT 1')
   const fan = await createUser()
 
@@ -49,7 +46,7 @@ async function barWithUnregisteredGames(games: number) {
       attended: true
     })
   }
-  return bar?.name ?? ''
+  return name
 }
 
 test('bar que não registra os códigos aparece no alerta', async ({ page }) => {

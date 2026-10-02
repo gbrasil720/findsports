@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import type { Page } from '@playwright/test'
 import { storageState } from '../../fixtures/auth'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
@@ -15,16 +16,12 @@ import {
 
 test.use({ storageState: storageState('admin') })
 
-const search = (page: import('@playwright/test').Page) =>
-  page.getByLabel('Buscar inscritos')
+const search = (page: Page) => page.getByLabel('Buscar inscritos')
 
 test('busca e filtro por tipo isolam as inscrições', async ({ page }) => {
   const tag = uniqueTag('wl-busca')
   const fan = await createWaitlistEntry(tag, { role: 'fan' })
-  const pub = await createWaitlistEntry(tag, {
-    role: 'pub',
-    pubName: `Bar ${tag}`
-  })
+  const pub = await createWaitlistEntry(tag, { role: 'pub' })
 
   await page.goto('/internal/waitlist')
   await search(page).fill(tag)

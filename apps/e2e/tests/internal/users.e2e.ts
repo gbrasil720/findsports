@@ -25,8 +25,10 @@ async function openActions(page: Page, user: TestUser) {
   await page.getByRole('button', { name: `Ações de ${user.name}` }).click()
 }
 
+let admin: TestUser
 test.beforeEach(async ({ page }) => {
-  await signIn(page, await createUser({ role: 'admin' }))
+  admin = await createUser({ role: 'admin', name: uniqueName('Admin') })
+  await signIn(page, admin)
 })
 
 test('banir com motivo bloqueia o login; desbanir libera', async ({
@@ -114,12 +116,6 @@ test('alterar o papel de torcedor para bar', async ({ page }) => {
 })
 
 test('a própria linha do admin não tem ações', async ({ page }) => {
-  const admin = await createUser({
-    role: 'admin',
-    name: uniqueName('Eu mesmo')
-  })
-  await signIn(page, admin)
-
   const row = await openUser(page, admin)
   await expect(row).toContainText('Você')
   await expect(row.getByRole('button', { name: /^Ações de/ })).toHaveCount(0)
@@ -147,9 +143,7 @@ test('impersonar torcedor mostra o banner; encerrar volta ao painel', async ({
 
   await banner.getByRole('button', { name: 'Encerrar sessão' }).click()
   await expect(page).toHaveURL(/\/internal\/manage-users$/)
-  await expect(
-    page.getByText('Modo de personificação ativo', { exact: false })
-  ).toHaveCount(0)
+  await expect(banner).toHaveCount(0)
   const back = await page.request.get('/api/auth/get-session')
   expect((await back.json()).user.role).toBe('admin')
 })

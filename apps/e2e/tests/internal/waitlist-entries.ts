@@ -13,7 +13,6 @@ export async function createWaitlistEntry(
   options: {
     role?: 'fan' | 'pub'
     pubName?: string
-    city?: string
     confirmed?: boolean
   } = {}
 ): Promise<WaitlistEntry> {
@@ -24,7 +23,7 @@ export async function createWaitlistEntry(
     id,
     email,
     role,
-    city: options.city ?? 'São Paulo',
+    city: 'São Paulo',
     pub_name: role === 'pub' ? (options.pubName ?? `Bar ${tag}`) : null,
     confirmed_at: (options.confirmed ?? true) ? new Date() : null
   })

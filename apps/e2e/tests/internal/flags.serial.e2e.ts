@@ -136,10 +136,11 @@ function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
   if (Array.isArray(value)) return ['Campinas']
   if (value && typeof value === 'object') {
-    const [field] = Object.entries(value).find(
-      ([, v]) => typeof v === 'boolean'
-    ) ?? ['']
-    return { ...value, [field]: !(value as Record<string, unknown>)[field] }
+    const object = value as Record<string, unknown>
+    const field = Object.keys(object).find(
+      (k) => typeof object[k] === 'boolean'
+    )
+    if (field) return { ...object, [field]: !object[field] }
   }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
@@ -148,6 +149,8 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
   page
 }) => {
   await page.goto('/internal/flags')
+  // `allTextContents` não espera: só lê depois que os cartões renderizaram.
+  await expect(card(page, 'launch.pub_cities')).toBeVisible()
   const keys = await page.locator('article h2').allTextContents()
   // As seis chaves de hoje; chave nova entra no laço sozinha.
   expect(keys).toEqual(
