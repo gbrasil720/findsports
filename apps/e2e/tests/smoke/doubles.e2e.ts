@@ -64,6 +64,37 @@ test('webhook da Dodo assinado passa da verificação de assinatura', async ({
   expect(await signed.text()).not.toMatch(/signature/i)
 })
 
+test('API da Dodo vai para o stub: portal e pagamentos', async ({ page }) => {
+  const owner = await createUser({ role: 'pub' })
+  await signIn(page, owner)
+
+  const portal = await page.request.get(
+    '/api/auth/dodopayments/customer/portal'
+  )
+  expect(portal.ok(), await portal.text()).toBe(true)
+  expect((await portal.json()).url).toContain(
+    `${STUB_URL}/dodo/portal/cus_e2e_`
+  )
+
+  const payments = await page.request.get(
+    '/api/auth/dodopayments/customer/payments/list'
+  )
+  expect(payments.ok(), await payments.text()).toBe(true)
+  expect((await payments.json()).items).toEqual([
+    expect.objectContaining({ status: 'succeeded', total_amount: 9900 })
+  ])
+
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/dodo/calls`)
+  ).json()) as { path: string; query: Record<string, string> }[]
+  expect(calls).toContainEqual(
+    expect.objectContaining({
+      path: '/customers',
+      query: { email: owner.email }
+    })
+  )
+})
+
 test('upload para o Vercel Blob é interceptado no navegador', async ({
   page
 }) => {

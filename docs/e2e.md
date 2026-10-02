@@ -32,7 +32,7 @@ bun run test:e2e -- --ui                      # modo interativo
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
-| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ e tiles) |
+| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API da Dodo e tiles) |
 | `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
 
 Várias worktrees podem rodar ao mesmo tempo desde que cada uma tenha portas e
@@ -62,7 +62,8 @@ vazio.
 apps/e2e/
   playwright.config.ts   projetos, webServer, trace/vídeo só em falha
   env.ts                 portas, URLs, segredos de teste, ambiente do servidor
-  stubs/server.ts        LocationIQ + PMTiles vazio (Bun)
+  stubs/server.ts        LocationIQ + API da Dodo + PMTiles vazio (Bun)
+  stubs/dodo-api.mjs     desvia o fetch do servidor da Dodo para o stub
   fixtures/              blocos para os testes — um arquivo por assunto
   tests/setup.setup.ts   estado global limpo + uma sessão por papel
   tests/smoke/           sentinela e prova de que cada dublê está ligado
@@ -165,16 +166,18 @@ Playwright). Corrija o paralelo primeiro.
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
 | Vercel Blob | O upload sai do navegador: `page.route` responde o PUT com URL do store `e2e` (o mesmo `BLOB_STORE_ID` do servidor) e serve um pixel nessa URL. O token do cliente sai da rota real | `interceptBlobUploads(page)` em `fixtures/blob.ts`, antes do `goto` |
 | Dodo (webhook) | `DODO_PAYMENTS_WEBHOOK_SECRET` de teste no servidor; o helper assina como a Dodo (Standard Webhooks). O corpo precisa passar no `WebhookPayloadSchema` do `@dodopayments/core` | `sendDodoWebhook(request, payload)` em `fixtures/dodo.ts` |
+| Dodo (API) | `stubs/dodo-api.mjs` entra no `vite dev` por `NODE_OPTIONS=--import` e reescreve todo `fetch` para `https://{test,live}.dodopayments.com` para `${STUB_URL}/dodo` (`E2E_DODO_API_URL`). Respostas fixas: customer achado pelo e-mail (`cus_e2e_…`), portal em `${STUB_URL}/dodo/portal/<customer>`, um pagamento `succeeded` de 9900, sessão de checkout com `checkout_url` em `${STUB_URL}/dodo/checkout/<session>` (página do stub, para o teste esperar o redirect). Abrir checkout exige `setAppConfig('billing.checkout_enabled', true)`, então é teste serial | `GET ${STUB_URL}/dodo/calls` lista `{ method, path, query, body }` de cada chamada; filtre pelo e-mail do seu usuário |
 | Mapa | `VITE_MAP_TILES_URL` aponta para um PMTiles válido e vazio servido pelo stub: o mapa monta sem tiles, marcadores aparecem | — |
 | Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
 
 Rede externa está bloqueada no Chromium (`--host-resolver-rules`): o que não é
 local nem interceptado falha na hora, em vez de ir para a internet.
 
-A API da Dodo chamada pelo servidor (portal, histórico de pagamentos, sessão de
-checkout) **não** tem dublê ainda. O `dodoClient` de `packages/auth` passa
-`environment`, e o SDK recusa `DODO_PAYMENTS_BASE_URL` junto com ele — quem
-precisar disso tem que trocar os dois por um `baseURL` condicional.
+Por que a Dodo é desviada no `fetch`, e não por um `baseURL` no `dodoClient`:
+a sessão de checkout não usa o nosso cliente. O `@dodopayments/core` monta um
+`DodoPayments` próprio com `environment` fixo, e esse construtor lança
+"Ambiguous URL" se `DODO_PAYMENTS_BASE_URL` estiver no ambiente. O desvio só
+existe no processo da suíte; o código do app não muda.
 
 ## Caches de 60s
 

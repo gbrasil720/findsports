@@ -1,7 +1,7 @@
-import { SAO_PAULO, STUB_PORT } from '../env'
+import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
 
 /**
- * Dublês HTTP que o servidor (LocationIQ) e o navegador (tiles do mapa)
+ * Dublês HTTP que o servidor (LocationIQ, Dodo) e o navegador (tiles do mapa)
  * chamam fora do alcance do `page.route`. Sobe pelo `webServer` do Playwright.
  *
  * LocationIQ, decidido pelo endereço pedido — sem estado, então testes em
@@ -14,9 +14,34 @@ import { SAO_PAULO, STUB_PORT } from '../env'
  *
  * `GET /locationiq/calls` devolve as consultas recebidas, para o teste provar
  * que o geocoding foi (ou não) chamado. Filtre pela rua do seu teste.
+ *
+ * API da Dodo em `/dodo/*` (o `dodo-api.mjs` desvia o servidor para cá), com
+ * respostas fixas e válidas para o SDK:
+ * - `GET /customers?email=`: sempre acha um customer (`cus_e2e_` + hash do
+ *   e-mail), então o plugin nunca cria um;
+ * - `POST /customers/{id}/customer-portal/session`: link `/dodo/portal/{id}`;
+ * - `GET /payments`: um pagamento `succeeded` de R$ 99,00 do customer pedido;
+ * - `POST /checkouts`: `checkout_url` em `/dodo/checkout/{session_id}`, uma
+ *   página do stub — o teste espera o redirect para lá.
+ *
+ * `GET /dodo/calls` devolve as chamadas recebidas (`path` sem o `/dodo`, com
+ * `query` e `body`). Filtre pelo e-mail ou customer do seu teste.
  */
 
 const calls: { street: string; city: string; at: string }[] = []
+
+type DodoCall = {
+  method: string
+  path: string
+  query: Record<string, string>
+  body: unknown
+  at: string
+}
+const dodoCalls: DodoCall[] = []
+
+function customerIdFor(email: string) {
+  return `cus_e2e_${Bun.hash(email).toString(36)}`
+}
 
 const EMPTY_PMTILES = emptyPmtiles()
 
@@ -29,7 +54,7 @@ const cors = {
 Bun.serve({
   port: STUB_PORT,
   hostname: '127.0.0.1',
-  fetch(request) {
+  async fetch(request) {
     const url = new URL(request.url)
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors })
@@ -57,6 +82,9 @@ Bun.serve({
 
     if (url.pathname === '/locationiq/calls') return Response.json(calls)
 
+    if (url.pathname === '/dodo/calls') return Response.json(dodoCalls)
+    if (url.pathname.startsWith('/dodo/')) return dodo(request, url)
+
     if (url.pathname === '/tiles.pmtiles') {
       return new Response(EMPTY_PMTILES, {
         headers: { ...cors, 'content-type': 'application/octet-stream' }
@@ -66,6 +94,78 @@ Bun.serve({
     return new Response('not found', { status: 404 })
   }
 })
+
+async function dodo(request: Request, url: URL) {
+  const path = url.pathname.slice('/dodo'.length)
+  const query = Object.fromEntries(url.searchParams)
+  const text = await request.text()
+  const body = text ? JSON.parse(text) : null
+  dodoCalls.push({
+    method: request.method,
+    path,
+    query,
+    body,
+    at: new Date().toISOString()
+  })
+  const now = new Date().toISOString()
+
+  if (request.method === 'GET' && path === '/customers') {
+    const email = query.email ?? ''
+    return Response.json({
+      items: [
+        {
+          business_id: 'bus_e2e',
+          customer_id: customerIdFor(email),
+          email,
+          name: email,
+          created_at: now
+        }
+      ]
+    })
+  }
+
+  const portal = /^\/customers\/([^/]+)\/customer-portal\/session$/.exec(path)
+  if (request.method === 'POST' && portal) {
+    return Response.json({ link: `${STUB_URL}/dodo/portal/${portal[1]}` })
+  }
+
+  if (request.method === 'GET' && path === '/payments') {
+    const customerId = query.customer_id ?? 'cus_e2e'
+    return Response.json({
+      items: [
+        {
+          payment_id: `pay_e2e_${customerId}`,
+          brand_id: 'brd_e2e',
+          created_at: now,
+          currency: 'BRL',
+          customer: { customer_id: customerId, email: '', name: '' },
+          digital_products_delivered: false,
+          has_license_key: false,
+          metadata: {},
+          payment_provider: 'dodo',
+          status: 'succeeded',
+          total_amount: 9900
+        }
+      ]
+    })
+  }
+
+  if (request.method === 'POST' && path === '/checkouts') {
+    const sessionId = `cks_e2e_${crypto.randomUUID()}`
+    return Response.json({
+      session_id: sessionId,
+      checkout_url: `${STUB_URL}/dodo/checkout/${sessionId}`
+    })
+  }
+
+  if (path.startsWith('/checkout/') || path.startsWith('/portal/')) {
+    return new Response('<!doctype html><title>Dodo (stub)</title>', {
+      headers: { 'content-type': 'text/html' }
+    })
+  }
+
+  return Response.json({ code: 'NOT_FOUND', message: path }, { status: 404 })
+}
 
 /**
  * PMTiles v3 válido e sem nenhum tile: o MapLibre lê o cabeçalho, monta o

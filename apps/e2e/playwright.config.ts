@@ -82,7 +82,8 @@ export default defineConfig({
         'bun src/seed/sports.ts',
         'bun src/seed/teams.ts',
         'cd ../../apps/web',
-        `bunx vite dev --port ${APP_PORT} --strictPort --host 127.0.0.1`
+        // `dodo-api.mjs` desvia a API da Dodo para o stub (ver o arquivo).
+        `NODE_OPTIONS=--import=../e2e/stubs/dodo-api.mjs bunx vite dev --port ${APP_PORT} --strictPort --host 127.0.0.1`
       ].join(' && '),
       url: BASE_URL,
       env: SERVER_ENV,

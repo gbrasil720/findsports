@@ -57,6 +57,8 @@ export const SERVER_ENV: Record<string, string> = {
   BLOB_READ_WRITE_TOKEN: `vercel_blob_rw_${BLOB_STORE_ID}_e2eonlysecret`,
   DODO_PAYMENTS_API_KEY: 'e2e-fake-key',
   DODO_PAYMENTS_WEBHOOK_SECRET: DODO_WEBHOOK_SECRET,
+  // Lida pelo `stubs/dodo-api.mjs`, não pelo app.
+  E2E_DODO_API_URL: `${STUB_URL}/dodo`,
   CRON_SECRET: '',
   LAUNCH_ADMISSION_MODE: 'invite-only',
   KV_REST_API_URL: '',
