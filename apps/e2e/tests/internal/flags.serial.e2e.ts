@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query, resetAppConfig } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
@@ -21,15 +21,6 @@ async function storedValue(key: string) {
     [key]
   )
   return row?.value
-}
-
-/**
- * No mobile os toasts empilham no rodapé e cobrem o botão do cartão de baixo;
- * centralizar o alvo antes de clicar tira ele de baixo da pilha.
- */
-async function clickCentered(locator: Locator) {
-  await locator.evaluate((el) => el.scrollIntoView({ block: 'center' }))
-  await locator.click()
 }
 
 /** O que um visitante lê das chaves públicas, sem cache no E2E. */
@@ -149,6 +140,13 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
   page
 }) => {
   await page.goto('/internal/flags')
+  // No mobile os toasts empilham no rodapé por cima do último cartão, que não
+  // tem como rolar para fora deles. Os toasts seguem visíveis para as
+  // asserções, só deixam o clique passar.
+  await page.addStyleTag({
+    content:
+      '[data-sonner-toaster], [data-sonner-toaster] * { pointer-events: none !important; }'
+  })
   // `allTextContents` não espera: só lê depois que os cartões renderizaram.
   await expect(card(page, 'launch.pub_cities')).toBeVisible()
   const keys = await page.locator('article h2').allTextContents()
@@ -167,19 +165,17 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
   for (const key of keys) {
     await test.step(key, async () => {
       const flag = card(page, key)
-      await clickCentered(flag.getByText('Editar como JSON'))
+      await flag.getByText('Editar como JSON').click()
       const field = flag.getByLabel('Valor (JSON)')
       const next = anotherValue(JSON.parse(await field.inputValue()))
 
       await field.fill(JSON.stringify(next))
-      await clickCentered(flag.getByRole('button', { name: 'Salvar' }))
+      await flag.getByRole('button', { name: 'Salvar' }).click()
       await expect(page.getByText(`${key} salvo.`)).toBeVisible()
       await expect(flag).toContainText('Sobrescrito')
       expect(await storedValue(key)).toEqual(next)
 
-      await clickCentered(
-        flag.getByRole('button', { name: 'Voltar ao padrão' })
-      )
+      await flag.getByRole('button', { name: 'Voltar ao padrão' }).click()
       await expect(page.getByText(`${key} voltou ao padrão.`)).toBeVisible()
       await expect(flag).toContainText('Padrão')
       expect(await storedValue(key)).toBeUndefined()

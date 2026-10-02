@@ -67,7 +67,7 @@ test('aviso de abertura só sai com o cadastro aberto', async ({ page }) => {
     void dialog.accept()
   })
   await send().click()
-  await expect(page.getByText(/enviados? · 0 falh/)).toBeVisible()
+  await expect(page.getByText(/enviados? · 0 falharam\./)).toBeVisible()
 
   const notice = await lastEmailTo(entry.email, {
     subject: 'A Onside está aberta'
