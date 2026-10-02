@@ -174,21 +174,17 @@ test('quem saiu da lista abre o convite e lê que pediu para sair', async ({
   ).toHaveAttribute('href', '/#lista')
 })
 
-test('convite sem aprovação vigente mostra que ainda está na fila', async ({
+test('convite revogado pelo admin mostra que ainda está na fila', async ({
   page
 }) => {
-  // Estado que só existe no banco hoje (desaprovar apaga o hash), mas a tela
-  // trata: fixa a cópia para não virar "inválido" por engano.
   const email = waitlistEmail('invite-pending')
   await adminWaitlist('invite', { email, role: 'fan' })
   const { link } = await lastEmailTo(email, { subject: SUBJECT.invite })
-  await query(
-    'UPDATE waitlist_entries SET approved_at = NULL WHERE email = $1',
-    [email]
-  )
+  await adminWaitlist('setApproval', { email, approved: false })
 
   await page.goto(link)
   await expect(heading(page)).toContainText('Ainda no banco')
+  await expect(page.getByLabel('Nome completo')).toHaveCount(0)
 })
 
 for (const [name, token] of [
