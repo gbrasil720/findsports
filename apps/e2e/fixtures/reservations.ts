@@ -16,9 +16,6 @@ export async function soccerSportId(): Promise<string> {
 /**
  * Jogo de um bar. `startsAt` padrão: daqui a uma hora — dentro da janela de
  * validação do código (abre 3h antes do início). Esporte: futebol semeado.
- *
- * `event.starts_at` é `timestamp` sem fuso e o app grava em UTC: a data vai
- * como ISO em UTC, e o Postgres descarta o `Z`.
  */
 export async function createEvent(
   barId: string,
@@ -33,7 +30,7 @@ export async function createEvent(
     bar_id: barId,
     sport_id: await soccerSportId(),
     championship,
-    starts_at: startsAt.toISOString()
+    starts_at: startsAt
   })
   return { eventId, championship }
 }
