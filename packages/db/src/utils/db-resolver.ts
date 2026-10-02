@@ -6,10 +6,19 @@ const LocalhostSchema = z.union([
   z.literal('::1')
 ])
 
+/**
+ * Banco do E2E (WEB-174): `findsports_e2e` ou `findsports_e2e_<sufixo>`, para
+ * worktrees diferentes rodarem a suíte em paralelo cada uma no seu banco.
+ */
+const E2eDatabaseName = z.string().regex(/^findsports_e2e(_[a-z0-9_]+)?$/)
+
 const DevDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
-  database: z.enum(['findsports_dev', 'findsports_load_test'])
+  database: z.union([
+    z.enum(['findsports_dev', 'findsports_load_test']),
+    E2eDatabaseName
+  ])
 })
 
 const DefaultDevUrl =
@@ -19,6 +28,12 @@ const LoadTestDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
   database: z.literal('findsports_load_test')
+})
+
+const E2eDatabaseConfig = z.object({
+  host: LocalhostSchema,
+  port: z.number().int().positive(),
+  database: E2eDatabaseName
 })
 
 const NeonHostPattern = /\.neon\.sql\./i
@@ -54,11 +69,30 @@ export class DatabaseUrlError extends Error {
   }
 }
 
+function disposableUrl(
+  url: string,
+  name: string,
+  schema: z.ZodType,
+  requirement: string
+): string {
+  let parsed: ReturnType<typeof parseUrl>
+  try {
+    parsed = parseUrl(url)
+  } catch {
+    throw new DatabaseUrlError(`${name} must be a valid URL.`)
+  }
+  if (!schema.safeParse(parsed).success) {
+    throw new DatabaseUrlError(`Refusing unsafe ${name}. ${requirement}`)
+  }
+  return url
+}
+
 /**
  * Resolve a safe DATABASE_URL based on NODE_ENV.
  *
  * - development → localhost findsports_dev (fail-closed)
  * - test → localhost findsports_dev (fail-closed)
+ * - E2E_DATABASE_URL / LOAD_TEST_DATABASE_URL override both, loopback only
  * - production → DATABASE_URL from environment
  * - missing/other → throws
  *
@@ -87,23 +121,26 @@ export function resolveDatabaseUrl(): string {
     return url
   }
 
+  // E2E vence o load test: o servidor do Playwright roda em `development` e
+  // não pode cair no findsports_dev por acaso (WEB-174).
+  const e2eUrl = process.env.E2E_DATABASE_URL
+  if (e2eUrl) {
+    return disposableUrl(
+      e2eUrl,
+      'E2E_DATABASE_URL',
+      E2eDatabaseConfig,
+      'E2E tests require a loopback host and database=findsports_e2e[_<suffix>].'
+    )
+  }
+
   const loadTestUrl = process.env.LOAD_TEST_DATABASE_URL
   if (loadTestUrl) {
-    let parsed: ReturnType<typeof parseUrl>
-    try {
-      parsed = parseUrl(loadTestUrl)
-    } catch {
-      throw new DatabaseUrlError('LOAD_TEST_DATABASE_URL must be a valid URL.')
-    }
-
-    const result = LoadTestDatabaseConfig.safeParse(parsed)
-    if (!result.success) {
-      throw new DatabaseUrlError(
-        'Refusing unsafe LOAD_TEST_DATABASE_URL. ' +
-          'Load tests require a loopback host and database=findsports_load_test.'
-      )
-    }
-    return loadTestUrl
+    return disposableUrl(
+      loadTestUrl,
+      'LOAD_TEST_DATABASE_URL',
+      LoadTestDatabaseConfig,
+      'Load tests require a loopback host and database=findsports_load_test.'
+    )
   }
 
   // Development and test are intentionally pinned to the disposable Docker
