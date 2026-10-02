@@ -1,39 +1,19 @@
-import { randomUUID } from 'node:crypto'
-import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
-import { insert, query } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
-import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
+import { createUser } from '../../fixtures/users'
+import {
+  admittedAt,
+  approveOnWaitlist,
+  loginWithForm,
+  submitSignup,
+  uniqueEmail,
+  VERIFICATION_SUBJECT
+} from './forms'
 
 // WEB-175 — cadastro e login. O portão da waitlist fica no padrão de produção
 // (fechado) nestes testes; o caso "portão aberto" está em `gate.serial.e2e.ts`.
-
-const VERIFICATION_SUBJECT = 'Confirme seu e-mail para entrar em campo'
-
-/** Inscrição confirmada e aprovada: o que o portão fechado exige no cadastro. */
-async function approveOnWaitlist(email: string, role: 'fan' | 'pub' = 'fan') {
-  await insert('waitlist_entries', {
-    id: randomUUID(),
-    email,
-    role,
-    city: 'São Paulo',
-    confirmed_at: new Date(),
-    approved_at: new Date()
-  })
-}
-
-async function fillSignup(
-  page: Page,
-  { name, email, password }: { name: string; email: string; password: string }
-) {
-  await page.getByLabel('Nome completo').fill(name)
-  await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(password)
-  await page.getByLabel('Confirmar senha', { exact: true }).fill(password)
-}
-
-const uniqueEmail = (prefix: string) => `${prefix}-${randomUUID()}@e2e.test`
 
 test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   page
@@ -62,11 +42,7 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await expect(page.getByText('As senhas não coincidem.')).toBeVisible()
   await expect(page).toHaveURL(/\/signup$/)
 
-  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await submitSignup(page, { name: 'Torcedor E2E', email })
 
   await expect(page).toHaveURL(/\/verify-email$/)
   await expect(page.getByText(email)).toBeVisible()
@@ -79,12 +55,7 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   await page.goto('/signup')
 
   await page.getByRole('button', { name: 'Dono de Bar' }).click()
-  await fillSignup(page, {
-    name: 'Dono E2E',
-    email,
-    password: DEFAULT_PASSWORD
-  })
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await submitSignup(page, { name: 'Dono E2E', email })
 
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   // `autoSignIn: false`: o cadastro não abre sessão antes da verificação.
@@ -107,13 +78,8 @@ test.describe('portão da waitlist fechado', () => {
       page.getByText('A Onside está abrindo por convite.')
     ).toBeVisible()
 
-    await fillSignup(page, {
-      name: 'Sem convite',
-      email,
-      password: DEFAULT_PASSWORD
-    })
     const response = page.waitForResponse('**/api/auth/sign-up/email')
-    await page.getByRole('button', { name: 'Entrar no time' }).click()
+    await submitSignup(page, { name: 'Sem convite', email })
 
     const refused = await response
     expect(refused.status()).toBe(403)
@@ -133,19 +99,9 @@ test.describe('portão da waitlist fechado', () => {
     await approveOnWaitlist(email)
     await page.goto('/signup')
 
-    await fillSignup(page, {
-      name: 'Convidado',
-      email,
-      password: DEFAULT_PASSWORD
-    })
-    await page.getByRole('button', { name: 'Entrar no time' }).click()
+    await submitSignup(page, { name: 'Convidado', email })
     await expect(page).toHaveURL(/\/verify-email$/)
-
-    const [user] = await query<{ admitted_at: Date | null }>(
-      'SELECT admitted_at FROM "user" WHERE email = $1',
-      [email]
-    )
-    expect(user?.admitted_at).not.toBeNull()
+    expect(await admittedAt(email)).not.toBeNull()
   })
 })
 
@@ -153,12 +109,8 @@ test('login com e-mail não verificado é recusado e reenvia a verificação', a
   page
 }) => {
   const user = await createUser({ emailVerified: false })
-  await page.goto('/login')
-  await page.getByLabel('E-mail').fill(user.email)
-  await page.getByLabel('Senha', { exact: true }).fill(user.password)
-
   const response = page.waitForResponse('**/api/auth/sign-in/email')
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await loginWithForm(page, user)
 
   const refused = await response
   expect(refused.status()).toBe(403)
@@ -173,10 +125,7 @@ test('login com credenciais erradas mostra erro e fica no /login', async ({
   page
 }) => {
   const user = await createUser()
-  await page.goto('/login')
-  await page.getByLabel('E-mail').fill(user.email)
-  await page.getByLabel('Senha', { exact: true }).fill('senha-errada-123')
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await loginWithForm(page, { ...user, password: 'senha-errada-123' })
 
   await expect(
     page.getByText('Credenciais inválidas. Verifique e tente novamente.')
@@ -192,23 +141,21 @@ test.describe('callbackUrl do login', () => {
     baseURL
   }) => {
     const user = await createUser()
-    await page.goto(
+    await loginWithForm(
+      page,
+      user,
       `/login?callbackUrl=${encodeURIComponent(`${baseURL}/dashboard/profile`)}`
     )
-    await page.getByLabel('E-mail').fill(user.email)
-    await page.getByLabel('Senha', { exact: true }).fill(user.password)
-    await page.getByRole('button', { name: 'Acessar minha conta' }).click()
     await expect(page).toHaveURL(/\/dashboard\/profile$/)
   })
 
   test('ignora callbackUrl de outra origem', async ({ page }) => {
     const user = await createUser()
-    await page.goto(
+    await loginWithForm(
+      page,
+      user,
       `/login?callbackUrl=${encodeURIComponent('https://evil.example/roubo')}`
     )
-    await page.getByLabel('E-mail').fill(user.email)
-    await page.getByLabel('Senha', { exact: true }).fill(user.password)
-    await page.getByRole('button', { name: 'Acessar minha conta' }).click()
     await expect(page).toHaveURL(/\/dashboard$/)
   })
 })

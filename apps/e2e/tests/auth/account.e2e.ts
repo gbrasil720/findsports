@@ -1,19 +1,15 @@
-import type { Page } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
 import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
+import { openAccountSettings } from './forms'
 
 // WEB-175 — configurações da conta: senha, sessões e exclusão.
 
 const NEW_PASSWORD = 'senha-trocada-e2e-789'
-
-async function openAccountSettings(page: Page) {
-  await page.goto('/dashboard/profile')
-  await page.getByRole('tab', { name: 'Configurações' }).click()
-}
 
 test('trocar senha', async ({ page }) => {
   const user = await createUser()
@@ -47,15 +43,17 @@ test('trocar senha', async ({ page }) => {
 
 test('listar e revogar sessões: a revogada perde acesso em outro contexto', async ({
   page,
-  browser
+  browser,
+  extraHTTPHeaders
 }) => {
   const user = await createUser()
   await signIn(page, user)
 
-  // Outro "dispositivo": contexto próprio, com IP próprio para o rate limit.
+  // Outro "dispositivo": contexto próprio, no mesmo IP aleatório do teste
+  // (um IP fixo seria dividido com o mesmo teste no outro projeto).
   const other = await browser.newContext({
     baseURL: BASE_URL,
-    extraHTTPHeaders: { 'x-forwarded-for': '10.255.0.7' }
+    extraHTTPHeaders
   })
   try {
     const otherPage = await other.newPage()
@@ -119,7 +117,7 @@ test('bar com assinatura em curso não exclui a conta', async ({ page }) => {
   const { user } = await createPub({
     subscription: {
       status: 'active',
-      dodoSubscriptionId: `sub_e2e_${Date.now()}`
+      dodoSubscriptionId: `sub_e2e_${randomUUID()}`
     }
   })
   await signIn(page, user)

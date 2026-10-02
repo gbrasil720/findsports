@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto'
-import { query, resetAppConfig, setAppConfig } from '../../fixtures/db'
+import { resetAppConfig, setAppConfig } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
-import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
+import { createUser } from '../../fixtures/users'
+import { admittedAt, loginWithForm, submitSignup, uniqueEmail } from './forms'
 
 // WEB-175 — portão da waitlist ABERTO: muda `app_config`, por isso serial.
 
@@ -13,16 +13,8 @@ test.afterEach(async () => {
   await resetAppConfig()
 })
 
-async function admittedAt(email: string) {
-  const [row] = await query<{ admitted_at: Date | null }>(
-    'SELECT admitted_at FROM "user" WHERE email = $1',
-    [email]
-  )
-  return row?.admitted_at ?? null
-}
-
 test('cadastro sem waitlist passa e admite a conta', async ({ page }) => {
-  const email = `gate-aberto-${randomUUID()}@e2e.test`
+  const email = uniqueEmail('gate-aberto')
   await page.goto('/signup')
   // O aviso de convite some com o portão aberto.
   await expect(
@@ -32,13 +24,7 @@ test('cadastro sem waitlist passa e admite a conta', async ({ page }) => {
     page.getByText('A Onside está abrindo por convite.')
   ).toHaveCount(0)
 
-  await page.getByLabel('Nome completo').fill('Sem fila')
-  await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await submitSignup(page, { name: 'Sem fila', email })
 
   await expect(page).toHaveURL(/\/verify-email$/)
   expect(await admittedAt(email)).not.toBeNull()
@@ -46,10 +32,7 @@ test('cadastro sem waitlist passa e admite a conta', async ({ page }) => {
 
 test('login admite conta que ainda não estava admitida', async ({ page }) => {
   const user = await createUser({ admitted: false })
-  await page.goto('/login')
-  await page.getByLabel('E-mail').fill(user.email)
-  await page.getByLabel('Senha', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await loginWithForm(page, user)
 
   await expect(page).toHaveURL(/\/dashboard$/)
   expect(await admittedAt(user.email)).not.toBeNull()

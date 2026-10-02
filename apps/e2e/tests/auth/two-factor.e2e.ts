@@ -1,29 +1,19 @@
 import type { Page } from '@playwright/test'
+import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
 import { base32Decode, seedTwoFactor, totp } from '../../fixtures/two-factor'
-import { createUser, type TestUser } from '../../fixtures/users'
+import { createUser } from '../../fixtures/users'
+import { loginWithForm, openAccountSettings } from './forms'
 
 // WEB-175 — autenticação em dois fatores: ativação, login e gestão.
 
 const CHALLENGE_KEY = 'onside:two-factor-challenge'
 
-async function loginWithForm(page: Page, user: TestUser) {
-  await page.goto('/login')
-  await page.getByLabel('E-mail').fill(user.email)
-  await page.getByLabel('Senha', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
-}
-
 /** Digita o código no campo de 6 dígitos (input-otp: um input só, oculto). */
 async function typeCode(page: Page, id: string, code: string) {
   await page.locator(`#${id}`).pressSequentially(code)
-}
-
-async function openAccountSettings(page: Page) {
-  await page.goto('/dashboard/profile')
-  await page.getByRole('tab', { name: 'Configurações' }).click()
 }
 
 test('ativar: senha, QR, código do totpURI e códigos de recuperação', async ({
@@ -126,7 +116,7 @@ test.describe('login com 2FA', () => {
 
     // Sai só da sessão: o cookie de dispositivo confiável fica no contexto.
     await page.request.post('/api/auth/sign-out', {
-      headers: { origin: new URL(page.url()).origin }
+      headers: { origin: BASE_URL }
     })
     await loginWithForm(page, user)
     await expect(page).toHaveURL(/\/dashboard$/)

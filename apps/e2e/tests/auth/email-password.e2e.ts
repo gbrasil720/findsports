@@ -1,37 +1,28 @@
-import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { insert, query } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
-import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
+import { createUser } from '../../fixtures/users'
+import {
+  approveOnWaitlist,
+  submitSignup,
+  uniqueEmail,
+  VERIFICATION_SUBJECT
+} from './forms'
 
 // WEB-175 — verificação de e-mail, esqueci a senha e redefinição.
 
-const VERIFICATION_SUBJECT = 'Confirme seu e-mail para entrar em campo'
 const RESET_SUBJECT = 'Redefina a senha da sua conta Onside'
 const NEW_PASSWORD = 'senha-nova-e2e-456'
 
 /** Cadastro de torcedor pelo formulário, com convite aprovado (portão fechado). */
 async function signupFan(page: Page) {
-  const email = `verify-${randomUUID()}@e2e.test`
-  await insert('waitlist_entries', {
-    id: randomUUID(),
-    email,
-    role: 'fan',
-    city: 'São Paulo',
-    confirmed_at: new Date(),
-    approved_at: new Date()
-  })
+  const email = uniqueEmail('verify')
+  await approveOnWaitlist(email)
   await page.goto('/signup')
-  await page.getByLabel('Nome completo').fill('Verificação E2E')
-  await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await submitSignup(page, { name: 'Verificação E2E', email })
   await expect(page).toHaveURL(/\/verify-email$/)
   return email
 }
@@ -101,7 +92,7 @@ test('esqueci a senha responde igual para e-mail existente e inexistente', async
   page
 }) => {
   const user = await createUser()
-  const ghost = `fantasma-${randomUUID()}@e2e.test`
+  const ghost = uniqueEmail('fantasma')
   const replies: unknown[] = []
 
   for (const email of [user.email, ghost]) {
