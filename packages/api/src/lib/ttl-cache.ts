@@ -31,7 +31,15 @@ export function createTtlCache<T>(options: {
   /** Injetável nos testes; por padrão o relógio real. */
   now?: () => number
 }): TtlCache<T> {
-  const { ttlMs, maxEntries = 100, now = Date.now } = options
+  const { maxEntries = 100, now = Date.now } = options
+  // E2E (WEB-174): vários testes contra o mesmo servidor gravam e leem o
+  // mesmo dado em segundos; com cache, um lê o que o outro deixou. `packages/env`
+  // recusa a chave em produção — o `NODE_ENV` aqui é a segunda trava.
+  const ttlMs =
+    process.env.E2E_DISABLE_CACHES === '1' &&
+    process.env.NODE_ENV !== 'production'
+      ? 0
+      : options.ttlMs
   const store = new Map<string, Entry<T>>()
   // Requisições simultâneas para a mesma chave fria devem disparar UMA carga,
   // não uma por requisição — senão o cache vazio vira uma rajada no banco
