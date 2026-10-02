@@ -9,87 +9,47 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
-import { Route as PlanRouteImport } from './routes/plan'
-import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
-import { Route as InternalRouteImport } from './routes/internal'
-import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
-import { Route as AccessPendingRouteImport } from './routes/access-pending'
-import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
-import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
-import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
-import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
-import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
-import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
-import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
-import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
-import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
-import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
-import { Route as authSignupRouteImport } from './routes/(auth)/signup'
-import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
-import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as SplatRouteImport } from './routes/$'
+import { Route as AccessPendingRouteImport } from './routes/access-pending'
+import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
+import { Route as InternalRouteImport } from './routes/internal'
+import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
+import { Route as PlanRouteImport } from './routes/plan'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
-import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
-import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
-import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
-import { Route as ApiCronAnalyticsRetentionRouteImport } from './routes/api/cron/analytics-retention'
-import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
-import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
-import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
-import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
-import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
+import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
+import { Route as authSignupRouteImport } from './routes/(auth)/signup'
+import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
+import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
+import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
+import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
+import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
+import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
+import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
+import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
+import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
+import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
+import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
+import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
+import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
+import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
+import { Route as ApiCronAnalyticsRetentionRouteImport } from './routes/api/cron/analytics-retention'
+import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
+import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
+import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
 
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlanRoute = PlanRouteImport.update({
-  id: '/plan',
-  path: '/plan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeaveWaitlistRoute = LeaveWaitlistRouteImport.update({
-  id: '/leave-waitlist',
-  path: '/leave-waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InternalRoute = InternalRouteImport.update({
-  id: '/internal',
-  path: '/internal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfirmWaitlistRoute = ConfirmWaitlistRouteImport.update({
-  id: '/confirm-waitlist',
-  path: '/confirm-waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ActivateInviteRoute = ActivateInviteRouteImport.update({
-  id: '/activate-invite',
-  path: '/activate-invite',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccessPendingRoute = AccessPendingRouteImport.update({
-  id: '/access-pending',
-  path: '/access-pending',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SplatRoute = SplatRouteImport.update({
@@ -97,74 +57,49 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AccessPendingRoute = AccessPendingRouteImport.update({
+  id: '/access-pending',
+  path: '/access-pending',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
-  id: '/plan_/confirmed',
-  path: '/plan/confirmed',
+const ActivateInviteRoute = ActivateInviteRouteImport.update({
+  id: '/activate-invite',
+  path: '/activate-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
-  id: '/internal_/waitlist',
-  path: '/internal/waitlist',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
-  id: '/internal_/manage-users',
-  path: '/internal/manage-users',
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InternalFlagsRoute = InternalFlagsRouteImport.update({
-  id: '/internal_/flags',
-  path: '/internal/flags',
+const ConfirmWaitlistRoute = ConfirmWaitlistRouteImport.update({
+  id: '/confirm-waitlist',
+  path: '/confirm-waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
-  id: '/internal_/attendance',
-  path: '/internal/attendance',
+const InternalRoute = InternalRouteImport.update({
+  id: '/internal',
+  path: '/internal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminValidateRoute = AdminValidateRouteImport.update({
-  id: '/admin_/validate',
-  path: '/admin/validate',
+const LeaveWaitlistRoute = LeaveWaitlistRouteImport.update({
+  id: '/leave-waitlist',
+  path: '/leave-waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminBillingRoute = AdminBillingRouteImport.update({
-  id: '/admin_/billing',
-  path: '/admin/billing',
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
-const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
-  id: '/(dashboard)/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
-  id: '/(auth)/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authTwoFactorRoute = authTwoFactorRouteImport.update({
-  id: '/(auth)/two-factor',
-  path: '/two-factor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authSignupRoute = authSignupRouteImport.update({
-  id: '/(auth)/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authResetPasswordRoute = authResetPasswordRouteImport.update({
-  id: '/(auth)/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authLoginRoute = authLoginRouteImport.update({
-  id: '/(auth)/login',
-  path: '/login',
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -172,19 +107,111 @@ const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
-  id: '/api/waitlist/activate',
-  path: '/api/waitlist/activate',
+const authLoginRoute = authLoginRouteImport.update({
+  id: '/(auth)/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUserAvatarRoute = ApiUserAvatarRouteImport.update({
-  id: '/api/user/avatar',
-  path: '/api/user/avatar',
+const authResetPasswordRoute = authResetPasswordRouteImport.update({
+  id: '/(auth)/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
-  id: '/api/trpc/$',
-  path: '/api/trpc/$',
+const authSignupRoute = authSignupRouteImport.update({
+  id: '/(auth)/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authTwoFactorRoute = authTwoFactorRouteImport.update({
+  id: '/(auth)/two-factor',
+  path: '/two-factor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
+  id: '/(auth)/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
+  id: '/(dashboard)/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/admin_/billing',
+  path: '/admin/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminValidateRoute = AdminValidateRouteImport.update({
+  id: '/admin_/validate',
+  path: '/admin/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
+  id: '/internal_/attendance',
+  path: '/internal/attendance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalFlagsRoute = InternalFlagsRouteImport.update({
+  id: '/internal_/flags',
+  path: '/internal/flags',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
+  id: '/internal_/manage-users',
+  path: '/internal/manage-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
+  id: '/internal_/waitlist',
+  path: '/internal/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
+  id: '/plan_/confirmed',
+  path: '/plan/confirmed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const dashboardDashboardProfileRoute =
+  dashboardDashboardProfileRouteImport.update({
+    id: '/(dashboard)/dashboard_/profile',
+    path: '/dashboard/profile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardReservationsRoute =
+  dashboardDashboardReservationsRouteImport.update({
+    id: '/(dashboard)/dashboard_/reservations',
+    path: '/dashboard/reservations',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
+  id: '/(onboarding)/onboarding/fan',
+  path: '/onboarding/fan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const onboardingOnboardingPubRoute = onboardingOnboardingPubRouteImport.update({
+  id: '/(onboarding)/onboarding/pub',
+  path: '/onboarding/pub',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
+  id: '/(pub)/pub/$pubId',
+  path: '/pub/$pubId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBarCommercialEventRoute = ApiBarCommercialEventRouteImport.update({
+  id: '/api/bar/commercial-event',
+  path: '/api/bar/commercial-event',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
+  id: '/api/bar/photo',
+  path: '/api/bar/photo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronAnalyticsRetentionRoute =
@@ -193,48 +220,21 @@ const ApiCronAnalyticsRetentionRoute =
     path: '/api/cron/analytics-retention',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
-  id: '/api/bar/photo',
-  path: '/api/bar/photo',
+const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
+  id: '/api/trpc/$',
+  path: '/api/trpc/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBarCommercialEventRoute = ApiBarCommercialEventRouteImport.update({
-  id: '/api/bar/commercial-event',
-  path: '/api/bar/commercial-event',
+const ApiUserAvatarRoute = ApiUserAvatarRouteImport.update({
+  id: '/api/user/avatar',
+  path: '/api/user/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
+const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
+  id: '/api/waitlist/activate',
+  path: '/api/waitlist/activate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
-  id: '/(pub)/pub/$pubId',
-  path: '/pub/$pubId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const onboardingOnboardingPubRoute = onboardingOnboardingPubRouteImport.update({
-  id: '/(onboarding)/onboarding/pub',
-  path: '/onboarding/pub',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
-  id: '/(onboarding)/onboarding/fan',
-  path: '/onboarding/fan',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const dashboardDashboardReservationsRoute =
-  dashboardDashboardReservationsRouteImport.update({
-    id: '/(dashboard)/dashboard_/reservations',
-    path: '/dashboard/reservations',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const dashboardDashboardProfileRoute =
-  dashboardDashboardProfileRouteImport.update({
-    id: '/(dashboard)/dashboard_/profile',
-    path: '/dashboard/profile',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -516,67 +516,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plan': {
-      id: '/plan'
-      path: '/plan'
-      fullPath: '/plan'
-      preLoaderRoute: typeof PlanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leave-waitlist': {
-      id: '/leave-waitlist'
-      path: '/leave-waitlist'
-      fullPath: '/leave-waitlist'
-      preLoaderRoute: typeof LeaveWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal': {
-      id: '/internal'
-      path: '/internal'
-      fullPath: '/internal'
-      preLoaderRoute: typeof InternalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/confirm-waitlist': {
-      id: '/confirm-waitlist'
-      path: '/confirm-waitlist'
-      fullPath: '/confirm-waitlist'
-      preLoaderRoute: typeof ConfirmWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/activate-invite': {
-      id: '/activate-invite'
-      path: '/activate-invite'
-      fullPath: '/activate-invite'
-      preLoaderRoute: typeof ActivateInviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/access-pending': {
-      id: '/access-pending'
-      path: '/access-pending'
-      fullPath: '/access-pending'
-      preLoaderRoute: typeof AccessPendingRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$': {
@@ -586,102 +530,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/access-pending': {
+      id: '/access-pending'
+      path: '/access-pending'
+      fullPath: '/access-pending'
+      preLoaderRoute: typeof AccessPendingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/plan_/confirmed': {
-      id: '/plan_/confirmed'
-      path: '/plan/confirmed'
-      fullPath: '/plan/confirmed'
-      preLoaderRoute: typeof PlanConfirmedRouteImport
+    '/activate-invite': {
+      id: '/activate-invite'
+      path: '/activate-invite'
+      fullPath: '/activate-invite'
+      preLoaderRoute: typeof ActivateInviteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/internal_/waitlist': {
-      id: '/internal_/waitlist'
-      path: '/internal/waitlist'
-      fullPath: '/internal/waitlist'
-      preLoaderRoute: typeof InternalWaitlistRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/internal_/manage-users': {
-      id: '/internal_/manage-users'
-      path: '/internal/manage-users'
-      fullPath: '/internal/manage-users'
-      preLoaderRoute: typeof InternalManageUsersRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/internal_/flags': {
-      id: '/internal_/flags'
-      path: '/internal/flags'
-      fullPath: '/internal/flags'
-      preLoaderRoute: typeof InternalFlagsRouteImport
+    '/confirm-waitlist': {
+      id: '/confirm-waitlist'
+      path: '/confirm-waitlist'
+      fullPath: '/confirm-waitlist'
+      preLoaderRoute: typeof ConfirmWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/internal_/attendance': {
-      id: '/internal_/attendance'
-      path: '/internal/attendance'
-      fullPath: '/internal/attendance'
-      preLoaderRoute: typeof InternalAttendanceRouteImport
+    '/internal': {
+      id: '/internal'
+      path: '/internal'
+      fullPath: '/internal'
+      preLoaderRoute: typeof InternalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/validate': {
-      id: '/admin_/validate'
-      path: '/admin/validate'
-      fullPath: '/admin/validate'
-      preLoaderRoute: typeof AdminValidateRouteImport
+    '/leave-waitlist': {
+      id: '/leave-waitlist'
+      path: '/leave-waitlist'
+      fullPath: '/leave-waitlist'
+      preLoaderRoute: typeof LeaveWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/billing': {
-      id: '/admin_/billing'
-      path: '/admin/billing'
-      fullPath: '/admin/billing'
-      preLoaderRoute: typeof AdminBillingRouteImport
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(dashboard)/dashboard': {
-      id: '/(dashboard)/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof dashboardDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/verify-email': {
-      id: '/(auth)/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof authVerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/two-factor': {
-      id: '/(auth)/two-factor'
-      path: '/two-factor'
-      fullPath: '/two-factor'
-      preLoaderRoute: typeof authTwoFactorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/signup': {
-      id: '/(auth)/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof authSignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/reset-password': {
-      id: '/(auth)/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof authResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/login': {
-      id: '/(auth)/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof authLoginRouteImport
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/forgot-password': {
@@ -691,74 +600,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/waitlist/activate': {
-      id: '/api/waitlist/activate'
-      path: '/api/waitlist/activate'
-      fullPath: '/api/waitlist/activate'
-      preLoaderRoute: typeof ApiWaitlistActivateRouteImport
+    '/(auth)/login': {
+      id: '/(auth)/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/user/avatar': {
-      id: '/api/user/avatar'
-      path: '/api/user/avatar'
-      fullPath: '/api/user/avatar'
-      preLoaderRoute: typeof ApiUserAvatarRouteImport
+    '/(auth)/reset-password': {
+      id: '/(auth)/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof authResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/trpc/$': {
-      id: '/api/trpc/$'
-      path: '/api/trpc/$'
-      fullPath: '/api/trpc/$'
-      preLoaderRoute: typeof ApiTrpcSplatRouteImport
+    '/(auth)/signup': {
+      id: '/(auth)/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof authSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/analytics-retention': {
-      id: '/api/cron/analytics-retention'
-      path: '/api/cron/analytics-retention'
-      fullPath: '/api/cron/analytics-retention'
-      preLoaderRoute: typeof ApiCronAnalyticsRetentionRouteImport
+    '/(auth)/two-factor': {
+      id: '/(auth)/two-factor'
+      path: '/two-factor'
+      fullPath: '/two-factor'
+      preLoaderRoute: typeof authTwoFactorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/bar/photo': {
-      id: '/api/bar/photo'
-      path: '/api/bar/photo'
-      fullPath: '/api/bar/photo'
-      preLoaderRoute: typeof ApiBarPhotoRouteImport
+    '/(auth)/verify-email': {
+      id: '/(auth)/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof authVerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/bar/commercial-event': {
-      id: '/api/bar/commercial-event'
-      path: '/api/bar/commercial-event'
-      fullPath: '/api/bar/commercial-event'
-      preLoaderRoute: typeof ApiBarCommercialEventRouteImport
+    '/(dashboard)/dashboard': {
+      id: '/(dashboard)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
+    '/admin_/billing': {
+      id: '/admin_/billing'
+      path: '/admin/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(pub)/pub/$pubId': {
-      id: '/(pub)/pub/$pubId'
-      path: '/pub/$pubId'
-      fullPath: '/pub/$pubId'
-      preLoaderRoute: typeof pubPubPubIdRouteImport
+    '/admin_/validate': {
+      id: '/admin_/validate'
+      path: '/admin/validate'
+      fullPath: '/admin/validate'
+      preLoaderRoute: typeof AdminValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(onboarding)/onboarding/pub': {
-      id: '/(onboarding)/onboarding/pub'
-      path: '/onboarding/pub'
-      fullPath: '/onboarding/pub'
-      preLoaderRoute: typeof onboardingOnboardingPubRouteImport
+    '/internal_/attendance': {
+      id: '/internal_/attendance'
+      path: '/internal/attendance'
+      fullPath: '/internal/attendance'
+      preLoaderRoute: typeof InternalAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(onboarding)/onboarding/fan': {
-      id: '/(onboarding)/onboarding/fan'
-      path: '/onboarding/fan'
-      fullPath: '/onboarding/fan'
-      preLoaderRoute: typeof onboardingOnboardingFanRouteImport
+    '/internal_/flags': {
+      id: '/internal_/flags'
+      path: '/internal/flags'
+      fullPath: '/internal/flags'
+      preLoaderRoute: typeof InternalFlagsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internal_/manage-users': {
+      id: '/internal_/manage-users'
+      path: '/internal/manage-users'
+      fullPath: '/internal/manage-users'
+      preLoaderRoute: typeof InternalManageUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/internal_/waitlist': {
+      id: '/internal_/waitlist'
+      path: '/internal/waitlist'
+      fullPath: '/internal/waitlist'
+      preLoaderRoute: typeof InternalWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan_/confirmed': {
+      id: '/plan_/confirmed'
+      path: '/plan/confirmed'
+      fullPath: '/plan/confirmed'
+      preLoaderRoute: typeof PlanConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/profile': {
+      id: '/(dashboard)/dashboard_/profile'
+      path: '/dashboard/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof dashboardDashboardProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(dashboard)/dashboard_/reservations': {
@@ -768,11 +705,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(dashboard)/dashboard_/profile': {
-      id: '/(dashboard)/dashboard_/profile'
-      path: '/dashboard/profile'
-      fullPath: '/dashboard/profile'
-      preLoaderRoute: typeof dashboardDashboardProfileRouteImport
+    '/(onboarding)/onboarding/fan': {
+      id: '/(onboarding)/onboarding/fan'
+      path: '/onboarding/fan'
+      fullPath: '/onboarding/fan'
+      preLoaderRoute: typeof onboardingOnboardingFanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(onboarding)/onboarding/pub': {
+      id: '/(onboarding)/onboarding/pub'
+      path: '/onboarding/pub'
+      fullPath: '/onboarding/pub'
+      preLoaderRoute: typeof onboardingOnboardingPubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(pub)/pub/$pubId': {
+      id: '/(pub)/pub/$pubId'
+      path: '/pub/$pubId'
+      fullPath: '/pub/$pubId'
+      preLoaderRoute: typeof pubPubPubIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bar/commercial-event': {
+      id: '/api/bar/commercial-event'
+      path: '/api/bar/commercial-event'
+      fullPath: '/api/bar/commercial-event'
+      preLoaderRoute: typeof ApiBarCommercialEventRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/bar/photo': {
+      id: '/api/bar/photo'
+      path: '/api/bar/photo'
+      fullPath: '/api/bar/photo'
+      preLoaderRoute: typeof ApiBarPhotoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/analytics-retention': {
+      id: '/api/cron/analytics-retention'
+      path: '/api/cron/analytics-retention'
+      fullPath: '/api/cron/analytics-retention'
+      preLoaderRoute: typeof ApiCronAnalyticsRetentionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/trpc/$': {
+      id: '/api/trpc/$'
+      path: '/api/trpc/$'
+      fullPath: '/api/trpc/$'
+      preLoaderRoute: typeof ApiTrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/user/avatar': {
+      id: '/api/user/avatar'
+      path: '/api/user/avatar'
+      fullPath: '/api/user/avatar'
+      preLoaderRoute: typeof ApiUserAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/waitlist/activate': {
+      id: '/api/waitlist/activate'
+      path: '/api/waitlist/activate'
+      fullPath: '/api/waitlist/activate'
+      preLoaderRoute: typeof ApiWaitlistActivateRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
