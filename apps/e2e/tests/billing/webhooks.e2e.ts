@@ -207,3 +207,79 @@ test('cancelado: desativa a assinatura e o bar some da busca', async ({
   })
   expect(await fanSearch(playwright, spot)).not.toContain(barId)
 })
+
+// WEB-194: casos que o webhook não aplica respondem 200 (reenvio não conserta)
+// e não mexem em plano, assinatura nem bar.
+
+test('produto desconhecido: não cria assinatura nem ativa o bar', async ({
+  request
+}) => {
+  const { user, barId } = await createPub({
+    subscription: null,
+    bar: { is_active: false }
+  })
+
+  await deliver(request, 'subscription.active', {
+    email: user.email,
+    subscriptionId: `sub_e2e_${barId}`,
+    plan: 'starter',
+    productId: 'pdt_inexistente'
+  })
+
+  expect(await stateOf(barId)).toEqual({
+    status: null,
+    plan: null,
+    dodo_subscription_id: null,
+    current_period_end: null,
+    is_active: false
+  })
+})
+
+test('produto desconhecido na renovação: o plano pago não vira Starter', async ({
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomInt(1e9)}`
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'past_due',
+      dodoSubscriptionId: subscriptionId
+    }
+  })
+  const before = await stateOf(barId)
+  expect(before).toMatchObject({ plan: 'elite', status: 'past_due' })
+
+  await deliver(request, 'subscription.renewed', {
+    email: user.email,
+    subscriptionId,
+    plan: 'elite',
+    productId: 'pdt_inexistente',
+    nextBillingDate: inDays(60)
+  })
+
+  expect(await stateOf(barId)).toEqual(before)
+})
+
+test('customer divergente: nada é gravado', async ({ request }) => {
+  const { user, barId } = await createPub({
+    subscription: null,
+    bar: { is_active: false }
+  })
+  await query('UPDATE "user" SET dodo_customer_id = $1 WHERE id = $2', [
+    `cus_e2e_a_${barId}`,
+    user.id
+  ])
+
+  await deliver(request, 'subscription.active', {
+    email: user.email,
+    subscriptionId: `sub_e2e_${barId}`,
+    plan: 'pro',
+    customerId: `cus_e2e_b_${barId}`
+  })
+
+  expect(await stateOf(barId)).toMatchObject({
+    status: null,
+    plan: null,
+    is_active: false
+  })
+})

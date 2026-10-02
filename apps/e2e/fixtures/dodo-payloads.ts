@@ -39,6 +39,10 @@ export function subscriptionWebhook(
     subscriptionId: string
     plan: Plan
     nextBillingDate?: Date
+    /** Sobrescreve o produto do `plan` (ex.: um que o app não conhece). */
+    productId?: string
+    /** Sobrescreve o customer derivado do e-mail. */
+    customerId?: string
   }
 ) {
   const now = new Date().toISOString()
@@ -64,7 +68,7 @@ export function subscriptionWebhook(
       customer: {
         // O app grava o primeiro customer do usuário e recusa outro depois:
         // derivado do e-mail, fica estável entre webhooks.
-        customer_id: `cus_e2e_wh_${options.email}`,
+        customer_id: options.customerId ?? `cus_e2e_wh_${options.email}`,
         email: options.email,
         metadata: {},
         name: options.email,
@@ -84,7 +88,7 @@ export function subscriptionWebhook(
       payment_frequency_interval: 'Month',
       payment_method_id: null,
       previous_billing_date: now,
-      product_id: PRODUCT_ID[options.plan],
+      product_id: options.productId ?? PRODUCT_ID[options.plan],
       quantity: 1,
       recurring_pre_tax_amount: 9900,
       status: STATUS[type],
