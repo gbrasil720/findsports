@@ -134,30 +134,42 @@ test('login com credenciais erradas mostra erro e fica no /login', async ({
 })
 
 test.describe('callbackUrl do login', () => {
-  // WEB-182: `getCallbackUrl` recebe o `href` relativo do router, o
-  // `new URL()` dele lança e todo callback vira `/dashboard`.
-  test.fixme('respeita callbackUrl de mesma origem (WEB-182)', async ({
-    page,
-    baseURL
-  }) => {
-    const user = await createUser()
-    await loginWithForm(
+  // WEB-182: o router entrega `href` relativo; o callback tem de sobreviver
+  // nas duas formas, relativa (a do diálogo do bar) e absoluta de mesma origem.
+  for (const callback of ['/dashboard/profile', 'BASE/dashboard/profile']) {
+    test(`respeita callbackUrl de mesma origem: ${callback}`, async ({
       page,
-      user,
-      `/login?callbackUrl=${encodeURIComponent(`${baseURL}/dashboard/profile`)}`
-    )
-    await expect(page).toHaveURL(/\/dashboard\/profile$/)
-  })
+      baseURL
+    }) => {
+      const user = await createUser()
+      const url = callback.replace('BASE', baseURL ?? '')
+      await loginWithForm(
+        page,
+        user,
+        `/login?callbackUrl=${encodeURIComponent(url)}`
+      )
+      await expect(page).toHaveURL(/\/dashboard\/profile$/)
+    })
+  }
 
-  test('ignora callbackUrl de outra origem', async ({ page }) => {
-    const user = await createUser()
-    await loginWithForm(
-      page,
-      user,
-      `/login?callbackUrl=${encodeURIComponent('https://evil.example/roubo')}`
-    )
-    await expect(page).toHaveURL(/\/dashboard$/)
-  })
+  // O caminho é o mesmo da mesma origem acima: se a checagem de origem sumir
+  // e só o `pathname` for aproveitado, o login cai em `/dashboard/profile`.
+  for (const callback of [
+    'https://evil.example/dashboard/profile',
+    '//evil.example/dashboard/profile'
+  ]) {
+    test(`ignora callbackUrl de outra origem: ${callback}`, async ({
+      page
+    }) => {
+      const user = await createUser()
+      await loginWithForm(
+        page,
+        user,
+        `/login?callbackUrl=${encodeURIComponent(callback)}`
+      )
+      await expect(page).toHaveURL(/\/dashboard$/)
+    })
+  }
 })
 
 test.describe('logout', () => {

@@ -5,13 +5,18 @@ export function getSafeCallbackUrl(url: string, fallback = '/dashboard') {
   return url
 }
 
-export function getCallbackUrl(locationHref: string): string {
-  const params = new URLSearchParams(locationHref.split('?')[1])
-  const url = params.get('callbackUrl')
-  if (!url) return '/dashboard'
+// O router entrega `href` relativo, e o `callbackUrl` do diálogo do bar também
+// é relativo: os dois resolvem contra a origem da página. No servidor não há
+// `location`; a base fictícia só deixa passar caminho relativo, e o envio do
+// formulário roda no cliente, onde a origem é a real.
+export function getCallbackUrl(
+  locationHref: string,
+  origin: string = globalThis.location?.origin ?? 'http://origin.invalid'
+): string {
   try {
-    const parsed = new URL(url)
-    const origin = new URL(locationHref).origin
+    const url = new URL(locationHref, origin).searchParams.get('callbackUrl')
+    if (!url) return '/dashboard'
+    const parsed = new URL(url, origin)
     return parsed.origin === origin
       ? parsed.pathname + parsed.search
       : '/dashboard'
