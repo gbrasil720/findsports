@@ -474,6 +474,11 @@ function FanDashboard() {
         teams={myTeams}
         teamIds={teamIds}
         onToggleTeam={toggleTeam}
+        favoritesOnly={favoritesOnly}
+        onFavoritesOnlyChange={setFavoritesOnly}
+        hasFavorites={
+          favoritesQuery.isLoading ? undefined : favoriteIds.size > 0
+        }
         sort={sort}
         onSortChange={setSort}
         canSortByRating={canSortByRating}

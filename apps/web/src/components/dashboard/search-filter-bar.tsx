@@ -53,6 +53,10 @@ type Props = {
   teams: { id: string; name: string }[]
   teamIds: string[]
   onToggleTeam: (id: string) => void
+  favoritesOnly: boolean
+  onFavoritesOnlyChange: (value: boolean) => void
+  /** `undefined` enquanto os favoritos carregam: nem liga nem avisa ainda. */
+  hasFavorites: boolean | undefined
   sort: SearchSort
   onSortChange: (value: SearchSort) => void
   /**
@@ -82,6 +86,9 @@ export function SearchFilterBar({
   teams,
   teamIds,
   onToggleTeam,
+  favoritesOnly,
+  onFavoritesOnlyChange,
+  hasFavorites,
   sort,
   onSortChange,
   canSortByRating,
@@ -348,6 +355,30 @@ export function SearchFilterBar({
           </div>
         </fieldset>
       ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onFavoritesOnlyChange(!favoritesOnly)}
+          aria-pressed={favoritesOnly}
+          // Sem favorito, ligar o filtro só mostraria uma lista vazia.
+          disabled={!favoritesOnly && !hasFavorites}
+          aria-describedby={
+            hasFavorites === false ? 'favorites-only-hint' : undefined
+          }
+          className="onside-chip"
+        >
+          Só favoritos
+        </button>
+        {hasFavorites === false ? (
+          <span
+            id="favorites-only-hint"
+            className="text-[var(--onside-muted)] text-xs"
+          >
+            Favorite um bar para filtrar por ele.
+          </span>
+        ) : null}
+      </div>
 
       <div className="min-w-0">
         <button

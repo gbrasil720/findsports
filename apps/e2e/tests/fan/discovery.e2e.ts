@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { SAO_PAULO } from '../../env'
+import { insert } from '../../fixtures/db'
 import {
   createEvent,
   days,
@@ -194,10 +195,40 @@ test('"jogos de hoje" deixa só quem tem jogo hoje', async ({ page }) => {
   await expect(card(page, later.name)).toBeVisible()
 })
 
-// O dashboard tem o estado `favoritesOnly` e o chip "Meus favoritos" para
-// desfazê-lo, mas nenhum controle liga o filtro: `setFavoritesOnly(true)` não
-// é chamado em lugar nenhum. Fica marcado até existir o controle.
-test.fixme('"só favoritos" deixa só os bares favoritados', async () => {})
+test('"só favoritos" deixa só os bares favoritados', async ({ page }) => {
+  const spot = uniqueSpot()
+  const favorite = await pubAt(north(spot, 0.5))
+  const other = await pubAt(north(spot, 0.8))
+  await createEvent({ barId: favorite.barId, startsAt: days(2) })
+  await createEvent({ barId: other.barId, startsAt: days(2) })
+  const fan = await signInFanAt(page, spot)
+  const onlyFavorites = page.getByRole('button', { name: 'Só favoritos' })
+
+  // Sem favorito o controle não liga: a lista viria vazia sem explicação.
+  await page.goto('/dashboard')
+  await expect(card(page, other.name)).toBeVisible()
+  await expect(onlyFavorites).toBeDisabled()
+  await expect(
+    page.getByText('Favorite um bar para filtrar por ele.')
+  ).toBeVisible()
+
+  await insert('user_favorite_bars', {
+    user_id: fan.id,
+    bar_id: favorite.barId
+  })
+  await page.goto('/dashboard')
+  await expect(card(page, other.name)).toBeVisible()
+  await onlyFavorites.click()
+
+  await expect(onlyFavorites).toHaveAttribute('aria-pressed', 'true')
+  await expect(card(page, favorite.name)).toBeVisible()
+  await expect(card(page, other.name)).toHaveCount(0)
+  await page
+    .getByRole('button', { name: 'Remover filtro Meus favoritos' })
+    .click()
+  await expect(card(page, other.name)).toBeVisible()
+  await expect(onlyFavorites).toHaveAttribute('aria-pressed', 'false')
+})
 
 test('favoritar e desfavoritar pela lista', async ({ page }) => {
   const spot = uniqueSpot()
