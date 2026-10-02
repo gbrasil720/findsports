@@ -18,9 +18,7 @@ test('checkout ligado: o clique abre a sessão e redireciona para a Dodo', async
   await page.goto('/plan')
 
   await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
-  const button = page.getByRole('button', { name: 'Continuar com Elite' })
-  await button.scrollIntoViewIfNeeded()
-  await button.click()
+  await page.getByRole('button', { name: 'Continuar com Elite' }).click()
 
   await page.waitForURL(`${STUB_URL}/dodo/checkout/**`)
   await expect(page).toHaveTitle('Dodo (stub)')

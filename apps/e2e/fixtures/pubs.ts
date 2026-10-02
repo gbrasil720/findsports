@@ -26,7 +26,7 @@ export type PubOptions = {
 
 export type TestPub = { user: TestUser; barId: string }
 
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
+export const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
 
 /**
  * Dono (papel pub, onboarding feito) + bar ativo no centro de São Paulo +

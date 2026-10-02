@@ -1,4 +1,4 @@
-import type { Plan } from './pubs'
+import { inDays, type Plan } from './pubs'
 
 /**
  * Corpos de webhook de assinatura da Dodo, válidos para o `SubscriptionSchema`
@@ -37,17 +37,12 @@ export function subscriptionWebhook(
   options: {
     email: string
     subscriptionId: string
-    plan?: Plan
+    plan: Plan
     nextBillingDate?: Date
-    /**
-     * O app grava o primeiro customer que chega para o usuário e depois recusa
-     * outro; o padrão, derivado do e-mail, é estável entre webhooks.
-     */
-    customerId?: string
   }
 ) {
   const now = new Date().toISOString()
-  const next = options.nextBillingDate ?? new Date(Date.now() + 30 * 86_400_000)
+  const next = options.nextBillingDate ?? inDays(30)
   return {
     business_id: 'bus_e2e',
     type,
@@ -67,7 +62,9 @@ export function subscriptionWebhook(
       created_at: now,
       currency: 'BRL',
       customer: {
-        customer_id: options.customerId ?? `cus_e2e_wh_${options.email}`,
+        // O app grava o primeiro customer do usuário e recusa outro depois:
+        // derivado do e-mail, fica estável entre webhooks.
+        customer_id: `cus_e2e_wh_${options.email}`,
         email: options.email,
         metadata: {},
         name: options.email,
@@ -87,7 +84,7 @@ export function subscriptionWebhook(
       payment_frequency_interval: 'Month',
       payment_method_id: null,
       previous_billing_date: now,
-      product_id: PRODUCT_ID[options.plan ?? 'pro'],
+      product_id: PRODUCT_ID[options.plan],
       quantity: 1,
       recurring_pre_tax_amount: 9900,
       status: STATUS[type],

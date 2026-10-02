@@ -8,7 +8,7 @@ import {
   type SubscriptionEvent,
   subscriptionWebhook
 } from '../../fixtures/dodo-payloads'
-import { createPub, type PubOptions } from '../../fixtures/pubs'
+import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
 // Transições de assinatura pelo webhook assinado da Dodo. Webhook não passa
@@ -47,11 +47,12 @@ async function fanSearch(
   const response = await fan.get(
     `/api/trpc/pubs.searchByLocation?input=${encodeURIComponent(JSON.stringify(input))}`
   )
-  expect(response.ok(), await response.text()).toBe(true)
-  const body = (await response.json()) as {
+  const text = await response.text()
+  await fan.dispose()
+  expect(response.ok(), text).toBe(true)
+  const body = JSON.parse(text) as {
     result: { data: { bars: { id: string }[] } }
   }
-  await fan.dispose()
   return body.result.data.bars.map((bar) => bar.id)
 }
 
@@ -96,7 +97,7 @@ test('ativo: cria a assinatura, ativa o bar e o bar aparece na busca', async ({
   })
   expect(await fanSearch(playwright, spot)).not.toContain(barId)
 
-  const nextBillingDate = new Date(Date.now() + 40 * 86_400_000)
+  const nextBillingDate = inDays(40)
   await deliver(request, 'subscription.active', {
     email: user.email,
     subscriptionId: `sub_e2e_${barId}`,
@@ -126,7 +127,7 @@ test('renovado: assinatura parada volta a ativa, com o novo período', async ({
     }
   })
 
-  const nextBillingDate = new Date(Date.now() + 60 * 86_400_000)
+  const nextBillingDate = inDays(60)
   await deliver(request, 'subscription.renewed', {
     email: user.email,
     subscriptionId,

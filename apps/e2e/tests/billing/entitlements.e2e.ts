@@ -1,13 +1,12 @@
+import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
-import { createPub, type PubOptions } from '../../fixtures/pubs'
+import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
 // Recurso pago só vale com `active`, ou `trialing` com período no futuro
 // (`getCurrentPlan`). Cardápio é recurso Pro: a tela e o servidor concordam.
 
-const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
-
-const updateMenu = (page: import('@playwright/test').Page) =>
+const updateMenu = (page: Page) =>
   page.request.post('/api/trpc/pub.updateMenuInfo', {
     data: { averageSpendCents: 5000 }
   })

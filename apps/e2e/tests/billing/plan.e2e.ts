@@ -2,20 +2,14 @@ import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { sendDodoWebhook } from '../../fixtures/dodo'
 import { subscriptionWebhook } from '../../fixtures/dodo-payloads'
-import { createPub } from '../../fixtures/pubs'
+import { createPub, inDays } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
 // `/plan` e `/plan/confirmed` com `billing.checkout_enabled` no padrão
 // (desligado). O checkout ligado está em `checkout.serial.e2e.ts`.
 
-const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
-
 /** A marca que `/plan` grava antes de mandar para a Dodo (WEB-59). */
-const CHECKOUT_INTENT = {
-  key: 'onside:checkout-intent',
-  value: () =>
-    JSON.stringify({ plan: 'pro', expiresAt: Date.now() + 30 * 60_000 })
-}
+const CHECKOUT_INTENT_KEY = 'onside:checkout-intent'
 
 test('mostra Starter, Pro e Elite para quem ainda não assinou', async ({
   page
@@ -60,7 +54,7 @@ test('trial encerrado: aviso para continuar no plano', async ({ page }) => {
     subscription: {
       plan: 'elite',
       status: 'trialing',
-      currentPeriodEnd: daysAgo(1)
+      currentPeriodEnd: inDays(-1)
     }
   })
   await signIn(page, user)
@@ -121,7 +115,9 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   await page.goto('/plan')
   // Em string: o tsconfig da suíte não carrega os tipos do DOM.
   await page.evaluate(
-    `localStorage.setItem(${JSON.stringify(CHECKOUT_INTENT.key)}, ${JSON.stringify(CHECKOUT_INTENT.value())})`
+    `localStorage.setItem(${JSON.stringify(CHECKOUT_INTENT_KEY)}, ${JSON.stringify(
+      JSON.stringify({ plan: 'pro', expiresAt: Date.now() + 30 * 60_000 })
+    )})`
   )
 
   await page.goto('/plan/confirmed')
@@ -150,7 +146,7 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   const { origins } = await page.context().storageState()
   expect(
     origins.flatMap((origin) => origin.localStorage).map((item) => item.name)
-  ).not.toContain(CHECKOUT_INTENT.key)
+  ).not.toContain(CHECKOUT_INTENT_KEY)
 })
 
 test.describe('torcedor', () => {
