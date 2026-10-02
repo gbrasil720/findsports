@@ -41,8 +41,14 @@ jobs:
   e2e:
     # Suíte Playwright (WEB-174, docs/e2e.md): `vite dev` contra um Postgres
     # descartável, Chromium desktop + Pixel 7, sem rede externa.
+    # `desktop`/`mobile` divididos em 4 shards; os `*-serial` num job à parte,
+    # porque como dependência eles puxariam a suíte inteira para cada shard.
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, serial]
     env:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
@@ -67,13 +73,23 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
         working-directory: apps/e2e
-      - run: bun run test:e2e
+      - if: matrix.part != 'serial'
+        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/4
+        working-directory: apps/e2e
+      # `--no-deps` pula desktop/mobile (já cobertos nos shards); um projeto
+      # por vez porque os dois mexem no mesmo `app_config`.
+      - if: matrix.part == 'serial'
+        run: |
+          bunx playwright test --project=setup
+          bunx playwright test --project=desktop-serial --no-deps
+          bunx playwright test --project=mobile-serial --no-deps
+        working-directory: apps/e2e
       # Trace, vídeo e screenshot só existem para teste que falhou
       # (`retain-on-failure` no playwright.config.ts).
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.part }}
           path: |
             apps/e2e/playwright-report
             apps/e2e/test-results
