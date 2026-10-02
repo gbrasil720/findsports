@@ -11,6 +11,7 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
 
 import { analytics } from '../../lib/analytics'
+import { getUserFacingMessage } from '../../lib/user-facing-error'
 import { useTRPCClient } from '../../utils/trpc'
 
 type FanPayload = {
@@ -33,10 +34,6 @@ const GENERIC_ERROR =
 
 function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
-}
-
-function mapJoinError() {
-  return GENERIC_ERROR
 }
 
 export function OnsideFanWaitlistForm() {
@@ -63,8 +60,8 @@ export function OnsideFanWaitlistForm() {
       setFormError(null)
       analytics.waitlistSubmitted('fan')
     },
-    onError: () => {
-      setFormError(mapJoinError())
+    onError: (error) => {
+      setFormError(getUserFacingMessage(error, GENERIC_ERROR))
     }
   })
 
@@ -251,8 +248,8 @@ export function OnsideBarInterestForm() {
       setFormError(null)
       analytics.waitlistSubmitted('pub')
     },
-    onError: () => {
-      setFormError(mapJoinError())
+    onError: (error) => {
+      setFormError(getUserFacingMessage(error, GENERIC_ERROR))
     }
   })
 
