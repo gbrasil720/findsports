@@ -55,7 +55,7 @@ type Props = {
   onToggleTeam: (id: string) => void
   favoritesOnly: boolean
   onFavoritesOnlyChange: (value: boolean) => void
-  /** `undefined` enquanto os favoritos carregam: nem liga nem avisa ainda. */
+  /** `undefined` até os favoritos chegarem (carregando ou falha): nem liga nem avisa. */
   hasFavorites: boolean | undefined
   sort: SearchSort
   onSortChange: (value: SearchSort) => void

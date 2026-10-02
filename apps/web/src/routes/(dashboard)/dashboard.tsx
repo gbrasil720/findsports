@@ -477,7 +477,7 @@ function FanDashboard() {
         favoritesOnly={favoritesOnly}
         onFavoritesOnlyChange={setFavoritesOnly}
         hasFavorites={
-          favoritesQuery.isLoading ? undefined : favoriteIds.size > 0
+          favoritesQuery.isSuccess ? favoriteIds.size > 0 : undefined
         }
         sort={sort}
         onSortChange={setSort}
