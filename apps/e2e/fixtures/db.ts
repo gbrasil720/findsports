@@ -1,6 +1,11 @@
 import pg from 'pg'
 import { DATABASE_URL } from '../env'
 
+// As colunas de data são `timestamp` sem fuso, e o app (Drizzle) grava UTC.
+// Sem isto o `pg` serializa `Date` no fuso do processo e o Postgres descarta
+// o offset: numa máquina em São Paulo, 3h de diferença do app (WEB-197).
+pg.defaults.parseInputDatesAsUTC = true
+
 /**
  * Acesso direto ao banco do E2E. SQL cru com `pg`, e não o Drizzle do
  * `packages/db`: os testes rodam no Node do Playwright, que não carrega o

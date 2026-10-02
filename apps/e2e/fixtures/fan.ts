@@ -61,13 +61,6 @@ export async function pubAt(
 export const hours = (n: number) => new Date(Date.now() + n * 3_600_000)
 export const days = (n: number) => hours(n * 24)
 
-/**
- * `event.starts_at` é `timestamp` sem fuso, e o Drizzle grava e lê esse tipo
- * como UTC. Uma `Date` crua passaria pelo `pg`, que a escreve no fuso local —
- * aqui vai a string ISO, o mesmo que o app grava.
- */
-const utc = (date: Date) => date.toISOString()
-
 export async function sportId(slug: string): Promise<string> {
   const [row] = await query<{ id: string }>(
     'SELECT id FROM sport WHERE slug = $1',
@@ -106,8 +99,8 @@ export async function createEvent(options: EventOptions): Promise<string> {
     bar_id: options.barId,
     sport_id: await sportId(options.sport ?? 'futebol'),
     championship: options.championship ?? 'Campeonato E2E',
-    starts_at: utc(options.startsAt),
-    ends_at: options.endsAt ? utc(options.endsAt) : null,
+    starts_at: options.startsAt,
+    ends_at: options.endsAt ?? null,
     participant_free_text: options.freeText ?? null
   })
   for (const teamId of options.teamIds ?? []) {
