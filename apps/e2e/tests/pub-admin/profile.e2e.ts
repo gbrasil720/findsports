@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { interceptBlobUploads } from '../../fixtures/blob'
@@ -28,6 +28,9 @@ async function geocodedStreets(page: Page): Promise<string[]> {
 }
 
 const editor = (page: Page) => page.locator('#admin-profile-editor')
+
+const pickPhoto = (page: Page, file: Parameters<Locator['setInputFiles']>[0]) =>
+  editor(page).locator('input[type="file"]').setInputFiles(file)
 
 async function save(page: Page) {
   const saved = page.waitForResponse(/pub\.updateMe/)
@@ -95,16 +98,14 @@ test('trocar a foto sobe para o Blob e grava a URL do bar', async ({
   const { barId } = await openProfile(page)
 
   const saved = page.waitForResponse(/pub\.updateMe/)
-  await editor(page)
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: 'bar.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-        'base64'
-      )
-    })
+  await pickPhoto(page, {
+    name: 'bar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'base64'
+    )
+  })
   expect((await saved).ok()).toBe(true)
 
   expect(uploads).toEqual([
@@ -122,13 +123,11 @@ test('foto em formato errado é recusada no navegador, sem upload', async ({
   const uploads = await interceptBlobUploads(page)
   await openProfile(page)
 
-  await editor(page)
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: 'bar.gif',
-      mimeType: 'image/gif',
-      buffer: Buffer.from('GIF89a')
-    })
+  await pickPhoto(page, {
+    name: 'bar.gif',
+    mimeType: 'image/gif',
+    buffer: Buffer.from('GIF89a')
+  })
   await expect(editor(page).getByRole('alert')).toHaveText(
     'Formato inválido. Use JPG, PNG ou WebP.'
   )
@@ -144,9 +143,11 @@ for (const [name, mimeType] of [
     const { barId } = await openProfile(page)
 
     const saved = page.waitForResponse(/pub\.updateMe/)
-    await editor(page)
-      .locator('input[type="file"]')
-      .setInputFiles({ name, mimeType, buffer: Buffer.from('e2e-image') })
+    await pickPhoto(page, {
+      name,
+      mimeType,
+      buffer: Buffer.from('e2e-image')
+    })
     expect((await saved).ok()).toBe(true)
     expect(uploads).toEqual([
       { pathname: `bars/${barId}/photo`, contentType: mimeType }
@@ -160,13 +161,11 @@ test('foto acima de 5 MB é recusada no navegador, sem upload', async ({
   const uploads = await interceptBlobUploads(page)
   await openProfile(page)
 
-  await editor(page)
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: 'grande.png',
-      mimeType: 'image/png',
-      buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
-    })
+  await pickPhoto(page, {
+    name: 'grande.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
+  })
   await expect(editor(page).getByRole('alert')).toHaveText(
     'Arquivo muito grande. Máximo 5MB.'
   )

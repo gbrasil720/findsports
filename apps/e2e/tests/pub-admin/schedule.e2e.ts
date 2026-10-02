@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
-import { createEvent } from '../../fixtures/reservations'
+import { createEvent, soccerSportId } from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -151,13 +151,10 @@ test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
     subscription: { plan: 'starter' }
   })
   for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
-  const [sport] = await query<{ id: string }>(
-    "SELECT id FROM sport WHERE slug = 'futebol'"
-  )
 
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
-      sportId: sport?.id,
+      sportId: await soccerSportId(),
       championship: 'Sexto jogo',
       startsAt: new Date(Date.now() + 86_400_000).toISOString()
     }
@@ -192,12 +189,9 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
     page.getByText('Ative um plano para adicionar eventos.').first()
   ).toBeVisible()
 
-  const [sport] = await query<{ id: string }>(
-    "SELECT id FROM sport WHERE slug = 'futebol'"
-  )
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
-      sportId: sport?.id,
+      sportId: await soccerSportId(),
       championship: 'Jogo de bar inativo',
       startsAt: new Date(Date.now() + 86_400_000).toISOString()
     }

@@ -4,6 +4,15 @@ import { createUser } from './users'
 
 const HOUR = 3_600_000
 
+/** Id do futebol que o setup semeia. */
+export async function soccerSportId(): Promise<string> {
+  const [sport] = await query<{ id: string }>(
+    "SELECT id FROM sport WHERE slug = 'futebol'"
+  )
+  if (!sport) throw new Error('Esporte futebol não semeado')
+  return sport.id
+}
+
 /**
  * Jogo de um bar. `startsAt` padrão: daqui a uma hora — dentro da janela de
  * validação do código (abre 3h antes do início). Esporte: futebol semeado.
@@ -18,14 +27,11 @@ export async function createEvent(
     championship = `Campeonato E2E ${randomUUID().slice(0, 6)}`
   }: { startsAt?: Date; championship?: string } = {}
 ): Promise<{ eventId: string; championship: string }> {
-  const [sport] = await query<{ id: string }>(
-    "SELECT id FROM sport WHERE slug = 'futebol'"
-  )
   const eventId = randomUUID()
   await insert('event', {
     id: eventId,
     bar_id: barId,
-    sport_id: sport?.id,
+    sport_id: await soccerSportId(),
     championship,
     starts_at: startsAt.toISOString()
   })

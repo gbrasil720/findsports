@@ -153,16 +153,10 @@ test('teto vai até 5000: acima disso a tela barra e o servidor recusa', async (
 
   await caps.getByLabel('Padrão do bar').fill('5001')
   await caps.getByRole('button', { name: 'Salvar' }).first().click()
-  expect(
-    await caps
-      .getByLabel('Padrão do bar')
-      // tsconfig do E2E não tem a lib DOM: o tipo do input vai à mão.
-      .evaluate(
-        (input) =>
-          (input as unknown as { validity: { rangeOverflow: boolean } })
-            .validity.rangeOverflow
-      )
-  ).toBe(true)
+  // O `max` nativo barra o envio: o campo fica inválido.
+  await expect(
+    caps.getByLabel('Padrão do bar').and(page.locator(':invalid'))
+  ).toBeVisible()
   const [untouched] = await query(
     'SELECT reservation_cap FROM bar WHERE id = $1',
     [barId]
