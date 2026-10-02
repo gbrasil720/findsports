@@ -3,6 +3,7 @@ import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
 import {
+  heading,
   joinAndConfirm,
   joinWaitlist,
   SUBJECT,
@@ -11,9 +12,6 @@ import {
 } from '../../fixtures/waitlist'
 
 // WEB-176: inscrição pela landing, confirmação por e-mail e saída da lista.
-
-const heading = (page: import('@playwright/test').Page) =>
-  page.getByRole('heading', { level: 1 })
 
 test('torcedor se inscreve pela landing e confirma pelo e-mail', async ({
   page
@@ -223,25 +221,32 @@ test('link de saída sem token não deixa confirmar', async ({ page }) => {
   ).toBeDisabled()
 })
 
-test('rate limit por e-mail barra a quarta inscrição em 10 minutos', async ({
-  page
-}) => {
-  const email = waitlistEmail('ratelimit')
-  for (let i = 0; i < 3; i++) {
-    await joinWaitlist(page.request, { role: 'fan', email })
-  }
+// Os limites padrão: 3 inscrições por e-mail e 8 por IP a cada 10 minutos. O
+// IP é o do teste (`fixtures/test.ts`), então os baldes não se misturam.
+for (const { limit, max, emailFor } of [
+  { limit: 'e-mail', max: 3, emailFor: (email: string) => email },
+  { limit: 'IP', max: 8, emailFor: () => waitlistEmail('ratelimit-ip') }
+]) {
+  test(`rate limit por ${limit} barra a inscrição seguinte com a mensagem certa`, async ({
+    page
+  }) => {
+    const email = waitlistEmail('ratelimit')
+    for (let i = 0; i < max; i++) {
+      await joinWaitlist(page.request, { role: 'fan', email: emailFor(email) })
+    }
 
-  await page.goto('/')
-  await page.getByLabel('Em qual cidade você quer usar a Onside?').fill('Natal')
-  await page.getByLabel('Onde avisamos quando a Onside chegar?').fill(email)
-  const join = page.waitForResponse('**/api/trpc/waitlist.join**')
-  await page
-    .getByRole('button', { name: 'Quero a Onside na minha cidade' })
-    .click()
-  expect((await join).status()).toBe(429)
+    await page.goto('/')
+    await page
+      .getByLabel('Em qual cidade você quer usar a Onside?')
+      .fill('Natal')
+    await page.getByLabel('Onde avisamos quando a Onside chegar?').fill(email)
+    await page
+      .getByRole('button', { name: 'Quero a Onside na minha cidade' })
+      .click()
 
-  // A tela mostra o erro genérico ("verifique sua conexão"), não o motivo
-  // real; ver o relatório do WEB-176. Aqui só se fixa que não há sucesso.
-  await expect(page.getByRole('alert')).toBeVisible()
-  await expect(page.getByRole('status')).toHaveCount(0)
-})
+    await expect(page.getByRole('alert')).toHaveText(
+      'Muitas tentativas seguidas. Aguarde um pouco e tente novamente.'
+    )
+    await expect(page.getByRole('status')).toHaveCount(0)
+  })
+}

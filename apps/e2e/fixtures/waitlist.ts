@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { type APIRequestContext, expect, request } from '@playwright/test'
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  request
+} from '@playwright/test'
 import { BASE_URL } from '../env'
 import { storageState } from './auth'
 import { query } from './db'
@@ -26,15 +31,20 @@ export async function adminWaitlist(
   const response = await admin.post(`/api/trpc/waitlist.${procedure}`, {
     data: input
   })
-  expect(response.ok(), await response.text()).toBe(true)
+  const body = await response.text()
   await admin.dispose()
+  expect(response.ok(), body).toBe(true)
 }
+
+/** Título da página: cada estado de confirmar, sair e ativar tem o seu. */
+export const heading = (page: Page) => page.getByRole('heading', { level: 1 })
 
 export const SUBJECT = {
   confirm: 'Confirme sua entrada na waitlist da Onside',
   joined: 'Você está na waitlist da Onside',
   invite: 'Seu convite para testar a Onside chegou',
-  approvedExisting: 'Seu acesso à Onside foi liberado'
+  approvedExisting: 'Seu acesso à Onside foi liberado',
+  launch: 'A Onside está aberta'
 } as const
 
 type JoinInput =
@@ -67,15 +77,17 @@ export async function joinAndConfirm(api: APIRequestContext, input: JoinInput) {
   return (await lastEmailTo(input.email, { subject: SUBJECT.joined })).link
 }
 
-export type WaitlistRow = {
+type WaitlistRow = {
   role: 'fan' | 'pub'
   city: string
   pub_name: string | null
+  phone: string | null
   confirmed_at: Date | null
   cancelled_at: Date | null
   approved_at: Date | null
   activated_at: Date | null
   joined_sent_at: Date | null
+  launch_notice_sent_at: Date | null
 }
 
 export async function waitlistRow(email: string) {

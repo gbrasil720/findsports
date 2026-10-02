@@ -1,12 +1,13 @@
 import { randomBytes } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { signIn } from '../../fixtures/auth'
+import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 import {
   adminWaitlist,
+  heading,
   joinAndConfirm,
   SUBJECT,
   waitlistEmail,
@@ -17,7 +18,6 @@ import {
 // de um link de convite que não ativa.
 
 const PASSWORD = 'senha-convite-123'
-const heading = (page: Page) => page.getByRole('heading', { level: 1 })
 
 async function fillActivation(page: Page, confirmation = PASSWORD) {
   await page.getByLabel('Nome completo').fill('Convidado E2E')
@@ -26,13 +26,36 @@ async function fillActivation(page: Page, confirmation = PASSWORD) {
   await page.getByRole('button', { name: 'Criar senha e entrar' }).click()
 }
 
-async function admitted(email: string) {
-  const [user] = await query<{ admitted_at: Date | null; role: string }>(
-    'SELECT admitted_at, role FROM "user" WHERE email = $1',
-    [email]
-  )
+async function account(email: string) {
+  const [user] = await query<{
+    admitted_at: Date | null
+    email_verified: boolean
+    role: string
+  }>('SELECT admitted_at, email_verified, role FROM "user" WHERE email = $1', [
+    email
+  ])
   return user
 }
+
+test.describe('com a sessão pronta de admin', () => {
+  test.use({ storageState: storageState('admin') })
+
+  test('admin aprova e convida pelo /internal/waitlist', async ({ page }) => {
+    const email = waitlistEmail('invite-panel')
+    await joinAndConfirm(page.request, { role: 'fan', email })
+
+    await page.goto('/internal/waitlist')
+    await page.getByLabel('Buscar inscritos').fill(email)
+    // Desktop mostra tabela; mobile, cartões.
+    const row = page.locator('tr, li').filter({ hasText: email })
+    await row.getByRole('button', { name: 'Aprovar e convidar' }).click()
+    await expect(row.getByRole('button', { name: 'Revogar' })).toBeVisible()
+
+    const invite = await lastEmailTo(email, { subject: SUBJECT.invite })
+    expect(invite.link).toContain('/activate-invite?token=')
+    expect((await waitlistRow(email))?.approved_at).toEqual(expect.any(Date))
+  })
+})
 
 test('convite direto de torcedor: ativa a conta e cai no onboarding', async ({
   page
@@ -51,12 +74,13 @@ test('convite direto de torcedor: ativa a conta e cai no onboarding', async ({
   await expect(page.getByRole('alert')).toHaveText(
     'As senhas precisam ser iguais.'
   )
-  expect(await admitted(email)).toBeUndefined()
+  expect(await account(email)).toBeUndefined()
 
   await fillActivation(page)
   await expect(page).toHaveURL(/\/onboarding\/fan$/)
-  expect(await admitted(email)).toEqual({
+  expect(await account(email)).toEqual({
     admitted_at: expect.any(Date),
+    email_verified: true,
     role: 'fan'
   })
   expect((await waitlistRow(email))?.activated_at).toEqual(expect.any(Date))
@@ -83,7 +107,7 @@ test('inscrito confirmado aprovado pelo admin ativa como bar', async ({
   await page.goto((await lastEmailTo(email, { subject: SUBJECT.invite })).link)
   await fillActivation(page)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  expect((await admitted(email))?.role).toBe('pub')
+  expect((await account(email))?.role).toBe('pub')
 })
 
 test('convite revogado depois de aberto recusa a ativação', async ({
@@ -99,7 +123,7 @@ test('convite revogado depois de aberto recusa a ativação', async ({
   await expect(page.getByRole('alert')).toHaveText(
     'Este link não é válido ou já expirou.'
   )
-  expect(await admitted(email)).toBeUndefined()
+  expect(await account(email)).toBeUndefined()
 })
 
 test('convite expirado: a pessoa pede outro e ativa pelo novo', async ({
@@ -137,6 +161,11 @@ test('quem saiu da lista abre o convite e lê que pediu para sair', async ({
   await page.goto(leaveLink)
   await page.getByRole('button', { name: 'Confirmar saída' }).click()
   await expect(heading(page)).toHaveText('Você saiu da lista')
+  // Sair também tira a aprovação.
+  expect(await waitlistRow(email)).toMatchObject({
+    cancelled_at: expect.any(Date),
+    approved_at: null
+  })
 
   await page.goto(invite.link)
   await expect(heading(page)).toContainText('pra sair')
@@ -177,6 +206,20 @@ for (const [name, token] of [
   })
 }
 
+test('convite de quem criou conta antes de ativar admite e manda para o login', async ({
+  page
+}) => {
+  const email = waitlistEmail('invite-existing')
+  await adminWaitlist('invite', { email, role: 'fan' })
+  await page.goto((await lastEmailTo(email, { subject: SUBJECT.invite })).link)
+  await createUser({ email, admitted: false })
+
+  await fillActivation(page)
+  await expect(page).toHaveURL(/\/login$/)
+  expect((await account(email))?.admitted_at).toEqual(expect.any(Date))
+  expect((await waitlistRow(email))?.activated_at).toEqual(expect.any(Date))
+})
+
 test('conta já existente aprovada recebe acesso, não convite', async ({
   page
 }) => {
@@ -188,35 +231,44 @@ test('conta já existente aprovada recebe acesso, não convite', async ({
     subject: SUBJECT.approvedExisting
   })
   expect(new URL(email.link).pathname).toBe('/login')
-  expect((await admitted(user.email))?.admitted_at).toEqual(expect.any(Date))
+  expect((await account(user.email))?.admitted_at).toEqual(expect.any(Date))
 
   await signIn(page, user)
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/dashboard$/)
 })
 
-test('conta sem acesso entra na lista pelo /access-pending e é liberada', async ({
-  page
-}) => {
-  const user = await createUser({ admitted: false })
-  await signIn(page, user)
-  await page.goto('/dashboard')
-  await expect(page).toHaveURL(/\/access-pending$/)
-  await expect(page.getByLabel('E-mail')).toHaveValue(user.email)
+for (const role of ['fan', 'pub'] as const) {
+  test(`${role} sem acesso entra na lista pelo /access-pending e é liberado`, async ({
+    page
+  }) => {
+    const user = await createUser({ role, admitted: false })
+    await signIn(page, user)
+    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/access-pending$/)
+    await expect(page.getByLabel('E-mail')).toHaveValue(user.email)
 
-  await page.getByLabel('Cidade').fill('Salvador')
-  await page.getByRole('button', { name: 'Entrar na waitlist' }).click()
-  await expect(
-    page.getByText(`Você entrou na waitlist com o e-mail ${user.email}`)
-  ).toBeVisible()
-  // A sessão provou o e-mail: confirma na hora, sem link de confirmação.
-  expect(await waitlistRow(user.email)).toMatchObject({
-    city: 'Salvador',
-    confirmed_at: expect.any(Date)
+    if (role === 'pub')
+      await page.getByLabel('Nome do bar').fill('Bar Pendente')
+    await page.getByLabel('Cidade').fill('Salvador')
+    await page.getByLabel('Telefone opcional').fill('71 99999-0000')
+    await page.getByRole('button', { name: 'Entrar na waitlist' }).click()
+    await expect(
+      page.getByText(`Você entrou na waitlist com o e-mail ${user.email}`)
+    ).toBeVisible()
+    // A sessão provou o e-mail: confirma na hora, sem link de confirmação.
+    expect(await waitlistRow(user.email)).toMatchObject({
+      role,
+      city: 'Salvador',
+      phone: '71 99999-0000',
+      pub_name: role === 'pub' ? 'Bar Pendente' : null,
+      confirmed_at: expect.any(Date)
+    })
+    await lastEmailTo(user.email, { subject: SUBJECT.joined })
+
+    await adminWaitlist('setApproval', { email: user.email, approved: true })
+    await page.goto('/access-pending')
+    await expect(page).not.toHaveURL(/\/access-pending$/)
+    expect((await account(user.email))?.admitted_at).toEqual(expect.any(Date))
   })
-  await lastEmailTo(user.email, { subject: SUBJECT.joined })
-
-  await adminWaitlist('setApproval', { email: user.email, approved: true })
-  await page.goto('/access-pending')
-  await expect(page).toHaveURL(/\/dashboard$/)
-})
+}
