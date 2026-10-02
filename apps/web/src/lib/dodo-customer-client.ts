@@ -12,19 +12,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function normalizeCustomerPayment(payment: unknown): CustomerPayment {
+  const invalid = new Error('Resposta de pagamento inválida')
+  if (!isRecord(payment)) throw invalid
+  // O cliente do better-auth converte toda string ISO da resposta em `Date`:
+  // o `created_at` da Dodo chega aqui como `Date`.
+  const createdAt =
+    payment.created_at instanceof Date
+      ? payment.created_at.toISOString()
+      : payment.created_at
   if (
-    !isRecord(payment) ||
     typeof payment.payment_id !== 'string' ||
     typeof payment.total_amount !== 'number' ||
-    typeof payment.created_at !== 'string'
+    typeof createdAt !== 'string'
   ) {
-    throw new Error('Resposta de pagamento inválida')
+    throw invalid
   }
   return {
     paymentId: payment.payment_id,
     status: String(payment.status),
     totalAmount: payment.total_amount,
-    createdAt: payment.created_at
+    createdAt
   }
 }
 

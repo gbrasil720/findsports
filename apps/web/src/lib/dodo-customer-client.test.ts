@@ -23,6 +23,17 @@ describe('Dodo customer adapter', () => {
     })
   })
 
+  test('accepts created_at already revived into a Date by the auth client', () => {
+    expect(
+      normalizeCustomerPayment({
+        payment_id: 'payment-3',
+        status: 'succeeded',
+        total_amount: 9_900,
+        created_at: new Date('2026-08-13T12:00:00.000Z')
+      }).createdAt
+    ).toBe('2026-08-13T12:00:00.000Z')
+  })
+
   test('preserves the previous string rendering for missing statuses', () => {
     expect(
       normalizeCustomerPayment({
