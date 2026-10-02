@@ -1,39 +1,46 @@
 import { describe, expect, it } from 'bun:test'
 import { getCallbackUrl } from './callback-url'
 
+// `href` chega relativo, como o TanStack Router entrega em `useLocation()`.
 describe('getCallbackUrl', () => {
-  const baseHref = 'http://localhost:3001/some-page?foo=bar'
+  const origin = 'http://localhost:3001'
+  const login = (callbackUrl: string) =>
+    getCallbackUrl(
+      `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+      origin
+    )
 
   it('returns /dashboard when no callbackUrl', () => {
-    expect(getCallbackUrl(baseHref)).toBe('/dashboard')
+    expect(getCallbackUrl('/some-page?foo=bar', origin)).toBe('/dashboard')
+    expect(getCallbackUrl('/login', origin)).toBe('/dashboard')
   })
 
-  it('returns /dashboard when callbackUrl is missing', () => {
-    expect(getCallbackUrl('http://localhost:3001/login')).toBe('/dashboard')
+  it('returns a relative callbackUrl with its query', () => {
+    expect(login('/pub/abc123?eventId=xyz&source=email')).toBe(
+      '/pub/abc123?eventId=xyz&source=email'
+    )
   })
 
-  it('returns pathname+search from same-origin callbackUrl', () => {
-    const href =
-      'http://localhost:3001/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fpub%2Fabc123%3FeventId%3Dxyz'
-    const result = getCallbackUrl(href)
-    expect(result).toBe('/pub/abc123?eventId=xyz')
+  it('returns pathname+search from an absolute same-origin callbackUrl', () => {
+    expect(login(`${origin}/pub/abc123?eventId=xyz`)).toBe(
+      '/pub/abc123?eventId=xyz'
+    )
   })
 
-  it('returns /dashboard for cross-origin callbackUrl', () => {
-    const href =
-      'http://localhost:3001/login?callbackUrl=http%3A%2F%2Fevil.com%2Fsteal'
-    expect(getCallbackUrl(href)).toBe('/dashboard')
+  it('accepts a relative callbackUrl without an explicit origin', () => {
+    expect(getCallbackUrl('/login?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
   })
 
-  it('returns /dashboard for malformed callbackUrl', () => {
-    const href = 'http://localhost:3001/login?callbackUrl=not-a-url'
-    expect(getCallbackUrl(href)).toBe('/dashboard')
-  })
-
-  it('preserves search params from callbackUrl', () => {
-    const href =
-      'http://localhost:3001/login?callbackUrl=http%3A%2F%2Flocalhost%3A3001%2Fpub%2F123%3FeventId%3Dabc%26source%3Demail'
-    const result = getCallbackUrl(href)
-    expect(result).toBe('/pub/123?eventId=abc&source=email')
+  it.each([
+    'http://evil.com/pub/abc',
+    'http://localhost:3002/pub/abc',
+    '//evil.com/pub/abc',
+    '/\\evil.com/pub/abc',
+    '\\\\evil.com/pub/abc',
+    '/\t/evil.com/pub/abc',
+    'javascript:alert(1)',
+    'data:text/html,hi'
+  ])('returns /dashboard for other-origin callbackUrl %p', (callbackUrl) => {
+    expect(login(callbackUrl)).toBe('/dashboard')
   })
 })

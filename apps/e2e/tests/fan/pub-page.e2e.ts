@@ -50,9 +50,8 @@ test.describe('deslogado', () => {
     ).toHaveAttribute('href', new RegExp(`callbackUrl=.*${barId}`))
   })
 
-  // WEB-182: o diálogo manda `callbackUrl` relativo e `getCallbackUrl` faz
-  // `new URL(url)`, que lança com caminho relativo e cai em `/dashboard`.
-  test.fixme('login a partir do diálogo volta para a página do bar', async ({
+  // WEB-182: o diálogo manda `callbackUrl` relativo.
+  test('login a partir do diálogo volta para a página do bar', async ({
     page
   }) => {
     const { barId } = await createPub()
