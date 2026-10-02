@@ -454,10 +454,12 @@ export const waitlistRouter = router({
       if (input.approved) {
         return approveAndInvite({ email, adminId: ctx.session.user.id })
       }
+      // O hash fica (WEB-192): o link antigo passa a dizer "ainda não
+      // liberado" em vez de "não encontrado". Ativação e reenvio exigem
+      // `approved_at` e prazo vigente, então o link revogado não ativa.
       const result = await db.execute(sql`
         UPDATE waitlist_entries SET
-          approved_at = NULL, approved_by = NULL,
-          invite_token_hash = NULL, invite_expires_at = NULL,
+          approved_at = NULL, approved_by = NULL, invite_expires_at = NULL,
           invite_claimed_at = NULL, invite_sent_at = NULL, invite_error = NULL
         WHERE email = ${email} AND activated_at IS NULL
         RETURNING email
