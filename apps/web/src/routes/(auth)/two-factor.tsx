@@ -150,7 +150,11 @@ function TwoFactorPage() {
               <Skeleton className="h-12 w-full" />
             </div>
           ) : (
-            <form className="mt-8 flex flex-col gap-5" onSubmit={submit}>
+            <form
+              method="post"
+              className="mt-8 flex flex-col gap-5"
+              onSubmit={submit}
+            >
               <ToggleGroup
                 value={[method]}
                 onValueChange={(values) => {

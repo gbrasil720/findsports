@@ -19,7 +19,7 @@ export const test = base.extend({
   /**
    * `page.goto` só volta depois que o React hidratou (`html[data-hydrated]`,
    * gravado no `__root.tsx`). Antes disso o formulário é HTML puro: preencher
-   * e clicar faz submit nativo e a senha vai parar na query string.
+   * e clicar faz submit nativo (POST, WEB-189) em vez do envio do app.
    */
   page: async ({ page }, use) => {
     const goto = page.goto.bind(page)

@@ -158,7 +158,12 @@ function BarMenuForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form
+      method="post"
+      onSubmit={handleSubmit}
+      noValidate
+      className="space-y-5"
+    >
       <div>
         <label htmlFor={urlId} className="onside-label">
           Link do cardápio (opcional)

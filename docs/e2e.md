@@ -93,7 +93,7 @@ direto de `@playwright/test`. Esse `test` faz duas coisas sozinho:
   isso os workers paralelos esgotariam o mesmo balde.
 - **`page.goto` espera a hidratação** (`html[data-hydrated]`, gravado pelo
   `__root.tsx`). Antes dela o formulário é HTML puro, e preencher + clicar faz
-  submit nativo com a senha na query string.
+  submit nativo (um POST para a própria rota, WEB-189) em vez do envio do app.
 
 ```ts
 import { signIn, storageState } from '../../fixtures/auth'

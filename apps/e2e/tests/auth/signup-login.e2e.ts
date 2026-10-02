@@ -204,3 +204,32 @@ test.describe('logout', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 })
+
+// WEB-189 — sem JS (ou antes de hidratar) o envio é nativo. Ele precisa ir por
+// POST: um GET serializaria e-mail e senha na query string.
+test.describe('envio antes da hidratação', () => {
+  test.use({ javaScriptEnabled: false })
+
+  test('/login não põe a senha na URL', async ({ context }) => {
+    // `context.newPage()`, e não `page`: o `goto` do fixture espera uma
+    // hidratação que sem JS nunca vem.
+    const page = await context.newPage()
+    const password = 'senha-que-nao-pode-vazar'
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('pre-hidratacao@e2e.test')
+    const senha = page.getByLabel('Senha', { exact: true })
+    await senha.fill(password)
+
+    // Enter, e não clique no botão: sem JS a animação de entrada do mobile
+    // nunca assenta e o clique espera "estável" para sempre.
+    const navigation = page.waitForRequest((r) => r.isNavigationRequest())
+    await senha.press('Enter')
+    const sent = await navigation
+    const response = await sent.response()
+
+    expect(sent.method()).toBe('POST')
+    expect(sent.url()).not.toContain(password)
+    expect(page.url()).not.toContain(password)
+    expect(await response?.text()).not.toContain(password)
+  })
+})

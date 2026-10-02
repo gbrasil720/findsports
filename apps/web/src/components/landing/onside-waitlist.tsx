@@ -127,6 +127,7 @@ export function OnsideFanWaitlistForm() {
 
   return (
     <form
+      method="post"
       className="onside-waitlist-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}
@@ -319,6 +320,7 @@ export function OnsideBarInterestForm() {
 
   return (
     <form
+      method="post"
       className="onside-bar-form"
       aria-busy={isPending}
       onSubmit={handleSubmit}

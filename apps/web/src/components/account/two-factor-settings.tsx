@@ -179,7 +179,11 @@ function EnableTwoFactorDialog({
       }}
     >
       {phase === 'password' ? (
-        <form className="flex flex-col gap-5 pt-5" onSubmit={begin}>
+        <form
+          method="post"
+          className="flex flex-col gap-5 pt-5"
+          onSubmit={begin}
+        >
           <p className="text-[var(--onside-muted)] text-sm">
             Confirme sua senha antes de criar uma nova chave de autenticação.
           </p>
@@ -206,7 +210,11 @@ function EnableTwoFactorDialog({
       ) : null}
 
       {phase === 'scan' ? (
-        <form className="flex flex-col gap-5 pt-5" onSubmit={verify}>
+        <form
+          method="post"
+          className="flex flex-col gap-5 pt-5"
+          onSubmit={verify}
+        >
           <p className="text-[var(--onside-muted)] text-sm">
             Escaneie o QR no seu aplicativo. Se preferir, informe a chave
             manual. Depois digite o código atual para concluir.
@@ -337,6 +345,7 @@ function ManageTwoFactorDialog({
         />
       ) : (
         <form
+          method="post"
           className="flex flex-col gap-5 pt-5"
           onSubmit={mode === 'disable' ? disable : regenerate}
         >

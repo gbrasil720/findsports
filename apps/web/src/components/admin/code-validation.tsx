@@ -334,7 +334,7 @@ function ValidationPanel({
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleLookup} noValidate>
+      <form method="post" onSubmit={handleLookup} noValidate>
         <label htmlFor={fieldId} className="onside-label">
           Código
         </label>

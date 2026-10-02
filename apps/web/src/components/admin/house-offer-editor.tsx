@@ -112,7 +112,7 @@ function HouseOfferForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form method="post" onSubmit={handleSubmit} noValidate>
       <label htmlFor={fieldId} className="onside-label">
         Sua oferta (opcional)
       </label>
