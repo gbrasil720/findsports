@@ -12,6 +12,7 @@ describe('resolveDatabaseUrl', () => {
   beforeEach(() => {
     process.env = { ...originalEnv }
     delete process.env.LOAD_TEST_DATABASE_URL
+    delete process.env.E2E_DATABASE_URL
   })
 
   afterEach(() => {
@@ -110,6 +111,39 @@ describe('resolveDatabaseUrl', () => {
 
     expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
   })
+
+  it('pins the E2E server (development) to its own loopback database', () => {
+    process.env.NODE_ENV = 'development'
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://load:secret@localhost:5433/findsports_load_test'
+    process.env.E2E_DATABASE_URL =
+      'postgres://e2e:secret@127.0.0.1:5434/findsports_e2e_174'
+
+    expect(resolveDatabaseUrl()).toBe(process.env.E2E_DATABASE_URL)
+    expect(resolveAndValidateDatabaseUrl().summary).toContain(
+      'findsports_e2e_174'
+    )
+  })
+
+  it('rejects an E2E URL that is remote or not an e2e database', () => {
+    process.env.NODE_ENV = 'development'
+    for (const url of [
+      'postgres://e2e:secret@example.com:5432/findsports_e2e',
+      'postgres://e2e:secret@localhost:5432/findsports_dev'
+    ]) {
+      process.env.E2E_DATABASE_URL = url
+      expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+    }
+  })
+
+  it('ignores E2E_DATABASE_URL in production', () => {
+    process.env.NODE_ENV = 'production'
+    process.env.DATABASE_URL = 'postgres://user:pass@prod.example.com/prod'
+    process.env.E2E_DATABASE_URL =
+      'postgres://e2e:secret@127.0.0.1:5434/findsports_e2e'
+
+    expect(resolveDatabaseUrl()).toBe(process.env.DATABASE_URL)
+  })
 })
 
 describe('resolveAndValidateDatabaseUrl', () => {
@@ -118,6 +152,7 @@ describe('resolveAndValidateDatabaseUrl', () => {
   beforeEach(() => {
     process.env = { ...originalEnv }
     delete process.env.LOAD_TEST_DATABASE_URL
+    delete process.env.E2E_DATABASE_URL
   })
 
   afterEach(() => {
@@ -157,6 +192,7 @@ describe('disposable integration target', () => {
       DATABASE_URL: 'postgres://unused:unused@localhost:55433/ci'
     }
     delete process.env.LOAD_TEST_DATABASE_URL
+    delete process.env.E2E_DATABASE_URL
   })
 
   afterEach(() => {

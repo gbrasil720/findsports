@@ -29,7 +29,11 @@
       "!**/.source",
       "!**/convex/_generated",
       "!apps/web/public/map",
-      "!apps/web/src/data/municipios.json"
+      "!apps/web/src/data/municipios.json",
+      "!apps/e2e/.auth",
+      "!apps/e2e/.outbox",
+      "!apps/e2e/test-results",
+      "!apps/e2e/playwright-report"
     ]
   },
   "formatter": {

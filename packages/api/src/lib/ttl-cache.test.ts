@@ -97,4 +97,19 @@ describe('cache com expiração (ESC-08)', () => {
     cache.clear()
     expect(cache.size()).toBe(0)
   })
+
+  it('E2E_DISABLE_CACHES=1 recarrega sempre (WEB-174)', async () => {
+    process.env.E2E_DISABLE_CACHES = '1'
+    try {
+      const cache = createTtlCache<number>({ ttlMs: 60_000 })
+      let cargas = 0
+      const load = async () => ++cargas
+
+      await cache.get('k', load)
+      await cache.get('k', load)
+      expect(cargas).toBe(2)
+    } finally {
+      delete process.env.E2E_DISABLE_CACHES
+    }
+  })
 })

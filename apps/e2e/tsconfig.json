@@ -1,0 +1,9 @@
+{
+  "extends": "@findsports_oficial/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "bun-types"],
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "playwright-report", "test-results"]
+}

@@ -1,0 +1,4 @@
+.auth/
+.outbox/
+test-results/
+playwright-report/

@@ -1,3 +1,6 @@
 {
-  "extends": "@findsports_oficial/config/tsconfig.base.json"
+  "extends": "@findsports_oficial/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "bun-types"]
+  }
 }

@@ -365,7 +365,9 @@ export function createAuth() {
       // é o onboarding, que atualiza `user` direto pelo Drizzle — por isso
       // as rotas de onboarding chamam `refreshSessionCache()` no sucesso.
       cookieCache: {
-        enabled: true,
+        // E2E (WEB-174): sem cache, papel e ban gravados direto no banco
+        // valem na requisição seguinte, e não 60s depois.
+        enabled: !env.E2E_DISABLE_CACHES,
         maxAge: 60,
         // v2: fotos deixam de ir no cookie (eram data URL de ~25 KB e
         // estouravam o header na Vercel — 494 REQUEST_HEADER_TOO_LARGE).

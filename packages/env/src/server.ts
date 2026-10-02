@@ -33,6 +33,17 @@ const rawEnv = createEnv({
      * roda aberta.
      */
     CRON_SECRET: z.string().min(16).optional(),
+    /**
+     * Chaves só do E2E (WEB-174, `docs/e2e.md`). Recusadas em produção logo
+     * abaixo: qualquer uma delas troca um serviço real por um dublê.
+     *
+     * `E2E_EMAIL_OUTBOX`: arquivo JSONL onde os e-mails são gravados em vez
+     * de ir para a Resend. `E2E_DISABLE_CACHES=1`: zera os caches de servidor
+     * (TTL e cookie de sessão). `LOCATIONIQ_BASE_URL`: stub do geocoding.
+     */
+    E2E_EMAIL_OUTBOX: z.string().min(1).optional(),
+    E2E_DISABLE_CACHES: z.literal('1').optional(),
+    LOCATIONIQ_BASE_URL: z.url().optional(),
     LAUNCH_ADMISSION_MODE: z
       .enum(['open', 'invite-only'])
       .default('invite-only'),
@@ -43,6 +54,24 @@ const rawEnv = createEnv({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true
 })
+
+// Lidas do `process.env` cru, porque o resolver do banco não importa este
+// módulo. A recusa vale para todas, inclusive as que não estão no esquema.
+const TEST_ONLY_ENV_KEYS = [
+  'E2E_DATABASE_URL',
+  'E2E_EMAIL_OUTBOX',
+  'E2E_DISABLE_CACHES',
+  'LOCATIONIQ_BASE_URL'
+]
+
+if (rawEnv.NODE_ENV === 'production') {
+  const set = TEST_ONLY_ENV_KEYS.filter((key) => process.env[key])
+  if (set.length > 0) {
+    throw new Error(
+      `Variáveis só de E2E recusadas em produção: ${set.join(', ')}.`
+    )
+  }
+}
 
 const LOCAL_HOSTNAMES = new Set([
   'localhost',

@@ -1,3 +1,6 @@
+import { appendFile } from 'node:fs/promises'
+import { env } from '@findsports_oficial/env/server'
+
 type VerificationEmailInput = {
   name: string
   verificationUrl: string
@@ -193,6 +196,18 @@ export async function sendEmailWithResend(input: {
   idempotencyKey?: string
   fetcher?: EmailFetcher
 }): Promise<{ delivered: boolean }> {
+  // E2E (WEB-174): o e-mail vira uma linha JSON num arquivo, lida pelo
+  // `lastEmailTo` da suíte. Conta como entregue para o fluxo seguir igual ao
+  // de produção. Vem antes da Resend: nem uma chave real no .env sai daqui.
+  if (env.E2E_EMAIL_OUTBOX) {
+    const { to, subject, text, html } = input
+    await appendFile(
+      env.E2E_EMAIL_OUTBOX,
+      `${JSON.stringify({ to, subject, text, html, sentAt: new Date().toISOString() })}\n`
+    )
+    return { delivered: true }
+  }
+
   if (!input.apiKey || !input.fromEmail) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Resend não configurado para envio de e-mail.')

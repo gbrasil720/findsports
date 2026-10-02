@@ -1,3 +1,4 @@
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 
 import { mensagemEnderecoNaoEncontrado } from './bar-profile-validation'
@@ -51,10 +52,15 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
  * Endpoint regional da LocationIQ. `us1` é o padrão da conta grátis; `eu1`
- * existe e responde igual. Não é configurável de propósito: um endpoint
- * errado falha como chave inválida, e essa é uma pista péssima.
+ * existe e responde igual. Não é configurável para produção de propósito: um
+ * endpoint errado falha como chave inválida, e essa é uma pista péssima. A
+ * única troca é o stub do E2E (`LOCATIONIQ_BASE_URL`), que `packages/env`
+ * recusa em produção.
  */
-const ENDPOINT = 'https://us1.locationiq.com/v1/search'
+const ENDPOINT = new URL(
+  '/v1/search',
+  env.LOCATIONIQ_BASE_URL ?? 'https://us1.locationiq.com'
+).toString()
 
 export type Coordenadas = { latitude: string; longitude: string }
 
