@@ -148,7 +148,11 @@ function ManageUsersPage() {
   } = useQuery({
     queryKey: ['admin', 'users'],
     queryFn: async () => {
-      const res = await authClient.admin.listUsers({ query: { limit: 200 } })
+      // Mais novos primeiro: sem ordem, o banco devolvia 200 quaisquer e quem
+      // ficasse de fora não aparecia nem na busca, que filtra só o que veio.
+      const res = await authClient.admin.listUsers({
+        query: { limit: 200, sortBy: 'createdAt', sortDirection: 'desc' }
+      })
       if (res.error) throw res.error
       return res.data
     },
