@@ -219,6 +219,7 @@ function PostHogProvider() {
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonatedBy = session?.session.impersonatedBy
+  const impersonated = impersonatedBy ? session?.user : undefined
   const isDev = import.meta.env.DEV
 
   // Marca de hidratação para o E2E (WEB-174): antes dela, o formulário ainda
@@ -247,7 +248,7 @@ function RootDocument() {
           }
         >
           <PostHogProvider />
-          {impersonatedBy ? (
+          {impersonated ? (
             <Suspense
               fallback={
                 <div
@@ -266,7 +267,7 @@ function RootDocument() {
                 </div>
               }
             >
-              <ImpersonationBanner />
+              <ImpersonationBanner user={impersonated} />
             </Suspense>
           ) : null}
           <Outlet />

@@ -20,6 +20,9 @@ export const test = base.extend({
    * `page.goto` só volta depois que o React hidratou (`html[data-hydrated]`,
    * gravado no `__root.tsx`). Antes disso o formulário é HTML puro: preencher
    * e clicar faz submit nativo (POST, WEB-189) em vez do envio do app.
+   *
+   * E falha o teste se o React acusar "Hydration failed" na página (WEB-196):
+   * HTML do servidor diferente do primeiro render do cliente.
    */
   page: async ({ page }, use) => {
     const goto = page.goto.bind(page)
@@ -28,7 +31,14 @@ export const test = base.extend({
       await page.locator('html[data-hydrated]').waitFor({ state: 'attached' })
       return response
     }
+    const hydrationErrors: string[] = []
+    const record = (text: string) => {
+      if (text.includes('Hydration failed')) hydrationErrors.push(text)
+    }
+    page.on('console', (msg) => record(msg.text()))
+    page.on('pageerror', (error) => record(error.message))
     await use(page)
+    expect(hydrationErrors, 'erro de hidratação no navegador').toEqual([])
   }
 })
 
