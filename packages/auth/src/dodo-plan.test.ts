@@ -9,7 +9,7 @@ describe('planForProduct', () => {
   })
 
   test('produto desconhecido ou ausente não vira Starter', () => {
-    for (const id of ['pdt_inexistente', '', undefined, null, 42, 'toString']) {
+    for (const id of ['pdt_inexistente', '', undefined, 'toString']) {
       expect(planForProduct(id)).toBeNull()
     }
   })

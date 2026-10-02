@@ -25,7 +25,7 @@ import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
-import { planForProduct } from './dodo-plan'
+import { DODO_PRODUCTS, planForProduct } from './dodo-plan'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
@@ -74,11 +74,7 @@ async function getBarByCustomer(
       byEmail.dodoCustomerId &&
       byEmail.dodoCustomerId !== dodoCustomerId
     ) {
-      const barOfUser = await db.query.bar.findFirst({
-        where: eq(bar.userId, byEmail.id)
-      })
       logBillingError('dodo_webhook_customer_mismatch', {
-        barId: barOfUser?.id ?? null,
         userId: byEmail.id,
         email,
         storedCustomerId: byEmail.dodoCustomerId,
@@ -446,11 +442,7 @@ export function createAuth() {
         createCustomerOnSignUp: false,
         use: [
           checkout({
-            products: [
-              { productId: 'pdt_0NgxgZyV3AKsNe99Ae2ZN', slug: 'starter' },
-              { productId: 'pdt_0NgxglMLDZdpaXIuRAiCE', slug: 'pro' },
-              { productId: 'pdt_0NgxgzP6hnGWg1brokOcU', slug: 'elite' }
-            ],
+            products: DODO_PRODUCTS,
             // WEB-59: o retorno do provedor cai no recibo, não no painel. O
             // webhook `onSubscriptionActive` é quem confirma a assinatura, e
             // pode chegar depois deste redirect — `/plan/confirmed` é a tela
