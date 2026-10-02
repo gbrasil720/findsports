@@ -174,7 +174,7 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   ).toBeVisible()
 })
 
-test('falha do geocoding mostra mensagem tratada e não cria o bar', async ({
+test('geocoding fora do ar pede para tentar em instantes e não cria o bar', async ({
   page
 }) => {
   const owner = await signInPendingPub(page)
@@ -187,7 +187,7 @@ test('falha do geocoding mostra mensagem tratada e não cria o bar', async ({
 
   await button(page, /Escolher meu plano/).click()
   await expect(page.getByRole('alert')).toHaveText(
-    'Não foi possível salvar o cadastro do bar. Tente novamente.'
+    'Não foi possível validar o endereço agora. Tente novamente em instantes.'
   )
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   await expect(button(page, /Escolher meu plano/)).toBeEnabled()

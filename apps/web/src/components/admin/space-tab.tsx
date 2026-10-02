@@ -1,4 +1,5 @@
 import {
+  mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
@@ -76,13 +77,15 @@ export function SpaceTab({
       onError: (err, input) => {
         setProfileError(
           // O telefone já foi conferido no `onSave`; sobra a recusa do
-          // endereço (WEB-115).
+          // endereço (WEB-115) ou o geocoding fora do ar (WEB-191).
           err.data?.code === 'UNPROCESSABLE_CONTENT'
             ? mensagemEnderecoNaoEncontrado(input.city ?? bar?.city ?? '')
-            : getUserFacingMessage(
-                err,
-                'Não foi possível salvar o perfil. Tente novamente.'
-              )
+            : err.data?.code === 'SERVICE_UNAVAILABLE'
+              ? mensagemEnderecoIndisponivel
+              : getUserFacingMessage(
+                  err,
+                  'Não foi possível salvar o perfil. Tente novamente.'
+                )
         )
       }
     })

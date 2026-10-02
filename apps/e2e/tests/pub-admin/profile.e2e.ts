@@ -91,6 +91,23 @@ test('endereço que o geocoding não acha é recusado com a mensagem certa', asy
   expect(bar?.address).toBe(street)
 })
 
+test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço', async ({
+  page
+}) => {
+  const { barId, street } = await openProfile(page)
+  const newStreet = `Rua falha-geocoding ${randomUUID().slice(0, 8)}, 1`
+
+  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+  await editor(page).getByLabel('Endereço').fill(newStreet)
+  expect((await save(page)).ok()).toBe(false)
+
+  await expect(editor(page).getByRole('alert')).toHaveText(
+    'Não foi possível validar o endereço agora. Tente novamente em instantes.'
+  )
+  const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
+  expect(bar?.address).toBe(street)
+})
+
 test('trocar a foto sobe para o Blob e grava a URL do bar', async ({
   page
 }) => {

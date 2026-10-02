@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
-import { mensagemEnderecoNaoEncontrado } from '@findsports_oficial/api/lib/bar-profile-validation'
+import {
+  mensagemEnderecoIndisponivel,
+  mensagemEnderecoNaoEncontrado
+} from '@findsports_oficial/api/lib/bar-profile-validation'
 import { mensagemCidadeNaoLiberada } from '@findsports_oficial/api/lib/city-match'
 import {
   mensagemFalhaCadastroBar,
@@ -53,6 +56,12 @@ describe('recusa do cadastro do bar', () => {
     expect(
       mensagemFalhaCadastroBar(recusa('UNPROCESSABLE_CONTENT'), DRAFT)
     ).toBe(mensagemEnderecoNaoEncontrado('São Paulo'))
+  })
+
+  it('geocoding fora do ar pede para tentar de novo, sem culpar o endereço', () => {
+    expect(mensagemFalhaCadastroBar(recusa('SERVICE_UNAVAILABLE'), DRAFT)).toBe(
+      mensagemEnderecoIndisponivel
+    )
   })
 
   it('outras falhas seguem o padrão do WEB-118', () => {
