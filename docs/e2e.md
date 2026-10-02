@@ -129,6 +129,9 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
   resto. SQL cru com `pg`: o Playwright roda em Node e não carrega o TypeScript
   dos pacotes do workspace, então o Drizzle de `packages/db` não serve aqui.
 - Esportes e times já estão semeados (`db:seed:sports` e `db:seed:teams`).
+- `seedTwoFactor(userId)` e `totp(chave)` (`fixtures/two-factor.ts`): liga o 2FA
+  direto no banco, cifrado como o plugin cifra, e calcula o código. Entre com
+  `signIn` **antes** de ligar: com 2FA ativo o login pela API não abre sessão.
 
 ### Sessão
 

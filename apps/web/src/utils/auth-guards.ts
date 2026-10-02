@@ -93,7 +93,9 @@ export function applyAuthGuards(
 
   // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
   // Admin permanece na landing.
-  if (pathname === '/' && search.public !== '1') {
+  // `String()`: o router faz JSON.parse da query, e `/?public=1` digitado
+  // chega como número; só o link interno (`search={{ public: '1' }}`) é string.
+  if (pathname === '/' && String(search.public) !== '1') {
     if (session.user.role === 'fan') {
       throw redirect({ to: '/dashboard' })
     }

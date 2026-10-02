@@ -202,6 +202,10 @@ describe('applyAuthGuards', () => {
     expect(() =>
       applyAuthGuards(session('pub'), '/', { public: '1' })
     ).not.toThrow()
+    // `/?public=1` digitado: o router entrega o valor já como número.
+    expect(() =>
+      applyAuthGuards(session('fan'), '/', { public: 1 })
+    ).not.toThrow()
   })
 
   test('o marcador público não ignora as guardas de acesso', () => {
