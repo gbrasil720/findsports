@@ -18,6 +18,7 @@ bun run build        # full build
 bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
 bun run test         # full test suite from repo root (env fake: raiz .env.test via bunfig preload)
+bun run test:e2e     # Playwright (apps/e2e): desktop + mobile, banco e portas próprios — docs/e2e.md
 
 bun run db:generate  # generate migration files
 bun run db:migrate   # run migrations (NODE_ENV=development localmente)
@@ -34,6 +35,7 @@ Turborepo monorepo, `bun` package manager, Biome for lint/format (tabs, double q
 
 ### Apps
 - **`apps/web`** — fullstack app: TanStack Start (SSR) + TanStack Router (file-based) + React 19. Runs on `localhost:3001`.
+- **`apps/e2e`** — Playwright E2E suite against `vite dev` and a disposable Postgres. See `docs/e2e.md`.
 
 ### Packages
 | Package | Import | Purpose |
@@ -126,6 +128,13 @@ versionado em `apps/web/src/lib/map-style.ts`, glyphs e sprite em
 `apps/web/public/map/`. **Antes de mexer em tiles, estilo ou rebuild, leia
 `docs/map-tiles.md`** — ele tem o runbook e as armadilhas (URL absoluta para
 sprite/glyphs, `maplibre-gl` fora do `optimizeDeps` do Vite).
+
+### E2E
+
+Playwright em `apps/e2e`, job `e2e` no CI. **Antes de escrever ou rodar teste de
+navegador, leia `docs/e2e.md`** — fixtures, dublês (outbox de e-mail, stub da
+LocationIQ, Blob, webhook da Dodo), por que o servidor roda sem cache e as
+variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
 ### Routing
 

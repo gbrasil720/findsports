@@ -1,0 +1,224 @@
+# E2E com Playwright (WEB-174)
+
+Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
+descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
+Pixel 7, e não sai para a rede: e-mail, LocationIQ, Vercel Blob, Dodo e tiles
+do mapa são dublês.
+
+```bash
+bun run test:e2e                              # tudo, nos dois projetos
+bun run test:e2e -- --project=desktop         # só desktop (o setup vem junto)
+bun run test:e2e -- tests/auth                # uma área
+bun run test:e2e -- --ui                      # modo interativo
+```
+
+## Rodar local
+
+1. Postgres com PostGIS na porta 5434 (uma vez):
+
+   ```bash
+   docker run -d --name findsports_e2e -p 127.0.0.1:5434:5432 \
+     -e POSTGRES_USER=findsports_e2e -e POSTGRES_PASSWORD=findsports_e2e_local \
+     -e POSTGRES_DB=findsports_e2e imresamu/postgis:17-3.5-alpine
+   ```
+
+2. Chromium do Playwright (uma vez por versão): `cd apps/e2e && bunx playwright install chromium`.
+
+3. `bun run test:e2e`. O `webServer` do Playwright migra o banco, semeia
+   esportes e times, sobe o stub e o app, e derruba tudo no fim.
+
+### Variáveis
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
+| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ e tiles) |
+| `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
+
+Várias worktrees podem rodar ao mesmo tempo desde que cada uma tenha portas e
+banco próprios:
+
+```bash
+docker exec findsports_e2e createdb -U findsports_e2e findsports_e2e_minha
+E2E_PORT=4000 E2E_STUB_PORT=4001 \
+E2E_DATABASE_URL=postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e_minha \
+bun run test:e2e
+```
+
+O resolver de `packages/db` só aceita `E2E_DATABASE_URL` em loopback e com
+banco `findsports_e2e` ou `findsports_e2e_<sufixo>`, e ela vence o
+`findsports_dev` que o `NODE_ENV=development` fixaria. Porta ocupada derruba a
+rodada (`reuseExistingServer: false`): nunca reaproveita o servidor de outra
+worktree por engano.
+
+O resto do ambiente do servidor está em `apps/e2e/env.ts` (`SERVER_ENV`). Toda
+chave que o `apps/web/.env` de quem roda local pode trazer com valor real
+(Resend, LocationIQ, Dodo, Redis, PostHog) é sobrescrita ali, nem que seja com
+vazio.
+
+## Estrutura
+
+```
+apps/e2e/
+  playwright.config.ts   projetos, webServer, trace/vídeo só em falha
+  env.ts                 portas, URLs, segredos de teste, ambiente do servidor
+  stubs/server.ts        LocationIQ + PMTiles vazio (Bun)
+  fixtures/              blocos para os testes — um arquivo por assunto
+  tests/setup.setup.ts   estado global limpo + uma sessão por papel
+  tests/smoke/           sentinela e prova de que cada dublê está ligado
+  tests/<área>/          um diretório por área
+```
+
+| Diretório | Ticket |
+|---|---|
+| `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
+| `tests/waitlist` | WEB-176 — waitlist, confirmação, convite |
+| `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
+| `tests/fan` | WEB-178 — busca, mapa, página do bar, reservas, perfil |
+| `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
+| `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
+| `tests/internal` | WEB-181 — painéis internos |
+
+Fixture nova (eventos, reservas…) entra num arquivo novo em `fixtures/`, em vez
+de crescer um arquivo central.
+
+## Escrevendo teste
+
+Arquivo `*.e2e.ts`, importando `test` e `expect` de `fixtures/test.ts` — nunca
+direto de `@playwright/test`. Esse `test` faz duas coisas sozinho:
+
+- **IP próprio por teste** (`x-forwarded-for` aleatório). O rate limit do
+  better-auth (3 logins por 10s) e o da waitlist contam por IP no banco; sem
+  isso os workers paralelos esgotariam o mesmo balde.
+- **`page.goto` espera a hidratação** (`html[data-hydrated]`, gravado pelo
+  `__root.tsx`). Antes dela o formulário é HTML puro, e preencher + clicar faz
+  submit nativo com a senha na query string.
+
+```ts
+import { signIn, storageState } from '../../fixtures/auth'
+import { createPub } from '../../fixtures/pubs'
+import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
+
+test.describe('com a sessão pronta de torcedor', () => {
+  test.use({ storageState: storageState('fan') })
+
+  test('abre o dashboard', async ({ page }) => {
+    await page.goto('/dashboard')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  })
+})
+
+test('dono de bar Starter vê o limite', async ({ page }) => {
+  const { user, barId } = await createPub({ subscription: { plan: 'starter' } })
+  await signIn(page, user)
+  await page.goto('/admin#admin-grade')
+})
+```
+
+### Dados
+
+- `createUser({ role, emailVerified, admitted, onboardingCompleted, … })`
+  (`fixtures/users.ts`): usuário com conta de senha, e-mail único. Padrão: fan,
+  verificado, admitido, onboarding feito. Admin só nasce por aqui.
+- `createPub({ subscription, bar, user })` (`fixtures/pubs.ts`): dono + bar
+  ativo no centro de São Paulo + assinatura (padrão Elite ativa por 30 dias;
+  `subscription: null` cria sem). `bar` aceita colunas em snake_case.
+- `insert(tabela, linha)` e `query(sql, valores)` (`fixtures/db.ts`) para o
+  resto. SQL cru com `pg`: o Playwright roda em Node e não carrega o TypeScript
+  dos pacotes do workspace, então o Drizzle de `packages/db` não serve aqui.
+- Esportes e times já estão semeados (`db:seed:sports` e `db:seed:teams`).
+
+### Sessão
+
+- `storageState('fan' | 'pub' | 'admin')` (`fixtures/auth.ts`): sessões criadas
+  uma vez por rodada pelo `setup`. **Só leitura**: são compartilhadas por todos
+  os testes paralelos. Teste que muda a própria conta (senha, papel, 2FA,
+  onboarding, exclusão) cria um usuário seu e entra com `signIn(page, user)`,
+  que loga pela API e põe o cookie no contexto da página.
+- Teste da tela de login usa o formulário.
+
+### Estado global: arquivos `*.serial.e2e.ts`
+
+`app_config` é uma tabela global, e os testes paralelos contam com os padrões
+de produção (gate da waitlist fechado, checkout desligado, nota pública
+desligada, todas as cidades liberadas). Teste que muda uma chave vai num
+arquivo `*.serial.e2e.ts`, com `setAppConfig(chave, valor)` e
+`resetAppConfig()` no `afterEach` (`fixtures/db.ts`).
+
+Esses arquivos rodam nos projetos `desktop-serial` e `mobile-serial`, com um
+worker só, **depois** que `desktop` e `mobile` terminam. Consequência: se um
+teste paralelo falha, os seriais não rodam (dependência de projeto do
+Playwright). Corrija o paralelo primeiro.
+
+### Seletores
+
+`getByRole` e `getByLabel` — a UI tem ARIA consistente. Cuidado com
+`getByLabel('Senha')`: casa também com "Mostrar senha"; use `{ exact: true }`.
+`data-testid` só onde não houver papel acessível.
+
+## Dublês
+
+| Serviço | Como | Helper |
+|---|---|---|
+| E-mail (Resend) | `E2E_EMAIL_OUTBOX`: `sendEmailWithResend` grava uma linha JSON por e-mail em `apps/e2e/.outbox/emails.jsonl` e responde como entregue. Vem antes da Resend, então nem uma chave real sai | `lastEmailTo(email, { subject })` em `fixtures/email.ts`, com `.link` (o link de ação) |
+| LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
+| Vercel Blob | O upload sai do navegador: `page.route` responde o PUT com URL do store `e2e` (o mesmo `BLOB_STORE_ID` do servidor) e serve um pixel nessa URL. O token do cliente sai da rota real | `interceptBlobUploads(page)` em `fixtures/blob.ts`, antes do `goto` |
+| Dodo (webhook) | `DODO_PAYMENTS_WEBHOOK_SECRET` de teste no servidor; o helper assina como a Dodo (Standard Webhooks). O corpo precisa passar no `WebhookPayloadSchema` do `@dodopayments/core` | `sendDodoWebhook(request, payload)` em `fixtures/dodo.ts` |
+| Mapa | `VITE_MAP_TILES_URL` aponta para um PMTiles válido e vazio servido pelo stub: o mapa monta sem tiles, marcadores aparecem | — |
+| Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
+
+Rede externa está bloqueada no Chromium (`--host-resolver-rules`): o que não é
+local nem interceptado falha na hora, em vez de ir para a internet.
+
+A API da Dodo chamada pelo servidor (portal, histórico de pagamentos, sessão de
+checkout) **não** tem dublê ainda. O `dodoClient` de `packages/auth` passa
+`environment`, e o SDK recusa `DODO_PAYMENTS_BASE_URL` junto com ele — quem
+precisar disso tem que trocar os dois por um `baseURL` condicional.
+
+## Caches de 60s
+
+Decisão: **o servidor de E2E roda sem cache** (`E2E_DISABLE_CACHES=1`). Zera o
+TTL de todo `createTtlCache` (`app_config`, busca, destaques, catálogo de
+esportes e times, geocoding) e desliga o `cookieCache` da sessão do
+better-auth. Assim um dado gravado direto no banco — papel, ban, flag, bar
+novo — vale na requisição seguinte.
+
+A alternativa, "criar o dado antes do primeiro request que lê", não se sustenta
+com workers paralelos batendo no mesmo servidor: a chave do cache de busca é a
+consulta, e um teste leria a busca que outro deixou em cache. O custo é o E2E
+não exercitar o cache em si — isso fica com os testes unitários
+(`ttl-cache.test.ts`, `shared-cache.test.ts`).
+
+`E2E_DISABLE_CACHES`, `E2E_EMAIL_OUTBOX`, `LOCATIONIQ_BASE_URL` e
+`E2E_DATABASE_URL` são recusadas por `packages/env` quando
+`NODE_ENV=production`: o app não sobe.
+
+## Armadilhas
+
+- **`vite dev`, não o build.** O build de produção usa o driver HTTP do Neon e
+  falha com `fetch failed` contra Postgres local.
+- **Origem.** `BETTER_AUTH_URL`, `CORS_ORIGIN` e `PUBLIC_APP_URL` são
+  `http://127.0.0.1:<E2E_PORT>`, e o `baseURL` do Playwright também. Trocar um
+  só dá `Invalid origin` no login. `127.0.0.1`, e não `localhost`: no macOS o
+  `localhost` do Vite pode abrir só em `::1`.
+- **Hidratação.** Clique logo depois de um `goto` cru (fora do `test` da suíte)
+  pode cair no HTML antes do React.
+- **Devtools.** Em `vite dev` o app mostra os botões do TanStack Router e do
+  React Query nos cantos de baixo. Se um clique no mobile cair em cima deles,
+  role o alvo para a vista antes.
+- **Rate limit.** Já isolado por IP. `clearRateLimits()` existe para um teste
+  que esgota o limite de propósito e quer recomeçar.
+- **Callback do login.** `getCallbackUrl` ignora todo `callbackUrl` e devolve
+  `/dashboard` até o WEB-182; teste que dependa disso fica `test.fixme`.
+
+## CI
+
+Job `e2e` em `.github/workflows/ci.yml`, em todo PR e push em `master`, com
+serviço Postgres/PostGIS próprio. Instala só o Chromium. Em falha, publica
+`playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
+que falharam) como artifact.
+
+Ainda não medido: tempo do job com todas as áreas cobertas e o consumo de
+minutos do Actions. Se passar de 10 minutos, o caminho é `--shard` do
+Playwright em matriz.
