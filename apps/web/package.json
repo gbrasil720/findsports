@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:vercel": "bun --cwd ../.. run db:migrate:deploy && vite build && bun scripts/build-vercel.mjs",
+    "build:vercel": "if [ \"$VERCEL_ENV\" = production ]; then bun run --cwd ../.. db:migrate:deploy; fi && vite build && bun scripts/build-vercel.mjs",
     "check-types": "tsc --noEmit",
     "test": "bun test --preload=../../test-env.preload.ts",
     "serve": "vite preview",
