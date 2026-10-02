@@ -3,6 +3,7 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
+import { escapeLike } from '../lib/escape-like'
 
 const LIMIT = 200
 
@@ -22,9 +23,7 @@ export const adminUsersRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const pattern = input.search
-        ? `%${input.search.replace(/[\\%_]/g, '\\$&')}%`
-        : null
+      const pattern = input.search ? `%${escapeLike(input.search)}%` : null
       const where = and(
         input.role ? eq(user.role, input.role) : undefined,
         pattern
@@ -43,9 +42,7 @@ export const adminUsersRouter = router({
             role: user.role,
             banned: user.banned,
             banReason: user.banReason,
-            banExpires: user.banExpires,
-            createdAt: user.createdAt,
-            image: user.image
+            createdAt: user.createdAt
           })
           .from(user)
           .where(where)

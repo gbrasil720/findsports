@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { adminProcedure, publicProcedure, router } from '../index'
 import { getAppConfig } from '../lib/app-config'
+import { escapeLike } from '../lib/escape-like'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { incrementWindow } from '../lib/rate-limit-store'
 import { sendWaitlistEmail, waitlistUrl } from '../lib/waitlist-email'
@@ -55,10 +56,6 @@ function emptyToNull(value: string | undefined) {
 
 function collapseSpaces(value: string) {
   return value.replace(/\s+/g, ' ').trim()
-}
-
-function escapeLike(value: string) {
-  return value.replace(/[\\%_]/g, '\\$&')
 }
 
 function waitlistWhere(

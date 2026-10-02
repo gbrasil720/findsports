@@ -1,3 +1,4 @@
+import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { Badge } from '@findsports_oficial/ui/components/badge'
 import {
   Dialog,
@@ -39,6 +40,7 @@ import {
   useQueryClient
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import Ban from 'reicon-react/icons/Ban'
 import Calendar from 'reicon-react/icons/Calendar'
@@ -85,17 +87,8 @@ export const Route = createFileRoute('/internal_/manage-users')({
 })
 
 /* ---------- types ---------- */
-type AdminUser = {
-  id: string
-  name: string
-  email: string
-  role: string
-  banned: boolean | null
-  banReason: string | null
-  banExpires: Date | string | null
-  createdAt: Date | string
-  image?: string | null
-}
+type AdminUser =
+  inferRouterOutputs<AppRouter>['adminUsers']['list']['users'][number]
 
 /* ---------- helpers ---------- */
 function formatDate(date: Date | string) {
@@ -165,7 +158,7 @@ function ManageUsersPage() {
     meta: { errorToast: false }
   })
 
-  const filtered = (usersData?.users ?? []) as AdminUser[]
+  const filtered = usersData?.users ?? []
   const total = usersData?.total ?? 0
   const adminCount = usersData?.admins ?? 0
   const bannedCount = usersData?.banned ?? 0
