@@ -99,8 +99,12 @@ export function PubHeroSection({
     form.amenities.some((id) => !initialForm.amenities.includes(id))
 
   const handleSave = async () => {
-    await onSave(form)
-    setEditing(false)
+    try {
+      await onSave(form)
+      setEditing(false)
+    } catch {
+      // A recusa chega por `saveError`; o formulário fica aberto (WEB-195).
+    }
   }
 
   const handleCancel = () => {

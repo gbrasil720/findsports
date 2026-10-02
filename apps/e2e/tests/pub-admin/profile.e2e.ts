@@ -32,6 +32,16 @@ const editor = (page: Page) => page.locator('#admin-profile-editor')
 const pickPhoto = (page: Page, file: Parameters<Locator['setInputFiles']>[0]) =>
   editor(page).locator('input[type="file"]').setInputFiles(file)
 
+/**
+ * Erros não tratados da página, inclusive promessa rejeitada sem `catch`
+ * (WEB-195): o Chromium os entrega como `pageerror`.
+ */
+function collectPageErrors(page: Page) {
+  const errors: string[] = []
+  page.on('pageerror', (err) => errors.push(err.message))
+  return errors
+}
+
 async function save(page: Page) {
   const saved = page.waitForResponse(/pub\.updateMe/)
   await editor(page).getByRole('button', { name: 'Salvar' }).click()
@@ -74,6 +84,7 @@ test('mudar o endereço geocodifica a rua nova e grava', async ({ page }) => {
 test('endereço que o geocoding não acha é recusado com a mensagem certa', async ({
   page
 }) => {
+  const pageErrors = collectPageErrors(page)
   const { barId, street } = await openProfile(page)
 
   await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
@@ -89,6 +100,32 @@ test('endereço que o geocoding não acha é recusado com a mensagem certa', asy
   )
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(street)
+  // A recusa já foi mostrada: não pode sobrar rejeição não tratada.
+  expect(pageErrors).toEqual([])
+})
+
+test('telefone inválido é recusado no navegador, sem rejeição não tratada', async ({
+  page
+}) => {
+  const pageErrors = collectPageErrors(page)
+  const { barId } = await openProfile(page)
+  let updates = 0
+  page.on('request', (req) => {
+    if (req.url().includes('pub.updateMe')) updates++
+  })
+
+  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+  await editor(page).getByLabel('Telefone').fill('11887654321')
+  await editor(page).getByRole('button', { name: 'Salvar' }).click()
+
+  await expect(editor(page).getByRole('alert')).toHaveText(
+    'Celular deve começar com 9 depois do DDD. Confira o telefone.'
+  )
+  await expect(editor(page).getByLabel('Telefone')).toBeVisible()
+  expect(updates).toBe(0)
+  const [bar] = await query('SELECT phone FROM bar WHERE id = $1', [barId])
+  expect(bar?.phone).toBeNull()
+  expect(pageErrors).toEqual([])
 })
 
 test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço', async ({
