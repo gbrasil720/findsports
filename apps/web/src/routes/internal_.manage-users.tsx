@@ -33,7 +33,11 @@ import {
   TableRow
 } from '@findsports_oficial/ui/components/table'
 import { Textarea } from '@findsports_oficial/ui/components/textarea'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import Ban from 'reicon-react/icons/Ban'
@@ -52,6 +56,7 @@ import { getUser } from '@/functions/get-user'
 import { authClient } from '@/lib/auth-client'
 import { roleLabel } from '@/lib/roles'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/internal_/manage-users')({
   head: () => ({
@@ -138,6 +143,9 @@ function ManageUsersPage() {
   const [roleLoading, setRoleLoading] = useState(false)
 
   /* --- data --- */
+  // WEB-193: busca e papel filtram no servidor; o corte de 200 vem depois.
+  const trpc = useTRPC()
+  const usersQueryKey = trpc.adminUsers.list.queryKey()
   const {
     data: usersData,
     isLoading,
@@ -146,33 +154,21 @@ function ManageUsersPage() {
     error: usersError,
     refetch: refetchUsers
   } = useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: async () => {
-      // Mais novos primeiro: sem ordem, o banco devolvia 200 quaisquer e quem
-      // ficasse de fora não aparecia nem na busca, que filtra só o que veio.
-      const res = await authClient.admin.listUsers({
-        query: { limit: 200, sortBy: 'createdAt', sortDirection: 'desc' }
-      })
-      if (res.error) throw res.error
-      return res.data
-    },
+    ...trpc.adminUsers.list.queryOptions({
+      search: search.trim() || undefined,
+      role:
+        roleFilter === 'all'
+          ? undefined
+          : (roleFilter as 'fan' | 'pub' | 'admin')
+    }),
+    placeholderData: keepPreviousData,
     meta: { errorToast: false }
   })
 
-  const allUsers = (usersData?.users ?? []) as AdminUser[]
-
-  const filtered = allUsers.filter((u) => {
-    const matchesSearch =
-      search === '' ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter
-    return matchesSearch && matchesRole
-  })
-
-  const total = allUsers.length
-  const adminCount = allUsers.filter((u) => u.role === 'admin').length
-  const bannedCount = allUsers.filter((u) => u.banned).length
+  const filtered = (usersData?.users ?? []) as AdminUser[]
+  const total = usersData?.total ?? 0
+  const adminCount = usersData?.admins ?? 0
+  const bannedCount = usersData?.banned ?? 0
 
   /* --- actions --- */
   async function handleImpersonate(user: AdminUser) {
@@ -206,7 +202,7 @@ function ManageUsersPage() {
         return
       }
       toast.success(`${banDialogUser.name} foi banido.`)
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
       setBanDialogUser(null)
       setBanReason('')
     } finally {
@@ -223,7 +219,7 @@ function ManageUsersPage() {
       return
     }
     toast.success(`${user.name} foi desbanido.`)
-    await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+    await queryClient.invalidateQueries({ queryKey: usersQueryKey })
   }
 
   async function handleSetRole() {
@@ -244,7 +240,7 @@ function ManageUsersPage() {
       toast.success(
         `Role de ${roleDialogUser.name} alterado para ${getRoleLabel(newRole)}.`
       )
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
       setRoleDialogUser(null)
       setNewRole('')
     } finally {
@@ -600,7 +596,7 @@ function ManageUsersPage() {
           <div className="border-[var(--onside-line)] border-t px-4 py-3 text-muted-foreground text-xs">
             {isFetching
               ? 'Atualizando usuários...'
-              : `Exibindo ${filtered.length} de ${allUsers.length} usuários`}
+              : `Exibindo ${filtered.length} de ${usersData?.matched ?? 0} usuários`}
           </div>
         </div>
       </div>

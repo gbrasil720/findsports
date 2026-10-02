@@ -167,3 +167,32 @@ test('impersonar dono de bar abre o painel do bar', async ({ page }) => {
   await expect(page).toHaveURL(/\/internal\/manage-users$/)
   await expect(banner).toHaveCount(0)
 })
+
+test('a busca acha usuário mais antigo que os 200 mais novos (WEB-193)', async ({
+  page
+}) => {
+  const target = await createUser({ name: uniqueName('Veterano') })
+  await query(`UPDATE "user" SET created_at = '2000-01-01' WHERE id = $1`, [
+    target.id
+  ])
+  // 201 contas mais novas num INSERT só: a lista de 200 não chega ao alvo.
+  const batch = crypto.randomUUID().slice(0, 8)
+  await query(
+    `INSERT INTO "user" (id, name, email)
+     SELECT gen_random_uuid()::text, 'Lote ' || $1 || ' ' || i,
+            'lote-' || $1 || '-' || i || '@e2e.test'
+     FROM generate_series(1, 201) AS i`,
+    [batch]
+  )
+
+  // Parte do nome, em caixa diferente: a busca é no servidor e sem caixa.
+  await page.goto('/internal/manage-users')
+  await page
+    .getByPlaceholder('Buscar por nome ou e-mail...')
+    .fill(target.name.toUpperCase())
+  const row = page.getByRole('row').filter({ hasText: target.email })
+  await expect(row).toHaveCount(1)
+
+  // E pelo e-mail, que é o caminho do suporte.
+  await openUser(page, target)
+})
