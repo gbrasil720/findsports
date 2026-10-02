@@ -1,4 +1,5 @@
 import {
+  mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
@@ -59,7 +60,8 @@ export function parsePubOnboardingDraft(
  *
  * `UNPROCESSABLE_CONTENT` é telefone ou endereço (WEB-115). O telefone é
  * conferido de novo aqui porque um rascunho salvo antes da regra chega ao
- * servidor sem ter passado por ela.
+ * servidor sem ter passado por ela. `SERVICE_UNAVAILABLE` é o geocoding fora
+ * do ar: o endereço pode estar certo, vale tentar de novo (WEB-191).
  */
 export function mensagemFalhaCadastroBar(
   error: unknown,
@@ -68,6 +70,7 @@ export function mensagemFalhaCadastroBar(
   const code = getErrorCode(error)
   const city = draft.city ?? 'São Paulo'
   if (code === 'PRECONDITION_FAILED') return mensagemCidadeNaoLiberada(city)
+  if (code === 'SERVICE_UNAVAILABLE') return mensagemEnderecoIndisponivel
   if (code === 'UNPROCESSABLE_CONTENT') {
     return (
       motivoTelefoneInvalido(draft.phone) ?? mensagemEnderecoNaoEncontrado(city)

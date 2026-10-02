@@ -1,7 +1,10 @@
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 
-import { mensagemEnderecoNaoEncontrado } from './bar-profile-validation'
+import {
+  mensagemEnderecoIndisponivel,
+  mensagemEnderecoNaoEncontrado
+} from './bar-profile-validation'
 import { normalizarCidade } from './city-match'
 import { createTtlCache } from './ttl-cache'
 
@@ -512,8 +515,7 @@ export async function geocodeAddress(
     // encontrado" aqui faria o usuário corrigir o que já estava certo.
     throw new TRPCError({
       code: 'SERVICE_UNAVAILABLE',
-      message:
-        'Não foi possível validar o endereço agora. Tente novamente em instantes.',
+      message: mensagemEnderecoIndisponivel,
       cause: ultimaFalha ?? undefined
     })
   })

@@ -19,6 +19,13 @@ export function mensagemEnderecoNaoEncontrado(cidade: string): string {
   return `Não encontramos esse endereço em ${cidade.trim()}. Confira a rua, o número e a cidade.`
 }
 
+/**
+ * O geocoding fora do ar depois das tentativas. Não é endereço errado: dizer
+ * isso faria o usuário corrigir o que já estava certo (WEB-191).
+ */
+export const mensagemEnderecoIndisponivel =
+  'Não foi possível validar o endereço agora. Tente novamente em instantes.'
+
 /** DDDs em uso segundo o plano de numeração da Anatel. */
 const DDDS = new Set([
   11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35,
