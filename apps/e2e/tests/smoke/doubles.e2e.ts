@@ -1,4 +1,4 @@
-import { STUB_URL } from '../../env'
+import { SAO_PAULO, STUB_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { interceptBlobUploads } from '../../fixtures/blob'
 import { query } from '../../fixtures/db'
@@ -44,7 +44,7 @@ test('geocoding vai para o stub da LocationIQ, inclusive o modo de erro', async 
   const [bar] = await query('SELECT latitude FROM bar WHERE user_id = $1', [
     owner.id
   ])
-  expect(Number(bar?.latitude)).toBeCloseTo(-23.5505)
+  expect(Number(bar?.latitude)).toBeCloseTo(SAO_PAULO.latitude)
 })
 
 test('webhook da Dodo assinado passa da verificação de assinatura', async ({

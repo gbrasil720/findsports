@@ -30,10 +30,7 @@ async function readOutbox(): Promise<OutboxEmail[]> {
  */
 export async function lastEmailTo(
   to: string,
-  {
-    subject,
-    timeout = 10_000
-  }: { subject?: string | RegExp; timeout?: number } = {}
+  { subject }: { subject?: string | RegExp } = {}
 ): Promise<OutboxEmail> {
   let found: OutboxEmail | undefined
   await expect
@@ -51,7 +48,7 @@ export async function lastEmailTo(
           .at(-1)
         return found
       },
-      { message: `e-mail para ${to} no outbox`, timeout }
+      { message: `e-mail para ${to} no outbox` }
     )
     .toBeDefined()
   return found as OutboxEmail
