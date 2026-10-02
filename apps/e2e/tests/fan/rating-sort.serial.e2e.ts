@@ -13,8 +13,9 @@ import { expect, test } from '../../fixtures/test'
 // Ordenação do `/dashboard` (WEB-178). Serial porque liga
 // `rating.public_display`, que é global.
 //
-// Um Elite mal avaliado e um Pro bem avaliado: na relevância o plano vem
-// antes da nota, em "Melhor avaliados" a nota vem antes do plano. As
+// Um Elite mal avaliado e um Pro bem avaliado, mais perto e com o jogo na
+// mesma hora: na relevância o plano vem antes da nota e da distância, em
+// "Melhor avaliados" a nota vem antes do plano. As
 // contagens vão direto em `bar.rating_*`, que o trigger de `bar_rating`
 // mantém — a busca lê só essas colunas.
 
@@ -22,15 +23,16 @@ test.afterEach(resetAppConfig)
 
 async function setup(page: Page) {
   const spot = uniqueSpot()
-  const elite = await pubAt(north(spot, 0.5), {
+  const elite = await pubAt(north(spot, 0.8), {
     bar: { rating_count: 5, rating_positive: 1 }
   })
-  const pro = await pubAt(north(spot, 0.8), {
+  const pro = await pubAt(north(spot, 0.5), {
     subscription: { plan: 'pro' },
     bar: { rating_count: 10, rating_positive: 10 }
   })
+  const startsAt = days(2)
   for (const { barId } of [elite, pro]) {
-    await createEvent({ barId, startsAt: days(2) })
+    await createEvent({ barId, startsAt })
   }
   await signInFanAt(page, spot)
   return { elite, pro }

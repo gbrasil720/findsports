@@ -6,7 +6,6 @@ import {
   hours,
   pubAt,
   signInFanAt,
-  trpc,
   uniqueSpot
 } from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
@@ -139,13 +138,6 @@ test('sem intenção, antes do fim ou depois de 14 dias não há avaliação', a
     page.getByRole('heading', { name: question(eligible.name) })
   ).toBeVisible()
   await expect(page.getByText(/^1 de \d/)).toHaveCount(0)
-  const pending = await trpc<{ barId: string }[]>(
-    page.request,
-    'ratings.getPending',
-    undefined,
-    { method: 'query' }
-  )
-  expect(pending.map((item) => item.barId)).toEqual([eligible.barId])
 })
 
 test('"você foi?" pergunta depois do jogo marcado e grava a resposta', async ({

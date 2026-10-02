@@ -6,6 +6,7 @@ import {
   createEvent,
   days,
   hours,
+  isFavorite,
   pubAt,
   signInFanAt,
   uniqueSpot
@@ -93,17 +94,7 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({ page }) =>
   await expect(
     page.getByRole('button', { name: 'Remover dos favoritos' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect
-    .poll(
-      async () =>
-        (
-          await query(
-            'SELECT 1 FROM user_favorite_bars WHERE user_id = $1 AND bar_id = $2',
-            [fan.id, pub.barId]
-          )
-        ).length
-    )
-    .toBe(1)
+  await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
 
   // Oferta da casa (Elite recebendo reservas) e cardápio (Pro/Elite)
   const offer = page.getByRole('region', { name: 'Oferta da casa' })

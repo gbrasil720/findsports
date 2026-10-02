@@ -1,10 +1,10 @@
 import type { Page } from '@playwright/test'
 import { SAO_PAULO } from '../../env'
-import { query } from '../../fixtures/db'
 import {
   createEvent,
   days,
   hours,
+  isFavorite,
   north,
   pubAt,
   setPreferences,
@@ -204,13 +204,7 @@ test('favoritar e desfavoritar pela lista', async ({ page }) => {
   const pub = await pubAt(north(spot, 0.5))
   await createEvent({ barId: pub.barId, startsAt: days(2) })
   const fan = await signInFanAt(page, spot)
-  const favorited = async () =>
-    (
-      await query(
-        'SELECT 1 FROM user_favorite_bars WHERE user_id = $1 AND bar_id = $2',
-        [fan.id, pub.barId]
-      )
-    ).length
+  const favorited = () => isFavorite(fan.id, pub.barId)
 
   await page.goto('/dashboard')
   await expect(page.getByText('1 bar perto de você')).toBeAttached()
@@ -229,7 +223,7 @@ test('favoritar e desfavoritar pela lista', async ({ page }) => {
   await expect(
     row.getByRole('button', { name: 'Remover dos favoritos' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(favorited).toBe(1)
+  await expect.poll(favorited).toBe(true)
 
   // Volta à tela do zero: o favorito vem do servidor, não do estado local.
   await page.goto('/dashboard')
@@ -238,7 +232,7 @@ test('favoritar e desfavoritar pela lista', async ({ page }) => {
   await expect(
     row.getByRole('button', { name: 'Adicionar aos favoritos' })
   ).toHaveAttribute('aria-pressed', 'false')
-  await expect.poll(favorited).toBe(0)
+  await expect.poll(favorited).toBe(false)
 })
 
 test('o mapa marca os bares e o marcador abre a página do bar', async ({

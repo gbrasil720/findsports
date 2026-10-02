@@ -30,11 +30,6 @@ export function north(spot: Spot, km: number): Spot {
   return { latitude: spot.latitude + km / 111, longitude: spot.longitude }
 }
 
-/** Geolocalização do contexto da página. Chame antes do `goto`. */
-export async function standAt(page: Page, spot: Spot) {
-  await page.context().setGeolocation(spot)
-}
-
 /**
  * Torcedor novo, logado e parado em `spot`. Os testes daqui mudam favoritos,
  * preferências e reservas, então nenhum usa a sessão compartilhada.
@@ -46,13 +41,8 @@ export async function signInFanAt(
 ): Promise<TestUser> {
   const fan = await createUser({ ...options, role: 'fan' })
   await signIn(page, fan)
-  await standAt(page, spot)
+  await page.context().setGeolocation(spot)
   return fan
-}
-
-/** Colunas da busca em snake_case para `createPub({ bar })`. */
-export function at(spot: Spot) {
-  return { latitude: spot.latitude, longitude: spot.longitude }
 }
 
 /** Bar ativo em `spot`, com nome único (o card na lista é "Ver <nome>"). */
@@ -63,9 +53,9 @@ export async function pubAt(
   const name = `Bar ${randomUUID().slice(0, 8)}`
   const pub = await createPub({
     ...options,
-    bar: { name, ...at(spot), ...options.bar }
+    bar: { ...options.bar, name, ...spot }
   })
-  return { ...pub, name: String(options.bar?.name ?? name) }
+  return { ...pub, name }
 }
 
 export const hours = (n: number) => new Date(Date.now() + n * 3_600_000)
@@ -89,16 +79,16 @@ export async function sportId(slug: string): Promise<string> {
 
 export async function team(
   slug: string
-): Promise<{ id: string; name: string }> {
-  const [row] = await query<{ id: string; name: string }>(
-    'SELECT id, name FROM team WHERE slug = $1',
+): Promise<{ id: string; name: string; sport_id: string }> {
+  const [row] = await query<{ id: string; name: string; sport_id: string }>(
+    'SELECT id, name, sport_id FROM team WHERE slug = $1',
     [slug]
   )
   if (!row) throw new Error(`time ${slug} não semeado`)
   return row
 }
 
-export type EventOptions = {
+type EventOptions = {
   barId: string
   startsAt: Date
   endsAt?: Date
@@ -138,38 +128,36 @@ export async function setPreferences(
     })
   }
   for (const slug of teams) {
-    const [row] = await query<{ id: string; sport_id: string }>(
-      'SELECT id, sport_id FROM team WHERE slug = $1',
-      [slug]
-    )
+    const { id, sport_id } = await team(slug)
     await insert('user_favorite_teams', {
       user_id: userId,
-      sport_id: row?.sport_id,
-      team_id: row?.id
+      sport_id,
+      team_id: id
     })
   }
 }
 
+export async function isFavorite(userId: string, barId: string) {
+  const rows = await query(
+    'SELECT 1 FROM user_favorite_bars WHERE user_id = $1 AND bar_id = $2',
+    [userId, barId]
+  )
+  return rows.length > 0
+}
+
 /**
- * Procedimento tRPC com a sessão de quem chama (`page.request` leva o cookie
- * do contexto), como o cliente do app chamaria. Mutação por padrão; `query`
- * usa GET.
+ * Mutação tRPC com a sessão de quem chama (`page.request` leva o cookie do
+ * contexto), como o cliente do app chamaria.
  */
 export async function trpc<T = unknown>(
   request: APIRequestContext,
   path: string,
-  input?: unknown,
-  { method = 'mutation' }: { method?: 'mutation' | 'query' } = {}
+  input: unknown
 ): Promise<T> {
-  const response =
-    method === 'query'
-      ? await request.get(`/api/trpc/${path}`, {
-          params: input === undefined ? {} : { input: JSON.stringify(input) }
-        })
-      : await request.post(`/api/trpc/${path}`, {
-          data: input ?? {},
-          headers: { origin: BASE_URL }
-        })
+  const response = await request.post(`/api/trpc/${path}`, {
+    data: input,
+    headers: { origin: BASE_URL }
+  })
   const body = await response.json()
   expect(response.ok(), JSON.stringify(body)).toBe(true)
   return body.result.data as T
