@@ -16,6 +16,7 @@ import Shield from 'reicon-react/icons/Shield'
 import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
+import { useSession } from '@/hooks/use-session'
 import { authClient } from '@/lib/auth-client'
 import {
   getUserFacingError,
@@ -35,7 +36,7 @@ type DialogMode = 'enable' | 'regenerate' | 'disable' | null
 type EnablePhase = 'password' | 'scan' | 'codes'
 
 export function TwoFactorSettings() {
-  const { data: session } = authClient.useSession()
+  const session = useSession()
   const [mode, setMode] = useState<DialogMode>(null)
   const enabled = session?.user.twoFactorEnabled === true
 
