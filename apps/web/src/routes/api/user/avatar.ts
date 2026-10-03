@@ -1,29 +1,20 @@
 import {
-  isOwnAvatarPathname,
-  PHOTO_CONTENT_TYPES,
-  PHOTO_MAX_BYTES
-} from '@findsports_oficial/api/lib/blob-avatar'
+  MediaUploadError,
+  signMediaUpload
+} from '@findsports_oficial/api/lib/media-upload'
 import { auth } from '@findsports_oficial/auth'
+import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { createFileRoute } from '@tanstack/react-router'
-import { type HandleUploadBody, handleUpload } from '@vercel/blob/client'
 
-class AvatarRouteError extends Error {
-  constructor(
-    readonly status: number,
-    message: string
-  ) {
-    super(message)
-  }
-}
-
+/** Mesmo desenho de `api/bar/photo`: a chave sai da sessão, não do cliente. */
 export const Route = createFileRoute('/api/user/avatar')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          let body: HandleUploadBody
+          let body: unknown
           try {
-            body = (await request.json()) as HandleUploadBody
+            body = await request.json()
           } catch {
             return Response.json({ error: 'Corpo inválido.' }, { status: 400 })
           }
@@ -32,41 +23,20 @@ export const Route = createFileRoute('/api/user/avatar')({
             headers: request.headers
           })
           if (!session) {
-            throw new AvatarRouteError(401, 'Não autorizado.')
+            throw new MediaUploadError(401, 'Não autorizado.')
           }
           if (!session.user.emailVerified) {
-            throw new AvatarRouteError(
+            throw new MediaUploadError(
               403,
               'Confirme seu e-mail para continuar.'
             )
           }
 
-          if (
-            body.type === 'blob.generate-client-token' &&
-            !isOwnAvatarPathname(body.payload.pathname, session.user.id)
-          ) {
-            throw new AvatarRouteError(400, 'Caminho não permitido.')
-          }
-
-          const resultado = await handleUpload({
-            request,
-            body,
-            onBeforeGenerateToken: async (pathname) => {
-              if (!isOwnAvatarPathname(pathname, session.user.id)) {
-                throw new AvatarRouteError(400, 'Caminho não permitido.')
-              }
-              return {
-                allowedContentTypes: [...PHOTO_CONTENT_TYPES],
-                maximumSizeInBytes: PHOTO_MAX_BYTES,
-                addRandomSuffix: false,
-                allowOverwrite: true
-              }
-            }
-          })
-
-          return Response.json(resultado)
+          return Response.json(
+            await signMediaUpload(avatarPathname(session.user.id), body)
+          )
         } catch (err) {
-          if (err instanceof AvatarRouteError) {
+          if (err instanceof MediaUploadError) {
             return Response.json({ error: err.message }, { status: err.status })
           }
           console.error(JSON.stringify({ event: 'user_avatar_route_failed' }))

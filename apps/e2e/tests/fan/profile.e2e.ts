@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test'
-import { BASE_URL, BLOB_STORE_ID } from '../../env'
-import { interceptBlobUploads } from '../../fixtures/blob'
+import { BASE_URL, BLOB_STORE_ID, MEDIA_PUBLIC_ORIGIN } from '../../env'
 import { insert, query } from '../../fixtures/db'
 import {
   createEvent,
@@ -11,6 +10,7 @@ import {
   signInFanAt,
   uniqueSpot
 } from '../../fixtures/fan'
+import { interceptMediaUploads } from '../../fixtures/media'
 import { expect, test } from '../../fixtures/test'
 
 // `/dashboard/profile` (WEB-178). Cada teste usa um torcedor próprio: todos
@@ -160,9 +160,8 @@ test('edita nome, esportes, raio e times', async ({ page }) => {
 test('avatar: upload interceptado e a imagem salva aparece', async ({
   page
 }) => {
-  const uploads = await interceptBlobUploads(page)
+  const uploads = await interceptMediaUploads(page)
   const fan = await signInFanAt(page, uniqueSpot())
-  const url = `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/${fan.id}/avatar`
 
   await page.goto('/dashboard/profile')
   await page.getByLabel('Escolher foto de perfil').setInputFiles({
@@ -175,26 +174,33 @@ test('avatar: upload interceptado e a imagem salva aparece', async ({
     )
   })
 
+  await expect
+    .poll(async () => (await userRow(fan.id))?.image)
+    .toMatch(
+      new RegExp(`^${MEDIA_PUBLIC_ORIGIN}/users/${fan.id}/avatar\\?v=\\d+$`)
+    )
+  const url = (await userRow(fan.id))?.image
   await expect(page.getByRole('img', { name: fan.name })).toHaveAttribute(
     'src',
-    url
+    url ?? ''
   )
   expect(uploads).toEqual([
     { pathname: `users/${fan.id}/avatar`, contentType: 'image/jpeg' }
   ])
-  await expect.poll(async () => (await userRow(fan.id))?.image).toBe(url)
 
   // Volta do servidor, não só do estado local.
   await page.reload()
   await expect(page.getByRole('img', { name: fan.name })).toHaveAttribute(
     'src',
-    url
+    url ?? ''
   )
 })
 
-test('avatar: a API recusa foto fora do nosso store', async ({ page }) => {
+test('avatar: a API recusa foto fora do nosso host', async ({ page }) => {
   const fan = await signInFanAt(page, uniqueSpot())
-  const own = `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/${fan.id}/avatar`
+  const own = `${MEDIA_PUBLIC_ORIGIN}/users/${fan.id}/avatar?v=1`
+  // Até a migração do WEB-202 reescrever o banco, o store antigo vale.
+  const old = `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/${fan.id}/avatar`
   const updateImage = (image: string) =>
     page.request.post('/api/auth/update-user', {
       data: { image },
@@ -202,15 +208,18 @@ test('avatar: a API recusa foto fora do nosso store', async ({ page }) => {
     })
 
   // Host de terceiro rastrearia quem vê a foto; avatar de outro usuário
-  // também não vale, mesmo no nosso store.
+  // também não vale, mesmo no nosso host.
   for (const image of [
     `https://evil.example/users/${fan.id}/avatar`,
+    `${MEDIA_PUBLIC_ORIGIN}/users/outro/avatar`,
     `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/outro/avatar`
   ]) {
     expect((await updateImage(image)).status()).toBe(400)
   }
   expect((await userRow(fan.id))?.image).toBeNull()
 
-  expect((await updateImage(own)).ok()).toBe(true)
-  expect((await userRow(fan.id))?.image).toBe(own)
+  for (const image of [old, own]) {
+    expect((await updateImage(image)).ok()).toBe(true)
+    expect((await userRow(fan.id))?.image).toBe(image)
+  }
 })

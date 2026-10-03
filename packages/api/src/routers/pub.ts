@@ -213,7 +213,7 @@ export const pubRouter = router({
       // deixaria um bar apontar a própria foto para um endereço arbitrário.
       if (
         input.photoUrl &&
-        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env.BLOB_STORE_ID)
+        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env)
       ) {
         throw new TRPCError({
           code: 'BAD_REQUEST',

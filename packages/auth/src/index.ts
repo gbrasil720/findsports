@@ -236,7 +236,7 @@ export function createAuth() {
               ctx.path === '/update-user'
                 ? (await getSessionFromCtx(ctx))?.user.id
                 : undefined
-            if (!isSafeUserImage(image, userId, env.BLOB_STORE_ID)) {
+            if (!isSafeUserImage(image, userId, env)) {
               throw new APIError('BAD_REQUEST', {
                 message: 'A foto precisa ser enviada pelo upload do perfil.'
               })

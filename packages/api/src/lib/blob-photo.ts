@@ -1,16 +1,15 @@
-import { isOwnBlobUrl } from '@findsports_oficial/auth/session-image'
+import {
+  isOwnMediaUrl,
+  type MediaHosts
+} from '@findsports_oficial/auth/session-image'
 
 /**
  * Regras da foto do bar (ESC-15).
  *
- * O upload passou a ir do navegador direto para o armazenamento de blobs, sem
- * atravessar a função serverless. Isso tira o arquivo do caminho da função,
- * mas move a autorização: quem decide onde o arquivo pode cair é o servidor,
- * na hora de emitir o token.
- *
- * O helper do Vercel Blob entrega o caminho pedido pelo cliente e aceita que
- * o servidor RECUSE — não que o reescreva. Então a recusa é a defesa: sem
- * validar aqui, um bar autenticado poderia gravar na pasta de outro.
+ * O upload vai do navegador direto para o armazenamento, sem atravessar a
+ * função serverless. Quem decide onde o arquivo cai é o servidor: desde o
+ * WEB-202 ele escolhe a chave e assina a URL do PUT (`media-upload.ts`), então
+ * o cliente não manda caminho nenhum.
  */
 
 /** 5 MB, o mesmo teto que a rota antiga aplicava. */
@@ -27,27 +26,16 @@ export function photoPathname(barId: string): string {
 }
 
 /**
- * O caminho pedido é exatamente o da foto DESTE bar?
+ * A URL veio mesmo do nosso armazenamento e aponta para a foto deste bar?
  *
- * Comparação exata, e não prefixo: aceitar `bars/<id>/…` deixaria o bar
- * gravar quantos arquivos quisesse na própria pasta, e a rota existe para uma
- * foto só.
- */
-export function isOwnPhotoPathname(pathname: string, barId: string): boolean {
-  return pathname === photoPathname(barId)
-}
-
-/**
- * A URL veio mesmo do nosso armazenamento e aponta para a pasta deste bar?
- *
- * Usada ao gravar `photoUrl`: como agora é o cliente que informa a URL depois
- * de subir o arquivo, aceitar qualquer string deixaria um bar apontar a
- * própria foto para um endereço arbitrário na internet.
+ * Usada ao gravar `photoUrl`: como é o cliente que informa a URL depois de
+ * subir o arquivo, aceitar qualquer string deixaria um bar apontar a própria
+ * foto para um endereço arbitrário na internet.
  */
 export function isOwnPhotoUrl(
   url: string,
   barId: string,
-  storeId: string | undefined
+  hosts: MediaHosts
 ): boolean {
-  return isOwnBlobUrl(url, photoPathname(barId), storeId)
+  return isOwnMediaUrl(url, photoPathname(barId), hosts)
 }

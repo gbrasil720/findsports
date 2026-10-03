@@ -1,9 +1,9 @@
-import { SAO_PAULO, STUB_URL } from '../../env'
+import { MEDIA_PUBLIC_ORIGIN, SAO_PAULO, STUB_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
-import { interceptBlobUploads } from '../../fixtures/blob'
 import { query } from '../../fixtures/db'
 import { sendDodoWebhook } from '../../fixtures/dodo'
 import { lastEmailTo } from '../../fixtures/email'
+import { interceptMediaUploads } from '../../fixtures/media'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -95,29 +95,23 @@ test('API da Dodo vai para o stub: portal e pagamentos', async ({ page }) => {
   )
 })
 
-test('upload para o Vercel Blob é interceptado no navegador', async ({
-  page
-}) => {
-  const uploads = await interceptBlobUploads(page)
+test('upload para o R2 é interceptado no navegador', async ({ page }) => {
+  const uploads = await interceptMediaUploads(page)
   await page.goto('/')
 
-  const blob = await page.evaluate(async () => {
+  const result = await page.evaluate(async (origin) => {
     const put = await fetch(
-      'https://vercel.com/api/blob/?pathname=bars/x/photo',
-      { method: 'PUT', headers: { authorization: 'Bearer t' }, body: 'x' }
+      'https://e2e.r2.cloudflarestorage.com/onside-media/bars/x/photo?X-Amz-Signature=x',
+      { method: 'PUT', headers: { 'content-type': 'image/png' }, body: 'x' }
     )
-    const { url } = (await put.json()) as { url: string }
-    const image = await fetch(url)
-    return { url, type: image.headers.get('content-type') }
-  })
+    const image = await fetch(`${origin}/bars/x/photo?v=1`)
+    return { put: put.status, type: image.headers.get('content-type') }
+  }, MEDIA_PUBLIC_ORIGIN)
 
   expect(uploads).toEqual([
-    expect.objectContaining({ pathname: 'bars/x/photo' })
+    { pathname: 'bars/x/photo', contentType: 'image/png' }
   ])
-  expect(blob).toEqual({
-    url: 'https://e2e.public.blob.vercel-storage.com/bars/x/photo',
-    type: 'image/png'
-  })
+  expect(result).toEqual({ put: 200, type: 'image/png' })
 })
 
 test.describe('mapa', () => {
