@@ -31,6 +31,17 @@ describe('getCallbackUrl', () => {
     expect(getCallbackUrl('/login?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
   })
 
+  // Etapas não são destino: o guard tira quem já passou por elas.
+  it('skips onboarding and access-pending, keeping what they carried', () => {
+    expect(login('/onboarding/pub')).toBe('/dashboard')
+    expect(login('/onboarding/fan?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
+    expect(login('/access-pending')).toBe('/dashboard')
+    expect(login('/access-pending?callbackUrl=%2Fadmin%3Ftab%3Deventos')).toBe(
+      '/admin?tab=eventos'
+    )
+    expect(login('/onboarding-guia')).toBe('/onboarding-guia')
+  })
+
   it.each([
     'http://evil.com/pub/abc',
     'http://localhost:3002/pub/abc',

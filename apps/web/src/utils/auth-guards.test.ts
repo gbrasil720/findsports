@@ -50,6 +50,7 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/internal')).toBe(true)
     expect(requiresAuthentication('/internal/waitlist')).toBe(true)
     expect(requiresAuthentication('/onboarding/fan')).toBe(true)
+    expect(requiresAuthentication('/access-pending')).toBe(true)
   })
 
   test('leaves marketing, auth, pubs, pub onboarding and unknown URLs public', () => {
@@ -82,6 +83,19 @@ describe('applyAuthGuards', () => {
     }
     expect(thrown).toMatchObject({
       options: { to: '/login', search: { callbackUrl: '/admin?tab=eventos' } }
+    })
+  })
+
+  test('sends visitors from the pending access screen to login with its destination', () => {
+    const href = '/access-pending?callbackUrl=%2Fapp'
+    let thrown: unknown
+    try {
+      applyAuthGuards(null, '/access-pending', {}, href)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toMatchObject({
+      options: { to: '/login', search: { callbackUrl: href } }
     })
   })
 
@@ -158,6 +172,12 @@ describe('applyAuthGuards', () => {
     expect(() =>
       applyAuthGuards(session('fan', true, null), '/access-pending')
     ).not.toThrow()
+    // Sem onboarding também espera aqui, sem laço com o onboarding.
+    for (const role of ['fan', 'pub'] as const) {
+      expect(() =>
+        applyAuthGuards(session(role, false, null), '/access-pending')
+      ).not.toThrow()
+    }
   })
 
   test('carries the requested path through the pending access screen', () => {
@@ -184,6 +204,21 @@ describe('applyAuthGuards', () => {
     ).toMatchObject({
       to: '/onboarding/fan?callbackUrl=%2Fapp%3Fevento%3D1'
     })
+    // O bar leva o destino pelo onboarding dele, como o torcedor.
+    expect(
+      redirectOf(session('pub', false), '/access-pending', {}, pending)
+    ).toMatchObject({
+      to: '/onboarding/pub?callbackUrl=%2Fapp%3Fevento%3D1'
+    })
+    // Quem esperou a liberação em `/onboarding/pub` não volta para ela
+    // carregando a si mesma: onboarding sem destino, ou casa se já concluiu.
+    const fromOnboarding = '/access-pending?callbackUrl=%2Fonboarding%2Fpub'
+    expect(
+      redirectOf(session('pub', false), '/access-pending', {}, fromOnboarding)
+    ).toMatchObject({ to: '/onboarding/pub' })
+    expect(
+      redirectOf(session('pub'), '/access-pending', {}, fromOnboarding)
+    ).toMatchObject({ to: '/admin' })
     // Sem destino, a casa do papel.
     expect(redirectOf(session('pub'), '/access-pending')).toMatchObject({
       to: '/admin'

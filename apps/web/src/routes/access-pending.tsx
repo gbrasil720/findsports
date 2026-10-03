@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
@@ -8,9 +8,6 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/access-pending')({
-  beforeLoad: ({ context }) => {
-    if (!context.session) throw redirect({ to: '/login' })
-  },
   component: AccessPendingPage
 })
 

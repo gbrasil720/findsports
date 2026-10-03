@@ -288,3 +288,56 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)
   ).toBeNull()
 })
+
+const pathOf = (page: Page) => {
+  const url = new URL(page.url())
+  return url.pathname + url.search
+}
+
+/** Bar sem acesso abre `from`, espera em /access-pending e é liberado. */
+async function admitWhileWaiting(page: Page, from: string) {
+  const owner = await createUser({
+    role: 'pub',
+    admitted: false,
+    onboardingCompleted: false
+  })
+  await signIn(page, owner)
+  await page.goto(from)
+  await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
+  await query('UPDATE "user" SET admitted_at = now() WHERE id = $1', [owner.id])
+  await page.reload()
+}
+
+test('link direto que esperou a liberação sobrevive ao onboarding do bar', async ({
+  page
+}) => {
+  const deepLink = '/admin/billing?ref=email'
+  await admitWhileWaiting(page, deepLink)
+  await expect
+    .poll(() => pathOf(page))
+    .toBe(`/onboarding/pub?callbackUrl=${encodeURIComponent(deepLink)}`)
+
+  await reachReview(page, {
+    name: 'Bar do Link',
+    address: street(),
+    neighborhood: 'Pinheiros'
+  })
+  await button(page, /Escolher meu plano/).click()
+  await expect.poll(() => pathOf(page)).toBe(deepLink)
+})
+
+test('bar que esperou a liberação no próprio onboarding volta a ele sem laço', async ({
+  page
+}) => {
+  await admitWhileWaiting(page, '/onboarding/pub')
+  // O onboarding não carrega a si mesmo como destino.
+  await expect.poll(() => pathOf(page)).toBe('/onboarding/pub')
+
+  await reachReview(page, {
+    name: 'Bar Sem Laço',
+    address: street(),
+    neighborhood: 'Pinheiros'
+  })
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+})

@@ -14,7 +14,9 @@ const AUTHENTICATED_PREFIXES = [
   '/app',
   // O onboarding de torcedor chama `pubs.getSports` e `onboarding.completeFan`,
   // ambos protegidos — visitante precisa criar sessão antes de entrar.
-  '/onboarding/fan'
+  '/onboarding/fan',
+  // A tela de espera é da conta logada; o login leva o destino que ela levava.
+  '/access-pending'
 ] as const
 
 export function requiresAuthentication(pathname: string) {
@@ -56,13 +58,14 @@ export function applyAuthGuards(
     return
   }
 
-  if (
-    session.user.role !== 'admin' &&
-    session.user.admittedAt === null &&
-    !pathname.startsWith('/access-pending')
-  ) {
+  if (session.user.role !== 'admin' && session.user.admittedAt === null) {
     // O destino pedido espera a liberação, como no login (WEB-210).
-    throw redirect({ to: '/access-pending', search: { callbackUrl: href } })
+    if (!pathname.startsWith('/access-pending')) {
+      throw redirect({ to: '/access-pending', search: { callbackUrl: href } })
+    }
+    // Sem liberação, nada adiante vale — nem o onboarding, que devolveria
+    // para cá num laço.
+    return
   }
 
   if (
@@ -76,9 +79,10 @@ export function applyAuthGuards(
         ? session.user.role === 'pub' && callbackUrl === '/dashboard'
           ? '/admin'
           : callbackUrl
-        : session.user.role === 'pub'
-          ? '/onboarding/pub'
-          : withCallbackUrl('/onboarding/fan', callbackUrl)
+        : withCallbackUrl(
+            session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan',
+            callbackUrl
+          )
     })
   }
 

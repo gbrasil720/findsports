@@ -17,9 +17,14 @@ export function getCallbackUrl(
     const url = new URL(locationHref, origin).searchParams.get('callbackUrl')
     if (!url) return '/dashboard'
     const parsed = new URL(url, origin)
-    return parsed.origin === origin
-      ? parsed.pathname + parsed.search
-      : '/dashboard'
+    if (parsed.origin !== origin) return '/dashboard'
+    // Onboarding e `/access-pending` são etapas, não destino: o guard tira
+    // quem já passou por elas, e voltar para lá ricochetearia. Vale o destino
+    // que a etapa carregava, se houver.
+    if (/^\/(onboarding|access-pending)(\/|$)/.test(parsed.pathname)) {
+      return getCallbackUrl(parsed.search, origin)
+    }
+    return parsed.pathname + parsed.search
   } catch {
     return '/dashboard'
   }

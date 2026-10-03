@@ -2,7 +2,11 @@ import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import { motivoTelefoneInvalido } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  useLocation,
+  useNavigate
+} from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Location from 'reicon-react/icons/Location'
@@ -28,6 +32,7 @@ import {
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { roleAccountLabel } from '@/lib/roles'
+import { getCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -60,6 +65,7 @@ const WELCOME_FEATURES = [
 
 function PubOnboarding() {
   const navigate = useNavigate()
+  const callbackUrl = getCallbackUrl(useLocation().href)
   const trpc = useTRPC()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const session = Route.useRouteContext({
@@ -96,7 +102,8 @@ function PubOnboarding() {
     // regravar o cache de sessão o guard da rota devolveria o usuário
     // para cá.
     await refreshSessionCache()
-    navigate({ to: '/plan' })
+    // Deep link que esperou a liberação volta para ele; sem destino, o plano.
+    navigate({ to: callbackUrl === '/dashboard' ? '/plan' : callbackUrl })
   }
 
   const completeMutation = useMutation(
