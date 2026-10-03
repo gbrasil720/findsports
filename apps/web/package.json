@@ -5,7 +5,11 @@
   "scripts": {
     "build": "vite build",
     "build:vercel": "if [ \"$VERCEL_ENV\" = production ]; then bun run --cwd ../.. db:migrate:deploy; fi && vite build && bun scripts/build-vercel.mjs",
-    "check-types": "tsc --noEmit",
+    "build:cf": "vite build --mode cloudflare",
+    "deploy:cf": "vite build --mode cloudflare && wrangler deploy",
+    "preview:cf": "vite build --mode cloudflare && vite preview --mode cloudflare",
+    "cf-typegen": "wrangler types --strict-vars=false",
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
     "test": "bun test --preload=../../test-env.preload.ts",
     "serve": "vite preview",
     "dev": "vite dev",
@@ -45,6 +49,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.62.5",
     "@maplibre/maplibre-gl-style-spec": "^26.4.1",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@tanstack/react-router-devtools": "^1.167.2",
@@ -55,6 +60,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^29.0.2",
     "typescript": "catalog:",
-    "vite": "^8.0.8"
+    "vite": "^8.0.8",
+    "wrangler": "4.147.0"
   }
 }

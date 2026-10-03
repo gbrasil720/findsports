@@ -26,6 +26,7 @@
       "!**/.alchemy",
       "!**/.svelte-kit",
       "!**/wrangler.jsonc",
+      "!**/worker-configuration.d.ts",
       "!**/.source",
       "!**/convex/_generated",
       "!apps/web/public/map",

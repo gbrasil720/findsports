@@ -1,9 +1,10 @@
+import { cloudflare } from '@cloudflare/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ['input-otp'],
     /**
@@ -38,5 +39,17 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
-  plugins: [tailwindcss(), tanstackStart(), viteReact()]
-})
+  plugins: [
+    /**
+     * WEB-199: só no build da Cloudflare (`vite build --mode cloudflare`).
+     * Com o plugin, o `vite dev` roda o SSR em workerd, e o E2E depende do dev
+     * em Node (outbox de e-mail em `node:fs`, resolver do banco local). O
+     * `build:vercel` também é `vite build`, por isso o corte é o modo, e não
+     * o comando.
+     */
+    mode === 'cloudflare' && cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact()
+  ]
+}))
