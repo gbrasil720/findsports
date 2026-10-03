@@ -12,10 +12,6 @@ const rawEnv = createEnv({
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z.email().optional(),
-    BLOB_STORE_ID: z
-      .string()
-      .regex(/^[a-zA-Z0-9_-]+$/, 'BLOB_STORE_ID inválido')
-      .optional(),
     /**
      * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
      * servidor assina um PUT com a chave S3 do bucket e o navegador sobe

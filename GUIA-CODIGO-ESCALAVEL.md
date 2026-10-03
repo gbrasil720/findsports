@@ -254,7 +254,7 @@ caminho — só recusar. Então recusar é a defesa:
 
 - comparação **exata**, não prefixo (`bar-1234` não pode passar por `bar-123`)
 - host validado por **sufixo**, não substring
-  (`…vercel-storage.com.exemplo.com` precisa cair)
+  (`media.onside.sh.exemplo.com` precisa cair)
 - só `https`
 
 ### 3.4 Dado que entra em HTML precisa de escape do HTML

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { BASE_URL, BLOB_STORE_ID, MEDIA_PUBLIC_ORIGIN } from '../../env'
+import { BASE_URL, MEDIA_PUBLIC_ORIGIN } from '../../env'
 import { insert, query } from '../../fixtures/db'
 import {
   createEvent,
@@ -199,8 +199,6 @@ test('avatar: upload interceptado e a imagem salva aparece', async ({
 test('avatar: a API recusa foto fora do nosso host', async ({ page }) => {
   const fan = await signInFanAt(page, uniqueSpot())
   const own = `${MEDIA_PUBLIC_ORIGIN}/users/${fan.id}/avatar?v=1`
-  // Até a migração do WEB-202 reescrever o banco, o store antigo vale.
-  const old = `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/${fan.id}/avatar`
   const updateImage = (image: string) =>
     page.request.post('/api/auth/update-user', {
       data: { image },
@@ -208,18 +206,16 @@ test('avatar: a API recusa foto fora do nosso host', async ({ page }) => {
     })
 
   // Host de terceiro rastrearia quem vê a foto; avatar de outro usuário
-  // também não vale, mesmo no nosso host.
+  // também não vale, mesmo no nosso host. O Vercel Blob saiu no WEB-202.
   for (const image of [
     `https://evil.example/users/${fan.id}/avatar`,
     `${MEDIA_PUBLIC_ORIGIN}/users/outro/avatar`,
-    `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/outro/avatar`
+    `https://e2e.public.blob.vercel-storage.com/users/${fan.id}/avatar`
   ]) {
     expect((await updateImage(image)).status()).toBe(400)
   }
   expect((await userRow(fan.id))?.image).toBeNull()
 
-  for (const image of [old, own]) {
-    expect((await updateImage(image)).ok()).toBe(true)
-    expect((await userRow(fan.id))?.image).toBe(image)
-  }
+  expect((await updateImage(own)).ok()).toBe(true)
+  expect((await userRow(fan.id))?.image).toBe(own)
 })
