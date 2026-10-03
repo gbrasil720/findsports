@@ -8,9 +8,28 @@ do mapa são dublês.
 ```bash
 bun run test:e2e                              # tudo, nos dois projetos
 bun run test:e2e -- --project=desktop         # só desktop (o setup vem junto)
-bun run test:e2e -- tests/auth                # uma área
 bun run test:e2e -- --ui                      # modo interativo
+
+# Um recorte: SEMPRE com --project=desktop --project=mobile (ver abaixo)
+bun run test:e2e -- --project=desktop --project=mobile tests/auth
+
+# Só os seriais de um recorte, como o CI: setup, depois os seriais sem deps
+bun run test:e2e -- --project=setup
+bun run test:e2e -- --project=desktop-serial --no-deps tests/smoke
 ```
+
+**Recorte por caminho puxa a suíte inteira se pegar um `*.serial.e2e.ts`.**
+`bun run test:e2e -- tests/smoke` roda quase a suíte toda, não só
+`tests/smoke`: `doubles.serial.e2e.ts` cai em `desktop-serial`, que depende de
+`desktop` e `mobile`, e projeto de dependência roda inteiro, sem o filtro de
+caminho. A maioria das áreas tem um serial (`ls apps/e2e/tests/*/*.serial.e2e.ts`).
+`--project=desktop --project=mobile` deixa os seriais de fora e roda só o
+recorte. Para os seriais, rode `setup` e depois `desktop-serial`/`mobile-serial`
+com `--no-deps`, em comandos separados como no CI: com `--no-deps` nada garante
+que o `setup` rode antes. Na dúvida, confira a contagem com `--list` antes.
+
+Os argumentos depois de `--` chegam inteiros ao Playwright; o script só faz
+`cd apps/e2e && bunx playwright test`, e o caminho é relativo a `apps/e2e`.
 
 ## Rodar local
 
@@ -153,7 +172,8 @@ arquivo `*.serial.e2e.ts`, com `setAppConfig(chave, valor)` e
 Esses arquivos rodam nos projetos `desktop-serial` e `mobile-serial`, com um
 worker só, **depois** que `desktop` e `mobile` terminam. Consequência: se um
 teste paralelo falha, os seriais não rodam (dependência de projeto do
-Playwright). Corrija o paralelo primeiro.
+Playwright). Corrija o paralelo primeiro. Pelo mesmo motivo, recorte por
+caminho que pega um serial roda a suíte paralela inteira — ver o topo.
 
 ### Seletores
 
