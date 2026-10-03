@@ -305,7 +305,9 @@ async function admitWhileWaiting(page: Page, from: string) {
   await page.goto(from)
   await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
   await query('UPDATE "user" SET admitted_at = now() WHERE id = $1', [owner.id])
-  await page.reload()
+  // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação, e o
+  // clique em "Começar" antes dela se perde.
+  await page.goto(page.url())
 }
 
 test('link direto que esperou a liberação sobrevive ao onboarding do bar', async ({
