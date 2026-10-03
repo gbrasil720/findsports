@@ -17,6 +17,22 @@ const rawEnv = createEnv({
       .regex(/^[a-zA-Z0-9_-]+$/, 'BLOB_STORE_ID inválido')
       .optional(),
     /**
+     * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
+     * servidor assina um PUT com a chave S3 do bucket e o navegador sobe
+     * direto; a leitura sai de `MEDIA_PUBLIC_ORIGIN`.
+     *
+     * Opcionais, como a LocationIQ: faltando, só o upload de foto para, com
+     * mensagem própria — o deploy pode chegar antes das variáveis.
+     */
+    R2_MEDIA_ACCESS_KEY_ID: z.string().min(1).optional(),
+    R2_MEDIA_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    // Vira subdomínio da URL de upload: só letra e dígito.
+    CF_ACCOUNT_ID: z
+      .string()
+      .regex(/^[a-zA-Z0-9]+$/, 'CF_ACCOUNT_ID inválido')
+      .optional(),
+    MEDIA_PUBLIC_ORIGIN: z.url({ protocol: /^https$/ }).optional(),
+    /**
      * Geocoding do cadastro de bar (WEB-73). Era `GOOGLE_MAPS_API_KEY`, um
      * SKU faturado que parou de responder quando o trial do Google Cloud
      * acabou; agora é a LocationIQ, cujo tier grátis (5.000/dia) cobre o

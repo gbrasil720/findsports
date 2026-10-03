@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import type { Locator, Page } from '@playwright/test'
-import { STUB_URL } from '../../env'
+import { MEDIA_PUBLIC_ORIGIN, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { interceptBlobUploads } from '../../fixtures/blob'
 import { insert, query } from '../../fixtures/db'
+import { interceptMediaUploads } from '../../fixtures/media'
 import { createPub } from '../../fixtures/pubs'
 import { createEvent } from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
 // "Meu espaço": edição do perfil, geocoding só quando o endereço muda
-// (WEB-146), foto pelo upload direto para o Blob, recursos pagos de um bar
+// (WEB-146), foto pelo upload direto para o R2, recursos pagos de um bar
 // Elite, avaliações e prévia.
 
 /** Bar com rua única: as consultas ao stub da LocationIQ são filtradas por ela. */
@@ -145,10 +145,8 @@ test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço
   expect(bar?.address).toBe(street)
 })
 
-test('trocar a foto sobe para o Blob e grava a URL do bar', async ({
-  page
-}) => {
-  const uploads = await interceptBlobUploads(page)
+test('trocar a foto sobe para o R2 e grava a URL do bar', async ({ page }) => {
+  const uploads = await interceptMediaUploads(page)
   const { barId } = await openProfile(page)
 
   const saved = page.waitForResponse(/pub\.updateMe/)
@@ -163,19 +161,23 @@ test('trocar a foto sobe para o Blob e grava a URL do bar', async ({
   expect((await saved).ok()).toBe(true)
 
   expect(uploads).toEqual([
-    expect.objectContaining({ pathname: `bars/${barId}/photo` })
+    { pathname: `bars/${barId}/photo`, contentType: 'image/png' }
   ])
-  const photoUrl = `https://e2e.public.blob.vercel-storage.com/bars/${barId}/photo`
+  // `?v=` fura o cache da borda quando a foto é trocada no mesmo caminho.
   const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
-  expect(bar?.photo_url).toBe(photoUrl)
-  await expect(editor(page).locator(`img[src="${photoUrl}"]`)).toBeVisible()
+  expect(bar?.photo_url).toMatch(
+    new RegExp(`^${MEDIA_PUBLIC_ORIGIN}/bars/${barId}/photo\\?v=\\d+$`)
+  )
+  await expect(
+    editor(page).locator(`img[src="${bar?.photo_url}"]`)
+  ).toBeVisible()
 })
 
 test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não tratada', async ({
   page
 }) => {
   const pageErrors = collectPageErrors(page)
-  const uploads = await interceptBlobUploads(page)
+  const uploads = await interceptMediaUploads(page)
   await page.route('**/api/trpc/pub.updateMe**', (route) => route.abort())
   const { barId } = await openProfile(page)
 
@@ -207,7 +209,7 @@ test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não trata
 test('foto em formato errado é recusada no navegador, sem upload', async ({
   page
 }) => {
-  const uploads = await interceptBlobUploads(page)
+  const uploads = await interceptMediaUploads(page)
   await openProfile(page)
 
   await pickPhoto(page, {
@@ -226,7 +228,7 @@ for (const [name, mimeType] of [
   ['bar.webp', 'image/webp']
 ] as const) {
   test(`foto ${mimeType} é aceita`, async ({ page }) => {
-    const uploads = await interceptBlobUploads(page)
+    const uploads = await interceptMediaUploads(page)
     const { barId } = await openProfile(page)
 
     const saved = page.waitForResponse(/pub\.updateMe/)
@@ -245,7 +247,7 @@ for (const [name, mimeType] of [
 test('foto acima de 5 MB é recusada no navegador, sem upload', async ({
   page
 }) => {
-  const uploads = await interceptBlobUploads(page)
+  const uploads = await interceptMediaUploads(page)
   await openProfile(page)
 
   await pickPhoto(page, {

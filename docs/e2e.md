@@ -2,7 +2,7 @@
 
 Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
 descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
-Pixel 7, e não sai para a rede: e-mail, LocationIQ, Vercel Blob, Dodo e tiles
+Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Dodo e tiles
 do mapa são dublês.
 
 ```bash
@@ -187,7 +187,7 @@ caminho que pega um serial roda a suíte paralela inteira — ver o topo.
 |---|---|---|
 | E-mail (Resend) | `E2E_EMAIL_OUTBOX`: `sendEmailWithResend` grava uma linha JSON por e-mail em `apps/e2e/.outbox/emails.jsonl` e responde como entregue. Vem antes da Resend, então nem uma chave real sai | `lastEmailTo(email, { subject })` em `fixtures/email.ts`, com `.link` (o link de ação) |
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
-| Vercel Blob | O upload sai do navegador: `page.route` responde o PUT com URL do store `e2e` (o mesmo `BLOB_STORE_ID` do servidor) e serve um pixel nessa URL. O token do cliente sai da rota real | `interceptBlobUploads(page)` em `fixtures/blob.ts`, antes do `goto` |
+| R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
 | Dodo (webhook) | `DODO_PAYMENTS_WEBHOOK_SECRET` de teste no servidor; o helper assina como a Dodo (Standard Webhooks). O corpo precisa passar no `WebhookPayloadSchema` do `@dodopayments/core` | `sendDodoWebhook(request, payload)` em `fixtures/dodo.ts`; corpo de `subscription.*` pronto em `subscriptionWebhook(tipo, { email, subscriptionId, plan })` (`fixtures/dodo-payloads.ts`). Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
 | Dodo (API) | `stubs/dodo-api.mjs` entra no `vite dev` por `NODE_OPTIONS=--import` e reescreve todo `fetch` para `https://{test,live}.dodopayments.com` para `${STUB_URL}/dodo` (`E2E_DODO_API_URL`). Respostas fixas: customer achado pelo e-mail (`cus_e2e_…`), portal em `${STUB_URL}/dodo/portal/<customer>`, um pagamento `succeeded` de 9900, sessão de checkout com `checkout_url` em `${STUB_URL}/dodo/checkout/<session>` (página do stub, para o teste esperar o redirect). Abrir checkout exige `setAppConfig('billing.checkout_enabled', true)`, então é teste serial | `GET ${STUB_URL}/dodo/calls` lista `{ method, path, query, body }` de cada chamada; filtre pelo e-mail do seu usuário |
 | Mapa | `VITE_MAP_TILES_URL` aponta para um PMTiles válido e vazio servido pelo stub: o mapa monta sem tiles, marcadores aparecem | — |

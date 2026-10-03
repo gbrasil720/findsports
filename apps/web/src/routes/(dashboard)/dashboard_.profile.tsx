@@ -1,8 +1,6 @@
-import { avatarPathname } from '@findsports_oficial/api/lib/blob-avatar'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { upload } from '@vercel/blob/client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { toast } from 'sonner'
@@ -43,6 +41,7 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { CATALOG_QUERY } from '@/lib/query-cache'
+import { uploadMedia } from '@/lib/upload-media'
 import {
   getUserFacingError,
   getUserFacingMessage,
@@ -285,12 +284,8 @@ function ProfilePage() {
     setUploadingImage(true)
     try {
       const compressed = await compressProfileImage(file)
-      const blob = await upload(avatarPathname(user.id), compressed, {
-        access: 'public',
-        handleUploadUrl: '/api/user/avatar',
-        contentType: 'image/jpeg'
-      })
-      await persistProfileUser(authClient.updateUser, { image: blob.url })
+      const image = await uploadMedia('/api/user/avatar', compressed)
+      await persistProfileUser(authClient.updateUser, { image })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
     } catch {
       setImageError('Erro ao processar imagem. Tente novamente.')

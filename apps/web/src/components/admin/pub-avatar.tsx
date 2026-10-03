@@ -1,27 +1,23 @@
 import {
   PHOTO_CONTENT_TYPES,
-  PHOTO_MAX_BYTES,
-  photoPathname
+  PHOTO_MAX_BYTES
 } from '@findsports_oficial/api/lib/blob-photo'
-import { upload } from '@vercel/blob/client'
 import { useRef, useState } from 'react'
 import Camera from 'reicon-react/icons/Camera'
 import Loader from 'reicon-react/icons/Loader'
+import { uploadMedia } from '@/lib/upload-media'
 
 const ALLOWED_TYPES: readonly string[] = PHOTO_CONTENT_TYPES
 const MAX_BYTES = PHOTO_MAX_BYTES
 
 type Props = {
-  /** Necessário para o servidor validar o caminho do upload (ESC-15). */
-  barId: string
   name: string
   photoUrl?: string | null
   /** Grava a URL; rejeitar cai no erro do avatar (WEB-212). */
   onUploadSuccess: (url: string) => Promise<void>
 }
 
-export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
-  const pathname = photoPathname(barId)
+export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,10 +37,10 @@ export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
     setUploading(true)
 
     // ESC-15: o arquivo vai do navegador direto para o armazenamento. A rota
-    // só autoriza e devolve um token de curta duração — os bytes não passam
-    // mais pela função serverless.
+    // só autoriza e devolve uma URL assinada de curta duração — os bytes não
+    // passam pela função serverless.
     //
-    // Formato e tamanho continuam validados no servidor, ao emitir o token;
+    // Formato e tamanho continuam validados no servidor, ao assinar;
     // esta checagem aqui é só para o usuário receber o erro na hora, sem
     // esperar o envio.
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -61,13 +57,7 @@ export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
     }
 
     try {
-      const blob = await upload(pathname, file, {
-        access: 'public',
-        handleUploadUrl: '/api/bar/photo',
-        contentType: file.type
-      })
-
-      await onUploadSuccess(blob.url)
+      await onUploadSuccess(await uploadMedia('/api/bar/photo', file))
     } catch (error) {
       setError('Erro ao fazer upload. Tente novamente.')
       console.error(error)

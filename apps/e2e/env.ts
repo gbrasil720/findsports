@@ -25,8 +25,11 @@ export const OUTBOX_FILE = fileURLToPath(
 /** Formato do Standard Webhooks que a Dodo usa: `whsec_` + base64. */
 export const DODO_WEBHOOK_SECRET = `whsec_${Buffer.from('e2e-only-dodo-webhook-secret').toString('base64')}`
 
-/** Casa com o store id embutido no `BLOB_READ_WRITE_TOKEN` abaixo. */
+/** Store antigo do Vercel Blob: URL dele ainda passa até o passo 9 do WEB-202. */
 export const BLOB_STORE_ID = 'e2e'
+
+/** Domínio público falso do bucket de fotos; `fixtures/media.ts` serve a leitura. */
+export const MEDIA_PUBLIC_ORIGIN = 'https://media.e2e.test'
 
 /** Centro de São Paulo: geolocalização do navegador, stub e bares semeados. */
 export const SAO_PAULO = { latitude: -23.5505, longitude: -46.6333 }
@@ -54,7 +57,12 @@ export const SERVER_ENV: Record<string, string> = {
   LOCATIONIQ_API_KEY: 'e2e-fake-key',
   LOCATIONIQ_BASE_URL: STUB_URL,
   BLOB_STORE_ID,
-  BLOB_READ_WRITE_TOKEN: `vercel_blob_rw_${BLOB_STORE_ID}_e2eonlysecret`,
+  // O PUT para `e2e.r2.cloudflarestorage.com` nunca sai do navegador: o
+  // `fixtures/media.ts` responde. A assinatura com chave falsa é a real.
+  CF_ACCOUNT_ID: 'e2e',
+  R2_MEDIA_ACCESS_KEY_ID: 'e2e-fake-key',
+  R2_MEDIA_SECRET_ACCESS_KEY: 'e2e-fake-secret',
+  MEDIA_PUBLIC_ORIGIN,
   DODO_PAYMENTS_API_KEY: 'e2e-fake-key',
   DODO_PAYMENTS_WEBHOOK_SECRET: DODO_WEBHOOK_SECRET,
   // Lida pelo `stubs/dodo-api.mjs`, não pelo app.

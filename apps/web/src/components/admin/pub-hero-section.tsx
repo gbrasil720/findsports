@@ -142,7 +142,6 @@ export function PubHeroSection({
           >
             {/* Avatar clicável */}
             <BarAvatar
-              barId={bar.id}
               name={bar.name}
               photoUrl={bar.photoUrl}
               onUploadSuccess={onPhotoUpdate}
