@@ -16,7 +16,8 @@ type Props = {
   barId: string
   name: string
   photoUrl?: string | null
-  onUploadSuccess: (url: string) => void
+  /** Grava a URL; rejeitar cai no erro do avatar (WEB-212). */
+  onUploadSuccess: (url: string) => Promise<void>
 }
 
 export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
@@ -66,7 +67,7 @@ export function BarAvatar({ barId, name, photoUrl, onUploadSuccess }: Props) {
         contentType: file.type
       })
 
-      onUploadSuccess(blob.url)
+      await onUploadSuccess(blob.url)
     } catch (error) {
       setError('Erro ao fazer upload. Tente novamente.')
       console.error(error)

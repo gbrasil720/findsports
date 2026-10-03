@@ -51,7 +51,7 @@ type Props = {
   liveEvent?: Event
   totalCount: number
   onSave: (data: EditForm) => Promise<void>
-  onPhotoUpdate: (url: string) => void
+  onPhotoUpdate: (url: string) => Promise<void>
   isSaving?: boolean
   saveError?: string | null
 }
@@ -145,9 +145,7 @@ export function PubHeroSection({
               barId={bar.id}
               name={bar.name}
               photoUrl={bar.photoUrl}
-              onUploadSuccess={(url) => {
-                onPhotoUpdate(url)
-              }}
+              onUploadSuccess={onPhotoUpdate}
             />
 
             <div className="flex-1 min-w-0">
