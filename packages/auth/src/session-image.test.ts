@@ -44,5 +44,8 @@ describe('foto no user da sessão', () => {
     ).toBe(false)
     expect(isSafeUserImage('javascript:alert(1)', USER, STORE)).toBe(false)
     expect(isSafeUserImage(12, USER, STORE)).toBe(false)
+    expect(isSafeUserImage(`${OWN}?${'a'.repeat(2100)}`, USER, STORE)).toBe(
+      false
+    )
   })
 })

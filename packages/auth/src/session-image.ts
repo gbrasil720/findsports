@@ -37,8 +37,9 @@ export function avatarPathname(userId: string): string {
 
 /**
  * Valor aceito em `user.image`: limpar o campo, ou o avatar deste usuário no
- * nosso store. Também mantém o cookie de sessão pequeno — ele serializa o
- * `user` inteiro, e uma data URL estourava o header na Vercel (494).
+ * nosso store. O teto de tamanho mantém o cookie de sessão pequeno — ele
+ * serializa o `user` inteiro, e uma data URL estourava o header na Vercel
+ * (494); query string no nosso store ainda passaria sem ele.
  */
 export function isSafeUserImage(
   image: unknown,
@@ -46,6 +47,6 @@ export function isSafeUserImage(
   storeId: string | undefined
 ): boolean {
   if (image == null || image === '') return true
-  if (typeof image !== 'string' || !userId) return false
+  if (typeof image !== 'string' || image.length > 2048 || !userId) return false
   return isOwnBlobUrl(image, avatarPathname(userId), storeId)
 }
