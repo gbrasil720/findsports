@@ -76,6 +76,16 @@ código e o rollback (`bunx wrangler rollback`) não a desfaz, ela tem de ser
 compatível com o código anterior (expand → contract). PR publica no Worker
 `onside-web-preview`, com o branch `preview` do Neon, depois de migrá-lo.
 
+**Preview** (`https://onside-web-preview.dev-guilhermebrasil.workers.dev`): uma URL só,
+o último PR publicado ganha. Banco = branch `preview` do Neon (cópia de produção, com
+e-mails de usuários reais) via Hyperdrive `onside-db-preview`; o CI migra pelo segredo
+`DATABASE_URL_PREVIEW`. Segredos do Worker: `BETTER_AUTH_SECRET` próprio, chaves de
+teste da Dodo, `LOCATIONIQ_API_KEY`. **Sem `RESEND_API_KEY` de propósito**: nenhum
+e-mail sai do preview — e, como ele roda com `NODE_ENV=production`, o envio falha
+("Resend não configurado") em vez de cair no console; teste com usuário já verificado.
+Sem chaves R2: upload de foto desligado. Para atualizar os dados, Neon → branch
+`preview` → **Reset from parent** (mesma conexão; Hyperdrive e segredo não mudam).
+
 `db:push` continua existindo para experimentar schema sem gerar arquivo, mas **não use
 para pôr um banco em dia**: ele cria os objetos sem escrever em
 `drizzle.__drizzle_migrations`, e o `migrate` seguinte tenta aplicar migrations cujos
