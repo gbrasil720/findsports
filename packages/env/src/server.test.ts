@@ -41,3 +41,34 @@ describe('test-only switches (WEB-174)', () => {
     }
   })
 })
+
+describe('preview switches', () => {
+  const preview = 'https://onside-web-preview.example.workers.dev'
+
+  it('accepts EMAIL_DELIVERY=console outside the production domain', () => {
+    expect(
+      loadServerEnv({ EMAIL_DELIVERY: 'console', PUBLIC_APP_URL: preview })
+        .exitCode
+    ).toBe(0)
+  })
+
+  it('refuses EMAIL_DELIVERY=console on onside.sh', () => {
+    for (const url of ['https://www.onside.sh', 'https://onside.sh']) {
+      const result = loadServerEnv({
+        EMAIL_DELIVERY: 'console',
+        PUBLIC_APP_URL: url
+      })
+      expect(result.exitCode).not.toBe(0)
+      expect(result.stderr.toString()).toContain('EMAIL_DELIVERY')
+    }
+  })
+
+  it('validates DODO_PAYMENTS_ENVIRONMENT', () => {
+    expect(
+      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'test_mode' }).exitCode
+    ).toBe(0)
+    expect(
+      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'sandbox' }).exitCode
+    ).not.toBe(0)
+  })
+})

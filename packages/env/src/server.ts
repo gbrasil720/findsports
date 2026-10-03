@@ -15,6 +15,18 @@ const rawEnv = createEnv({
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z.email().optional(),
     /**
+     * `console`: o e-mail vai para o log (com o link, que é como se testa)
+     * e conta como entregue, mesmo com `RESEND_API_KEY`. Só para o Worker de
+     * preview, cujo banco é cópia de produção com e-mails reais. Sem ela,
+     * produção sem Resend continua falhando alto.
+     */
+    EMAIL_DELIVERY: z.literal('console').optional(),
+    /**
+     * Ausente, segue o NODE_ENV (`production` → `live_mode`). O preview roda
+     * com NODE_ENV=production e chaves de teste, então fixa `test_mode`.
+     */
+    DODO_PAYMENTS_ENVIRONMENT: z.enum(['test_mode', 'live_mode']).optional(),
+    /**
      * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
      * servidor assina um PUT com a chave S3 do bucket e o navegador sobe
      * direto; a leitura sai de `MEDIA_PUBLIC_ORIGIN`.
@@ -85,6 +97,16 @@ if (rawEnv.NODE_ENV === 'production') {
       `Variáveis só de E2E recusadas em produção: ${set.join(', ')}.`
     )
   }
+}
+
+// O preview também roda com NODE_ENV=production; o que o separa de produção é
+// o domínio. Lá o console engoliria e-mail de verdade e logaria tokens.
+if (
+  rawEnv.EMAIL_DELIVERY === 'console' &&
+  rawEnv.PUBLIC_APP_URL &&
+  /(^|\.)onside\.sh$/.test(new URL(rawEnv.PUBLIC_APP_URL).hostname)
+) {
+  throw new Error('EMAIL_DELIVERY=console recusada no domínio de produção.')
 }
 
 const LOCAL_HOSTNAMES = new Set([

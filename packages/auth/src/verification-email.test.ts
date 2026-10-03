@@ -165,6 +165,38 @@ describe('e-mail de verificação Onside', () => {
     }
   })
 
+  it('com EMAIL_DELIVERY=console (preview), loga o link mesmo em produção e com chave', async () => {
+    const previous = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    process.env.EMAIL_DELIVERY = 'console'
+    const log = console.log
+    const lines: unknown[] = []
+    console.log = (...args: unknown[]) => {
+      lines.push(args)
+    }
+    try {
+      const result = await sendEmailWithResend({
+        apiKey: 're_real',
+        fromEmail: 'contato@onside.app',
+        to: 'ana@example.com',
+        subject: 'Confirme seu e-mail',
+        html: '<p>Olá</p>',
+        text: 'Olá\n\nhttps://preview.example/verify?token=abc',
+        fetcher: async () => {
+          throw new Error('não deveria chamar o Resend')
+        }
+      })
+      expect(result).toEqual({ delivered: true })
+      expect(String(lines[0])).toContain(
+        'https://preview.example/verify?token=abc'
+      )
+    } finally {
+      console.log = log
+      process.env.NODE_ENV = previous
+      delete process.env.EMAIL_DELIVERY
+    }
+  })
+
   it('repassa a chave idempotente para campanhas', async () => {
     let request: Request | undefined
     await sendEmailWithResend({

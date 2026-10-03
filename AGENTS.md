@@ -80,9 +80,13 @@ compatível com o código anterior (expand → contract). PR publica no Worker
 o último PR publicado ganha. Banco = branch `preview` do Neon (cópia de produção, com
 e-mails de usuários reais) via Hyperdrive `onside-db-preview`; o CI migra pelo segredo
 `DATABASE_URL_PREVIEW`. Segredos do Worker: `BETTER_AUTH_SECRET` próprio, chaves de
-teste da Dodo, `LOCATIONIQ_API_KEY`. **Sem `RESEND_API_KEY` de propósito**: nenhum
-e-mail sai do preview — e, como ele roda com `NODE_ENV=production`, o envio falha
-("Resend não configurado") em vez de cair no console; teste com usuário já verificado.
+teste da Dodo, `LOCATIONIQ_API_KEY`. Ele roda com `NODE_ENV=production`, então duas
+vars em `env.preview` desligam o que isso ligaria: `DODO_PAYMENTS_ENVIRONMENT=test_mode`
+(sem ela a Dodo iria para `live_mode`) e `EMAIL_DELIVERY=console` — **nenhum e-mail sai
+do preview**: cadastro, verificação e reset de senha gravam o e-mail, com link e token,
+no log do Worker (`bunx wrangler tail onside-web-preview`), que é como se testa.
+Aceitável por ser ambiente de teste; o env recusa `EMAIL_DELIVERY=console` com
+`PUBLIC_APP_URL` em `onside.sh`, e produção sem `RESEND_API_KEY` continua falhando alto.
 Sem chaves R2: upload de foto desligado. Para atualizar os dados, Neon → branch
 `preview` → **Reset from parent** (mesma conexão; Hyperdrive e segredo não mudam).
 
