@@ -79,7 +79,7 @@ function FanOnboarding() {
   const sports = sportsQuery.data ?? []
   const selectedSports = sports.filter((s) => selectedSportIds.includes(s.id))
 
-  const seguirParaDashboard = async () => {
+  const seguirParaDestino = async () => {
     // `onboardingCompleted` e `searchRadiusKm` mudaram no banco por fora
     // do better-auth; sem regravar o cache de sessão o guard da rota
     // devolveria o usuário para cá.
@@ -96,7 +96,7 @@ function FanOnboarding() {
           sports: selectedSports.map((s) => s.slug),
           radius_km: radius
         })
-        await seguirParaDashboard()
+        await seguirParaDestino()
       },
       onError: async (err) => {
         const concluido = mensagemOnboardingJaConcluido(err)
@@ -110,7 +110,7 @@ function FanOnboarding() {
           return
         }
         toast.info(concluido)
-        await seguirParaDashboard()
+        await seguirParaDestino()
       }
     })
   )
