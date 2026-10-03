@@ -24,3 +24,12 @@ export function getCallbackUrl(
     return '/dashboard'
   }
 }
+
+// WEB-211: o destino do cadastro viaja na URL, e não no `sessionStorage`: o
+// link do e-mail de verificação abre em outra aba. `/dashboard` é o padrão de
+// `getCallbackUrl`, então nem vai junto.
+export function withCallbackUrl(path: string, callbackUrl: string): string {
+  if (callbackUrl === '/dashboard') return path
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}callbackUrl=${encodeURIComponent(callbackUrl)}`
+}

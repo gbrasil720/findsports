@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { getCallbackUrl } from './callback-url'
+import { getCallbackUrl, withCallbackUrl } from './callback-url'
 
 // `href` chega relativo, como o TanStack Router entrega em `useLocation()`.
 describe('getCallbackUrl', () => {
@@ -42,5 +42,23 @@ describe('getCallbackUrl', () => {
     'data:text/html,hi'
   ])('returns /dashboard for other-origin callbackUrl %p', (callbackUrl) => {
     expect(login(callbackUrl)).toBe('/dashboard')
+  })
+})
+
+describe('withCallbackUrl', () => {
+  const origin = 'http://localhost:3001'
+
+  it('leaves the path alone for the default destination', () => {
+    expect(withCallbackUrl('/verify-email', '/dashboard')).toBe('/verify-email')
+  })
+
+  it('round-trips through getCallbackUrl, with or without a query', () => {
+    for (const path of ['/onboarding/fan', '/verify-email?confirmed=1']) {
+      const href = withCallbackUrl(path, '/pub/abc?eventId=x&y=1')
+      expect(getCallbackUrl(href, origin)).toBe('/pub/abc?eventId=x&y=1')
+    }
+    expect(withCallbackUrl('/verify-email?confirmed=1', '/pub/abc')).toBe(
+      '/verify-email?confirmed=1&callbackUrl=%2Fpub%2Fabc'
+    )
   })
 })

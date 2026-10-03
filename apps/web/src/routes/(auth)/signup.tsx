@@ -26,7 +26,7 @@ import { OnsideBrand } from '@/components/brand/onside-brand'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { getCallbackUrl } from '@/utils/callback-url'
+import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
 const PENDING_VERIFICATION_KEY = 'onside:pending-verification'
@@ -135,7 +135,7 @@ function SignupPage() {
         email,
         password,
         role,
-        callbackURL: '/verify-email?confirmed=1'
+        callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl)
       })
       setIsLoading(false)
       if (error) {
@@ -151,10 +151,15 @@ function SignupPage() {
       if (source === 'waitlist_launch') analytics.launchSignupCompleted()
       sessionStorage.setItem(
         PENDING_VERIFICATION_KEY,
-        JSON.stringify({ email, role, callbackUrl })
+        JSON.stringify({ email, role })
       )
       toast.success('Enviamos um link de confirmação para o seu e-mail.')
-      navigate({ to: role === 'pub' ? '/onboarding/pub' : '/verify-email' })
+      navigate({
+        to:
+          role === 'pub'
+            ? '/onboarding/pub'
+            : withCallbackUrl('/verify-email', callbackUrl)
+      })
     }
   })
 
