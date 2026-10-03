@@ -185,7 +185,7 @@ test.describe('logout', () => {
 
     await expect(page).toHaveURL(/\/$/)
     await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/login$/)
+    await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
   test('pelo shell interno', async ({ page }) => {
@@ -200,7 +200,7 @@ test.describe('logout', () => {
 
     await expect(page).toHaveURL(/\/$/)
     await page.goto('/internal')
-    await expect(page).toHaveURL(/\/login$/)
+    await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
   test('pelas configurações da conta', async ({ page }) => {
@@ -213,7 +213,7 @@ test.describe('logout', () => {
 
     await expect(page).toHaveURL(/\/login$/)
     await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/login$/)
+    await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 })
 

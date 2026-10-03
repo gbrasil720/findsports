@@ -16,7 +16,7 @@ test('visitante é mandado para o /login em toda rota interna', async ({
 }) => {
   for (const route of INTERNAL_ROUTES) {
     await page.goto(route)
-    await expect(page, route).toHaveURL(/\/login$/)
+    await expect(page, route).toHaveURL(/\/login\?callbackUrl=/)
   }
 })
 

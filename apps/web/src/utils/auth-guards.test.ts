@@ -72,6 +72,21 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(null, '/admin')).toThrow()
   })
 
+  // WEB-210: o destino original volta como callbackUrl, com a query.
+  test('carries the requested path and query to login as callbackUrl', () => {
+    try {
+      applyAuthGuards(null, '/admin', { tab: 'eventos' }, '/admin?tab=eventos')
+      throw new Error('visitante deveria ir para o login')
+    } catch (error) {
+      expect(
+        (error as { options?: { to?: string; search?: unknown } }).options
+      ).toMatchObject({
+        to: '/login',
+        search: { callbackUrl: '/admin?tab=eventos' }
+      })
+    }
+  })
+
   test('lets visitors stay on unknown URLs so the 404 can render', () => {
     expect(() => applyAuthGuards(null, '/pagina-que-nao-existe')).not.toThrow()
   })

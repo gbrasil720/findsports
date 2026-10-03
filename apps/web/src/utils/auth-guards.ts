@@ -25,13 +25,16 @@ export function requiresAuthentication(pathname: string) {
 export function applyAuthGuards(
   session: AuthSession,
   pathname: string,
-  search: Record<string, unknown> = {}
+  search: Record<string, unknown> = {},
+  href = pathname
 ) {
   // Unknown URLs stay public so the 404 page can render for visitors.
   // /onboarding/pub stays public — o rascunho pré-cadastro depende do fluxo
   // de verificação de e-mail, que precisa funcionar antes da sessão existir.
+  // WEB-210: `href` relativo (caminho + query) volta como destino do login;
+  // `getCallbackUrl` só aceita mesma origem.
   if (!session && requiresAuthentication(pathname)) {
-    throw redirect({ to: '/login' })
+    throw redirect({ to: '/login', search: { callbackUrl: href } })
   }
 
   if (!session) return

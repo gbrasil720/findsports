@@ -75,7 +75,7 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
     await expect(sessions.getByRole('article')).toHaveCount(1)
 
     await otherPage.goto('/dashboard')
-    await expect(otherPage).toHaveURL(/\/login$/)
+    await expect(otherPage).toHaveURL(/\/login\?callbackUrl=/)
     // Quem revogou continua dentro.
     await page.goto('/dashboard')
     await expect(page).toHaveURL(/\/dashboard$/)
