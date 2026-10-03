@@ -1,0 +1,11 @@
+# Só os arquivos de public/ (Workers assets) passam por aqui. O que o Worker
+# responde (SSR, /api) recebe o HSTS em src/worker.ts; hsts.test.ts mantém
+# os dois valores iguais. Mesmo valor que a Vercel mandava, sem
+# includeSubDomains: mail, media e tiles não passam por este Worker.
+/*
+  Strict-Transport-Security: max-age=63072000
+
+# Como a Vercel servia.
+/robots.txt
+  Access-Control-Allow-Origin: *
+  Content-Type: text/plain; charset=utf-8

@@ -224,6 +224,11 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   recusar o estilo com `Invalid sprite URL "…", must be absolute`, e o mapa fica
   em "Carregando mapa…" para sempre — sem cartão de erro, porque nenhum erro
   chega ao componente. Por isso `criarEstiloDoMapa` recebe a origem.
+- **O `@2x` do sprite custa um 307 no Workers assets.** O MapLibre acrescenta
+  `@2x` ao `sprite` em tela de alta densidade, e o Workers assets redireciona
+  `light@2x.*` para `light%402x.*` antes de servir. Duas regras `200` em
+  `apps/web/public/_redirects` reescrevem direto para a forma codificada. Sprite
+  novo com outro nome precisa das mesmas duas linhas.
 - **`maplibre-gl` está em `optimizeDeps.exclude`** (`apps/web/vite.config.ts`).
   O pré-empacotamento do Vite quebra o `new Worker(new URL(...))` do MapLibre e
   o worker vira 404 em desenvolvimento; sem worker, nenhum tile é decodificado —
