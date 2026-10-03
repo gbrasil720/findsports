@@ -1,23 +1,51 @@
 import { describe, expect, it } from 'bun:test'
 import { isSafeUserImage } from './session-image'
 
+const USER = 'user-123'
+const STORE = 'loja-123'
+const OWN = `https://${STORE}.public.blob.vercel-storage.com/users/${USER}/avatar`
+
 describe('foto no user da sessão', () => {
-  it('aceita URL https curta, nulo e string vazia', () => {
-    expect(isSafeUserImage(null)).toBe(true)
-    expect(isSafeUserImage(undefined)).toBe(true)
-    expect(isSafeUserImage('')).toBe(true)
-    expect(
-      isSafeUserImage(
-        'https://store.public.blob.vercel-storage.com/users/abc/avatar'
-      )
-    ).toBe(true)
+  it('aceita limpar o campo e o avatar do próprio usuário no nosso store', () => {
+    expect(isSafeUserImage(null, USER, STORE)).toBe(true)
+    expect(isSafeUserImage(undefined, USER, STORE)).toBe(true)
+    expect(isSafeUserImage('', USER, STORE)).toBe(true)
+    expect(isSafeUserImage(OWN, USER, STORE)).toBe(true)
   })
 
-  it('recusa data URL, http, javascript e string longa demais', () => {
-    expect(isSafeUserImage('data:image/jpeg;base64,/9j/AAAA')).toBe(false)
-    expect(isSafeUserImage('http://onside.sh/foto.jpg')).toBe(false)
-    expect(isSafeUserImage('javascript:alert(1)')).toBe(false)
-    expect(isSafeUserImage(`https://onside.sh/${'a'.repeat(2100)}`)).toBe(false)
-    expect(isSafeUserImage(12)).toBe(false)
+  it('recusa host de terceiro, mesmo https e com o mesmo caminho', () => {
+    expect(
+      isSafeUserImage(`https://evil.example/users/${USER}/avatar`, USER, STORE)
+    ).toBe(false)
+    expect(
+      isSafeUserImage(
+        `https://outra.public.blob.vercel-storage.com/users/${USER}/avatar`,
+        USER,
+        STORE
+      )
+    ).toBe(false)
+  })
+
+  it('recusa avatar de outro usuário, sem usuário ou sem store', () => {
+    expect(isSafeUserImage(OWN, 'user-999', STORE)).toBe(false)
+    expect(isSafeUserImage(OWN, undefined, STORE)).toBe(false)
+    expect(isSafeUserImage(OWN, USER, undefined)).toBe(false)
+  })
+
+  it('recusa data URL, http, porta, javascript e não-string', () => {
+    expect(
+      isSafeUserImage('data:image/jpeg;base64,/9j/AAAA', USER, STORE)
+    ).toBe(false)
+    expect(isSafeUserImage(OWN.replace('https', 'http'), USER, STORE)).toBe(
+      false
+    )
+    expect(
+      isSafeUserImage(OWN.replace('.com/', '.com:444/'), USER, STORE)
+    ).toBe(false)
+    expect(isSafeUserImage('javascript:alert(1)', USER, STORE)).toBe(false)
+    expect(isSafeUserImage(12, USER, STORE)).toBe(false)
+    expect(isSafeUserImage(`${OWN}?${'a'.repeat(2100)}`, USER, STORE)).toBe(
+      false
+    )
   })
 })

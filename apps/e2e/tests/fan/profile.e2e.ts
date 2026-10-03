@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { BLOB_STORE_ID } from '../../env'
+import { BASE_URL, BLOB_STORE_ID } from '../../env'
 import { interceptBlobUploads } from '../../fixtures/blob'
 import { insert, query } from '../../fixtures/db'
 import {
@@ -190,4 +190,27 @@ test('avatar: upload interceptado e a imagem salva aparece', async ({
     'src',
     url
   )
+})
+
+test('avatar: a API recusa foto fora do nosso store', async ({ page }) => {
+  const fan = await signInFanAt(page, uniqueSpot())
+  const own = `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/${fan.id}/avatar`
+  const updateImage = (image: string) =>
+    page.request.post('/api/auth/update-user', {
+      data: { image },
+      headers: { origin: BASE_URL }
+    })
+
+  // Host de terceiro rastrearia quem vê a foto; avatar de outro usuário
+  // também não vale, mesmo no nosso store.
+  for (const image of [
+    `https://evil.example/users/${fan.id}/avatar`,
+    `https://${BLOB_STORE_ID}.public.blob.vercel-storage.com/users/outro/avatar`
+  ]) {
+    expect((await updateImage(image)).status()).toBe(400)
+  }
+  expect((await userRow(fan.id))?.image).toBeNull()
+
+  expect((await updateImage(own)).ok()).toBe(true)
+  expect((await userRow(fan.id))?.image).toBe(own)
 })
