@@ -235,8 +235,11 @@ não exercitar o cache em si — isso fica com os testes unitários
   role o alvo para a vista antes.
 - **Rate limit.** Já isolado por IP. `clearRateLimits()` existe para um teste
   que esgota o limite de propósito e quer recomeçar.
-- **Callback do login.** `getCallbackUrl` ignora todo `callbackUrl` e devolve
-  `/dashboard` até o WEB-182; teste que dependa disso fica `test.fixme`.
+- **Callback do login.** O destino viaja como `callbackUrl` (só mesma origem,
+  via `getCallbackUrl`) pelo guard, login, cadastro, verificação de e-mail,
+  `/access-pending` e os dois onboardings. Depois de um redirect do guard, a
+  URL de `/login` tem `?callbackUrl=`: compare com `/\/login\?callbackUrl=/`,
+  não com `/\/login$/`.
 
 ## CI
 
