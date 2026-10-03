@@ -1,5 +1,10 @@
 import { useMutation } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  useLocation,
+  useNavigate
+} from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
@@ -14,6 +19,7 @@ import {
   PUB_ONBOARDING_DRAFT_KEY,
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
+import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
 const PENDING_VERIFICATION_KEY = 'onside:pending-verification'
@@ -42,6 +48,9 @@ function readPendingEmail(): string {
 
 function VerifyEmailPage() {
   const navigate = useNavigate()
+  // Vem no link do e-mail (WEB-211): a aba aberta por ele não tem o
+  // `sessionStorage` da aba do cadastro.
+  const callbackUrl = getCallbackUrl(useLocation().href)
   const trpc = useTRPC()
   const continuing = useRef(false)
   const [email, setEmail] = useState('')
@@ -95,15 +104,15 @@ function VerifyEmailPage() {
 
       if (data.user.role === 'pub') navigate({ to: '/plan' })
       else if (data.user.role === 'admin') navigate({ to: '/internal' })
-      else if (data.user.onboardingCompleted) navigate({ to: '/dashboard' })
-      else navigate({ to: '/onboarding/fan' })
+      else if (data.user.onboardingCompleted) navigate({ to: callbackUrl })
+      else navigate({ to: withCallbackUrl('/onboarding/fan', callbackUrl) })
     } catch {
       toast.error('Não foi possível concluir a confirmação. Tente novamente.')
     } finally {
       continuing.current = false
       setChecking(false)
     }
-  }, [completePub, navigate])
+  }, [callbackUrl, completePub, navigate])
 
   useEffect(() => {
     setEmail(readPendingEmail())
@@ -120,7 +129,7 @@ function VerifyEmailPage() {
     setResending(true)
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: '/verify-email?confirmed=1'
+      callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl)
     })
     setResending(false)
     if (error) {

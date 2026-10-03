@@ -1,6 +1,7 @@
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 import {
@@ -103,6 +104,39 @@ test.describe('portão da waitlist fechado', () => {
     await expect(page).toHaveURL(/\/verify-email$/)
     expect(await admittedAt(email)).not.toBeNull()
   })
+})
+
+// WEB-211: o destino vai no link do e-mail, que abre noutra aba — sem o
+// `sessionStorage` da aba do cadastro — e atravessa o onboarding do torcedor.
+test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', async ({
+  page,
+  context
+}) => {
+  const { barId } = await createPub()
+  const email = uniqueEmail('signup-bar')
+  await approveOnWaitlist(email)
+
+  await page.goto(`/pub/${barId}`)
+  await page.getByRole('link', { name: 'Criar conta grátis' }).click()
+  await expect(page).toHaveURL(/\/signup\?callbackUrl=/)
+  await submitSignup(page, { name: 'Torcedor do Bar', email })
+  await expect(page).toHaveURL(/\/verify-email\?callbackUrl=/)
+
+  const { link } = await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
+  const tab = await context.newPage()
+  await tab.goto(link)
+  await expect(tab).toHaveURL(/\/onboarding\/fan\?callbackUrl=/)
+
+  const button = (name: string) =>
+    tab.getByRole('button', { name, exact: true })
+  await button('Começar').click()
+  await button('Futebol').click()
+  await button('Continuar').click()
+  await button('Pular').click()
+  await button('Continuar').click()
+  await button('Salvar e encontrar bares').click()
+
+  await expect(tab).toHaveURL(new RegExp(`/pub/${barId}$`))
 })
 
 test('login com e-mail não verificado é recusado e reenvia a verificação', async ({
