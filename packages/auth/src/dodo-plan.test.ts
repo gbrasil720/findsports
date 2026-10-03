@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { planForProduct } from './dodo-plan'
+import { dodoEnvironment, planForProduct } from './dodo-plan'
 
 describe('planForProduct', () => {
   test('mapeia os três produtos conhecidos', () => {
@@ -12,5 +12,18 @@ describe('planForProduct', () => {
     for (const id of ['pdt_inexistente', '', undefined, 'toString']) {
       expect(planForProduct(id)).toBeNull()
     }
+  })
+})
+
+describe('dodoEnvironment', () => {
+  test('sem configuração, segue o NODE_ENV', () => {
+    expect(dodoEnvironment(undefined, 'production')).toBe('live_mode')
+    expect(dodoEnvironment(undefined, 'development')).toBe('test_mode')
+    expect(dodoEnvironment(undefined, 'test')).toBe('test_mode')
+  })
+
+  test('configurado vence o NODE_ENV (preview em produção usa teste)', () => {
+    expect(dodoEnvironment('test_mode', 'production')).toBe('test_mode')
+    expect(dodoEnvironment('live_mode', 'development')).toBe('live_mode')
   })
 })

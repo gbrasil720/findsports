@@ -25,7 +25,7 @@ import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { runInBackground } from './background'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
-import { DODO_PRODUCTS, planForProduct } from './dodo-plan'
+import { DODO_PRODUCTS, dodoEnvironment, planForProduct } from './dodo-plan'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
@@ -45,7 +45,7 @@ function cookieDomainFor(baseUrl: string): string | undefined {
 
 export const dodoClient = new DodoPayments({
   bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
-  environment: process.env.NODE_ENV === 'production' ? 'live_mode' : 'test_mode'
+  environment: dodoEnvironment(env.DODO_PAYMENTS_ENVIRONMENT, env.NODE_ENV)
 })
 
 // WEB-194: caso de cobrança que o webhook não aplica. Vai como uma linha JSON
