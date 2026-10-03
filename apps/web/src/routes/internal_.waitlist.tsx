@@ -50,10 +50,8 @@ export const Route = createFileRoute('/internal_/waitlist')({
     return { session }
   },
   loader: async ({ context }) => {
-    if (!context.session) {
-      throw redirect({ to: '/login' })
-    }
-    if (context.session.user.role !== 'admin') {
+    // Sem sessão, o guard da raiz (applyAuthGuards) já mandou para o /login.
+    if (context.session?.user.role !== 'admin') {
       throw redirect({ to: '/' })
     }
   },
