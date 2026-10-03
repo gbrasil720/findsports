@@ -1,0 +1,47 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // WEB-199: app em Workers. A Vercel segue servindo www.onside.sh até o
+  // corte (WEB-205); este Worker só responde em onside-web.<sub>.workers.dev.
+  "name": "onside-web",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // URL de versão usaria o banco e os segredos de produção (épico WEB-198,
+  // risco 6). Preview por PR é outro Worker (WEB-204).
+  "preview_urls": false,
+  // Perto do Neon (aws-us-east-1). Sem isso o Worker roda perto do usuário e
+  // cada query cruza São Paulo → Virgínia.
+  "placement": { "region": "aws:us-east-1" },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  // WEB-201: Neon pela conexão direta (sem -pooler), cache de query
+  // DESLIGADO — ligado, o rate limit e a leitura logo após a escrita erram
+  // em silêncio. Conferir com `wrangler hyperdrive get <id>`.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "a8e2a503b7fe4d9c837babf4f1259daa",
+      "localConnectionString": "postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev"
+    }
+  ],
+  // WEB-200: o que não é segredo. Segredos via `wrangler secret put`
+  // (lista em .dev.vars.example). Nenhuma chave E2E_* aqui: o env recusa o
+  // boot em produção com elas.
+  //
+  // BETTER_AUTH_URL e CORS_ORIGIN apontam para o workers.dev enquanto ele é
+  // só teste: o better-auth confia só nessa origem (e na irmã www.), e a
+  // Vercel, com as variáveis dela, não muda. No corte (WEB-205) os dois
+  // viram https://www.onside.sh, e aí o workers.dev deixa de logar.
+  // PUBLIC_APP_URL já é o domínio público: é ele que vai nos links de e-mail.
+  "vars": {
+    "NODE_ENV": "production",
+    "BETTER_AUTH_URL": "https://onside-web.dev-guilhermebrasil.workers.dev",
+    "CORS_ORIGIN": "https://onside-web.dev-guilhermebrasil.workers.dev",
+    "PUBLIC_APP_URL": "https://www.onside.sh",
+    "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
+    "LAUNCH_ADMISSION_MODE": "invite-only",
+    "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
+    "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
+  }
+  // r2_buckets, triggers (WEB-203) e routes (WEB-205) entram depois.
+}

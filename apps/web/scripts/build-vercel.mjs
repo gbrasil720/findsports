@@ -30,6 +30,8 @@ mkdirSync(funcDir, { recursive: true })
 
 // Static assets → served directly by Vercel CDN
 cpSync(distClient, `${vercelOut}/static`, { recursive: true })
+// Regras de redirect do Workers (WEB-199); aqui o redirect está em `routes`.
+rmSync(`${vercelOut}/static/_redirects`, { force: true })
 
 // Server assets (dynamic import chunks) → must live next to index.mjs
 if (existsSync(`${distServer}/assets`)) {

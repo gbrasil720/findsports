@@ -284,7 +284,11 @@ function RootDocument() {
           <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         </>
       ) : null}
-      <DeferredVercelAnalytics />
+      {/* WEB-199: no build da Cloudflare o script da Vercel só daria 404.
+          A Vercel segue com ele até sair (WEB-206). */}
+      {import.meta.env.MODE === 'cloudflare' ? null : (
+        <DeferredVercelAnalytics />
+      )}
     </>
   )
 }

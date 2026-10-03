@@ -13,6 +13,8 @@
  * que permitiria cachear também o resultado da busca.
  */
 
+import { isCloudflareWorkers } from '@findsports_oficial/auth/runtime'
+
 type Entry<T> = { value: T; expiresAt: number }
 
 export type TtlCache<T> = {
@@ -69,7 +71,9 @@ export function createTtlCache<T>(options: {
           inFlight.delete(key)
         })
 
-      inFlight.set(key, promessa)
+      // No Workers a promessa é da requisição que disparou a carga: outra que
+      // a aguardasse ficaria pendurada se aquela fosse cancelada (WEB-199).
+      if (!isCloudflareWorkers) inFlight.set(key, promessa)
       return promessa
     },
     clear() {

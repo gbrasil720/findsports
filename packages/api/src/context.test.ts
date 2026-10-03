@@ -16,4 +16,15 @@ describe('extrairIp', () => {
     )
     expect(extrairIp(new Headers())).toBe('unknown')
   })
+
+  it('no Workers ignora o x-forwarded-for que o cliente mandou', () => {
+    const headers = new Headers({
+      'x-forwarded-for': '6.6.6.6, 203.0.113.10',
+      'cf-connecting-ip': '203.0.113.10'
+    })
+    expect(extrairIp(headers, true)).toBe('203.0.113.10')
+    expect(extrairIp(new Headers({ 'x-forwarded-for': '6.6.6.6' }), true)).toBe(
+      'unknown'
+    )
+  })
 })

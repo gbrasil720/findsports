@@ -1,5 +1,13 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
+  // WEB-199: o Worker tem tipos de runtime próprios (tsconfig.worker.json),
+  // que brigam com os do DOM.
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/worker.ts",
+    "worker-configuration.d.ts"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

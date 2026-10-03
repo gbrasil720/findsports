@@ -10,7 +10,6 @@ import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
-import { waitUntil } from '@vercel/functions'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import {
@@ -24,9 +23,11 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
+import { runInBackground } from './background'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
 import { DODO_PRODUCTS, planForProduct } from './dodo-plan'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
+import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { sessionTokenGuard } from './session-token'
@@ -214,7 +215,12 @@ export function createAuth() {
   return betterAuth({
     appName: 'Onside',
     advanced: {
-      backgroundTasks: { handler: waitUntil },
+      backgroundTasks: { handler: runInBackground },
+      // WEB-199: no Workers o `x-forwarded-for` traz o que o cliente mandou;
+      // na Vercel fica o padrão (`x-forwarded-for`, sobrescrito por ela).
+      ...(isCloudflareWorkers
+        ? { ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] } }
+        : {}),
       ...(cookieDomain
         ? {
             crossSubDomainCookies: {

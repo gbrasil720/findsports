@@ -34,7 +34,9 @@ async function activate(request: Request) {
           // O rate limit de login do better-auth (3 por 10s) conta por IP.
           // Sem o IP do cliente, toda ativação caía no mesmo balde global, e
           // a quarta em 10s criava a conta mas mandava a pessoa para /login.
-          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? ''
+          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
+          // No Workers o better-auth lê só este (WEB-199).
+          'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? ''
         },
         body: JSON.stringify({
           email: result.email,

@@ -1,0 +1,12 @@
+# Segredos do Worker onside-web (WEB-200). Em produção: `wrangler secret put <NOME>`.
+# Localmente só valem para `wrangler dev` / `bun run preview:cf`: copie para
+# `.dev.vars` (fora do git). O dev normal (`vite dev`) segue em Node e lê `.env`.
+# Os `vars` não secretos estão em wrangler.jsonc; o banco vem do binding
+# HYPERDRIVE (localConnectionString), não de DATABASE_URL.
+BETTER_AUTH_SECRET=
+RESEND_API_KEY=
+LOCATIONIQ_API_KEY=
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_SECRET=
+R2_MEDIA_ACCESS_KEY_ID=
+R2_MEDIA_SECRET_ACCESS_KEY=
