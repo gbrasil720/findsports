@@ -171,6 +171,30 @@ test('trocar a foto sobe para o Blob e grava a URL do bar', async ({
   await expect(editor(page).locator(`img[src="${photoUrl}"]`)).toBeVisible()
 })
 
+test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não tratada', async ({
+  page
+}) => {
+  const pageErrors = collectPageErrors(page)
+  const uploads = await interceptBlobUploads(page)
+  await page.route('**/api/trpc/pub.updateMe**', (route) => route.abort())
+  const { barId } = await openProfile(page)
+
+  await pickPhoto(page, {
+    name: 'bar.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('e2e-image')
+  })
+
+  // O upload conclui; quem falha é a gravação da URL (WEB-212).
+  await expect(editor(page).getByRole('alert')).toHaveText(
+    'Erro ao fazer upload. Tente novamente.'
+  )
+  expect(uploads).toHaveLength(1)
+  const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
+  expect(bar?.photo_url).toBeNull()
+  expect(pageErrors).toEqual([])
+})
+
 test('foto em formato errado é recusada no navegador, sem upload', async ({
   page
 }) => {
