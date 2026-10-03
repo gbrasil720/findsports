@@ -69,6 +69,13 @@ IDs use `crypto.randomUUID()` as default.
 **Migration é a via oficial em dev e em produção.** `NODE_ENV=development bun run db:migrate`
 põe um banco local em dia; `db:generate` cria o arquivo versionado.
 
+**Produção só migra pelo job `deploy` do CI** (`.github/workflows/ci.yml`, WEB-204):
+push em `master` → `db:migrate:deploy` no banco de produção → `wrangler deploy` do
+Worker `onside-web`. O build da Vercel não migra. Como a migration sobe antes do
+código e o rollback (`bunx wrangler rollback`) não a desfaz, ela tem de ser
+compatível com o código anterior (expand → contract). PR publica no Worker
+`onside-web-preview`, com o branch `preview` do Neon, depois de migrá-lo.
+
 `db:push` continua existindo para experimentar schema sem gerar arquivo, mas **não use
 para pôr um banco em dia**: ele cria os objetos sem escrever em
 `drizzle.__drizzle_migrations`, e o `migrate` seguinte tenta aplicar migrations cujos
