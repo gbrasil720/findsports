@@ -42,6 +42,12 @@
     "LAUNCH_ADMISSION_MODE": "invite-only",
     "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
-  }
-  // r2_buckets, triggers (WEB-203) e routes (WEB-205) entram depois.
+  },
+  // WEB-203: retenção diária de analytics (scheduled() em src/worker.ts).
+  // VAZIO DE PROPÓSITO até o corte: a Vercel ainda roda a mesma rotina às
+  // 04:00 UTC, e este Worker escreve no banco de produção. No corte (WEB-205)
+  // troque por ["0 4 * * *"] e faça deploy. Para desligar, volte para [] e
+  // faça deploy — apagar a chave não remove o agendamento já publicado.
+  "triggers": { "crons": [] }
+  // r2_buckets e routes (WEB-205) entram depois.
 }
