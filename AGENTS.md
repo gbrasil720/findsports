@@ -133,7 +133,7 @@ sprite/glyphs, `maplibre-gl` fora do `optimizeDeps` do Vite).
 
 Playwright em `apps/e2e`, job `e2e` no CI. **Antes de escrever ou rodar teste de
 navegador, leia `docs/e2e.md`** — fixtures, dublês (outbox de e-mail, stub da
-LocationIQ, Blob, webhook da Dodo), por que o servidor roda sem cache e as
+LocationIQ, R2, webhook da Dodo), por que o servidor roda sem cache e as
 variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
 ### Routing

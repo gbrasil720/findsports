@@ -6,7 +6,7 @@ const BAR = 'bar-123'
 const OUTRO = 'bar-999'
 const MEDIA = 'https://media.onside.sh'
 const OLD = 'https://loja-123.public.blob.vercel-storage.com'
-const HOSTS = { BLOB_STORE_ID: 'loja-123', MEDIA_PUBLIC_ORIGIN: MEDIA }
+const HOSTS = { MEDIA_PUBLIC_ORIGIN: MEDIA }
 
 describe('URL da foto (ESC-15, WEB-202)', () => {
   it('aceita a foto do bar no domínio público do R2, com ou sem ?v=', () => {
@@ -16,27 +16,23 @@ describe('URL da foto (ESC-15, WEB-202)', () => {
     ).toBe(true)
   })
 
-  it('aceita a foto no store antigo do Vercel Blob até a migração', () => {
-    expect(isOwnPhotoUrl(`${OLD}/bars/${BAR}/photo`, BAR, HOSTS)).toBe(true)
+  it('recusa a foto no store antigo do Vercel Blob, migrado no WEB-202', () => {
+    expect(isOwnPhotoUrl(`${OLD}/bars/${BAR}/photo`, BAR, HOSTS)).toBe(false)
   })
 
   it('recusa sufixo acrescentado ao caminho exato', () => {
-    for (const host of [MEDIA, OLD]) {
-      expect(
-        isOwnPhotoUrl(`${host}/bars/${BAR}/photo-A1b2C3`, BAR, HOSTS)
-      ).toBe(false)
-    }
+    expect(isOwnPhotoUrl(`${MEDIA}/bars/${BAR}/photo-A1b2C3`, BAR, HOSTS)).toBe(
+      false
+    )
   })
 
   it('recusa a foto de outro bar, inclusive por ../', () => {
-    for (const host of [MEDIA, OLD]) {
-      expect(isOwnPhotoUrl(`${host}/bars/${OUTRO}/photo`, BAR, HOSTS)).toBe(
-        false
-      )
-      expect(
-        isOwnPhotoUrl(`${host}/bars/${BAR}/../${OUTRO}/photo`, BAR, HOSTS)
-      ).toBe(false)
-    }
+    expect(isOwnPhotoUrl(`${MEDIA}/bars/${OUTRO}/photo`, BAR, HOSTS)).toBe(
+      false
+    )
+    expect(
+      isOwnPhotoUrl(`${MEDIA}/bars/${BAR}/../${OUTRO}/photo`, BAR, HOSTS)
+    ).toBe(false)
   })
 
   it('recusa host de terceiro, mesmo com o caminho idêntico', () => {
@@ -53,18 +49,16 @@ describe('URL da foto (ESC-15, WEB-202)', () => {
   })
 
   it('recusa http sem TLS e porta alternativa', () => {
-    for (const host of [MEDIA, OLD]) {
-      expect(
-        isOwnPhotoUrl(
-          `${host.replace('https', 'http')}/bars/${BAR}/photo`,
-          BAR,
-          HOSTS
-        )
-      ).toBe(false)
-      expect(isOwnPhotoUrl(`${host}:444/bars/${BAR}/photo`, BAR, HOSTS)).toBe(
-        false
+    expect(
+      isOwnPhotoUrl(
+        `${MEDIA.replace('https', 'http')}/bars/${BAR}/photo`,
+        BAR,
+        HOSTS
       )
-    }
+    ).toBe(false)
+    expect(isOwnPhotoUrl(`${MEDIA}:444/bars/${BAR}/photo`, BAR, HOSTS)).toBe(
+      false
+    )
   })
 
   it('recusa string que não é URL, javascript: e data:', () => {
@@ -80,6 +74,5 @@ describe('URL da foto (ESC-15, WEB-202)', () => {
 
   it('recusa tudo quando o host não está configurado', () => {
     expect(isOwnPhotoUrl(`${MEDIA}/bars/${BAR}/photo`, BAR, {})).toBe(false)
-    expect(isOwnPhotoUrl(`${OLD}/bars/${BAR}/photo`, BAR, {})).toBe(false)
   })
 })

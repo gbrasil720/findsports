@@ -25,9 +25,6 @@ export const OUTBOX_FILE = fileURLToPath(
 /** Formato do Standard Webhooks que a Dodo usa: `whsec_` + base64. */
 export const DODO_WEBHOOK_SECRET = `whsec_${Buffer.from('e2e-only-dodo-webhook-secret').toString('base64')}`
 
-/** Store antigo do Vercel Blob: URL dele ainda passa até o passo 9 do WEB-202. */
-export const BLOB_STORE_ID = 'e2e'
-
 /** Domínio público falso do bucket de fotos; `fixtures/media.ts` serve a leitura. */
 export const MEDIA_PUBLIC_ORIGIN = 'https://media.e2e.test'
 
@@ -56,7 +53,6 @@ export const SERVER_ENV: Record<string, string> = {
   RESEND_FROM_EMAIL: '',
   LOCATIONIQ_API_KEY: 'e2e-fake-key',
   LOCATIONIQ_BASE_URL: STUB_URL,
-  BLOB_STORE_ID,
   // O PUT para `e2e.r2.cloudflarestorage.com` nunca sai do navegador: o
   // `fixtures/media.ts` responde. A assinatura com chave falsa é a real.
   CF_ACCOUNT_ID: 'e2e',

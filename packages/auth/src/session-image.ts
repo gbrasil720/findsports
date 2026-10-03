@@ -1,21 +1,18 @@
 /**
  * Onde moram as fotos que o app grava: o domínio público do bucket R2
- * (`MEDIA_PUBLIC_ORIGIN`) e, até o script do WEB-202 reescrever o banco, o
- * store antigo do Vercel Blob (`BLOB_STORE_ID`). O `env` do servidor serve
- * direto aqui.
+ * (`MEDIA_PUBLIC_ORIGIN`, WEB-202). O `env` do servidor serve direto aqui.
  */
 export type MediaHosts = {
-  BLOB_STORE_ID?: string
   MEDIA_PUBLIC_ORIGIN?: string
 }
 
 /**
- * A URL aponta exatamente para `pathname` num dos NOSSOS hosts de mídia?
+ * A URL aponta exatamente para `pathname` no NOSSO host de mídia?
  *
  * Regra única das fotos que o cliente informa depois do upload direto (foto
  * do bar, avatar do usuário): sem ela, qualquer um apontaria a foto para um
  * host próprio e veria IP e horário de quem a carrega. Comparação exata do
- * caminho, sem porta, sem outro store. A query (`?v=`, que fura o cache da
+ * caminho, sem porta, sem outro host. A query (`?v=`, que fura o cache da
  * borda no overwrite) fica de fora da comparação.
  */
 export function isOwnMediaUrl(
@@ -34,14 +31,7 @@ export function isOwnMediaUrl(
   if (parsed.pathname !== `/${pathname}`) return false
 
   const media = hosts.MEDIA_PUBLIC_ORIGIN
-  if (media && parsed.origin === new URL(media).origin) return true
-
-  // ponytail: host do Vercel Blob só até a migração do WEB-202; sai no passo 9.
-  const store = hosts.BLOB_STORE_ID
-  return (
-    !!store &&
-    parsed.hostname === `${store.toLowerCase()}.public.blob.vercel-storage.com`
-  )
+  return !!media && parsed.origin === new URL(media).origin
 }
 
 export function avatarPathname(userId: string): string {
@@ -49,8 +39,8 @@ export function avatarPathname(userId: string): string {
 }
 
 /**
- * Valor aceito em `user.image`: limpar o campo, ou o avatar deste usuário num
- * dos nossos hosts. O teto de tamanho mantém o cookie de sessão pequeno — ele
+ * Valor aceito em `user.image`: limpar o campo, ou o avatar deste usuário no
+ * nosso host. O teto de tamanho mantém o cookie de sessão pequeno — ele
  * serializa o `user` inteiro, e uma data URL estourava o header na Vercel
  * (494); query string no nosso host ainda passaria sem ele.
  */

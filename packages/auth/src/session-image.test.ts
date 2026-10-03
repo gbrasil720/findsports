@@ -2,10 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { isSafeUserImage } from './session-image'
 
 const USER = 'user-123'
-const HOSTS = {
-  BLOB_STORE_ID: 'loja-123',
-  MEDIA_PUBLIC_ORIGIN: 'https://media.onside.sh'
-}
+const HOSTS = { MEDIA_PUBLIC_ORIGIN: 'https://media.onside.sh' }
 const OWN = `https://media.onside.sh/users/${USER}/avatar`
 const OLD = `https://loja-123.public.blob.vercel-storage.com/users/${USER}/avatar`
 
@@ -18,9 +15,8 @@ describe('foto no user da sessão', () => {
     expect(isSafeUserImage(`${OWN}?v=1759500000000`, USER, HOSTS)).toBe(true)
   })
 
-  it('aceita o avatar no store antigo do Vercel Blob até a migração', () => {
-    expect(isSafeUserImage(OLD, USER, HOSTS)).toBe(true)
-    expect(isSafeUserImage(OLD, USER, { BLOB_STORE_ID: 'loja-123' })).toBe(true)
+  it('recusa o store antigo do Vercel Blob, migrado no WEB-202', () => {
+    expect(isSafeUserImage(OLD, USER, HOSTS)).toBe(false)
   })
 
   it('recusa host de terceiro, mesmo https e com o mesmo caminho', () => {
@@ -37,27 +33,20 @@ describe('foto no user da sessão', () => {
 
   it('recusa avatar de outro usuário, sem usuário ou sem host configurado', () => {
     expect(isSafeUserImage(OWN, 'user-999', HOSTS)).toBe(false)
-    expect(isSafeUserImage(OLD, 'user-999', HOSTS)).toBe(false)
     expect(isSafeUserImage(OWN, undefined, HOSTS)).toBe(false)
     expect(isSafeUserImage(OWN, USER, {})).toBe(false)
-    expect(isSafeUserImage(OLD, USER, {})).toBe(false)
   })
 
   it('recusa data URL, http, porta, javascript e não-string', () => {
     expect(
       isSafeUserImage('data:image/jpeg;base64,/9j/AAAA', USER, HOSTS)
     ).toBe(false)
-    for (const own of [OWN, OLD]) {
-      expect(isSafeUserImage(own.replace('https', 'http'), USER, HOSTS)).toBe(
-        false
-      )
-    }
+    expect(isSafeUserImage(OWN.replace('https', 'http'), USER, HOSTS)).toBe(
+      false
+    )
     expect(isSafeUserImage(OWN.replace('.sh/', '.sh:444/'), USER, HOSTS)).toBe(
       false
     )
-    expect(
-      isSafeUserImage(OLD.replace('.com/', '.com:444/'), USER, HOSTS)
-    ).toBe(false)
     expect(isSafeUserImage('javascript:alert(1)', USER, HOSTS)).toBe(false)
     expect(isSafeUserImage(12, USER, HOSTS)).toBe(false)
     expect(isSafeUserImage(`${OWN}?${'a'.repeat(2100)}`, USER, HOSTS)).toBe(
