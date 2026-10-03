@@ -75,10 +75,8 @@ export const Route = createFileRoute('/internal_/manage-users')({
     return { session }
   },
   loader: async ({ context }): Promise<{ currentUserId: string }> => {
-    if (!context.session) {
-      throw redirect({ to: '/login' })
-    }
-    if (context.session.user.role !== 'admin') {
+    // Sem sessão, o guard da raiz (applyAuthGuards) já mandou para o /login.
+    if (context.session?.user.role !== 'admin') {
       throw redirect({ to: '/' })
     }
     return { currentUserId: context.session.user.id }

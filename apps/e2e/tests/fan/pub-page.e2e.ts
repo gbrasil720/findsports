@@ -58,7 +58,12 @@ test.describe('deslogado', () => {
     const fan = await createUser()
 
     await page.goto(`/pub/${barId}`)
-    await page.getByRole('link', { name: 'Entrar' }).click()
+    // O "Entrar" do cabeçalho também existe; o do diálogo é o que leva o
+    // `callbackUrl`, e o fundo do diálogo intercepta clique no outro.
+    await page
+      .getByRole('dialog', { name: 'Autenticação obrigatória' })
+      .getByRole('link', { name: 'Entrar' })
+      .click()
     await expect(page).toHaveURL(/\/login/)
     await page.getByLabel('E-mail').fill(fan.email)
     await page.getByLabel('Senha', { exact: true }).fill(fan.password)
