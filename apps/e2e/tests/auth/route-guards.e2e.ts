@@ -33,7 +33,8 @@ test.describe('deslogado', () => {
     '/internal',
     '/internal/waitlist',
     '/app',
-    '/onboarding/fan'
+    '/onboarding/fan',
+    '/access-pending'
   ]) {
     // WEB-210: o destino original vai junto como callbackUrl.
     test(`${path} → /login com callbackUrl`, async ({ page }) => {

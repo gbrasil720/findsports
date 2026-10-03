@@ -31,6 +31,14 @@ describe('getCallbackUrl', () => {
     expect(getCallbackUrl('/login?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
   })
 
+  // A tela de espera é destino válido do login: o guard dela encaminha
+  // levando o destino, inclusive pelo onboarding.
+  it('keeps access-pending with the destination it carries', () => {
+    expect(login('/access-pending?callbackUrl=%2Fapp')).toBe(
+      '/access-pending?callbackUrl=%2Fapp'
+    )
+  })
+
   it.each([
     'http://evil.com/pub/abc',
     'http://localhost:3002/pub/abc',
