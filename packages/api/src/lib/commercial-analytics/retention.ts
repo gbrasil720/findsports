@@ -299,12 +299,34 @@ export function isCronAuthorized(
 }
 
 /**
- * Execução diária disparada pelo cron da Vercel (`/api/cron/analytics-retention`):
- * consolida os dias fechados e poda o bruto além de `RETENCAO_BRUTOS_DIAS`.
- * O resultado fica em `analytics_retention_run`; a falha volta como 500 para
- * a Vercel marcar o cron como falho, e vai ao log porque é o único rastro
- * quando o próprio registro no banco também falhou.
+ * Execução diária agendada: consolida os dias fechados e poda o bruto além de
+ * `RETENCAO_BRUTOS_DIAS`. Um caminho só para os dois agendadores — o cron da
+ * Vercel (`/api/cron/analytics-retention`) e o Cron Trigger do Worker
+ * (`scheduled()` em `apps/web/src/worker.ts`, WEB-203). O resultado fica em
+ * `analytics_retention_run`; a falha vai ao log porque é o único rastro quando
+ * o próprio registro no banco também falhou, e é relançada para o agendador
+ * marcar a execução como falha.
  */
+export async function runScheduledAnalyticsRetention(): Promise<RetentionResult> {
+  try {
+    return await runAndRecordAnalyticsRetention({
+      trigger: 'cron',
+      retentionDays: RETENCAO_BRUTOS_DIAS,
+      apagarEventosBrutos: true
+    })
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        evt: 'analytics_retention',
+        ok: false,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    )
+    throw error
+  }
+}
+
+/** Rota do cron da Vercel. A falha volta como 500 para a Vercel marcar o cron como falho. */
 export async function handleAnalyticsRetentionCron(
   request: Request
 ): Promise<Response> {
@@ -315,21 +337,8 @@ export async function handleAnalyticsRetentionCron(
   }
 
   try {
-    return Response.json(
-      await runAndRecordAnalyticsRetention({
-        trigger: 'cron',
-        retentionDays: RETENCAO_BRUTOS_DIAS,
-        apagarEventosBrutos: true
-      })
-    )
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        evt: 'analytics_retention',
-        ok: false,
-        error: error instanceof Error ? error.message : String(error)
-      })
-    )
+    return Response.json(await runScheduledAnalyticsRetention())
+  } catch {
     return Response.json({ error: 'Falha na retenção.' }, { status: 500 })
   }
 }
