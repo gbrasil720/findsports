@@ -63,8 +63,11 @@ O R2 dá 10 GB de armazenamento e **egress zero** no tier grátis. O arquivo cab
 inteiro e a conta fica em US$ 0 sem teto de tráfego — não "US$ 0 até estourar".
 
 Havia um segundo motivo, de desempenho: o Vercel Blob não guarda em cache
-objeto acima de 512 MB, então toda requisição de faixa ia à origem. No R2 com
-domínio próprio o cache de borda funciona normalmente.
+objeto acima de 512 MB, então toda requisição de faixa ia à origem. Isso **não**
+mudou no R2: o limite de 512 MB por objeto vale também para o cache da
+Cloudflare no plano Free, e o arquivo tem 6,1 GB, então as faixas saem com
+`cf-cache-status: DYNAMIC` e vão ao bucket (WEB-218). O ganho do R2 é custo e
+egress zero; o `Cache-Control` do upload serve ao cache do navegador.
 
 ## Configuração do bucket
 
@@ -73,14 +76,14 @@ objeto não alcança configuração de bucket:
 
 1. **Acesso público.** R2 → o bucket → Settings → Public access.
 
-   Hoje está no subdomínio `r2.dev`, que é **provisório**: a Cloudflare o
-   limita por taxa e diz que serve só para desenvolvimento. Ele está no ar
-   porque o destino — `tiles.onside.sh` como domínio próprio do bucket — exige
-   que `onside.sh` seja uma zona na Cloudflare, e o DNS ainda está na Vercel.
+   O app ainda lê pelo subdomínio `r2.dev`, que é **provisório**: a Cloudflare
+   o limita por taxa e diz que serve só para desenvolvimento.
 
-   Quando os nameservers migrarem: R2 → Settings → Custom Domains →
-   `tiles.onside.sh`, trocar `VITE_MAP_TILES_URL` e desligar o `r2.dev`. Aí
-   entra o cache de borda, que o `r2.dev` não dá.
+   O domínio próprio `tiles.onside.sh` já está ligado ao bucket (R2 → Settings
+   → Custom Domains), desde que o DNS de `onside.sh` passou para a Cloudflare
+   em 03/10/2026 (WEB-101). Falta trocar `VITE_MAP_TILES_URL` para ele e, 48h
+   depois, desligar o `r2.dev` — passo a passo no WEB-219. Cache de borda não
+   entra com a troca (ver acima e WEB-218).
 
    **Na migração de DNS, todo registro da Vercel entra como "DNS only" (nuvem
    cinza).** Com o proxy ligado a Vercel perde visibilidade de tráfego e a
@@ -110,15 +113,43 @@ recusa e o PMTiles não consegue ler faixa nenhuma.
 Trimestral, manual.
 
 ```bash
-brew install pmtiles                                  # só para rodar o script
+brew install pmtiles awscli                           # só para rodar o script
 bun apps/web/scripts/build-map-tiles.ts --dry-run     # mede sem baixar
 bun apps/web/scripts/build-map-tiles.ts               # extrai e publica
 ```
 
 O script imprime a `VITE_MAP_TILES_URL` nova. Trocar a variável **na Vercel e no
 `.env` local é passo manual**, de propósito: o nome do arquivo carrega a data do
-build porque ele sobe com `max-age` de um ano, e build novo tem que virar URL
-nova em vez de tentar invalidar cache de CDN.
+build porque ele sobe com `Cache-Control: public, max-age=31536000, immutable`,
+e build novo tem que virar URL nova em vez de tentar invalidar cache de CDN.
+
+O envio é pelo `aws` CLI porque o `Bun.S3Client` não tem opção de
+`Cache-Control` e descarta a chave em silêncio — o arquivo `20260906` subiu sem
+cabeçalho de cache por isso. O script lê o objeto de volta (`head-object`) e
+falha se o tamanho ou o `Cache-Control` guardados não forem os esperados.
+
+### Corrigir o cabeçalho de um arquivo já publicado
+
+Opcional e uma vez só, para o `onside-br-20260906.pmtiles`, que subiu antes da
+correção. Cópia do objeto sobre ele mesmo trocando os metadados, sem baixar
+nada — o `s3 cp` faz a cópia em partes no servidor, o que um arquivo acima de
+5 GB exige:
+
+```bash
+set -a; source apps/web/.env; set +a
+AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+AWS_DEFAULT_REGION=auto \
+aws s3 cp "s3://$R2_BUCKET/maps/onside-br-20260906.pmtiles" \
+          "s3://$R2_BUCKET/maps/onside-br-20260906.pmtiles" \
+  --metadata-directive=REPLACE \
+  --content-type=application/vnd.pmtiles \
+  --cache-control="public, max-age=31536000, immutable" \
+  --endpoint-url="https://$CF_ACCOUNT_ID.r2.cloudflarestorage.com"
+```
+
+`REPLACE` troca **todos** os metadados, então o `--content-type` precisa ir
+junto, senão o objeto volta como `binary/octet-stream`. A URL não muda, e
+nenhuma variável precisa ser trocada.
 
 Ordem para não derrubar produção: publicar → trocar a variável → deploy →
 conferir o mapa no ar → **só então** apagar o arquivo antigo do bucket.

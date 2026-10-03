@@ -29,7 +29,8 @@
  *
  * ## Requisitos
  *
- * - `pmtiles` no PATH (`brew install pmtiles`), só para rodar este script.
+ * - `pmtiles` e `aws` no PATH (`brew install pmtiles awscli`), só para rodar
+ *   este script.
  * - `CF_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` e `R2_BUCKET`
  *   no ambiente (estão em `apps/web/.env`). São credenciais de escrita, e não
  *   viajam para o navegador: quem serve os tiles é a URL pública do bucket.
@@ -123,32 +124,74 @@ if (faltando.length > 0) {
 const { size } = statSync(destino)
 console.log(`\nsubindo ${(size / 1e9).toFixed(2)} GB para ${nomeNoBucket}…`)
 
-const r2 = new Bun.S3Client({
-  accessKeyId: process.env.R2_ACCESS_KEY_ID,
-  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  bucket: process.env.R2_BUCKET,
-  endpoint: `https://${process.env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`
-})
+/**
+ * Imutável: o nome carrega a data do build, então um rebuild vira outra URL em
+ * vez de precisar invalidar cache.
+ *
+ * O envio é pelo `aws` CLI, e não pelo `Bun.S3Client`, porque o cliente do Bun
+ * não tem opção de `Cache-Control` e descarta em silêncio o que não conhece:
+ * o arquivo subia sem cabeçalho de cache nenhum.
+ */
+const CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
-await r2.write(nomeNoBucket, Bun.file(destino), {
-  type: 'application/vnd.pmtiles',
-  // Imutável: o nome carrega a data do build, então um rebuild vira outra URL
-  // em vez de precisar invalidar cache.
-  acl: undefined,
-  partSize: 64 * 1024 * 1024,
-  queueSize: 4,
-  retry: 3
-})
+const bucket = process.env.R2_BUCKET
+const aws = (argumentos: string[]) =>
+  spawnSync(
+    'aws',
+    [
+      ...argumentos,
+      `--endpoint-url=https://${process.env.CF_ACCOUNT_ID}.r2.cloudflarestorage.com`
+    ],
+    {
+      stdio: ['ignore', 'pipe', 'inherit'],
+      encoding: 'utf8',
+      // Credencial pelo ambiente, não pela linha de comando, que aparece no `ps`.
+      env: {
+        ...process.env,
+        AWS_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+        AWS_DEFAULT_REGION: 'auto'
+      }
+    }
+  )
 
-const enviado = await r2.file(nomeNoBucket).stat()
-if (enviado.size !== size) {
+const envio = aws([
+  's3',
+  'cp',
+  destino,
+  `s3://${bucket}/${nomeNoBucket}`,
+  '--content-type=application/vnd.pmtiles',
+  `--cache-control=${CACHE_CONTROL}`,
+  '--only-show-errors'
+])
+if (envio.status !== 0) {
   console.error(
-    `\nO arquivo no bucket tem ${enviado.size} bytes e o local tem ${size}. Refaça o envio.`
+    '\nO envio falhou. `brew install awscli` se o comando não existe.'
   )
   process.exit(1)
 }
 
-console.log(`\npronto — ${enviado.size} bytes conferidos no bucket.`)
+// Confere o que o bucket guardou, e não o que foi pedido: foi assim que o
+// cabeçalho sumiu da primeira vez sem ninguém notar.
+const cabecalho = aws([
+  's3api',
+  'head-object',
+  `--bucket=${bucket}`,
+  `--key=${nomeNoBucket}`,
+  '--output=json'
+])
+const enviado: { ContentLength?: number; CacheControl?: string } =
+  cabecalho.status === 0 ? JSON.parse(cabecalho.stdout) : {}
+if (enviado.ContentLength !== size || enviado.CacheControl !== CACHE_CONTROL) {
+  console.error(
+    `\nO bucket guardou ${enviado.ContentLength} bytes com Cache-Control` +
+      ` "${enviado.CacheControl}"; o esperado era ${size} bytes com` +
+      ` "${CACHE_CONTROL}". Refaça o envio.`
+  )
+  process.exit(1)
+}
+
+console.log(`\npronto — ${size} bytes e Cache-Control conferidos no bucket.`)
 console.log(`\nVITE_MAP_TILES_URL="<url-pública-do-bucket>/${nomeNoBucket}"`)
 console.log(
   '\nTroque a variável na Vercel e no .env local, faça o deploy, confirme o' +
