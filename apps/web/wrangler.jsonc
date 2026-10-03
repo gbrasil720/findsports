@@ -83,7 +83,12 @@
         "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
         "LAUNCH_ADMISSION_MODE": "invite-only",
-        "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
+        "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
+        // Banco com e-mails reais: e-mail vai para o log, com o link. O env
+        // recusa isto com PUBLIC_APP_URL em onside.sh.
+        "EMAIL_DELIVERY": "console",
+        // NODE_ENV=production levaria a Dodo a live_mode; as chaves são de teste.
+        "DODO_PAYMENTS_ENVIRONMENT": "test_mode"
       }
     }
   }

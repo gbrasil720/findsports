@@ -16,3 +16,15 @@ export const DODO_PRODUCTS: { productId: string; slug: Plan }[] = [
 export function planForProduct(productId: string | undefined): Plan | null {
   return DODO_PRODUCTS.find((p) => p.productId === productId)?.slug ?? null
 }
+
+/**
+ * Modo da Dodo. Explícito vence (o preview roda com NODE_ENV=production e
+ * chaves de teste); ausente, `production` → `live_mode`. O plugin do
+ * better-auth deriva o modo do checkout do `baseURL` deste client.
+ */
+export function dodoEnvironment(
+  configured: 'test_mode' | 'live_mode' | undefined,
+  nodeEnv: 'development' | 'production' | 'test'
+): 'test_mode' | 'live_mode' {
+  return configured ?? (nodeEnv === 'production' ? 'live_mode' : 'test_mode')
+}

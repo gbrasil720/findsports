@@ -208,6 +208,15 @@ export async function sendEmailWithResend(input: {
     return { delivered: true }
   }
 
+  // Preview (EMAIL_DELIVERY=console, validada em packages/env): o link no
+  // log é como se testa lá. Lida do process.env, como o NODE_ENV abaixo.
+  if (process.env.EMAIL_DELIVERY === 'console') {
+    console.log(
+      `[email] EMAIL_DELIVERY=console, não enviado.\nTo: ${input.to}\nSubject: ${input.subject}\n\n${input.text}`
+    )
+    return { delivered: true }
+  }
+
   if (!input.apiKey || !input.fromEmail) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Resend não configurado para envio de e-mail.')
