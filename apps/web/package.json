@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:vercel": "if [ \"$VERCEL_ENV\" = production ]; then bun run --cwd ../.. db:migrate:deploy; fi && vite build && bun scripts/build-vercel.mjs",
+    "build:vercel": "vite build && bun scripts/build-vercel.mjs",
     "build:cf": "vite build --mode cloudflare",
     "deploy:cf": "vite build --mode cloudflare && wrangler deploy",
     "preview:cf": "vite build --mode cloudflare && vite preview --mode cloudflare",

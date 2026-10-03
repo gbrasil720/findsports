@@ -27,7 +27,7 @@
     "test:e2e": "cd apps/e2e && bunx playwright test",
     "dev:web": "turbo -F web dev",
     "dev:load-test": "turbo run dev:load-test --filter=web",
-    "build:vercel": "bun run db:migrate:deploy && turbo -F web build && bun apps/web/scripts/build-vercel.mjs",
+    "build:vercel": "turbo -F web build && bun apps/web/scripts/build-vercel.mjs",
     "db:push": "turbo -F @findsports_oficial/db db:push",
     "db:studio": "turbo -F @findsports_oficial/db db:studio",
     "db:generate": "turbo -F @findsports_oficial/db db:generate",

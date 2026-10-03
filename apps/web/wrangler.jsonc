@@ -48,6 +48,41 @@
   // 04:00 UTC, e este Worker escreve no banco de produção. No corte (WEB-205)
   // troque por ["0 4 * * *"] e faça deploy. Para desligar, volte para [] e
   // faça deploy — apagar a chave não remove o agendamento já publicado.
-  "triggers": { "crons": [] }
+  "triggers": { "crons": [] },
   // r2_buckets e routes (WEB-205) entram depois.
+
+  // WEB-204: preview de PR, outro Worker com banco próprio (branch `preview`
+  // do Neon). Uma URL só, a do último PR publicado: com ela no
+  // BETTER_AUTH_URL o login funciona, o que uma URL por PR não deixaria.
+  // Escolhido no build (`CLOUDFLARE_ENV=preview`), não no `wrangler deploy`.
+  //
+  // `vars` e `hyperdrive` não são herdados do topo: repita aqui o que entrar
+  // lá. Sem CF_ACCOUNT_ID e sem as chaves R2: o bucket `onside-media` é fixo
+  // no código, então o preview só lê as fotos (MEDIA_PUBLIC_ORIGIN) e o
+  // upload fica desligado, com a mensagem própria.
+  "env": {
+    "preview": {
+      "name": "onside-web-preview",
+      // Sem cron no preview, mesmo depois do corte ligar o do topo.
+      "triggers": { "crons": [] },
+      "hyperdrive": [
+        {
+          "binding": "HYPERDRIVE",
+          // TROCAR pelo id de `wrangler hyperdrive create onside-db-preview`
+          // (branch `preview` do Neon, conexão direta, --caching-disabled).
+          // Até lá o CI não publica preview: falta o DATABASE_URL_PREVIEW.
+          "id": "00000000000000000000000000000000"
+        }
+      ],
+      "vars": {
+        "NODE_ENV": "production",
+        "BETTER_AUTH_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
+        "CORS_ORIGIN": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
+        "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
+        "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
+        "LAUNCH_ADMISSION_MODE": "invite-only",
+        "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
+      }
+    }
+  }
 }
