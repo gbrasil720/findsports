@@ -110,15 +110,43 @@ recusa e o PMTiles não consegue ler faixa nenhuma.
 Trimestral, manual.
 
 ```bash
-brew install pmtiles                                  # só para rodar o script
+brew install pmtiles awscli                           # só para rodar o script
 bun apps/web/scripts/build-map-tiles.ts --dry-run     # mede sem baixar
 bun apps/web/scripts/build-map-tiles.ts               # extrai e publica
 ```
 
 O script imprime a `VITE_MAP_TILES_URL` nova. Trocar a variável **na Vercel e no
 `.env` local é passo manual**, de propósito: o nome do arquivo carrega a data do
-build porque ele sobe com `max-age` de um ano, e build novo tem que virar URL
-nova em vez de tentar invalidar cache de CDN.
+build porque ele sobe com `Cache-Control: public, max-age=31536000, immutable`,
+e build novo tem que virar URL nova em vez de tentar invalidar cache de CDN.
+
+O envio é pelo `aws` CLI porque o `Bun.S3Client` não tem opção de
+`Cache-Control` e descarta a chave em silêncio — o arquivo `20260906` subiu sem
+cabeçalho de cache por isso. O script lê o objeto de volta (`head-object`) e
+falha se o tamanho ou o `Cache-Control` guardados não forem os esperados.
+
+### Corrigir o cabeçalho de um arquivo já publicado
+
+Opcional e uma vez só, para o `onside-br-20260906.pmtiles`, que subiu antes da
+correção. Cópia do objeto sobre ele mesmo trocando os metadados, sem baixar
+nada — o `s3 cp` faz a cópia em partes no servidor, o que um arquivo acima de
+5 GB exige:
+
+```bash
+set -a; source apps/web/.env; set +a
+AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+AWS_DEFAULT_REGION=auto \
+aws s3 cp "s3://$R2_BUCKET/maps/onside-br-20260906.pmtiles" \
+          "s3://$R2_BUCKET/maps/onside-br-20260906.pmtiles" \
+  --metadata-directive=REPLACE \
+  --content-type=application/vnd.pmtiles \
+  --cache-control="public, max-age=31536000, immutable" \
+  --endpoint-url="https://$CF_ACCOUNT_ID.r2.cloudflarestorage.com"
+```
+
+`REPLACE` troca **todos** os metadados, então o `--content-type` precisa ir
+junto, senão o objeto volta como `binary/octet-stream`. A URL não muda, e
+nenhuma variável precisa ser trocada.
 
 Ordem para não derrubar produção: publicar → trocar a variável → deploy →
 conferir o mapa no ar → **só então** apagar o arquivo antigo do bucket.
