@@ -71,10 +71,9 @@
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
-          // TROCAR pelo id de `wrangler hyperdrive create onside-db-preview`
-          // (branch `preview` do Neon, conexão direta, --caching-disabled).
-          // Até lá o CI não publica preview: falta o DATABASE_URL_PREVIEW.
-          "id": "00000000000000000000000000000000"
+          // `onside-db-preview`: branch `preview` do Neon, conexão direta,
+          // --caching-disabled. Refresh do branch em AGENTS.md.
+          "id": "42e0cde29503486988e18d65d37a3f50"
         }
       ],
       "vars": {
