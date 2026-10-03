@@ -160,6 +160,48 @@ describe('applyAuthGuards', () => {
     ).not.toThrow()
   })
 
+  test('carries the requested path through the pending access screen', () => {
+    function redirectOf(...args: Parameters<typeof applyAuthGuards>) {
+      try {
+        applyAuthGuards(...args)
+      } catch (error) {
+        return (error as { options?: unknown }).options
+      }
+    }
+    expect(
+      redirectOf(session('fan', true, null), '/app', {}, '/app?evento=1')
+    ).toMatchObject({
+      to: '/access-pending',
+      search: { callbackUrl: '/app?evento=1' }
+    })
+    const pending = '/access-pending?callbackUrl=%2Fapp%3Fevento%3D1'
+    // Liberado: segue para o destino, ou passa pelo onboarding levando-o.
+    expect(
+      redirectOf(session('fan'), '/access-pending', {}, pending)
+    ).toMatchObject({ to: '/app?evento=1' })
+    expect(
+      redirectOf(session('fan', false), '/access-pending', {}, pending)
+    ).toMatchObject({
+      to: '/onboarding/fan?callbackUrl=%2Fapp%3Fevento%3D1'
+    })
+    // Sem destino, a casa do papel.
+    expect(redirectOf(session('pub'), '/access-pending')).toMatchObject({
+      to: '/admin'
+    })
+    expect(redirectOf(session('fan'), '/access-pending')).toMatchObject({
+      to: '/dashboard'
+    })
+    // Destino de outra origem cai no padrão.
+    expect(
+      redirectOf(
+        session('fan'),
+        '/access-pending',
+        {},
+        '/access-pending?callbackUrl=https%3A%2F%2Fevil.example'
+      )
+    ).toMatchObject({ to: '/dashboard' })
+  })
+
   test('separa as superfícies de fan, bar e admin por papel', () => {
     expect(() => applyAuthGuards(session('fan'), '/admin')).toThrow()
     expect(() => applyAuthGuards(session('fan'), '/admin/validate')).toThrow()
