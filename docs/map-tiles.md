@@ -63,8 +63,11 @@ O R2 dá 10 GB de armazenamento e **egress zero** no tier grátis. O arquivo cab
 inteiro e a conta fica em US$ 0 sem teto de tráfego — não "US$ 0 até estourar".
 
 Havia um segundo motivo, de desempenho: o Vercel Blob não guarda em cache
-objeto acima de 512 MB, então toda requisição de faixa ia à origem. No R2 com
-domínio próprio o cache de borda funciona normalmente.
+objeto acima de 512 MB, então toda requisição de faixa ia à origem. Isso **não**
+mudou no R2: o limite de 512 MB por objeto vale também para o cache da
+Cloudflare no plano Free, e o arquivo tem 6,1 GB, então as faixas saem com
+`cf-cache-status: DYNAMIC` e vão ao bucket (WEB-218). O ganho do R2 é custo e
+egress zero; o `Cache-Control` do upload serve ao cache do navegador.
 
 ## Configuração do bucket
 
@@ -73,14 +76,14 @@ objeto não alcança configuração de bucket:
 
 1. **Acesso público.** R2 → o bucket → Settings → Public access.
 
-   Hoje está no subdomínio `r2.dev`, que é **provisório**: a Cloudflare o
-   limita por taxa e diz que serve só para desenvolvimento. Ele está no ar
-   porque o destino — `tiles.onside.sh` como domínio próprio do bucket — exige
-   que `onside.sh` seja uma zona na Cloudflare, e o DNS ainda está na Vercel.
+   O app ainda lê pelo subdomínio `r2.dev`, que é **provisório**: a Cloudflare
+   o limita por taxa e diz que serve só para desenvolvimento.
 
-   Quando os nameservers migrarem: R2 → Settings → Custom Domains →
-   `tiles.onside.sh`, trocar `VITE_MAP_TILES_URL` e desligar o `r2.dev`. Aí
-   entra o cache de borda, que o `r2.dev` não dá.
+   O domínio próprio `tiles.onside.sh` já está ligado ao bucket (R2 → Settings
+   → Custom Domains), desde que o DNS de `onside.sh` passou para a Cloudflare
+   em 03/10/2026 (WEB-101). Falta trocar `VITE_MAP_TILES_URL` para ele e, 48h
+   depois, desligar o `r2.dev` — passo a passo no WEB-219. Cache de borda não
+   entra com a troca (ver acima e WEB-218).
 
    **Na migração de DNS, todo registro da Vercel entra como "DNS only" (nuvem
    cinza).** Com o proxy ligado a Vercel perde visibilidade de tráfego e a
