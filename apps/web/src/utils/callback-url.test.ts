@@ -31,15 +31,12 @@ describe('getCallbackUrl', () => {
     expect(getCallbackUrl('/login?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
   })
 
-  // Etapas não são destino: o guard tira quem já passou por elas.
-  it('skips onboarding and access-pending, keeping what they carried', () => {
-    expect(login('/onboarding/pub')).toBe('/dashboard')
-    expect(login('/onboarding/fan?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
-    expect(login('/access-pending')).toBe('/dashboard')
-    expect(login('/access-pending?callbackUrl=%2Fadmin%3Ftab%3Deventos')).toBe(
-      '/admin?tab=eventos'
+  // A tela de espera é destino válido do login: o guard dela encaminha
+  // levando o destino, inclusive pelo onboarding.
+  it('keeps access-pending with the destination it carries', () => {
+    expect(login('/access-pending?callbackUrl=%2Fapp')).toBe(
+      '/access-pending?callbackUrl=%2Fapp'
     )
-    expect(login('/onboarding-guia')).toBe('/onboarding-guia')
   })
 
   it.each([

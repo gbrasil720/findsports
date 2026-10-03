@@ -73,7 +73,12 @@ export function applyAuthGuards(
     pathname.startsWith('/access-pending')
   ) {
     // `/dashboard` é o padrão de `getCallbackUrl`: sem destino, casa do papel.
-    const callbackUrl = getCallbackUrl(href)
+    let callbackUrl = getCallbackUrl(href)
+    // Quem esperou no próprio onboarding não volta a ele carregando a si
+    // mesmo: vale o destino que o onboarding levava, se houver.
+    if (callbackUrl.startsWith('/onboarding/')) {
+      callbackUrl = getCallbackUrl(callbackUrl)
+    }
     throw redirect({
       to: session.user.onboardingCompleted
         ? session.user.role === 'pub' && callbackUrl === '/dashboard'

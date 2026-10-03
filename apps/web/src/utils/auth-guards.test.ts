@@ -219,6 +219,15 @@ describe('applyAuthGuards', () => {
     expect(
       redirectOf(session('pub'), '/access-pending', {}, fromOnboarding)
     ).toMatchObject({ to: '/admin' })
+    // O destino que o onboarding levava sobrevive.
+    expect(
+      redirectOf(
+        session('fan', false),
+        '/access-pending',
+        {},
+        '/access-pending?callbackUrl=%2Fonboarding%2Ffan%3FcallbackUrl%3D%252Fapp'
+      )
+    ).toMatchObject({ to: '/onboarding/fan?callbackUrl=%2Fapp' })
     // Sem destino, a casa do papel.
     expect(redirectOf(session('pub'), '/access-pending')).toMatchObject({
       to: '/admin'
