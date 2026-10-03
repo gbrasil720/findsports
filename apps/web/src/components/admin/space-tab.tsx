@@ -105,6 +105,14 @@ export function SpaceTab({
     })
   )
 
+  // A foto tem mutation própria: a falha aparece no avatar (WEB-212) e não
+  // pode sobrar como erro do formulário do perfil, nem travá-lo em "salvando".
+  const updatePhotoMutation = useMutation(
+    trpc.pub.updateMe.mutationOptions({
+      onSuccess: () => void invalidateBar()
+    })
+  )
+
   // O erro de cada card é o da própria mutation: um novo envio o limpa.
   const updateHouseOfferMutation = useMutation(
     trpc.pub.updateHouseOffer.mutationOptions({
@@ -233,10 +241,7 @@ export function SpaceTab({
           // rota de upload não grava mais nada. Quem persiste a URL é
           // esta chamada — e o servidor confere que ela pertence ao
           // armazenamento e à pasta deste bar antes de aceitar.
-          await updateMeMutation.mutateAsync({ photoUrl: url })
-          queryClient.invalidateQueries({
-            queryKey: trpc.pub.getMe.queryKey()
-          })
+          await updatePhotoMutation.mutateAsync({ photoUrl: url })
         }}
       />
 

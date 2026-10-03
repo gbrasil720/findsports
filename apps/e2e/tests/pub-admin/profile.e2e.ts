@@ -193,6 +193,15 @@ test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não trata
   const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
   expect(bar?.photo_url).toBeNull()
   expect(pageErrors).toEqual([])
+
+  // A falha da foto é do avatar: abrir o formulário do perfil não a herda.
+  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+  await expect(
+    editor(page).getByRole('button', { name: 'Salvar' })
+  ).toBeVisible()
+  await expect(editor(page).getByRole('alert')).toHaveText([
+    'Erro ao fazer upload. Tente novamente.'
+  ])
 })
 
 test('foto em formato errado é recusada no navegador, sem upload', async ({
