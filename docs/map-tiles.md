@@ -18,7 +18,7 @@ Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
 | Campo | Valor |
 |---|---|
 | Build do Protomaps | `20260906` |
-| URL pública | `pub-f88d43ef3adc4cdbbdf3458187f8f15f.r2.dev` (provisória) |
+| URL pública | `tiles.onside.sh` (domínio próprio do bucket `onside-maps`) |
 | bbox | `-74.1,-33.9,-34.7,5.4` (Brasil) |
 | maxzoom | 15 |
 | Tamanho | 6,1 GB |
@@ -76,14 +76,16 @@ objeto não alcança configuração de bucket:
 
 1. **Acesso público.** R2 → o bucket → Settings → Public access.
 
-   O app ainda lê pelo subdomínio `r2.dev`, que é **provisório**: a Cloudflare
-   o limita por taxa e diz que serve só para desenvolvimento.
+   O app lê pelo domínio próprio `tiles.onside.sh`, ligado ao bucket (R2 →
+   Settings → Custom Domains) desde que o DNS de `onside.sh` passou para a
+   Cloudflare em 03/10/2026 (WEB-101). `VITE_MAP_TILES_URL` aponta para ele
+   desde 03/10/2026 (WEB-219). Cache de borda não veio com a troca (ver acima e
+   WEB-218).
 
-   O domínio próprio `tiles.onside.sh` já está ligado ao bucket (R2 → Settings
-   → Custom Domains), desde que o DNS de `onside.sh` passou para a Cloudflare
-   em 03/10/2026 (WEB-101). Falta trocar `VITE_MAP_TILES_URL` para ele e, 48h
-   depois, desligar o `r2.dev` — passo a passo no WEB-219. Cache de borda não
-   entra com a troca (ver acima e WEB-218).
+   O subdomínio `r2.dev` ainda está ligado, só como rollback: a Cloudflare o
+   limita por taxa e diz que serve só para desenvolvimento. Ele deve ser
+   desligado em ou depois de 06/10/2026, 48h depois do deploy — passo a passo
+   no WEB-219.
 
    **Na migração de DNS, todo registro da Vercel entra como "DNS only" (nuvem
    cinza).** Com o proxy ligado a Vercel perde visibilidade de tráfego e a
