@@ -4,7 +4,9 @@ import { z } from 'zod'
 
 const rawEnv = createEnv({
   server: {
-    DATABASE_URL: z.string().min(1),
+    // No Worker o banco vem do binding Hyperdrive, não daqui (WEB-201). Onde
+    // ela é necessária, `resolveDatabaseUrl` recusa a falta no primeiro uso.
+    DATABASE_URL: z.string().min(1).optional(),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     PUBLIC_APP_URL: z.url().optional(),
