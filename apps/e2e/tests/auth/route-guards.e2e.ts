@@ -151,7 +151,7 @@ test.describe('não admitido vai para /access-pending', () => {
 
       for (const path of [HOME[role], '/', '/app', `/onboarding/${role}`]) {
         await page.goto(path)
-        await expect(page).toHaveURL(/\/access-pending$/)
+        await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
       }
     })
   }

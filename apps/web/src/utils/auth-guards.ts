@@ -1,5 +1,6 @@
 import type { auth } from '@findsports_oficial/auth'
 import { redirect } from '@tanstack/react-router'
+import { getCallbackUrl, withCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
 
@@ -60,21 +61,24 @@ export function applyAuthGuards(
     session.user.admittedAt === null &&
     !pathname.startsWith('/access-pending')
   ) {
-    throw redirect({ to: '/access-pending' })
+    // O destino pedido espera a liberação, como no login (WEB-210).
+    throw redirect({ to: '/access-pending', search: { callbackUrl: href } })
   }
 
   if (
     session.user.admittedAt !== null &&
     pathname.startsWith('/access-pending')
   ) {
+    // `/dashboard` é o padrão de `getCallbackUrl`: sem destino, casa do papel.
+    const callbackUrl = getCallbackUrl(href)
     throw redirect({
       to: session.user.onboardingCompleted
-        ? session.user.role === 'pub'
+        ? session.user.role === 'pub' && callbackUrl === '/dashboard'
           ? '/admin'
-          : '/dashboard'
+          : callbackUrl
         : session.user.role === 'pub'
           ? '/onboarding/pub'
-          : '/onboarding/fan'
+          : withCallbackUrl('/onboarding/fan', callbackUrl)
     })
   }
 

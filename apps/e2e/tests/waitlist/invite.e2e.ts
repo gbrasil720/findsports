@@ -240,8 +240,13 @@ for (const role of ['fan', 'pub'] as const) {
   }) => {
     const user = await createUser({ role, admitted: false })
     await signIn(page, user)
-    await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/access-pending$/)
+    // Link direto: depois da liberação a pessoa chega nele, não na casa.
+    const deepLink =
+      role === 'pub'
+        ? '/admin/billing?ref=email'
+        : '/dashboard/profile?ref=email'
+    await page.goto(deepLink)
+    await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
     await expect(page.getByLabel('E-mail')).toHaveValue(user.email)
 
     if (role === 'pub')
@@ -263,8 +268,13 @@ for (const role of ['fan', 'pub'] as const) {
     await lastEmailTo(user.email, { subject: SUBJECT.joined })
 
     await adminWaitlist('setApproval', { email: user.email, approved: true })
-    await page.goto('/access-pending')
-    await expect(page).not.toHaveURL(/\/access-pending$/)
+    await page.reload()
+    await expect
+      .poll(() => {
+        const url = new URL(page.url())
+        return url.pathname + url.search
+      })
+      .toBe(deepLink)
     expect((await account(user.email))?.admitted_at).toEqual(expect.any(Date))
   })
 }
