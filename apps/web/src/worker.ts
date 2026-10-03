@@ -9,14 +9,17 @@ import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { runWithDb } from '@findsports_oficial/db'
 import handler from '@tanstack/react-start/server-entry'
 
+import { withHsts } from './lib/hsts'
+
 setBackgroundTaskHandler(waitUntil)
 
 export default {
-  fetch(request, env) {
+  async fetch(request, env) {
     // WEB-201: banco por requisição, sobre o Hyperdrive.
-    return runWithDb(env.HYPERDRIVE.connectionString, () =>
+    const response = await runWithDb(env.HYPERDRIVE.connectionString, () =>
       handler.fetch(request)
     )
+    return withHsts(response)
   },
   // WEB-203: retenção diária de analytics pelo Cron Trigger, sem HTTP nem
   // CRON_SECRET. A agenda está em `triggers.crons` no wrangler.jsonc. A

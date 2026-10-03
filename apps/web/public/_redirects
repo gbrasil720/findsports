@@ -1,1 +1,6 @@
 /og-image.png /og-image.jpg 301
+# O MapLibre pede o sprite de alta densidade com "@" literal, e o Workers
+# assets responde 307 para a forma codificada (%40) antes de servir. O 200
+# reescreve direto para ela: o mesmo arquivo, sem o salto (docs/map-tiles.md).
+/map/sprite/light@2x.png /map/sprite/light%402x.png 200
+/map/sprite/light@2x.json /map/sprite/light%402x.json 200
