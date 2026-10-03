@@ -1,11 +1,16 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  // WEB-199: app em Workers. A Vercel segue servindo www.onside.sh até o
-  // corte (WEB-205); este Worker só responde em onside-web.<sub>.workers.dev.
+  // WEB-199: app em Workers. Desde o corte (WEB-205) responde em
+  // www.onside.sh; o apex redireciona para www por Redirect Rule da zona.
   "name": "onside-web",
   "main": "src/worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // WEB-205: custom domain — a Cloudflare cria o registro de `www`, que passa
+  // na frente do curinga `*` (Vercel). Rollback: [] e deploy, ou remover o
+  // domínio no painel (Settings → Domains & Routes).
+  "routes": [{ "pattern": "www.onside.sh", "custom_domain": true }],
+  // Fica para depuração, mas sem login: BETTER_AUTH_URL é o www.
   "workers_dev": true,
   // URL de versão usaria o banco e os segredos de produção (épico WEB-198,
   // risco 6). Preview por PR é outro Worker (WEB-204).
@@ -28,15 +33,13 @@
   // (lista em .dev.vars.example). Nenhuma chave E2E_* aqui: o env recusa o
   // boot em produção com elas.
   //
-  // BETTER_AUTH_URL e CORS_ORIGIN apontam para o workers.dev enquanto ele é
-  // só teste: o better-auth confia só nessa origem (e na irmã www.), e a
-  // Vercel, com as variáveis dela, não muda. No corte (WEB-205) os dois
-  // viram https://www.onside.sh, e aí o workers.dev deixa de logar.
-  // PUBLIC_APP_URL já é o domínio público: é ele que vai nos links de e-mail.
+  // WEB-205: as três URLs são o domínio público. O better-auth confia nessa
+  // origem e na irmã sem www., e o cookie vale em onside.sh — igual à Vercel.
+  // O workers.dev deixa de logar.
   "vars": {
     "NODE_ENV": "production",
-    "BETTER_AUTH_URL": "https://onside-web.dev-guilhermebrasil.workers.dev",
-    "CORS_ORIGIN": "https://onside-web.dev-guilhermebrasil.workers.dev",
+    "BETTER_AUTH_URL": "https://www.onside.sh",
+    "CORS_ORIGIN": "https://www.onside.sh",
     "PUBLIC_APP_URL": "https://www.onside.sh",
     "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
     "LAUNCH_ADMISSION_MODE": "invite-only",
@@ -44,12 +47,10 @@
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
   },
   // WEB-203: retenção diária de analytics (scheduled() em src/worker.ts).
-  // VAZIO DE PROPÓSITO até o corte: a Vercel ainda roda a mesma rotina às
-  // 04:00 UTC, e este Worker escreve no banco de produção. No corte (WEB-205)
-  // troque por ["0 4 * * *"] e faça deploy. Para desligar, volte para [] e
-  // faça deploy — apagar a chave não remove o agendamento já publicado.
-  "triggers": { "crons": [] },
-  // r2_buckets e routes (WEB-205) entram depois.
+  // 04:00 UTC = 01:00 em São Paulo. Ligado no corte (WEB-205), que tirou o
+  // cron do build da Vercel. Para desligar, volte para [] e faça deploy —
+  // apagar a chave não remove o agendamento já publicado.
+  "triggers": { "crons": ["0 4 * * *"] },
 
   // WEB-204: preview de PR, outro Worker com banco próprio (branch `preview`
   // do Neon). Uma URL só, a do último PR publicado: com ela no
@@ -63,8 +64,10 @@
   "env": {
     "preview": {
       "name": "onside-web-preview",
-      // Sem cron no preview, mesmo depois do corte ligar o do topo.
+      // Sem cron e sem domínio no preview: `triggers` e `routes` são
+      // herdados do topo, e herdar o www roubaria o domínio de produção.
       "triggers": { "crons": [] },
+      "routes": [],
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",

@@ -129,8 +129,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: ${{ needs.deploy-gate.outputs.target }}
-      # Até o corte (WEB-205) produção também responde só no workers.dev.
-      url: ${{ needs.deploy-gate.outputs.target == 'production' && 'https://onside-web.dev-guilhermebrasil.workers.dev' || 'https://onside-web-preview.dev-guilhermebrasil.workers.dev' }}
+      url: ${{ needs.deploy-gate.outputs.target == 'production' && 'https://www.onside.sh' || 'https://onside-web-preview.dev-guilhermebrasil.workers.dev' }}
     # Um deploy por alvo de cada vez, sem cancelar o que já começou: migration
     # pela metade não volta sozinha.
     concurrency:
