@@ -1,20 +1,51 @@
-const MAX_IMAGE_URL_LENGTH = 2048
-
 /**
- * O cookie de sessão serializa o `user` inteiro. Uma data URL de foto
- * (~25 KB) estoura o Cookie header na Vercel (494 REQUEST_HEADER_TOO_LARGE).
- * Só aceitamos URL https curta, ou limpar o campo.
+ * A URL aponta exatamente para `pathname` no NOSSO store do Vercel Blob?
+ *
+ * Regra única das fotos que o cliente informa depois do upload direto (foto
+ * do bar, avatar do usuário): sem ela, qualquer um apontaria a foto para um
+ * host próprio e veria IP e horário de quem a carrega. Comparação exata do
+ * caminho, sem porta, sem outro store.
  */
-export function isSafeUserImage(image: unknown): boolean {
-  if (image == null) return true
-  if (typeof image !== 'string') return false
-  if (image.length === 0) return true
-  if (image.length > MAX_IMAGE_URL_LENGTH) return false
-  if (image.startsWith('data:')) return false
+export function isOwnBlobUrl(
+  url: string,
+  pathname: string,
+  storeId: string | undefined
+): boolean {
+  if (!storeId) return false
+  let parsed: URL
   try {
-    const parsed = new URL(image)
-    return parsed.protocol === 'https:' && !parsed.port
+    parsed = new URL(url)
   } catch {
     return false
   }
+
+  if (parsed.protocol !== 'https:') return false
+  if (parsed.port) return false
+  if (
+    parsed.hostname !==
+    `${storeId.toLowerCase()}.public.blob.vercel-storage.com`
+  ) {
+    return false
+  }
+
+  return parsed.pathname === `/${pathname}`
+}
+
+export function avatarPathname(userId: string): string {
+  return `users/${userId}/avatar`
+}
+
+/**
+ * Valor aceito em `user.image`: limpar o campo, ou o avatar deste usuário no
+ * nosso store. Também mantém o cookie de sessão pequeno — ele serializa o
+ * `user` inteiro, e uma data URL estourava o header na Vercel (494).
+ */
+export function isSafeUserImage(
+  image: unknown,
+  userId: string | undefined,
+  storeId: string | undefined
+): boolean {
+  if (image == null || image === '') return true
+  if (typeof image !== 'string' || !userId) return false
+  return isOwnBlobUrl(image, avatarPathname(userId), storeId)
 }

@@ -1,3 +1,5 @@
+import { isOwnBlobUrl } from '@findsports_oficial/auth/session-image'
+
 /**
  * Regras da foto do bar (ESC-15).
  *
@@ -47,22 +49,5 @@ export function isOwnPhotoUrl(
   barId: string,
   storeId: string | undefined
 ): boolean {
-  if (!storeId) return false
-  let parsed: URL
-  try {
-    parsed = new URL(url)
-  } catch {
-    return false
-  }
-
-  if (parsed.protocol !== 'https:') return false
-  if (parsed.port) return false
-  if (
-    parsed.hostname !==
-    `${storeId.toLowerCase()}.public.blob.vercel-storage.com`
-  ) {
-    return false
-  }
-
-  return parsed.pathname === `/${photoPathname(barId)}`
+  return isOwnBlobUrl(url, photoPathname(barId), storeId)
 }

@@ -226,15 +226,23 @@ export function createAuth() {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path === '/update-user') {
+        // `image` só entra pelo avatar enviado ao nosso store: um host
+        // qualquer veria IP e horário de quem vê a foto. No cadastro ainda
+        // não há usuário, então ali só cabe vazio.
+        if (ctx.path === '/update-user' || ctx.path === '/sign-up/email') {
           const image = (ctx.body as { image?: unknown } | undefined)?.image
-          if (image !== undefined && !isSafeUserImage(image)) {
-            throw new APIError('BAD_REQUEST', {
-              message:
-                'A foto precisa ser uma URL https curta, não um arquivo embutido.'
-            })
+          if (image !== undefined && image !== null && image !== '') {
+            const userId =
+              ctx.path === '/update-user'
+                ? (await getSessionFromCtx(ctx))?.user.id
+                : undefined
+            if (!isSafeUserImage(image, userId, env.BLOB_STORE_ID)) {
+              throw new APIError('BAD_REQUEST', {
+                message: 'A foto precisa ser enviada pelo upload do perfil.'
+              })
+            }
           }
-          assertNoSelfRoleChange(ctx.body)
+          if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
         }
         if (!requiresPubBillingAccess(ctx.path)) return
         const session = await getSessionFromCtx(ctx)
