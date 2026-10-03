@@ -63,7 +63,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         : await getSession()
     context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
-    applyAuthGuards(session, location.pathname, location.search)
+    applyAuthGuards(
+      session,
+      location.pathname,
+      location.search,
+      location.pathname + location.searchStr
+    )
     return { session }
   },
   head: () => ({

@@ -2,6 +2,7 @@ import { signIn, storageState } from '../../fixtures/auth'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser, type Role } from '../../fixtures/users'
+import { loginWithForm } from './forms'
 
 // WEB-175 — guarda central de navegação (`apps/web/src/utils/auth-guards.ts`).
 // Matriz: deslogado, fan, pub, admin, não admitido, onboarding pendente.
@@ -34,8 +35,29 @@ test.describe('deslogado', () => {
     '/app',
     '/onboarding/fan'
   ]) {
-    expectRedirect(path, '/login')
+    // WEB-210: o destino original vai junto como callbackUrl.
+    test(`${path} → /login com callbackUrl`, async ({ page }) => {
+      await page.goto(path)
+      await expect
+        .poll(() => {
+          const url = new URL(page.url())
+          return [url.pathname, url.searchParams.get('callbackUrl')]
+        })
+        .toEqual(['/login', path])
+    })
   }
+
+  test('link direto protegido volta ao destino depois do login', async ({
+    page
+  }) => {
+    // `loginWithForm` abre o link protegido; o guard leva ao formulário.
+    await loginWithForm(
+      page,
+      await createUser(),
+      '/dashboard/profile?ref=email'
+    )
+    await expect(page).toHaveURL(/\/dashboard\/profile\?ref=email$/)
+  })
 
   test('/onboarding/pub abre sem sessão', async ({ page }) => {
     await page.goto('/onboarding/pub')
