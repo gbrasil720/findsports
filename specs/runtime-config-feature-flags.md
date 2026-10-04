@@ -37,7 +37,17 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
 | `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Dodo. Webhook e portal do cliente **não** passam por este portão. |
 | `waitlist.rate_limit` | 8/IP e 3/e-mail por 10 min | não | Freio da waitlist pública. `enabled: false` desliga o contador inteiro. |
+| `launch.waitlist_gate` | `{ signup: true }` com `LAUNCH_ADMISSION_MODE=invite-only` (produção); `{ signup: false }` com `open` | sim | Fecha o cadastro por aprovação: e-mail não aprovado na waitlist não cria conta. |
+| `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |
 | `launch.pub_cities` | `[]` | sim | Cidades em que um bar conclui o onboarding. Vazio = todas. |
+
+A fonte da verdade é `APP_CONFIG_DEFINITIONS`, em
+`packages/api/src/lib/app-config/registry.ts`; esta tabela só a resume. Se as
+duas divergirem, vale o código.
+
+As chaves de lançamento de funcionalidade (`rating.public_display` e afins)
+devem migrar para feature flags do PostHog — plano no WEB-233. Aqui ficam as
+alavancas operacionais.
 
 `Público` significa que a chave é servida por `appConfig.getPublic`, aberta a
 qualquer visitante. Serve para a tela avisar antes de o usuário bater numa
@@ -48,12 +58,13 @@ sozinho, em `api/auth/$` e em `onboarding.completePub`.
 
 ## Propagação
 
-Salvar grava na hora. As instâncias já em execução veem o valor novo **em até
-60 segundos** — é o TTL do cache que evita uma consulta por requisição.
+Salvar grava na hora. Sem Redis — o caso de produção hoje —, cada instância
+mantém a sua cópia, e as demais veem o valor novo **em até 60 segundos**: é o
+TTL do cache que evita uma consulta por requisição.
 
-Com Upstash/Vercel KV configurado, o cache é compartilhado entre instâncias;
-sem credencial, cada instância mantém a sua cópia. O prazo é o mesmo nos dois
-casos.
+Com Upstash Redis configurado (`UPSTASH_REDIS_REST_URL` e
+`UPSTASH_REDIS_REST_TOKEN`), o cache é compartilhado e salvar apaga a entrada
+de lá: todas as instâncias leem o valor novo na próxima requisição.
 
 O painel lê direto do banco, sem cache, para o administrador ver o que está
 gravado em vez do que a instância dele ainda tem em memória.
@@ -122,17 +133,16 @@ webhook continua sendo processado e o portal do cliente continua aberto.
 
 ### Abrir a plataforma por convite
 
-Tudo numa tela só: **`/internal/waitlist`**. Os interruptores ficam no painel
+Tudo numa tela só: **`/internal/waitlist`**. O interruptor fica no painel
 *Acesso à plataforma*, no topo, ao lado das contagens de liberados e
 pendentes — de propósito. Numa tela separada dava para fechar o cadastro sem
 enxergar que ninguém foi liberado ainda.
 
-O mesmo par de interruptores também aparece em `/internal/flags`, junto das
-outras chaves.
+A mesma chave também aparece em `/internal/flags`, junto das outras.
 
-**Estado de hoje: aberto.** `launch.waitlist_gate` nasce
-`{signup: false, signin: false}` — o portão existe no código e não bloqueia
-nada até alguém ligar.
+**Estado de hoje: fechado.** O padrão de `launch.waitlist_gate` vem de
+`LAUNCH_ADMISSION_MODE`, que em produção é `invite-only` — então
+`{ "signup": true }` sem linha no banco. Gravar no painel sobrepõe o ambiente.
 
 #### Liberar alguém
 
@@ -145,34 +155,16 @@ nada até alguém ligar.
   isso, a resposta seria "peça para ela se cadastrar primeiro", que é mandar
   o convidado bater na porta antes de você abrir.
 
-O portão vive em `launch.waitlist_gate` e tem dois lados independentes.
+O portão vive em `launch.waitlist_gate` e tem um lado só, `signup`:
 
-1. **Aprove antes de ligar.** Em `/internal/waitlist`, botão *Liberar* na
-   coluna Acesso. A aprovação é da pessoa, não da linha: marca todas as
-   inscrições daquele e-mail, porque o portão consulta por e-mail.
+- `{ "signup": true }` — fechado. Cadastro por e-mail só passa se o e-mail
+  estiver aprovado e confirmado na waitlist.
+- `{ "signup": false }` — aberto. Cadastro e login admitem a conta de forma
+  persistente (`user.admitted_at`).
 
-2. **Feche o cadastro primeiro**, deixando o login aberto:
-
-   ```json
-   { "signup": true, "signin": false }
-   ```
-
-   Ninguém novo entra; quem já tem conta continua entrando. É o estado normal
-   de um beta fechado que já tem gente dentro.
-
-3. **Feche os dois** quando quiser exigir aprovação também para entrar:
-
-   ```json
-   { "signup": true, "signin": true }
-   ```
-
-   Cuidado: isso barra contas comuns que existem mas não foram aprovadas —
-   incluindo os bares de teste. Aprove-os antes.
-
-**A trava contra se trancar do lado de fora:** administrador NUNCA é barrado
-no login, aprovado ou não. Sem essa isenção, ligar o portão por engano
-deixaria o painel que o desliga do outro lado da porta. Está travado em
-`lib/waitlist-gate.test.ts` — não remova.
+O login não passa por esta chave. Quem barra conta não admitida é o guarda de
+rota e o `protectedProcedure`, pelo `admitted_at` — e administrador é isento
+nos dois, para o painel que abre o portão nunca ficar do outro lado da porta.
 
 Para tirar acesso de alguém que já entrou, o caminho é banir em
 `/internal/manage-users`, não revogar aqui: revogar só impede logins novos, e

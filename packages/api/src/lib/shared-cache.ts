@@ -14,11 +14,18 @@ export type SharedCacheOptions = {
   prefix: string
   ttlMs: number
   maxEntries?: number
+  /** Injetável nos testes; por padrão o Upstash, se houver credencial. */
+  redis?: () => Promise<RedisClient | null>
 }
 
-type RedisClient = {
+export type RedisClient = {
   get: <T>(key: string) => Promise<T | null>
   set: (key: string, value: unknown, opts: { px: number }) => Promise<unknown>
+  scan: (
+    cursor: string | number,
+    opts: { match: string; count: number }
+  ) => Promise<[string | number, string[]]>
+  del: (...keys: string[]) => Promise<unknown>
 }
 
 function credenciaisRedis() {
@@ -51,14 +58,15 @@ export function createSharedCache<T>(options: SharedCacheOptions): TtlCache<T> {
     ttlMs: options.ttlMs,
     maxEntries: options.maxEntries
   })
-  if (!credenciaisRedis()) return memoria
+  const conectar = options.redis ?? (credenciaisRedis() ? redisOpcional : null)
+  if (!conectar) return memoria
 
   const inFlight = new Map<string, Promise<T>>()
 
   return {
     async get(key, load) {
       const cheia = `${options.prefix}:${key}`
-      const redis = await redisOpcional()
+      const redis = await conectar()
       if (!redis) return memoria.get(key, load)
 
       try {
@@ -87,9 +95,27 @@ export function createSharedCache<T>(options: SharedCacheOptions): TtlCache<T> {
       inFlight.set(cheia, promessa)
       return promessa
     },
-    clear() {
+    // Sem apagar no Redis, quem acabou de gravar continuaria lendo o valor
+    // velho de lá até o TTL. SCAN porque `clear` não recebe chave; só roda em
+    // invalidação manual, nunca no caminho quente.
+    async clear() {
       memoria.clear()
       inFlight.clear()
+      const redis = await conectar()
+      if (!redis) return
+      try {
+        let cursor: string | number = 0
+        do {
+          const [proximo, chaves] = await redis.scan(cursor, {
+            match: `${options.prefix}:*`,
+            count: 1000
+          })
+          if (chaves.length > 0) await redis.del(...chaves)
+          cursor = proximo
+        } while (String(cursor) !== '0')
+      } catch {
+        // Falha ao apagar: a entrada expira sozinha no TTL.
+      }
     },
     size() {
       return memoria.size()

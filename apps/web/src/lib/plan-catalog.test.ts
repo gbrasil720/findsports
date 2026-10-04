@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
+import { appConfigDefault } from '@findsports_oficial/api/lib/app-config/registry'
 import {
+  CHECKOUT_ENABLED_DEFAULT,
   formatComparison,
   formatHistoryWindow,
   formatPerGame,
@@ -330,4 +332,10 @@ describe('getPlanHeader', () => {
       'Reativar plano'
     )
   })
+})
+
+test('padrão do checkout na tela é o mesmo do servidor', () => {
+  expect(CHECKOUT_ENABLED_DEFAULT).toBe(
+    appConfigDefault('billing.checkout_enabled')
+  )
 })

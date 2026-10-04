@@ -29,10 +29,12 @@ import {
  *
  * ## Propagação
  *
- * Gravar invalida o cache local de quem gravou; as demais instâncias veem o
- * valor novo em até `APP_CONFIG_TTL_MS`. Um minuto para desarmar uma flag é aceitável e
- * é o preço de não consultar o banco a cada requisição. Quem precisar de
- * efeito imediato tem o mesmo recurso de sempre: um deploy.
+ * Gravar invalida o cache de quem gravou. Com Redis, isso apaga a entrada
+ * compartilhada e todas as instâncias leem o valor novo na próxima requisição.
+ * Sem Redis, as demais instâncias veem o valor novo em até
+ * `APP_CONFIG_TTL_MS`. Um minuto para desarmar uma flag é aceitável e é o
+ * preço de não consultar o banco a cada requisição. Quem precisar de efeito
+ * imediato tem o mesmo recurso de sempre: um deploy.
  *
  * ## Falha
  *
@@ -73,8 +75,9 @@ export type AppConfigEntrada<K extends AppConfigKey = AppConfigKey> = {
 export type AppConfigStore = {
   get<K extends AppConfigKey>(key: K): Promise<AppConfigValue<K>>
   getPublic(): Promise<AppConfigPublico>
-  /** Descarta o cache local. Chamado depois de gravar. */
-  invalidate(): void
+  /** Descarta o cache — o local e, com Redis, o compartilhado. Chamado
+   *  depois de gravar. */
+  invalidate(): Promise<void>
 }
 
 /**
@@ -147,8 +150,8 @@ export function createAppConfigStore(deps: {
       return saida as AppConfigPublico
     },
 
-    invalidate() {
-      deps.cache.clear()
+    async invalidate() {
+      await deps.cache.clear()
     }
   }
 }
