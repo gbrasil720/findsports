@@ -78,6 +78,18 @@ test('captcha recusado vira instrução, não falta de permissão', () => {
       'x'
     ).message
   ).toBe(message)
+  // No login (contexto `credentials`) não pode virar "credenciais inválidas".
+  expect(
+    getUserFacingError(
+      {
+        status: 403,
+        code: 'VERIFICATION_FAILED',
+        message: 'Captcha verification failed'
+      },
+      'x',
+      'credentials'
+    ).message
+  ).toBe(message)
   // tRPC (waitlist)
   expect(
     getUserFacingError(

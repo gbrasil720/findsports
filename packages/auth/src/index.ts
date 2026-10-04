@@ -209,10 +209,11 @@ async function handleSubscriptionCancelled(payload: any) {
 }
 
 /**
- * Turnstile nas rotas públicas que criam conta ou disparam e-mail para um
- * endereço qualquer. O login fica de fora: já tem o rate limit, e fricção ali
- * é decisão de produto. O plugin lê o token do header `x-captcha-response` e
- * manda o IP de `advanced.ipAddress` (o `cf-connecting-ip` no Worker).
+ * Turnstile nas rotas públicas que criam conta, disparam e-mail para um
+ * endereço qualquer ou testam senha (login). O plugin lê o token do header
+ * `x-captcha-response` e manda o IP de `advanced.ipAddress` (o
+ * `cf-connecting-ip` no Worker). Só vale para requisição HTTP: chamada por
+ * `auth.api` não passa por ele (`captcha-scope.test.ts`).
  *
  * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
  * do segredo. A rota tRPC da waitlist segue a mesma regra
@@ -225,6 +226,7 @@ function turnstilePlugin() {
       secretKey: env.TURNSTILE_SECRET_KEY,
       endpoints: [
         '/sign-up/email',
+        '/sign-in/email',
         '/request-password-reset',
         '/send-verification-email'
       ]

@@ -14,6 +14,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
 import {
   createTwoFactorChallenge,
@@ -56,6 +57,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  const captcha = useTurnstile()
 
   const callbackUrl = getCallbackUrl(href)
 
@@ -70,9 +72,11 @@ function LoginPage() {
       setIsLoading(true)
       const { data, error } = await authClient.signIn.email({
         email,
-        password
+        password,
+        fetchOptions: captcha.fetchOptions
       })
       setIsLoading(false)
+      captcha.reset()
       if (error) {
         toast.error(
           getUserFacingMessage(
@@ -249,6 +253,8 @@ function LoginPage() {
             <p className="text-center text-[var(--onside-muted)] text-xs">
               Ao entrar, você acessa o app Onside com sua conta.
             </p>
+
+            {captcha.widget}
           </form>
         </div>
       </main>
