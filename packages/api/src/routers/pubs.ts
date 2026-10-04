@@ -49,7 +49,7 @@ import { createSharedCache } from '../lib/shared-cache'
 
 /**
  * ESC-08: catálogos e buscas são iguais para todo mundo. Sem KV o cache
- * vive na instância; com Upstash/Vercel KV as instâncias passam a
+ * vive na instância; com Upstash Redis as instâncias passam a
  * compartilhar. Nada derivado de sessão entra aqui.
  */
 const CATALOGO_TTL_MS = 5 * 60_000

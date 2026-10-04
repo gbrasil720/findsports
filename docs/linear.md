@@ -183,6 +183,7 @@ Todo ticket entra em um project. Nenhum órfão.
 | `Qualidade & CI` | Suíte de testes, tipos, lint, pipeline |
 | `Release: merge para master` | Levar o acumulado do branch para master e produção |
 | `Monetização` | Planos, cobrança, funil de preço para bares |
+| `Migração para Cloudflare` | Hospedagem no Worker, DNS, R2, Hyperdrive e a saída da Vercel |
 
 Todos pertencem ao time `WEB`. O time `PRO` não tem project — ticket de `PRO` fica órfão
 mesmo.

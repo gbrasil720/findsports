@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:vercel": "vite build && bun scripts/build-vercel.mjs",
     "build:cf": "vite build --mode cloudflare",
     "deploy:cf": "vite build --mode cloudflare && wrangler deploy",
     "preview:cf": "vite build --mode cloudflare && vite preview --mode cloudflare",
@@ -34,7 +33,6 @@
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "^11.16.0",
-    "@vercel/analytics": "^2.0.1",
     "better-auth": "catalog:",
     "maplibre-gl": "^6.7.0",
     "pmtiles": "^4.5.0",

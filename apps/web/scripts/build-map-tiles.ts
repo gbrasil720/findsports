@@ -13,8 +13,8 @@
  *    `pmtiles extract` usa HTTP Range e traz só as faixas de bytes da região.
  * 2. Sobe o `.pmtiles` para o Cloudflare R2, com o nome carregando a data do
  *    build.
- * 3. Imprime a URL. **Trocar `VITE_MAP_TILES_URL` é passo manual**, na Vercel e
- *    no `.env` local.
+ * 3. Imprime a URL. **Trocar `VITE_MAP_TILES_URL` é passo manual**, na variável
+ *    do GitHub Actions (o build do CI a lê) e no `.env` local.
  *
  * O nome versionado é de propósito: o arquivo vai com `max-age` de um ano, e
  * um build novo tem que virar uma URL nova em vez de tentar invalidar cache de
@@ -194,6 +194,6 @@ if (enviado.ContentLength !== size || enviado.CacheControl !== CACHE_CONTROL) {
 console.log(`\npronto — ${size} bytes e Cache-Control conferidos no bucket.`)
 console.log(`\nVITE_MAP_TILES_URL="<url-pública-do-bucket>/${nomeNoBucket}"`)
 console.log(
-  '\nTroque a variável na Vercel e no .env local, faça o deploy, confirme o' +
+  '\nTroque a variável no GitHub (vars) e no .env local, faça o deploy, confirme o' +
     ' mapa no ar e só então apague o arquivo antigo do bucket.'
 )

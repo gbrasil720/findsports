@@ -71,7 +71,7 @@ põe um banco local em dia; `db:generate` cria o arquivo versionado.
 
 **Produção só migra pelo job `deploy` do CI** (`.github/workflows/ci.yml`, WEB-204):
 push em `master` → `db:migrate:deploy` no banco de produção → `wrangler deploy` do
-Worker `onside-web`. O build da Vercel não migra. Como a migration sobe antes do
+Worker `onside-web`. Como a migration sobe antes do
 código e o rollback (`bunx wrangler rollback`) não a desfaz, ela tem de ser
 compatível com o código anterior (expand → contract). PR publica no Worker
 `onside-web-preview`, com o branch `preview` do Neon, depois de migrá-lo.
@@ -127,6 +127,12 @@ typed where Vite's types are, and the shared package needed an `any` cast to
 compile — which erased the boundary it existed to provide.
 
 Import from the correct boundary or you'll expose server secrets to the browser.
+
+Onde os valores de produção moram (Worker `onside-web`): o que não é segredo em
+`vars` no `apps/web/wrangler.jsonc`; segredos por `wrangler secret put` (lista em
+`apps/web/.dev.vars.example`); `VITE_*` são de build e vêm das `vars` do GitHub
+Actions no job `deploy`. O Worker não lê `DATABASE_URL` — o banco vem do binding
+`HYPERDRIVE`; ela só existe para migration e scripts.
 
 ### UI / Styling
 

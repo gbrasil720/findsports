@@ -1,8 +1,8 @@
 /**
  * Cache compartilhado com fallback.
  *
- * Se existir Upstash/Vercel KV (`KV_REST_*` ou `UPSTASH_REDIS_REST_*`), as
- * instâncias serverless passam a ver o mesmo store. Sem credencial — ou se o
+ * Se existir Upstash Redis (`UPSTASH_REDIS_REST_*`), as instâncias do
+ * Worker passam a ver o mesmo store. Sem credencial — ou se o
  * Redis falhar — cai no `TtlCache` em memória da instância.
  *
  * Mesma regra do cache local: só dado global. Nada de sessão.
@@ -22,9 +22,8 @@ type RedisClient = {
 }
 
 function credenciaisRedis() {
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL
-  const token =
-    process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
   if (!url || !token) return null
   return { url, token }
 }

@@ -31,7 +31,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3001,
     allowedHosts: [
-      'findsports.com.br',
       'host.docker.internal',
       'nintendo-hyperlink-undamaged.ngrok-free.dev'
     ]
@@ -43,9 +42,7 @@ export default defineConfig(({ mode }) => ({
     /**
      * WEB-199: só no build da Cloudflare (`vite build --mode cloudflare`).
      * Com o plugin, o `vite dev` roda o SSR em workerd, e o E2E depende do dev
-     * em Node (outbox de e-mail em `node:fs`, resolver do banco local). O
-     * `build:vercel` também é `vite build`, por isso o corte é o modo, e não
-     * o comando.
+     * em Node (outbox de e-mail em `node:fs`, resolver do banco local).
      */
     mode === 'cloudflare' && cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tailwindcss(),

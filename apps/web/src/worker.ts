@@ -21,8 +21,8 @@ export default {
     )
     return withHsts(response)
   },
-  // WEB-203: retenção diária de analytics pelo Cron Trigger, sem HTTP nem
-  // CRON_SECRET. A agenda está em `triggers.crons` no wrangler.jsonc. A
+  // WEB-203: retenção diária de analytics pelo Cron Trigger, sem rota HTTP
+  // nem segredo. A agenda está em `triggers.crons` no wrangler.jsonc. A
   // promessa é devolvida, e não posta em `waitUntil`, para que uma falha
   // marque a invocação como falha no painel.
   async scheduled(_controller, env) {

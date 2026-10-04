@@ -41,7 +41,7 @@ export function avatarPathname(userId: string): string {
 /**
  * Valor aceito em `user.image`: limpar o campo, ou o avatar deste usuário no
  * nosso host. O teto de tamanho mantém o cookie de sessão pequeno — ele
- * serializa o `user` inteiro, e uma data URL estourava o header na Vercel
+ * serializa o `user` inteiro, e uma data URL estourava o limite de header
  * (494); query string no nosso host ainda passaria sem ele.
  */
 export function isSafeUserImage(

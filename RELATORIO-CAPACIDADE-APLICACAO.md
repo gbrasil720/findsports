@@ -3,6 +3,10 @@
 Data da medição: **18 de agosto de 2026**  
 Escopo: **desenvolvimento local isolado; nenhuma carga enviada à produção**
 
+> **Nota (04/10/2026):** relatório de quando produção rodava na Vercel. Desde
+> o WEB-205 a aplicação é o Worker `onside-web` na Cloudflare, com o banco pelo
+> Hyperdrive; os limites e recomendações da Vercel abaixo são históricos.
+
 ## Resumo executivo
 
 Não existe um número único e permanente de “máximo de usuários”. A capacidade

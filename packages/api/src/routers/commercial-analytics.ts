@@ -257,8 +257,8 @@ export const commercialAnalyticsRouter = router({
    * registro de longo prazo, e a versão anterior desta rotina apagava
    * justamente eles.
    *
-   * WEB-117: a execução diária vem do cron (`/api/cron/analytics-retention`);
-   * esta mutation fica para rodar à mão. As duas gravam a execução em
+   * WEB-117: a execução diária vem do Cron Trigger do Worker (`scheduled()`
+   * em `apps/web/src/worker.ts`); esta mutation fica para rodar à mão. As duas gravam a execução em
    * `analytics_retention_run`.
    */
   cleanupRetention: adminProcedure

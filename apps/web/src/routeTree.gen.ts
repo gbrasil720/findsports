@@ -42,7 +42,6 @@ import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
-import { Route as ApiCronAnalyticsRetentionRouteImport } from './routes/api/cron/analytics-retention'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
 import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
@@ -214,12 +213,6 @@ const ApiBarPhotoRoute = ApiBarPhotoRouteImport.update({
   path: '/api/bar/photo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronAnalyticsRetentionRoute =
-  ApiCronAnalyticsRetentionRouteImport.update({
-    id: '/api/cron/analytics-retention',
-    path: '/api/cron/analytics-retention',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
   id: '/api/trpc/$',
   path: '/api/trpc/$',
@@ -270,7 +263,6 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
-  '/api/cron/analytics-retention': typeof ApiCronAnalyticsRetentionRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
@@ -309,7 +301,6 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
-  '/api/cron/analytics-retention': typeof ApiCronAnalyticsRetentionRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
@@ -349,7 +340,6 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
-  '/api/cron/analytics-retention': typeof ApiCronAnalyticsRetentionRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
@@ -390,7 +380,6 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
-    | '/api/cron/analytics-retention'
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/api/waitlist/activate'
@@ -429,7 +418,6 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
-    | '/api/cron/analytics-retention'
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/api/waitlist/activate'
@@ -468,7 +456,6 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
-    | '/api/cron/analytics-retention'
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/api/waitlist/activate'
@@ -508,7 +495,6 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
-  ApiCronAnalyticsRetentionRoute: typeof ApiCronAnalyticsRetentionRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
   ApiWaitlistActivateRoute: typeof ApiWaitlistActivateRoute
@@ -747,13 +733,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBarPhotoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cron/analytics-retention': {
-      id: '/api/cron/analytics-retention'
-      path: '/api/cron/analytics-retention'
-      fullPath: '/api/cron/analytics-retention'
-      preLoaderRoute: typeof ApiCronAnalyticsRetentionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/trpc/$': {
       id: '/api/trpc/$'
       path: '/api/trpc/$'
@@ -812,7 +791,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,
-  ApiCronAnalyticsRetentionRoute: ApiCronAnalyticsRetentionRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
   ApiWaitlistActivateRoute: ApiWaitlistActivateRoute,

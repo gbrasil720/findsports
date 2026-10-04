@@ -1,7 +1,5 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
 import { db, sql } from '@findsports_oficial/db'
 import { analyticsRetentionRun } from '@findsports_oficial/db/schema/analytics'
-import { env } from '@findsports_oficial/env/server'
 import { getCommercialDay } from './commercial-day'
 
 // ---------------------------------------------------------------------------
@@ -285,23 +283,8 @@ export async function runAndRecordAnalyticsRetention(options: {
 }
 
 /**
- * A Vercel dispara o cron com `Authorization: Bearer <CRON_SECRET>`. Sem
- * segredo configurado, nada passa: a rota apaga dado e não pode ficar aberta.
- * A comparação é sobre o hash para ter tamanho fixo e tempo constante.
- */
-export function isCronAuthorized(
-  authorization: string | null,
-  secret: string | undefined
-): boolean {
-  if (!secret || !authorization) return false
-  const digest = (value: string) => createHash('sha256').update(value).digest()
-  return timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`))
-}
-
-/**
  * Execução diária agendada: consolida os dias fechados e poda o bruto além de
- * `RETENCAO_BRUTOS_DIAS`. Um caminho só para os dois agendadores — o cron da
- * Vercel (`/api/cron/analytics-retention`) e o Cron Trigger do Worker
+ * `RETENCAO_BRUTOS_DIAS`. Quem agenda é o Cron Trigger do Worker
  * (`scheduled()` em `apps/web/src/worker.ts`, WEB-203). O resultado fica em
  * `analytics_retention_run`; a falha vai ao log porque é o único rastro quando
  * o próprio registro no banco também falhou, e é relançada para o agendador
@@ -323,22 +306,5 @@ export async function runScheduledAnalyticsRetention(): Promise<RetentionResult>
       })
     )
     throw error
-  }
-}
-
-/** Rota do cron da Vercel. A falha volta como 500 para a Vercel marcar o cron como falho. */
-export async function handleAnalyticsRetentionCron(
-  request: Request
-): Promise<Response> {
-  if (
-    !isCronAuthorized(request.headers.get('authorization'), env.CRON_SECRET)
-  ) {
-    return Response.json({ error: 'Não autorizado.' }, { status: 401 })
-  }
-
-  try {
-    return Response.json(await runScheduledAnalyticsRetention())
-  } catch {
-    return Response.json({ error: 'Falha na retenção.' }, { status: 500 })
   }
 }

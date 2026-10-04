@@ -87,12 +87,6 @@ objeto não alcança configuração de bucket:
    desligado em ou depois de 06/10/2026, 48h depois do deploy — passo a passo
    no WEB-219.
 
-   **Na migração de DNS, todo registro da Vercel entra como "DNS only" (nuvem
-   cinza).** Com o proxy ligado a Vercel perde visibilidade de tráfego e a
-   detecção de bot passa a desafiar usuário legítimo — está na documentação
-   deles. Só o registro do R2 fica proxied, e esse a Cloudflare cria sozinha.
-   O DNS da Vercel tem wildcard, então a lista de registros precisa sair do
-   painel deles: de fora não dá para distinguir registro real de curinga.
 2. **Política de CORS**, no mesmo Settings:
 
 ```json
@@ -120,8 +114,9 @@ bun apps/web/scripts/build-map-tiles.ts --dry-run     # mede sem baixar
 bun apps/web/scripts/build-map-tiles.ts               # extrai e publica
 ```
 
-O script imprime a `VITE_MAP_TILES_URL` nova. Trocar a variável **na Vercel e no
-`.env` local é passo manual**, de propósito: o nome do arquivo carrega a data do
+O script imprime a `VITE_MAP_TILES_URL` nova. Trocar a variável **nas `vars` do
+GitHub Actions (lida pelo build do job `deploy`) e no `.env` local é passo
+manual**, de propósito: o nome do arquivo carrega a data do
 build porque ele sobe com `Cache-Control: public, max-age=31536000, immutable`,
 e build novo tem que virar URL nova em vez de tentar invalidar cache de CDN.
 
