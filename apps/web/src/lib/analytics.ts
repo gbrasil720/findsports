@@ -220,22 +220,17 @@ export function capturePageview(pathname: string) {
   )
 }
 
-export function identifyUser(user: {
-  id: string
-  email?: string | null
-  name?: string | null
-  role?: string | null
-}) {
+/**
+ * Só o id opaco e o papel: nome, e-mail, telefone e cidade nunca vão ao
+ * PostHog (specs/landing-copy-conversion.md §9.1).
+ */
+export function identifyUser(user: { id: string; role?: string | null }) {
   void withPosthog((posthog) => {
     const previousId = posthog.get_distinct_id()
     if (previousId.startsWith('waitlist:') && previousId !== user.id) {
       posthog.alias(user.id, previousId)
     }
-    posthog.identify(user.id, {
-      email: user.email,
-      name: user.name,
-      role: user.role
-    })
+    posthog.identify(user.id, { role: user.role })
   })
 }
 

@@ -196,12 +196,7 @@ function PostHogProvider() {
     if (!ready) return
 
     if (session?.user) {
-      identifyUser({
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        role: session.user.role
-      })
+      identifyUser({ id: session.user.id, role: session.user.role })
     } else {
       resetAnalytics()
     }
