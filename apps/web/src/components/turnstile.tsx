@@ -30,13 +30,14 @@ function loadTurnstile(): Promise<TurnstileApi> {
     el.src =
       'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
     el.async = true
-    el.onload = () =>
-      window.turnstile ? resolve(window.turnstile) : reject(new Error())
-    el.onerror = () => {
+    // Falhou, esquece o cache: o próximo `reset` tenta carregar de novo.
+    const fail = () => {
       script = undefined
       el.remove()
       reject(new Error('Turnstile indisponível'))
     }
+    el.onload = () => (window.turnstile ? resolve(window.turnstile) : fail())
+    el.onerror = fail
     document.head.appendChild(el)
   })
   return script
