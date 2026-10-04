@@ -60,12 +60,20 @@ export const env = createEnv({
     VITE_POSTHOG_KEY: z.string().min(1).optional(),
 
     /** Região da instância. O padrão é o mesmo que estava embutido no código. */
-    VITE_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com')
+    VITE_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
+
+    /**
+     * Site key do Cloudflare Turnstile (pública). Ausente = sem widget, que é
+     * o estado de dev e do E2E; o servidor só exige o token quando tem
+     * `TURNSTILE_SECRET_KEY`.
+     */
+    VITE_TURNSTILE_SITE_KEY: z.string().min(1).optional()
   },
   runtimeEnv: {
     VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
-    VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST
+    VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
+    VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY
   },
   emptyStringAsUndefined: true
 })

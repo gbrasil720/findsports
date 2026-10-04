@@ -12,6 +12,7 @@ import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import {
@@ -19,6 +20,7 @@ import {
   PUB_ONBOARDING_DRAFT_KEY,
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
@@ -57,6 +59,7 @@ function VerifyEmailPage() {
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
   const [pubError, setPubError] = useState<string | null>(null)
+  const captcha = useTurnstile()
   const { mutateAsync: completePub } = useMutation(
     trpc.onboarding.completePub.mutationOptions()
   )
@@ -129,11 +132,18 @@ function VerifyEmailPage() {
     setResending(true)
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl)
+      callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl),
+      fetchOptions: captcha.fetchOptions
     })
     setResending(false)
+    captcha.reset()
     if (error) {
-      toast.error('Não foi possível reenviar agora. Tente novamente.')
+      toast.error(
+        getUserFacingMessage(
+          error,
+          'Não foi possível reenviar agora. Tente novamente.'
+        )
+      )
       return
     }
     toast.success('Se o endereço estiver cadastrado, um novo link foi enviado.')
@@ -198,6 +208,7 @@ function VerifyEmailPage() {
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>
           </div>
+          {captcha.widget}
           {pubError ? (
             <div
               className="onside-callout onside-callout-warn mt-6"

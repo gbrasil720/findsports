@@ -17,7 +17,7 @@ import {
   createAuthMiddleware,
   getSessionFromCtx
 } from 'better-auth/api'
-import { admin } from 'better-auth/plugins'
+import { admin, captcha } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
@@ -206,6 +206,42 @@ async function handleSubscriptionCancelled(payload: any) {
     .update(bar)
     .set({ isActive: false })
     .where(eq(bar.id, existing.barId))
+}
+
+/**
+ * Turnstile nas rotas públicas que criam conta ou disparam e-mail para um
+ * endereço qualquer. O login fica de fora: já tem o rate limit, e fricção ali
+ * é decisão de produto. O plugin lê o token do header `x-captcha-response` e
+ * manda o IP de `advanced.ipAddress` (o `cf-connecting-ip` no Worker).
+ *
+ * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
+ * do segredo. A rota tRPC da waitlist segue a mesma regra
+ * (`packages/api/src/lib/turnstile.ts`), então o aviso daqui vale pelas duas.
+ */
+function turnstilePlugin() {
+  if (env.TURNSTILE_SECRET_KEY) {
+    return captcha({
+      provider: 'cloudflare-turnstile',
+      secretKey: env.TURNSTILE_SECRET_KEY,
+      endpoints: [
+        '/sign-up/email',
+        '/request-password-reset',
+        '/send-verification-email'
+      ]
+    })
+  }
+  if (env.NODE_ENV === 'production') {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'turnstile_disabled',
+        reason: 'TURNSTILE_SECRET_KEY ausente'
+      })
+    )
+  }
+  // Plugin vazio, e não array condicional: espalhar `[]` na lista de plugins
+  // tira dela o tipo de tupla, e a inferência dos campos do admin se perde.
+  return { id: 'captcha-disabled' }
 }
 
 export function createAuth() {
@@ -420,6 +456,7 @@ export function createAuth() {
       }
     },
     plugins: [
+      turnstilePlugin(),
       twoFactor({ issuer: 'Onside' }),
       admin({
         adminRoles: ['admin'],

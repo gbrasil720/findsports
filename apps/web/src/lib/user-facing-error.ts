@@ -120,6 +120,21 @@ export function getUserFacingError(
     }
   }
 
+  // Turnstile: o plugin `captcha` do better-auth responde MISSING_RESPONSE
+  // (400) ou VERIFICATION_FAILED (403), em inglês; a waitlist (tRPC) manda
+  // "captcha" na mensagem. Antes do 403 genérico, que falaria em permissão.
+  if (
+    code === 'MISSING_RESPONSE' ||
+    code === 'VERIFICATION_FAILED' ||
+    /captcha/i.test(normalizedText)
+  ) {
+    return {
+      message:
+        'Não conseguimos confirmar a verificação de segurança. Conclua a verificação, se ela aparecer, e tente de novo.',
+      retryable: false
+    }
+  }
+
   if (
     status === 429 ||
     code === 'TOO_MANY_REQUESTS' ||
