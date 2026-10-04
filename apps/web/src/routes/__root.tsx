@@ -115,6 +115,18 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         content: OG_IMAGE_URL
       }
     ],
+    // Cloudflare Web Analytics (Core Web Vitals, sem cookie): a injeção
+    // automática não alcança respostas do Worker, então o beacon vai aqui. Só
+    // no build — o `vite dev` e o E2E rodam sem rede externa. O token é público.
+    scripts: import.meta.env.DEV
+      ? []
+      : [
+          {
+            src: 'https://static.cloudflareinsights.com/beacon.min.js',
+            type: 'module',
+            'data-cf-beacon': '{"token": "84a6d0356bc9416cb0e64e8c38c2d5b4"}'
+          }
+        ],
     links: [
       { rel: 'stylesheet', href: appCss },
       {
