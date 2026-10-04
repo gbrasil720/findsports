@@ -23,6 +23,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import { useTurnstile } from '@/components/turnstile'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
@@ -106,6 +107,7 @@ function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [role, setRole] = useState<'fan' | 'pub'>('fan')
   const formRef = useRef<HTMLFormElement>(null)
+  const captcha = useTurnstile()
 
   const callbackUrl = getCallbackUrl(href)
 
@@ -135,9 +137,11 @@ function SignupPage() {
         email,
         password,
         role,
-        callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl)
+        callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl),
+        fetchOptions: captcha.fetchOptions
       })
       setIsLoading(false)
+      captcha.reset()
       if (error) {
         toast.error(
           getUserFacingMessage(
@@ -379,6 +383,8 @@ function SignupPage() {
               Ao criar conta, você passa a usar o app Onside com o perfil
               escolhido.
             </p>
+
+            {captcha.widget}
           </form>
         </div>
       </main>

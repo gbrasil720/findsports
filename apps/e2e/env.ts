@@ -67,5 +67,9 @@ export const SERVER_ENV: Record<string, string> = {
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
   VITE_MAP_TILES_URL: `${STUB_URL}/tiles.pmtiles`,
-  VITE_POSTHOG_KEY: ''
+  VITE_POSTHOG_KEY: '',
+  // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. A
+  // verificação no servidor é coberta por `packages/api/src/lib/turnstile.test.ts`.
+  TURNSTILE_SECRET_KEY: '',
+  VITE_TURNSTILE_SITE_KEY: ''
 }

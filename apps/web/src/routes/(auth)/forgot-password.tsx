@@ -9,7 +9,9 @@ import { toast } from 'sonner'
 import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 /**
  * Para onde o link do e-mail leva depois que o better-auth valida o token.
@@ -47,6 +49,7 @@ function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [emailEnviado, setEmailEnviado] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const captcha = useTurnstile()
 
   const form = useForm({
     defaultValues: { email: '' },
@@ -56,20 +59,25 @@ function ForgotPasswordPage() {
       setIsLoading(true)
       const { error } = await authClient.requestPasswordReset({
         email,
-        redirectTo: REDIRECT_APOS_TOKEN
+        redirectTo: REDIRECT_APOS_TOKEN,
+        fetchOptions: captcha.fetchOptions
       })
       setIsLoading(false)
+      captcha.reset()
       if (error) {
         // O servidor responde 200 tanto para e-mail cadastrado quanto para
-        // desconhecido, então um erro aqui é limite de tentativas ou falha de
-        // envio — nunca "essa conta não existe". A mensagem não pode sugerir
-        // o contrário.
+        // desconhecido, então um erro aqui é limite de tentativas, captcha ou
+        // falha de envio — nunca "essa conta não existe". A mensagem não pode
+        // sugerir o contrário.
         //
         // As mensagens do better-auth vêm em inglês; o texto exibido é nosso.
         toast.error(
           error.status === 429
             ? 'Muitas tentativas seguidas. Espere um minuto e tente de novo.'
-            : 'Não foi possível enviar agora. Tente de novo em instantes.'
+            : getUserFacingMessage(
+                error,
+                'Não foi possível enviar agora. Tente de novo em instantes.'
+              )
         )
         return
       }
@@ -203,6 +211,8 @@ function ForgotPasswordPage() {
                     Voltar ao login
                   </Link>
                 </p>
+
+                {captcha.widget}
               </form>
             </>
           )}

@@ -53,3 +53,38 @@ test('só oferece retry para falhas temporárias', () => {
     ).message
   ).toBe('Este link não é válido ou já expirou.')
 })
+
+test('captcha recusado vira instrução, não falta de permissão', () => {
+  const message =
+    'Não conseguimos confirmar a verificação de segurança. Conclua a verificação, se ela aparecer, e tente de novo.'
+  // better-auth (plugin captcha)
+  expect(
+    getUserFacingError(
+      {
+        status: 403,
+        code: 'VERIFICATION_FAILED',
+        message: 'Captcha verification failed'
+      },
+      'x'
+    ).message
+  ).toBe(message)
+  expect(
+    getUserFacingError(
+      {
+        status: 400,
+        code: 'MISSING_RESPONSE',
+        message: 'Missing CAPTCHA response'
+      },
+      'x'
+    ).message
+  ).toBe(message)
+  // tRPC (waitlist)
+  expect(
+    getUserFacingError(
+      Object.assign(new Error('Falha na verificação de segurança (captcha).'), {
+        data: { code: 'BAD_REQUEST', httpStatus: 400 }
+      }),
+      'x'
+    ).message
+  ).toBe(message)
+})

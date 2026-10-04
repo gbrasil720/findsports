@@ -7,6 +7,7 @@ import { getAppConfig } from '../lib/app-config'
 import { escapeLike } from '../lib/escape-like'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { incrementWindow } from '../lib/rate-limit-store'
+import { turnstileAllows } from '../lib/turnstile'
 import { sendWaitlistEmail, waitlistUrl } from '../lib/waitlist-email'
 import {
   deriveWaitlistInviteStatus,
@@ -46,7 +47,9 @@ const tokenSchema = z.string().min(32).max(256)
 const commonFields = {
   email: z.string().trim().toLowerCase().email().max(255),
   city: z.string().trim().min(2).max(100),
-  phone: z.string().trim().max(30).optional()
+  phone: z.string().trim().max(30).optional(),
+  // Token do Turnstile; o tamanho máximo documentado é 2048.
+  turnstileToken: z.string().max(2048).optional()
 }
 
 function emptyToNull(value: string | undefined) {
@@ -514,6 +517,18 @@ export const waitlistRouter = router({
       const authenticated =
         ctx.session?.user.emailVerified === true &&
         normalizeWaitlistEmail(ctx.session.user.email) === email
+      // Só o caminho anônimo manda e-mail para um endereço qualquer; quem já
+      // provou o e-mail pela sessão (`/access-pending`) não vê o widget. Antes
+      // do rate limit, para robô não queimar a cota do e-mail de outra pessoa.
+      if (
+        !authenticated &&
+        !(await turnstileAllows(input.turnstileToken, ctx.clientIp))
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Falha na verificação de segurança (captcha).'
+        })
+      }
       const limits = await getAppConfig('waitlist.rate_limit')
       const decision = await consumirLimitesWaitlist({
         ip: ctx.clientIp,

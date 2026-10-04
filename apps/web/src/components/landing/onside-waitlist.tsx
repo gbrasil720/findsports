@@ -13,12 +13,14 @@ import Check from 'reicon-react/icons/Check'
 import { analytics } from '../../lib/analytics'
 import { getUserFacingMessage } from '../../lib/user-facing-error'
 import { useTRPCClient } from '../../utils/trpc'
+import { useTurnstile } from '../turnstile'
 
 type FanPayload = {
   role: 'fan'
   city: string
   email: string
   phone?: string
+  turnstileToken?: string
 }
 
 type PubPayload = {
@@ -27,6 +29,7 @@ type PubPayload = {
   city: string
   email: string
   phone?: string
+  turnstileToken?: string
 }
 
 const GENERIC_ERROR =
@@ -48,9 +51,11 @@ export function OnsideFanWaitlistForm() {
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const client = useTRPCClient()
+  const captcha = useTurnstile()
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: FanPayload) => client.waitlist.join.mutate(data),
+    onSettled: captcha.reset,
     onSuccess: (data, variables) => {
       analytics.identifyWaitlist(data.waitlistId)
       setSuccessCity(variables.city)
@@ -91,7 +96,8 @@ export function OnsideFanWaitlistForm() {
     return {
       role: 'fan' as const,
       city: normalizedCity,
-      email: normalizedEmail
+      email: normalizedEmail,
+      turnstileToken: captcha.token
     }
   }
 
@@ -219,6 +225,7 @@ export function OnsideFanWaitlistForm() {
       <p className="onside-form-note">
         Cadastro gratuito · sem e-mails promocionais
       </p>
+      {captcha.widget}
     </form>
   )
 }
@@ -237,9 +244,11 @@ export function OnsideBarInterestForm() {
   const cityRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
   const client = useTRPCClient()
+  const captcha = useTurnstile()
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: PubPayload) => client.waitlist.join.mutate(data),
+    onSettled: captcha.reset,
     onSuccess: (data) => {
       analytics.identifyWaitlist(data.waitlistId)
       setSuccess(true)
@@ -289,7 +298,8 @@ export function OnsideBarInterestForm() {
       role: 'pub' as const,
       pubName: normalizedPubName,
       city: normalizedCity,
-      email: normalizedEmail
+      email: normalizedEmail,
+      turnstileToken: captcha.token
     }
   }
 
@@ -430,6 +440,7 @@ export function OnsideBarInterestForm() {
       <p className="onside-form-note onside-bar-form-note">
         Sem compromisso · entraremos em contato pelo e-mail informado
       </p>
+      {captcha.widget}
     </form>
   )
 }
