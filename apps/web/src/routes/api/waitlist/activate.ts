@@ -24,31 +24,23 @@ async function activate(request: Request) {
       return Response.json({ existingAccount: true })
     }
 
-    const signInRequest = new Request(
-      new URL('/api/auth/sign-in/email', request.url),
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          origin: new URL(request.url).origin,
-          // O rate limit de login do better-auth (3 por 10s) conta por IP.
-          // Sem o IP do cliente, toda ativação caía no mesmo balde global, e
-          // a quarta em 10s criava a conta mas mandava a pessoa para /login.
-          'x-forwarded-for': request.headers.get('x-forwarded-for') ?? '',
-          // No Workers o better-auth lê só este (WEB-199).
-          'cf-connecting-ip': request.headers.get('cf-connecting-ip') ?? ''
-        },
-        body: JSON.stringify({
+    // Por `auth.api`, e não por `auth.handler`: o login HTTP exige o token do
+    // Turnstile (plugin `captcha`), que esta chamada do servidor não tem. Pelo
+    // mesmo motivo o rate limit de login não conta aqui — o convite é de uso
+    // único e a senha acabou de ser definida. Os headers do cliente vão junto
+    // para a sessão gravar IP e user agent dele. O cookie da sessão sai pelo
+    // `tanstackStartCookies`; com `asResponse` ele iria duas vezes.
+    const signedIn = await auth.api
+      .signInEmail({
+        body: {
           email: result.email,
           password: parsed.data.password,
           rememberMe: true
-        })
-      }
-    )
-    const signInResponse = await auth.handler(signInRequest)
-    return signInResponse.ok
-      ? signInResponse
-      : Response.json({ existingAccount: true, activated: true })
+        },
+        headers: request.headers
+      })
+      .catch(() => null)
+    return Response.json(signedIn ?? { existingAccount: true, activated: true })
   } catch (error) {
     if (error instanceof InvalidWaitlistInviteError) {
       return Response.json(
