@@ -12,6 +12,7 @@ import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
 import { isLapsed } from '@/lib/lapsed-plan'
 import {
+  CHECKOUT_ENABLED_DEFAULT,
   getPlanExitLink,
   getPlanHeader,
   getPlanSelectionState,
@@ -61,13 +62,11 @@ function PlanSelection() {
   // `api/auth/$` — mas descobrir isso só depois do clique, num erro genérico,
   // seria trabalhar contra o dono do bar. Aqui a tela avisa antes.
   //
-  // O padrão enquanto carrega é LIBERADO, e isso é deliberado: se a leitura
-  // da configuração falhar, esconder o botão trancaria a contratação mesmo
-  // com ela aberta. Liberar na dúvida no máximo devolve o 503 do servidor,
-  // que a tela já mostra.
+  // Enquanto carrega, vale o mesmo padrão do servidor: a tela não promete
+  // uma contratação que o servidor, sem linha no banco, recusaria.
   const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
   const checkoutLiberado =
-    configQuery.data?.['billing.checkout_enabled'] ?? true
+    configQuery.data?.['billing.checkout_enabled'] ?? CHECKOUT_ENABLED_DEFAULT
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
