@@ -20,8 +20,9 @@ type Entry<T> = { value: T; expiresAt: number }
 export type TtlCache<T> = {
   /** Devolve o valor em cache ou executa `load` e guarda o resultado. */
   get(key: string, load: () => Promise<T>): Promise<T>
-  /** Esvazia o cache. Existe para os testes e para invalidação manual. */
-  clear(): void
+  /** Esvazia o cache. Existe para os testes e para invalidação manual.
+   *  O compartilhado devolve promessa: também apaga no Redis. */
+  clear(): void | Promise<void>
   /** Número de chaves guardadas. Usado nos testes. */
   size(): number
 }

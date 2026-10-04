@@ -142,7 +142,7 @@ describe('leitura da configuração (ESC-19)', () => {
     )
 
     expect(await store.get('billing.checkout_enabled')).toBe(false)
-    store.invalidate()
+    await store.invalidate()
     expect(await store.get('billing.checkout_enabled')).toBe(true)
     expect(chamadas()).toBe(2)
   })

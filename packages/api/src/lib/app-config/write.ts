@@ -12,11 +12,12 @@ import type { AppConfigKey, AppConfigValue } from './registry'
  */
 
 /**
- * Grava o desvio de uma chave e derruba o cache local.
+ * Grava o desvio de uma chave e derruba o cache (o compartilhado também, se
+ * houver Redis).
  *
- * As demais instâncias continuam servindo o valor anterior até o TTL do cache
- * expirar — ver `store.ts`. Quem chama precisa saber disso: a resposta dizer
- * "gravado" não significa "já valendo em todo lugar".
+ * Sem Redis, as demais instâncias continuam servindo o valor anterior até o
+ * TTL do cache expirar — ver `store.ts`. Quem chama precisa saber disso: a
+ * resposta dizer "gravado" não significa "já valendo em todo lugar".
  */
 export async function setAppConfig<K extends AppConfigKey>(
   key: K,
@@ -37,7 +38,7 @@ export async function setAppConfig<K extends AppConfigKey>(
       updated_by = EXCLUDED.updated_by
   `)
 
-  appConfigStore.invalidate()
+  await appConfigStore.invalidate()
 }
 
 /**
@@ -49,5 +50,5 @@ export async function setAppConfig<K extends AppConfigKey>(
  */
 export async function resetAppConfig(key: AppConfigKey): Promise<void> {
   await db.execute(sql`DELETE FROM app_config WHERE key = ${key}`)
-  appConfigStore.invalidate()
+  await appConfigStore.invalidate()
 }
