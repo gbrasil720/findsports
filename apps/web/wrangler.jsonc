@@ -6,9 +6,7 @@
   "main": "src/worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // WEB-205: custom domain — a Cloudflare cria o registro de `www`, que passa
-  // na frente do curinga `*` (Vercel). Rollback: [] e deploy, ou remover o
-  // domínio no painel (Settings → Domains & Routes).
+  // WEB-205: custom domain — a Cloudflare cria e mantém o registro de `www`.
   "routes": [{ "pattern": "www.onside.sh", "custom_domain": true }],
   // Fica para depuração, mas sem login: BETTER_AUTH_URL é o www.
   "workers_dev": true,
@@ -34,7 +32,7 @@
   // boot em produção com elas.
   //
   // WEB-205: as três URLs são o domínio público. O better-auth confia nessa
-  // origem e na irmã sem www., e o cookie vale em onside.sh — igual à Vercel.
+  // origem e na irmã sem www., e o cookie vale em onside.sh.
   // O workers.dev deixa de logar.
   "vars": {
     "NODE_ENV": "production",
@@ -47,8 +45,8 @@
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
   },
   // WEB-203: retenção diária de analytics (scheduled() em src/worker.ts).
-  // 04:00 UTC = 01:00 em São Paulo. Ligado no corte (WEB-205), que tirou o
-  // cron do build da Vercel. Para desligar, volte para [] e faça deploy —
+  // 04:00 UTC = 01:00 em São Paulo. É o único agendador. Para desligar,
+  // volte para [] e faça deploy —
   // apagar a chave não remove o agendamento já publicado.
   "triggers": { "crons": ["0 4 * * *"] },
 

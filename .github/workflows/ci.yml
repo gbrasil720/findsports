@@ -100,8 +100,7 @@ jobs:
   # migration no branch `preview` do Neon e Worker `onside-web-preview`
   # (uma URL só: o último PR publicado ganha).
   #
-  # Este job é o ÚNICO lugar que migra produção: o build da Vercel não migra
-  # mais. Sem os segredos (PR de fork, ou antes de cadastrá-los) o deploy é
+  # Este job é o ÚNICO lugar que migra produção. Sem os segredos (PR de fork, ou antes de cadastrá-los) o deploy é
   # pulado e o CI segue verde. Os segredos são lidos num job à parte porque
   # o `if` de job não enxerga `secrets`.
   deploy-gate:
@@ -144,9 +143,9 @@ jobs:
         with:
           bun-version: 1.3.1
       - run: bun install --frozen-lockfile
-      # Antes do deploy, como era na Vercel: a migration tem de ser compatível
-      # com o código anterior (expand → contract), que segue no ar até o
-      # `wrangler deploy` terminar e é para onde o rollback volta.
+      # Antes do deploy: a migration tem de ser compatível com o código
+      # anterior (expand → contract), que segue no ar até o `wrangler deploy`
+      # terminar e é para onde o rollback volta.
       - name: Migrations
         env:
           NODE_ENV: production

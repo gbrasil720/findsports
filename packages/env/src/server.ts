@@ -54,12 +54,6 @@ const rawEnv = createEnv({
      */
     LOCATIONIQ_API_KEY: z.string().min(1).optional(),
     /**
-     * Segredo que a Vercel manda em `Authorization: Bearer` ao disparar os
-     * crons (WEB-117). Faltando, a rota de cron recusa toda chamada — nunca
-     * roda aberta.
-     */
-    CRON_SECRET: z.string().min(16).optional(),
-    /**
      * Chaves só do E2E (WEB-174, `docs/e2e.md`). Recusadas em produção logo
      * abaixo: qualquer uma delas troca um serviço real por um dublê.
      *

@@ -7,6 +7,11 @@ Regra que vale para tudo aqui: **medir antes, medir depois**. Todo achado
 fechado nesta série tem número antes e depois. Se você fizer alguma destas
 pendências sem medir, não tem como saber se ajudou.
 
+> **Nota (04/10/2026):** produção saiu da Vercel para o Worker `onside-web` na
+> Cloudflare (WEB-205/WEB-206). Os passos abaixo que citam o painel, o cron ou o
+> cache da Vercel são históricos: segredo agora é `wrangler secret put`, e a
+> retenção de analytics (item 8) já roda no Cron Trigger do Worker (WEB-203).
+
 > Estado geral: 17 achados resolvidos, 3 parciais e 1 retirado. Nada foi
 > deixado sem tratamento — os parciais estão abertos só na parte que exige
 > provisionar serviço, mexer em console de terceiro ou decidir produto.

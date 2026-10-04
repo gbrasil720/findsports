@@ -184,7 +184,8 @@ void atualizarRollup(barId, dia)
 WITH inserido AS (INSERT …), rollup AS (INSERT … ON CONFLICT DO UPDATE …) SELECT …
 ```
 
-Se for realmente inevitável executar depois, use `waitUntil()` da plataforma —
+Se for realmente inevitável executar depois, use o `waitUntil()` do Worker
+(`cloudflare:workers`; no auth ele já está ligado em `runInBackground`) —
 nunca `void`.
 
 ### 2.3 Conexão é recurso escasso
@@ -193,10 +194,11 @@ Pool por instância multiplica conexões pelo número de instâncias. Medido
 (ESC-04): 3 instâncias × 10 requisições seguravam **30 conexões**; com as
 consultas indo por HTTP, **2**.
 
-Neste projeto: `neonConfig.poolQueryViaFetch = true` faz consulta normal viajar
-sem conexão; só transação faz checkout. Se você adicionar um listener de
-`connect`/`acquire`/`release`/`remove` no Pool, **desliga** esse comportamento
-sem avisar.
+Neste projeto o Worker abre um pool `pg` pequeno por requisição (`max: 5`,
+`runWithDb` em `packages/db`) sobre o Hyperdrive, que é quem mantém as conexões
+com o Neon e as reaproveita entre requisições. Não guarde pool nem cliente em
+variável de módulo: o Workers proíbe usar numa requisição o socket aberto em
+outra.
 
 ### 2.4 Toda chamada externa precisa de prazo
 
@@ -403,7 +405,7 @@ verificadas. **Dizer "não medi isso" preserva a confiança no resto.**
 | `window` no corpo de componente | quebra a renderização no servidor |
 | `t.procedure` sem o middleware base | procedimento sem log |
 | Novo `WHEN` no `CASE` de recusa sem mapear em `RECORD_FAILURES` | vira `INTERNAL_SERVER_ERROR` |
-| Listener no Pool do Neon | desliga o caminho HTTP e as conexões voltam |
+| Pool ou cliente `pg` em variável de módulo | o Workers recusa I/O de outra requisição |
 | Cache de catálogo de 5 min | esporte novo demora até 5 min para aparecer |
 | Cache de sessão de 60 s | banir ou trocar papel demora até 60 s |
 

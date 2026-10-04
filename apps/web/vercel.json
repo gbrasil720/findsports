@@ -1,6 +1,0 @@
-{
-  "buildCommand": "bun run build:vercel",
-  "installCommand": "cd ../.. && bun install",
-  "framework": null,
-  "regions": ["iad1"]
-}

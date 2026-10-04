@@ -18,7 +18,6 @@
     "@findsports_oficial/config": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
-    "@vercel/functions": "^3.9.5",
     "better-auth": "catalog:",
     "dodopayments": "^2.37.0",
     "zod": "catalog:"

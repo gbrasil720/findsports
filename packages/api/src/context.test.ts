@@ -10,10 +10,7 @@ describe('extrairIp', () => {
     expect(extrairIp(headers)).toBe('203.0.113.10')
   })
 
-  it('cai para x-real-ip e depois unknown', () => {
-    expect(extrairIp(new Headers({ 'x-real-ip': '198.51.100.2' }))).toBe(
-      '198.51.100.2'
-    )
+  it('sem x-forwarded-for é unknown', () => {
     expect(extrairIp(new Headers())).toBe('unknown')
   })
 

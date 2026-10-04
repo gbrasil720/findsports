@@ -5,7 +5,7 @@ import {
   webhooks
 } from '@dodopayments/better-auth'
 import { emailAssetUrls } from '@findsports_oficial/config/site'
-import { and, createHttpDb, db, eq, isNull } from '@findsports_oficial/db'
+import { and, db, eq, isNull } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
@@ -39,7 +39,7 @@ import {
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
-  if (host === 'onside.sh' || host === 'findsports.com.br') return host
+  if (host === 'onside.sh') return host
   return undefined
 }
 
@@ -209,7 +209,6 @@ async function handleSubscriptionCancelled(payload: any) {
 }
 
 export function createAuth() {
-  const db = createHttpDb()
   const cookieDomain = cookieDomainFor(env.BETTER_AUTH_URL)
 
   return betterAuth({
@@ -217,7 +216,7 @@ export function createAuth() {
     advanced: {
       backgroundTasks: { handler: runInBackground },
       // WEB-199: no Workers o `x-forwarded-for` traz o que o cliente mandou;
-      // na Vercel fica o padrão (`x-forwarded-for`, sobrescrito por ela).
+      // fora dele (dev, testes) fica o padrão, ver `runtime.ts`.
       ...(isCloudflareWorkers
         ? { ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] } }
         : {}),
@@ -416,7 +415,7 @@ export function createAuth() {
         enabled: !env.E2E_DISABLE_CACHES,
         maxAge: 60,
         // v2: fotos deixam de ir no cookie (eram data URL de ~25 KB e
-        // estouravam o header na Vercel — 494 REQUEST_HEADER_TOO_LARGE).
+        // estouravam o limite de header — 494 REQUEST_HEADER_TOO_LARGE).
         version: '2'
       }
     },

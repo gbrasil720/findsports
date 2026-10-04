@@ -63,10 +63,7 @@ export const SERVER_ENV: Record<string, string> = {
   DODO_PAYMENTS_WEBHOOK_SECRET: DODO_WEBHOOK_SECRET,
   // Lida pelo `stubs/dodo-api.mjs`, não pelo app.
   E2E_DODO_API_URL: `${STUB_URL}/dodo`,
-  CRON_SECRET: '',
   LAUNCH_ADMISSION_MODE: 'invite-only',
-  KV_REST_API_URL: '',
-  KV_REST_API_TOKEN: '',
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
   VITE_MAP_TILES_URL: `${STUB_URL}/tiles.pmtiles`,

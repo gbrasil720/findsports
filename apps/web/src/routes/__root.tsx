@@ -165,24 +165,6 @@ const ImpersonationBanner = lazy(() =>
   }))
 )
 
-function DeferredVercelAnalytics() {
-  const [Analytics, setAnalytics] = useState<
-    typeof import('@vercel/analytics/react').Analytics | null
-  >(null)
-
-  useEffect(() => {
-    let cancelled = false
-    void import('@vercel/analytics/react').then((module) => {
-      if (!cancelled) setAnalytics(() => module.Analytics)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return Analytics ? <Analytics /> : null
-}
-
 function PostHogProvider() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -284,11 +266,6 @@ function RootDocument() {
           <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         </>
       ) : null}
-      {/* WEB-199: no build da Cloudflare o script da Vercel só daria 404.
-          A Vercel segue com ele até sair (WEB-206). */}
-      {import.meta.env.MODE === 'cloudflare' ? null : (
-        <DeferredVercelAnalytics />
-      )}
     </>
   )
 }

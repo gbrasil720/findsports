@@ -5,7 +5,7 @@ import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec'
 
 import { criarEstiloDoMapa } from './map-style'
 
-const TILES = 'https://exemplo.blob.vercel-storage.com/maps/onside.pmtiles'
+const TILES = 'https://tiles.onside.sh/onside.pmtiles'
 const ORIGEM = 'https://www.onside.sh'
 const estilo = criarEstiloDoMapa(TILES, ORIGEM)
 

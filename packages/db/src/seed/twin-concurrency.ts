@@ -1,11 +1,11 @@
 /**
- * Rampa de concorrência contra o gêmeo Neon, sem passar pela Vercel.
+ * Rampa de concorrência contra o gêmeo Neon, sem passar pelo app.
  *
  * O k6 local mede a aplicação inteira num processo quente com Postgres na
  * mesma máquina. Isso não diz nada sobre o compute contratado no Neon, que é
  * o teto real. Este driver ataca só o banco, pelo endpoint pooler, com a
- * mesma query que `pubs.search` emite — é o atalho que a própria Vercel
- * recomenda para separar gargalo de banco de gargalo de função.
+ * mesma query que `pubs.search` emite, para separar gargalo de banco de
+ * gargalo de função.
  *
  * Recusa qualquer alvo que não seja um projeto Neon dedicado a carga: nunca
  * aponte para o banco que serve usuários.

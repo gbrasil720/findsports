@@ -4,17 +4,8 @@ export function extrairIp(
   headers: Headers,
   onWorkers = isCloudflareWorkers
 ): string {
-  // No Workers, só o `cf-connecting-ip` não vem do cliente (WEB-199).
+  // No Workers, só o `cf-connecting-ip` não vem do cliente (WEB-199). Fora
+  // dele (dev, testes) não há proxy: o E2E manda um `x-forwarded-for` por teste.
   if (onWorkers) return headers.get('cf-connecting-ip')?.trim() || 'unknown'
-
-  const forwarded = headers.get('x-forwarded-for')
-  if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim()
-    if (first) return first
-  }
-  return (
-    headers.get('x-real-ip')?.trim() ||
-    headers.get('cf-connecting-ip')?.trim() ||
-    'unknown'
-  )
+  return headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 }
