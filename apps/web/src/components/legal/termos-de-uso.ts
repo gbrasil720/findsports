@@ -250,7 +250,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'É vedado ao torcedor fazer check-in sem estar no local, usar contas de terceiros ou qualquer articcio para obter o benefício indevidamente. Check-in fraudulento pode levar à perda do acesso a benefícios e ao encerramento da conta.'
+            'É vedado ao torcedor fazer check-in sem estar no local, usar contas de terceiros ou qualquer artifício para obter o benefício indevidamente. Check-in fraudulento pode levar à perda do acesso a benefícios e ao encerramento da conta.'
         }
       ]
     },

@@ -109,7 +109,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
             {
               b: 'Torcedor:'
             },
-            ' nome ou apelido, e-mail, senha (guardada de forma cifrada, nunca em texto legível), cidade e — se quiser informar — 9mes e esportes de interesse.'
+            ' nome ou apelido, e-mail, senha (guardada de forma cifrada, nunca em texto legível), cidade e — se quiser informar — times e esportes de interesse.'
           ]
         },
         {
@@ -244,7 +244,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
               },
               ' quem começou, em que etapa parou e quem concluiu o onboarding.'
             ],
-            'Contas criadas, por 9po.',
+            'Contas criadas, por tipo.',
             [
               {
                 b: 'No estabelecimento:'
@@ -720,7 +720,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
       blocks: [
         {
           type: 'p',
-          content: 'A LGPD garante a você, como 9tular, o direito de:'
+          content: 'A LGPD garante a você, como titular, o direito de:'
         },
         {
           type: 'ul',
@@ -829,7 +829,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content: [
-            'Para qualquer assunto de privacidade — dúvidas, pedidos de 9tular, denúncias —, o canal é ',
+            'Para qualquer assunto de privacidade — dúvidas, pedidos de titular, denúncias —, o canal é ',
             {
               email: 'contato@onside.sh'
             },
