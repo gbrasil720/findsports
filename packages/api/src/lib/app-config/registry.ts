@@ -102,6 +102,36 @@ export const APP_CONFIG_DEFINITIONS = {
   }),
 
   /**
+   * Trial criado no cadastro do bar (WEB-113).
+   *
+   * `bar.is_active` nasce `false` e só o webhook de assinatura paga o vira
+   * `true`. Com a cobrança fechada isso deixa todo bar novo invisível para o
+   * torcedor, sem caminho de publicação.
+   *
+   * Ligada, o `completePub` publica o bar e cria a assinatura `trialing` no
+   * plano daqui, com `current_period_end` em `days` dias. O benefício vence
+   * sozinho: `getCurrentPlan` deixa de reconhecer o plano na data, sem job.
+   * O bar continua publicado depois disso.
+   *
+   * Desligada — o padrão — nada muda: o bar nasce fora do ar, sem assinatura.
+   * O teto de `days` existe para um erro de digitação não virar plano grátis
+   * por anos.
+   */
+  'billing.onboarding_trial': definir({
+    schema: z.object({
+      enabled: z.boolean(),
+      plan: z.enum(['starter', 'pro', 'elite']),
+      days: z.number().int().min(1).max(90)
+    }),
+    padrao: { enabled: false, plan: 'elite', days: 14 },
+    publico: false,
+    descricao:
+      'Bar novo nasce publicado e com trial do plano escolhido por `days` ' +
+      'dias. Desligado, o bar nasce fora do ar e só a assinatura paga o ' +
+      'publica. Não altera bares já cadastrados.'
+  }),
+
+  /**
    * Freio da waitlist pública, por IP e por e-mail normalizado.
    *
    * Os números atuais cabem em humano preenchendo formulário e cortam o pico
