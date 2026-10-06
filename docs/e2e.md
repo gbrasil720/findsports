@@ -243,7 +243,7 @@ não exercitar o cache em si — isso fica com os testes unitários
 
 ## CI
 
-Job `e2e` em `.github/workflows/ci.yml`, em todo PR e push em `master`, com
+Job `e2e` em `.github/workflows/ci.yml`, em todo PR, com
 serviço Postgres/PostGIS próprio. Instala só o Chromium. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
