@@ -39,7 +39,10 @@ jobs:
           TARGET: ${{ github.event_name == 'push' && 'production' || 'preview' }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DEPLOY_DATABASE_URL: ${{ github.event_name == 'push' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_PREVIEW }}
+          # Sem `a && b || c`: com o segredo de produção vazio, `|| c` entregaria
+          # o banco de preview a um deploy de produção. O `|| ''` final evita
+          # que `false` vire a string "false" e abra o portão.
+          DEPLOY_DATABASE_URL: ${{ github.event_name == 'push' && secrets.DATABASE_URL_PROD || github.event_name != 'push' && secrets.DATABASE_URL_PREVIEW || '' }}
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$DEPLOY_DATABASE_URL" ]; then
             echo "target=$TARGET" >> "$GITHUB_OUTPUT"
@@ -159,7 +162,7 @@ jobs:
       - name: Migrations
         env:
           NODE_ENV: production
-          DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_PREVIEW }}
+          DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.check.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
         run: bun run db:migrate:deploy
       # O ambiente do wrangler.jsonc é escolhido no build (`CLOUDFLARE_ENV`);
       # o `wrangler deploy` só lê o dist/server/wrangler.json já resolvido.
