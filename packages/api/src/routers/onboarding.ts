@@ -1,7 +1,8 @@
-import { db, eq } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
+  subscription,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
@@ -93,6 +94,11 @@ export const onboardingRouter = router({
         apiKey
       )
 
+      // WEB-113: com o trial ligado o bar já nasce publicado e com assinatura
+      // `trialing`. Desligado — o padrão — nasce fora do ar, à espera da
+      // assinatura paga, como sempre foi.
+      const trial = await getAppConfig('billing.onboarding_trial')
+
       await db.transaction(async (tx) => {
         const [newBar] = await tx
           .insert(bar)
@@ -108,7 +114,7 @@ export const onboardingRouter = router({
             screenCount: input.screenCount ?? null,
             latitude,
             longitude,
-            isActive: false
+            isActive: trial.enabled
           })
           .returning({ id: bar.id })
 
@@ -116,6 +122,18 @@ export const onboardingRouter = router({
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
             message: 'Erro ao criar o bar.'
+          })
+        }
+
+        if (trial.enabled) {
+          // `bar.plan` acompanha pela trigger `subscription_bar_plan_sync`.
+          // O vencimento usa o `now()` do banco: a coluna é `timestamp` sem
+          // fuso, e um `Date` do JS entraria no fuso do processo que grava.
+          await tx.insert(subscription).values({
+            barId: newBar.id,
+            plan: trial.plan,
+            status: 'trialing',
+            currentPeriodEnd: sql`now() + make_interval(days => ${trial.days}::int)`
           })
         }
 

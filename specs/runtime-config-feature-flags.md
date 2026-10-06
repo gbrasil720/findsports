@@ -36,6 +36,7 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 |---|---|---|---|
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
 | `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Dodo. Webhook e portal do cliente **não** passam por este portão. |
+| `billing.onboarding_trial` | `{ enabled: false, plan: 'elite', days: 14 }` | não | Ligada, o bar novo nasce publicado e com assinatura `trialing` do plano por `days` dias (1 a 90). Desligada, nasce fora do ar e só a assinatura paga o publica. Não altera bares já cadastrados. |
 | `waitlist.rate_limit` | 8/IP e 3/e-mail por 10 min | não | Freio da waitlist pública. `enabled: false` desliga o contador inteiro. |
 | `launch.waitlist_gate` | `{ signup: true }` com `LAUNCH_ADMISSION_MODE=invite-only` (produção); `{ signup: false }` com `open` | sim | Fecha o cadastro por aprovação: e-mail não aprovado na waitlist não cria conta. |
 | `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |

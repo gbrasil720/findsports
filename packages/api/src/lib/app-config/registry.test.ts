@@ -71,6 +71,18 @@ describe('registro de configuração (ESC-19)', () => {
     ).toBe(true)
   })
 
+  it('recusa trial sem prazo, longo demais ou de plano que não existe', () => {
+    const base = appConfigDefault('billing.onboarding_trial')
+    const aceita = (valor: unknown) =>
+      validateAppConfigValue('billing.onboarding_trial', valor).ok
+
+    expect(aceita({ ...base, enabled: true })).toBe(true)
+    expect(aceita({ ...base, days: 0 })).toBe(false)
+    expect(aceita({ ...base, days: 365 })).toBe(false)
+    expect(aceita({ ...base, days: 1.5 })).toBe(false)
+    expect(aceita({ ...base, plan: 'premium' })).toBe(false)
+  })
+
   it('erro de validação aponta o campo', () => {
     const resultado = validateAppConfigValue('waitlist.rate_limit', {
       enabled: true,
@@ -86,6 +98,7 @@ describe('registro de configuração (ESC-19)', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('launch.pub_cities')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('waitlist.rate_limit')
+    expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('billing.onboarding_trial')
   })
 
   /**
@@ -97,6 +110,7 @@ describe('registro de configuração (ESC-19)', () => {
     expect(appConfigDefault('search.tiered_plan_query')).toBe(true)
     expect(appConfigDefault('billing.checkout_enabled')).toBe(false)
     expect(appConfigDefault('launch.pub_cities')).toEqual([])
+    expect(appConfigDefault('billing.onboarding_trial').enabled).toBe(false)
     expect(appConfigDefault('waitlist.rate_limit')).toEqual({
       enabled: true,
       ip: { max: 8, windowMs: 600_000 },

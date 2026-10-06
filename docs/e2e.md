@@ -165,9 +165,10 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
 
 `app_config` é uma tabela global, e os testes paralelos contam com os padrões
 de produção (gate da waitlist fechado, checkout desligado, nota pública
-desligada, todas as cidades liberadas). Teste que muda uma chave vai num
-arquivo `*.serial.e2e.ts`, com `setAppConfig(chave, valor)` e
-`resetAppConfig()` no `afterEach` (`fixtures/db.ts`).
+desligada, todas as cidades liberadas, trial de cadastro desligado). Teste
+que muda uma chave vai num arquivo `*.serial.e2e.ts`, com
+`setAppConfig(chave, valor)` e `resetAppConfig()` no `afterEach`
+(`fixtures/db.ts`).
 
 Esses arquivos rodam nos projetos `desktop-serial` e `mobile-serial`, com um
 worker só, **depois** que `desktop` e `mobile` terminam. Consequência: se um
