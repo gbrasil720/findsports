@@ -12,6 +12,7 @@ import Play from 'reicon-react/icons/Play'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
+import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { HIGHLIGHTS_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '../../utils/trpc'
 import { OnsideAppDemo } from './onside-app-demo'
@@ -646,6 +647,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
             <a href="mailto:contato@onside.sh">Contato</a>
             <Link to="/termos">Termos</Link>
             <Link to="/privacidade">Privacidade</Link>
+            <CookiePreferencesButton />
           </div>
         </nav>
       </div>
