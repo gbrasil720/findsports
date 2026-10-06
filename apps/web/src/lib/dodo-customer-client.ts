@@ -57,6 +57,15 @@ export async function listCustomerPayments(): Promise<CustomerPayment[]> {
   return normalizeCustomerPayments(data)
 }
 
+/**
+ * Pede o link do portal do cliente.
+ *
+ * Quem chama NÃO navega com o retorno: o plugin responde `redirect: true`, e o
+ * cliente do better-auth (`redirectPlugin`) já faz `window.location.href` com
+ * a URL antes de esta função resolver. Um segundo `location.href` abortava a
+ * primeira navegação (WEB-241). O retorno serve para saber se há para onde ir;
+ * `null` é o caso de mostrar erro.
+ */
 export async function getCustomerPortalUrl(): Promise<string | null> {
   const { data, error } = await authClient.dodopayments.customer.portal()
   if (error) throw error
