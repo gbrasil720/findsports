@@ -17,11 +17,25 @@ test('checkout ligado: o clique abre a sessão e redireciona para a Dodo', async
   await signIn(page, user)
   await page.goto('/plan')
 
+  const navigations: string[] = []
+  page.on('request', (request) => {
+    if (
+      request.isNavigationRequest() &&
+      request.url().startsWith(`${STUB_URL}/dodo/checkout/`)
+    ) {
+      navigations.push(request.url())
+    }
+  })
+
   await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
   await page.getByRole('button', { name: 'Continuar com Elite' }).click()
 
   await page.waitForURL(`${STUB_URL}/dodo/checkout/**`)
   await expect(page).toHaveTitle('Dodo (stub)')
+  // WEB-241: o cliente do better-auth já navega com a resposta do checkout.
+  // Um segundo `location.href` no app abortava a primeira navegação, e este
+  // teste falhava de vez em quando com `net::ERR_ABORTED`.
+  expect(navigations).toHaveLength(1)
 
   const calls = (await (
     await page.request.get(`${STUB_URL}/dodo/calls`)

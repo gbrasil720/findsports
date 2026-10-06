@@ -52,8 +52,19 @@ test('Elite ativo: plano, histórico e portal da Dodo', async ({ page }) => {
   await expect(history).toContainText(/R\$\s99,00/)
   await expect(history).toContainText('Pago')
 
+  const navigations: string[] = []
+  page.on('request', (request) => {
+    if (
+      request.isNavigationRequest() &&
+      request.url().startsWith(`${STUB_URL}/dodo/portal/`)
+    ) {
+      navigations.push(request.url())
+    }
+  })
   await page.getByRole('button', { name: 'Gerenciar assinatura' }).click()
   await expect(page).toHaveURL(new RegExp(`^${STUB_URL}/dodo/portal/cus_e2e_`))
+  // WEB-241: uma navegação só; a segunda abortava a primeira.
+  expect(navigations).toHaveLength(1)
 })
 
 test('Starter vê o caminho para o upgrade', async ({ page }) => {

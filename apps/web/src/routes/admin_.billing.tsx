@@ -114,11 +114,9 @@ function BillingPage() {
     setOpeningPortal(true)
     setPortalError(null)
     try {
-      const portalUrl = await getCustomerPortalUrl()
-      if (portalUrl) {
-        window.location.href = portalUrl
-        return
-      }
+      // Com URL na resposta o cliente do better-auth já está navegando para
+      // o portal; ver `getCustomerPortalUrl`.
+      if (await getCustomerPortalUrl()) return
       setPortalError('Não foi possível abrir o portal. Tente novamente.')
     } catch {
       setPortalError('Não foi possível abrir o portal. Tente novamente.')
