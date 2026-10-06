@@ -19,7 +19,7 @@ test('cidade fora de launch.pub_cities é recusada na tela e no servidor', async
   await page.getByLabel('Nome do estabelecimento').fill('Bar de Campinas')
   await page.getByLabel('Endereço').fill(`Rua Fechada ${owner.id}, 1`)
   await page.getByLabel('Bairro').fill('Cambuí')
-  await page.getByLabel('Cidade').fill('Campinas')
+  await page.getByLabel('Cidade', { exact: true }).fill('Campinas')
 
   const continuar = page.getByRole('button', { name: 'Continuar', exact: true })
   const aviso = page.getByRole('status').filter({ hasText: 'ainda não abriu' })
@@ -28,7 +28,7 @@ test('cidade fora de launch.pub_cities é recusada na tela e no servidor', async
   await expect(continuar).toBeDisabled()
 
   // A comparação ignora acento e caixa.
-  await page.getByLabel('Cidade').fill('rio de janeiro')
+  await page.getByLabel('Cidade', { exact: true }).fill('rio de janeiro')
   await expect(aviso).toHaveCount(0)
   await expect(continuar).toBeEnabled()
 

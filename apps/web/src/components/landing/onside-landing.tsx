@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useRouteContext } from '@tanstack/react-router'
+import { Link, useRouteContext } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState } from 'react'
 import Add from 'reicon-react/icons/Add'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
@@ -28,8 +28,27 @@ import {
 } from './onside-landing-content'
 import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
 
-function OnsideHeader() {
+type OnsideChromeProps = {
+  /**
+   * Prefixo das âncoras da landing: vazio nela mesma, `/` nas páginas que
+   * apontam de volta para ela.
+   */
+  home?: '' | '/'
+}
+
+type OnsideHeaderProps = OnsideChromeProps & {
+  /**
+   * Id da seção escura do topo. Enquanto ela está sob o cabeçalho, ele fica
+   * transparente e em cor de papel; depois dela, volta ao normal.
+   */
+  inkHeroId?: string
+}
+
+export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
   const [scrolled, setScrolled] = useState(false)
+  // Começa sobre a tinta no servidor e no primeiro render: a página abre no
+  // topo, e um valor diferente aqui piscaria o cabeçalho na hidratação.
+  const [onInk, setOnInk] = useState(Boolean(inkHeroId))
   const [menuOpen, setMenuOpen] = useState(false)
   const menuId = useId()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -37,11 +56,16 @@ function OnsideHeader() {
   const previousOverflow = useRef<string | null>(null)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12)
+    const onScroll = () => {
+      setScrolled(window.scrollY > 12)
+      if (!inkHeroId) return
+      const hero = document.getElementById(inkHeroId)
+      setOnInk(hero ? window.scrollY <= hero.offsetHeight - 80 : false)
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [inkHeroId])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -80,11 +104,13 @@ function OnsideHeader() {
   }
 
   return (
-    <header className={`onside-site-header${scrolled ? ' is-scrolled' : ''}`}>
+    <header
+      className={`onside-site-header${scrolled ? ' is-scrolled' : ''}${onInk && !menuOpen ? ' is-on-ink' : ''}`}
+    >
       <div className="onside-shell onside-nav-wrap">
         <a
           className="onside-brand-link"
-          href="#top"
+          href={`${home}#top`}
           aria-label="Onside — início"
         >
           <OnsideBrand />
@@ -92,7 +118,7 @@ function OnsideHeader() {
 
         <nav className="onside-nav-links" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => (
-            <a key={item.id} href={item.href}>
+            <a key={item.id} href={`${home}${item.href}`}>
               {item.label}
             </a>
           ))}
@@ -100,7 +126,7 @@ function OnsideHeader() {
 
         <a
           className="onside-nav-cta"
-          href="#lista"
+          href={`${home}#lista`}
           data-cta="nav_city_waitlist"
         >
           {LANDING_COPY.primaryCta}{' '}
@@ -152,14 +178,14 @@ function OnsideHeader() {
             <a
               key={item.id}
               ref={index === 0 ? firstLinkRef : undefined}
-              href={item.href}
+              href={`${home}${item.href}`}
             >
               {item.label}
             </a>
           ))}
           <a
             className="onside-button onside-button-acid"
-            href="#lista"
+            href={`${home}#lista`}
             data-cta="nav_city_waitlist"
           >
             {LANDING_COPY.primaryCta}
@@ -509,6 +535,32 @@ function ProofList({
   )
 }
 
+export function OnsideFooter({ home = '' }: OnsideChromeProps) {
+  return (
+    <footer className="onside-site-footer">
+      <div className="onside-shell onside-footer-grid">
+        <a
+          className="onside-brand-link onside-footer-brand"
+          href={`${home}#top`}
+          aria-label="Onside — início"
+        >
+          <OnsideBrand />
+        </a>
+        <p>Feito por quem prefere a mesa ao sofá.</p>
+        <div className="onside-footer-links">
+          <a href={`${home}#lista`}>Waitlist</a>
+          <a href={`${home}#bar-form`}>Para bares</a>
+          <a href={`${home}#duvidas`}>Dúvidas</a>
+          <a href="mailto:contato@onside.sh">Contato</a>
+          <Link to="/termos">Termos</Link>
+          <Link to="/privacidade">Privacidade</Link>
+        </div>
+        <small>© 2026 Onside</small>
+      </div>
+    </footer>
+  )
+}
+
 export function OnsideLanding() {
   const primaryHref = '#lista'
   const primaryLabel = LANDING_COPY.primaryCta
@@ -793,25 +845,7 @@ export function OnsideLanding() {
         </section>
       </main>
 
-      <footer className="onside-site-footer">
-        <div className="onside-shell onside-footer-grid">
-          <a
-            className="onside-brand-link onside-footer-brand"
-            href="#top"
-            aria-label="Onside — início"
-          >
-            <OnsideBrand />
-          </a>
-          <p>Feito por quem prefere a mesa ao sofá.</p>
-          <div className="onside-footer-links">
-            <a href="#lista">Waitlist</a>
-            <a href="#bar-form">Para bares</a>
-            <a href="#duvidas">Dúvidas</a>
-            <a href="mailto:contato@onside.sh">Contato</a>
-          </div>
-          <small>© 2026 Onside</small>
-        </div>
-      </footer>
+      <OnsideFooter />
     </div>
   )
 }

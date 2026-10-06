@@ -182,6 +182,11 @@ caminho que pega um serial roda a suíte paralela inteira — ver o topo.
 `getByLabel('Senha')`: casa também com "Mostrar senha"; use `{ exact: true }`.
 `data-testid` só onde não houver papel acessível.
 
+Rótulo curto que é pedaço de nome de rota precisa de `{ exact: true }`: em
+`vite dev` as devtools do TanStack Router criam um botão por rota com
+`aria-label="Open match details for <rota>"`, e `getByLabel('Cidade')` casava
+com o de `/privacidade` (WEB-240).
+
 ## Dublês
 
 | Serviço | Como | Helper |

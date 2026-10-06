@@ -39,7 +39,8 @@ async function fillEstablishment(page: Page, data: Establishment) {
   await page.getByLabel('Nome do estabelecimento').fill(data.name)
   await page.getByLabel('Endereço').fill(data.address)
   await page.getByLabel('Bairro').fill(data.neighborhood)
-  if (data.city !== undefined) await page.getByLabel('Cidade').fill(data.city)
+  if (data.city !== undefined)
+    await page.getByLabel('Cidade', { exact: true }).fill(data.city)
   if (data.phone !== undefined) {
     await page.getByLabel('Telefone').fill(data.phone)
   }
@@ -79,7 +80,9 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
   await expect(
     page.getByRole('heading', { name: 'Conta um pouco do seu bar.' })
   ).toBeVisible()
-  await expect(page.getByLabel('Cidade')).toHaveValue('São Paulo')
+  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
+    'São Paulo'
+  )
   await fillEstablishment(page, {
     name: 'Bar do Teste',
     address,

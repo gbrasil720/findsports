@@ -251,7 +251,7 @@ for (const role of ['fan', 'pub'] as const) {
 
     if (role === 'pub')
       await page.getByLabel('Nome do bar').fill('Bar Pendente')
-    await page.getByLabel('Cidade').fill('Salvador')
+    await page.getByLabel('Cidade', { exact: true }).fill('Salvador')
     await page.getByLabel('Telefone opcional').fill('71 99999-0000')
     await page.getByRole('button', { name: 'Entrar na waitlist' }).click()
     await expect(

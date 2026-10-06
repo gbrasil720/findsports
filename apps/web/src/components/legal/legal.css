@@ -1,0 +1,682 @@
+/*
+ * Páginas legais (WEB-240): /termos e /privacidade. Desenho do projeto
+ * "Onside landing page variation" no Claude Design. Vive dentro de
+ * `.onside-page`, então herda cabeçalho, rodapé, casca e tokens da landing.
+ */
+
+/*
+ * O `overflow-x: hidden` global em html e body (globals.css) transforma o
+ * body em contêiner de rolagem, e aí o índice `sticky` nunca gruda: quem rola
+ * é o documento. `clip` corta o transbordo do mesmo jeito sem criar contêiner.
+ */
+html:has(.onside-legal),
+html:has(.onside-legal) body {
+  overflow-x: clip;
+}
+
+/* ─── Cabeçalho sobre a tinta ─── */
+.onside-page .onside-site-header.is-on-ink {
+  border-bottom-color: rgb(241 238 230 / 18%);
+  background: transparent;
+  color: var(--onside-paper);
+  backdrop-filter: none;
+}
+
+.onside-page .onside-site-header.is-on-ink .onside-brand-wordmark {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.onside-page .onside-site-header.is-on-ink .onside-nav-cta {
+  border-color: var(--onside-paper);
+}
+
+.onside-page .onside-site-header.is-on-ink .onside-menu-button {
+  color: var(--onside-paper);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-page .onside-site-header.is-on-ink .onside-nav-cta:hover {
+    background: var(--onside-paper);
+    color: var(--onside-ink);
+  }
+}
+
+/* ─── Hero ─── */
+.onside-legal .onside-legal-hero {
+  padding: 170px 0 88px;
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+  overflow: hidden;
+}
+
+.onside-legal .onside-legal-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 60px;
+  align-items: end;
+}
+
+.onside-legal .onside-legal-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  color: var(--onside-acid);
+  font-family: var(--onside-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-kicker > span {
+  width: 8px;
+  height: 8px;
+  background: var(--onside-live);
+}
+
+.onside-legal .onside-legal-hero h1 {
+  margin-bottom: 36px;
+  font-size: clamp(64px, 8.6vw, 138px);
+  line-height: 0.96;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.onside-legal .onside-legal-hero h1 > span {
+  color: var(--onside-live);
+}
+
+.onside-legal .onside-legal-intro {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.onside-legal .onside-legal-intro p {
+  color: #c4c1b9;
+  font-size: 17px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.onside-legal .onside-legal-intro p:first-child {
+  color: #e4e1d9;
+  font-size: 20px;
+}
+
+.onside-legal .onside-legal-intro .onside-legal-link {
+  border-bottom-color: var(--onside-acid);
+  color: var(--onside-paper);
+}
+
+.onside-legal .onside-legal-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.onside-legal .onside-legal-meta {
+  display: grid;
+  margin: 0;
+  border: 1px solid rgb(241 238 230 / 30%);
+}
+
+.onside-legal .onside-legal-meta > div {
+  padding: 14px 16px;
+}
+
+.onside-legal .onside-legal-meta > div + div {
+  border-top: 1px solid rgb(241 238 230 / 30%);
+}
+
+.onside-legal .onside-legal-meta dt {
+  margin-bottom: 6px;
+  color: var(--onside-muted-on-ink);
+  font-family: var(--onside-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-meta dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.onside-legal .onside-legal-meta a {
+  border-bottom: 1.5px solid var(--onside-live);
+}
+
+.onside-legal .onside-legal-other {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  box-shadow: 6px 6px 0 var(--onside-acid);
+  transition:
+    transform var(--onside-motion-base) var(--onside-ease-out),
+    box-shadow var(--onside-motion-base) var(--onside-ease-out);
+}
+
+.onside-legal .onside-legal-other > span > * {
+  display: block;
+}
+
+.onside-legal .onside-legal-other > span > span:first-child {
+  margin-bottom: 4px;
+  color: var(--onside-muted);
+  font-family: var(--onside-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-other b {
+  font-size: 15px;
+}
+
+.onside-legal .onside-legal-other > span > span:last-child {
+  margin-top: 4px;
+  color: var(--onside-muted);
+  font-size: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-legal .onside-legal-other:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 9px 9px 0 var(--onside-acid);
+  }
+}
+
+/* ─── Faixa da empresa ─── */
+.onside-legal .onside-legal-company {
+  border-block: 2px solid var(--onside-ink);
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+}
+
+.onside-legal .onside-legal-company > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  padding: 14px 0;
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ─── Índice + texto ─── */
+.onside-legal .onside-legal-body {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 80px;
+  align-items: start;
+  padding: 88px 0 140px;
+}
+
+.onside-legal .onside-legal-body > aside {
+  position: sticky;
+  top: 104px;
+  max-height: calc(100vh - 130px);
+  overflow: auto;
+}
+
+.onside-legal .onside-legal-body > aside > p {
+  margin-bottom: 14px;
+  color: var(--onside-muted);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-body nav {
+  position: relative;
+  display: grid;
+  /* O marcador da seção ativa sai 4px para a esquerda da linha. */
+  margin-left: 4px;
+  border-left: 1.5px solid rgb(18 18 15 / 18%);
+}
+
+.onside-legal .onside-legal-body nav > span {
+  position: absolute;
+  top: 0;
+  left: -1.5px;
+  width: 1.5px;
+  height: 0;
+  background: var(--onside-live);
+}
+
+.onside-legal .onside-legal-body nav a {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 0 7px 18px;
+  /* `--onside-muted`, e não o #77766f do desenho: 13px precisa de 4,5:1. */
+  color: var(--onside-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  transition: color var(--onside-motion-base) ease;
+}
+
+.onside-legal .onside-legal-body nav a::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: -4.75px;
+  width: 7px;
+  height: 7px;
+  background: var(--onside-live);
+  opacity: 0;
+  transition: opacity var(--onside-motion-base) ease;
+}
+
+.onside-legal .onside-legal-body nav a > span:first-child {
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.onside-legal .onside-legal-body nav a:hover,
+.onside-legal .onside-legal-body nav a[aria-current] {
+  color: var(--onside-ink);
+}
+
+.onside-legal .onside-legal-body nav a[aria-current] {
+  font-weight: 700;
+}
+
+.onside-legal .onside-legal-body nav a[aria-current]::before {
+  opacity: 1;
+}
+
+.onside-legal .onside-legal-content {
+  min-width: 0;
+}
+
+.onside-legal .onside-legal-content > section {
+  padding: 64px 0 56px;
+  border-top: 1.5px solid var(--onside-ink);
+}
+
+.onside-legal .onside-legal-content > section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.onside-legal .onside-legal-content > section[data-reveal] {
+  transition:
+    opacity 0.8s var(--onside-ease-out),
+    transform 0.8s var(--onside-ease-out);
+}
+
+.onside-legal .onside-legal-content > section[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.onside-legal .onside-legal-section-head {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 26px;
+}
+
+.onside-legal .onside-legal-section-head > span {
+  color: var(--onside-paper);
+  font-family: var(--onside-display);
+  font-size: 72px;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  -webkit-text-stroke: 1.5px var(--onside-ink);
+}
+
+.onside-legal .onside-legal-section-head h2 {
+  padding-top: 10px;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.onside-legal .onside-legal-section-body {
+  max-width: 720px;
+}
+
+.onside-legal .onside-legal-p {
+  margin: 0 0 18px;
+  color: #2a2a26;
+  font-size: 17px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.onside-legal .onside-legal-section-body strong {
+  color: var(--onside-ink);
+}
+
+.onside-legal .onside-legal-h3 {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin: 38px 0 14px;
+  font-family: var(--onside-body);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  text-transform: none;
+}
+
+.onside-legal .onside-legal-h3 > span {
+  /* `--onside-live-text`: o vermelho do desenho não dá contraste em 10px. */
+  color: var(--onside-live-text);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.onside-legal .onside-legal-list {
+  display: grid;
+  gap: 12px;
+  margin: 6px 0 26px;
+  padding: 0;
+  list-style: none;
+}
+
+.onside-legal .onside-legal-list li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 12px;
+  color: #2a2a26;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.onside-legal .onside-legal-list li::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: 0.55em;
+  background: var(--onside-live);
+}
+
+.onside-legal .onside-legal-link {
+  border-bottom: 1.5px solid var(--onside-live);
+  color: var(--onside-ink);
+  font-weight: 600;
+}
+
+.onside-legal .onside-legal-attention {
+  margin: 26px 0;
+  padding: 20px 22px;
+  border: 1.5px solid var(--onside-ink);
+  background: var(--onside-stone);
+  box-shadow: 5px 5px 0 var(--onside-ink);
+}
+
+.onside-legal .onside-legal-attention > p:first-child {
+  margin-bottom: 8px;
+  color: var(--onside-live-text);
+  font-family: var(--onside-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-attention > p:last-child {
+  color: var(--onside-ink);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+.onside-legal .onside-legal-table {
+  margin: 26px 0 30px;
+  border: 1.5px solid var(--onside-ink);
+  overflow-x: auto;
+}
+
+.onside-legal .onside-legal-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.onside-legal .onside-legal-table th,
+.onside-legal .onside-legal-table td {
+  text-align: left;
+  vertical-align: top;
+}
+
+.onside-legal .onside-legal-table th {
+  padding: 11px 14px;
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+  font-family: var(--onside-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-table th + th {
+  border-left: 1px solid rgb(241 238 230 / 25%);
+}
+
+.onside-legal .onside-legal-table td {
+  padding: 14px;
+  color: #2a2a26;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.onside-legal .onside-legal-table td + td {
+  border-left: 1px solid rgb(18 18 15 / 18%);
+}
+
+.onside-legal .onside-legal-table tbody tr + tr {
+  border-top: 1px solid rgb(18 18 15 / 18%);
+}
+
+.onside-legal .onside-legal-table tbody tr:nth-child(even) {
+  background: #ece8df;
+}
+
+/* ─── Contato ─── */
+.onside-legal .onside-legal-contact {
+  padding: 110px 0;
+  border-top: 2px solid var(--onside-ink);
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+}
+
+.onside-legal .onside-legal-contact > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 40px;
+  align-items: center;
+}
+
+.onside-legal .onside-legal-contact p {
+  margin-bottom: 18px;
+  color: var(--onside-acid);
+  font-family: var(--onside-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.onside-legal .onside-legal-contact h2 {
+  font-size: clamp(44px, 5vw, 80px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.onside-legal .onside-legal-contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 26px;
+  min-height: 60px;
+  padding: 0 26px;
+  border: 1.5px solid var(--onside-acid);
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    transform var(--onside-motion-base) var(--onside-ease-out),
+    box-shadow var(--onside-motion-base) var(--onside-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-legal .onside-legal-contact a:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 5px 5px 0 var(--onside-live);
+  }
+}
+
+/* ─── Entrada do hero ─── */
+@media (prefers-reduced-motion: no-preference) {
+  .onside-legal .onside-legal-hero h1,
+  .onside-legal .onside-legal-intro > p,
+  .onside-legal .onside-legal-meta {
+    animation: onside-legal-rise 1s var(--onside-ease-out) both;
+  }
+
+  .onside-legal .onside-legal-hero h1 {
+    animation-delay: 0.1s;
+  }
+
+  .onside-legal .onside-legal-intro > p {
+    animation-delay: 0.18s;
+  }
+
+  .onside-legal .onside-legal-meta {
+    animation-delay: 0.34s;
+  }
+}
+
+@keyframes onside-legal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+}
+
+/* ─── Tablet ─── */
+@media (max-width: 1100px) {
+  .onside-legal .onside-legal-hero {
+    padding: 132px 0 64px;
+  }
+
+  .onside-legal .onside-legal-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+
+  .onside-legal .onside-legal-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+    padding: 56px 0 96px;
+  }
+
+  .onside-legal .onside-legal-body > aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* Fora do modo fixo o índice é só uma lista: sem barra e sem marcador. */
+  .onside-legal .onside-legal-body nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    margin-left: 0;
+    border-left: 0;
+  }
+
+  .onside-legal .onside-legal-body nav > span,
+  .onside-legal .onside-legal-body nav a::before {
+    display: none;
+  }
+
+  .onside-legal .onside-legal-body nav a {
+    min-height: 44px;
+    padding-left: 0;
+  }
+
+  .onside-legal .onside-legal-contact {
+    padding: 80px 0;
+  }
+
+  .onside-legal .onside-legal-contact > div {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}
+
+/* ─── Celular ─── */
+@media (max-width: 760px) {
+  .onside-legal .onside-legal-hero h1 {
+    font-size: clamp(48px, 15vw, 64px);
+  }
+
+  .onside-legal .onside-legal-intro p:first-child {
+    font-size: 18px;
+  }
+
+  .onside-legal .onside-legal-body nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .onside-legal .onside-legal-content > section {
+    padding: 48px 0 40px;
+  }
+
+  .onside-legal .onside-legal-section-head {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .onside-legal .onside-legal-section-head > span {
+    font-size: 48px;
+  }
+
+  .onside-legal .onside-legal-section-head h2 {
+    padding-top: 4px;
+    font-size: 28px;
+  }
+
+  .onside-legal .onside-legal-p {
+    font-size: 16px;
+  }
+
+  /* Tabela larga rola dentro da moldura em vez de espremer o texto. */
+  .onside-legal .onside-legal-table table {
+    min-width: 560px;
+  }
+
+  .onside-legal .onside-legal-contact a {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
