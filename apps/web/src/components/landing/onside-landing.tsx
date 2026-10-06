@@ -535,27 +535,135 @@ function ProofList({
   )
 }
 
+/**
+ * Botão que acompanha o ponteiro, como no desenho. Só onde há mouse e sem
+ * movimento reduzido. O deslocamento vai em variáveis CSS; quem suaviza é a
+ * transição do próprio botão.
+ */
+function useMagnet<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const move = (event: PointerEvent) => {
+      const box = element.getBoundingClientRect()
+      const dx = event.clientX - box.left - box.width / 2
+      const dy = event.clientY - box.top - box.height / 2
+      element.style.setProperty('--magnet-x', `${dx * 0.22}px`)
+      element.style.setProperty('--magnet-y', `${dy * 0.35}px`)
+    }
+    const leave = () => {
+      element.style.removeProperty('--magnet-x')
+      element.style.removeProperty('--magnet-y')
+    }
+    element.addEventListener('pointermove', move)
+    element.addEventListener('pointerleave', leave)
+    return () => {
+      element.removeEventListener('pointermove', move)
+      element.removeEventListener('pointerleave', leave)
+    }
+  }, [])
+
+  return ref
+}
+
+/** Rodapé da landing v2 (Claude Design), usado também nas páginas legais. */
 export function OnsideFooter({ home = '' }: OnsideChromeProps) {
+  const ctaRef = useMagnet<HTMLAnchorElement>()
+  const bigmarkRef = useRef<HTMLDivElement>(null)
+
+  // O letreiro sobe quando entra na tela. Só esconde se ainda estiver abaixo
+  // da dobra e com o JavaScript de pé: sem ele, fica visível.
+  useEffect(() => {
+    const element = bigmarkRef.current
+    if (!element) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (element.getBoundingClientRect().top < window.innerHeight * 0.95) return
+
+    element.setAttribute('data-reveal', 'pending')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        element.setAttribute('data-reveal', 'in')
+        observer.disconnect()
+      },
+      { rootMargin: '0px 0px -5% 0px' }
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <footer className="onside-site-footer">
       <div className="onside-shell onside-footer-grid">
-        <a
-          className="onside-brand-link onside-footer-brand"
-          href={`${home}#top`}
-          aria-label="Onside — início"
-        >
-          <OnsideBrand />
-        </a>
-        <p>Feito por quem prefere a mesa ao sofá.</p>
-        <div className="onside-footer-links">
-          <a href={`${home}#lista`}>Waitlist</a>
-          <a href={`${home}#bar-form`}>Para bares</a>
-          <a href={`${home}#duvidas`}>Dúvidas</a>
-          <a href="mailto:contato@onside.sh">Contato</a>
-          <Link to="/termos">Termos</Link>
-          <Link to="/privacidade">Privacidade</Link>
+        <div className="onside-footer-lead">
+          <a
+            className="onside-brand-link onside-footer-brand"
+            href={`${home}#top`}
+            aria-label="Onside — início"
+          >
+            <OnsideBrand />
+          </a>
+          <p>Feito por quem prefere a mesa ao sofá.</p>
+          <a
+            ref={ctaRef}
+            className="onside-footer-cta"
+            href={`${home}#lista`}
+            data-cta="footer_city_waitlist"
+          >
+            {LANDING_COPY.primaryCta}
+            <span className="onside-inline-icon" aria-hidden="true">
+              <ArrowRight size={16} aria-hidden="true" focusable="false" />
+            </span>
+          </a>
         </div>
-        <small>© 2026 Onside</small>
+
+        <nav className="onside-footer-nav" aria-label="Rodapé">
+          <div className="onside-footer-column">
+            <p>Produto</p>
+            {NAV_ITEMS.map((item) => (
+              <a key={item.id} href={`${home}${item.href}`}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div className="onside-footer-column">
+            <p>Conta</p>
+            <Link to="/login">Entrar</Link>
+            <Link to="/signup">Criar conta</Link>
+          </div>
+          <div className="onside-footer-column">
+            <p>Para bares</p>
+            <a href={`${home}#bar-form`}>Cadastre seu bar</a>
+            <a href="mailto:contato@onside.sh">Fale com a gente</a>
+          </div>
+          <div className="onside-footer-column">
+            <p>Onside</p>
+            <a href="mailto:contato@onside.sh">Contato</a>
+            <Link to="/termos">Termos</Link>
+            <Link to="/privacidade">Privacidade</Link>
+          </div>
+        </nav>
+      </div>
+
+      <div className="onside-shell onside-footer-bar">
+        <span>© 2026 Onside</span>
+        <span className="onside-footer-status">
+          <span aria-hidden="true" />
+          {LANDING_COPY.hero.eyebrow}
+        </span>
+      </div>
+
+      <div
+        ref={bigmarkRef}
+        className="onside-footer-bigmark"
+        aria-hidden="true"
+      >
+        <div className="onside-shell">Onside</div>
       </div>
     </footer>
   )

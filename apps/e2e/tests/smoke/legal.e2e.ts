@@ -52,16 +52,38 @@ test('índice leva à seção e marca a seção em leitura', async ({ page }) =>
   ).toBeInViewport()
 })
 
-test('rodapé da landing leva aos termos e à privacidade, e o sitemap os lista', async ({
+test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as páginas legais', async ({
   page
 }) => {
   await page.goto('/')
-  const footer = page.getByRole('contentinfo')
+  // Pela classe: as devtools do router também renderizam um <footer>.
+  const footer = page.locator('footer.onside-site-footer')
+  const nav = footer.getByRole('navigation', { name: 'Rodapé' })
+  for (const [label, href] of [
+    ['A Onside', '#produto'],
+    ['Entrar', '/login'],
+    ['Criar conta', '/signup'],
+    ['Cadastre seu bar', '#bar-form'],
+    ['Fale com a gente', 'mailto:contato@onside.sh'],
+    ['Contato', 'mailto:contato@onside.sh'],
+    ['Privacidade', '/privacidade']
+  ] as const) {
+    await expect(
+      nav.getByRole('link', { name: label, exact: true })
+    ).toHaveAttribute('href', href)
+  }
   await expect(
-    footer.getByRole('link', { name: 'Privacidade' })
-  ).toHaveAttribute('href', '/privacidade')
-  await footer.getByRole('link', { name: 'Termos' }).click()
+    footer.getByRole('link', { name: /Quero a Onside na minha cidade/ })
+  ).toHaveAttribute('href', '#lista')
+
+  await nav.getByRole('link', { name: 'Termos', exact: true }).click()
   await expect(page).toHaveURL(/\/termos$/)
+  // Fora da landing as âncoras voltam para ela.
+  await expect(
+    page
+      .locator('footer.onside-site-footer')
+      .getByRole('link', { name: 'Cadastre seu bar' })
+  ).toHaveAttribute('href', '/#bar-form')
 
   const sitemap = await (await page.request.get('/sitemap.xml')).text()
   expect(sitemap).toContain('/termos</loc>')
