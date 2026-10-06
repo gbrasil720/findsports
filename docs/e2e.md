@@ -243,7 +243,7 @@ não exercitar o cache em si — isso fica com os testes unitários
 
 ## CI
 
-Job `e2e` em `.github/workflows/ci.yml`, em todo PR e push em `master`, com
+Job `e2e` em `.github/workflows/ci.yml`, em todo PR, com
 serviço Postgres/PostGIS próprio. Instala só o Chromium. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
@@ -254,7 +254,10 @@ serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
 Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
 servidor e o seu Postgres. Num job só, com auth, waitlist e onboarding, a
 suíte já levava 12 min com 2 workers. O artifact de falha sai por parte
-(`playwright-report-N`). Se um shard passar de ~10 min, aumente a matriz.
+(`playwright-report-N`). Se um shard passar de ~10 min, aumente a matriz — e
+atualize os checks obrigatórios da branch protection de `master`, que lista
+`check` e cada `e2e (N)` pelo nome: job renomeado ou removido deixa toda PR
+esperando um check que nunca chega.
 
 Spec novo que mexe em `app_config` global continua indo em `*.serial.e2e.ts`;
 a matriz pega sozinha.
