@@ -18,10 +18,12 @@ import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import type { CSSProperties } from 'react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { MinuteTickProvider } from '../components/app/minute-tick'
+import { CookieConsent } from '../components/consent/cookie-consent'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
 import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
-import { initPostHog } from '../lib/posthog'
+import { useAnalyticsConsent } from '../lib/analytics-consent'
+import { initPostHog, stopPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import {
@@ -180,9 +182,19 @@ const ImpersonationBanner = lazy(() =>
 function PostHogProvider() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const consent = useAnalyticsConsent()
   const [ready, setReady] = useState(false)
 
+  // WEB-243: a análise liga com o aceite e desliga com a recusa, na mesma
+  // visita. Sem escolha é como recusa — e apaga o cookie de quem foi medido
+  // antes de este aviso existir.
   useEffect(() => {
+    if (consent === 'ssr') return
+    if (consent !== 'granted') {
+      stopPostHog()
+      setReady(false)
+      return
+    }
     let cancelled = false
     void initPostHog().then((ok) => {
       if (!cancelled) setReady(ok)
@@ -190,7 +202,7 @@ function PostHogProvider() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [consent])
 
   useEffect(() => {
     if (!ready) return
@@ -241,6 +253,7 @@ function RootDocument() {
           }
         >
           <PostHogProvider />
+          <CookieConsent />
           {impersonated ? (
             <Suspense
               fallback={

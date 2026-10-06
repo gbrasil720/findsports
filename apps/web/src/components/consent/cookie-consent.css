@@ -1,0 +1,150 @@
+/*
+ * Aviso de cookies (WEB-243). `.onside-banner` traz os tokens: o aviso fica
+ * na raiz do documento, fora de qualquer casca de página.
+ */
+.onside-consent {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  z-index: 200;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px 32px;
+  align-items: center;
+  width: min(calc(100% - 32px), 920px);
+  margin-inline: auto;
+  padding: 20px 22px;
+  border: 1.5px solid var(--onside-paper);
+  background: var(--onside-ink);
+  color: var(--onside-paper);
+  box-shadow: 6px 6px 0 var(--onside-acid);
+  font-family: var(--onside-body);
+}
+
+.onside-consent p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.onside-consent .onside-consent-kicker {
+  margin-bottom: 6px;
+  color: var(--onside-acid);
+  font-family: var(--onside-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.onside-consent .onside-consent-current {
+  margin-top: 8px;
+  color: var(--onside-muted-on-ink);
+  font-size: 12px;
+}
+
+.onside-consent a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.onside-consent-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Recusar e aceitar com o mesmo tamanho: recusar não pode ser mais difícil. */
+.onside-consent-actions button {
+  min-width: 124px;
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1.5px solid var(--onside-paper);
+  background: transparent;
+  color: var(--onside-paper);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color var(--onside-motion-base) ease,
+    color var(--onside-motion-base) ease;
+}
+
+.onside-consent-actions button.is-accept {
+  border-color: var(--onside-acid);
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+}
+
+.onside-consent :focus-visible {
+  outline: 3px solid var(--onside-acid);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-consent-actions button:hover {
+    background: var(--onside-paper);
+    color: var(--onside-ink);
+  }
+}
+
+@media (max-width: 760px) {
+  .onside-consent {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 18px;
+  }
+
+  .onside-consent-actions button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .onside-consent {
+    animation: onside-consent-in 0.26s var(--onside-ease-out) both;
+  }
+}
+
+@keyframes onside-consent-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/* O botão "Cookies" do rodapé, com a cara dos links da coluna. */
+.onside-page .onside-footer-column button {
+  width: max-content;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: #d6d3cb;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--onside-motion-fast) ease,
+    border-color var(--onside-motion-fast) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .onside-page .onside-footer-column button:hover {
+    border-bottom-color: var(--onside-live);
+    color: var(--onside-paper);
+  }
+}
+
+@media (pointer: coarse) {
+  .onside-page .onside-footer-column button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
