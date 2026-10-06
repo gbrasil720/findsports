@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { type FormEvent, useState } from 'react'
+import { LegalConsent } from '@/components/legal/legal-consent'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
@@ -143,6 +144,7 @@ function AccessPendingPage() {
               >
                 {join.isPending ? 'Entrando…' : 'Entrar na waitlist'}
               </button>
+              <LegalConsent action="entrar na lista" terms={false} />
             </form>
           </>
         )}

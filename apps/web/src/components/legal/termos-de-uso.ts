@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const TERMOS_DE_USO: LegalDocument = {
   kicker: 'Legal · Termos de Uso',
   title: 'Termos de uso',
-  updated: '15 de setembro de 2026',
+  updated: '6 de outubro de 2026',
   reading: '19 seções · ~26 min',
   intro: [
     'Estes Termos de Uso (“Termos”) regulam o acesso e o uso da plataforma Onside (“Onside”, “plataforma”, “nós”), operada por Onside Tecnologia da Informação Ltda., inscrita no CNPJ sob o nº 69.032.124/0001-55, com sede na Rua Cláudio Soares, 72, sala 1418, Pinheiros, São Paulo/SP, CEP 05422-030.',
@@ -457,13 +457,8 @@ export const TERMOS_DE_USO: LegalDocument = {
         },
         {
           type: 'p',
-          content: [
-            'Os valores acima são as condições de lançamento vigentes na data desta versão. Os preços e a composição dos planos em vigor a qualquer momento estão sempre em ',
-            {
-              mark: 'onside.sh/precos'
-            },
-            ', que prevalece sobre esta tabela em caso de divergência para novas contratações.'
-          ]
+          content:
+            'Os valores acima são as condições de lançamento vigentes na data desta versão.'
         },
         {
           type: 'h3',

@@ -2,6 +2,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { LegalConsent } from '@/components/legal/legal-consent'
 import {
   INVITE_ACTION,
   InviteStateArrow,
@@ -473,6 +474,7 @@ function FormularioDeAtivacao({
         >
           {pending ? 'Ativando…' : 'Criar senha e entrar'}
         </button>
+        <LegalConsent action="criar a conta" />
       </form>
     </main>
   )

@@ -14,6 +14,24 @@ html:has(.onside-legal) body {
   overflow-x: clip;
 }
 
+/*
+ * Aviso de aceite nos formulários (cadastro, convite, lista de espera). Fica
+ * fora de `.onside-legal` porque aparece em telas com outras cascas; herda a
+ * cor do formulário para servir em fundo claro e escuro.
+ */
+.onside-legal-consent {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.onside-legal-consent a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ─── Cabeçalho sobre a tinta ─── */
 .onside-page .onside-site-header.is-on-ink {
   border-bottom-color: rgb(241 238 230 / 18%);

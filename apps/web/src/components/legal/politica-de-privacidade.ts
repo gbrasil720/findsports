@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
   kicker: 'Legal · Política de Privacidade',
   title: 'Política de privacidade',
-  updated: '15 de setembro de 2026',
+  updated: '6 de outubro de 2026',
   reading: '17 seções · ~18 min',
   intro: [
     'Privacidade não é página de rodapé para a gente. Esta Política explica, em português claro, quais dados a plataforma Onside coleta, por que coleta, com quem compartilha, por quanto tempo guarda e o que você pode exigir de nós a qualquer momento. Ela integra os nossos Termos de Uso e segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).',
@@ -89,7 +89,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'há uma exceção importante. Quando um estabelecimento parceiro recebe de nós os dados mínimos para entregar um benefício no balcão, ele passa a ser controlador do uso que fizer desses dados, e responde por esse uso — não nós. A seção sobre compartilhamento detalha os limites.'
+            'Há uma exceção importante. Quando um estabelecimento parceiro recebe de nós os dados mínimos para entregar um benefício no balcão, ele passa a ser controlador do uso que fizer desses dados, e responde por esse uso — não nós. A seção sobre compartilhamento detalha os limites.'
         }
       ]
     },
@@ -167,7 +167,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'na nossa ferramenta de análise de produto, a captura de endereço IP está desativada. O IP existe apenas nos registros de acesso obrigatórios e nos logs de infraestrutura, com acesso restrito.'
+            'Na nossa ferramenta de análise de produto, a captura de endereço IP está desativada. O IP existe apenas nos registros de acesso obrigatórios e nos logs de infraestrutura, com acesso restrito.'
         },
         {
           type: 'h3',
@@ -303,7 +303,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'para quem está logado, o comportamento pode ser visto de forma identificada — ou seja, é possível saber que determinada conta fez determinada busca. Usamos isso para entender problemas reais de uso e para prevenir fraude e abuso, e você pode se opor a esse tratamento pelo canal de privacidade.'
+            'Para quem está logado, o comportamento pode ser visto de forma identificada — ou seja, é possível saber que determinada conta fez determinada busca. Usamos isso para entender problemas reais de uso e para prevenir fraude e abuso, e você pode se opor a esse tratamento pelo canal de privacidade.'
         },
         {
           type: 'p',
@@ -359,7 +359,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'avaliação é conteúdo público e permanente por natureza. Se você excluir a conta, as avaliações já publicadas podem ser mantidas de forma anonimizada, desvinculadas do seu nome, porque integram o histórico coletivo do estabelecimento. Essa retenção anonimizada tem base no legítimo interesse da comunidade de usuários em uma base de avaliações íntegra e no direito à informação do consumidor (art. 6º, III, do Código de Defesa do Consumidor), e não impede o exercício do seu direito de eliminação previsto no art. 18, VI, da LGPD quanto aos dados que a identificam. Se preferir apagá-las de vez, peça antes de excluir a conta.'
+            'Avaliação é conteúdo público e permanente por natureza. Se você excluir a conta, as avaliações já publicadas podem ser mantidas de forma anonimizada, desvinculadas do seu nome, porque integram o histórico coletivo do estabelecimento. Essa retenção anonimizada tem base no legítimo interesse da comunidade de usuários em uma base de avaliações íntegra e no direito à informação do consumidor (art. 6º, III, do Código de Defesa do Consumidor), e não impede o exercício do seu direito de eliminação previsto no art. 18, VI, da LGPD quanto aos dados que a identificam. Se preferir apagá-las de vez, peça antes de excluir a conta.'
         },
         {
           type: 'p',
@@ -437,7 +437,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'comunicações operacionais — confirmação de cadastro, aviso de cobrança, mudança nos Termos, incidente de segurança — são inerentes ao serviço e não dependem de consentimento; elas continuam enquanto a sua conta existir. Comunicações de marketing são opcionais e você sai delas a qualquer momento, pelo link de descadastro do próprio e-mail.'
+            'Comunicações operacionais — confirmação de cadastro, aviso de cobrança, mudança nos Termos, incidente de segurança — são inerentes ao serviço e não dependem de consentimento; elas continuam enquanto a sua conta existir. Comunicações de marketing são opcionais e você sai delas a qualquer momento, pelo link de descadastro do próprio e-mail.'
         },
         {
           type: 'p',
@@ -500,7 +500,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'esses dados só podem ser usados para operar a parceria e atender você no local. O estabelecimento não pode reaproveitá-los para marketing próprio, lista de e-mail ou WhatsApp, nem repassá-los a terceiros, sem base legal e consentimento obtidos por ele. Se isso acontecer com você, avise-nos — é motivo de suspensão da parceria.'
+            'Esses dados só podem ser usados para operar a parceria e atender você no local. O estabelecimento não pode reaproveitá-los para marketing próprio, lista de e-mail ou WhatsApp, nem repassá-los a terceiros, sem base legal e consentimento obtidos por ele. Se isso acontecer com você, avise-nos — é motivo de suspensão da parceria.'
         },
         {
           type: 'h3',
@@ -527,9 +527,14 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
               'Frankfurt, Alemanha (nuvem europeia)'
             ],
             [
-              'Vercel',
-              'Hospedagem do site e do app',
+              'Cloudflare',
+              'Hospedagem do site e do app, armazenamento de fotos, proteção de formulários contra robôs e contagem de acessos sem cookies',
               'Estados Unidos, com rede de distribuição global'
+            ],
+            [
+              'Resend',
+              'Envio dos e-mails da plataforma: confirmação de cadastro e da lista de espera, convite e redefinição de senha',
+              'Estados Unidos, com envio a partir de São Paulo (Brasil)'
             ],
             [
               'LocationIQ (Unwired Labs)',
@@ -557,7 +562,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'essa escolha é deliberada. Preferimos uma base de mapas aberta, hospedada por nós, a um provedor de mapas ligado a uma grande plataforma de publicidade — porque assim a sua movimentação pelo mapa não vira insumo de perfil publicitário de ninguém.'
+            'Essa escolha é deliberada. Preferimos uma base de mapas aberta, hospedada por nós, a um provedor de mapas ligado a uma grande plataforma de publicidade — porque assim a sua movimentação pelo mapa não vira insumo de perfil publicitário de ninguém.'
         },
         {
           type: 'h3',
@@ -567,7 +572,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'Hoje não utilizamos provedor terceirizado de disparo de e-mail. Quando passarmos a utilizar, esta tabela será atualizada com o nome do fornecedor e o local de tratamento, e a mudança será comunicada conforme a seção sobre alterações.'
+            'Os e-mails da plataforma — confirmação de cadastro e da lista de espera, convite e redefinição de senha — são enviados pela Resend, listada na tabela acima. Se trocarmos de fornecedor, a tabela será atualizada com o nome e o local de tratamento, e a mudança será comunicada conforme a seção sobre alterações.'
         },
         {
           type: 'h3',
@@ -677,7 +682,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           type: 'attention',
           label: 'Atenção',
           content:
-            'mesmo depois da exclusão, alguns registros permanecem pelo tempo que a lei determina — é o caso dos registros de acesso e dos documentos fiscais listados acima. Não é uma escolha nossa; é obrigação legal, e ela existe também para proteger você.'
+            'Mesmo depois da exclusão, alguns registros permanecem pelo tempo que a lei determina — é o caso dos registros de acesso e dos documentos fiscais listados acima. Não é uma escolha nossa; é obrigação legal, e ela existe também para proteger você.'
         }
       ]
     },

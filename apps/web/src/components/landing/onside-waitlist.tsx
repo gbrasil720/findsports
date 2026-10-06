@@ -9,7 +9,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
-
+import { LegalConsent } from '@/components/legal/legal-consent'
 import { analytics } from '../../lib/analytics'
 import { getUserFacingMessage } from '../../lib/user-facing-error'
 import { useTRPCClient } from '../../utils/trpc'
@@ -225,6 +225,7 @@ export function OnsideFanWaitlistForm() {
       <p className="onside-form-note">
         Cadastro gratuito · sem e-mails promocionais
       </p>
+      <LegalConsent action="entrar na lista" terms={false} />
       {captcha.widget}
     </form>
   )
@@ -440,6 +441,7 @@ export function OnsideBarInterestForm() {
       <p className="onside-form-note onside-bar-form-note">
         Sem compromisso · entraremos em contato pelo e-mail informado
       </p>
+      <LegalConsent action="cadastrar seu bar" terms={false} />
       {captcha.widget}
     </form>
   )

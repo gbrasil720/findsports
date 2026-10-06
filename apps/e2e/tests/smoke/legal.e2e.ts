@@ -67,3 +67,20 @@ test('rodapé da landing leva aos termos e à privacidade, e o sitemap os lista'
   expect(sitemap).toContain('/termos</loc>')
   expect(sitemap).toContain('/privacidade</loc>')
 })
+
+test('formulários que coletam dado pessoal apontam para os documentos', async ({
+  page
+}) => {
+  // Lista de espera, de torcedor e de bar: só a política.
+  await page.goto('/')
+  const naLanding = page.locator('.onside-legal-consent')
+  await expect(naLanding).toHaveCount(2)
+  await expect(naLanding.locator('a[href="/privacidade"]')).toHaveCount(2)
+  await expect(naLanding.locator('a[href="/termos"]')).toHaveCount(0)
+
+  // Cadastro cria conta: termos e política.
+  await page.goto('/signup')
+  const noCadastro = page.locator('.onside-legal-consent')
+  await expect(noCadastro.locator('a[href="/termos"]')).toHaveCount(1)
+  await expect(noCadastro.locator('a[href="/privacidade"]')).toHaveCount(1)
+})
