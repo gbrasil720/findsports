@@ -122,8 +122,9 @@ function PlanSelection() {
         setError('Não foi possível iniciar o pagamento. Tente novamente.')
         return
       }
-
-      window.location.href = data.url
+      // Sem `window.location.href = data.url`: a resposta vem com
+      // `redirect: true`, e o cliente do better-auth já navega para ela
+      // (`redirectPlugin`). Navegar de novo abortava a primeira ida (WEB-241).
     } catch {
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } finally {
