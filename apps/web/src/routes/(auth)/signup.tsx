@@ -23,6 +23,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
+import { LegalConsent } from '@/components/legal/legal-consent'
 import { useTurnstile } from '@/components/turnstile'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
@@ -383,6 +384,7 @@ function SignupPage() {
               Ao criar conta, você passa a usar o app Onside com o perfil
               escolhido.
             </p>
+            <LegalConsent action="continuar" />
 
             {captcha.widget}
           </form>

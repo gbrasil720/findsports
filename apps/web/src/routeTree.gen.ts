@@ -19,7 +19,9 @@ import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
 import { Route as InternalRouteImport } from './routes/internal'
 import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
@@ -96,9 +98,19 @@ const PlanRoute = PlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -240,7 +252,9 @@ export interface FileRoutesByFullPath {
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
   '/reset-password': typeof authResetPasswordRoute
@@ -278,7 +292,9 @@ export interface FileRoutesByTo {
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
   '/reset-password': typeof authResetPasswordRoute
@@ -317,7 +333,9 @@ export interface FileRoutesById {
   '/internal': typeof InternalRoute
   '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/termos': typeof TermosRoute
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/reset-password': typeof authResetPasswordRoute
@@ -357,7 +375,9 @@ export interface FileRouteTypes {
     | '/internal'
     | '/leave-waitlist'
     | '/plan'
+    | '/privacidade'
     | '/sitemap.xml'
+    | '/termos'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -395,7 +415,9 @@ export interface FileRouteTypes {
     | '/internal'
     | '/leave-waitlist'
     | '/plan'
+    | '/privacidade'
     | '/sitemap.xml'
+    | '/termos'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
@@ -433,7 +455,9 @@ export interface FileRouteTypes {
     | '/internal'
     | '/leave-waitlist'
     | '/plan'
+    | '/privacidade'
     | '/sitemap.xml'
+    | '/termos'
     | '/(auth)/forgot-password'
     | '/(auth)/login'
     | '/(auth)/reset-password'
@@ -472,7 +496,9 @@ export interface RootRouteChildren {
   InternalRoute: typeof InternalRoute
   LeaveWaitlistRoute: typeof LeaveWaitlistRoute
   PlanRoute: typeof PlanRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermosRoute: typeof TermosRoute
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authLoginRoute: typeof authLoginRoute
   authResetPasswordRoute: typeof authResetPasswordRoute
@@ -572,11 +598,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/forgot-password': {
@@ -768,7 +808,9 @@ const rootRouteChildren: RootRouteChildren = {
   InternalRoute: InternalRoute,
   LeaveWaitlistRoute: LeaveWaitlistRoute,
   PlanRoute: PlanRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermosRoute: TermosRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authLoginRoute: authLoginRoute,
   authResetPasswordRoute: authResetPasswordRoute,
