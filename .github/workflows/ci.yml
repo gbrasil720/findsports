@@ -5,6 +5,12 @@ on:
   push:
     branches: [master]
 
+# Escopo do `GITHUB_TOKEN` de todo job. Sem este bloco ele herda o padrão das
+# configurações do repositório, que muda sem aparecer em diff (WEB-237). Só o
+# `actions/checkout` usa o token; o deploy usa o do Cloudflare.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
