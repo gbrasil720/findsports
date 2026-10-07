@@ -19,6 +19,7 @@ import { authClient } from '@/lib/auth-client'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { AccountActionRow } from './account-action-row'
 import { DeleteAccountSettings } from './delete-account-settings'
+import { PrivacySettings } from './privacy-settings'
 import { SessionSettings } from './session-settings'
 import { TwoFactorSettings } from './two-factor-settings'
 
@@ -36,61 +37,65 @@ export function AccountSettings({ surface }: Props) {
    * (uma linha de ação) deixava um vão da altura de duas seções abaixo dele,
    * e as sessões caíam ao lado da zona de exclusão. Aqui a coluna direita
    * empilha 2FA e sessões, e a exclusão fica sozinha no rodapé — destrutivo
-   * por último e sem vizinho que convide a clicar por engano.
+   * por último e sem vizinho que convide a clicar por engano. A privacidade
+   * (WEB-244) vai sob a conta, na coluna esquerda, que é a mais curta.
    */
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-        <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
-          <div className="mb-2">
-            <p className="onside-kicker mb-2">Conta</p>
-            <h2 className="onside-display text-2xl">Conta e acesso</h2>
-            <p className="mt-1 text-[var(--onside-muted)] text-sm">
-              {surface === 'fan'
-                ? 'Proteja seu perfil e os seus favoritos.'
-                : 'Proteja o acesso de quem administra o bar.'}
-            </p>
-          </div>
+        <div className="flex flex-col gap-4">
+          <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
+            <div className="mb-2">
+              <p className="onside-kicker mb-2">Conta</p>
+              <h2 className="onside-display text-2xl">Conta e acesso</h2>
+              <p className="mt-1 text-[var(--onside-muted)] text-sm">
+                {surface === 'fan'
+                  ? 'Proteja seu perfil e os seus favoritos.'
+                  : 'Proteja o acesso de quem administra o bar.'}
+              </p>
+            </div>
 
-          <AccountActionRow
-            icon={Envelope}
-            title="E-mail de acesso"
-            description={session?.user.email ?? '—'}
-            action={
-              <span className="inline-flex min-h-8 items-center border border-[var(--onside-line)] px-3 font-bold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]">
-                Somente leitura
-              </span>
-            }
-          />
-          <AccountActionRow
-            icon={Key}
-            title="Senha"
-            description="Troque sua senha e encerre automaticamente os outros acessos."
-            action={
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setPasswordOpen(true)}
-              >
-                Alterar senha
-              </Button>
-            }
-          />
-          <AccountActionRow
-            icon={Logout}
-            title="Sair"
-            description="Encerrar a sessão neste dispositivo."
-            action={
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => void signOut()}
-              >
-                Sair da conta
-              </Button>
-            }
-          />
-        </section>
+            <AccountActionRow
+              icon={Envelope}
+              title="E-mail de acesso"
+              description={session?.user.email ?? '—'}
+              action={
+                <span className="inline-flex min-h-8 items-center border border-[var(--onside-line)] px-3 font-bold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]">
+                  Somente leitura
+                </span>
+              }
+            />
+            <AccountActionRow
+              icon={Key}
+              title="Senha"
+              description="Troque sua senha e encerre automaticamente os outros acessos."
+              action={
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setPasswordOpen(true)}
+                >
+                  Alterar senha
+                </Button>
+              }
+            />
+            <AccountActionRow
+              icon={Logout}
+              title="Sair"
+              description="Encerrar a sessão neste dispositivo."
+              action={
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => void signOut()}
+                >
+                  Sair da conta
+                </Button>
+              }
+            />
+          </section>
+          <PrivacySettings />
+        </div>
 
         <div className="flex flex-col gap-4">
           <TwoFactorSettings />
