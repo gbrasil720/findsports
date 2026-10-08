@@ -59,6 +59,12 @@ function VerifyEmailPage() {
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
   const [pubError, setPubError] = useState<string | null>(null)
+  // WEB-248: sem sessão neste navegador (confirmou em outro aparelho, ou a
+  // conta veio de convite) nenhum dos dois botões resolve; o caminho é o login.
+  const [needsLogin, setNeedsLogin] = useState(false)
+  // WEB-273: o Turnstile só serve ao reenvio, então só carrega quando pedem
+  // um. Na carga da página ele custava o script e o desafio a quem só espera.
+  const [captchaOn, setCaptchaOn] = useState(false)
   const captcha = useTurnstile()
   const { mutateAsync: completePub } = useMutation(
     trpc.onboarding.completePub.mutationOptions()
@@ -73,7 +79,11 @@ function VerifyEmailPage() {
       const { data } = await authClient.getSession({
         query: { disableCookieCache: true }
       })
-      if (!data?.user.emailVerified) {
+      if (!data) {
+        setNeedsLogin(true)
+        return
+      }
+      if (!data.user.emailVerified) {
         toast.error('A confirmação ainda não apareceu. Tente novamente.')
         return
       }
@@ -126,9 +136,10 @@ function VerifyEmailPage() {
 
   async function resend() {
     if (!email) {
-      toast.error('Volte ao cadastro para informar seu e-mail.')
+      setNeedsLogin(true)
       return
     }
+    setCaptchaOn(true)
     setResending(true)
     const { error } = await authClient.sendVerificationEmail({
       email,
@@ -208,7 +219,25 @@ function VerifyEmailPage() {
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>
           </div>
-          {captcha.widget}
+          {captchaOn ? captcha.widget : null}
+          {needsLogin ? (
+            <div
+              className="onside-callout onside-callout-warn mt-6"
+              role="alert"
+            >
+              <p className="text-sm font-semibold">
+                Não encontramos sua conta aberta neste navegador. Se o e-mail já
+                foi confirmado, entre com e-mail e senha para continuar.
+              </p>
+              <Link
+                to="/login"
+                search={{ callbackUrl }}
+                className="text-sm underline"
+              >
+                Entrar com e-mail e senha
+              </Link>
+            </div>
+          ) : null}
           {pubError ? (
             <div
               className="onside-callout onside-callout-warn mt-6"

@@ -844,3 +844,16 @@
   /* Sombra ink sobre um cartão ink não existe: o realce de hover vira acid. */
   --bar-card-shadow: var(--onside-acid);
 }
+
+/*
+ * WEB-253 / WEB-290: botão com ícone às vezes precisava de dois cliques. O
+ * reicon desenha o ícone por `dangerouslySetInnerHTML` com um objeto novo a
+ * cada render, e o React 19 regrava o `innerHTML` do <svg> sempre que o objeto
+ * muda. Se a tela re-renderiza entre o mousedown e o mouseup, o traço sob o
+ * ponteiro é trocado e o navegador não dispara o `click`. Com os traços fora
+ * do hit-test o alvo passa a ser o próprio <svg>, que o React não troca.
+ * Sem escopo de propósito: vale para o app e para a landing.
+ */
+.reicon * {
+  pointer-events: none;
+}
