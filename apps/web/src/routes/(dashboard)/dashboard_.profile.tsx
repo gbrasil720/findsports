@@ -12,7 +12,9 @@ import {
   type Favorite,
   type FavoriteSort,
   type FavoriteView,
+  getProfileTabFromHash,
   type ProfileTab,
+  profileTabHash,
   profileTabId,
   profileTabPanelId
 } from '@/components/profile/profile-model'
@@ -84,6 +86,19 @@ function ProfilePage() {
   const [sortBy, setSortBy] = useState<FavoriteSort>('upcoming')
   const [filterWithEvents, setFilterWithEvents] = useState(false)
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null)
+
+  // Mesmo mecanismo das abas do `/admin`: o hash é lido depois da hidratação,
+  // porque o servidor não o recebe.
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      const nextTab = getProfileTabFromHash(window.location.hash)
+      if (nextTab) setTab(nextTab)
+    }
+
+    syncTabFromHash()
+    window.addEventListener('hashchange', syncTabFromHash)
+    return () => window.removeEventListener('hashchange', syncTabFromHash)
+  }, [])
 
   useEffect(() => {
     if (!navigator.geolocation) return
@@ -188,6 +203,7 @@ function ProfilePage() {
           queryKey: trpc.recommendations.get.queryKey()
         })
         setEditingSports(false)
+        toast.success('Esportes salvos.')
       }
     })
   )
@@ -253,9 +269,16 @@ function ProfilePage() {
 
   const handleTabChange = (nextTab: ProfileTab) => {
     setTab(nextTab)
+    const nextHash = profileTabHash(nextTab)
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, '', nextHash)
+    }
   }
   const handleSaveName = async () => {
-    if (!nameInput.trim()) return
+    if (!nameInput.trim()) {
+      setNameError('Informe seu nome.')
+      return
+    }
     setNameError(null)
     try {
       await persistProfileUser(authClient.updateUser, {
@@ -263,6 +286,7 @@ function ProfilePage() {
       })
       void queryClient.invalidateQueries({ queryKey: ['session'] })
       setEditingName(false)
+      toast.success('Nome salvo.')
     } catch {
       setNameError('Não foi possível salvar o nome. Tente de novo.')
     }
@@ -292,6 +316,25 @@ function ProfilePage() {
     } finally {
       setUploadingImage(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+  const handleRemoveImage = async () => {
+    if (!window.confirm('Remover sua foto de perfil?')) return
+    setImageError(null)
+    setUploadingImage(true)
+    try {
+      // Arquivo primeiro: se a segunda etapa falhar, repetir a ação conserta
+      // (apagar de novo é inofensivo). Na ordem inversa, a falha deixaria o
+      // arquivo no ar sem nenhum botão que o alcance.
+      const removed = await fetch('/api/user/avatar', { method: 'DELETE' })
+      if (!removed.ok) throw new Error(`remoção ${removed.status}`)
+      await persistProfileUser(authClient.updateUser, { image: null })
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
+      toast.success('Foto removida.')
+    } catch {
+      setImageError('Não foi possível remover a foto. Tente novamente.')
+    } finally {
+      setUploadingImage(false)
     }
   }
   const openEditSports = () => {
@@ -340,6 +383,7 @@ function ProfilePage() {
       void queryClient.invalidateQueries({
         queryKey: trpc.recommendations.get.queryKey()
       })
+      toast.success('Raio de busca salvo.')
     } catch {
       setRadiusError('Não foi possível salvar o raio. Tente de novo.')
     } finally {
@@ -401,6 +445,7 @@ function ProfilePage() {
         }}
         onSaveName={() => void handleSaveName()}
         onChooseImage={() => fileInputRef.current?.click()}
+        onRemoveImage={() => void handleRemoveImage()}
       />
       <ProfileTabs activeTab={tab} onChange={handleTabChange} />
 
@@ -445,7 +490,7 @@ function ProfilePage() {
               const runId = recommendationsQuery.data?.runId
               if (runId) dismissRecommendation.mutate({ runId, barId })
             }}
-            onSelectTab={setTab}
+            onSelectTab={handleTabChange}
           />
         ) : null}
       </div>

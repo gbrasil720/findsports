@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
+import { utcIso } from '../utc-timestamp'
 
 /**
  * Peças comuns aos dois caminhos de `pubs.search` (ESC-19).
@@ -304,29 +305,32 @@ export function montarPaginaBusca(
 
       return { positive, total, percentage: ratingPercentage(positive, total) }
     })(),
-    nextEvent: row.next_event_id
-      ? {
-          id: row.next_event_id,
-          championship: row.next_championship ?? '',
-          startsAt: row.next_event_starts_at ?? '',
-          sport: {
-            name: row.next_sport_name ?? '',
-            slug: row.next_sport_slug ?? ''
-          },
-          participants: row.next_participants.map((p) => ({
-            team: { name: p.name, logoUrl: p.logoUrl }
-          })),
-          participantFreeText: row.next_participant_free_text,
-          classic:
-            row.next_classic_rule_reason &&
-            row.next_classic_rule_version != null
-              ? {
-                  reason: row.next_classic_rule_reason,
-                  ruleVersion: Number(row.next_classic_rule_version)
-                }
-              : null
-        }
-      : undefined
+    // `starts_at` é NOT NULL: com `next_event_id` ele sempre vem. Sai como
+    // ISO com `Z`, por onde os três caminhos da busca passam — ver `utcIso`.
+    nextEvent:
+      row.next_event_id && row.next_event_starts_at
+        ? {
+            id: row.next_event_id,
+            championship: row.next_championship ?? '',
+            startsAt: utcIso(row.next_event_starts_at),
+            sport: {
+              name: row.next_sport_name ?? '',
+              slug: row.next_sport_slug ?? ''
+            },
+            participants: row.next_participants.map((p) => ({
+              team: { name: p.name, logoUrl: p.logoUrl }
+            })),
+            participantFreeText: row.next_participant_free_text,
+            classic:
+              row.next_classic_rule_reason &&
+              row.next_classic_rule_version != null
+                ? {
+                    reason: row.next_classic_rule_reason,
+                    ruleVersion: Number(row.next_classic_rule_version)
+                  }
+                : null
+          }
+        : undefined
   }))
 
   const last = rows.length === limit ? rows[rows.length - 1] : undefined

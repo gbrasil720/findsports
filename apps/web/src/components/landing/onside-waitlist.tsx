@@ -9,6 +9,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
+import Crosshairs from 'reicon-react/icons/Crosshairs'
 import { LegalConsent } from '@/components/legal/legal-consent'
 import { analytics } from '../../lib/analytics'
 import { getUserFacingMessage } from '../../lib/user-facing-error'
@@ -162,7 +163,9 @@ export function OnsideFanWaitlistForm() {
             required
             className="onside-input"
           />
-          <span aria-hidden="true">⌖</span>
+          <span className="onside-inline-icon" aria-hidden="true">
+            <Crosshairs size={18} aria-hidden="true" focusable="false" />
+          </span>
         </div>
         {fieldErrors.city ? (
           <FieldError id="fan-city-error" className="onside-field-error">

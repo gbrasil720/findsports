@@ -39,12 +39,16 @@
  * altura, qualquer que seja ela. Um `translateY(-200%)` a partir de um `top`
  * já deslocado (banner + 12px) não garante isso — com o banner de
  * personificação aberto o atalho reaparecia por cima dele.
+ *
+ * Os 4px a mais: a altura é fracionária (13px × 1.5 + padding + borda =
+ * 43.5px) e o Chromium arredonda a caixa para fora, deixando uma linha da
+ * borda de baixo no topo da tela (WEB-274).
  */
 .onside-app .onside-skip-link {
   position: fixed;
   left: 12px;
   top: 0;
-  translate: 0 -100%;
+  translate: 0 calc(-100% - 4px);
   z-index: 1000;
   background: var(--onside-acid);
   border: 2px solid var(--onside-ink);
@@ -297,6 +301,21 @@
   top: calc(var(--banner-h, 0px) + var(--onside-header-h));
   z-index: 20;
   background: var(--onside-paper);
+}
+
+/*
+ * Tela estreita E baixa — zoom de 300% no computador, celular deitado
+ * (WEB-267). O teto de 50dvh que `search-filter-bar.tsx` põe na barra grudada
+ * vira uma fresta de ~130px com rolagem própria, e o corte cai no meio de uma
+ * fileira de chips. Aqui a barra deixa de grudar e rola com a página, inteira.
+ * Acima de 767px o teto já não existe (`md:max-h-none`), e nada muda.
+ */
+@media (max-width: 767.98px) and (max-height: 480px) {
+  .onside-app .onside-sticky-filters {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 /* ─── Dropdown menu surface ─── */

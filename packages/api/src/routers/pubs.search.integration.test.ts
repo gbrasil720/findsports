@@ -152,6 +152,15 @@ integrationTest(
         expectedOrder
       )
 
+      // WEB-250: o horário sai do SQL cru com fuso, no instante gravado. Sem
+      // o `Z` o navegador lia a string como horário local e adiantava 3 h.
+      for (const fixture of fixtures) {
+        const encontrado = pagina.bars.find((item) => item.id === fixture.barId)
+        expect(encontrado?.nextEvent?.startsAt).toBe(
+          new Date(now.getTime() + fixture.minutes * 60_000).toISOString()
+        )
+      }
+
       // Paginando de um em um, o cursor atravessa as três camadas sem repetir
       // e sem pular. Coordenada deslocada para não colidir com o cache de 60 s
       // da chamada acima, que arredonda a chave para ~110 m.

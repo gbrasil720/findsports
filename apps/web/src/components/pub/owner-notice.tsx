@@ -50,6 +50,7 @@ export function OwnerPreviewBanner({
       </div>
       <Link
         to="/admin"
+        hash="admin-espaco"
         className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
       >
         <Edit size={14} color="currentColor" aria-hidden="true" />

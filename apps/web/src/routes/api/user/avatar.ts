@@ -1,4 +1,5 @@
 import {
+  deleteAvatar,
   MediaUploadError,
   signMediaUpload
 } from '@findsports_oficial/api/lib/media-upload'
@@ -42,6 +43,27 @@ export const Route = createFileRoute('/api/user/avatar')({
           console.error(JSON.stringify({ event: 'user_avatar_route_failed' }))
           return Response.json(
             { error: 'Não foi possível autorizar o upload.' },
+            { status: 500 }
+          )
+        }
+      },
+      // WEB-320: apaga o arquivo; quem zera `user.image` é o `updateUser` do
+      // cliente, que também renova o cookie de sessão.
+      DELETE: async ({ request }) => {
+        try {
+          await deleteAvatar(
+            await auth.api.getSession({ headers: request.headers })
+          )
+          return new Response(null, { status: 204 })
+        } catch (err) {
+          if (err instanceof MediaUploadError) {
+            return Response.json({ error: err.message }, { status: err.status })
+          }
+          console.error(
+            JSON.stringify({ event: 'user_avatar_delete_route_failed' })
+          )
+          return Response.json(
+            { error: 'Não foi possível remover a foto.' },
             { status: 500 }
           )
         }

@@ -46,6 +46,7 @@ import {
 } from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import { createSharedCache } from '../lib/shared-cache'
+import { utcIso } from '../lib/utc-timestamp'
 
 /**
  * ESC-08: catálogos e buscas são iguais para todo mundo. Sem KV o cache
@@ -705,7 +706,10 @@ export const pubsRouter = router({
           b.id ASC
         LIMIT 10
       `)
-      return results.rows as Record<string, unknown>[]
+      return (results.rows as Record<string, unknown>[]).map((row) => ({
+        ...row,
+        starts_at: utcIso(row.starts_at as string)
+      }))
     })
   })
 })

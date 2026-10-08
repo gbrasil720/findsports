@@ -24,6 +24,19 @@ export const PROFILE_TAB_SLUGS: Record<ProfileTab, string> = {
   Configurações: 'configuracoes'
 }
 
+/**
+ * A aba mora no hash da URL, como no painel do bar: sobrevive a recarregar e
+ * dá para mandar o link (WEB-293). O hash é o slug, e não o id do painel,
+ * de propósito — sem elemento com esse id o navegador não rola a página.
+ */
+export function profileTabHash(tab: ProfileTab): string {
+  return `#${PROFILE_TAB_SLUGS[tab]}`
+}
+
+export function getProfileTabFromHash(hash: string): ProfileTab | null {
+  return PROFILE_TABS.find((tab) => profileTabHash(tab) === hash) ?? null
+}
+
 export function profileTabId(tab: ProfileTab): string {
   return `perfil-${PROFILE_TAB_SLUGS[tab]}-tab`
 }

@@ -1,12 +1,18 @@
-import type { LocationState } from '@/domain/discovery'
+import type { LocationState, RadiusKm } from '@/domain/discovery'
 
 type Props = {
   isLoading: boolean
   count: number
+  radiusKm: RadiusKm
   locationState: LocationState
 }
 
-export function DashboardHero({ isLoading, count, locationState }: Props) {
+export function DashboardHero({
+  isLoading,
+  count,
+  radiusKm,
+  locationState
+}: Props) {
   const hasRealLocation = locationState === 'granted'
 
   let statusLabel: string
@@ -17,7 +23,9 @@ export function DashboardHero({ isLoading, count, locationState }: Props) {
   } else if (locationState === 'requesting') {
     statusLabel = 'Obtendo sua localização…'
   } else {
-    statusLabel = `${count} ${count === 1 ? 'bar' : 'bares'} em São Paulo`
+    // Sem localização a busca parte do centro de São Paulo, no raio marcado —
+    // "em São Paulo" prometia a cidade inteira (WEB-287).
+    statusLabel = `${count} ${count === 1 ? 'bar' : 'bares'} a até ${radiusKm} km do centro de São Paulo`
   }
 
   return (

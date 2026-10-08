@@ -30,10 +30,16 @@ import {
   resolveHeroEvent,
   resolveProfileActions
 } from '@/domain/pub-profile'
-import { canFavoriteBars, shellVariantForViewer } from '@/domain/viewer'
+import {
+  canFavoriteBars,
+  canRecordCommercialEvents,
+  shellVariantForViewer
+} from '@/domain/viewer'
+import { getPubName } from '@/functions/get-pub-name'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
+import { SITE_URL } from '@/lib/site'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -41,9 +47,24 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
   // A página exige login (o registro de analytics depende de um fã
   // identificado), então não deve ser indexada: um resultado de busca que
   // leva a um portão de login é ruim para quem chega e inútil para o bar.
-  head: () => ({
-    meta: [{ title: 'Bar — Onside' }, { name: 'robots', content: 'noindex' }]
-  }),
+  //
+  // O nome do bar vem do loader para sair no HTML do servidor: a prévia de
+  // link lê o título dali, sem sessão e sem rodar JS (WEB-312). Custa uma ida
+  // ao servidor por abertura de bar; se falhar, fica o título genérico — a
+  // página tem o próprio tratamento de erro e não pode cair por causa dele.
+  loader: ({ params }) => getPubName({ data: params.pubId }).catch(() => null),
+  head: ({ loaderData, params }) => {
+    const title = `${loaderData ?? 'Bar'} — Onside`
+    return {
+      meta: [
+        { title },
+        { name: 'robots', content: 'noindex' },
+        { property: 'og:title', content: title },
+        { property: 'og:url', content: `${SITE_URL}/pub/${params.pubId}` },
+        { name: 'twitter:title', content: title }
+      ]
+    }
+  },
   component: PubPage
 })
 
@@ -176,16 +197,24 @@ function PubPage() {
     sessionStorage.removeItem(storageKey)
   }, [pubId])
 
+  const viewerRole = session?.user?.role
+  // Só torcedor registra evento comercial: para o dono vendo o próprio
+  // perfil o servidor responde 403, então o app nem pergunta (WEB-311).
+  const canTrack = canRecordCommercialEvents(
+    viewerRole,
+    session?.session?.impersonatedBy
+  )
+
   // Track profile_view when pub data loads (only after auth, only on success)
   useEffect(() => {
-    if (normalizedPub) {
+    if (normalizedPub && canTrack) {
       trackCommercialEvent({
         pubId,
         type: 'profile_view',
         sourceEventId: eventId ?? undefined
       })
     }
-  }, [normalizedPub, pubId, eventId])
+  }, [normalizedPub, pubId, eventId, canTrack])
 
   /*
    * Bar inexistente devolve quem estava olhando à casa do próprio papel. O
@@ -193,7 +222,6 @@ function PubPage() {
    * rota o mandava para `/admin`, então o que ele via era um redirecionamento
    * duplo terminando numa tela que não explica nada.
    */
-  const viewerRole = session?.user?.role
   useEffect(() => {
     if (!isLoadingPub && !normalizedPub && isError && !pubErrorRetryable) {
       toast.error('Bar não encontrado.')
@@ -310,6 +338,7 @@ function PubPage() {
 
   const handleOpenDirections = () => {
     analytics.barIntent({ bar_id: pubId, action: 'directions' })
+    if (!canTrack) return
     trackCommercialEvent({
       pubId,
       type: 'directions_opened',
@@ -320,6 +349,7 @@ function PubPage() {
 
   const handlePhoneClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'phone' })
+    if (!canTrack) return
     trackCommercialEvent({
       pubId,
       type: 'phone_clicked',
@@ -330,6 +360,7 @@ function PubPage() {
 
   const handleWhatsAppClick = () => {
     analytics.barIntent({ bar_id: pubId, action: 'whatsapp' })
+    if (!canTrack) return
     trackCommercialEvent({
       pubId,
       type: 'whatsapp_opened',

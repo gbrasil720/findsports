@@ -41,6 +41,7 @@ import {
   ratingPercentage
 } from '../lib/rating'
 import { assertCanEnableReservations } from '../lib/reservation-intake'
+import { utcIso } from '../lib/utc-timestamp'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -463,7 +464,7 @@ export const pubRouter = router({
         wouldReturn: row.would_return,
         createdAt: row.created_at,
         championship: row.championship,
-        startsAt: row.starts_at
+        startsAt: utcIso(row.starts_at)
       }))
     }
   }),
