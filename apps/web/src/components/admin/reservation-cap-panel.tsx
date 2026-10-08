@@ -152,7 +152,12 @@ function CapForm({
       onSubmit={(e) => void handleSubmit(e)}
       className="mt-2 flex flex-wrap items-end gap-2"
     >
-      <div>
+      {/*
+        A largura fica no invólucro: `.onside-input` é `width: 100%` fora de
+        camada e vence o `w-*` do Tailwind. Sem ela o Chrome dimensiona o
+        campo numérico pelos dígitos do `max` e corta "Sem teto" (WEB-298).
+      */}
+      <div className="w-44 max-w-full">
         <label htmlFor={id} className="onside-label">
           {label}
         </label>
@@ -165,7 +170,7 @@ function CapForm({
           value={draft}
           placeholder={placeholder}
           onChange={(e) => setDraft(e.target.value)}
-          className="onside-input w-36"
+          className="onside-input"
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
         />

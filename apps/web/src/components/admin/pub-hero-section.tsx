@@ -246,7 +246,7 @@ export function PubHeroSection({
                       onChange={(e) =>
                         setForm({ ...form, description: e.target.value })
                       }
-                      placeholder="Algo que o checklist não cobre (opcional)"
+                      placeholder="Ex: mesa de sinuca no fundo e happy hour até as 20h nos dias de jogo"
                       rows={2}
                       className="onside-textarea onside-textarea-ink resize-none"
                     />

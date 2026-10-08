@@ -39,7 +39,7 @@ import {
   type EventAnalyticsState,
   type EventComparisonData,
   formatAnalyticsValue,
-  formatRate,
+  formatInterestRate,
   getMainAction,
   sumAnalyticsActions
 } from './admin-model'
@@ -526,6 +526,10 @@ function PerformanceError({
  *
  * No celular só sobra "Interesse": as outras duas colunas não cabem sem
  * espremer o nome do jogo, e o detalhe completo já está no painel expandido.
+ *
+ * As três colunas contam pessoas (WEB-251): a taxa é interessados sobre quem
+ * viu, a mesma da Visão geral. Aberturas e ações por canal, que são vezes e
+ * não pessoas, ficam no painel expandido.
  */
 const ROW_GRID =
   'grid grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]'
@@ -537,7 +541,7 @@ function PerformanceColumns() {
       aria-hidden="true"
     >
       <span />
-      <span className="hidden text-right sm:block">Aberturas</span>
+      <span className="hidden text-right sm:block">Viram</span>
       <span className="text-right">Interesse</span>
       <span className="hidden text-right sm:block">Taxa</span>
       <span />
@@ -546,7 +550,10 @@ function PerformanceColumns() {
 }
 
 function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
-  const intentActions = sumAnalyticsActions(item)
+  const rate =
+    item.interestedPeople === null
+      ? formatAnalyticsValue(null)
+      : formatInterestRate(item.interestedPeople, item.uniqueVisitors)
 
   return (
     <AccordionItem value={item.eventId}>
@@ -566,18 +573,16 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
         {/* O cabeçalho é só alinhamento visual, então cada número carrega o
             próprio rótulo pra leitor de tela. */}
         <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
-          <span className="sr-only">Aberturas: </span>
-          {item.profileViews}
+          <span className="sr-only">Viram: </span>
+          {item.uniqueVisitors}
         </span>
         <span className="text-right font-medium text-[var(--onside-ink)] tabular-nums">
           <span className="sr-only">Interesse: </span>
-          {formatAnalyticsValue(intentActions)}
+          {formatAnalyticsValue(item.interestedPeople)}
         </span>
         <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
           <span className="sr-only">Taxa: </span>
-          {intentActions === null
-            ? formatAnalyticsValue(null)
-            : formatRate(intentActions, item.profileViews)}
+          {rate}
         </span>
       </AccordionTrigger>
 
@@ -606,19 +611,20 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
             <dd className="font-medium">{getMainAction(item) ?? '—'}</dd>
           </div>
 
-          {/* No celular as colunas de aberturas e taxa saem do cabeçalho;
-              aqui elas reaparecem pra não sumir a informação. */}
-          <div className="sm:hidden">
+          <div>
             <dt className="onside-hint">Aberturas</dt>
             <dd className="font-medium tabular-nums">{item.profileViews}</dd>
           </div>
+
+          {/* No celular as colunas de quem viu e da taxa saem do cabeçalho;
+              aqui elas reaparecem pra não sumir a informação. */}
+          <div className="sm:hidden">
+            <dt className="onside-hint">Viram</dt>
+            <dd className="font-medium tabular-nums">{item.uniqueVisitors}</dd>
+          </div>
           <div className="sm:hidden">
             <dt className="onside-hint">Taxa</dt>
-            <dd className="font-medium tabular-nums">
-              {intentActions === null
-                ? formatAnalyticsValue(null)
-                : formatRate(intentActions, item.profileViews)}
-            </dd>
+            <dd className="font-medium tabular-nums">{rate}</dd>
           </div>
         </dl>
       </AccordionContent>
@@ -677,13 +683,13 @@ export function EventPerformance({
   const items = eventAnalyticsState.items
 
   const topEvent = items.reduce<EventAnalyticsRow | null>((best, item) => {
-    const intent = sumAnalyticsActions(item)
-    const bestIntent = best ? sumAnalyticsActions(best) : null
+    const intent = item.interestedPeople
+    const bestIntent = best?.interestedPeople ?? null
     if (intent === null) return best
     return !best || bestIntent === null || intent > bestIntent ? item : best
   }, null)
 
-  const topEventIntent = topEvent ? sumAnalyticsActions(topEvent) : null
+  const topEventIntent = topEvent?.interestedPeople ?? null
 
   return (
     <div className="onside-panel-acid p-4">

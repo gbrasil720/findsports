@@ -39,6 +39,22 @@ export const DUPLICATE_REQUEST_MESSAGE =
   'Você já tem um pedido ativo para este jogo. Acompanhe em Minhas reservas.'
 
 /**
+ * O pedido do torcedor que ainda ocupa o jogo: pendente ou confirmado, os
+ * mesmos estados do índice de pedido ativo no servidor. Serve para a tela
+ * avisar antes do envio (WEB-295); quem recusa o segundo pedido é o servidor.
+ */
+export function findActiveRequest(
+  reservations: FanReservation[] | undefined,
+  eventId: string
+): FanReservation | undefined {
+  return reservations?.find(
+    (item) =>
+      item.event.id === eventId &&
+      (item.status === 'pending' || item.status === 'confirmed')
+  )
+}
+
+/**
  * `PRECONDITION_FAILED` cobre dois motivos no servidor; o horário do jogo,
  * que a tela já tem, diz qual.
  */

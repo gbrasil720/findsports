@@ -126,6 +126,8 @@ export const barReservationsRouter = router({
         status: true,
         partySize: true,
         note: true,
+        // A cópia congelada na reserva, nunca `bar.house_offer` (ADR 0003).
+        offerSnapshot: true,
         createdAt: true
       },
       with: {

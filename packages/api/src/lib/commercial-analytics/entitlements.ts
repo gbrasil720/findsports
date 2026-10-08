@@ -171,6 +171,14 @@ export function applyEventBreakdownEntitlements(
     to: response.to,
     events: response.events.map((event) => ({
       ...event,
+      // Interessado é quem usou qualquer um dos três canais: sem os três, o
+      // número revelaria o que o plano não mostra por canal.
+      interestedPeople:
+        entitlements.canViewDirectionsOpened &&
+        entitlements.canViewPhoneClicked &&
+        entitlements.canViewWhatsappOpened
+          ? event.interestedPeople
+          : null,
       directionsOpened: entitlements.canViewDirectionsOpened
         ? event.directionsOpened
         : null,

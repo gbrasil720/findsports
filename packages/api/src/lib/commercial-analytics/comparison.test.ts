@@ -17,6 +17,7 @@ const snapshot = (
   weekday: 1,
   windowHours: 2,
   uniqueVisitors: 10,
+  interestedPeople: 4,
   profileViews: 20,
   directionsOpened: 0,
   phoneClicked: 4,

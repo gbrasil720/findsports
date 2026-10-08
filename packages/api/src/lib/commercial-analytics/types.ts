@@ -186,6 +186,10 @@ export interface EventAnalyticsRow {
   eventId: string
   eventName: string
   startsAt: string
+  /** Pessoas distintas que abriram o perfil pelo jogo. */
+  uniqueVisitors: number
+  /** Pessoas distintas com ação de alta intenção — numerador da taxa. */
+  interestedPeople: number
   profileViews: number
   directionsOpened: number
   phoneClicked: number
@@ -200,6 +204,7 @@ export interface EventAnalyticsSnapshot {
   weekday: number
   windowHours: number
   uniqueVisitors: number
+  interestedPeople: number
   profileViews: number
   directionsOpened: number
   phoneClicked: number

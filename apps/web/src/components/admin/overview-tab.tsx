@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
+import Plus from 'reicon-react/icons/Plus'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
+import { getPlan, getTrialNotice } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { AnalyticsOverviewState } from './admin-model'
@@ -31,12 +33,6 @@ import {
 import { AnalyticsPeriodSelector } from './analytics-period-selector'
 import { QueryError } from './query-error'
 import { RecommendationQualityStatus } from './recommendation-quality-status'
-
-const PLAN_LABEL: Record<string, string> = {
-  starter: 'Starter',
-  pro: 'Pro',
-  elite: 'Elite'
-}
 
 export function OverviewTab({
   active,
@@ -116,7 +112,13 @@ export function OverviewTab({
       return
     }
 
-    onAnalyticsRangeChange(getAnalyticsRange(preset))
+    onAnalyticsRangeChange(
+      getAnalyticsRange(
+        preset,
+        new Date(),
+        bar ? new Date(bar.createdAt) : undefined
+      )
+    )
     setAnalyticsPreset(preset)
     setCustomAnalyticsError(null)
   }
@@ -198,7 +200,8 @@ export function OverviewTab({
 
   const planKnown = subFetched && !loadingSub && !subError
   const plan = planKnown ? (subscription?.plan ?? 'starter') : null
-  const planLabel = plan ? (PLAN_LABEL[plan] ?? plan) : null
+  const planLabel = plan ? getPlan(plan).name : null
+  const trialNotice = planKnown ? getTrialNotice(subscription) : null
   const isStarter = plan === 'starter'
   const standing = planKnown ? subscription?.standing : null
   const limitedPolicy =
@@ -217,11 +220,23 @@ export function OverviewTab({
 
   return (
     <AdminTabPanel id="admin-visao" active={active} className="space-y-4">
-      <div>
-        <h2 className="onside-display text-2xl">Visão geral</h2>
-        <p className="mt-1 text-sm text-[var(--onside-muted)]">
-          Acompanhe a visibilidade, o plano e a programação do seu bar.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="onside-display text-2xl">Visão geral</h2>
+          <p className="mt-1 text-sm text-[var(--onside-muted)]">
+            Acompanhe a visibilidade, o plano e a programação do seu bar.
+          </p>
+        </div>
+        {/* Leva à Minha grade, onde ficam o formulário e os avisos de limite
+            do plano (WEB-303). */}
+        <button
+          type="button"
+          onClick={onCreateEvent}
+          className="onside-btn onside-btn-acid min-h-11"
+        >
+          <Plus size={16} color="currentColor" aria-hidden="true" />
+          Criar evento
+        </button>
       </div>
 
       {subError && (
@@ -288,6 +303,18 @@ export function OverviewTab({
             Ver planos
             <ArrowRight size={13} color="currentColor" aria-hidden="true" />
           </Link>
+        </div>
+      )}
+
+      {trialNotice && (
+        <div className="onside-callout onside-callout-acid">
+          <CircleInfo
+            size={20}
+            color="currentColor"
+            className="mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
+          <p className="font-semibold text-sm">{trialNotice}</p>
         </div>
       )}
 
@@ -422,6 +449,7 @@ export function OverviewTab({
       />
       <AnalyticsOverview
         overviewState={analyticsOverviewState}
+        showComparison={analyticsPreset !== 'all'}
         onCreateEvent={onCreateEvent}
       />
     </AdminTabPanel>

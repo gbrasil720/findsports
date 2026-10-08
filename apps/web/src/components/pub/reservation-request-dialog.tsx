@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogTitle
 } from '@findsports_oficial/ui/components/dialog'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type FormEvent, useId, useState } from 'react'
 import {
@@ -25,7 +25,9 @@ import {
   wasAnsweredByServer
 } from '@/domain/reservation-validation'
 import {
+  DUPLICATE_REQUEST_MESSAGE,
   type FanReservation,
+  findActiveRequest,
   getCreateErrorMessage,
   PENDING_NOTICE,
   SOLD_OUT_MESSAGE
@@ -79,6 +81,14 @@ export function ReservationRequestDialog({
   const selected = events.find(
     (event) => event.id === eventId && !event.reservationsSoldOut
   )
+  // Os pedidos do torcedor, para avisar antes do envio que este jogo já tem
+  // um (WEB-295). Falhou ou ainda não chegou, o formulário segue: o servidor
+  // recusa o segundo pedido de qualquer jeito.
+  const { data: mine } = useQuery({
+    ...trpc.reservations.mine.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const activeRequest = findActiveRequest(mine, eventId)
   const noteLength = reservationNoteLength(normalizeReservationNote(note))
   const noteTooLong = noteLength > RESERVATION_NOTE_MAX_LENGTH
   const partySizeValid =
@@ -104,7 +114,7 @@ export function ReservationRequestDialog({
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!selected || !partySizeValid || noteTooLong) return
+    if (!selected || !partySizeValid || noteTooLong || activeRequest) return
     if (createMutation.isPending) return
     setError(null)
     createMutation.mutate(
@@ -255,7 +265,21 @@ export function ReservationRequestDialog({
               </p>
             </div>
 
-            {selected ? (
+            {activeRequest ? (
+              <div
+                role="status"
+                className="border-[1.5px] border-[var(--onside-ink)] p-4 text-sm"
+              >
+                <p className="font-semibold">{DUPLICATE_REQUEST_MESSAGE}</p>
+                <Link
+                  to="/dashboard/reservations"
+                  hash={`reservation-${activeRequest.id}`}
+                  className="mt-2 inline-block font-bold underline underline-offset-2"
+                >
+                  Ver minha reserva
+                </Link>
+              </div>
+            ) : selected ? (
               <section
                 aria-labelledby={`${ids}-summary`}
                 className="bg-[var(--onside-stone)] p-4 text-sm"
@@ -295,7 +319,8 @@ export function ReservationRequestDialog({
                 createMutation.isPending ||
                 !selected ||
                 !partySizeValid ||
-                noteTooLong
+                noteTooLong ||
+                Boolean(activeRequest)
               }
               className="onside-btn onside-btn-acid onside-btn-full min-h-12 disabled:opacity-50"
             >

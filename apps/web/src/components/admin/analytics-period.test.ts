@@ -18,10 +18,15 @@ describe('analytics period selector', () => {
       from: '2025-09-09',
       to: '2026-09-08'
     })
-    expect(getAnalyticsRange('all', now)).toEqual({
-      from: '1970-01-01',
+    // "Tudo" começa na criação do bar, no dia comercial de São Paulo: 01:30
+    // UTC do dia 2 ainda é dia 1 lá. Nunca em 1970 (WEB-263).
+    expect(
+      getAnalyticsRange('all', now, new Date('2026-07-02T01:30:00.000Z'))
+    ).toEqual({
+      from: '2026-07-01',
       to: '2026-09-08'
     })
+    expect(getAnalyticsRange('all', now).from).toBe('2026-09-08')
   })
 
   test('exposes only shortcuts allowed by the server entitlement', () => {

@@ -74,6 +74,9 @@ test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
   await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
   await expect(overview(page)).toContainText('Telefone')
   await expect(overview(page)).not.toContainText('Atividade diária')
+  // WEB-251: um torcedor com três ações é uma pessoa interessada, não 300%.
+  await expect(overview(page)).toContainText('100.0%')
+  await expect(overview(page)).not.toContainText('300.0%')
 })
 
 test('Elite: todo o histórico e a atividade diária', async ({ page }) => {

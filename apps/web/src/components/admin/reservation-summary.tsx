@@ -1,5 +1,7 @@
 import type { ReactNode, Ref } from 'react'
+import Check from 'reicon-react/icons/Check'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
+import { formatGameSubtitle } from '@/domain/pub-profile'
 import {
   formatDateTime,
   getAllValidatedMessage,
@@ -58,8 +60,10 @@ export function ReservationSummary({
             {getGameTitle(reservation.event)}
           </dd>
           <dd className="text-[var(--onside-muted)]">
-            {reservation.event.championship} ·{' '}
-            {formatDateTime(reservation.event.startsAt)}
+            {formatGameSubtitle(getGameTitle(reservation.event), [
+              reservation.event.championship,
+              formatDateTime(reservation.event.startsAt)
+            ])}
           </dd>
         </div>
         <div>
@@ -99,9 +103,18 @@ export function ReservationSummary({
         </div>
       ) : isFull ? (
         <div className="onside-callout onside-callout-acid mt-4">
-          <p className="font-semibold text-sm">
-            {getAllValidatedMessage(reservation.maxUses)}
-          </p>
+          <Check
+            size={20}
+            color="currentColor"
+            className="mt-0.5 shrink-0"
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="mb-0.5 font-semibold text-sm">Reserva completa</p>
+            <p className="text-sm opacity-90">
+              {getAllValidatedMessage(reservation.maxUses)}
+            </p>
+          </div>
         </div>
       ) : null}
 

@@ -132,20 +132,33 @@ function PubDashboard() {
 
   useEffect(() => {
     const syncSectionFromHash = () => {
-      const section = getAdminSectionFromHash(window.location.hash)
+      const { hash } = window.location
+      const section = getAdminSectionFromHash(hash)
       if (section) setActiveSection(section)
+      // Voltar até a entrada sem hash é voltar à aba inicial. Hash que não é
+      // de aba (âncora da própria página) não mexe na aba.
+      else if (!hash) setActiveSection('admin-visao')
     }
 
     syncSectionFromHash()
+    // `popstate` cobre Voltar/Avançar entre as entradas do `pushState` abaixo;
+    // `hashchange`, o hash digitado na barra de endereço.
+    window.addEventListener('popstate', syncSectionFromHash)
     window.addEventListener('hashchange', syncSectionFromHash)
-    return () => window.removeEventListener('hashchange', syncSectionFromHash)
+    return () => {
+      window.removeEventListener('popstate', syncSectionFromHash)
+      window.removeEventListener('hashchange', syncSectionFromHash)
+    }
   }, [])
 
   const changeSection = (section: AdminSectionId) => {
     setActiveSection(section)
     const nextHash = `#${section}`
     if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash)
+      // `pushState`, não `replaceState`: cada aba entra no histórico e o
+      // Voltar do navegador retorna à anterior em vez de sair do painel
+      // (WEB-309).
+      window.history.pushState(null, '', nextHash)
     }
   }
 

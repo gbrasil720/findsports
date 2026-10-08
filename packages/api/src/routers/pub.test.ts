@@ -1,9 +1,14 @@
 import { describe, expect, it, test } from 'bun:test'
+import {
+  EVENT_CHAMPIONSHIP_MAX_LENGTH,
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+} from '@findsports_oficial/db/event-limits'
 import { TRPCError } from '@trpc/server'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import {
   addressFieldsChanged,
   assertEventIntervalValid,
+  pubRouter,
   resolveEventEndsAt,
   resolvePhoneAcceptsWhatsapp
 } from './pub'
@@ -296,5 +301,43 @@ describe('addressFieldsChanged', () => {
       addressFieldsChanged({ ...existing, neighborhood: 'Sé' }, existing)
     ).toBe(true)
     expect(addressFieldsChanged({ city: 'RJ' }, existing)).toBe(true)
+  })
+})
+
+// WEB-265: o formulário do painel conta com os mesmos limites; aqui se prova
+// que o servidor recusa o que passa deles, sem banco (o schema corta antes).
+describe('limites de texto do jogo', () => {
+  const valid = {
+    eventId: crypto.randomUUID(),
+    sportId: crypto.randomUUID(),
+    championship: 'c'.repeat(EVENT_CHAMPIONSHIP_MAX_LENGTH),
+    startsAt: '2026-10-10T21:00:00.000Z',
+    participantFreeText: 't'.repeat(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
+  }
+
+  test.each([
+    'createEvent',
+    'updateEvent'
+  ] as const)('%s aceita no limite e recusa um caractere a mais', (name) => {
+    const [schema] = (
+      pubRouter[name] as unknown as {
+        _def: {
+          inputs: Array<{ safeParse: (v: unknown) => { success: boolean } }>
+        }
+      }
+    )._def.inputs
+    const accepts = (input: object) => schema?.safeParse(input).success
+
+    expect(accepts(valid)).toBe(true)
+    expect(accepts({ ...valid, championship: `${valid.championship}c` })).toBe(
+      false
+    )
+    expect(accepts({ ...valid, championship: 'c' })).toBe(false)
+    expect(
+      accepts({
+        ...valid,
+        participantFreeText: `${valid.participantFreeText}t`
+      })
+    ).toBe(false)
   })
 })

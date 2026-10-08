@@ -13,7 +13,8 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 type Validation = inferRouterOutputs<AppRouter>['reservationValidation']
 
-export type ValidatedReservation = Validation['lookup']
+/** `lookup` devolve `null` para código que não resolve (WEB-316). */
+export type ValidatedReservation = NonNullable<Validation['lookup']>
 export type ArrivalResult = Validation['registerArrival']
 export type UndoResult = Validation['undoArrival']
 
@@ -153,13 +154,15 @@ function refusalMessage(
   )
 }
 
+export const CODE_NOT_FOUND_MESSAGE =
+  'Código não encontrado. Confira com o torcedor e tente de novo.'
+
 export function getLookupErrorMessage(error: unknown): string {
   return refusalMessage(
     error,
-    {
-      NOT_FOUND:
-        'Código não encontrado. Confira com o torcedor e tente de novo.'
-    },
+    // Código que não resolve chega como `null`, não como erro (WEB-316). O
+    // `NOT_FOUND` fica para um servidor anterior a isso, depois de rollback.
+    { NOT_FOUND: CODE_NOT_FOUND_MESSAGE },
     'Não foi possível buscar o código. Tente novamente.'
   )
 }

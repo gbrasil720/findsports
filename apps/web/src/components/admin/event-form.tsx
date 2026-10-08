@@ -1,6 +1,11 @@
+import {
+  EVENT_CHAMPIONSHIP_MAX_LENGTH,
+  EVENT_CHAMPIONSHIP_MIN_LENGTH,
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+} from '@findsports_oficial/db/event-limits'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { type ReactNode, useId, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
@@ -33,6 +38,48 @@ type Props = {
   error?: string
 }
 
+/**
+ * Contador e aviso de limite sob um campo de texto, como no editor da oferta
+ * da casa: o campo deixa digitar além, mostra quanto passou e o SALVAR trava.
+ * Cortar no `maxLength` engoliria em silêncio o fim de um texto colado.
+ */
+function FieldLimit({
+  errorId,
+  subject,
+  length,
+  max,
+  children
+}: {
+  errorId: string
+  subject: string
+  length: number
+  max: number
+  /** Texto de apoio do campo, à esquerda do contador. */
+  children?: ReactNode
+}) {
+  const over = length - max
+  return (
+    <>
+      <div className="mt-1 flex items-start gap-2">
+        {children ? (
+          <p className="text-[10px] text-[var(--onside-muted)]">{children}</p>
+        ) : null}
+        <p
+          className={`ml-auto shrink-0 font-[family-name:var(--onside-mono)] text-xs tabular-nums ${over > 0 ? 'text-[var(--onside-live-text)]' : 'text-[var(--onside-muted)]'}`}
+          aria-hidden="true"
+        >
+          {length}/{max}
+        </p>
+      </div>
+      {over > 0 ? (
+        <p id={errorId} className="onside-field-error" role="alert">
+          {subject} aceita até {max} caracteres. Tire {over}.
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 export function EventFormComponent({
   initial,
   sports,
@@ -43,6 +90,10 @@ export function EventFormComponent({
   error
 }: Props) {
   const trpc = useTRPC()
+  const ids = useId()
+  const championshipErrorId = `${ids}-championship-error`
+  const freeTextErrorId = `${ids}-free-text-error`
+  const missingId = `${ids}-missing`
   const [form, setForm] = useState<EventForm>(initial)
 
   const { data: teams = [], isLoading: loadingTeams } = useQuery({
@@ -76,8 +127,22 @@ export function EventFormComponent({
 
   const endsAtValid =
     !form.endsAt || (!!form.startsAt && form.endsAt > form.startsAt)
+  // Os mesmos números do servidor (`pub.createEvent`), contados igual.
+  const championshipTooLong =
+    form.championship.length > EVENT_CHAMPIONSHIP_MAX_LENGTH
+  const freeTextTooLong =
+    form.participantFreeText.length > EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  const missing = [
+    !form.sportId && 'esporte',
+    form.championship.length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
+      `campeonato (pelo menos ${EVENT_CHAMPIONSHIP_MIN_LENGTH} caracteres)`,
+    !form.startsAt && 'data e horário'
+  ].filter(Boolean)
   const canSave =
-    form.sportId && form.championship && form.startsAt && endsAtValid
+    missing.length === 0 &&
+    endsAtValid &&
+    !championshipTooLong &&
+    !freeTextTooLong
 
   return (
     <div className="max-h-[70dvh] space-y-4 overflow-y-auto overscroll-contain pr-1">
@@ -87,6 +152,7 @@ export function EventFormComponent({
           value={form.sportId}
           onChange={(e) => handleSportChange(e.target.value)}
           disabled={loadingSports}
+          required
           className="onside-select font-semibold"
         >
           <option value="">
@@ -100,15 +166,28 @@ export function EventFormComponent({
         </select>
       </label>
 
-      <label className="block">
-        <span className="onside-label mb-1.5 block">Campeonato *</span>
-        <input
-          value={form.championship}
-          onChange={(e) => setForm({ ...form, championship: e.target.value })}
-          className="onside-input font-semibold"
-          placeholder="Ex: Brasileirão Série A, Copa do Mundo..."
+      <div>
+        <label className="block">
+          <span className="onside-label mb-1.5 block">Campeonato *</span>
+          <input
+            value={form.championship}
+            onChange={(e) => setForm({ ...form, championship: e.target.value })}
+            className="onside-input font-semibold"
+            placeholder="Ex: Brasileirão Série A, Copa do Mundo..."
+            required
+            aria-invalid={championshipTooLong || undefined}
+            aria-describedby={
+              championshipTooLong ? championshipErrorId : undefined
+            }
+          />
+        </label>
+        <FieldLimit
+          errorId={championshipErrorId}
+          subject="O campeonato"
+          length={form.championship.length}
+          max={EVENT_CHAMPIONSHIP_MAX_LENGTH}
         />
-      </label>
+      </div>
 
       <label className="block">
         <span className="onside-label mb-1.5 block">Data e horário *</span>
@@ -117,6 +196,7 @@ export function EventFormComponent({
           value={form.startsAt}
           onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
           className="onside-input font-semibold"
+          required
         />
       </label>
 
@@ -204,25 +284,39 @@ export function EventFormComponent({
               }))
             }}
             className="onside-input font-semibold"
+            aria-label="Times ou participantes em texto livre"
             placeholder={
               teams.length > 0
                 ? 'Ou digite algo diferente... (ex: outros, classificatória)'
                 : 'Ex: Max Verstappen, Flamengo × Palmeiras...'
             }
+            aria-invalid={freeTextTooLong || undefined}
+            aria-describedby={freeTextTooLong ? freeTextErrorId : undefined}
           />
-          <p className="text-[10px] text-[var(--onside-muted)] mt-1">
+          <FieldLimit
+            errorId={freeTextErrorId}
+            subject="O texto livre"
+            length={form.participantFreeText.length}
+            max={EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH}
+          >
             {teams.length > 0
               ? hasFreeText
                 ? 'Escreveu texto livre — chips de times desabilitados. Limpe o campo para voltar a selecioná-los.'
                 : 'Use os chips acima para times cadastrados, ou escreva livremente.'
               : 'Texto livre — use para esportes sem times fixos como F1 ou UFC.'}
-          </p>
+          </FieldLimit>
         </div>
       )}
 
       {error && (
         <p className="text-xs text-[var(--onside-live-text)]" role="alert">
           {error}
+        </p>
+      )}
+
+      {missing.length > 0 && (
+        <p id={missingId} className="text-[var(--onside-muted)] text-xs">
+          Para salvar, falta preencher: {missing.join(', ')}.
         </p>
       )}
 
@@ -238,6 +332,7 @@ export function EventFormComponent({
           type="button"
           onClick={() => onSave(form)}
           disabled={!canSave || isSaving}
+          aria-describedby={missing.length > 0 ? missingId : undefined}
           className="onside-btn onside-btn-acid min-h-11 px-5 text-xs"
         >
           {isSaving ? 'Salvando…' : 'Salvar'}

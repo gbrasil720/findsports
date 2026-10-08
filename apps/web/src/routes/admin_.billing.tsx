@@ -15,7 +15,7 @@ import {
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
-import { getPlan, PLAN_CATALOG } from '@/lib/plan-catalog'
+import { getPlan, getTrialNotice, PLAN_CATALOG } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -79,6 +79,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 
 function BillingPage() {
   const trpc = useTRPC()
+  const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const [openingPortal, setOpeningPortal] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
@@ -92,11 +93,24 @@ function BillingPage() {
   const subscription = subscriptionQuery.data
   const loadingSub = subscriptionQuery.isLoading
 
+  // Sem cliente na Dodo não há pagamento a listar — é o bar em trial, que nunca
+  // abriu um checkout (WEB-264). E perguntar não é inócuo: o plugin cria o
+  // cliente no provedor só para responder, e qualquer falha nesse caminho vira
+  // 500. O id da assinatura cobre a sessão em cache de quem acabou de pagar.
+  const hasDodoCustomer = Boolean(
+    session?.user.dodoCustomerId || subscription?.dodoSubscriptionId
+  )
   const paymentsQuery = useQuery({
     queryKey: ['dodo-payments'],
     queryFn: listCustomerPayments,
+    enabled: !loadingSub && hasDodoCustomer,
+    // O padrão são 3 novas tentativas com espera crescente: a seção ficava em
+    // "carregando" enquanto o provedor respondia 500 quatro vezes. O erro tem
+    // o próprio botão de tentar de novo.
+    retry: false,
     meta: { errorToast: false }
   })
+  const loadingPayments = loadingSub || paymentsQuery.isLoading
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
         subscriptionQuery.error,
@@ -260,9 +274,8 @@ function BillingPage() {
                   </p>
                 ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
-                    {subscription.status === 'trialing'
-                      ? `Trial gratuito até ${formatDate(subscription.currentPeriodEnd)}`
-                      : `Próxima cobrança em ${formatDate(subscription.currentPeriodEnd)}`}
+                    {getTrialNotice(subscription) ??
+                      `Próxima cobrança em ${formatDate(subscription.currentPeriodEnd)}`}
                   </p>
                 ) : null}
               </div>
@@ -346,7 +359,7 @@ function BillingPage() {
               Histórico de pagamentos
             </h2>
 
-            {paymentsQuery.isLoading ? (
+            {loadingPayments ? (
               <div aria-busy="true" aria-live="polite">
                 <span className="sr-only">Carregando pagamentos…</span>
                 <ul className="min-w-[280px] divide-y divide-[var(--onside-line)]">

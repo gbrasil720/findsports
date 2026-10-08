@@ -168,6 +168,11 @@ function ReservationRequest({
           <span className="font-semibold">Observação:</span> {reservation.note}
         </p>
       ) : null}
+      {/* O que o bar prometeu a ESTE pedido; a oferta atual pode ser outra. */}
+      <p className="mt-2 text-sm [overflow-wrap:anywhere]">
+        <span className="font-semibold">Oferta da casa nesta reserva:</span>{' '}
+        {reservation.offerSnapshot ?? 'Reserva feita sem oferta.'}
+      </p>
       <p className="mt-1 text-[var(--onside-muted)] text-xs">
         Pedido em {formatDateTime(reservation.createdAt)}
       </p>

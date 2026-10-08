@@ -600,6 +600,10 @@ integrationTest(
       )
       expect(velhoAntes?.profileViews).toBe(1)
       expect(novoAntes?.profileViews).toBe(1)
+      // WEB-251: a taxa por jogo divide pessoas por pessoas.
+      expect(velhoAntes?.uniqueVisitors).toBe(1)
+      expect(velhoAntes?.interestedPeople).toBe(1)
+      expect(novoAntes?.interestedPeople).toBe(0)
 
       // ----------------- Fase B: consolidação + poda ----------------------
       const resultado = await runAnalyticsRetention({
@@ -675,6 +679,8 @@ integrationTest(
       expect(velhoDepois?.eventName).toBe('Torneio WEB-98 - Evento')
       expect(velhoDepois?.profileViews).toBe(1)
       expect(velhoDepois?.phoneClicked).toBe(1)
+      // Pessoas distintas saem só dos brutos: a projeção por jogo não as tem.
+      expect(velhoDepois?.interestedPeople).toBe(0)
       expect(novoDepois?.profileViews).toBe(1)
     } finally {
       await db

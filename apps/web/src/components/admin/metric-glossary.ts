@@ -53,7 +53,7 @@ export const METRIC_GLOSSARY: Record<MetricId, MetricDefinition> = {
       'O caminho que mais gente escolheu pra falar com seu bar ou chegar até ele no período.'
   },
   periodComparison: {
-    label: 'Comparado com os 30 dias anteriores',
+    label: 'Comparado com o período anterior',
     definition:
       'Os mesmos números do período anterior, lado a lado, pra você ver o que subiu e o que caiu. Aparece quando já existe histórico suficiente.'
   },

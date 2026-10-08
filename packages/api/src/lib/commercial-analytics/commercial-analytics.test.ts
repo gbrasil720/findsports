@@ -208,6 +208,8 @@ describe('commercial-analytics entitlements', () => {
           eventId: 'event-1',
           eventName: 'Campeonato - Evento',
           startsAt: '2026-09-05T22:00:00.000Z',
+          uniqueVisitors: 8,
+          interestedPeople: 4,
           profileViews: 10,
           directionsOpened: 3,
           phoneClicked: 2,
@@ -220,6 +222,8 @@ describe('commercial-analytics entitlements', () => {
       eventId: 'event-1',
       eventName: 'Campeonato - Evento',
       startsAt: '2026-09-05T22:00:00.000Z',
+      uniqueVisitors: 8,
+      interestedPeople: 4,
       profileViews: 10,
       directionsOpened: 3,
       phoneClicked: 2,
@@ -233,6 +237,8 @@ describe('commercial-analytics entitlements', () => {
     expect(starter.events).toEqual([
       {
         ...expected,
+        // Interessado é quem usou algum canal: sem os canais, sem o total.
+        interestedPeople: null,
         directionsOpened: null,
         phoneClicked: null,
         whatsappOpened: null
