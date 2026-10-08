@@ -333,6 +333,10 @@ describe('limites de texto do jogo', () => {
       false
     )
     expect(accepts({ ...valid, championship: 'c' })).toBe(false)
+    // Espaço não conta para o mínimo: o campo é aparado antes de validar.
+    expect(accepts({ ...valid, championship: '  ' })).toBe(false)
+    expect(accepts({ ...valid, championship: ' c ' })).toBe(false)
+    expect(accepts({ ...valid, championship: ' cc ' })).toBe(true)
     expect(
       accepts({
         ...valid,

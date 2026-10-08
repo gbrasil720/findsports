@@ -25,9 +25,11 @@ mas mantêm composição, hierarquia e textos próprios.
 ### Sessões
 
 - Destacar a sessão atual e encaminhar sua saída pela ação comum de logout.
-- Listar outras sessões com IP, última atividade, expiração e user agent como
-  texto secundário.
-- Não adicionar parser ou heurística para inferir dispositivo/navegador.
+- Listar outras sessões com IP, última atividade, expiração e um rótulo de
+  dispositivo ("Chrome no macOS"). O user agent bruto só aparece como texto
+  secundário quando o dispositivo não é reconhecido (WEB-310).
+- A detecção de dispositivo/navegador é rasa (`describe-device.ts`): serve para
+  reconhecer a sessão, nunca para autorizar.
 - Permitir revogar uma sessão específica e todas as outras sessões.
 - Atualizar a lista e anunciar sucesso ou erro depois de cada ação.
 - Não representar o cookie de dispositivo confiável como sessão.

@@ -25,6 +25,9 @@ import { useTRPC } from '@/utils/trpc'
  * zero liberados é visivelmente errado.
  */
 
+/** A mesma checagem dos formulários da waitlist na landing. */
+const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 type Props = {
   liberados: number
   pendentes: number
@@ -95,6 +98,9 @@ export function WaitlistAccessPanel({
   const queryClient = useQueryClient()
   const emailId = useId()
   const [convite, setConvite] = useState('')
+  // O formulário é `noValidate` (WEB-272): e-mail malformado recebe o texto da
+  // tela, no lugar do balão do navegador.
+  const [conviteErro, setConviteErro] = useState<string | null>(null)
   const [papel, setPapel] = useState<'fan' | 'pub'>('pub')
 
   const configQuery = useQuery({
@@ -329,15 +335,27 @@ export function WaitlistAccessPanel({
           onSubmit={(evento) => {
             evento.preventDefault()
             const email = convite.trim()
-            if (email) convidar.mutate({ email, role: papel })
+            if (!EMAIL_VALIDO.test(email)) {
+              setConviteErro('Informe um e-mail válido.')
+              return
+            }
+            convidar.mutate({ email, role: papel })
           }}
+          noValidate
         >
           <input
             id={emailId}
             type="email"
             required
+            aria-invalid={conviteErro ? true : undefined}
+            aria-describedby={conviteErro ? `${emailId}-erro` : undefined}
             value={convite}
-            onChange={(evento) => setConvite(evento.target.value)}
+            onChange={(evento) => {
+              setConvite(evento.target.value)
+              if (EMAIL_VALIDO.test(evento.target.value.trim())) {
+                setConviteErro(null)
+              }
+            }}
             placeholder="pessoa@exemplo.com"
             className="min-h-11 min-w-[16rem] flex-1 border border-[var(--onside-ink)] bg-[var(--onside-paper)] px-3 text-sm"
           />
@@ -367,6 +385,15 @@ export function WaitlistAccessPanel({
             ) : null}
             Liberar
           </button>
+          {conviteErro ? (
+            <p
+              id={`${emailId}-erro`}
+              role="alert"
+              className="w-full text-[var(--onside-live-text)] text-xs"
+            >
+              {conviteErro}
+            </p>
+          ) : null}
         </form>
       </div>
 

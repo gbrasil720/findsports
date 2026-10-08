@@ -11,3 +11,13 @@
  * está decidindo se assina.
  */
 export const STARTER_EVENT_LIMIT = 5
+
+/**
+ * Nome de exibição de cada plano. Mensagem de erro do servidor e catálogo da
+ * tela leem daqui, para o usuário nunca ver o id interno (`starter`).
+ */
+export const PLAN_NAMES = {
+  starter: 'Starter',
+  pro: 'Pro',
+  elite: 'Elite'
+} as const

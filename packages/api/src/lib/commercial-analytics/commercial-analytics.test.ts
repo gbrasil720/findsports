@@ -8,6 +8,7 @@ import {
   COMMERCIAL_EVENT_TYPES,
   canViewEventType,
   getAnalyticsEntitlements,
+  getAnalyticsPlan,
   getComparisonMetrics,
   pctChange,
   previousPeriodRange,
@@ -275,15 +276,51 @@ describe('commercial-analytics retention contract', () => {
   it('allows each advertised horizon and rejects the next day server-side', () => {
     expect(() => assertAnalyticsPeriodAllowed('starter', 30)).not.toThrow()
     expect(() => assertAnalyticsPeriodAllowed('starter', 31)).toThrow(
-      'Plano starter suporta até 30 dias'
+      'Plano Starter suporta até 30 dias'
     )
 
     expect(() => assertAnalyticsPeriodAllowed('pro', 365)).not.toThrow()
     expect(() => assertAnalyticsPeriodAllowed('pro', 366)).toThrow(
-      'Plano pro suporta até 365 dias'
+      'Plano Pro suporta até 365 dias'
     )
 
     expect(() => assertAnalyticsPeriodAllowed('elite', 10_000)).not.toThrow()
+  })
+})
+
+describe('plano das analytics segue o status da assinatura', () => {
+  const now = new Date('2026-10-08T12:00:00Z')
+  const ontem = new Date('2026-10-07T12:00:00Z')
+  const amanha = new Date('2026-10-09T12:00:00Z')
+
+  it('trial vencido, past_due e cancelada não mantêm o plano pago', () => {
+    expect(
+      getAnalyticsPlan(
+        { plan: 'elite', status: 'trialing', currentPeriodEnd: ontem },
+        now
+      )
+    ).toBe('starter')
+    for (const status of ['past_due', 'cancelled'] as const) {
+      expect(
+        getAnalyticsPlan({ plan: 'pro', status, currentPeriodEnd: amanha }, now)
+      ).toBe('starter')
+    }
+    expect(getAnalyticsPlan(null, now)).toBe('starter')
+  })
+
+  it('assinatura ativa e trial vigente recebem o plano contratado', () => {
+    expect(
+      getAnalyticsPlan(
+        { plan: 'elite', status: 'active', currentPeriodEnd: null },
+        now
+      )
+    ).toBe('elite')
+    expect(
+      getAnalyticsPlan(
+        { plan: 'pro', status: 'trialing', currentPeriodEnd: amanha },
+        now
+      )
+    ).toBe('pro')
   })
 })
 

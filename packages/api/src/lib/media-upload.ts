@@ -1,7 +1,11 @@
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { env } from '@findsports_oficial/env/server'
 import { AwsClient } from 'aws4fetch'
-import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './blob-photo'
+import {
+  PHOTO_CONTENT_TYPES,
+  PHOTO_MAX_BYTES,
+  photoPathname
+} from './blob-photo'
 
 /**
  * Upload de foto de bar e avatar direto do navegador para o R2 (WEB-202).
@@ -118,7 +122,42 @@ export async function deleteAvatar(
   config: MediaConfig = env
 ): Promise<void> {
   if (!session) throw new MediaUploadError(401, 'Não autorizado.')
+  await deleteMediaObject(
+    avatarPathname(session.user.id),
+    'avatar_delete_failed',
+    config
+  )
+}
 
+/**
+ * Apaga do bucket a foto do bar de quem está na sessão.
+ *
+ * Mesma regra do avatar: a chave sai do bar que a rota achou pela sessão,
+ * nunca do pedido. A conferência de dono fica aqui, e não só na consulta da
+ * rota, para a regra valer para qualquer chamador.
+ */
+export async function deleteBarPhoto(
+  session: { user: { id: string } } | null,
+  bar: { id: string; userId: string } | null | undefined,
+  config: MediaConfig = env
+): Promise<void> {
+  if (!session) throw new MediaUploadError(401, 'Não autorizado.')
+  if (!bar) throw new MediaUploadError(404, 'Bar não encontrado.')
+  if (bar.userId !== session.user.id) {
+    throw new MediaUploadError(403, 'Este bar não pertence à sua conta.')
+  }
+  await deleteMediaObject(
+    photoPathname(bar.id),
+    'bar_photo_delete_failed',
+    config
+  )
+}
+
+async function deleteMediaObject(
+  key: string,
+  failureEvent: string,
+  config: MediaConfig
+): Promise<void> {
   const bucket = mediaBucket(config)
   if (!bucket) {
     console.error(JSON.stringify({ event: 'media_upload_not_configured' }))
@@ -128,14 +167,11 @@ export async function deleteAvatar(
   // `sign` + `fetch`, e não `client.fetch`: este repete 10 vezes com espera
   // crescente em 5xx, e a requisição ficaria presa junto.
   const response = await fetch(
-    await bucket.client.sign(
-      bucket.objectUrl(avatarPathname(session.user.id)),
-      { method: 'DELETE' }
-    )
+    await bucket.client.sign(bucket.objectUrl(key), { method: 'DELETE' })
   )
   if (!response.ok) {
     console.error(
-      JSON.stringify({ event: 'avatar_delete_failed', status: response.status })
+      JSON.stringify({ event: failureEvent, status: response.status })
     )
     throw new MediaUploadError(502, 'Não foi possível remover a foto.')
   }

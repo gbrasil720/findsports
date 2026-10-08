@@ -31,7 +31,7 @@ Turbo filter syntax: `turbo -F <package-name> <task>` — use the `name` field f
 
 ## Architecture
 
-Turborepo monorepo, `bun` package manager, Biome for lint/format (tabs, double quotes).
+Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, single quotes).
 
 ### Apps
 - **`apps/web`** — fullstack app: TanStack Start (SSR) + TanStack Router (file-based) + React 19. Runs on `localhost:3001`.

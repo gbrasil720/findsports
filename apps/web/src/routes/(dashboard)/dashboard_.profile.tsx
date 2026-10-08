@@ -91,13 +91,22 @@ function ProfilePage() {
   // porque o servidor não o recebe.
   useEffect(() => {
     const syncTabFromHash = () => {
-      const nextTab = getProfileTabFromHash(window.location.hash)
+      const { hash } = window.location
+      const nextTab = getProfileTabFromHash(hash)
       if (nextTab) setTab(nextTab)
+      // Voltar até a entrada sem hash é voltar à aba inicial.
+      else if (!hash) setTab('Visão geral')
     }
 
     syncTabFromHash()
+    // `popstate` cobre Voltar/Avançar entre as entradas do `pushState` de
+    // `handleTabChange`; `hashchange`, o hash digitado na barra de endereço.
+    window.addEventListener('popstate', syncTabFromHash)
     window.addEventListener('hashchange', syncTabFromHash)
-    return () => window.removeEventListener('hashchange', syncTabFromHash)
+    return () => {
+      window.removeEventListener('popstate', syncTabFromHash)
+      window.removeEventListener('hashchange', syncTabFromHash)
+    }
   }, [])
 
   useEffect(() => {
@@ -271,7 +280,9 @@ function ProfilePage() {
     setTab(nextTab)
     const nextHash = profileTabHash(nextTab)
     if (window.location.hash !== nextHash) {
-      window.history.replaceState(null, '', nextHash)
+      // `pushState`, como nas abas do `/admin`: cada aba entra no histórico
+      // e o Voltar do navegador retorna à anterior.
+      window.history.pushState(null, '', nextHash)
     }
   }
   const handleSaveName = async () => {

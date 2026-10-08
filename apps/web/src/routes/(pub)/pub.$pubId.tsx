@@ -152,9 +152,15 @@ function PubPageSkeleton() {
 function PubPage() {
   const { pubId } = Route.useParams()
   const navigate = useNavigate()
-  const { href } = useLocation()
+  const { searchStr } = useLocation()
   const session = useSession()
-  const [eventId, setEventId] = useState<string | null>(null)
+  // O jogo de origem sai da URL já no render. Quando nascia `null` e um
+  // efeito o preenchia depois, um bar que já estava em cache registrava
+  // `profile_view` duas vezes: uma sem jogo e outra com ele.
+  const eventId = useMemo(
+    () => new URLSearchParams(searchStr).get('eventId'),
+    [searchStr]
+  )
   const [isFavorited, setIsFavorited] = useState(false)
   const [favoritePending, setFavoritePending] = useState(false)
   const [reserveOpen, setReserveOpen] = useState(false)
@@ -184,13 +190,6 @@ function PubPage() {
     'Não foi possível carregar este bar. Tente novamente.'
   )
 
-  // Extract eventId from URL search params (stable — no re-run on navigation)
-  useEffect(() => {
-    const params = new URLSearchParams(href.split('?')[1])
-    const id = params.get('eventId')
-    if (id) setEventId(id)
-  }, [href])
-
   useEffect(() => {
     const storageKey = `onside:recommendation:${pubId}`
     setRecommendationRunId(sessionStorage.getItem(storageKey))
@@ -205,16 +204,19 @@ function PubPage() {
     session?.session?.impersonatedBy
   )
 
-  // Track profile_view when pub data loads (only after auth, only on success)
+  // Track profile_view when pub data loads (only after auth, only on success).
+  // Depende de o bar ter carregado, não do objeto: um refetch que troca os
+  // dados não é uma visita nova.
+  const pubLoaded = Boolean(normalizedPub)
   useEffect(() => {
-    if (normalizedPub && canTrack) {
+    if (pubLoaded && canTrack) {
       trackCommercialEvent({
         pubId,
         type: 'profile_view',
         sourceEventId: eventId ?? undefined
       })
     }
-  }, [normalizedPub, pubId, eventId, canTrack])
+  }, [pubLoaded, pubId, eventId, canTrack])
 
   /*
    * Bar inexistente devolve quem estava olhando à casa do próprio papel. O

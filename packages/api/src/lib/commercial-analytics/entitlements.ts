@@ -1,5 +1,7 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { TRPCError } from '@trpc/server'
+import { getCurrentPlan, type SubscriptionForPlan } from '../current-plan'
+import { PLAN_NAMES } from '../plan-limits'
 import { maskEventComparisonRow, rankEventComparison } from './comparison'
 import type {
   AnalyticsEntitlements,
@@ -71,6 +73,18 @@ export function getAnalyticsEntitlements(
 }
 
 /**
+ * Plano que vale para as analytics. Sai de `getCurrentPlan`, como todo recurso
+ * pago: trial vencido, `past_due` e assinatura encerrada não mantêm o plano
+ * contratado e caem no mesmo piso do bar sem assinatura.
+ */
+export function getAnalyticsPlan(
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+): SubscriptionPlan {
+  return getCurrentPlan(subscription, now) ?? 'starter'
+}
+
+/**
  * A retenção é um limite do servidor, não uma sugestão para a UI. Mantém o
  * mesmo contrato para overview e breakdown por jogo.
  */
@@ -82,7 +96,7 @@ export function assertAnalyticsPeriodAllowed(
   if (maxDays !== null && periodDays > maxDays) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: `Plano ${plan} suporta até ${maxDays} dias`
+      message: `Plano ${PLAN_NAMES[plan]} suporta até ${maxDays} dias`
     })
   }
 }

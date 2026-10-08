@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import { Loader } from './components/loader'
 import { NotFoundPage } from './components/not-found/not-found-page'
+import { RouteErrorPage } from './components/route-error-page'
 import { getUserFacingError } from './lib/user-facing-error'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
@@ -98,6 +99,7 @@ export const getRouter = () => {
     },
     defaultPendingComponent: () => <Loader />,
     defaultNotFoundComponent: NotFoundPage,
+    defaultErrorComponent: RouteErrorPage,
     Wrap: ({ children }) => (
       <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
         {children}

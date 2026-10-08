@@ -52,6 +52,7 @@ type Props = {
   totalCount: number
   onSave: (data: EditForm) => Promise<void>
   onPhotoUpdate: (url: string) => Promise<void>
+  onPhotoRemove: () => Promise<unknown>
   isSaving?: boolean
   saveError?: string | null
 }
@@ -62,6 +63,7 @@ export function PubHeroSection({
   totalCount,
   onSave,
   onPhotoUpdate,
+  onPhotoRemove,
   isSaving,
   saveError
 }: Props) {
@@ -145,6 +147,7 @@ export function PubHeroSection({
               name={bar.name}
               photoUrl={bar.photoUrl}
               onUploadSuccess={onPhotoUpdate}
+              onRemoveSuccess={onPhotoRemove}
             />
 
             <div className="flex-1 min-w-0">

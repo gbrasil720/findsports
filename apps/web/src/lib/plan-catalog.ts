@@ -1,7 +1,10 @@
 import { getAnalyticsEntitlements } from '@findsports_oficial/api/lib/commercial-analytics/entitlements'
 import type { AnalyticsComparisonMode } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
-import { STARTER_EVENT_LIMIT } from '@findsports_oficial/api/lib/plan-limits'
+import {
+  PLAN_NAMES,
+  STARTER_EVENT_LIMIT
+} from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
 // ---------------------------------------------------------------------------
@@ -64,7 +67,7 @@ export interface Plan {
 export const PLAN_CATALOG: Plan[] = [
   {
     id: 'starter',
-    name: 'Starter',
+    name: PLAN_NAMES.starter,
     tagline: 'Pra começar a aparecer',
     description: 'Analytics básicos para começar a entender seu público.',
     price: 'R$ 119',
@@ -90,7 +93,7 @@ export const PLAN_CATALOG: Plan[] = [
   },
   {
     id: 'pro',
-    name: 'Pro',
+    name: PLAN_NAMES.pro,
     tagline: 'Pra lotar nos clássicos',
     description: 'Analytics completos para otimizar sua operação.',
     price: 'R$ 189',
@@ -122,7 +125,7 @@ export const PLAN_CATALOG: Plan[] = [
   },
   {
     id: 'elite',
-    name: 'Elite',
+    name: PLAN_NAMES.elite,
     tagline: 'Pra ser referência na cidade',
     description: 'Analytics avançados com insights estratégicos.',
     price: 'R$ 189',

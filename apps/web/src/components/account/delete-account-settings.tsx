@@ -29,6 +29,9 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   const [confirmation, setConfirmation] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // O formulário é `noValidate` (WEB-272): senha vazia recebe o texto da tela,
+  // junto ao campo, no lugar do balão do navegador.
+  const [passwordError, setPasswordError] = useState<string | null>(null)
   const eligibility = useQuery({
     ...trpc.pub.getAccountDeletionEligibility.queryOptions(),
     enabled: surface === 'pub',
@@ -46,6 +49,7 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
     setPassword('')
     setConfirmation('')
     setError(null)
+    setPasswordError(null)
     setOpen(false)
   }
 
@@ -53,6 +57,10 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
     event.preventDefault()
     if (confirmation !== CONFIRMATION) {
       setError(`Digite exatamente ${CONFIRMATION}.`)
+      return
+    }
+    if (!password) {
+      setPasswordError('Informe sua senha atual.')
       return
     }
     setDeleting(true)
@@ -150,12 +158,13 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
           method="post"
           className="flex flex-col gap-5 pt-5"
           onSubmit={remove}
+          noValidate
         >
           <div className="onside-callout onside-callout-danger" role="alert">
             Esta ação não pode ser desfeita. Seus dados locais serão apagados.
           </div>
           <FieldGroup>
-            <Field>
+            <Field data-invalid={Boolean(passwordError)}>
               <FieldLabel htmlFor="delete-account-password">
                 Senha atual
               </FieldLabel>
@@ -163,10 +172,20 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
                 id="delete-account-password"
                 type="password"
                 autoComplete="current-password"
+                aria-invalid={Boolean(passwordError)}
+                aria-describedby={
+                  passwordError ? 'delete-account-password-error' : undefined
+                }
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  if (event.target.value) setPasswordError(null)
+                }}
                 required
               />
+              <FieldError id="delete-account-password-error">
+                {passwordError}
+              </FieldError>
             </Field>
             <Field data-invalid={Boolean(error)}>
               <FieldLabel htmlFor="delete-account-confirmation">

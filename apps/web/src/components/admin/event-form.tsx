@@ -134,7 +134,7 @@ export function EventFormComponent({
     form.participantFreeText.length > EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
   const missing = [
     !form.sportId && 'esporte',
-    form.championship.length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
+    form.championship.trim().length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
       `campeonato (pelo menos ${EVENT_CHAMPIONSHIP_MIN_LENGTH} caracteres)`,
     !form.startsAt && 'data e horário'
   ].filter(Boolean)

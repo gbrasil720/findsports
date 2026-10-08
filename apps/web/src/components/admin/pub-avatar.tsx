@@ -15,9 +15,16 @@ type Props = {
   photoUrl?: string | null
   /** Grava a URL; rejeitar cai no erro do avatar (WEB-212). */
   onUploadSuccess: (url: string) => Promise<void>
+  /** Depois que o servidor apagou a foto: recarrega o bar. */
+  onRemoveSuccess: () => Promise<unknown>
 }
 
-export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
+export function BarAvatar({
+  name,
+  photoUrl,
+  onUploadSuccess,
+  onRemoveSuccess
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +75,23 @@ export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
     }
   }
 
+  const handleRemove = async () => {
+    if (!window.confirm('Remover a foto do bar?')) return
+    setError(null)
+    setUploading(true)
+    try {
+      // A rota apaga o arquivo e zera a referência do bar da sessão.
+      const removed = await fetch('/api/bar/photo', { method: 'DELETE' })
+      if (!removed.ok) throw new Error(`remoção ${removed.status}`)
+      await onRemoveSuccess()
+    } catch (error) {
+      setError('Não foi possível remover a foto. Tente novamente.')
+      console.error(error)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-1.5">
       <button
@@ -94,6 +118,17 @@ export function BarAvatar({ name, photoUrl, onUploadSuccess }: Props) {
           )}
         </div>
       </button>
+
+      {photoUrl ? (
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => void handleRemove()}
+          className="inline-flex min-h-11 items-center font-bold text-[var(--onside-paper)]/80 text-xs underline underline-offset-2 hover:text-[var(--onside-paper)] disabled:opacity-60"
+        >
+          Remover foto
+        </button>
+      ) : null}
 
       {error && (
         <p

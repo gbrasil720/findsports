@@ -510,6 +510,7 @@ export const pubRouter = router({
         sportId: z.string().uuid(),
         championship: z
           .string()
+          .trim()
           .min(EVENT_CHAMPIONSHIP_MIN_LENGTH)
           .max(EVENT_CHAMPIONSHIP_MAX_LENGTH),
         startsAt: z.string().datetime(),
@@ -618,6 +619,7 @@ export const pubRouter = router({
         sportId: z.string().uuid().optional(),
         championship: z
           .string()
+          .trim()
           .min(EVENT_CHAMPIONSHIP_MIN_LENGTH)
           .max(EVENT_CHAMPIONSHIP_MAX_LENGTH)
           .optional(),
