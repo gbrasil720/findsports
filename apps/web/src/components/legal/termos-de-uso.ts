@@ -719,7 +719,7 @@ export const TERMOS_DE_USO: LegalDocument = {
             {
               b: 'Aceite e versões.'
             },
-            ' O aceite destes Termos é manifestado no cadastro e registramos, para fins de prova, a versão aceita, a data e a hora do aceite e o endereço IP de origem. As versões anteriores ficam disponíveis mediante pedido pelo nosso canal de contato.'
+            ' O aceite destes Termos é manifestado no cadastro. As versões anteriores ficam disponíveis mediante pedido pelo nosso canal de contato.'
           ]
         },
         {
