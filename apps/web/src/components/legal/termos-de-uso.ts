@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const TERMOS_DE_USO: LegalDocument = {
   kicker: 'Legal · Termos de Uso',
   title: 'Termos de uso',
-  updated: '6 de outubro de 2026',
+  updated: '7 de outubro de 2026',
   reading: '19 seções · ~26 min',
   intro: [
     'Estes Termos de Uso (“Termos”) regulam o acesso e o uso da plataforma Onside (“Onside”, “plataforma”, “nós”), operada por Onside Tecnologia da Informação Ltda., inscrita no CNPJ sob o nº 69.032.124/0001-55, com sede na Rua Cláudio Soares, 72, sala 1418, Pinheiros, São Paulo/SP, CEP 05422-030.',
@@ -450,9 +450,9 @@ export const TERMOS_DE_USO: LegalDocument = {
           type: 'table',
           head: ['Plano', 'Desconto de fundador', 'Lançamento', 'Tabela cheia'],
           rows: [
-            ['Starter', '28,87%', 'R$ 69,00/mês', 'R$ 97,00/mês'],
-            ['Pro', '19,05%', 'R$ 119,00/mês', 'R$ 147,00/mês'],
-            ['Elite', '12,79%', 'R$ 259,00/mês', 'R$ 297,00/mês']
+            ['Starter', 'R$ 28,00/mês', 'R$ 69,00/mês', 'R$ 97,00/mês'],
+            ['Pro', 'R$ 28,00/mês', 'R$ 119,00/mês', 'R$ 147,00/mês'],
+            ['Elite', 'R$ 28,00/mês', 'R$ 269,00/mês', 'R$ 297,00/mês']
           ]
         },
         {
@@ -467,7 +467,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'O estabelecimento que aderir durante o lançamento mantém, enquanto permanecer ativo e adimplente, o percentual de desconto da sua adesão aplicado sobre a tabela vigente do seu plano — 28,87% no Starter, 19,05% no Pro e 12,79% no Elite —, e não apenas o valor em reais praticado na adesão. Se a tabela subir, o desconto acompanha; o parceiro nunca volta a pagar preço cheio, ressalvada a hipótese de revisão excepcional prevista adiante.'
+            'O estabelecimento que aderir durante o lançamento mantém, enquanto permanecer ativo e adimplente, um desconto fixo de R$ 28,00 por mês sobre a tabela vigente do seu plano, igual em todos os planos. O desconto é um valor em reais, e não um percentual: se a tabela subir, o parceiro continua pagando R$ 28,00 por mês a menos que a tabela cheia e nunca volta a pagar preço cheio, ressalvada a hipótese de revisão excepcional prevista adiante.'
         },
         {
           type: 'p',
@@ -475,7 +475,7 @@ export const TERMOS_DE_USO: LegalDocument = {
             {
               b: 'Na prática:'
             },
-            ' um parceiro Starter que aderiu a R$ 69,00 sobre uma tabela de R$ 97,00 continuará pagando 28,87% abaixo da tabela do Starter, qualquer que seja ela. O valor resultante é arredondado para o centavo mais próximo e informado com antecedência a cada reajuste.'
+            ' um parceiro Starter que aderiu a R$ 69,00 sobre uma tabela de R$ 97,00 continuará pagando R$ 28,00 abaixo da tabela do Starter, qualquer que seja ela. O valor resultante é informado com antecedência a cada reajuste.'
           ]
         },
         {
@@ -484,7 +484,7 @@ export const TERMOS_DE_USO: LegalDocument = {
             {
               b: 'Revisão excepcional por onerosidade superveniente.'
             },
-            ' Em caso de variação atípica e superveniente de custos essenciais à operação da plataforma — câmbio, infraestrutura de nuvem, tributos incidentes sobre o serviço — que torne a manutenção do percentual de desconto de fundador excessivamente onerosa para a Onside, nos termos do art. 478 do Código Civil, a Onside poderá propor, de boa-fé, a revisão do percentual aplicável, mediante aviso por escrito com 90 dias corridos de antecedência e justificativa objetiva dos fatores que motivaram a proposta. Caso não haja acordo nesse prazo, o Estabelecimento Parceiro poderá rescindir a parceria sem multa, mantendo-se as condições vigentes até o fim do aviso.'
+            ' Em caso de variação atípica e superveniente de custos essenciais à operação da plataforma — câmbio, infraestrutura de nuvem, tributos incidentes sobre o serviço — que torne a manutenção do desconto de fundador excessivamente onerosa para a Onside, nos termos do art. 478 do Código Civil, a Onside poderá propor, de boa-fé, a revisão do valor do desconto, mediante aviso por escrito com 90 dias corridos de antecedência e justificativa objetiva dos fatores que motivaram a proposta. Caso não haja acordo nesse prazo, o Estabelecimento Parceiro poderá rescindir a parceria sem multa, mantendo-se as condições vigentes até o fim do aviso.'
           ]
         },
         {
@@ -494,7 +494,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'A condição de fundador é do estabelecimento, não do plano: trocar de plano não faz o parceiro perdê-la. Ao subir ou descer de plano, ele passa a pagar o desconto de fundador do plano de destino — 28,87% no Starter, 19,05% no Pro, 12,79% no Elite — sobre a tabela vigente daquele plano, e nunca a tabela cheia. Pode trocar quantas vezes quiser, inclusive voltar ao plano anterior, sempre sob a mesma regra.'
+            'A condição de fundador é do estabelecimento, não do plano: trocar de plano não faz o parceiro perdê-la. Ao subir ou descer de plano, ele passa a pagar a tabela vigente do plano de destino com o mesmo desconto de fundador de R$ 28,00 por mês, e nunca a tabela cheia. Pode trocar quantas vezes quiser, inclusive voltar ao plano anterior, sempre sob a mesma regra.'
         },
         {
           type: 'p',
