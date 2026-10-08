@@ -54,7 +54,12 @@ export function OnsideFanWaitlistForm() {
   const captcha = useTurnstile()
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: FanPayload) => client.waitlist.join.mutate(data),
+    // O token do Turnstile pode ainda não ter chegado (WEB-254).
+    mutationFn: async (data: FanPayload) =>
+      client.waitlist.join.mutate({
+        ...data,
+        turnstileToken: await captcha.waitForToken()
+      }),
     onSettled: captcha.reset,
     onSuccess: (data, variables) => {
       analytics.identifyWaitlist(data.waitlistId)
@@ -96,8 +101,7 @@ export function OnsideFanWaitlistForm() {
     return {
       role: 'fan' as const,
       city: normalizedCity,
-      email: normalizedEmail,
-      turnstileToken: captcha.token
+      email: normalizedEmail
     }
   }
 
@@ -248,7 +252,12 @@ export function OnsideBarInterestForm() {
   const captcha = useTurnstile()
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: PubPayload) => client.waitlist.join.mutate(data),
+    // O token do Turnstile pode ainda não ter chegado (WEB-254).
+    mutationFn: async (data: PubPayload) =>
+      client.waitlist.join.mutate({
+        ...data,
+        turnstileToken: await captcha.waitForToken()
+      }),
     onSettled: captcha.reset,
     onSuccess: (data) => {
       analytics.identifyWaitlist(data.waitlistId)
@@ -299,8 +308,7 @@ export function OnsideBarInterestForm() {
       role: 'pub' as const,
       pubName: normalizedPubName,
       city: normalizedCity,
-      email: normalizedEmail,
-      turnstileToken: captcha.token
+      email: normalizedEmail
     }
   }
 
