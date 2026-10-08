@@ -28,8 +28,14 @@ async function activate(request: Request) {
     // Turnstile (plugin `captcha`), que esta chamada do servidor não tem. Pelo
     // mesmo motivo o rate limit de login não conta aqui — o convite é de uso
     // único e a senha acabou de ser definida. Os headers do cliente vão junto
-    // para a sessão gravar IP e user agent dele. O cookie da sessão sai pelo
-    // `tanstackStartCookies`; com `asResponse` ele iria duas vezes.
+    // para a sessão gravar IP e user agent dele.
+    //
+    // WEB-247: o cookie da sessão vai na própria resposta do better-auth
+    // (`asResponse`), e não pelo `tanstackStartCookies`. No bundle do Worker o
+    // `import()` dinâmico do plugin resolve para o chunk de entrada, que não
+    // exporta `setCookie`, e o `catch {}` dele engole o erro: a sessão era
+    // criada no banco e o `Set-Cookie` nunca saía. No `vite dev` o plugin
+    // funciona, então lá o cookie sai repetido, com o mesmo valor.
     const signedIn = await auth.api
       .signInEmail({
         body: {
@@ -37,10 +43,21 @@ async function activate(request: Request) {
           password: parsed.data.password,
           rememberMe: true
         },
-        headers: request.headers
+        headers: request.headers,
+        asResponse: true
       })
-      .catch(() => null)
-    return Response.json(signedIn ?? { existingAccount: true, activated: true })
+      .catch((error: unknown) => error)
+    if (signedIn instanceof Response && signedIn.ok) return signedIn
+
+    // A conta já está ativada; sem sessão, o formulário manda para o login.
+    console.error(
+      JSON.stringify({
+        event: 'waitlist_activation_signin_failed',
+        status: signedIn instanceof Response ? signedIn.status : undefined,
+        error: signedIn instanceof Error ? signedIn.message : undefined
+      })
+    )
+    return Response.json({ existingAccount: true, activated: true })
   } catch (error) {
     if (error instanceof InvalidWaitlistInviteError) {
       return Response.json(

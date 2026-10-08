@@ -99,6 +99,31 @@ describe('applyAuthGuards', () => {
     })
   })
 
+  // WEB-278: sessão pronta não fica olhando o formulário de login.
+  test('sends signed-in users away from login and signup', () => {
+    // O último caso: sem onboarding, o destino continua sendo o onboarding.
+    for (const [onboarded, href, to] of [
+      [true, '/login', '/dashboard'],
+      [true, '/signup', '/dashboard'],
+      [true, '/login?callbackUrl=%2Fpub%2Fabc', '/pub/abc'],
+      [false, '/login', '/onboarding/fan']
+    ] as const) {
+      let thrown: unknown
+      try {
+        applyAuthGuards(
+          session('fan', onboarded),
+          href.split('?')[0] ?? href,
+          {},
+          href
+        )
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toMatchObject({ options: { to } })
+    }
+    expect(() => applyAuthGuards(null, '/login')).not.toThrow()
+  })
+
   test('lets visitors stay on unknown URLs so the 404 can render', () => {
     expect(() => applyAuthGuards(null, '/pagina-que-nao-existe')).not.toThrow()
   })
