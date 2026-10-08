@@ -18,15 +18,26 @@ const DRAFT = {
 
 describe('rascunho do onboarding de bar', () => {
   it('sobrevive ao retorno do e-mail por até duas horas', () => {
-    const serialized = serializePubOnboardingDraft(DRAFT, 1_000)
-    expect(parsePubOnboardingDraft(serialized, 2_000)).toEqual(DRAFT)
+    const serialized = serializePubOnboardingDraft(DRAFT, 'dona', 1_000)
+    expect(parsePubOnboardingDraft(serialized, 'dona', 2_000)).toEqual(DRAFT)
   })
 
   it('recusa rascunho expirado ou malformado', () => {
-    const serialized = serializePubOnboardingDraft(DRAFT, 1_000)
-    expect(parsePubOnboardingDraft(serialized, 7_201_001)).toBeNull()
-    expect(parsePubOnboardingDraft('{')).toBeNull()
-    expect(parsePubOnboardingDraft(JSON.stringify({ draft: {} }))).toBeNull()
+    const serialized = serializePubOnboardingDraft(DRAFT, 'dona', 1_000)
+    expect(parsePubOnboardingDraft(serialized, 'dona', 7_201_001)).toBeNull()
+    expect(parsePubOnboardingDraft('{', 'dona')).toBeNull()
+    expect(
+      parsePubOnboardingDraft(JSON.stringify({ draft: {} }), 'dona')
+    ).toBeNull()
+  })
+
+  it('não devolve o rascunho de outra conta, nem o sem dono (WEB-262)', () => {
+    const serialized = serializePubOnboardingDraft(DRAFT, 'dona', 1_000)
+    expect(parsePubOnboardingDraft(serialized, 'outra', 2_000)).toBeNull()
+    const semDono = JSON.stringify({ draft: DRAFT, expiresAt: 9_000 })
+    expect(parsePubOnboardingDraft(semDono, 'dona', 2_000)).toBeNull()
+    // O e-mail do cadastro e o da sessão diferem só em caixa e espaço.
+    expect(parsePubOnboardingDraft(serialized, ' DONA ', 2_000)).toEqual(DRAFT)
   })
 })
 

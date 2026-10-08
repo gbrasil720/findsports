@@ -76,6 +76,23 @@ export const MAX_AMENITY_FILTER = 6
 /** Máximo de telas que o bar pode declarar. Acima disso é erro de digitação. */
 export const MAX_SCREEN_COUNT = 99
 
+/**
+ * O que está errado na contagem de telas, pronto para mostrar ao dono do bar,
+ * ou `null` quando serve. Vazio serve: o campo é opcional.
+ *
+ * É a faixa do zod de `onboarding.completePub` e `pub.updateMe`; o formulário
+ * confere com esta função em vez de arredondar ou limitar o que foi digitado
+ * (WEB-280).
+ */
+export function motivoTelasInvalido(
+  telas: number | null | undefined
+): string | null {
+  if (telas == null) return null
+  return Number.isInteger(telas) && telas >= 0 && telas <= MAX_SCREEN_COUNT
+    ? null
+    : `Informe um número inteiro de 0 a ${MAX_SCREEN_COUNT}.`
+}
+
 const BY_ID = new Map(AMENITIES.map((amenity) => [amenity.id, amenity]))
 
 export function findAmenity(id: number): Amenity | undefined {

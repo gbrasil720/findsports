@@ -57,6 +57,14 @@ const CATALOGO_TTL_MS = 5 * 60_000
 /** Jogos em destaque e busca dependem de NOW(); janela curta. */
 const BUSCA_TTL_MS = 60_000
 
+/**
+ * WEB-284: `ORDER BY name` segue a collation do banco; numa collation de
+ * bytes "PSG" sai antes de "Palmeiras" e acento vai para o fim. Ordenar aqui
+ * não depende de como o banco foi criado.
+ */
+const porNome = (a: { name: string }, b: { name: string }) =>
+  a.name.localeCompare(b.name, 'pt-BR')
+
 const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
   prefix: 'pubs.sports',
   ttlMs: CATALOGO_TTL_MS
@@ -625,12 +633,12 @@ export const pubsRouter = router({
     }),
 
   getMyTeams: fanProcedure.query(async ({ ctx }) => {
-    return db
+    const teams = await db
       .select({ id: team.id, name: team.name, sportId: team.sportId })
       .from(userFavoriteTeams)
       .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
       .where(eq(userFavoriteTeams.userId, ctx.session.user.id))
-      .orderBy(team.name)
+    return teams.sort(porNome)
   }),
 
   updateMyTeams: fanProcedure
@@ -669,12 +677,10 @@ export const pubsRouter = router({
   getTeamsBySport: protectedProcedure
     .input(z.object({ sportId: z.string().uuid() }))
     .query(async ({ input }) => {
-      return cacheTimes.get(input.sportId, () =>
-        db
-          .select()
-          .from(team)
-          .where(eq(team.sportId, input.sportId))
-          .orderBy(team.name)
+      return cacheTimes.get(input.sportId, async () =>
+        (
+          await db.select().from(team).where(eq(team.sportId, input.sportId))
+        ).sort(porNome)
       )
     }),
   getEliteEvents: protectedProcedure.query(async () => {

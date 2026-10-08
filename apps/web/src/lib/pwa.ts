@@ -29,6 +29,8 @@ export const PWA_META = [
   // Sem isto o atalho do iOS abre dentro do Safari, com barra de endereço, em
   // vez de abrir como app.
   { name: 'apple-mobile-web-app-capable', content: 'yes' },
+  // WEB-315: o Chrome avisa no console que a de cima, sozinha, é obsoleta.
+  { name: 'mobile-web-app-capable', content: 'yes' },
   {
     name: 'apple-mobile-web-app-status-bar-style',
     content: 'black-translucent'

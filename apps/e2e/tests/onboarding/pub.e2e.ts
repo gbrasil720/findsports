@@ -105,8 +105,15 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
 
   // Revisão
   await expect(progress(page)).toHaveText('Passo 4 de 4')
-  for (const badge of ['Bar do Teste', 'Pinheiros', 'Telão / projetor']) {
-    await expect(page.getByText(badge, { exact: true })).toBeVisible()
+  for (const dado of [
+    'Bar do Teste',
+    'Pinheiros',
+    'Telão / projetor',
+    address,
+    '(11) 98765-4321',
+    'Sinuca no fundo'
+  ]) {
+    await expect(page.getByText(dado, { exact: true })).toBeVisible()
   }
   await button(page, /Escolher meu plano/).click()
   await expect(page).toHaveURL(/\/plan$/)

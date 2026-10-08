@@ -115,9 +115,14 @@ test.describe('login com 2FA', () => {
     await expect(page).toHaveURL(/\/dashboard$/)
 
     // Sai só da sessão: o cookie de dispositivo confiável fica no contexto.
-    await page.request.post('/api/auth/sign-out', {
+    // `data: {}` e a conferência do status: sem corpo JSON o better-auth
+    // responde 415 e a sessão ficava aberta — o teste passava sem nunca ter
+    // saído, e o `/login` de quem já tem sessão agora redireciona (WEB-278).
+    const signOut = await page.request.post('/api/auth/sign-out', {
+      data: {},
       headers: { origin: BASE_URL }
     })
+    expect(signOut.status(), await signOut.text()).toBe(200)
     await loginWithForm(page, user)
     await expect(page).toHaveURL(/\/dashboard$/)
   })

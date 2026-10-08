@@ -107,6 +107,13 @@ export function applyAuthGuards(
     })
   }
 
+  // WEB-278: quem já tem sessão não vê o formulário de login nem o de
+  // cadastro; segue para o destino que a URL levava. `/dashboard` é o padrão
+  // de `getCallbackUrl`, e os guards abaixo levam bar e admin à casa deles.
+  if (pathname === '/login' || pathname === '/signup') {
+    throw redirect({ to: getCallbackUrl(href) })
+  }
+
   // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
   // Admin permanece na landing.
   // `String()`: o router faz JSON.parse da query, e `/?public=1` digitado
