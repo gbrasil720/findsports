@@ -173,6 +173,28 @@ const ATRIBUICAO = [
 ].join(' · ')
 
 /**
+ * Corta cada rótulo na primeira linha (WEB-288).
+ *
+ * Para lugar cujo nome local não é latino, o `@protomaps/basemaps` monta o
+ * rótulo em duas ou três linhas: a primeira no idioma pedido (`name:pt`,
+ * senão `name:en`, senão o `name` quando ele já é latino) e as seguintes com
+ * o nome no alfabeto local — `["format", linha1, {}, "\n", {}, local, …]`.
+ * Os tiles de zoom baixo cobrem o mundo, então Moscou, Cairo e Pequim pediam
+ * faixas de glyph cirílicas, árabes e CJK que `public/map/fonts` não tem, de
+ * propósito: um 404 por faixa no console.
+ *
+ * O produto é só Brasil. Fica a primeira linha, que é sempre a latina; o
+ * pacote não tem opção para isso, então o corte é aqui, na saída dele.
+ */
+function semNomeLocal(expressao: unknown): unknown {
+  if (!Array.isArray(expressao)) return expressao
+  const quebra = expressao[0] === 'format' ? expressao.indexOf('\n') : -1
+  return (quebra === -1 ? expressao : expressao.slice(0, quebra)).map(
+    semNomeLocal
+  )
+}
+
+/**
  * Monta o estilo apontando para o arquivo PMTiles informado.
  *
  * `pmtiles://` é resolvido pelo protocolo registrado em `onside-map.tsx`: o
@@ -181,7 +203,8 @@ const ATRIBUICAO = [
  *
  * `lang: 'pt'` faz os rótulos preferirem `name:pt` — "Oceano Atlântico" em
  * vez de "Atlantic Ocean" —, caindo no nome local quando não existe tradução,
- * que dentro do Brasil é o nome certo de qualquer forma.
+ * que dentro do Brasil é o nome certo de qualquer forma. Fora do alfabeto
+ * latino o nome local não entra: ver `semNomeLocal`.
  */
 export function criarEstiloDoMapa(
   tilesUrl: string,
@@ -204,6 +227,18 @@ export function criarEstiloDoMapa(
         attribution: ATRIBUICAO
       }
     },
-    layers: layers(SOURCE, ONSIDE_PAPER_FLAVOR, { lang: 'pt' })
+    layers: layers(SOURCE, ONSIDE_PAPER_FLAVOR, { lang: 'pt' }).map((camada) =>
+      camada.type === 'symbol' && camada.layout?.['text-field']
+        ? {
+            ...camada,
+            layout: {
+              ...camada.layout,
+              'text-field': semNomeLocal(
+                camada.layout['text-field']
+              ) as (typeof camada.layout)['text-field']
+            }
+          }
+        : camada
+    )
   }
 }

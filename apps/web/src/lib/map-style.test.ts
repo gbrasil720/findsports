@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { validateStyleMin } from '@maplibre/maplibre-gl-style-spec'
+import {
+  createExpression,
+  validateStyleMin
+} from '@maplibre/maplibre-gl-style-spec'
 
 import { criarEstiloDoMapa } from './map-style'
 
@@ -67,6 +70,71 @@ describe('estilo do mapa (WEB-73)', () => {
         })
       }
     }
+  })
+
+  /**
+   * WEB-288: o basemap cobre o mundo no zoom baixo, e o pacote punha o nome
+   * no alfabeto local numa segunda linha — "Moscou\nМосква". Cada alfabeto
+   * pedia uma faixa de glyph que `public/map/fonts` não tem, e o console
+   * enchia de 404. O teste de cima só vê as fontes; este vê o texto.
+   */
+  it('não escreve rótulo fora das faixas de glyph servidas', () => {
+    const temSegundaLinha = (valor: unknown): boolean =>
+      valor === '\n' || (Array.isArray(valor) && valor.some(temSegundaLinha))
+    const lugares = [
+      { name: 'Москва', script: 'Cyrillic', 'name:pt': 'Moscou' },
+      { name: 'القاهرة', script: 'Arabic', 'name:en': 'Cairo' },
+      { name: '北京市', script: 'Han' },
+      { name: 'Casablanca', name2: 'الدار البيضاء', script2: 'Arabic' },
+      { name: 'São João del-Rei' }
+    ]
+    // As faixas em `public/map/fonts`: 0-255 e 256-511, 7680-7935, 8192-8447.
+    const FAIXAS = [
+      [0, 511],
+      [7680, 7935],
+      [8192, 8447]
+    ]
+    const servido = (texto: string) =>
+      [...texto].every((letra) =>
+        FAIXAS.some(
+          ([de, ate]) =>
+            (letra.codePointAt(0) ?? 0) >= de &&
+            (letra.codePointAt(0) ?? 0) <= ate
+        )
+      )
+    const textos = new Set<string>()
+
+    for (const camada of estilo.layers) {
+      const campo = camada.type === 'symbol' && camada.layout?.['text-field']
+      if (!campo) continue
+      expect({ id: camada.id, segundaLinha: temSegundaLinha(campo) }).toEqual({
+        id: camada.id,
+        segundaLinha: false
+      })
+
+      const expressao = createExpression(
+        campo,
+        `layers.${camada.id}.layout.text-field`
+      )
+      if (expressao.result !== 'success') throw new Error(camada.id)
+      for (const properties of lugares) {
+        const texto = String(
+          expressao.value.evaluate({ zoom: 3 }, { type: 1, properties })
+        )
+        expect({ id: camada.id, texto, servido: servido(texto) }).toEqual({
+          id: camada.id,
+          texto,
+          servido: true
+        })
+        textos.add(texto)
+      }
+    }
+
+    // O corte tira a segunda linha, não o rótulo.
+    for (const esperado of ['Moscou', 'Cairo', 'Casablanca']) {
+      expect(textos).toContain(esperado)
+    }
+    expect(textos).toContain('São João del-Rei')
   })
 
   /**
