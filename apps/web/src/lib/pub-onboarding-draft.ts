@@ -20,24 +20,43 @@ export type PubOnboardingDraft = {
   screenCount?: number
 }
 
+const mesmoEmail = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * A chave do `localStorage` é uma só por navegador, então o rascunho leva o
+ * dono junto (WEB-262): sem isso a conta seguinte no mesmo navegador abria o
+ * cadastro preenchido com o bar da anterior.
+ *
+ * O dono é o e-mail, e não o id: quem vem do cadastro preenche o onboarding
+ * antes de confirmar o e-mail, ainda sem sessão, e a única coisa que a aba
+ * sabe dele é o e-mail que acabou de cadastrar.
+ */
 export function serializePubOnboardingDraft(
   draft: PubOnboardingDraft,
+  email: string,
   now = Date.now()
 ): string {
-  return JSON.stringify({ draft, expiresAt: now + DRAFT_TTL_MS })
+  return JSON.stringify({ draft, email, expiresAt: now + DRAFT_TTL_MS })
 }
 
+/** Só devolve rascunho gravado para esse e-mail; o de outra conta não volta. */
 export function parsePubOnboardingDraft(
   value: string | null,
+  email: string,
   now = Date.now()
 ): PubOnboardingDraft | null {
   if (!value) return null
   try {
     const parsed = JSON.parse(value) as {
       draft?: PubOnboardingDraft
+      email?: string
       expiresAt?: number
     }
     if (!parsed.draft || !parsed.expiresAt || parsed.expiresAt <= now) {
+      return null
+    }
+    if (typeof parsed.email !== 'string' || !mesmoEmail(parsed.email, email)) {
       return null
     }
     if (

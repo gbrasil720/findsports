@@ -27,11 +27,10 @@ import { LegalConsent } from '@/components/legal/legal-consent'
 import { useTurnstile } from '@/components/turnstile'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
-
-const PENDING_VERIFICATION_KEY = 'onside:pending-verification'
 
 export const Route = createFileRoute('/(auth)/signup')({
   head: () => ({

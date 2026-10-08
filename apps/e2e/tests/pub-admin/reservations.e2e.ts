@@ -153,10 +153,10 @@ test('teto vai até 5000: acima disso a tela barra e o servidor recusa', async (
 
   await caps.getByLabel('Padrão do bar').fill('5001')
   await caps.getByRole('button', { name: 'Salvar' }).first().click()
-  // O `max` nativo barra o envio: o campo fica inválido.
-  await expect(
-    caps.getByLabel('Padrão do bar').and(page.locator(':invalid'))
-  ).toBeVisible()
+  // A tela recusa com o próprio texto, sem o balão do navegador (WEB-272).
+  await expect(caps.getByRole('alert')).toHaveText(
+    'Informe um número inteiro de 1 a 5000, ou deixe o campo vazio.'
+  )
   const [untouched] = await query(
     'SELECT reservation_cap FROM bar WHERE id = $1',
     [barId]

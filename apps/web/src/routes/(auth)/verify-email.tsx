@@ -16,6 +16,10 @@ import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import {
+  PENDING_VERIFICATION_KEY,
+  readPendingEmail
+} from '@/lib/pending-verification'
+import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
   parsePubOnboardingDraft
@@ -23,8 +27,6 @@ import {
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
-
-const PENDING_VERIFICATION_KEY = 'onside:pending-verification'
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   head: () => ({
@@ -35,18 +37,6 @@ export const Route = createFileRoute('/(auth)/verify-email')({
   }),
   component: VerifyEmailPage
 })
-
-function readPendingEmail(): string {
-  if (typeof sessionStorage === 'undefined') return ''
-  try {
-    const pending = JSON.parse(
-      sessionStorage.getItem(PENDING_VERIFICATION_KEY) ?? '{}'
-    ) as { email?: unknown }
-    return typeof pending.email === 'string' ? pending.email : ''
-  } catch {
-    return ''
-  }
-}
 
 function VerifyEmailPage() {
   const navigate = useNavigate()
@@ -90,8 +80,10 @@ function VerifyEmailPage() {
 
       sessionStorage.removeItem(PENDING_VERIFICATION_KEY)
       if (data.user.role === 'pub' && !data.user.onboardingCompleted) {
+        // Só o rascunho desta conta é enviado por ela (WEB-262).
         const draft = parsePubOnboardingDraft(
-          localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY)
+          localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY),
+          data.user.email
         )
         if (!draft) {
           navigate({ to: '/onboarding/pub' })

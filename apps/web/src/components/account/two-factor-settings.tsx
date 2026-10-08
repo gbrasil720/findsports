@@ -33,6 +33,10 @@ const QRCode =
     : QRCodeModule
 
 type DialogMode = 'enable' | 'regenerate' | 'disable' | null
+
+// Os formulários daqui são `noValidate` (WEB-272): campo vazio recebe o texto
+// da tela, no lugar do balão do navegador.
+const SENHA_OBRIGATORIA = 'Informe sua senha atual.'
 type EnablePhase = 'password' | 'scan' | 'codes'
 
 export function TwoFactorSettings() {
@@ -109,6 +113,10 @@ function EnableTwoFactorDialog({
 
   const begin = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!password) {
+      setError(SENHA_OBRIGATORIA)
+      return
+    }
     setSaving(true)
     setError(null)
     const result = await authClient.twoFactor.enable({ password })
@@ -161,6 +169,10 @@ function EnableTwoFactorDialog({
 
   const verify = (event: React.FormEvent) => {
     event.preventDefault()
+    if (code.trim().length !== 6) {
+      setError('Digite o código de 6 dígitos do aplicativo.')
+      return
+    }
     void verifyCode(code)
   }
 
@@ -184,6 +196,7 @@ function EnableTwoFactorDialog({
           method="post"
           className="flex flex-col gap-5 pt-5"
           onSubmit={begin}
+          noValidate
         >
           <p className="text-[var(--onside-muted)] text-sm">
             Confirme sua senha antes de criar uma nova chave de autenticação.
@@ -215,6 +228,7 @@ function EnableTwoFactorDialog({
           method="post"
           className="flex flex-col gap-5 pt-5"
           onSubmit={verify}
+          noValidate
         >
           <p className="text-[var(--onside-muted)] text-sm">
             Escaneie o QR no seu aplicativo. Se preferir, informe a chave
@@ -293,6 +307,10 @@ function ManageTwoFactorDialog({
 
   const regenerate = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!password) {
+      setError(SENHA_OBRIGATORIA)
+      return
+    }
     setSaving(true)
     setError(null)
     const result = await authClient.twoFactor.generateBackupCodes({ password })
@@ -311,6 +329,10 @@ function ManageTwoFactorDialog({
 
   const disable = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (!password) {
+      setError(SENHA_OBRIGATORIA)
+      return
+    }
     setSaving(true)
     setError(null)
     const result = await authClient.twoFactor.disable({ password })
@@ -349,6 +371,7 @@ function ManageTwoFactorDialog({
           method="post"
           className="flex flex-col gap-5 pt-5"
           onSubmit={mode === 'disable' ? disable : regenerate}
+          noValidate
         >
           <p className="text-[var(--onside-muted)] text-sm">
             {mode === 'disable'

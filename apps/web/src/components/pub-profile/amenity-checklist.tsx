@@ -1,7 +1,8 @@
 import {
   AMENITIES,
   AMENITY_GROUPS,
-  MAX_SCREEN_COUNT
+  MAX_SCREEN_COUNT,
+  motivoTelasInvalido
 } from '@findsports_oficial/api/lib/amenities'
 import Check from 'reicon-react/icons/Check'
 
@@ -32,6 +33,7 @@ export function AmenityChecklist({
   idPrefix
 }: Props) {
   const isOn = (id: number) => selected.includes(id)
+  const screenCountError = motivoTelasInvalido(screenCount)
 
   return (
     <div className="space-y-5">
@@ -78,7 +80,7 @@ export function AmenityChecklist({
           </div>
 
           {group.key === 'watch' ? (
-            <div className="mt-2 flex items-center gap-3">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3">
               <label
                 htmlFor={`${idPrefix}-screen-count`}
                 className="text-[color-mix(in_srgb,var(--onside-paper)_72%,transparent)] text-sm"
@@ -93,19 +95,31 @@ export function AmenityChecklist({
                 max={MAX_SCREEN_COUNT}
                 value={screenCount ?? ''}
                 placeholder="—"
-                onChange={(e) => {
-                  const raw = e.target.value.trim()
-                  if (raw === '') return onScreenCountChange(null)
-
-                  const parsed = Number.parseInt(raw, 10)
-                  if (Number.isNaN(parsed)) return
-
+                // O número vai como foi digitado, sem arredondar nem limitar:
+                // quem diz o que corrigir é a mensagem abaixo, e quem usa o
+                // checklist barra o envio com a mesma regra (WEB-280).
+                onChange={(e) =>
                   onScreenCountChange(
-                    Math.min(Math.max(parsed, 0), MAX_SCREEN_COUNT)
+                    e.target.value === '' ? null : Number(e.target.value)
                   )
-                }}
+                }
+                aria-invalid={screenCountError ? true : undefined}
+                aria-describedby={
+                  screenCountError
+                    ? `${idPrefix}-screen-count-error`
+                    : undefined
+                }
                 className="onside-input w-24 border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]"
               />
+              {screenCountError ? (
+                <p
+                  id={`${idPrefix}-screen-count-error`}
+                  className="onside-field-error w-full"
+                  role="alert"
+                >
+                  {screenCountError}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </fieldset>
