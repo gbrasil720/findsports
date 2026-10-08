@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PHOTO_MAX_BYTES, photoPathname } from './blob-photo'
-import { deleteAvatar, MediaUploadError, signMediaUpload } from './media-upload'
+import {
+  deleteAvatar,
+  deleteBarPhoto,
+  MediaUploadError,
+  signMediaUpload
+} from './media-upload'
 
 const CONFIG = {
   R2_MEDIA_ACCESS_KEY_ID: 'chave-falsa',
@@ -84,7 +89,7 @@ describe('assinatura do upload para o R2 (WEB-202)', () => {
   })
 })
 
-describe('remoção do avatar no R2 (WEB-320)', () => {
+describe('remoção de foto no R2 (WEB-320)', () => {
   const fetchOriginal = globalThis.fetch
   let pedidos: Request[] = []
   let resposta = () => new Response(null, { status: 204 })
@@ -101,15 +106,60 @@ describe('remoção do avatar no R2 (WEB-320)', () => {
     globalThis.fetch = fetchOriginal
   })
 
-  async function status(...args: Parameters<typeof deleteAvatar>) {
+  async function statusDe(remocao: Promise<void>) {
     try {
-      await deleteAvatar(...args)
+      await remocao
     } catch (err) {
       if (err instanceof MediaUploadError) return err.status
       throw err
     }
     return 204
   }
+  const status = (...args: Parameters<typeof deleteAvatar>) =>
+    statusDe(deleteAvatar(...args))
+  const statusDoBar = (...args: Parameters<typeof deleteBarPhoto>) =>
+    statusDe(deleteBarPhoto(...args))
+
+  const DONO = { user: { id: 'user-123' } }
+  const BAR = { id: 'bar-123', userId: 'user-123' }
+
+  it('foto do bar: sem sessão responde 401 e não toca no bucket', async () => {
+    expect(await statusDoBar(null, BAR, CONFIG)).toBe(401)
+    expect(pedidos).toHaveLength(0)
+  })
+
+  it('foto do bar: bar de outro dono responde 403 e não toca no bucket', async () => {
+    expect(
+      await statusDoBar(DONO, { id: 'bar-999', userId: 'outro-dono' }, CONFIG)
+    ).toBe(403)
+    expect(await statusDoBar(DONO, null, CONFIG)).toBe(404)
+    expect(pedidos).toHaveLength(0)
+  })
+
+  it('foto do bar: apaga só a foto do bar da sessão, com DELETE assinado', async () => {
+    expect(await statusDoBar(DONO, BAR, CONFIG)).toBe(204)
+
+    expect(pedidos).toHaveLength(1)
+    const [pedido] = pedidos as [Request]
+    expect(pedido.method).toBe('DELETE')
+    expect(pedido.url).toBe(
+      'https://conta123.r2.cloudflarestorage.com/onside-media/bars/bar-123/photo'
+    )
+    expect(pedido.headers.get('authorization')).toContain(
+      'Credential=chave-falsa/'
+    )
+  })
+
+  it('foto do bar: falha do R2 vira 502; sem as variáveis, 503 sem pedido', async () => {
+    resposta = () => new Response(null, { status: 403 })
+    expect(await statusDoBar(DONO, BAR, CONFIG)).toBe(502)
+
+    pedidos = []
+    expect(
+      await statusDoBar(DONO, BAR, { ...CONFIG, CF_ACCOUNT_ID: undefined })
+    ).toBe(503)
+    expect(pedidos).toHaveLength(0)
+  })
 
   it('sem sessão responde 401 e não toca no bucket', async () => {
     expect(await status(null, CONFIG)).toBe(401)

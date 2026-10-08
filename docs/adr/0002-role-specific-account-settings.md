@@ -29,8 +29,10 @@ de segurança sem perder o desenho e o contexto próprios de cada experiência.
 - Redirecionar para `/login` quando `/two-factor` for aberto sem um desafio
   pendente válido.
 - Destacar a sessão atual e encerrá-la pela ação comum de sair.
-- Listar as outras sessões com IP, última atividade, expiração e user agent
-  secundário, sem tentar inferir dispositivo por heurística própria.
+- Listar as outras sessões com IP, última atividade, expiração e um rótulo de
+  dispositivo ("Chrome no macOS") derivado do user agent por detecção rasa
+  (`describe-device.ts`, WEB-310). O user agent bruto só aparece quando nada
+  foi reconhecido; o rótulo serve para reconhecer, nunca para autorizar.
 - Permitir encerrar uma sessão específica ou todas as outras sessões.
 - Encerrar automaticamente as outras sessões depois de alterar a senha.
 - Tratar dispositivo confiável de 2FA como cookie local, não como sessão

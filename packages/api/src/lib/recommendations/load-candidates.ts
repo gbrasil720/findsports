@@ -1,5 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 
+import { utcIso } from '../utc-timestamp'
 import {
   DAY_MS,
   jaccard,
@@ -420,7 +421,7 @@ export async function loadRecommendationCandidates(input: {
           ? {
               id: row.next_event_id,
               championship: row.next_championship,
-              startsAt: row.next_event_starts_at,
+              startsAt: utcIso(row.next_event_starts_at),
               sport: {
                 id: row.next_sport_id,
                 name: row.next_sport_name,

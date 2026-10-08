@@ -1,9 +1,12 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { db, sql } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
+import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { EVENT_LIVE_WINDOW_HOURS } from '../event-profile-window'
+import { utcIso } from '../utc-timestamp'
 import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
+import { getAnalyticsPlan } from './entitlements'
 import type {
   AnalyticsComparisonMode,
   AnalyticsLimitation,
@@ -24,16 +27,15 @@ import { pctChange } from './types'
 export async function resolveBarAndPlan(
   userId: string
 ): Promise<{ barId: string; plan: SubscriptionPlan }> {
-  const result = await db.execute(sql`
-    SELECT b.id, s.plan
-    FROM bar b
-    LEFT JOIN subscription s ON s.bar_id = b.id
-    WHERE b.user_id = ${userId}
-    LIMIT 1
-  `)
-  const row = result.rows[0] as
-    | { id: string; plan: SubscriptionPlan | null }
-    | undefined
+  const row = await db.query.bar.findFirst({
+    where: eq(bar.userId, userId),
+    columns: { id: true },
+    with: {
+      subscription: {
+        columns: { plan: true, status: true, currentPeriodEnd: true }
+      }
+    }
+  })
 
   if (!row) {
     throw new TRPCError({
@@ -42,10 +44,7 @@ export async function resolveBarAndPlan(
     })
   }
 
-  return {
-    barId: row.id,
-    plan: (row.plan ?? 'starter') as SubscriptionPlan
-  }
+  return { barId: row.id, plan: getAnalyticsPlan(row.subscription) }
 }
 
 /** Uma linha por dia, com os tipos já separados. */
@@ -492,7 +491,7 @@ async function getEventAnalyticsSnapshots(
   return rows.map((row) => ({
     eventId: row.event_id,
     eventName: row.event_name,
-    startsAt: new Date(row.starts_at).toISOString(),
+    startsAt: utcIso(row.starts_at),
     weekday: Number(row.weekday),
     windowHours: Number(row.window_hours),
     uniqueVisitors: Number(row.unique_visitors),

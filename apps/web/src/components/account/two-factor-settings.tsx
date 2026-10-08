@@ -210,7 +210,14 @@ function EnableTwoFactorDialog({
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'two-factor-password-error' : undefined}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                // Só o erro de campo vazio some ao digitar; o do servidor
+                // (senha errada) fica até o próximo envio.
+                if (event.target.value && error === SENHA_OBRIGATORIA) {
+                  setError(null)
+                }
+              }}
               required
             />
             <FieldError id="two-factor-password-error">{error}</FieldError>
@@ -389,7 +396,14 @@ function ManageTwoFactorDialog({
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'manage-two-factor-error' : undefined}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                // Só o erro de campo vazio some ao digitar; o do servidor
+                // (senha errada) fica até o próximo envio.
+                if (event.target.value && error === SENHA_OBRIGATORIA) {
+                  setError(null)
+                }
+              }}
               required
             />
             <FieldError id="manage-two-factor-error">{error}</FieldError>

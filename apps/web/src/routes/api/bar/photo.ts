@@ -1,5 +1,6 @@
 import { photoPathname } from '@findsports_oficial/api/lib/blob-photo'
 import {
+  deleteBarPhoto,
   MediaUploadError,
   signMediaUpload
 } from '@findsports_oficial/api/lib/media-upload'
@@ -63,6 +64,45 @@ export const Route = createFileRoute('/api/bar/photo')({
           console.error(JSON.stringify({ event: 'bar_photo_route_failed' }))
           return Response.json(
             { error: 'Não foi possível autorizar o upload.' },
+            { status: 500 }
+          )
+        }
+      },
+      // Remoção da foto. O bar é o da sessão: o pedido não tem corpo nem
+      // parâmetro. Arquivo primeiro, referência depois — se a segunda etapa
+      // falhar, repetir conserta (apagar de novo é inofensivo); na ordem
+      // inversa sobraria um arquivo no ar sem botão que o alcance.
+      //
+      // A referência é zerada aqui, e não por `pub.updateMe` como na troca de
+      // foto: aquele procedimento não aceita `photoUrl` nulo.
+      DELETE: async ({ request }) => {
+        try {
+          const session = await auth.api.getSession({
+            headers: request.headers
+          })
+          const ownBar = session
+            ? await db.query.bar.findFirst({
+                where: eq(bar.userId, session.user.id),
+                columns: { id: true, userId: true }
+              })
+            : null
+          await deleteBarPhoto(session, ownBar)
+          if (ownBar) {
+            await db
+              .update(bar)
+              .set({ photoUrl: null })
+              .where(eq(bar.id, ownBar.id))
+          }
+          return new Response(null, { status: 204 })
+        } catch (err) {
+          if (err instanceof MediaUploadError) {
+            return Response.json({ error: err.message }, { status: err.status })
+          }
+          console.error(
+            JSON.stringify({ event: 'bar_photo_delete_route_failed' })
+          )
+          return Response.json(
+            { error: 'Não foi possível remover a foto.' },
             { status: 500 }
           )
         }

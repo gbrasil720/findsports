@@ -130,6 +130,12 @@ describe('router SSR', () => {
     ).toBeUndefined()
   })
 
+  test('erro de rota cai na tela do app, não na padrão do TanStack Router', async () => {
+    const { getRouter } = await import('./router')
+    const { RouteErrorPage } = await import('./components/route-error-page')
+    expect(getRouter().options.defaultErrorComponent).toBe(RouteErrorPage)
+  })
+
   test('o retry global do toast revalida a query e não lança', async () => {
     const { getRouter } = await import('./router')
     const router = getRouter()

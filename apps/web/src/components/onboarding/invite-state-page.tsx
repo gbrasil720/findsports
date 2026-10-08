@@ -6,6 +6,8 @@ import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
 const YEAR = new Date().getFullYear()
 
 type Props = {
+  /** Rótulo do cabeçalho; a tela nasceu para o convite e esse é o padrão. */
+  label?: string
   /** Rótulo curto acima do título, na cor `live`. */
   kicker: string
   /** O título quebra em duas linhas fixas: o ponto vermelho fecha a segunda. */
@@ -29,6 +31,7 @@ type Props = {
  * menos uma saída clicável.
  */
 export function InviteStatePage({
+  label = 'Ativação de convite',
   kicker,
   titleTop,
   titleBottom,
@@ -54,7 +57,7 @@ export function InviteStatePage({
           </Link>
           <p className="onside-invite-label">
             <span className="onside-live-dot" aria-hidden="true" />
-            Ativação de convite
+            {label}
           </p>
         </header>
 

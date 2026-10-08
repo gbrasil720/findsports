@@ -291,7 +291,7 @@ export function montarPaginaBusca(
     latitude: row.latitude,
     longitude: row.longitude,
     photo_url: row.photo_url,
-    created_at: row.created_at,
+    created_at: utcIso(row.created_at),
     distance_km: row.distance_km,
     plan: row.plan,
     event_count: Number(row.event_count),

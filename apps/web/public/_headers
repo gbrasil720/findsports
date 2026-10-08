@@ -5,6 +5,12 @@
 /*
   Strict-Transport-Security: max-age=63072000
 
+# Fontes versionadas pela URL (`?v=N` em tokens.css e nos preloads). Sem isto o
+# Workers assets manda `max-age=0, must-revalidate` e cada visita revalida.
+# Trocou o arquivo, suba o `?v=` em todas as referências: o nome não muda.
+/fonts/onside/*
+  Cache-Control: public, max-age=31536000, immutable
+
 /robots.txt
   Access-Control-Allow-Origin: *
   Content-Type: text/plain; charset=utf-8

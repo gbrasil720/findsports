@@ -22,6 +22,20 @@
   font-family: var(--onside-body);
 }
 
+/*
+ * O aviso não ocupa lugar no fluxo, então o fim da página ficava debaixo
+ * dele. Enquanto ele existe, o documento ganha no fim a altura do aviso (que
+ * o componente mede) mais o respiro de baixo e um de cima. Some junto com o
+ * aviso; como é espaço depois do conteúdo, nada acima se desloca.
+ */
+:root:has(.onside-consent) body {
+  padding-bottom: calc(
+    var(--onside-consent-h, 0px) +
+    32px +
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+
 .onside-consent p {
   margin: 0;
   font-size: 14px;

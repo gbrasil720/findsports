@@ -170,46 +170,43 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
         </button>
       </div>
 
-      {
-        // biome-ignore lint/a11y/noStaticElementInteractions: closes menu when any hash link inside is activated
-        <div
-          id={menuId}
-          className={`onside-mobile-menu${menuOpen ? ' is-open' : ''}`}
-          aria-hidden={!menuOpen}
-          inert={!menuOpen}
-          onClick={(event) => {
+      <div
+        id={menuId}
+        className={`onside-mobile-menu${menuOpen ? ' is-open' : ''}`}
+        aria-hidden={!menuOpen}
+        inert={!menuOpen}
+        onClick={(event) => {
+          const target = event.target
+          if (target instanceof Element && target.closest('a[href^="#"]')) {
+            closeMenu()
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
             const target = event.target
             if (target instanceof Element && target.closest('a[href^="#"]')) {
               closeMenu()
             }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              const target = event.target
-              if (target instanceof Element && target.closest('a[href^="#"]')) {
-                closeMenu()
-              }
-            }
-          }}
-        >
-          {NAV_ITEMS.map((item, index) => (
-            <a
-              key={item.id}
-              ref={index === 0 ? firstLinkRef : undefined}
-              href={`${home}${item.href}`}
-            >
-              {item.label}
-            </a>
-          ))}
+          }
+        }}
+      >
+        {NAV_ITEMS.map((item, index) => (
           <a
-            className="onside-button onside-button-acid"
-            href={cta.href}
-            data-cta="nav_city_waitlist"
+            key={item.id}
+            ref={index === 0 ? firstLinkRef : undefined}
+            href={`${home}${item.href}`}
           >
-            {cta.label}
+            {item.label}
           </a>
-        </div>
-      }
+        ))}
+        <a
+          className="onside-button onside-button-acid"
+          href={cta.href}
+          data-cta="nav_city_waitlist"
+        >
+          {cta.label}
+        </a>
+      </div>
     </header>
   )
 }

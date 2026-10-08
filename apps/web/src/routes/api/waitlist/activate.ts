@@ -31,11 +31,10 @@ async function activate(request: Request) {
     // para a sessão gravar IP e user agent dele.
     //
     // WEB-247: o cookie da sessão vai na própria resposta do better-auth
-    // (`asResponse`), e não pelo `tanstackStartCookies`. No bundle do Worker o
-    // `import()` dinâmico do plugin resolve para o chunk de entrada, que não
-    // exporta `setCookie`, e o `catch {}` dele engole o erro: a sessão era
-    // criada no banco e o `Set-Cookie` nunca saía. No `vite dev` o plugin
-    // funciona, então lá o cookie sai repetido, com o mesmo valor.
+    // (`asResponse`), sem depender do plugin que repassa cookies ao Start: foi
+    // ele que falhou calado no bundle do Worker, e a sessão era criada no
+    // banco sem o `Set-Cookie` sair. Com o plugin funcionando o cookie sai
+    // duas vezes, com o mesmo valor.
     const signedIn = await auth.api
       .signInEmail({
         body: {
