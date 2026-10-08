@@ -219,18 +219,22 @@ export function ReservationRequestDialog({
               <label htmlFor={`${ids}-party`} className="onside-label">
                 Quantas pessoas
               </label>
-              <input
-                id={`${ids}-party`}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={RESERVATION_PARTY_SIZE_MAX}
-                value={Number.isNaN(partySize) ? '' : partySize}
-                onChange={(e) => setPartySize(e.target.valueAsNumber)}
-                className="onside-input w-28"
-                aria-invalid={partySizeValid ? undefined : true}
-                aria-describedby={`${ids}-party-hint`}
-              />
+              {/* A largura fica no invólucro: `.onside-input` é `width: 100%`
+                  fora de camada e vence o `w-*` do Tailwind (WEB-300). */}
+              <div className="w-28">
+                <input
+                  id={`${ids}-party`}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={RESERVATION_PARTY_SIZE_MAX}
+                  value={Number.isNaN(partySize) ? '' : partySize}
+                  onChange={(e) => setPartySize(e.target.valueAsNumber)}
+                  className="onside-input"
+                  aria-invalid={partySizeValid ? undefined : true}
+                  aria-describedby={`${ids}-party-hint`}
+                />
+              </div>
               <p
                 id={`${ids}-party-hint`}
                 className={

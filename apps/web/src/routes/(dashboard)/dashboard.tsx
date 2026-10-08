@@ -1,7 +1,7 @@
 import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/app/app-shell'
 import { InstallAppCard } from '@/components/app/install-app-card'
@@ -28,9 +28,12 @@ import {
 import {
   type LocationState,
   normalizeRadiusKm,
+  parseDashboardFilters,
   type RadiusKm,
-  SAO_PAULO_FALLBACK
+  SAO_PAULO_FALLBACK,
+  serializeDashboardFilters
 } from '@/domain/discovery'
+import { canRecordCommercialEvents } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -75,6 +78,9 @@ const LOCATION_HELP = [
   ]
 ] as const
 
+/** Quanto o campo de busca espera parado antes de o termo virar requisição. */
+const SEARCH_DEBOUNCE_MS = 300
+
 function toggled<T>(list: T[], item: T): T[] {
   return list.includes(item)
     ? list.filter((it) => it !== item)
@@ -90,8 +96,15 @@ function FanDashboard() {
     null
   )
   const [locationState, setLocationState] = useState<LocationState>('unknown')
-  const [sportId, setSportId] = useState<string>()
+  const [sportSlug, setSportSlug] = useState<string>()
+  /*
+   * `searchText` é o que o campo mostra; `championship` é o termo assentado,
+   * o único que vai para a busca e para a URL. Digitar atualizava os dois e
+   * disparava um `pubs.search` por tecla.
+   */
+  const [searchText, setSearchText] = useState('')
   const [championship, setChampionship] = useState('')
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   /*
    * O raio da busca começa no raio salvo pelo torcedor, não numa constante da
    * tela. Eram três números diferentes para a mesma preferência: 3 no banco,
@@ -109,6 +122,44 @@ function FanDashboard() {
   const [favoriteOverrides, setFavoriteOverrides] = useState<FavoriteOverrides>(
     {}
   )
+  /*
+   * Os filtros moram no hash da URL (WEB-293; formato em `domain/discovery`).
+   * No servidor não existe hash: a tela nasce com os padrões, igual ao HTML
+   * do SSR, e só então lê a URL — a busca espera por `hashRead` para não sair
+   * uma requisição com os filtros errados antes da certa.
+   *
+   * ponytail: só `hashchange` devolve a URL para o estado, como nas abas do
+   * /admin. Um <Link> para o próprio /dashboard limpa a URL sem limpar os
+   * filtros, até o próximo filtro mexido; se incomodar, ler `useLocation`.
+   */
+  const [hashRead, setHashRead] = useState(false)
+  const lastHash = useRef('')
+  useEffect(() => {
+    const readHash = () => {
+      const hash = window.location.hash.slice(1)
+      // Âncora da página (`#main-content`, do link de pular) não é filtro.
+      if (hash && !hash.includes('=')) return
+      const filters = parseDashboardFilters(hash, preferredRadiusKm)
+      lastHash.current = serializeDashboardFilters(filters, preferredRadiusKm)
+      clearTimeout(searchTimer.current)
+      setSearchText(filters.championship)
+      setChampionship(filters.championship)
+      setSportSlug(filters.sportSlug)
+      setRadiusKm(filters.radiusKm)
+      setAmenities(filters.amenities)
+      setTeamIds(filters.teamIds)
+      setSort(filters.sort)
+      setFavoritesOnly(filters.favoritesOnly)
+      setGamesTodayOnly(filters.gamesTodayOnly)
+    }
+    readHash()
+    setHashRead(true)
+    window.addEventListener('hashchange', readHash)
+    return () => {
+      window.removeEventListener('hashchange', readHash)
+      clearTimeout(searchTimer.current)
+    }
+  }, [preferredRadiusKm])
   /*
    * `notify` é o pedido feito por clique. O pedido automático da abertura
    * falha em silêncio — o aviso fixo já explica —, mas quem clicou e não viu
@@ -163,6 +214,32 @@ function FanDashboard() {
     ...CATALOG_QUERY,
     meta: { errorToast: false }
   })
+  const sportsState: SportsState = sportsQuery.isLoading
+    ? { status: 'loading' }
+    : sportsQuery.isError || !sportsQuery.data
+      ? {
+          status: 'error',
+          retry: () => void sportsQuery.refetch(),
+          retryable: isRetryableError(sportsQuery.error)
+        }
+      : { status: 'ready', sports: sportsQuery.data }
+  const sports = sportsState.status === 'ready' ? sportsState.sports : []
+  // A URL guarda o slug; a busca quer o id, que só o catálogo traduz.
+  const selectedSport = sports.find((item) => item.slug === sportSlug)
+  const sportId = selectedSport?.id
+
+  // Falha aqui só esconde o filtro de times; a busca segue.
+  const myTeamsQuery = useQuery({
+    ...trpc.pubs.getMyTeams.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const myTeams = myTeamsQuery.data ?? []
+  // Um link compartilhado pode trazer time que este torcedor não acompanha.
+  // Sem chip nem botão para desligar, o filtro ficaria preso: só vale o time
+  // que a tela consegue mostrar.
+  const activeTeamIds = myTeamsQuery.isPending
+    ? teamIds
+    : teamIds.filter((id) => myTeams.some((team) => team.id === id))
 
   // A ordenação por nota só existe quando a nota é pública. Falha de leitura
   // cai no lado conservador — sem o controle — porque um botão que ordena
@@ -178,10 +255,12 @@ function FanDashboard() {
       sportId,
       championship: championship || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
-      teamIds: teamIds.length > 0 ? teamIds : undefined,
+      teamIds: activeTeamIds.length > 0 ? activeTeamIds : undefined,
       sort,
       limit: 30
     }),
+    // Espera a URL ser lida e, com esporte nela, o catálogo que traduz o slug.
+    enabled: hashRead && !(sportSlug && sportsQuery.isLoading),
     meta: { errorToast: false }
   })
   // Termo, esporte ou característica marcada é pedido explícito. Com um deles
@@ -190,7 +269,7 @@ function FanDashboard() {
     championship.trim().length > 0 ||
     sportId !== undefined ||
     amenities.length > 0 ||
-    teamIds.length > 0
+    activeTeamIds.length > 0
   const primaryEmpty = primaryQuery.data?.bars.length === 0
   const fallbackQuery = useQuery({
     ...trpc.pubs.searchByLocation.queryOptions({
@@ -202,12 +281,6 @@ function FanDashboard() {
     meta: { errorToast: false }
   })
   const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
-  // Falha aqui só esconde o filtro de times; a busca segue.
-  const myTeams =
-    useQuery({
-      ...trpc.pubs.getMyTeams.queryOptions(),
-      meta: { errorToast: false }
-    }).data ?? []
 
   // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
   // busca — o card some e a tela segue fazendo o trabalho principal. Só
@@ -245,16 +318,6 @@ function FanDashboard() {
       }),
     [primaryQuery, fallbackQuery, locationState, radiusKm, hasSearchIntent]
   )
-  const sportsState: SportsState = sportsQuery.isLoading
-    ? { status: 'loading' }
-    : sportsQuery.isError || !sportsQuery.data
-      ? {
-          status: 'error',
-          retry: () => void sportsQuery.refetch(),
-          retryable: isRetryableError(sportsQuery.error)
-        }
-      : { status: 'ready', sports: sportsQuery.data }
-  const sports = sportsState.status === 'ready' ? sportsState.sports : []
   const favoriteIds = useMemo(
     () => resolveFavoriteIds(favoritesQuery.data ?? [], favoriteOverrides),
     [favoritesQuery.data, favoriteOverrides]
@@ -274,7 +337,13 @@ function FanDashboard() {
     [resultBars, favoriteIds, favoritesOnly, gamesTodayOnly]
   )
   const mapBars = toMapBars(displayedBars)
+  // Só torcedor registra evento comercial (WEB-311): com admin personificando
+  // o servidor recusaria com 403, então exposição e clique nem são enviados.
   const classicPlacementGuaranteed =
+    canRecordCommercialEvents(
+      session?.user.role,
+      session?.session.impersonatedBy
+    ) &&
     sort === 'relevance' &&
     !primaryQuery.isFetching &&
     primaryQuery.data !== undefined &&
@@ -359,15 +428,31 @@ function FanDashboard() {
     }
   })
 
+  /*
+   * Digitar não busca a cada tecla: o campo responde na hora e o termo só
+   * assenta depois de `SEARCH_DEBOUNCE_MS` parado. Limpar, sugestão e chip
+   * assentam na hora — ali não há tecla seguinte para esperar.
+   */
+  const setSearch = (value: string, settle = true) => {
+    clearTimeout(searchTimer.current)
+    setSearchText(value)
+    if (settle) setChampionship(value)
+    else {
+      searchTimer.current = setTimeout(
+        () => setChampionship(value),
+        SEARCH_DEBOUNCE_MS
+      )
+    }
+  }
   const handleSportChange = (id: string | undefined) => {
-    setSportId(id)
+    setSportSlug(sports.find((item) => item.id === id)?.slug)
   }
   const handleRadiusChange = (value: RadiusKm) => {
     setRadiusKm(value)
   }
   const reset = () => {
-    setSportId(undefined)
-    setChampionship('')
+    setSportSlug(undefined)
+    setSearch('')
     setRadiusKm(preferredRadiusKm)
     setFavoritesOnly(false)
     setGamesTodayOnly(false)
@@ -385,13 +470,13 @@ function FanDashboard() {
     if (kind === 'brasileirao') {
       setGamesTodayOnly(true)
       setFavoritesOnly(false)
-      setChampionship('Brasileirão')
+      setSearch('Brasileirão')
       const football = sports.find((item) => item.slug === 'futebol')
       if (football) handleSportChange(football.id)
     } else if (kind === 'nba') {
       setGamesTodayOnly(false)
       setFavoritesOnly(false)
-      setChampionship('NBA')
+      setSearch('NBA')
       const basketball = sports.find((item) => item.slug === 'basquete')
       if (basketball) handleSportChange(basketball.id)
     } else {
@@ -403,7 +488,7 @@ function FanDashboard() {
   useEffect(() => {
     if (!primaryQuery.data) return
     analytics.searchPerformed({
-      sport: sports.find((item) => item.id === sportId)?.slug,
+      sport: selectedSport?.slug,
       championship: championship || undefined,
       radius_km: radiusKm,
       results_count: primaryQuery.data.bars.length,
@@ -411,18 +496,52 @@ function FanDashboard() {
     })
   }, [primaryQuery.data])
 
+  /*
+   * Estado → URL, com o que está de fato aplicado: slug ou time que o
+   * catálogo não conhece sai do link. `replaceState` porque filtro não é
+   * navegação — "voltar" tem de sair da busca, não desfazer um chip por vez.
+   *
+   * O estado da entrada vai junto (`history.state`): é nele que o router
+   * guarda a chave da rolagem. Com `null` a chave muda, e tirar o último
+   * filtro — URL sem hash — joga a página para o topo.
+   */
+  const urlHash = serializeDashboardFilters(
+    {
+      championship,
+      sportSlug:
+        sportsState.status === 'ready' ? selectedSport?.slug : sportSlug,
+      radiusKm,
+      amenities,
+      teamIds: activeTeamIds,
+      sort,
+      favoritesOnly,
+      gamesTodayOnly
+    },
+    preferredRadiusKm
+  )
+  useEffect(() => {
+    if (!hashRead || urlHash === lastHash.current) return
+    lastHash.current = urlHash
+    window.history.replaceState(
+      window.history.state,
+      '',
+      urlHash
+        ? `#${urlHash}`
+        : window.location.pathname + window.location.search
+    )
+  }, [hashRead, urlHash])
+
   const activeFilters: ActiveFilter[] = []
-  const selectedSport = sports.find((item) => item.id === sportId)
   if (selectedSport) {
     activeFilters.push({
       label: selectedSport.name,
-      clear: () => setSportId(undefined)
+      clear: () => setSportSlug(undefined)
     })
   }
   if (championship) {
     activeFilters.push({
       label: championship,
-      clear: () => setChampionship('')
+      clear: () => setSearch('')
     })
   }
   if (radiusKm !== preferredRadiusKm) {
@@ -443,7 +562,7 @@ function FanDashboard() {
       clear: () => setGamesTodayOnly(false)
     })
   }
-  for (const id of teamIds) {
+  for (const id of activeTeamIds) {
     const selectedTeam = myTeams.find((item) => item.id === id)
     if (!selectedTeam) continue
 
@@ -495,8 +614,8 @@ function FanDashboard() {
         />
       ) : null}
       <SearchFilterBar
-        championship={championship}
-        onChampionshipChange={setChampionship}
+        championship={searchText}
+        onChampionshipChange={(value) => setSearch(value, value === '')}
         sportId={sportId}
         onSportChange={handleSportChange}
         radiusKm={radiusKm}
@@ -505,7 +624,7 @@ function FanDashboard() {
         amenities={amenities}
         onToggleAmenity={toggleAmenity}
         teams={myTeams}
-        teamIds={teamIds}
+        teamIds={activeTeamIds}
         onToggleTeam={toggleTeam}
         favoritesOnly={favoritesOnly}
         onFavoritesOnlyChange={setFavoritesOnly}

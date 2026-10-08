@@ -196,7 +196,6 @@
   font-family: var(--onside-body);
   font-size: 16px;
   line-height: 1.4;
-  outline: none;
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease;
@@ -213,13 +212,23 @@
 }
 
 /*
- * Só a borda muda de cor; o anel é o `outline` da política global. O
- * `box-shadow` que existia aqui somava um segundo anel ao redor do primeiro.
+ * Foco e erro são sinais diferentes (WEB-300).
+ *
+ * A borda só fica vermelha no erro. O foco é o `outline` da política global
+ * (WEB-111, `tokens.css`) e mais nada: antes o campo calava o outline e
+ * pintava a borda de live, e todo campo focado parecia estar em erro.
+ *
+ * O anel fica por dentro da borda, e não afastado: campo mora em contêiner
+ * que rola ou recorta (o modal de evento), onde o anel de fora é cortado. O
+ * recuo soma a espessura da borda para ela continuar à vista — é ela que diz
+ * se o campo está em erro.
  */
-.onside-app .onside-input:focus-visible,
-.onside-app .onside-textarea:focus-visible,
-.onside-app .onside-select:focus-visible {
-  border-color: var(--onside-live);
+.onside-app .onside-input,
+.onside-app .onside-textarea,
+.onside-app .onside-select,
+.onside-app .onside-field-composite,
+.onside-app .onside-input-group {
+  --onside-focus-offset: calc(-1 * var(--onside-focus-width) - 1.5px);
 }
 
 /*
@@ -240,8 +249,10 @@
   color: rgb(241 238 230 / 40%);
 }
 
-.onside-app .onside-input-ink:focus-visible,
-.onside-app .onside-textarea-ink:focus-visible {
+/* Depois do tom ink, para a borda de erro valer nas duas superfícies. */
+.onside-app .onside-input[aria-invalid="true"],
+.onside-app .onside-textarea[aria-invalid="true"],
+.onside-app .onside-select[aria-invalid="true"] {
   border-color: var(--onside-live);
 }
 
@@ -270,7 +281,6 @@
 }
 
 .onside-app .onside-field-composite:focus-within {
-  border-color: var(--onside-live);
   outline: var(--onside-focus-width) solid var(--onside-focus-color);
   outline-offset: var(--onside-focus-offset);
 }
@@ -288,10 +298,6 @@
   border-color: rgb(241 238 230 / 28%);
   background: rgb(241 238 230 / 6%);
   color: var(--onside-paper);
-}
-
-.onside-app .onside-field-composite-ink:focus-within {
-  border-color: var(--onside-live);
 }
 
 .onside-app .onside-field-part {
@@ -339,9 +345,12 @@
 }
 
 .onside-app .onside-input-group:focus-within {
-  border-color: var(--onside-live) !important;
   outline: var(--onside-focus-width) solid var(--onside-focus-color);
   outline-offset: var(--onside-focus-offset);
+}
+
+.onside-app .onside-input-group:has([aria-invalid="true"]) {
+  border-color: var(--onside-live) !important;
 }
 
 .onside-app .onside-input-group :focus-visible {

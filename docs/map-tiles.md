@@ -166,6 +166,28 @@ o latino que aparece dentro do recorte, mais a pontuação tipográfica. Origem:
 `map-style.test.ts` falha se uma camada pedir uma fonte ou faixa que não está no
 disco, então a peça mais fácil de esquecer é a única que não dá para esquecer.
 
+### Rótulo só em alfabeto latino (WEB-288)
+
+**Regra: nenhum rótulo escreve o nome no alfabeto local.** O recorte é o
+Brasil, mas os tiles de zoom baixo cobrem o mundo, e o `@protomaps/basemaps`
+monta o rótulo de lugar não latino em duas ou três linhas — `name:pt` (ou
+`name:en`) na primeira e o nome local nas seguintes: "Moscou" + "Москва". Cada
+alfabeto pede uma faixa de glyph que não está em `public/map/fonts`, e o console
+enchia de 404 (`/map/fonts/Noto Sans Regular/1024-1279.pbf`, a faixa cirílica).
+
+O pacote não tem opção para desligar a segunda linha. `semNomeLocal`, em
+`map-style.ts`, corta cada `["format", …]` de `text-field` no primeiro `"\n"`,
+na saída de `layers()`. Sobra a linha que o pacote já garante latina: `name:pt`,
+senão `name:en`, senão o `name` quando ele não tem `script`. Lugar que só tem
+nome não latino fica sem rótulo — fora do Brasil, não faz falta.
+
+A correção **não** é baixar mais faixas: seria versionar cirílico, árabe e CJK
+para um mapa que não sai do Brasil. Se um dia o produto sair, o caminho é
+tirar o corte e servir as faixas, as duas coisas juntas. `map-style.test.ts`
+avalia os rótulos contra lugares de exemplo e falha se algum texto cair fora das
+faixas servidas — é ele que avisa se uma atualização do pacote mudar o formato
+da expressão e o corte deixar de pegar.
+
 ## Geocoding: precisão e limites
 
 O provedor é a LocationIQ, sobre a mesma base OpenStreetMap dos tiles. Medido
