@@ -126,12 +126,25 @@ export type ProfileReadiness = {
 /* ------------------------------------------------------------------ */
 
 /**
- * Format a rate as a percentage string.
- * Returns "—" when denominator is zero.
+ * Taxa de interesse: de quem viu o bar, que fração se interessou. São pessoas
+ * dos dois lados — com ações no numerador, um visitante que abre WhatsApp e
+ * rota virava "200%" (WEB-251). O teto é 1: quem agiu sem abertura contada na
+ * janela não é "alguém que viu". `null` sem visitantes.
  */
-export function formatRate(num: number, den: number): string {
-  if (den === 0) return '—'
-  return `${((num / den) * 100).toFixed(1)}%`
+export function getInterestRate(
+  interestedPeople: number,
+  uniqueVisitors: number
+): number | null {
+  if (uniqueVisitors <= 0) return null
+  return Math.min(interestedPeople, uniqueVisitors) / uniqueVisitors
+}
+
+export function formatInterestRate(
+  interestedPeople: number,
+  uniqueVisitors: number
+): string {
+  const rate = getInterestRate(interestedPeople, uniqueVisitors)
+  return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`
 }
 
 export const LOCKED_ANALYTICS_VALUE = 'Exclusivo do plano superior'

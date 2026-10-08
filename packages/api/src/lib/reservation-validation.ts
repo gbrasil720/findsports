@@ -51,9 +51,11 @@ export function assertCanValidateReservations(
 }
 
 /**
- * A ÚNICA resposta para "este código não é seu": inexistente, aposentado ou
- * de outro bar. Um construtor só, para que ninguém
+ * A ÚNICA recusa para "este código não é seu" depois da busca: inexistente,
+ * aposentado ou de outro bar. Um construtor só, para que ninguém
  * escreva uma segunda mensagem e entregue um oráculo de enumeração.
+ *
+ * A busca (`lookup`) responde esses mesmos casos com `null`, sem erro.
  */
 export function codeNotFoundError(): TRPCError {
   return new TRPCError({

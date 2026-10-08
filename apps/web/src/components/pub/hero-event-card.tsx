@@ -4,6 +4,7 @@ import { getEventTemporalState } from '@/domain/events'
 import {
   formatDayLabel,
   formatEventTime,
+  formatGameSubtitle,
   formatMatchup,
   type ProfileEvent
 } from '@/domain/pub-profile'
@@ -102,7 +103,10 @@ export function HeroEventCard({ event, fromSearch }: Props) {
             {formatMatchup(event)}
           </p>
           <p className="mt-1 font-[family-name:var(--onside-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-            {event.sport.name} · {event.championship}
+            {formatGameSubtitle(formatMatchup(event), [
+              event.sport.name,
+              event.championship
+            ])}
           </p>
         </div>
       </div>

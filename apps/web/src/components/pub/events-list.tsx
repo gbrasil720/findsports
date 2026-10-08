@@ -4,6 +4,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import {
   formatEventTime,
+  formatGameSubtitle,
   formatMatchup,
   groupEventsByDay,
   type ProfileEvent
@@ -131,7 +132,10 @@ export function EventsList<T extends ProfileEvent>({
                           {formatMatchup(event)}
                         </span>
                         <span className="block truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-                          {event.sport.name} · {event.championship}
+                          {formatGameSubtitle(formatMatchup(event), [
+                            event.sport.name,
+                            event.championship
+                          ])}
                         </span>
                       </span>
 

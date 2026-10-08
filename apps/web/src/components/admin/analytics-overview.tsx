@@ -2,11 +2,13 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
+import { getPlan } from '@/lib/plan-catalog'
 import {
   type AnalyticsOverviewData,
   type AnalyticsOverviewState,
   formatAnalyticsValue,
-  formatRate,
+  formatInterestRate,
+  getInterestRate,
   getMainAction
 } from './admin-model'
 import {
@@ -37,14 +39,6 @@ function formatPpChange(curr: number | null, prev: number | null): string {
   const diff = (curr - prev) * 100
   if (Math.abs(diff) < 0.05) return '0 p.p.'
   return `${diff > 0 ? '+' : ''}${diff.toFixed(1)} p.p.`
-}
-
-function sumIntentActions(data: AnalyticsOverviewData): number {
-  return (
-    (data.whatsappOpened ?? 0) +
-    (data.directionsOpened ?? 0) +
-    (data.phoneClicked ?? 0)
-  )
 }
 
 /** Título de seção com o ⓘ do glossário ao lado. */
@@ -198,7 +192,8 @@ function KpiCard({
   /** Variação percentual contra o período anterior. */
   change?: string
   accent?: 'acid'
-  comparisonLabel: string
+  /** `null` quando a janela não tem período anterior ("Tudo"). */
+  comparisonLabel: string | null
 }) {
   const { label } = getMetric(metric)
 
@@ -221,7 +216,7 @@ function KpiCard({
           {secondary}
         </p>
       )}
-      {change !== undefined && (
+      {change !== undefined && comparisonLabel !== null && (
         <p className="mt-1 text-xs text-[var(--onside-ink)] opacity-60">
           {change} vs {comparisonLabel}
         </p>
@@ -235,34 +230,18 @@ function KpiCards({
   comparisonLabel
 }: {
   data: AnalyticsOverviewData
-  comparisonLabel: string
+  comparisonLabel: string | null
 }) {
-  const intentActions = sumIntentActions(data)
-  const intentActionsPrev =
-    (data.whatsappOpenedPrev ?? 0) +
-    (data.directionsOpenedPrev ?? 0) +
-    (data.phoneClickedPrev ?? 0)
-
-  /* A API não devolve variação agregada de intenção — só por canal. Somar os
-     canais do período anterior dá o mesmo número sem custo de backend. */
-  const intentChange =
-    intentActionsPrev > 0
-      ? Math.round(
-          ((intentActions - intentActionsPrev) / intentActionsPrev) * 100
-        )
-      : null
-
-  /* A taxa mede pessoas, não aberturas: "de cada 100 que viram, X se
-     interessaram" só faz sentido com visitantes únicos no denominador. */
-  const intentRate = formatRate(intentActions, data.uniqueVisitors)
-  const intentRateChange = formatPpChange(
-    data.uniqueVisitors > 0 ? intentActions / data.uniqueVisitors : null,
-    data.uniqueVisitorsPrev !== null &&
-      intentActionsPrev !== null &&
-      data.uniqueVisitorsPrev > 0
-      ? intentActionsPrev / data.uniqueVisitorsPrev
-      : null
+  /* Pessoas dos dois lados (WEB-251): quem abriu WhatsApp e rota é uma pessoa
+     interessada, não duas. Somar os canais dava "200%" com um visitante. */
+  const interestRate = getInterestRate(
+    data.interestedPeople,
+    data.uniqueVisitors
   )
+  const interestRatePrev =
+    data.interestedPeoplePrev !== null && data.uniqueVisitorsPrev !== null
+      ? getInterestRate(data.interestedPeoplePrev, data.uniqueVisitorsPrev)
+      : null
 
   const views = data.profileViews.toLocaleString('pt-BR')
 
@@ -277,23 +256,29 @@ function KpiCards({
       />
       <KpiCard
         metric="interest"
-        value={intentActions.toLocaleString('pt-BR')}
-        change={formatPctChange(intentChange)}
+        value={data.interestedPeople.toLocaleString('pt-BR')}
+        change={formatPctChange(data.interestedPeopleChange)}
         accent="acid"
         comparisonLabel={comparisonLabel}
       />
       <KpiCard
         metric="interestRate"
-        value={intentRate}
+        value={formatInterestRate(data.interestedPeople, data.uniqueVisitors)}
         secondary="de quem viu seu bar"
-        change={intentRateChange}
+        change={formatPpChange(interestRate, interestRatePrev)}
         comparisonLabel={comparisonLabel}
       />
     </div>
   )
 }
 
-function ClassicPlacement({ data }: { data: AnalyticsOverviewData }) {
+function ClassicPlacement({
+  data,
+  comparisonLabel
+}: {
+  data: AnalyticsOverviewData
+  comparisonLabel: string | null
+}) {
   if (data.classicExposures === null || data.classicClicks === null) {
     return null
   }
@@ -332,10 +317,12 @@ function ClassicPlacement({ data }: { data: AnalyticsOverviewData }) {
           </p>
         </div>
       </div>
-      <p className="mt-3 text-xs text-[var(--onside-ink)] opacity-60">
-        Exposições {formatPctChange(data.classicExposuresChange)} • Cliques{' '}
-        {formatPctChange(data.classicClicksChange)} vs 30 dias anteriores
-      </p>
+      {comparisonLabel !== null && (
+        <p className="mt-3 text-xs text-[var(--onside-ink)] opacity-60">
+          Exposições {formatPctChange(data.classicExposuresChange)} • Cliques{' '}
+          {formatPctChange(data.classicClicksChange)} vs {comparisonLabel}
+        </p>
+      )}
     </div>
   )
 }
@@ -466,7 +453,7 @@ function DailyChart({
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block size-2 rounded-full bg-[var(--onside-live)]" />
-          Se interessaram
+          WhatsApp, rota e telefone
         </span>
       </div>
     </div>
@@ -608,9 +595,12 @@ function PeriodComparison({
 
 export function AnalyticsOverview({
   overviewState,
+  showComparison = true,
   onCreateEvent
 }: {
   overviewState: AnalyticsOverviewState
+  /** `false` no período "Tudo": não existe período anterior (WEB-263). */
+  showComparison?: boolean
   onCreateEvent?: () => void
 }) {
   if (overviewState.status === 'loading') return <OverviewSkeleton />
@@ -659,7 +649,9 @@ export function AnalyticsOverview({
   }
 
   const data = overviewState.data
-  const comparisonLabel = formatComparisonPeriod(data.from, data.to)
+  const comparisonLabel = showComparison
+    ? formatComparisonPeriod(data.from, data.to)
+    : null
 
   return (
     <section aria-label="Visão geral">
@@ -668,7 +660,7 @@ export function AnalyticsOverview({
           <h2 className="onside-display text-2xl">Desempenho do bar</h2>
           <p className="mt-1 text-sm text-[var(--onside-ink)] opacity-60">
             {formatAnalyticsPeriod(data.from, data.to)} • Plano:{' '}
-            {data.plan ?? '—'}
+            {getPlan(data.plan).name}
           </p>
         </div>
       </header>
@@ -686,7 +678,7 @@ export function AnalyticsOverview({
       )}
 
       <KpiCards data={data} comparisonLabel={comparisonLabel} />
-      <ClassicPlacement data={data} />
+      <ClassicPlacement data={data} comparisonLabel={comparisonLabel} />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DailyChart
@@ -698,9 +690,11 @@ export function AnalyticsOverview({
         <ActionDistributionView data={data} />
       </div>
 
-      <div className="mt-6">
-        <PeriodComparison data={data} comparisonLabel={comparisonLabel} />
-      </div>
+      {comparisonLabel !== null && (
+        <div className="mt-6">
+          <PeriodComparison data={data} comparisonLabel={comparisonLabel} />
+        </div>
+      )}
     </section>
   )
 }

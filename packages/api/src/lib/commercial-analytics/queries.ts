@@ -407,6 +407,10 @@ async function getEventAnalyticsSnapshots(
         bce.source_event_id AS event_id,
         COUNT(DISTINCT bce.actor_user_id)
           FILTER (WHERE bce.type = 'profile_view') AS unique_visitors,
+        COUNT(DISTINCT bce.actor_user_id)
+          FILTER (
+            WHERE bce.type IN ('directions_opened', 'phone_clicked', 'whatsapp_opened')
+          ) AS interested_people,
         COUNT(*) FILTER (WHERE bce.type = 'profile_view') AS profile_views,
         COUNT(*) FILTER (WHERE bce.type = 'directions_opened') AS directions_opened,
         COUNT(*) FILTER (WHERE bce.type = 'phone_clicked') AS phone_clicked,
@@ -457,6 +461,7 @@ async function getEventAnalyticsSnapshots(
         ISODOW FROM (e.starts_at AT TIME ZONE ${COMMERCIAL_TIME_ZONE})
       ) AS weekday,
       COALESCE(bruto.unique_visitors, 0) AS unique_visitors,
+      COALESCE(bruto.interested_people, 0) AS interested_people,
       COALESCE(bruto.profile_views, 0) + COALESCE(podado.profile_views, 0) AS profile_views,
       COALESCE(bruto.directions_opened, 0) + COALESCE(podado.directions_opened, 0) AS directions_opened,
       COALESCE(bruto.phone_clicked, 0) + COALESCE(podado.phone_clicked, 0) AS phone_clicked,
@@ -478,6 +483,7 @@ async function getEventAnalyticsSnapshots(
     weekday: string | number
     profile_views: string | number
     unique_visitors: string | number
+    interested_people: string | number
     directions_opened: string | number
     phone_clicked: string | number
     whatsapp_opened: string | number
@@ -490,6 +496,7 @@ async function getEventAnalyticsSnapshots(
     weekday: Number(row.weekday),
     windowHours: Number(row.window_hours),
     uniqueVisitors: Number(row.unique_visitors),
+    interestedPeople: Number(row.interested_people),
     profileViews: Number(row.profile_views),
     directionsOpened: Number(row.directions_opened),
     phoneClicked: Number(row.phone_clicked),
@@ -511,6 +518,10 @@ export interface EventAnalyticsQueryOptions {
  * eles não têm dimensão de evento (WEB-98). Depois de podar os brutos de um
  * dia, os eventos daquele dia continuam listados, mas suas contagens por jogo
  * refletem apenas os brutos que sobreviveram.
+ *
+ * `uniqueVisitors` e `interestedPeople` são pessoas distintas e saem só dos
+ * brutos: a projeção por jogo guarda contagens, não quem agiu. Jogo com dia
+ * podado volta com zero nas duas (WEB-251).
  */
 export async function getMyEventAnalytics(
   barId: string,
@@ -533,6 +544,8 @@ export async function getMyEventAnalytics(
     eventId: row.eventId,
     eventName: row.eventName,
     startsAt: row.startsAt,
+    uniqueVisitors: row.uniqueVisitors,
+    interestedPeople: row.interestedPeople,
     profileViews: row.profileViews,
     directionsOpened: row.directionsOpened,
     phoneClicked: row.phoneClicked,

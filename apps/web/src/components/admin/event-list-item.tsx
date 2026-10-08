@@ -1,6 +1,7 @@
 import Edit from 'reicon-react/icons/Edit'
 import Trash from 'reicon-react/icons/Trash'
 import { getEventTemporalState } from '@/domain/events'
+import { formatGameSubtitle } from '@/domain/pub-profile'
 import type { AdminEvent } from './admin-model'
 
 function isUpcomingSoon(startsAt: string | Date): boolean {
@@ -67,8 +68,10 @@ export function EventListItem({
   const past = temporalState === 'past'
   const soon = !live && !past && isUpcomingSoon(e.startsAt)
   const timeUntil = soon ? getTimeUntil(e.startsAt) : null
-  const participants =
-    e.participants?.map((p) => p.team.name).join(' × ') || e.participantFreeText
+  const title =
+    e.participants?.map((p) => p.team.name).join(' × ') ||
+    e.participantFreeText ||
+    e.championship
 
   return (
     <li
@@ -123,7 +126,7 @@ export function EventListItem({
             {e.sport?.name}
           </span>
           <span className="truncate text-[10px] text-[var(--onside-muted)]">
-            {e.championship}
+            {formatGameSubtitle(title, [e.championship])}
           </span>
         </div>
         <div
@@ -131,7 +134,7 @@ export function EventListItem({
             past ? 'text-[var(--onside-muted)]' : 'text-[var(--onside-ink)]'
           }`}
         >
-          {participants || e.championship}
+          {title}
         </div>
         {interestRatio !== undefined && (
           <div className="mt-1 text-[var(--onside-muted)] text-xs">

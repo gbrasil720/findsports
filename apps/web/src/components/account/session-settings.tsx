@@ -176,13 +176,15 @@ export function SessionSettings() {
                       ) : null}
                     </div>
                     {/*
-                     * A string crua fica, um degrau abaixo: ela é o que
-                     * permite conferir um acesso que o rótulo não descreveu
-                     * bem — ou que não descreveu nada.
+                     * A string crua só aparece quando o rótulo não descreveu
+                     * nada (WEB-310): aí ela é a única pista para decidir se
+                     * o acesso é seu.
                      */}
-                    <p className="mt-1 break-all text-[var(--onside-muted)] text-xs">
-                      {session.userAgent ?? 'Navegador não informado'}
-                    </p>
+                    {device.recognized ? null : (
+                      <p className="mt-1 break-all text-[var(--onside-muted)] text-xs">
+                        {session.userAgent ?? 'Navegador não informado'}
+                      </p>
+                    )}
                     <p className="mt-2 text-[var(--onside-muted)] text-[11px]">
                       IP {session.ipAddress ?? 'não informado'} · atividade{' '}
                       {formatDate(session.updatedAt)} · expira{' '}

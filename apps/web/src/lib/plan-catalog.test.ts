@@ -11,6 +11,7 @@ import {
   getPlanExitLink,
   getPlanHeader,
   getPlanSelectionState,
+  getTrialNotice,
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
@@ -331,6 +332,36 @@ describe('getPlanHeader', () => {
     expect(getPlanHeader({ plan: 'pro', standing: 'ended' }).kicker).toBe(
       'Reativar plano'
     )
+  })
+})
+
+describe('getTrialNotice (WEB-260)', () => {
+  const now = new Date('2026-10-08T15:00:00.000Z')
+  const trial = {
+    status: 'trialing',
+    standing: 'current' as const,
+    currentPeriodEnd: '2026-10-22T15:00:00.000Z'
+  }
+
+  test('diz até quando vai e quantos dias faltam', () => {
+    expect(getTrialNotice(trial, now)).toBe(
+      'Trial gratuito até 22 de outubro de 2026 · faltam 14 dias'
+    )
+    expect(
+      getTrialNotice(
+        { ...trial, currentPeriodEnd: new Date('2026-10-08T20:00:00.000Z') },
+        now
+      )
+    ).toBe('Trial gratuito até 8 de outubro de 2026 · falta 1 dia')
+  })
+
+  test('fica calado fora de um trial em vigor', () => {
+    expect(getTrialNotice(null, now)).toBeNull()
+    expect(getTrialNotice({ ...trial, status: 'active' }, now)).toBeNull()
+    expect(
+      getTrialNotice({ ...trial, standing: 'trial_ended' }, now)
+    ).toBeNull()
+    expect(getTrialNotice({ ...trial, currentPeriodEnd: null }, now)).toBeNull()
   })
 })
 

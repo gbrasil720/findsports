@@ -16,6 +16,7 @@ import {
   getPlanExitLink,
   getPlanHeader,
   getPlanSelectionState,
+  getTrialNotice,
   PLAN_CATALOG,
   type Plan,
   parsePlanOrigin
@@ -72,6 +73,7 @@ function PlanSelection() {
   const hasActivePlan = currentPlan !== null
   const lapsed = isLapsed(subscription?.standing)
   const header = getPlanHeader(subscription)
+  const trialNotice = getTrialNotice(subscription)
   const exitLink = getPlanExitLink(origin)
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
@@ -203,7 +205,8 @@ function PlanSelection() {
             <span className="font-bold">
               {PLAN_CATALOG.find((p) => p.id === currentPlan)?.name}
             </span>
-            . Selecione outro plano abaixo para fazer a troca.
+            . {trialNotice ? `${trialNotice}. ` : null}Selecione outro plano
+            abaixo para fazer a troca.
           </p>
         </div>
       ) : null}

@@ -205,6 +205,26 @@ describe('HouseOfferEditor dentro da aba', () => {
     expect(campo().value).toBe('Porção grátis')
   })
 
+  // WEB-314: o QA relatou "150/140" sem mensagem. A mensagem existe.
+  test('passar do limite mostra a mensagem junto do campo e trava o salvar', () => {
+    const { desenhar, campo, digitar } = montar()
+    desenhar(true, null)
+    digitar('x'.repeat(150))
+
+    const alerta = document.querySelector('[role="alert"]')
+    expect(document.body.textContent).toContain('150/140')
+    expect(alerta?.textContent).toBe(
+      'A oferta aceita até 140 caracteres. Tire 10.'
+    )
+    expect(campo().getAttribute('aria-describedby')).toContain(
+      alerta?.id ?? '-'
+    )
+    expect(
+      (document.querySelector('button[type="submit"]') as HTMLButtonElement)
+        .disabled
+    ).toBe(true)
+  })
+
   test('o rascunho acompanha o valor gravado quando ele muda', () => {
     const { desenhar, campo, digitar } = montar()
     desenhar(true, null)

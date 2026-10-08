@@ -1,6 +1,11 @@
 import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
+import {
+  EVENT_CHAMPIONSHIP_MAX_LENGTH,
+  EVENT_CHAMPIONSHIP_MIN_LENGTH,
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+} from '@findsports_oficial/db/event-limits'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import {
   bar,
@@ -503,11 +508,17 @@ export const pubRouter = router({
     .input(
       z.object({
         sportId: z.string().uuid(),
-        championship: z.string().min(2).max(150),
+        championship: z
+          .string()
+          .min(EVENT_CHAMPIONSHIP_MIN_LENGTH)
+          .max(EVENT_CHAMPIONSHIP_MAX_LENGTH),
         startsAt: z.string().datetime(),
         endsAt: z.string().datetime().optional(),
         participantIds: z.array(z.string().uuid()).optional(),
-        participantFreeText: z.string().max(200).optional()
+        participantFreeText: z
+          .string()
+          .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -605,11 +616,18 @@ export const pubRouter = router({
       z.object({
         eventId: z.string().uuid(),
         sportId: z.string().uuid().optional(),
-        championship: z.string().min(2).max(150).optional(),
+        championship: z
+          .string()
+          .min(EVENT_CHAMPIONSHIP_MIN_LENGTH)
+          .max(EVENT_CHAMPIONSHIP_MAX_LENGTH)
+          .optional(),
         startsAt: z.string().datetime().optional(),
         endsAt: z.string().datetime().nullable().optional(),
         participantIds: z.array(z.string().uuid()).optional(),
-        participantFreeText: z.string().max(200).optional()
+        participantFreeText: z
+          .string()
+          .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {

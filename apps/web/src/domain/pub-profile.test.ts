@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   formatDayLabel,
+  formatGameSubtitle,
   formatMatchup,
   getBarInitials,
   getPlanPresentation,
@@ -116,6 +117,22 @@ describe('formatMatchup', () => {
 
   it('cai para o campeonato quando não há mais nada', () => {
     expect(formatMatchup(makeEvent())).toBe('Brasileirão')
+  })
+})
+
+describe('formatGameSubtitle', () => {
+  it('mostra o campeonato quando o título são os times', () => {
+    expect(
+      formatGameSubtitle('Palmeiras × Santos', ['Futebol', 'Brasileirão'])
+    ).toBe('Futebol · Brasileirão')
+  })
+
+  it('não repete o campeonato que já é o título (WEB-307)', () => {
+    const event = makeEvent()
+    expect(
+      formatGameSubtitle(formatMatchup(event), ['Futebol', event.championship])
+    ).toBe('Futebol')
+    expect(formatGameSubtitle('Brasileirão', ['Brasileirão'])).toBe('')
   })
 })
 

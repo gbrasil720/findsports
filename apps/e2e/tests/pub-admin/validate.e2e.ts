@@ -107,11 +107,18 @@ test('Elite registra chegada com confirmação, desfaz e completa a reserva', as
     ).toBeVisible()
   }
   await expect(
-    page.getByText('As 2 pessoas desta reserva já foram validadas.')
+    page.getByText('Reserva completa', { exact: true })
   ).toBeVisible()
   await expect(
+    page.getByText('As 2 pessoas desta reserva já foram validadas.')
+  ).toBeVisible()
+  // Completa, o `+1` sai da tela e o desfazer curto continua (WEB-299).
+  await expect(
     page.getByRole('button', { name: 'Registrar chegada (+1)' })
-  ).toBeDisabled()
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Desfazer a última chegada' })
+  ).toBeVisible()
 
   const [code] = await query<{ used_count: number }>(
     'SELECT used_count FROM reservation_code WHERE reservation_id = $1',
@@ -244,7 +251,8 @@ test('limite de tentativas: depois de 10 códigos errados, nem o certo passa', a
       '/api/trpc/reservationValidation.lookup',
       { data: { code: `ZZZZ${String(i).padStart(2, '0')}` } }
     )
-    expect(wrong.status()).toBe(404)
+    // Código que não resolve é resultado, não erro (WEB-316).
+    expect(wrong.status()).toBe(200)
   }
   await page.goto('/admin/validate')
 

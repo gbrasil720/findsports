@@ -260,6 +260,43 @@ export function getPlanHeader(
   }
 }
 
+/**
+ * Status do trial em vigor, com a data final e os dias que faltam — o mesmo
+ * texto no painel, na assinatura e em `/plan` (WEB-260). `null` fora dele:
+ * trial vencido é plano parado e fala por `LAPSED_COPY`.
+ */
+export function getTrialNotice(
+  subscription:
+    | {
+        status: string
+        standing: SubscriptionStanding | null
+        currentPeriodEnd: string | Date | null
+      }
+    | null
+    | undefined,
+  now = new Date()
+): string | null {
+  if (
+    subscription?.status !== 'trialing' ||
+    subscription.standing !== 'current' ||
+    !subscription.currentPeriodEnd
+  ) {
+    return null
+  }
+  const end = new Date(subscription.currentPeriodEnd)
+  // `standing` vem do relógio do servidor; o piso cobre o do navegador adiantado.
+  const days = Math.max(
+    1,
+    Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+  )
+  const until = end.toLocaleDateString('pt-BR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+  return `Trial gratuito até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
+}
+
 export function formatHistoryWindow(a: PlanAnalytics): string {
   if (a.historyDays === null) return 'Histórico completo'
   if (a.historyDays >= 365) return '12 meses'

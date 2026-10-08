@@ -31,9 +31,15 @@ function shiftDate(date: string, days: number): string {
   return shifted.toISOString().slice(0, 10)
 }
 
+/**
+ * `since` é o começo de "Tudo": a criação do bar, antes da qual não existe
+ * dado. Sem ele a janela abria em 1970 e a comparação falava em "20735 dias
+ * anteriores" (WEB-263).
+ */
 export function getAnalyticsRange(
   preset: Exclude<AnalyticsPeriodPreset, 'custom'>,
-  now = new Date()
+  now = new Date(),
+  since = now
 ): AnalyticsDateRange {
   const to = toCommercialDate(now)
 
@@ -43,7 +49,7 @@ export function getAnalyticsRange(
     case '12m':
       return { from: shiftDate(to, -364), to }
     case 'all':
-      return { from: '1970-01-01', to }
+      return { from: toCommercialDate(since), to }
   }
 }
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
@@ -38,7 +39,11 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
 })
 
 test('Elite ativo: plano, histórico e portal da Dodo', async ({ page }) => {
-  await openBilling(page)
+  // O histórico só é pedido à Dodo para quem tem cliente lá (WEB-264): o id
+  // da assinatura é o rastro de quem já passou pelo checkout.
+  await openBilling(page, {
+    subscription: { dodoSubscriptionId: `sub_e2e_${randomUUID()}` }
+  })
 
   await expect(currentPlan(page)).toContainText('Elite')
   await expect(currentPlan(page)).toContainText('Ativo')
@@ -94,6 +99,12 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   })
   await expect(currentPlan(page)).toContainText('Pro')
   await expect(currentPlan(page)).toContainText('Trial gratuito até')
+  await expect(currentPlan(page)).toContainText(/faltam \d+ dias/)
+  // WEB-264: trial do onboarding não tem cliente na Dodo — o histórico é
+  // vazio, sem perguntar ao provedor.
+  await expect(
+    page.getByText('Nenhum pagamento registrado ainda.')
+  ).toBeVisible()
 })
 
 test('trial vencido sem pagamento mostra "Trial encerrado"', async ({

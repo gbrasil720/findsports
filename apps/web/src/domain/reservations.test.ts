@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
   DUPLICATE_REQUEST_MESSAGE,
+  type FanReservation,
+  findActiveRequest,
   getCancelErrorMessage,
   getCreateErrorMessage,
   SOLD_OUT_MESSAGE
@@ -32,6 +34,28 @@ describe('getCreateErrorMessage', () => {
     expect(
       getCreateErrorMessage(refusal('PRECONDITION_FAILED'), future, now)
     ).toContain('não está recebendo reservas')
+  })
+})
+
+describe('findActiveRequest', () => {
+  const request = (id: string, eventId: string, status: string) =>
+    ({ id, status, event: { id: eventId } }) as FanReservation
+  const mine = [
+    request('cancelado', 'jogo-a', 'cancelled'),
+    request('recusado', 'jogo-a', 'declined'),
+    request('expirado', 'jogo-a', 'expired'),
+    request('confirmado', 'jogo-b', 'confirmed'),
+    request('pendente', 'jogo-c', 'pending')
+  ]
+
+  test('só pendente e confirmado ocupam o jogo', () => {
+    expect(findActiveRequest(mine, 'jogo-a')).toBeUndefined()
+    expect(findActiveRequest(mine, 'jogo-b')?.id).toBe('confirmado')
+    expect(findActiveRequest(mine, 'jogo-c')?.id).toBe('pendente')
+  })
+
+  test('sem a lista carregada não há o que avisar', () => {
+    expect(findActiveRequest(undefined, 'jogo-b')).toBeUndefined()
   })
 })
 

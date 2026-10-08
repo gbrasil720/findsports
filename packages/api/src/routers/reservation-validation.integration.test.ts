@@ -176,6 +176,16 @@ async function counterOf(ctx: Seeded) {
   return row?.usedCount
 }
 
+/**
+ * Busca de código que precisa resolver. `lookup` devolve `null`, sem erro,
+ * para código que não é do bar (WEB-316).
+ */
+async function resolved(caller: Seeded['owner'], code: string) {
+  const found = await caller.lookup({ code })
+  if (!found) throw new Error(`o código ${code} deveria resolver`)
+  return found
+}
+
 async function usesOf(ctx: Seeded) {
   return ctx.db
     .select()
@@ -190,7 +200,7 @@ integrationTest(
     try {
       // Digitado como se lê em voz alta: minúsculas e separador.
       const typed = `${ctx.code.slice(0, 4).toLowerCase()}-${ctx.code.slice(4).toLowerCase()} `
-      const found = await ctx.owner.lookup({ code: typed })
+      const found = await resolved(ctx.owner, typed)
 
       expect(found).toMatchObject({
         codeId: ctx.codeId,
@@ -223,7 +233,7 @@ integrationTest(
 
       const [use] = await usesOf(ctx)
       expect(use?.validatedByUserId).toBe(ctx.ownerId)
-      expect((await ctx.owner.lookup({ code: ctx.code })).usedCount).toBe(2)
+      expect((await resolved(ctx.owner, ctx.code)).usedCount).toBe(2)
     } finally {
       await ctx.cleanup()
     }
@@ -240,7 +250,7 @@ integrationTest(
         .set({ houseOffer: 'Oferta nova do bar' })
         .where(eq(bar.id, ctx.barId))
 
-      const found = await ctx.owner.lookup({ code: ctx.code })
+      const found = await resolved(ctx.owner, ctx.code)
       expect(found.offerSnapshot).toBe('Chopp em dobro')
     } finally {
       await ctx.cleanup()
@@ -253,13 +263,10 @@ integrationTest(
   async () => {
     const ctx = await seed()
     try {
-      const missing = await refusal(ctx.rival.lookup({ code: 'ZZZZ9999' }))
-      const foreign = await refusal(ctx.rival.lookup({ code: ctx.code }))
-      const malformed = await refusal(ctx.rival.lookup({ code: '!!' }))
-
-      expect(missing.code).toBe('NOT_FOUND')
-      expect(foreign).toEqual(missing)
-      expect(malformed).toEqual(missing)
+      // Uma resposta só, e sem erro (WEB-316): `null` nos três casos.
+      expect(await ctx.rival.lookup({ code: 'ZZZZ9999' })).toBeNull()
+      expect(await ctx.rival.lookup({ code: ctx.code })).toBeNull()
+      expect(await ctx.rival.lookup({ code: '!!' })).toBeNull()
 
       // Mesmo de posse do id interno, o vizinho não queima o código.
       const burn = await refusal(
@@ -274,8 +281,8 @@ integrationTest(
           requestId: crypto.randomUUID()
         })
       )
-      expect(burn).toEqual(missing)
-      expect(burnMissing).toEqual(missing)
+      expect(burn.code).toBe('NOT_FOUND')
+      expect(burnMissing).toEqual(burn)
       expect(await counterOf(ctx)).toBe(0)
       expect(await usesOf(ctx)).toHaveLength(0)
     } finally {
@@ -296,7 +303,7 @@ integrationTest(
           .set({ status })
           .where(eq(reservation.id, ctx.reservationId))
 
-        const found = await ctx.owner.lookup({ code: ctx.code })
+        const found = await resolved(ctx.owner, ctx.code)
         expect(found.reservationStatus).toBe(status)
         expect(found.codeId).toBe(ctx.codeId)
 
@@ -312,10 +319,7 @@ integrationTest(
       expect(await usesOf(ctx)).toHaveLength(0)
 
       // O estado é dado do bar dono: o vizinho continua sem ver nada.
-      const missing = await refusal(ctx.rival.lookup({ code: 'ZZZZ9999' }))
-      expect(await refusal(ctx.rival.lookup({ code: ctx.code }))).toEqual(
-        missing
-      )
+      expect(await ctx.rival.lookup({ code: ctx.code })).toBeNull()
     } finally {
       await ctx.cleanup()
     }
@@ -325,13 +329,11 @@ integrationTest(
 integrationTest('código aposentado não resolve', async () => {
   const ctx = await seed()
   try {
-    const missing = await refusal(ctx.owner.lookup({ code: 'ZZZZ9999' }))
-
     await ctx.db
       .update(reservationCode)
       .set({ retiredAt: new Date() })
       .where(eq(reservationCode.id, ctx.codeId))
-    expect(await refusal(ctx.owner.lookup({ code: ctx.code }))).toEqual(missing)
+    expect(await ctx.owner.lookup({ code: ctx.code })).toBeNull()
     expect(
       await refusal(
         ctx.owner.registerArrival({
@@ -339,7 +341,7 @@ integrationTest('código aposentado não resolve', async () => {
           requestId: crypto.randomUUID()
         })
       )
-    ).toEqual(missing)
+    ).toMatchObject({ code: 'NOT_FOUND' })
   } finally {
     await ctx.cleanup()
   }
@@ -567,7 +569,7 @@ integrationTest(
     const early = await seed({ startsAt: inAMonth() })
     const late = await seed({ startsAt: new Date(Date.now() - 10 * HOUR) })
     try {
-      const notOpen = await early.owner.lookup({ code: early.code })
+      const notOpen = await resolved(early.owner, early.code)
       expect(notOpen.window.opensAt.getTime()).toBe(
         notOpen.event.startsAt.getTime() - 3 * HOUR
       )
@@ -583,7 +585,7 @@ integrationTest(
       )
       expect(await counterOf(early)).toBe(0)
 
-      const closed = await late.owner.lookup({ code: late.code })
+      const closed = await resolved(late.owner, late.code)
       // Sem `endsAt`: início + 3h de jogo + 3h de margem.
       expect(closed.window.closesAt.getTime()).toBe(
         closed.event.startsAt.getTime() + 6 * HOUR
@@ -617,8 +619,7 @@ integrationTest(
       }
 
       for (let i = 0; i < VALIDATION_ATTEMPT_LIMIT.max; i++) {
-        const wrong = await refusal(ctx.owner.lookup({ code: newCode() }))
-        expect(wrong.code).toBe('NOT_FOUND')
+        expect(await ctx.owner.lookup({ code: newCode() })).toBeNull()
       }
 
       const blocked = await refusal(ctx.owner.lookup({ code: newCode() }))
@@ -629,17 +630,14 @@ integrationTest(
       expect(blockedValid).toEqual(blocked)
 
       // O limite é da conta que errou; o vizinho segue normal.
-      const rival = await refusal(ctx.rival.lookup({ code: newCode() }))
-      expect(rival.code).toBe('NOT_FOUND')
+      expect(await ctx.rival.lookup({ code: newCode() })).toBeNull()
 
       // Passada a janela, volta a funcionar.
       await ctx.db
         .update(rateLimit)
         .set({ lastRequest: Date.now() - VALIDATION_ATTEMPT_LIMIT.windowMs })
         .where(eq(rateLimit.key, validationAttemptKey(ctx.ownerId)))
-      expect((await ctx.owner.lookup({ code: ctx.code })).codeId).toBe(
-        ctx.codeId
-      )
+      expect((await resolved(ctx.owner, ctx.code)).codeId).toBe(ctx.codeId)
     } finally {
       await ctx.cleanup()
     }
@@ -651,12 +649,13 @@ integrationTest(
   async () => {
     const ctx = await seed()
     try {
-      const burst = await Promise.all(
+      const burst = await Promise.allSettled(
         Array.from({ length: VALIDATION_ATTEMPT_LIMIT.max * 3 }, () =>
-          refusal(ctx.owner.lookup({ code: newCode() }))
+          ctx.owner.lookup({ code: newCode() })
         )
       )
-      const looked = burst.filter((result) => result.code === 'NOT_FOUND')
+      // Só as que passaram pelo limite respondem (`null`); o resto é recusa.
+      const looked = burst.filter((result) => result.status === 'fulfilled')
       expect(looked).toHaveLength(VALIDATION_ATTEMPT_LIMIT.max)
     } finally {
       await ctx.cleanup()
@@ -706,9 +705,7 @@ integrationTest('validar exige benefício Elite vigente', async () => {
         requestId: crypto.randomUUID()
       }
       if (allowed) {
-        expect((await ctx.owner.lookup({ code: ctx.code })).codeId).toBe(
-          ctx.codeId
-        )
+        expect((await resolved(ctx.owner, ctx.code)).codeId).toBe(ctx.codeId)
         expect((await ctx.owner.registerArrival(arrival)).usedCount).toBe(1)
         continue
       }

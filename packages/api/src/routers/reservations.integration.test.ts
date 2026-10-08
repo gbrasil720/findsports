@@ -302,6 +302,7 @@ integrationTest(
         guestName: 'Conta fan',
         partySize: 3,
         note: 'Mesa perto da TV',
+        offerSnapshot: 'Chopp em dobro',
         event: { participantFreeText: 'Time A × Time B' }
       })
       expect(JSON.stringify(list)).not.toContain('@integration.invalid')

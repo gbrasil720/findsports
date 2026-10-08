@@ -25,6 +25,7 @@ const RESPONSES: Record<string, unknown> = {
       status: 'pending',
       partySize: 2,
       note: null,
+      offerSnapshot: 'Chopp em dobro',
       createdAt: AMANHA,
       guestName: 'Marina Souza',
       event: { ...GAME, startsAt: AMANHA }
@@ -120,6 +121,14 @@ test('the cap panel polls on the same interval as the queue', async () => {
   const capacity = observerOf(trpc.barReservations.capacity.queryKey())
   expect(queue?.options.refetchInterval).toBeGreaterThan(0)
   expect(capacity?.options.refetchInterval).toBe(queue?.options.refetchInterval)
+})
+
+test('each request shows the offer frozen in the reservation (WEB-297)', async () => {
+  await render()
+
+  expect(document.querySelector('article')?.textContent).toContain(
+    'Oferta da casa nesta reserva: Chopp em dobro'
+  )
 })
 
 test("answering a request invalidates the bar's public profile", async () => {

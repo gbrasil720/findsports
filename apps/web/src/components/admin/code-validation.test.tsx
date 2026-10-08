@@ -345,12 +345,18 @@ describe('busca do código', () => {
     expect(document.activeElement).toBe(field)
   })
 
-  test('código desconhecido mostra a recusa e devolve o foco ao campo', async () => {
-    const api = fakeApi({
-      lookup: mock(async () => {
+  // `null` é a resposta do servidor (WEB-316); `NOT_FOUND` era a de antes e
+  // volta num rollback. A tela diz o mesmo nos dois casos.
+  test.each([
+    ['null', async () => null],
+    [
+      'NOT_FOUND',
+      async () => {
         throw refusal('NOT_FOUND')
-      })
-    })
+      }
+    ]
+  ])('código desconhecido (%s) mostra a recusa e devolve o foco ao campo', async (_, answer) => {
+    const api = fakeApi({ lookup: mock(answer) })
     await find(api)
 
     expect(alertText()).toBe(
@@ -461,7 +467,7 @@ describe('registro de chegada', () => {
     expect(alertText()).toBe('As 3 pessoas desta reserva já foram validadas.')
   })
 
-  test('reserva completa trava o +1 e leva o foco ao próximo passo', async () => {
+  test('reserva completa tira o +1, diz que acabou e mantém o desfazer', async () => {
     const api = fakeApi({
       lookup: mock(async () => ({ ...reservation, usedCount: 2 })),
       registerArrival: mock(async ({ requestId }: { requestId: string }) => ({
@@ -474,10 +480,15 @@ describe('registro de chegada', () => {
     await find(api)
     await arrive()
 
-    expect(button('Registrar chegada')?.disabled).toBe(true)
+    expect(button('Registrar chegada')).toBeUndefined()
+    expect(document.body.textContent).toContain('Reserva completa')
     expect(document.body.textContent).toContain(
       'As 3 pessoas desta reserva já foram validadas.'
     )
+    expect(status()).toBe(
+      'Chegada registrada. 3 de 3 validados. Reserva completa.'
+    )
+    expect(button('Desfazer a última chegada')).toBeDefined()
     expect(document.activeElement).toBe(button('Validar outro código') ?? null)
   })
 })

@@ -10,6 +10,7 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import {
   type ArrivalResult,
+  CODE_NOT_FOUND_MESSAGE,
   getArrivalBlocker,
   getArrivalErrorMessage,
   getCounterLabel,
@@ -37,7 +38,8 @@ type Props = {
   access: ValidationAccess
   /** Relógio de minuto: a janela abre e fecha com a tela aberta. */
   now: number
-  lookup: (input: { code: string }) => Promise<ValidatedReservation>
+  /** `null`: o código não resolve para este bar. */
+  lookup: (input: { code: string }) => Promise<ValidatedReservation | null>
   registerArrival: (input: {
     codeId: string
     requestId: string
@@ -243,6 +245,11 @@ function ValidationPanel({
       clearResult()
       try {
         const found = await lookup({ code })
+        if (!found) {
+          setLookupError(CODE_NOT_FOUND_MESSAGE)
+          setFocusTarget('input')
+          return
+        }
         setReservation(found)
         setCode('')
         // Quem ouve a tela precisa saber, na mesma frase, que não vai poder
@@ -290,7 +297,7 @@ function ValidationPanel({
         setAnnouncement(
           result.undone
             ? `Essa chegada já tinha sido desfeita. ${counter}.`
-            : `Chegada registrada. ${counter}.`
+            : `Chegada registrada. ${counter}.${result.usedCount >= result.maxUses ? ' Reserva completa.' : ''}`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -386,7 +393,8 @@ function ValidationPanel({
           now={now}
           error={actionError}
         >
-          {canRegister ? (
+          {/* Completa, não há mais `+1`: sobra o desfazer curto (WEB-299). */}
+          {canRegister && !isFull ? (
             <button
               ref={arrivalRef}
               type="button"
@@ -394,7 +402,7 @@ function ValidationPanel({
                 setActionError(null)
                 setConfirming(true)
               }}
-              disabled={isFull || pending !== null}
+              disabled={pending !== null}
               className="onside-btn onside-btn-acid min-h-12 px-5 text-sm disabled:opacity-50"
             >
               {pending === 'arrival'

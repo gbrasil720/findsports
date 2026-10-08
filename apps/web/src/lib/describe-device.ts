@@ -9,7 +9,7 @@
  * A detecção é deliberadamente rasa: user agent é declarado pelo cliente e
  * mente com frequência (todo navegador se diz "Mozilla"; Edge se diz Chrome
  * que se diz Safari). Serve para reconhecer, nunca para autorizar — a string
- * original continua visível ao lado.
+ * original só aparece quando nada foi reconhecido (WEB-310).
  */
 
 type Device = {

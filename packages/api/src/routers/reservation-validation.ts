@@ -137,6 +137,12 @@ export const reservationValidationRouter = router({
   /**
    * Mutation, e não query: consome tentativa do limite, e resposta de código
    * não pode ficar em cache de tela nenhuma.
+   *
+   * Código que não resolve devolve `null`, e não `NOT_FOUND` (WEB-316): errar
+   * a digitação no balcão é resultado normal, e o 404 aparecia como erro no
+   * console a cada tentativa. Continua sendo UMA resposta só para
+   * inexistente, aposentado, malformado e de outro bar, e a tentativa
+   * continua cobrada.
    */
   lookup: validatorProcedure
     .input(z.object({ code: z.string().max(64) }))
@@ -164,7 +170,7 @@ export const reservationValidationRouter = router({
       const found = isReservationCodeShaped(code)
         ? await findOwnCode(db, eq(reservationCode.code, code), userId)
         : undefined
-      if (!found) throw codeNotFoundError()
+      if (!found) return null
 
       await refundWindowAttempt(attemptKey)
 

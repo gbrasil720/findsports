@@ -160,6 +160,16 @@ export function formatMatchup(event: ProfileEvent): string {
   return event.championship
 }
 
+/**
+ * Linha de apoio de um jogo: as partes juntas por " · ", menos a que já é o
+ * título. Jogo sem times nem texto livre tem o campeonato como título
+ * (`formatMatchup`, `getGameTitle`), e repetido embaixo o card dizia
+ * "Brasileirão / Brasileirão" (WEB-307).
+ */
+export function formatGameSubtitle(title: string, parts: string[]): string {
+  return parts.filter((part) => part !== title).join(' · ')
+}
+
 /** "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo. */
 export function formatDayLabel(date: Date, now: Date = new Date()): string {
   const tomorrow = new Date(now)
