@@ -55,6 +55,26 @@ export const Route = createFileRoute('/(dashboard)/dashboard')({
   component: FanDashboard
 })
 
+/** Como liberar a localização depois de bloqueada, por navegador. */
+const LOCATION_HELP = [
+  [
+    'Android (Chrome)',
+    'toque no ícone à esquerda do endereço → Permissões → Localização → Permitir'
+  ],
+  [
+    'Computador (Chrome)',
+    'clique no ícone à esquerda do endereço → Configurações do site → Localização → Permitir'
+  ],
+  [
+    'iPhone/iPad',
+    'Ajustes → Privacidade → Serviços de Localização → Safari → Permitir'
+  ],
+  [
+    'Mac (Safari)',
+    'Safari → Ajustes → Sites → Localização → permitir este site'
+  ]
+] as const
+
 function toggled<T>(list: T[], item: T): T[] {
   return list.includes(item)
     ? list.filter((it) => it !== item)
@@ -89,7 +109,12 @@ function FanDashboard() {
   const [favoriteOverrides, setFavoriteOverrides] = useState<FavoriteOverrides>(
     {}
   )
-  const requestLocation = useCallback(() => {
+  /*
+   * `notify` é o pedido feito por clique. O pedido automático da abertura
+   * falha em silêncio — o aviso fixo já explica —, mas quem clicou e não viu
+   * nada mudar na tela precisa de resposta na hora (WEB-266).
+   */
+  const requestLocation = useCallback((notify = false) => {
     setLocationState('requesting')
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -101,7 +126,14 @@ function FanDashboard() {
       },
       (error) => {
         console.debug('Geolocation unavailable:', error.code)
-        setLocationState(error.code === 1 ? 'denied' : 'unavailable')
+        const denied = error.code === 1
+        setLocationState(denied ? 'denied' : 'unavailable')
+        if (!notify) return
+        toast.error(
+          denied
+            ? 'O navegador está bloqueando sua localização. Veja abaixo como liberar.'
+            : 'Não foi possível obter sua localização. Tente de novo.'
+        )
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 5 * 60 * 1000 }
     )
@@ -123,7 +155,7 @@ function FanDashboard() {
         else if (status.state === 'denied') setLocationState('denied')
         else setLocationState('idle')
       })
-      .catch(requestLocation)
+      .catch(() => requestLocation())
   }, [requestLocation])
 
   const sportsQuery = useQuery({
@@ -401,7 +433,7 @@ function FanDashboard() {
   }
   if (favoritesOnly) {
     activeFilters.push({
-      label: 'Meus favoritos',
+      label: 'Só favoritos',
       clear: () => setFavoritesOnly(false)
     })
   }
@@ -451,6 +483,7 @@ function FanDashboard() {
       <DashboardHero
         isLoading={resultState.status === 'loading'}
         count={displayedBars.length}
+        radiusKm={radiusKm}
         locationState={locationState}
       />
       <AttendanceReportCard />
@@ -482,12 +515,11 @@ function FanDashboard() {
         sort={sort}
         onSortChange={setSort}
         canSortByRating={canSortByRating}
-        loadingSortByRating={appConfigQuery.isLoading}
         sportsState={sportsState}
         activeFilters={activeFilters}
         onReset={reset}
         locationState={locationState}
-        onRequestLocation={requestLocation}
+        onRequestLocation={() => requestLocation(true)}
       />
 
       {locationState === 'denied' ? (
@@ -495,17 +527,16 @@ function FanDashboard() {
           <p className="font-bold text-[var(--onside-ink)]">
             Localização bloqueada
           </p>
+          {LOCATION_HELP.map(([where, steps]) => (
+            <p key={where} className="text-[var(--onside-muted)]">
+              <span className="font-semibold text-[var(--onside-ink)]">
+                {where}:
+              </span>{' '}
+              {steps}
+            </p>
+          ))}
           <p className="text-[var(--onside-muted)]">
-            <span className="font-semibold text-[var(--onside-ink)]">
-              iPhone/iPad:
-            </span>{' '}
-            Ajustes → Privacidade → Serviços de Localização → Safari → Permitir
-          </p>
-          <p className="text-[var(--onside-muted)]">
-            <span className="font-semibold text-[var(--onside-ink)]">
-              Mac (Safari):
-            </span>{' '}
-            Safari → Ajustes → Sites → Localização → permitir este site
+            Depois, toque em “Usar minha localização” de novo.
           </p>
         </div>
       ) : null}
@@ -528,7 +559,7 @@ function FanDashboard() {
         classicPlacementGuaranteed={classicPlacementGuaranteed}
         onHover={setHoveredId}
         onFavorite={toggleFavorite}
-        onRequestLocation={requestLocation}
+        onRequestLocation={() => requestLocation(true)}
         onRadiusChange={handleRadiusChange}
         onReset={reset}
         onRetry={retryResults}

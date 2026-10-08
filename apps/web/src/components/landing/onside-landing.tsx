@@ -45,7 +45,24 @@ type OnsideHeaderProps = OnsideChromeProps & {
   inkHeroId?: string
 }
 
+/**
+ * WEB-278: com sessão, as chamadas levam ao app em vez da lista de espera.
+ * Lê a sessão que o `beforeLoad` da raiz já põe no contexto da rota: igual no
+ * SSR e na hidratação, sem requisição a mais na página pública. `/app`
+ * escolhe o destino pelo papel.
+ */
+function usePrimaryCta(home: '' | '/' = '') {
+  const hasSession = useRouteContext({
+    from: '__root__',
+    select: (ctx) => Boolean(ctx.session)
+  })
+  return hasSession
+    ? { hasSession, href: '/app', label: 'Ir para o app' }
+    : { hasSession, href: `${home}#lista`, label: LANDING_COPY.primaryCta }
+}
+
 export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
+  const cta = usePrimaryCta(home)
   const [scrolled, setScrolled] = useState(false)
   // Começa sobre a tinta no servidor e no primeiro render: a página abre no
   // topo, e um valor diferente aqui piscaria o cabeçalho na hidratação.
@@ -127,10 +144,10 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
 
         <a
           className="onside-nav-cta"
-          href={`${home}#lista`}
+          href={cta.href}
           data-cta="nav_city_waitlist"
         >
-          {LANDING_COPY.primaryCta}{' '}
+          {cta.label}{' '}
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
           </span>
@@ -186,10 +203,10 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
           ))}
           <a
             className="onside-button onside-button-acid"
-            href={`${home}#lista`}
+            href={cta.href}
             data-cta="nav_city_waitlist"
           >
-            {LANDING_COPY.primaryCta}
+            {cta.label}
           </a>
         </div>
       }
@@ -574,6 +591,7 @@ function useMagnet<T extends HTMLElement>() {
 
 /** Rodapé da landing v2 (Claude Design), usado também nas páginas legais. */
 export function OnsideFooter({ home = '' }: OnsideChromeProps) {
+  const cta = usePrimaryCta(home)
   const ctaRef = useMagnet<HTMLAnchorElement>()
   const bigmarkRef = useRef<HTMLDivElement>(null)
 
@@ -613,10 +631,10 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
           <a
             ref={ctaRef}
             className="onside-footer-cta"
-            href={`${home}#lista`}
+            href={cta.href}
             data-cta="footer_city_waitlist"
           >
-            {LANDING_COPY.primaryCta}
+            {cta.label}
             <span className="onside-inline-icon" aria-hidden="true">
               <ArrowRight size={16} aria-hidden="true" focusable="false" />
             </span>
@@ -634,8 +652,14 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
           </div>
           <div className="onside-footer-column">
             <p>Conta</p>
-            <Link to="/login">Entrar</Link>
-            <Link to="/signup">Criar conta</Link>
+            {cta.hasSession ? (
+              <a href={cta.href}>{cta.label}</a>
+            ) : (
+              <>
+                <Link to="/login">Entrar</Link>
+                <Link to="/signup">Criar conta</Link>
+              </>
+            )}
           </div>
           <div className="onside-footer-column">
             <p>Para bares</p>
@@ -672,8 +696,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
 }
 
 export function OnsideLanding() {
-  const primaryHref = '#lista'
-  const primaryLabel = LANDING_COPY.primaryCta
+  const { href: primaryHref, label: primaryLabel } = usePrimaryCta()
 
   return (
     <div className="onside-page">

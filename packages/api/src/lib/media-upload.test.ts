@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PHOTO_MAX_BYTES, photoPathname } from './blob-photo'
-import { MediaUploadError, signMediaUpload } from './media-upload'
+import { deleteAvatar, MediaUploadError, signMediaUpload } from './media-upload'
 
 const CONFIG = {
   R2_MEDIA_ACCESS_KEY_ID: 'chave-falsa',
@@ -81,5 +81,66 @@ describe('assinatura do upload para o R2 (WEB-202)', () => {
     for (const falta of Object.keys(CONFIG)) {
       expect(await recusa(body, { ...CONFIG, [falta]: undefined })).toBe(503)
     }
+  })
+})
+
+describe('remoção do avatar no R2 (WEB-320)', () => {
+  const fetchOriginal = globalThis.fetch
+  let pedidos: Request[] = []
+  let resposta = () => new Response(null, { status: 204 })
+
+  beforeEach(() => {
+    pedidos = []
+    resposta = () => new Response(null, { status: 204 })
+    globalThis.fetch = (async (input: Request) => {
+      pedidos.push(input)
+      return resposta()
+    }) as unknown as typeof fetch
+  })
+  afterEach(() => {
+    globalThis.fetch = fetchOriginal
+  })
+
+  async function status(...args: Parameters<typeof deleteAvatar>) {
+    try {
+      await deleteAvatar(...args)
+    } catch (err) {
+      if (err instanceof MediaUploadError) return err.status
+      throw err
+    }
+    return 204
+  }
+
+  it('sem sessão responde 401 e não toca no bucket', async () => {
+    expect(await status(null, CONFIG)).toBe(401)
+    expect(pedidos).toHaveLength(0)
+  })
+
+  it('apaga só o avatar de quem está na sessão, com DELETE assinado', async () => {
+    expect(await status({ user: { id: 'user-123' } }, CONFIG)).toBe(204)
+
+    expect(pedidos).toHaveLength(1)
+    const [pedido] = pedidos as [Request]
+    expect(pedido.method).toBe('DELETE')
+    expect(pedido.url).toBe(
+      'https://conta123.r2.cloudflarestorage.com/onside-media/users/user-123/avatar'
+    )
+    expect(pedido.headers.get('authorization')).toContain(
+      'Credential=chave-falsa/'
+    )
+  })
+
+  it('falha do R2 vira 502; sem as variáveis, 503 sem pedido', async () => {
+    resposta = () => new Response(null, { status: 403 })
+    expect(await status({ user: { id: 'user-123' } }, CONFIG)).toBe(502)
+
+    pedidos = []
+    expect(
+      await status(
+        { user: { id: 'user-123' } },
+        { ...CONFIG, CF_ACCOUNT_ID: undefined }
+      )
+    ).toBe(503)
+    expect(pedidos).toHaveLength(0)
   })
 })

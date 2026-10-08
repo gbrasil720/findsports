@@ -1,3 +1,4 @@
+import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { env } from '@findsports_oficial/env/server'
 import { AwsClient } from 'aws4fetch'
 import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './blob-photo'
@@ -100,5 +101,42 @@ export async function signMediaUpload(
   return {
     uploadUrl: signed.url,
     url: `${bucket.publicUrl(key)}?v=${Date.now()}`
+  }
+}
+
+/**
+ * Apaga do bucket o avatar de quem está na sessão (WEB-320).
+ *
+ * A chave sai da sessão, nunca do pedido: não existe parâmetro com que um
+ * usuário aponte para a foto de outro. Roda no servidor, e não por URL
+ * assinada como o upload, porque o CORS do bucket só libera `PUT` ao
+ * navegador. O R2 responde 204 também para chave que não existe, então
+ * repetir é seguro.
+ */
+export async function deleteAvatar(
+  session: { user: { id: string } } | null,
+  config: MediaConfig = env
+): Promise<void> {
+  if (!session) throw new MediaUploadError(401, 'Não autorizado.')
+
+  const bucket = mediaBucket(config)
+  if (!bucket) {
+    console.error(JSON.stringify({ event: 'media_upload_not_configured' }))
+    throw new MediaUploadError(503, 'Remoção de foto indisponível no momento.')
+  }
+
+  // `sign` + `fetch`, e não `client.fetch`: este repete 10 vezes com espera
+  // crescente em 5xx, e a requisição ficaria presa junto.
+  const response = await fetch(
+    await bucket.client.sign(
+      bucket.objectUrl(avatarPathname(session.user.id)),
+      { method: 'DELETE' }
+    )
+  )
+  if (!response.ok) {
+    console.error(
+      JSON.stringify({ event: 'avatar_delete_failed', status: response.status })
+    )
+    throw new MediaUploadError(502, 'Não foi possível remover a foto.')
   }
 }

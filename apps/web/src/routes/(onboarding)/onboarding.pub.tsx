@@ -1,4 +1,7 @@
-import { findAmenity } from '@findsports_oficial/api/lib/amenities'
+import {
+  findAmenity,
+  motivoTelasInvalido
+} from '@findsports_oficial/api/lib/amenities'
 import { motivoTelefoneInvalido } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -24,6 +27,7 @@ import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
+import { readPendingEmail } from '@/lib/pending-verification'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -33,6 +37,7 @@ import {
 } from '@/lib/pub-onboarding-draft'
 import { roleAccountLabel } from '@/lib/roles'
 import { getCallbackUrl } from '@/utils/callback-url'
+import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
@@ -68,8 +73,8 @@ function PubOnboarding() {
   const callbackUrl = getCallbackUrl(useLocation().href)
   const trpc = useTRPC()
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const session = Route.useRouteContext({
-    select: (context) => context.session
+  const user = Route.useRouteContext({
+    select: (context) => context.session?.user
   })
 
   const [step, setStep] = useState(0)
@@ -83,6 +88,7 @@ function PubOnboarding() {
   const [screenCount, setScreenCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [draftRestored, setDraftRestored] = useState(false)
 
   // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
   // `onboarding.completePub`; aqui a tela só evita que o dono do bar preencha
@@ -103,7 +109,9 @@ function PubOnboarding() {
     // para cá.
     await refreshSessionCache()
     // Deep link que esperou a liberação volta para ele; sem destino, o plano.
-    navigate({ to: callbackUrl === '/dashboard' ? '/plan' : callbackUrl })
+    // `await`: o botão segue em "salvando" até a próxima tela abrir, em vez
+    // de voltar ao normal com a revisão ainda na tela (WEB-286).
+    await navigate({ to: callbackUrl === '/dashboard' ? '/plan' : callbackUrl })
   }
 
   const completeMutation = useMutation(
@@ -126,11 +134,24 @@ function PubOnboarding() {
 
   // `/verify-email` manda de volta para cá quando o servidor recusa o
   // rascunho: os campos voltam preenchidos, no passo que dá para corrigir.
+  //
+  // WEB-262: só o rascunho desta conta volta, e com aviso e saída — os campos
+  // do passo seguinte também vêm preenchidos, e sem o aviso o dono publicava
+  // uma descrição antiga sem ter visto. O que não serve (outra conta, vencido)
+  // sai do navegador aqui. A conta é a da sessão ou, vindo do cadastro ainda
+  // sem sessão, o e-mail que a aba acabou de cadastrar.
+  const sessionEmail = user?.email
   useEffect(() => {
+    const email = sessionEmail ?? readPendingEmail()
+    if (!email) return
     const draft = parsePubOnboardingDraft(
-      localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY)
+      localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY),
+      email
     )
-    if (!draft) return
+    if (!draft) {
+      localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+      return
+    }
     setName(draft.name)
     setAddress(draft.address)
     setNeighborhood(draft.neighborhood)
@@ -140,8 +161,24 @@ function PubOnboarding() {
     setAmenities(draft.amenities ?? [])
     setScreenCount(draft.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(draft.phone))
+    setDraftRestored(true)
     setStep(1)
-  }, [])
+  }, [sessionEmail])
+
+  const discardDraft = () => {
+    localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+    setName('')
+    setAddress('')
+    setNeighborhood('')
+    setCity('São Paulo')
+    setPhone('')
+    setDescription('')
+    setAmenities([])
+    setScreenCount(null)
+    setPhoneError(null)
+    setError(null)
+    setDraftRestored(false)
+  }
 
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: step === 0 })
@@ -185,6 +222,8 @@ function PubOnboarding() {
         address.trim().length > 4 &&
         cidadePermitida
       )
+    // A mensagem já está ao lado do campo, no checklist (WEB-280).
+    if (step === 2) return motivoTelasInvalido(screenCount) === null
     return true
   })()
 
@@ -212,14 +251,20 @@ function PubOnboarding() {
         amenities: amenities.length > 0 ? amenities : undefined,
         screenCount: screenCount ?? undefined
       }
-      if (session?.user.emailVerified) {
+      if (user?.emailVerified) {
         completeMutation.mutate(draft)
         return
       }
-      localStorage.setItem(
-        PUB_ONBOARDING_DRAFT_KEY,
-        serializePubOnboardingDraft(draft)
-      )
+      // Sem e-mail confirmado o cadastro só é enviado de `/verify-email`. Sem
+      // sessão e sem cadastro nesta aba não há de quem guardar o rascunho;
+      // `/verify-email` oferece o login.
+      const email = user?.email ?? readPendingEmail()
+      if (email) {
+        localStorage.setItem(
+          PUB_ONBOARDING_DRAFT_KEY,
+          serializePubOnboardingDraft(draft, email)
+        )
+      }
       navigate({ to: '/verify-email' })
     }
   }
@@ -268,6 +313,24 @@ function PubOnboarding() {
               Essas informações aparecem para torcedores que buscam bares perto
               deles.
             </p>
+            {draftRestored ? (
+              <div
+                className="onside-callout onside-callout-stone mb-6"
+                role="status"
+              >
+                <p className="text-sm">
+                  Recuperamos o cadastro que você começou neste navegador.
+                  Confira os dados deste passo e do próximo antes de continuar.
+                </p>
+                <button
+                  type="button"
+                  onClick={discardDraft}
+                  className="font-semibold text-sm underline underline-offset-2"
+                >
+                  Descartar e começar do zero
+                </button>
+              </div>
+            ) : null}
             <PubInfoForm
               name={name}
               address={address}
@@ -358,6 +421,28 @@ function PubOnboarding() {
                 )
               })}
             </div>
+            {/* WEB-281: o que os selos não mostram. Opcional vazio não entra;
+                cidade vazia aparece como o servidor vai gravar. */}
+            <dl className="mx-auto mt-6 grid max-w-md gap-3 text-left text-sm">
+              {[
+                ['Endereço', address.trim()],
+                ['Cidade', city.trim() || 'São Paulo'],
+                ['Telefone', formatStoredPhone(phone)],
+                ['Telas', screenCount === null ? '' : String(screenCount)],
+                ['Descrição', description.trim()]
+              ]
+                .filter(([, value]) => value)
+                .map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="font-[family-name:var(--onside-mono)] text-[10px] text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] uppercase tracking-[0.16em]">
+                      {label}
+                    </dt>
+                    <dd className="whitespace-pre-line break-words text-[var(--onside-paper)]">
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
           </div>
         )}
       </OnboardingStep>

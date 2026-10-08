@@ -337,6 +337,32 @@ function ConviteInutilizavel({
   )
 }
 
+/** Na ordem da tela: o primeiro com erro recebe o foco. */
+const CAMPOS = ['name', 'password', 'passwordConfirmation'] as const
+type ErrosDeCampo = Partial<Record<(typeof CAMPOS)[number], string>>
+
+/**
+ * As regras de `/api/waitlist/activate`, com texto nosso (WEB-272): o
+ * formulário é `noValidate`, senão quem responde é o balão do navegador, no
+ * idioma do navegador.
+ */
+function validarAtivacao(data: FormData): ErrosDeCampo {
+  const name = String(data.get('name') ?? '').trim()
+  const password = String(data.get('password') ?? '')
+  const confirmation = String(data.get('passwordConfirmation') ?? '')
+  const erros: ErrosDeCampo = {}
+  if (name.length < 2) erros.name = 'Informe seu nome completo.'
+  if (!password) erros.password = 'Informe uma senha.'
+  else if (password.length < 8) {
+    erros.password = 'A senha deve ter pelo menos 8 caracteres.'
+  }
+  if (!confirmation) erros.passwordConfirmation = 'Confirme sua senha.'
+  else if (confirmation !== password) {
+    erros.passwordConfirmation = 'As senhas precisam ser iguais.'
+  }
+  return erros
+}
+
 function FormularioDeAtivacao({
   token,
   email
@@ -346,14 +372,35 @@ function FormularioDeAtivacao({
 }) {
   const navigate = useNavigate()
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<ErrosDeCampo>({})
   const [pending, setPending] = useState(false)
+
+  // WEB-279: o erro some assim que o campo passa a valer — inclusive o da
+  // confirmação quando a correção foi feita na senha. Só tira erro já
+  // mostrado; erro novo espera o envio.
+  function revalidar(event: FormEvent<HTMLFormElement>) {
+    if (Object.keys(fieldErrors).length === 0) return
+    const atuais = validarAtivacao(new FormData(event.currentTarget))
+    setFieldErrors((mostrados) => {
+      const restantes: ErrosDeCampo = {}
+      for (const campo of CAMPOS) {
+        if (mostrados[campo] && atuais[campo]) restantes[campo] = atuais[campo]
+      }
+      return restantes
+    })
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const data = new FormData(event.currentTarget)
+    const form = event.currentTarget
+    const data = new FormData(form)
     const password = String(data.get('password') ?? '')
-    if (password !== String(data.get('passwordConfirmation') ?? '')) {
-      setError('As senhas precisam ser iguais.')
+    const erros = validarAtivacao(data)
+    setFieldErrors(erros)
+    const invalido = CAMPOS.find((campo) => erros[campo])
+    if (invalido) {
+      setError('')
+      form.querySelector<HTMLElement>(`[name="${invalido}"]`)?.focus()
       return
     }
     setPending(true)
@@ -399,7 +446,13 @@ function FormularioDeAtivacao({
         Seu e-mail já está ligado ao convite. Defina seu nome e sua senha para
         entrar.
       </p>
-      <form method="post" onSubmit={submit} className="mt-6 grid gap-4">
+      <form
+        method="post"
+        onSubmit={submit}
+        onChange={revalidar}
+        noValidate
+        className="mt-6 grid gap-4"
+      >
         <div>
           <label htmlFor="invite-email" className="onside-label">
             E-mail do convite
@@ -426,8 +479,21 @@ function FormularioDeAtivacao({
             required
             minLength={2}
             maxLength={100}
+            aria-invalid={fieldErrors.name ? true : undefined}
+            aria-describedby={
+              fieldErrors.name ? 'invite-name-error' : undefined
+            }
             className="onside-input"
           />
+          {fieldErrors.name ? (
+            <p
+              id="invite-name-error"
+              role="alert"
+              className="onside-field-error"
+            >
+              {fieldErrors.name}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="invite-password" className="onside-label">
@@ -441,8 +507,30 @@ function FormularioDeAtivacao({
             required
             minLength={8}
             maxLength={128}
+            aria-invalid={fieldErrors.password ? true : undefined}
+            aria-describedby={
+              fieldErrors.password
+                ? 'invite-password-error'
+                : 'invite-password-hint'
+            }
             className="onside-input"
           />
+          {fieldErrors.password ? (
+            <p
+              id="invite-password-error"
+              role="alert"
+              className="onside-field-error"
+            >
+              {fieldErrors.password}
+            </p>
+          ) : (
+            <p
+              id="invite-password-hint"
+              className="mt-1.5 text-[var(--onside-muted)] text-xs"
+            >
+              Pelo menos 8 caracteres.
+            </p>
+          )}
         </div>
         <div>
           <label
@@ -459,8 +547,23 @@ function FormularioDeAtivacao({
             required
             minLength={8}
             maxLength={128}
+            aria-invalid={fieldErrors.passwordConfirmation ? true : undefined}
+            aria-describedby={
+              fieldErrors.passwordConfirmation
+                ? 'invite-password-confirmation-error'
+                : undefined
+            }
             className="onside-input"
           />
+          {fieldErrors.passwordConfirmation ? (
+            <p
+              id="invite-password-confirmation-error"
+              role="alert"
+              className="onside-field-error"
+            >
+              {fieldErrors.passwordConfirmation}
+            </p>
+          ) : null}
         </div>
         {error ? (
           <p role="alert" className="onside-field-error">

@@ -121,30 +121,40 @@ function PasswordDialog({
   const [newPassword, setNewPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Um erro por campo: o formulário é `noValidate` (WEB-272), então quem diz
+  // o que falta em cada um é a tela, e não o balão do navegador.
+  const [errors, setErrors] = useState<{
+    current?: string
+    next?: string
+    confirmation?: string
+  }>({})
   const [actionError, setActionError] = useState<string | null>(null)
 
   const close = () => {
     setCurrentPassword('')
     setNewPassword('')
     setConfirmation('')
-    setError(null)
+    setErrors({})
     setActionError(null)
     onOpenChange(false)
   }
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    setError(null)
     setActionError(null)
-    if (newPassword.length < 8) {
-      setError('A nova senha deve ter pelo menos 8 caracteres.')
-      return
+    const found = {
+      current: currentPassword ? undefined : 'Informe sua senha atual.',
+      next:
+        newPassword.length < 8
+          ? 'A nova senha deve ter pelo menos 8 caracteres.'
+          : undefined,
+      confirmation:
+        newPassword !== confirmation
+          ? 'A confirmação não corresponde à nova senha.'
+          : undefined
     }
-    if (newPassword !== confirmation) {
-      setError('A confirmação não corresponde à nova senha.')
-      return
-    }
+    setErrors(found)
+    if (found.current || found.next || found.confirmation) return
 
     setSaving(true)
     const result = await authClient.changePassword({
@@ -174,32 +184,43 @@ function PasswordDialog({
         method="post"
         className="flex flex-col gap-5 pt-5"
         onSubmit={submit}
+        noValidate
       >
         <FieldGroup>
-          <Field>
+          <Field data-invalid={Boolean(errors.current)}>
             <FieldLabel htmlFor="current-password">Senha atual</FieldLabel>
             <Input
               id="current-password"
               type="password"
               autoComplete="current-password"
+              aria-invalid={Boolean(errors.current)}
+              aria-describedby={
+                errors.current ? 'current-password-error' : undefined
+              }
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
               required
             />
+            <FieldError id="current-password-error">
+              {errors.current}
+            </FieldError>
           </Field>
-          <Field>
+          <Field data-invalid={Boolean(errors.next)}>
             <FieldLabel htmlFor="new-password">Nova senha</FieldLabel>
             <Input
               id="new-password"
               type="password"
               autoComplete="new-password"
               minLength={8}
+              aria-invalid={Boolean(errors.next)}
+              aria-describedby={errors.next ? 'new-password-error' : undefined}
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               required
             />
+            <FieldError id="new-password-error">{errors.next}</FieldError>
           </Field>
-          <Field data-invalid={Boolean(error)}>
+          <Field data-invalid={Boolean(errors.confirmation)}>
             <FieldLabel htmlFor="confirm-password">
               Confirmar nova senha
             </FieldLabel>
@@ -208,13 +229,17 @@ function PasswordDialog({
               type="password"
               autoComplete="new-password"
               minLength={8}
-              aria-invalid={Boolean(error)}
-              aria-describedby={error ? 'change-password-error' : undefined}
+              aria-invalid={Boolean(errors.confirmation)}
+              aria-describedby={
+                errors.confirmation ? 'change-password-error' : undefined
+              }
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               required
             />
-            <FieldError id="change-password-error">{error}</FieldError>
+            <FieldError id="change-password-error">
+              {errors.confirmation}
+            </FieldError>
           </Field>
         </FieldGroup>
         {actionError ? (

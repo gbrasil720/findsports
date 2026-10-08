@@ -89,6 +89,27 @@ const MARGEM_DO_ENQUADRAMENTO = 48
  */
 const ZOOM_MAXIMO = 15
 
+/**
+ * Textos do próprio MapLibre, que nascem em inglês (WEB-288): o aviso de
+ * `cooperativeGestures`, o nome acessível do canvas e os rótulos dos botões.
+ *
+ * `locale` é um remendo sobre a tabela padrão, então só entram as chaves dos
+ * controles que este mapa liga.
+ */
+const TEXTOS_DO_MAPA = {
+  'AttributionControl.ToggleAttribution': 'Mostrar ou ocultar a atribuição',
+  'CooperativeGesturesHandler.MacHelpText':
+    'Use ⌘ + rolagem para dar zoom no mapa',
+  'CooperativeGesturesHandler.MobileHelpText':
+    'Use dois dedos para mover o mapa',
+  'CooperativeGesturesHandler.WindowsHelpText':
+    'Use Ctrl + rolagem para dar zoom no mapa',
+  'Map.Title': 'Mapa',
+  'Marker.Title': 'Marcador no mapa',
+  'NavigationControl.ZoomIn': 'Aproximar',
+  'NavigationControl.ZoomOut': 'Afastar'
+}
+
 const FONTE_DO_RAIO = 'raio'
 const CAMADA_DO_RAIO_PREENCHIMENTO = 'raio-preenchimento'
 const CAMADA_DO_RAIO_CONTORNO = 'raio-contorno'
@@ -261,6 +282,7 @@ function MapaDaOnside({
         const mapa = new maplibre.Map({
           container: containerRef.current,
           style: criarEstiloDoMapa(tilesUrl, window.location.origin),
+          locale: TEXTOS_DO_MAPA,
           ...enquadramentoInicial,
           fitBoundsOptions: {
             padding: MARGEM_DO_ENQUADRAMENTO,

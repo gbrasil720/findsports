@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Edit from 'reicon-react/icons/Edit'
 import Flag from 'reicon-react/icons/Flag'
+import { toast } from 'sonner'
 import { type FavoriteTeam, TeamPicker } from '@/components/sports/team-picker'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -35,6 +36,7 @@ export function ProfileFavoriteTeams({
           queryKey: trpc.pubs.getMyTeams.queryKey()
         })
         setEditing(false)
+        toast.success('Times salvos.')
       }
     })
   )

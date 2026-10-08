@@ -3,7 +3,6 @@ import Basketball from 'reicon-react/icons/Basketball'
 import ChevronRight from 'reicon-react/icons/ChevronRight'
 import Football from 'reicon-react/icons/Football'
 import Location from 'reicon-react/icons/Location'
-import LocationSlash from 'reicon-react/icons/LocationSlash'
 import Store from 'reicon-react/icons/Store'
 import { type MapBar, OnsideMap } from '@/components/app/onside-map'
 import type {
@@ -39,11 +38,25 @@ type Props = {
   onSelectMapBar: (barId: string) => void
 }
 
+/**
+ * Um estado vazio só (WEB-287). Sem localização ele era outra tela, com outro
+ * texto, e ainda trocava de volta assim que um filtro entrava.
+ */
 function EmptyResults({
   radiusKm,
+  needsLocation,
+  hasActiveFilters,
   onRadiusChange,
+  onRequestLocation,
   onReset
-}: Pick<Props, 'radiusKm' | 'onRadiusChange' | 'onReset'>) {
+}: Pick<
+  Props,
+  | 'radiusKm'
+  | 'hasActiveFilters'
+  | 'onRadiusChange'
+  | 'onRequestLocation'
+  | 'onReset'
+> & { needsLocation: boolean }) {
   return (
     <div className="border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] px-6 py-10 text-center">
       <div className="relative mx-auto mb-4 grid size-14 place-items-center rounded-full border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-stone)] text-[var(--onside-muted)]">
@@ -56,9 +69,24 @@ function EmptyResults({
         </span>
       </div>
       <p className="mx-auto max-w-[16rem] font-semibold text-[var(--onside-ink)] text-sm leading-snug">
-        Nenhum bar em até {radiusKm} km transmitindo o que você busca.
+        Nenhum bar em até {radiusKm} km
+        {hasActiveFilters ? ' transmitindo o que você busca' : ''}.
       </p>
-      {radiusKm < 10 ? (
+      {needsLocation ? (
+        <>
+          <p className="mx-auto mt-2 max-w-xs text-[var(--onside-muted)] text-xs leading-snug">
+            Sem a sua localização, a busca parte do centro de São Paulo.
+          </p>
+          <button
+            type="button"
+            onClick={onRequestLocation}
+            className="onside-btn onside-btn-acid mt-5 min-h-11 px-5 text-xs"
+          >
+            <Location size={14} color="currentColor" aria-hidden="true" />
+            Usar minha localização
+          </button>
+        </>
+      ) : radiusKm < 10 ? (
         <button
           type="button"
           onClick={() => onRadiusChange(10)}
@@ -67,36 +95,16 @@ function EmptyResults({
           Buscar em 10 km →
         </button>
       ) : null}
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-3 block w-full font-bold text-[var(--onside-live-text)] text-sm hover:underline"
-      >
-        Remover filtros
-      </button>
-    </div>
-  )
-}
-
-function LocationRequired({
-  onRequestLocation
-}: Pick<Props, 'onRequestLocation'>) {
-  return (
-    <div className="border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] px-6 py-12 text-center">
-      <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-stone)] text-[var(--onside-muted)]">
-        <LocationSlash size={28} color="currentColor" aria-hidden="true" />
-      </div>
-      <p className="mx-auto max-w-xs font-semibold text-[var(--onside-ink)] text-sm leading-snug">
-        Compartilhe sua localização para ver bares perto de você
-      </p>
-      <button
-        type="button"
-        onClick={onRequestLocation}
-        className="onside-btn onside-btn-acid mt-5 min-h-11 px-5 text-xs"
-      >
-        <Location size={14} color="currentColor" aria-hidden="true" />
-        Usar minha localização
-      </button>
+      {/* Sem filtro ligado não há o que limpar. */}
+      {hasActiveFilters ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-3 block w-full font-bold text-[var(--onside-live-text)] text-sm hover:underline"
+        >
+          Limpar filtros
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -211,15 +219,14 @@ function ResultContent(props: Props) {
     )
   }
 
-  if (resultState.status === 'location-required' && !props.hasActiveFilters) {
-    return <LocationRequired onRequestLocation={props.onRequestLocation} />
-  }
-
-  if (resultState.status === 'empty' || props.bars.length === 0) {
+  if (resultState.status !== 'ready' || props.bars.length === 0) {
     return (
       <EmptyResults
         radiusKm={props.radiusKm}
+        needsLocation={resultState.status === 'location-required'}
+        hasActiveFilters={props.hasActiveFilters}
         onRadiusChange={props.onRadiusChange}
+        onRequestLocation={props.onRequestLocation}
         onReset={props.onReset}
       />
     )

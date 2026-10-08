@@ -9,6 +9,7 @@ import { z } from 'zod'
 
 import { fanProcedure, router } from '../index'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
+import { utcIso } from '../lib/utc-timestamp'
 
 /**
  * Tipos de evento comercial que contam como intenção de ir.
@@ -82,7 +83,11 @@ async function checkEligibility(input: {
     }
   }
 
-  const endsAt = getEventEnd({ startsAt: row.starts_at, endsAt: row.ends_at })
+  // Sem o `utcIso` a janela de avaliação andava com o fuso do processo.
+  const endsAt = getEventEnd({
+    startsAt: utcIso(row.starts_at),
+    endsAt: row.ends_at ? utcIso(row.ends_at) : null
+  })
 
   if (endsAt.getTime() > input.now.getTime()) {
     return { ok: false, reason: 'O jogo ainda não acabou.' }
@@ -163,7 +168,7 @@ export const ratingsRouter = router({
     ).map((row) => ({
       eventId: row.event_id,
       championship: row.championship,
-      startsAt: row.starts_at,
+      startsAt: utcIso(row.starts_at),
       barId: row.bar_id,
       barName: row.bar_name,
       neighborhood: row.neighborhood,

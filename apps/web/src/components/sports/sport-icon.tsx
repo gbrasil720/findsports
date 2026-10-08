@@ -59,7 +59,10 @@ export function SportIcon({
 
   return (
     <span
-      className={iconProps.className}
+      // Mesma caixa do ícone: sem a altura, o nome do esporte subia em
+      // relação aos tiles vizinhos (WEB-283).
+      className={`inline-flex items-center ${iconProps.className ?? ''}`}
+      style={{ height: iconProps.size }}
       aria-hidden={iconProps['aria-hidden']}
       title={name}
     >

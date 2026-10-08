@@ -128,8 +128,23 @@ function CapForm({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Inteiro de 1 ao máximo: o `min`/`max` do campo barram o envio antes.
+    // Inteiro de 1 ao máximo, a regra do servidor, conferida aqui: o
+    // formulário é `noValidate` para a recusa sair no nosso texto, e não no
+    // balão do navegador (WEB-272). `badInput` é o "-" ou "e" sozinho, que o
+    // campo numérico entrega como vazio — e vazio gravaria "sem teto".
     const cap = draft.trim() === '' ? null : Number(draft)
+    const foraDaFaixa =
+      cap !== null &&
+      !(Number.isInteger(cap) && cap >= 1 && cap <= RESERVATION_CAP_MAX)
+    if (
+      foraDaFaixa ||
+      e.currentTarget.querySelector('input')?.validity.badInput
+    ) {
+      setError(
+        `Informe um número inteiro de 1 a ${RESERVATION_CAP_MAX}, ou deixe o campo vazio.`
+      )
+      return
+    }
     setError(null)
     setSaving(true)
     try {
@@ -150,6 +165,7 @@ function CapForm({
     <form
       method="post"
       onSubmit={(e) => void handleSubmit(e)}
+      noValidate
       className="mt-2 flex flex-wrap items-end gap-2"
     >
       {/*
