@@ -50,7 +50,7 @@ const STEPS = [
   'Boas-vindas',
   'Seus esportes',
   'Quem você acompanha',
-  'Onde você assiste',
+  'Distância',
   'Revisão'
 ] as const
 const WELCOME_FEATURES = [
@@ -84,8 +84,10 @@ function FanOnboarding() {
     // do better-auth; sem regravar o cache de sessão o guard da rota
     // devolveria o usuário para cá.
     await refreshSessionCache()
-    // Cadastro pela página do bar volta para ela (WEB-211).
-    navigate({ to: callbackUrl })
+    // Cadastro pela página do bar volta para ela (WEB-211). O `await` segura
+    // o "Salvando…" do botão até a próxima tela abrir: sem ele a revisão
+    // voltava a parecer parada, com a URL já trocada (WEB-286).
+    await navigate({ to: callbackUrl })
   }
 
   const completeMutation = useMutation(

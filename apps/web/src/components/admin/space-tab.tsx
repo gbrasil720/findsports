@@ -1,3 +1,4 @@
+import { motivoTelasInvalido } from '@findsports_oficial/api/lib/amenities'
 import {
   mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado,
@@ -217,11 +218,13 @@ export function SpaceTab({
         onSave={async (data) => {
           // Mesma regra do servidor, conferida antes de enviar: o
           // padrão do WEB-118 não mostra o texto da recusa.
-          const motivoTelefone = motivoTelefoneInvalido(data.phone, bar.phone)
-          setProfileError(motivoTelefone)
+          const motivo =
+            motivoTelefoneInvalido(data.phone, bar.phone) ??
+            motivoTelasInvalido(data.screenCount)
+          setProfileError(motivo)
           // Rejeitar mantém o formulário aberto, como a recusa do
           // servidor já faz.
-          if (motivoTelefone) throw new Error(motivoTelefone)
+          if (motivo) throw new Error(motivo)
           // Nome e endereço são obrigatórios (o servidor recusa ''),
           // então vazio vira "não mexer". Telefone e descrição são
           // opcionais: '' vai como está e limpa o campo (WEB-143).

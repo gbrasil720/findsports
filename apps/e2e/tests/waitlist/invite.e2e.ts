@@ -75,6 +75,9 @@ test('convite direto de torcedor: ativa a conta e cai no onboarding', async ({
     'As senhas precisam ser iguais.'
   )
   expect(await account(email)).toBeUndefined()
+  // WEB-279: corrigir a confirmação tira o erro, sem esperar o envio.
+  await page.getByLabel('Confirmar senha').fill(PASSWORD)
+  await expect(page.getByRole('alert')).toHaveCount(0)
 
   await fillActivation(page)
   await expect(page).toHaveURL(/\/onboarding\/fan$/)

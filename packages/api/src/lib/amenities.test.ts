@@ -4,6 +4,8 @@ import {
   AMENITIES,
   AMENITY_GROUPS,
   amenitiesByGroup,
+  MAX_SCREEN_COUNT,
+  motivoTelasInvalido,
   normalizeAmenityIds
 } from './amenities'
 
@@ -64,5 +66,21 @@ describe('amenitiesByGroup', () => {
     const grupos = amenitiesByGroup([3, 1, 2])
 
     expect(grupos[0]?.amenities.map((a) => a.id)).toEqual([1, 2, 3])
+  })
+})
+
+describe('motivoTelasInvalido', () => {
+  it('aceita vazio e a faixa do servidor, de 0 ao máximo', () => {
+    for (const telas of [null, undefined, 0, 4, MAX_SCREEN_COUNT]) {
+      expect(motivoTelasInvalido(telas)).toBeNull()
+    }
+  })
+
+  it('recusa negativo, fração e acima do máximo, com mensagem (WEB-280)', () => {
+    for (const telas of [-3, 2.5, MAX_SCREEN_COUNT + 1, Number.NaN]) {
+      expect(motivoTelasInvalido(telas)).toBe(
+        'Informe um número inteiro de 0 a 99.'
+      )
+    }
   })
 })

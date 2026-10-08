@@ -29,8 +29,19 @@ integrationTest(
       { id: f1Id, name: 'F1', slug: `f1-${suffix}` }
     ])
     await db.insert(team).values([
-      { id: clubId, sportId: footballId, name: 'A', slug: `a-${suffix}` },
-      { id: otherClubId, sportId: footballId, name: 'B', slug: `b-${suffix}` },
+      { id: clubId, sportId: footballId, name: 'PSG', slug: `a-${suffix}` },
+      {
+        id: otherClubId,
+        sportId: footballId,
+        name: 'Palmeiras',
+        slug: `b-${suffix}`
+      },
+      {
+        id: crypto.randomUUID(),
+        sportId: footballId,
+        name: 'Água Santa',
+        slug: `d-${suffix}`
+      },
       { id: constructorId, sportId: f1Id, name: 'C', slug: `c-${suffix}` }
     ])
     await db.insert(user).values(
@@ -85,6 +96,18 @@ integrationTest(
       await fan.pubs.updateMyTeams({
         teamIds: [clubId, otherClubId, constructorId]
       })
+
+      // WEB-284: ordem alfabética em pt-BR, não a de bytes do banco — que
+      // poria "PSG" antes de "Palmeiras" e "Água Santa" no fim.
+      const nomes = (rows: { name: string }[]) => rows.map((row) => row.name)
+      expect(
+        nomes(await fan.pubs.getTeamsBySport({ sportId: footballId }))
+      ).toEqual(['Água Santa', 'Palmeiras', 'PSG'])
+      expect(nomes(await fan.pubs.getMyTeams())).toEqual([
+        'C',
+        'Palmeiras',
+        'PSG'
+      ])
 
       // Remover F1 leva a escuderia junto e preserva os times do futebol.
       await fan.pubs.updateMyPreferences({ sportIds: [footballId] })
