@@ -20,6 +20,7 @@ type Props = {
   onCancelEditingName: () => void
   onSaveName: () => void
   onChooseImage: () => void
+  onRemoveImage: () => void
 }
 
 export function ProfileHeader({
@@ -35,7 +36,8 @@ export function ProfileHeader({
   onStartEditingName,
   onCancelEditingName,
   onSaveName,
-  onChooseImage
+  onChooseImage,
+  onRemoveImage
 }: Props) {
   return (
     <section className="onside-panel-ink onside-shadow-acid relative mb-8 overflow-hidden p-8 text-[var(--onside-paper)] md:p-10">
@@ -131,6 +133,16 @@ export function ProfileHeader({
               <Calendar size={11} color="currentColor" />
               Membro desde {memberSince}
             </p>
+          ) : null}
+          {user?.image ? (
+            <button
+              type="button"
+              disabled={uploadingImage}
+              onClick={onRemoveImage}
+              className="mt-1 inline-flex min-h-11 items-center font-bold text-[var(--onside-paper)]/80 text-xs underline underline-offset-2 hover:text-[var(--onside-paper)] disabled:opacity-60"
+            >
+              Remover foto
+            </button>
           ) : null}
           {imageError ? (
             <p className="mt-2 text-[var(--onside-acid)] text-xs" role="alert">

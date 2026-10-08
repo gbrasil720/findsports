@@ -65,7 +65,6 @@ type Props = {
    * fazer nada.
    */
   canSortByRating: boolean
-  loadingSortByRating: boolean
   sportsState: SportsState
   activeFilters: ActiveFilter[]
   onReset: () => void
@@ -92,7 +91,6 @@ export function SearchFilterBar({
   sort,
   onSortChange,
   canSortByRating,
-  loadingSortByRating,
   sportsState,
   activeFilters,
   onReset,
@@ -272,38 +270,25 @@ export function SearchFilterBar({
           aria-hidden="true"
         />
 
-        {canSortByRating || loadingSortByRating ? (
-          <fieldset
-            className="shrink-0"
-            aria-busy={loadingSortByRating || undefined}
-          >
+        {/* Sem esqueleto enquanto a flag carrega: ela nasce desligada, e o
+            controle aparecia só para sumir quando a resposta chegava. */}
+        {canSortByRating ? (
+          <fieldset className="shrink-0">
             <div className="flex flex-wrap items-center gap-2">
               <legend className="onside-kicker m-0 shrink-0 pr-1">Ordem</legend>
-              {loadingSortByRating ? (
-                <div
-                  className="flex flex-wrap gap-2"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <span className="sr-only">Carregando opções de ordem…</span>
-                  <Skeleton className="h-11 w-28" />
-                  <Skeleton className="h-11 w-32" />
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {(['relevance', 'rating'] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => onSortChange(option)}
-                      aria-pressed={sort === option}
-                      className="onside-chip onside-chip-ink"
-                    >
-                      {SORT_LABELS[option]}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {(['relevance', 'rating'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => onSortChange(option)}
+                    aria-pressed={sort === option}
+                    className="onside-chip onside-chip-ink"
+                  >
+                    {SORT_LABELS[option]}
+                  </button>
+                ))}
+              </div>
             </div>
           </fieldset>
         ) : null}

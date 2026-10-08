@@ -34,3 +34,16 @@ export function canFavoriteBars(
 ): boolean {
   return role === 'fan'
 }
+
+/**
+ * Espelha o servidor: `recordCommercialEvent` responde 403 para quem não é
+ * torcedor (`validateFanSession`) e para sessão personificada. Dono abrindo o
+ * próprio perfil, admin e suporte personificando não devem nem disparar o
+ * pedido — o 403 está certo, o que sobra é o erro no console (WEB-311).
+ */
+export function canRecordCommercialEvents(
+  role: ViewerRole | string | null | undefined,
+  impersonatedBy?: string | null
+): boolean {
+  return role === 'fan' && !impersonatedBy
+}

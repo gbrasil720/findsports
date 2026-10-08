@@ -202,7 +202,11 @@ test('"só favoritos" deixa só os bares favoritados', async ({ page }) => {
   await createEvent({ barId: favorite.barId, startsAt: days(2) })
   await createEvent({ barId: other.barId, startsAt: days(2) })
   const fan = await signInFanAt(page, spot)
-  const onlyFavorites = page.getByRole('button', { name: 'Só favoritos' })
+  // `exact`: o chip do filtro ligado é "Remover filtro Só favoritos".
+  const onlyFavorites = page.getByRole('button', {
+    name: 'Só favoritos',
+    exact: true
+  })
 
   // Sem favorito o controle não liga: a lista viria vazia sem explicação.
   await page.goto('/dashboard')
@@ -224,7 +228,7 @@ test('"só favoritos" deixa só os bares favoritados', async ({ page }) => {
   await expect(card(page, favorite.name)).toBeVisible()
   await expect(card(page, other.name)).toHaveCount(0)
   await page
-    .getByRole('button', { name: 'Remover filtro Meus favoritos' })
+    .getByRole('button', { name: 'Remover filtro Só favoritos' })
     .click()
   await expect(card(page, other.name)).toBeVisible()
   await expect(onlyFavorites).toHaveAttribute('aria-pressed', 'false')

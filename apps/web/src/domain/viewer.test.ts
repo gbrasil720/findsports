@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { canFavoriteBars, shellVariantForViewer } from './viewer'
+import {
+  canFavoriteBars,
+  canRecordCommercialEvents,
+  shellVariantForViewer
+} from './viewer'
 
 describe('shellVariantForViewer', () => {
   it('dá ao torcedor o cabeçalho de torcedor', () => {
@@ -33,5 +37,20 @@ describe('canFavoriteBars', () => {
     expect(canFavoriteBars('pub')).toBe(false)
     expect(canFavoriteBars('admin')).toBe(false)
     expect(canFavoriteBars(null)).toBe(false)
+  })
+})
+
+describe('canRecordCommercialEvents', () => {
+  it('libera só para torcedor na própria sessão', () => {
+    expect(canRecordCommercialEvents('fan')).toBe(true)
+    expect(canRecordCommercialEvents('fan', null)).toBe(true)
+  })
+
+  it('bloqueia dono de bar, admin, anônimo e sessão personificada', () => {
+    expect(canRecordCommercialEvents('pub')).toBe(false)
+    expect(canRecordCommercialEvents('admin')).toBe(false)
+    expect(canRecordCommercialEvents(null)).toBe(false)
+    expect(canRecordCommercialEvents(undefined)).toBe(false)
+    expect(canRecordCommercialEvents('fan', 'admin-1')).toBe(false)
   })
 })
