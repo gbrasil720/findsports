@@ -77,6 +77,9 @@ test('salvar travado diz quais obrigatórios faltam', () => {
   expect(short.text).toContain(
     'Para salvar, falta preencher: campeonato (pelo menos 2 caracteres).'
   )
+
+  // Só espaços não é campeonato: o servidor apara antes de validar.
+  expect(render({ championship: '   ' }).saveDisabled).toBe(true)
 })
 
 // WEB-265: os mesmos limites do servidor, com contador e mensagem.

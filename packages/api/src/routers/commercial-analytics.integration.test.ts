@@ -17,7 +17,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { TRPCError } from '@trpc/server'
 import { getCommercialDay } from '../lib/commercial-analytics/commercial-day'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
-import { contextFor, load } from './integration-seed'
+import { contextFor, inAMonth, load, seedBar } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -953,6 +953,26 @@ integrationTest(
       await db
         .delete(analyticsRetentionRun)
         .where(gte(analyticsRetentionRun.startedAt, desde))
+    }
+  }
+)
+
+integrationTest(
+  'trial vencido não mantém as analytics do plano contratado',
+  async () => {
+    const ontem = new Date(Date.now() - 24 * 3_600_000)
+    const vencido = await seedBar('elite', 'trialing', ontem)
+    const vigente = await seedBar('elite', 'trialing', inAMonth())
+    try {
+      const doVencido =
+        await vencido.owner.commercialAnalytics.getMyEntitlements()
+      const doVigente =
+        await vigente.owner.commercialAnalytics.getMyEntitlements()
+      expect(doVencido.plan).toBe('starter')
+      expect(doVigente.plan).toBe('elite')
+    } finally {
+      await vencido.cleanup()
+      await vigente.cleanup()
     }
   }
 )

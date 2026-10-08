@@ -176,7 +176,7 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
     latitude: row.latitude,
     longitude: row.longitude,
     photo_url: row.photo_url,
-    created_at: row.created_at,
+    created_at: utcIso(row.created_at),
     plan: row.plan,
     distance_km: row.distance_km
   }))

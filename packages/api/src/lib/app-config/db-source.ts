@@ -1,6 +1,7 @@
 import { db, sql } from '@findsports_oficial/db'
 
 import { createSharedCache } from '../shared-cache'
+import { utcIso } from '../utc-timestamp'
 import {
   type AppConfigKey,
   type AppConfigValue,
@@ -68,7 +69,7 @@ export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
     .map((linha) => ({
       key: linha.key as AppConfigKey,
       value: linha.value,
-      updatedAt: new Date(linha.updated_at).toISOString(),
+      updatedAt: utcIso(linha.updated_at),
       updatedBy: linha.updated_by
     }))
 }

@@ -19,7 +19,6 @@ import {
 } from 'better-auth/api'
 import { admin, captcha } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
-import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
@@ -31,6 +30,7 @@ import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { sessionTokenGuard } from './session-token'
+import { startCookies } from './start-cookies'
 import { buildTrustedOrigins } from './trusted-origins'
 import {
   publicEmailUrl,
@@ -516,8 +516,9 @@ export function createAuth() {
       sessionTokenGuard(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
-      // (twoFactor, admin) teria o `Set-Cookie` perdido.
-      tanstackStartCookies()
+      // (twoFactor, admin) teria o `Set-Cookie` perdido. É o nosso, e não o
+      // `tanstackStartCookies` do better-auth: ver `start-cookies.ts`.
+      startCookies()
     ]
   })
 }

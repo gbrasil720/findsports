@@ -110,6 +110,24 @@ export function AccountSettings({ surface }: Props) {
   )
 }
 
+function validarTrocaDeSenha(
+  current: string,
+  next: string,
+  confirmation: string
+) {
+  return {
+    current: current ? undefined : 'Informe sua senha atual.',
+    next:
+      next.length < 8
+        ? 'A nova senha deve ter pelo menos 8 caracteres.'
+        : undefined,
+    confirmation:
+      next !== confirmation
+        ? 'A confirmação não corresponde à nova senha.'
+        : undefined
+  }
+}
+
 function PasswordDialog({
   open,
   onOpenChange
@@ -139,20 +157,26 @@ function PasswordDialog({
     onOpenChange(false)
   }
 
+  // O erro some assim que o campo passa a valer — inclusive o da confirmação
+  // quando a correção foi feita na nova senha. Só tira erro já mostrado; erro
+  // novo espera o envio (o mesmo de `activate-invite`).
+  const revalidar = (current: string, next: string, confirm: string) => {
+    const atuais = validarTrocaDeSenha(current, next, confirm)
+    setErrors((mostrados) => ({
+      current: mostrados.current && atuais.current,
+      next: mostrados.next && atuais.next,
+      confirmation: mostrados.confirmation && atuais.confirmation
+    }))
+  }
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setActionError(null)
-    const found = {
-      current: currentPassword ? undefined : 'Informe sua senha atual.',
-      next:
-        newPassword.length < 8
-          ? 'A nova senha deve ter pelo menos 8 caracteres.'
-          : undefined,
-      confirmation:
-        newPassword !== confirmation
-          ? 'A confirmação não corresponde à nova senha.'
-          : undefined
-    }
+    const found = validarTrocaDeSenha(
+      currentPassword,
+      newPassword,
+      confirmation
+    )
     setErrors(found)
     if (found.current || found.next || found.confirmation) return
 
@@ -198,7 +222,10 @@ function PasswordDialog({
                 errors.current ? 'current-password-error' : undefined
               }
               value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
+              onChange={(event) => {
+                setCurrentPassword(event.target.value)
+                revalidar(event.target.value, newPassword, confirmation)
+              }}
               required
             />
             <FieldError id="current-password-error">
@@ -215,7 +242,10 @@ function PasswordDialog({
               aria-invalid={Boolean(errors.next)}
               aria-describedby={errors.next ? 'new-password-error' : undefined}
               value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
+              onChange={(event) => {
+                setNewPassword(event.target.value)
+                revalidar(currentPassword, event.target.value, confirmation)
+              }}
               required
             />
             <FieldError id="new-password-error">{errors.next}</FieldError>
@@ -234,7 +264,10 @@ function PasswordDialog({
                 errors.confirmation ? 'change-password-error' : undefined
               }
               value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
+              onChange={(event) => {
+                setConfirmation(event.target.value)
+                revalidar(currentPassword, newPassword, event.target.value)
+              }}
               required
             />
             <FieldError id="change-password-error">

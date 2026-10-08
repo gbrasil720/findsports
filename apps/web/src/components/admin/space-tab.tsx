@@ -246,6 +246,7 @@ export function SpaceTab({
           // armazenamento e à pasta deste bar antes de aceitar.
           await updatePhotoMutation.mutateAsync({ photoUrl: url })
         }}
+        onPhotoRemove={invalidateBar}
       />
 
       {/* Os cards pagos e o preview dependem da mesma consulta: a falha

@@ -14,6 +14,26 @@ const CURRENT_CHOICE: Record<AnalyticsConsent, string> = {
 }
 
 /**
+ * O aviso é fixo no rodapé da janela e cobriria o fim de qualquer página até
+ * a pessoa escolher. Publica a própria altura em `--onside-consent-h`; o CSS
+ * reserva esse espaço no fim do documento enquanto o aviso existe. A altura é
+ * medida porque muda com a largura: em tela estreita os botões vão para baixo
+ * do texto.
+ */
+function reservarEspaco(aviso: HTMLElement) {
+  if (typeof ResizeObserver === 'undefined') return
+  const raiz = document.documentElement.style
+  const observer = new ResizeObserver(() =>
+    raiz.setProperty('--onside-consent-h', `${aviso.offsetHeight}px`)
+  )
+  observer.observe(aviso)
+  return () => {
+    observer.disconnect()
+    raiz.removeProperty('--onside-consent-h')
+  }
+}
+
+/**
  * Aviso de cookies (WEB-243). Aparece para quem ainda não escolheu, e de
  * novo quando a pessoa pede para rever a escolha. Não é modal: a página
  * continua usável, e nada de análise roda enquanto não houver aceite.
@@ -28,11 +48,12 @@ export function CookieConsent() {
 
   return (
     <section
+      ref={reservarEspaco}
       className="onside-banner onside-consent"
       aria-label="Cookies"
       data-testid="cookie-consent"
     >
-      <div className="onside-consent-copy">
+      <div>
         <p className="onside-consent-kicker">Cookies</p>
         <p>
           Usamos cookies essenciais para a Onside funcionar. Com a sua

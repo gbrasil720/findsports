@@ -464,7 +464,10 @@ function PubOnboarding() {
         onBack={back}
         onNext={next}
         nextLabel={
-          step === 2 && amenities.length === 0 && !description.trim()
+          step === 2 &&
+          amenities.length === 0 &&
+          screenCount === null &&
+          !description.trim()
             ? 'Pular'
             : undefined
         }

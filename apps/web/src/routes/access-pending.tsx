@@ -12,12 +12,32 @@ export const Route = createFileRoute('/access-pending')({
   component: AccessPendingPage
 })
 
+/** Na ordem da tela: o primeiro com erro recebe o foco. */
+const CAMPOS = ['pubName', 'city'] as const
+type ErrosDeCampo = Partial<Record<(typeof CAMPOS)[number], string>>
+
+/**
+ * As regras de `waitlist.join`, com texto nosso (WEB-272): o formulário é
+ * `noValidate`, senão quem responde é o balão do navegador.
+ */
+function validarInscricao(data: FormData, role: 'fan' | 'pub'): ErrosDeCampo {
+  const erros: ErrosDeCampo = {}
+  if (role === 'pub' && String(data.get('pubName') ?? '').trim().length < 2) {
+    erros.pubName = 'Informe o nome do bar.'
+  }
+  if (String(data.get('city') ?? '').trim().length < 2) {
+    erros.city = 'Informe a cidade.'
+  }
+  return erros
+}
+
 function AccessPendingPage() {
   const session = Route.useRouteContext({
     select: (context) => context.session
   })
   const trpc = useTRPC()
   const [joined, setJoined] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<ErrosDeCampo>({})
   const role = session?.user.role === 'pub' ? 'pub' : 'fan'
   const join = useMutation(
     trpc.waitlist.join.mutationOptions({
@@ -29,10 +49,31 @@ function AccessPendingPage() {
     })
   )
 
+  // O erro some assim que o campo passa a valer; erro novo espera o envio.
+  function revalidar(event: FormEvent<HTMLFormElement>) {
+    if (Object.keys(fieldErrors).length === 0) return
+    const atuais = validarInscricao(new FormData(event.currentTarget), role)
+    setFieldErrors((mostrados) => {
+      const restantes: ErrosDeCampo = {}
+      for (const campo of CAMPOS) {
+        if (mostrados[campo] && atuais[campo]) restantes[campo] = atuais[campo]
+      }
+      return restantes
+    })
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!session) return
-    const data = new FormData(event.currentTarget)
+    const form = event.currentTarget
+    const data = new FormData(form)
+    const erros = validarInscricao(data, role)
+    setFieldErrors(erros)
+    const invalido = CAMPOS.find((campo) => erros[campo])
+    if (invalido) {
+      form.querySelector<HTMLElement>(`[name="${invalido}"]`)?.focus()
+      return
+    }
     const common = {
       email: session.user.email,
       city: String(data.get('city') ?? ''),
@@ -69,7 +110,13 @@ function AccessPendingPage() {
               Entre explicitamente na waitlist. Como você já confirmou este
               e-mail, a inscrição vale na hora.
             </p>
-            <form method="post" onSubmit={submit} className="mt-6 grid gap-4">
+            <form
+              method="post"
+              onSubmit={submit}
+              onChange={revalidar}
+              noValidate
+              className="mt-6 grid gap-4"
+            >
               <div>
                 <label htmlFor="pending-email" className="onside-label">
                   E-mail
@@ -97,8 +144,21 @@ function AccessPendingPage() {
                     required
                     minLength={2}
                     maxLength={100}
+                    aria-invalid={fieldErrors.pubName ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.pubName ? 'pending-pub-name-error' : undefined
+                    }
                     className="onside-input"
                   />
+                  {fieldErrors.pubName ? (
+                    <p
+                      id="pending-pub-name-error"
+                      role="alert"
+                      className="onside-field-error"
+                    >
+                      {fieldErrors.pubName}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               <div>
@@ -112,8 +172,21 @@ function AccessPendingPage() {
                   required
                   minLength={2}
                   maxLength={100}
+                  aria-invalid={fieldErrors.city ? true : undefined}
+                  aria-describedby={
+                    fieldErrors.city ? 'pending-city-error' : undefined
+                  }
                   className="onside-input"
                 />
+                {fieldErrors.city ? (
+                  <p
+                    id="pending-city-error"
+                    role="alert"
+                    className="onside-field-error"
+                  >
+                    {fieldErrors.city}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label htmlFor="pending-phone" className="onside-label">

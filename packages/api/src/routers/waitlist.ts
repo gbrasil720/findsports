@@ -8,6 +8,7 @@ import { escapeLike } from '../lib/escape-like'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { incrementWindow } from '../lib/rate-limit-store'
 import { turnstileAllows } from '../lib/turnstile'
+import { utcIso } from '../lib/utc-timestamp'
 import { sendWaitlistEmail, waitlistUrl } from '../lib/waitlist-email'
 import {
   deriveWaitlistInviteStatus,
@@ -426,7 +427,19 @@ export const waitlistRouter = router({
       ativados?: number
     }
     return {
-      entries: pageRows.map(({ cursor_created_at, ...entry }) => entry),
+      // Colunas `timestamp` sem fuso lidas por SQL cru: sem o `utcIso` o painel
+      // lê o horário como local e o convite parece ativo 3 h depois de vencer.
+      entries: pageRows.map(({ cursor_created_at, ...entry }) => ({
+        ...entry,
+        createdAt: utcIso(entry.createdAt),
+        confirmedAt: entry.confirmedAt && utcIso(entry.confirmedAt),
+        joinedSentAt: entry.joinedSentAt && utcIso(entry.joinedSentAt),
+        cancelledAt: entry.cancelledAt && utcIso(entry.cancelledAt),
+        approvedAt: entry.approvedAt && utcIso(entry.approvedAt),
+        inviteExpiresAt: entry.inviteExpiresAt && utcIso(entry.inviteExpiresAt),
+        inviteSentAt: entry.inviteSentAt && utcIso(entry.inviteSentAt),
+        activatedAt: entry.activatedAt && utcIso(entry.activatedAt)
+      })),
       nextCursor: last
         ? encodeCursor({ c: last.cursor_created_at, i: last.id })
         : null,
