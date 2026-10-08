@@ -90,11 +90,17 @@ export function createTokenGate(timeoutMs = 10_000) {
     wait() {
       if (token) return Promise.resolve<string | undefined>(token)
       return new Promise<string | undefined>((resolve) => {
-        const timer = setTimeout(() => resolve(token), timeoutMs)
-        waiting.push((next) => {
+        const waiter = (next?: string) => {
           clearTimeout(timer)
           resolve(next)
-        })
+        }
+        const timer = setTimeout(() => {
+          // Quem desistiu sai da fila: sem isso cada envio sem token deixava
+          // um callback preso até o formulário desmontar.
+          waiting.splice(waiting.indexOf(waiter), 1)
+          resolve(token)
+        }, timeoutMs)
+        waiting.push(waiter)
       })
     }
   }
