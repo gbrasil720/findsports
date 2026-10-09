@@ -1,0 +1,1 @@
+ALTER TABLE "subscription" ADD COLUMN "monthly_discount_reais" integer;

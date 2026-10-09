@@ -50,6 +50,16 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
   founderCouponSource = source
 }
 
+/** O cupom existe e ainda aceita resgate no Stripe. */
+export async function founderCouponUsable(
+  client: Stripe,
+  couponId: string | null | undefined
+): Promise<boolean> {
+  if (!couponId) return false
+  const coupon = await client.coupons.retrieve(couponId).catch(() => null)
+  return Boolean(coupon?.valid)
+}
+
 /**
  * Cupom de fundador a aplicar, ou `null`. Confere no Stripe antes: cupom
  * esgotado, apagado ou com o id errado faria o Stripe recusar a sessão
@@ -57,11 +67,13 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
  */
 async function usableFounderCoupon(client: Stripe): Promise<string | null> {
   const couponId = await founderCouponSource()
-  if (!couponId) return null
-  const coupon = await client.coupons.retrieve(couponId).catch(() => null)
-  if (coupon?.valid) return couponId
-  logBillingError('stripe_founder_coupon_unavailable', { couponId })
-  return null
+  if (!(await founderCouponUsable(client, couponId))) {
+    if (couponId) {
+      logBillingError('stripe_founder_coupon_unavailable', { couponId })
+    }
+    return null
+  }
+  return couponId
 }
 
 type BarForCustomer = {

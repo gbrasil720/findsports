@@ -193,6 +193,22 @@ test('cupom de fundador: ligado entra no checkout, esgotado não trava a venda (
   expect(semCupom).not.toHaveProperty('discounts[0][coupon]')
 })
 
+test('/plan: cupom esgotado mostra tabela cheia, não o preço com desconto', async ({
+  page
+}) => {
+  await setAppConfig('billing.founder_coupon', {
+    enabled: true,
+    couponId: 'esgotado'
+  })
+  const { user } = await createPub({ subscription: null })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  const eliteCard = page.getByRole('radio', { name: /^Elite,/ })
+  await expect(eliteCard).toContainText('R$ 297')
+  await expect(eliteCard).not.toContainText('R$ 269')
+})
+
 test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo vira troca no portal, não segunda assinatura (WEB-172)', async ({
   page,
   request

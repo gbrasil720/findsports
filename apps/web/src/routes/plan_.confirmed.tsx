@@ -221,6 +221,7 @@ function SubscriptionConfirmed() {
       <SubscriptionReceipt
         stage={stage}
         plan={plan}
+        monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
         status={subscription?.status ?? ''}
         currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
         subscriptionRef={subscription?.externalSubscriptionId ?? null}

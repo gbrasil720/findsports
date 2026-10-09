@@ -259,7 +259,8 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
       id: subscriptionId,
       status: 'active',
       plan: 'pro',
-      userId: user.id
+      userId: user.id,
+      founderDiscount: true
     })
   )
   expect(webhook.ok(), await webhook.text()).toBe(true)

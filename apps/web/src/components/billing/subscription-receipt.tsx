@@ -3,7 +3,11 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
-import { formatMonthlyChargeWithList, type Plan } from '@/lib/plan-catalog'
+import {
+  formatPlanChargeLine,
+  type Plan,
+  planChargeFromSubscription
+} from '@/lib/plan-catalog'
 import {
   formatReceiptDate,
   formatReceiptTimestamp,
@@ -51,6 +55,8 @@ type Props = {
   stage: ReceiptStage
   /** Plano gravado na assinatura — nunca o que a pessoa clicou antes de pagar. */
   plan: Plan | null
+  /** Desconto mensal gravado pelo webhook; null se desconhecido. */
+  monthlyDiscountReais?: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -88,6 +94,7 @@ type Props = {
 export function SubscriptionReceipt({
   stage,
   plan,
+  monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
   subscriptionRef,
@@ -154,6 +161,7 @@ export function SubscriptionReceipt({
       {hasPaper ? (
         <PaperOutput
           plan={plan}
+          monthlyDiscountReais={monthlyDiscountReais}
           status={status}
           currentPeriodEnd={currentPeriodEnd}
           subscriptionRef={subscriptionRef}
@@ -213,6 +221,7 @@ function StageIcon({ stage }: { stage: ReceiptStage }) {
  */
 function PaperOutput(props: {
   plan: Plan
+  monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -261,6 +270,7 @@ function PaperOutput(props: {
 
 function PaperContent({
   plan,
+  monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
   subscriptionRef,
@@ -271,6 +281,7 @@ function PaperContent({
   paperRef
 }: {
   plan: Plan
+  monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -280,11 +291,12 @@ function PaperContent({
   onPrinted: () => void
   paperRef: React.RefObject<HTMLElement | null>
 }) {
+  const charge = planChargeFromSubscription(plan, monthlyDiscountReais)
   const rows = [
     { label: 'Plano', value: `${plan.name} — ${plan.tagline}` },
     {
       label: 'Valor',
-      value: formatMonthlyChargeWithList(plan)
+      value: formatPlanChargeLine(charge, plan.period)
     },
     { label: 'Ciclo', value: receiptCycleLabel(plan.period) },
     { label: 'Situação', value: STATUS_LABEL[status] ?? status },

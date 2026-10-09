@@ -14,11 +14,13 @@ import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
-  formatPlanPricing,
+  formatPlanChargeLine,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
   PLAN_CATALOG,
+  planChargeForShowcase,
+  planChargeFromSubscription,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -87,6 +89,9 @@ function BillingPage() {
     ...trpc.pub.getMySubscription.queryOptions(),
     meta: { errorToast: false }
   })
+  const founderCouponQuery = useQuery(
+    trpc.pub.getFounderCouponAvailable.queryOptions()
+  )
   const subscription = subscriptionQuery.data
   const loadingSub = subscriptionQuery.isLoading
 
@@ -131,6 +136,11 @@ function BillingPage() {
   const onLocalTrial = mode === 'trial'
   const shownPlan = plan ?? (lapsed ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
+  const planCharge =
+    planInfo && subscription
+      ? planChargeFromSubscription(planInfo, subscription.monthlyDiscountReais)
+      : null
+  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const statusInfo =
     STATUS_LABEL[
       standing === 'trial_ended' ? standing : (subscription?.status ?? '')
@@ -218,7 +228,12 @@ function BillingPage() {
                       <div className="onside-display text-xl">
                         {planInfo.name}
                       </div>
-                      <PlanMonthlyCharge plan={planInfo} />
+                      {planCharge ? (
+                        <PlanMonthlyCharge
+                          display={planCharge}
+                          period={planInfo.period}
+                        />
+                      ) : null}
                     </div>
                   </div>
                   {statusInfo ? (
@@ -397,7 +412,10 @@ function BillingPage() {
                   <div>
                     <div className="text-sm font-bold">{info.name}</div>
                     <div className="text-xs text-[var(--onside-muted)]">
-                      {formatPlanPricing(info)}
+                      {formatPlanChargeLine(
+                        planChargeForShowcase(info, founderCouponAvailable),
+                        info.period
+                      )}
                     </div>
                   </div>
                 </div>

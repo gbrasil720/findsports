@@ -42,7 +42,10 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
   // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
   const pub = await createPub({
-    subscription: { externalSubscriptionId: `sub_e2e_${randomUUID()}` }
+    subscription: {
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`,
+      monthlyDiscountReais: 28
+    }
   })
   const customerId = `cus_e2e_${randomUUID()}`
   await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
@@ -77,6 +80,20 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
   // WEB-241: uma navegação só; a segunda abortava a primeira.
   expect(navigations).toHaveLength(1)
+})
+
+test('Elite ativo sem desconto gravado: mostra só a tabela cheia', async ({
+  page
+}) => {
+  await openBilling(page, {
+    subscription: {
+      plan: 'elite',
+      monthlyDiscountReais: 0,
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
+    }
+  })
+  await expect(currentPlan(page)).toContainText('R$ 297')
+  await expect(currentPlan(page)).not.toContainText('R$ 269')
 })
 
 test('Starter vê o caminho para o upgrade', async ({ page }) => {

@@ -364,6 +364,8 @@ export const subscription = pgTable('subscription', {
   // segundo provedor (Pix) não pedir coluna nova.
   provider: text('provider', { enum: ['stripe'] }),
   externalSubscriptionId: text('external_subscription_id').unique(),
+  /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
+  monthlyDiscountReais: integer('monthly_discount_reais'),
   currentPeriodEnd: timestamp('current_period_end'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')

@@ -1,4 +1,6 @@
 import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
+import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
+import { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
 import {
@@ -17,13 +19,13 @@ import {
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-
 import { pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
   normalizeAmenityIds
 } from '../lib/amenities'
+import { getAppConfig } from '../lib/app-config'
 import { readInterestSignal } from '../lib/attendance'
 import {
   assertCanConfigureBarMenu,
@@ -779,6 +781,15 @@ export const pubRouter = router({
 
       return { success: true }
     }),
+
+  /** Cupom Early Bird disponível para novos checkouts (WEB-112). */
+  getFounderCouponAvailable: pubProcedure.query(async () => {
+    const config = await getAppConfig('billing.founder_coupon')
+    if (!config.enabled) return { available: false as const }
+    return {
+      available: await founderCouponUsable(stripeClient, config.couponId)
+    }
+  }),
 
   // Retorna o plano e status atual da subscription do bar
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
