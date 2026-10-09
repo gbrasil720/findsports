@@ -85,7 +85,9 @@ function VerifyEmailPage() {
           localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY),
           data.user.email
         )
-        if (!draft) {
+        // Rascunho de antes da UF (WEB-270) não é enviado nem descartado: o
+        // formulário o abre e pede o que falta.
+        if (!draft?.uf) {
           navigate({ to: '/onboarding/pub' })
           return
         }

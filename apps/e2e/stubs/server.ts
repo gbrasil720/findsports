@@ -9,11 +9,12 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * - `street` com "falha-geocoding": 503, o app esgota as tentativas e responde
  *   SERVICE_UNAVAILABLE;
  * - `street` com "inexistente": 404, "endereço não encontrado";
- * - qualquer outro: um resultado no centro de São Paulo, com a rua e a cidade
- *   pedidas (passa na conferência de rua do `geocode-address.ts`).
+ * - qualquer outro: um resultado no centro de São Paulo, com a rua, a cidade e
+ *   o estado pedidos (passa nas conferências do `geocode-address.ts`).
  *
  * `GET /locationiq/calls` devolve as consultas recebidas, para o teste provar
- * que o geocoding foi (ou não) chamado. Filtre pela rua do seu teste.
+ * que o geocoding foi (ou não) chamado. Filtre pela rua do seu teste. `state`
+ * é o estado por extenso, ou `null` quando o bar não tem UF (WEB-270).
  *
  * API da Dodo em `/dodo/*` (o `dodo-api.mjs` desvia o servidor para cá), com
  * respostas fixas e válidas para o SDK:
@@ -28,7 +29,12 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * `query` e `body`). Filtre pelo e-mail ou customer do seu teste.
  */
 
-const calls: { street: string; city: string; at: string }[] = []
+const calls: {
+  street: string
+  city: string
+  state: string | null
+  at: string
+}[] = []
 
 type DodoCall = {
   method: string
@@ -63,7 +69,8 @@ Bun.serve({
     if (url.pathname === '/v1/search') {
       const street = url.searchParams.get('street') ?? ''
       const city = url.searchParams.get('city') ?? ''
-      calls.push({ street, city, at: new Date().toISOString() })
+      const state = url.searchParams.get('state')
+      calls.push({ street, city, state, at: new Date().toISOString() })
       if (street.includes('falha-geocoding')) {
         return new Response('stub down', { status: 503 })
       }
@@ -75,7 +82,7 @@ Bun.serve({
           lat: String(SAO_PAULO.latitude),
           lon: String(SAO_PAULO.longitude),
           display_name: `${street}, ${city}`,
-          address: { road: street, city }
+          address: { road: street, city, ...(state && { state }) }
         }
       ])
     }

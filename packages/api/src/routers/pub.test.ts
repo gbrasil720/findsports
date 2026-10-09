@@ -302,6 +302,21 @@ describe('addressFieldsChanged', () => {
     ).toBe(true)
     expect(addressFieldsChanged({ city: 'RJ' }, existing)).toBe(true)
   })
+
+  // WEB-270: a UF muda onde o endereço fica, então também geocodifica —
+  // inclusive a primeira, no bar cadastrado antes do campo.
+  test('UF nova ou trocada geocodifica; a mesma, não', () => {
+    expect(addressFieldsChanged({ uf: 'SP' }, existing)).toBe(true)
+    expect(addressFieldsChanged({ uf: 'SP' }, { ...existing, uf: null })).toBe(
+      true
+    )
+    expect(addressFieldsChanged({ uf: 'RJ' }, { ...existing, uf: 'SP' })).toBe(
+      true
+    )
+    expect(
+      addressFieldsChanged({ ...existing, uf: 'SP' }, { ...existing, uf: 'SP' })
+    ).toBe(false)
+  })
 })
 
 // WEB-265: o formulário do painel conta com os mesmos limites; aqui se prova

@@ -2,7 +2,10 @@ import {
   findAmenity,
   motivoTelasInvalido
 } from '@findsports_oficial/api/lib/amenities'
-import { motivoTelefoneInvalido } from '@findsports_oficial/api/lib/bar-profile-validation'
+import {
+  ehUf,
+  motivoTelefoneInvalido
+} from '@findsports_oficial/api/lib/bar-profile-validation'
 import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -24,6 +27,7 @@ import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { conciliarUfComCidade } from '@/components/uf-select'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -82,6 +86,9 @@ function PubOnboarding() {
   const [address, setAddress] = useState('')
   const [neighborhood, setNeighborhood] = useState('')
   const [city, setCity] = useState('São Paulo')
+  // Nasce com a UF da cidade que já vem preenchida; trocar a cidade concilia
+  // as duas (`conciliarUfComCidade`).
+  const [uf, setUf] = useState('SP')
   const [phone, setPhone] = useState('')
   const [description, setDescription] = useState('')
   const [amenities, setAmenities] = useState<number[]>([])
@@ -156,6 +163,10 @@ function PubOnboarding() {
     setAddress(draft.address)
     setNeighborhood(draft.neighborhood)
     setCity(draft.city ?? 'São Paulo')
+    // Rascunho de antes do campo vem sem UF (WEB-270): a cidade preenche
+    // quando só existe em um estado; senão o dono escolhe.
+    setUf(draft.uf ?? '')
+    conciliarUfComCidade(draft.city ?? 'São Paulo', setUf)
     setPhone(draft.phone ?? '')
     setDescription(draft.description ?? '')
     setAmenities(draft.amenities ?? [])
@@ -171,6 +182,7 @@ function PubOnboarding() {
     setAddress('')
     setNeighborhood('')
     setCity('São Paulo')
+    setUf('SP')
     setPhone('')
     setDescription('')
     setAmenities([])
@@ -198,6 +210,9 @@ function PubOnboarding() {
       case 'city':
         setCity(value)
         break
+      case 'uf':
+        setUf(value)
+        break
       case 'phone':
         setPhone(value)
         setPhoneError(null)
@@ -213,19 +228,33 @@ function PubOnboarding() {
     )
   }
 
-  const canAdvance = (() => {
-    if (step === 0) return true
-    if (step === 1)
-      return (
-        name.trim().length > 1 &&
-        neighborhood.trim().length > 1 &&
-        address.trim().length > 4 &&
-        cidadePermitida
-      )
-    // A mensagem já está ao lado do campo, no checklist (WEB-280).
-    if (step === 2) return motivoTelasInvalido(screenCount) === null
-    return true
+  // WEB-270: o botão desabilitado diz o que falta, no mesmo tom do "Para
+  // salvar, falta preencher: …" do formulário de evento. O texto e o
+  // `disabled` saem da mesma conta, para um nunca contradizer o outro.
+  const blockedHint = (() => {
+    if (step === 1) {
+      const curto = (valor: string, minimo: number, rotulo: string) =>
+        valor.trim().length < minimo &&
+        (valor.trim() ? `${rotulo} (pelo menos ${minimo} caracteres)` : rotulo)
+      const faltando = [
+        curto(name, 2, 'nome do estabelecimento'),
+        curto(address, 5, 'endereço'),
+        curto(neighborhood, 2, 'bairro'),
+        // O aviso logo acima do botão já explica a cidade fora do lançamento.
+        !cidadePermitida && 'uma cidade em que a Onside já abriu',
+        !ehUf(uf) && 'estado (UF)'
+      ].filter(Boolean)
+      return faltando.length > 0
+        ? `Para continuar, falta preencher: ${faltando.join(', ')}.`
+        : null
+    }
+    // A regra do número está ao lado do campo, no checklist (WEB-280).
+    if (step === 2 && motivoTelasInvalido(screenCount) !== null) {
+      return 'Para continuar, corrija o número de telas.'
+    }
+    return null
   })()
+  const canAdvance = blockedHint === null
 
   const next = () => {
     setError(null)
@@ -246,6 +275,7 @@ function PubOnboarding() {
         address: address.trim(),
         neighborhood: neighborhood.trim(),
         city: city.trim() || undefined,
+        uf: ehUf(uf) ? uf : undefined,
         phone: phone.trim() || undefined,
         description: description.trim() || undefined,
         amenities: amenities.length > 0 ? amenities : undefined,
@@ -336,8 +366,10 @@ function PubOnboarding() {
               address={address}
               neighborhood={neighborhood}
               city={city}
+              uf={uf}
               phone={phone}
               onChange={handleFieldChange}
+              onCityBlur={() => conciliarUfComCidade(city, setUf)}
               errors={phoneError ? { phone: phoneError } : undefined}
             />
 
@@ -426,7 +458,7 @@ function PubOnboarding() {
             <dl className="mx-auto mt-6 grid max-w-md gap-3 text-left text-sm">
               {[
                 ['Endereço', address.trim()],
-                ['Cidade', city.trim() || 'São Paulo'],
+                ['Cidade', `${city.trim() || 'São Paulo'}, ${uf}`],
                 ['Telefone', formatStoredPhone(phone)],
                 ['Telas', screenCount === null ? '' : String(screenCount)],
                 ['Descrição', description.trim()]
@@ -460,6 +492,7 @@ function PubOnboarding() {
         step={step}
         totalSteps={STEPS.length}
         canAdvance={canAdvance}
+        blockedHint={blockedHint}
         isPending={completeMutation.isPending}
         onBack={back}
         onNext={next}

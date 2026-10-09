@@ -340,6 +340,130 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
     })
   })
 
+  describe('UF (WEB-270)', () => {
+    /** Bonito existe em MS, PE, PA e BA; a rua, em mais de uma delas. */
+    const bonitos = [
+      {
+        lat: '-8.47',
+        lon: '-35.72',
+        address: { road: 'Rua da Matriz', city: 'Bonito', state: 'Pernambuco' }
+      },
+      {
+        lat: '-21.12',
+        lon: '-56.48',
+        address: {
+          road: 'Rua da Matriz',
+          city: 'Bonito',
+          state: 'Mato Grosso do Sul'
+        }
+      }
+    ]
+    const naMatriz = { street: 'Rua da Matriz, 10', city: 'Bonito' }
+
+    it('manda o estado por extenso ao provedor', async () => {
+      const f = fetchFalso(resposta(bonitos))
+      await geocodeAddress({ ...naMatriz, uf: 'MS' }, 'k', f.impl)
+      const url = new URL(f.urls()[0] as string)
+      expect(url.searchParams.get('state')).toBe('Mato Grosso do Sul')
+    })
+
+    it('mesma cidade em dois estados: fica com o candidato da UF pedida', async () => {
+      const f = fetchFalso(resposta(bonitos))
+      expect(
+        await geocodeAddress({ ...naMatriz, uf: 'MS' }, 'k', f.impl)
+      ).toEqual({ latitude: '-21.12', longitude: '-56.48' })
+    })
+
+    it('recusa quando só há resultado em outro estado, citando a UF', async () => {
+      const f = fetchFalso(resposta(bonitos))
+      const err = await capturar(
+        geocodeAddress({ ...naMatriz, uf: 'BA' }, 'k', f.impl)
+      )
+      expect(err.code).toBe('UNPROCESSABLE_CONTENT')
+      expect(err.message).toBe(
+        'Não encontramos esse endereço em Bonito, BA. Confira a rua, o número, a cidade e o estado.'
+      )
+    })
+
+    it('a sigla ISO do resultado vale mais que o nome do estado', async () => {
+      const f = fetchFalso(
+        resposta([
+          {
+            lat: '1',
+            lon: '1',
+            address: {
+              road: 'Rua da Matriz',
+              state: 'State of Mato Grosso do Sul',
+              'ISO3166-2-lvl4': 'BR-MS'
+            }
+          }
+        ])
+      )
+      const coords = await geocodeAddress(
+        { ...naMatriz, uf: 'MS' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('1')
+    })
+
+    /** Medido no provedor em 08/10/2026: o DF vem em inglês e sem sigla ISO. */
+    it('aceita estado grafado fora da nossa lista (DF como "Federal District")', async () => {
+      const f = fetchFalso(
+        resposta([
+          {
+            lat: '-15.79',
+            lon: '-47.88',
+            address: {
+              road: 'Rua da Matriz',
+              city: 'Brasilia',
+              state: 'Federal District'
+            }
+          }
+        ])
+      )
+      const coords = await geocodeAddress(
+        { street: 'Rua da Matriz, 10', city: 'Brasília', uf: 'DF' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('-15.79')
+    })
+
+    /** Resultado sem estado não é descartado — mesma tolerância da cidade. */
+    it('aceita o candidato que não informa o estado', async () => {
+      const f = fetchFalso(resposta(achou('Rua da Matriz')))
+      const coords = await geocodeAddress(
+        { ...naMatriz, uf: 'MS' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('-23.5505')
+    })
+
+    /** Bar cadastrado antes do campo: a consulta e a escolha são as de antes. */
+    it('sem UF não manda estado nem descarta por estado', async () => {
+      for (const uf of [undefined, null]) {
+        limparCacheDeGeocoding()
+        const f = fetchFalso(resposta(bonitos))
+        expect(await geocodeAddress({ ...naMatriz, uf }, 'k', f.impl)).toEqual({
+          latitude: '-8.47',
+          longitude: '-35.72'
+        })
+        const url = new URL(f.urls()[0] as string)
+        expect(url.searchParams.has('state')).toBe(false)
+      }
+    })
+
+    it('UF diferente não reaproveita o cache', async () => {
+      const f = fetchFalso(resposta(bonitos))
+      await geocodeAddress({ ...naMatriz, uf: 'MS' }, 'k', f.impl)
+      await geocodeAddress({ ...naMatriz, uf: 'PE' }, 'k', f.impl)
+      await geocodeAddress(naMatriz, 'k', f.impl)
+      expect(f.chamadas()).toBe(3)
+    })
+  })
+
   it('repete a chamada quando o provedor devolve erro de servidor', async () => {
     const f = fetchFalso(resposta({}, 502), resposta(achou('Rua Y')))
     const coords = await geocodeAddress(rua('Rua Y'), 'k', f.impl)

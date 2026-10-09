@@ -39,6 +39,34 @@ describe('rascunho do onboarding de bar', () => {
     // O e-mail do cadastro e o da sessão diferem só em caixa e espaço.
     expect(parsePubOnboardingDraft(serialized, ' DONA ', 2_000)).toEqual(DRAFT)
   })
+
+  it('carrega a UF, e o rascunho antigo sem ela continua abrindo (WEB-270)', () => {
+    const comUf = { ...DRAFT, city: 'Bonito', uf: 'MS' as const }
+    expect(
+      parsePubOnboardingDraft(
+        serializePubOnboardingDraft(comUf, 'dona', 1_000),
+        'dona',
+        2_000
+      )
+    ).toEqual(comUf)
+
+    // Gravado antes do campo: volta inteiro, só sem UF.
+    const antigo = parsePubOnboardingDraft(
+      serializePubOnboardingDraft(DRAFT, 'dona', 1_000),
+      'dona',
+      2_000
+    )
+    expect(antigo).toEqual(DRAFT)
+    expect(antigo?.uf).toBeUndefined()
+
+    // UF que não é sigla sai, e o resto fica.
+    const adulterado = JSON.stringify({
+      draft: { ...DRAFT, uf: 'XX' },
+      email: 'dona',
+      expiresAt: 9_000
+    })
+    expect(parsePubOnboardingDraft(adulterado, 'dona', 2_000)).toEqual(DRAFT)
+  })
 })
 
 describe('recusa do cadastro do bar', () => {
@@ -67,6 +95,13 @@ describe('recusa do cadastro do bar', () => {
     expect(
       mensagemFalhaCadastroBar(recusa('UNPROCESSABLE_CONTENT'), DRAFT)
     ).toBe(mensagemEnderecoNaoEncontrado('São Paulo'))
+    expect(
+      mensagemFalhaCadastroBar(recusa('UNPROCESSABLE_CONTENT'), {
+        ...DRAFT,
+        city: 'Bonito',
+        uf: 'MS'
+      })
+    ).toBe(mensagemEnderecoNaoEncontrado('Bonito', 'MS'))
   })
 
   it('geocoding fora do ar pede para tentar de novo, sem culpar o endereço', () => {

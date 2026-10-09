@@ -59,7 +59,7 @@ async function reachReview(page: Page, data: Establishment) {
 
 async function barOf(userId: string) {
   return query(
-    `SELECT name, address, neighborhood, city, phone, description, amenities,
+    `SELECT name, address, neighborhood, city, uf, phone, description, amenities,
             screen_count, is_active
      FROM bar WHERE user_id = $1`,
     [userId]
@@ -83,6 +83,8 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
   await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
     'São Paulo'
   )
+  // WEB-270: a UF nasce com a da cidade que já vem preenchida.
+  await expect(page.getByLabel('Estado (UF)')).toHaveValue('SP')
   await fillEstablishment(page, {
     name: 'Bar do Teste',
     address,
@@ -124,6 +126,7 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
     address,
     neighborhood: 'Pinheiros',
     city: 'São Paulo',
+    uf: 'SP',
     phone: '+5511987654321',
     description: 'Sinuca no fundo',
     // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
@@ -146,6 +149,10 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   const continuar = button(page, 'Continuar')
 
   await expect(continuar).toBeDisabled()
+  // WEB-270: o botão desabilitado diz o que falta.
+  await expect(continuar).toHaveAccessibleDescription(
+    'Para continuar, falta preencher: nome do estabelecimento, endereço, bairro.'
+  )
   const valid = {
     name: 'Bar Válido',
     address: street(),
@@ -164,6 +171,11 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
     await page.getByLabel(label).fill(ok)
     await expect(continuar).toBeEnabled()
   }
+  await expect(continuar).toHaveAccessibleDescription('')
+  await page.getByLabel('Endereço').fill('Rua ')
+  await expect(continuar).toHaveAccessibleDescription(
+    'Para continuar, falta preencher: endereço (pelo menos 5 caracteres).'
+  )
 
   // Telefone: conferido ao avançar, com a mesma regra do servidor.
   await fillEstablishment(page, { ...valid, phone: '1198765' })
@@ -222,7 +234,86 @@ test('endereço que o geocoding não acha pede para conferir a rua', async ({
 
   await button(page, /Escolher meu plano/).click()
   await expect(page.getByRole('alert')).toHaveText(
-    'Não encontramos esse endereço em São Paulo. Confira a rua, o número e a cidade.'
+    'Não encontramos esse endereço em São Paulo, SP. Confira a rua, o número, a cidade e o estado.'
+  )
+  expect(await barOf(owner.id)).toHaveLength(0)
+})
+
+test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', async ({
+  page
+}) => {
+  const owner = await signInPendingPub(page)
+  const address = street()
+  await button(page, 'Começar').click()
+  await fillEstablishment(page, {
+    name: 'Bar da UF',
+    address,
+    neighborhood: 'Centro'
+  })
+  const cidade = page.getByLabel('Cidade', { exact: true })
+  const uf = page.getByLabel('Estado (UF)')
+  const continuar = button(page, 'Continuar')
+
+  // Cidade que só existe em um estado troca a UF ao sair do campo.
+  await cidade.fill('Curitiba')
+  await cidade.blur()
+  await expect(uf).toHaveValue('PR')
+
+  // Homônima em vários estados: a UF esvazia e o botão diz o que falta.
+  await cidade.fill('Bom Jesus')
+  await cidade.blur()
+  await expect(uf).toHaveValue('')
+  await expect(continuar).toBeDisabled()
+  await expect(continuar).toHaveAccessibleDescription(
+    'Para continuar, falta preencher: estado (UF).'
+  )
+  await uf.selectOption('RN')
+  await continuar.click()
+  await button(page, 'Pular').click()
+  await expect(page.getByText('Bom Jesus, RN', { exact: true })).toBeVisible()
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+
+  const [bar] = await barOf(owner.id)
+  expect(bar).toMatchObject({ city: 'Bom Jesus', uf: 'RN' })
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/locationiq/calls`)
+  ).json()) as { street: string; state: string | null }[]
+  expect(calls.find((c) => c.street === address)?.state).toBe(
+    'Rio Grande do Norte'
+  )
+})
+
+test('rascunho de antes da UF não é enviado: abre no formulário pedindo o estado (WEB-270)', async ({
+  page
+}) => {
+  const owner = await signInPendingPub(page)
+  // Cidade homônima, para a UF não ser preenchida sozinha.
+  await page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    [
+      DRAFT_KEY,
+      JSON.stringify({
+        draft: {
+          name: 'Bar Antigo',
+          address: street(),
+          neighborhood: 'Centro',
+          city: 'Bom Jesus'
+        },
+        email: owner.email,
+        expiresAt: Date.now() + 3_600_000
+      })
+    ]
+  )
+
+  await page.goto('/verify-email?confirmed=1')
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
+  await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue(
+    'Bar Antigo'
+  )
+  await expect(page.getByLabel('Estado (UF)')).toHaveValue('')
+  await expect(button(page, 'Continuar')).toHaveAccessibleDescription(
+    'Para continuar, falta preencher: estado (UF).'
   )
   expect(await barOf(owner.id)).toHaveLength(0)
 })
@@ -274,7 +365,8 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
   expect(draft?.draft).toMatchObject({
     name: 'Bar do Rascunho',
     address,
-    neighborhood: 'Moema'
+    neighborhood: 'Moema',
+    uf: 'SP'
   })
 
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.

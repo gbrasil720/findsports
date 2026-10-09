@@ -2,8 +2,11 @@ import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 
 import {
+  ehUf,
   mensagemEnderecoIndisponivel,
-  mensagemEnderecoNaoEncontrado
+  mensagemEnderecoNaoEncontrado,
+  UFS,
+  type Uf
 } from './bar-profile-validation'
 import { normalizarCidade } from './city-match'
 import { createTtlCache } from './ttl-cache'
@@ -82,6 +85,12 @@ export type EnderecoEstruturado = {
    * — nunca para recusar. Ver `escolherMelhor`.
    */
   neighborhood?: string
+  /**
+   * Sigla da UF (WEB-270). Vai ao provedor como `state` e elimina candidato de
+   * outro estado — cidade homônima em dois estados é comum. Ausente em bar
+   * cadastrado antes do campo: aí a consulta é a de sempre, só rua e cidade.
+   */
+  uf?: string | null
 }
 
 const cache = createTtlCache<Coordenadas>({
@@ -285,10 +294,10 @@ class FalhaTransitoria extends Error {
  * `UNPROCESSABLE_CONTENT`, e não `BAD_REQUEST`, para o formulário separar esta
  * recusa do erro de validação do zod e escrever a mensagem certa (WEB-115).
  */
-function enderecoNaoEncontrado(city: string): TRPCError {
+function enderecoNaoEncontrado(city: string, uf?: string | null): TRPCError {
   return new TRPCError({
     code: 'UNPROCESSABLE_CONTENT',
-    message: mensagemEnderecoNaoEncontrado(city)
+    message: mensagemEnderecoNaoEncontrado(city, uf)
   })
 }
 
@@ -323,6 +332,9 @@ type LocationIqResultado = {
     road?: string
     /** Vem sempre preenchido com `normalizecity=1`. */
     city?: string
+    /** O estado por extenso ("São Paulo"), e a sigla ISO ("BR-SP") se vier. */
+    state?: string
+    'ISO3166-2-lvl4'?: string
     /** O bairro. `suburb` é o campo usual; os outros aparecem conforme a base. */
     suburb?: string
     neighbourhood?: string
@@ -362,11 +374,35 @@ function escolherMelhor(
   return casa ?? candidatos[0]
 }
 
+/**
+ * O candidato fica no estado pedido? Mesma tolerância da cidade: só é
+ * descartado o resultado que diz ser de OUTRO estado. A sigla ISO, quando vem,
+ * vale mais que o nome.
+ *
+ * Nome que não é de nenhum estado da nossa lista não prova nada: medido em
+ * 08/10/2026, a base devolve "São Paulo" e "Mato Grosso do Sul" em português,
+ * mas o Distrito Federal vem como "Federal District", sem sigla ISO. A
+ * consulta já vai filtrada por `state`, então esse candidato fica.
+ */
+function estadoConfere(
+  address: LocationIqResultado['address'],
+  uf: Uf
+): boolean {
+  const iso = address?.['ISO3166-2-lvl4']
+  if (iso) return iso.toUpperCase() === `BR-${uf}`
+  if (!address?.state) return true
+  const nome = normalizarCidade(address.state)
+  if (nome === normalizarCidade(UFS[uf])) return true
+  return !Object.values(UFS).some((estado) => normalizarCidade(estado) === nome)
+}
+
 async function consultarProvedor(
-  { street, city, neighborhood }: EnderecoEstruturado,
+  { street, city, neighborhood, uf: ufInformada }: EnderecoEstruturado,
   apiKey: string,
   fetchImpl: typeof fetch
 ): Promise<Coordenadas> {
+  // Sigla desconhecida vale como ausente: a consulta segue só com rua e cidade.
+  const uf = ehUf(ufInformada) ? ufInformada : undefined
   const params = new URLSearchParams({
     key: apiKey,
     street,
@@ -386,6 +422,10 @@ async function consultarProvedor(
     // que é como o formulário pergunta.
     normalizecity: '1'
   })
+  // Por extenso, que é como a base grafa o estado (`address.state`); não foi
+  // medido se a sigla solta casaria.
+  if (uf) params.set('state', UFS[uf])
+  const naoEncontrado = () => enderecoNaoEncontrado(city, uf)
 
   let res: Response
   try {
@@ -414,7 +454,7 @@ async function consultarProvedor(
   // 404 é como a LocationIQ diz "não achei" — é o `ZERO_RESULTS` do Google, e
   // é o único 4xx que fala do endereço, não da nossa configuração.
   if (res.status === 404) {
-    throw enderecoNaoEncontrado(city)
+    throw naoEncontrado()
   }
   if (!res.ok) {
     throw falhaDeConfiguracao(`HTTP ${res.status}`)
@@ -437,10 +477,11 @@ async function consultarProvedor(
   }
 
   const candidatos = data as LocationIqResultado[]
-  if (candidatos.length === 0) throw enderecoNaoEncontrado(city)
+  if (candidatos.length === 0) throw naoEncontrado()
 
   // Fora os que não são da rua pedida, ou que são dela mas em outra cidade —
-  // a busca estruturada devolve rua homônima do município vizinho (WEB-115).
+  // a busca estruturada devolve rua homônima do município vizinho (WEB-115) —
+  // ou na cidade de mesmo nome de outro estado (WEB-270).
   // É o usuário quem resolve — conferindo o que digitou —, então sobrar nada
   // dá a mesma mensagem de endereço não encontrado. Gravar a coordenada de
   // outra rua seria muito pior que recusar.
@@ -448,17 +489,18 @@ async function consultarProvedor(
     (c) =>
       ruaConfere(street, c.address?.road) &&
       (!c.address?.city ||
-        normalizarCidade(c.address.city) === normalizarCidade(city))
+        normalizarCidade(c.address.city) === normalizarCidade(city)) &&
+      (!uf || estadoConfere(c.address, uf))
   )
   if (daRuaCerta.length === 0) {
     console.warn(
-      `Geocoding descartado por não bater rua e cidade: pedido "${street}, ${city}", devolvido "${candidatos[0]?.display_name ?? '(sem nome)'}"`
+      `Geocoding descartado por não bater rua${uf ? ', cidade e estado' : ' e cidade'}: pedido "${street}, ${city}${uf ? `, ${uf}` : ''}", devolvido "${candidatos[0]?.display_name ?? '(sem nome)'}"`
     )
-    throw enderecoNaoEncontrado(city)
+    throw naoEncontrado()
   }
 
   const primeiro = escolherMelhor(daRuaCerta, neighborhood)
-  if (!primeiro) throw enderecoNaoEncontrado(city)
+  if (!primeiro) throw naoEncontrado()
 
   const latitude = Number.parseFloat(primeiro.lat ?? '')
   const longitude = Number.parseFloat(primeiro.lon ?? '')
@@ -481,7 +523,13 @@ export async function geocodeAddress(
 ): Promise<Coordenadas> {
   // O bairro entra na chave porque muda a escolha entre ruas homônimas: sem
   // ele, dois bares na mesma rua de bairros diferentes leriam a mesma entrada.
-  const chave = [endereco.street, endereco.city, endereco.neighborhood ?? '']
+  // A UF, pelo mesmo motivo entre cidades homônimas.
+  const chave = [
+    endereco.street,
+    endereco.city,
+    endereco.neighborhood ?? '',
+    endereco.uf ?? ''
+  ]
     .map(normalizar)
     .join('|')
 

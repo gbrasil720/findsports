@@ -16,7 +16,10 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
+import {
+  motivoTelefoneInvalido,
+  UF_SIGLAS
+} from '../lib/bar-profile-validation'
 import { cidadeLiberada, mensagemCidadeNaoLiberada } from '../lib/city-match'
 import {
   favoriteTeamIdsSchema,
@@ -54,6 +57,11 @@ export const onboardingRouter = router({
         name: z.string().min(2).max(100),
         neighborhood: z.string().min(2).max(100),
         city: z.string().min(2).max(100).default('São Paulo'),
+        // WEB-270. Opcional aqui, obrigatória no formulário: durante o deploy
+        // o servidor novo recebe pedido de aba aberta com o cliente antigo (e
+        // de rascunho antigo), que não manda UF. Recusar derrubaria o cadastro
+        // com erro genérico; aceitar grava o bar sem UF, como os anteriores.
+        uf: z.enum(UF_SIGLAS).optional(),
         address: z.string().min(5).max(255),
         phone: z.string().max(30).optional(),
         description: z.string().max(500).optional(),
@@ -107,7 +115,8 @@ export const onboardingRouter = router({
         {
           street: input.address,
           city: input.city,
-          neighborhood: input.neighborhood
+          neighborhood: input.neighborhood,
+          uf: input.uf
         },
         apiKey
       )
@@ -125,6 +134,7 @@ export const onboardingRouter = router({
             name: input.name,
             neighborhood: input.neighborhood,
             city: input.city,
+            uf: input.uf ?? null,
             address: input.address,
             phone: input.phone ?? null,
             description: input.description ?? null,

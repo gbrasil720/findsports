@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Loader from 'reicon-react/icons/Loader'
@@ -16,6 +17,12 @@ type Props = {
    * seguir sem preencher, e o dono trava tentando adivinhar o obrigatório.
    */
   nextLabel?: string
+  /**
+   * Por que o botão está desabilitado (WEB-270), ligado a ele por
+   * `aria-describedby` — o mesmo desenho do "Para salvar, falta preencher: …"
+   * de `components/admin/event-form.tsx`.
+   */
+  blockedHint?: string | null
 }
 
 export function OnboardingNavigation({
@@ -26,8 +33,10 @@ export function OnboardingNavigation({
   onBack,
   onNext,
   lastLabel = 'Entrar no app',
-  nextLabel
+  nextLabel,
+  blockedHint
 }: Props) {
+  const hintId = useId()
   const getNextLabel = () => {
     if (isPending) return 'Salvando…'
     if (step === 0) return 'Começar'
@@ -36,38 +45,49 @@ export function OnboardingNavigation({
   }
 
   return (
-    <div className="mt-7 flex items-center justify-between gap-3">
-      <button
-        type="button"
-        onClick={onBack}
-        disabled={step === 0 || isPending}
-        className="onside-btn onside-btn-outline min-h-12 px-4"
-      >
-        <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-        Voltar
-      </button>
+    <div className="mt-7">
+      {blockedHint ? (
+        <p
+          id={hintId}
+          className="onside-text-muted-on-ink mb-3 text-right text-xs"
+        >
+          {blockedHint}
+        </p>
+      ) : null}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={step === 0 || isPending}
+          className="onside-btn onside-btn-outline min-h-12 px-4"
+        >
+          <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
+          Voltar
+        </button>
 
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={!canAdvance || isPending}
-        className="onside-btn onside-btn-acid min-h-12 px-5"
-      >
-        {isPending ? (
-          <Loader
-            size={16}
-            color="currentColor"
-            className="animate-spin"
-            aria-hidden="true"
-          />
-        ) : null}
-        <span className="inline-flex min-w-[8ch] justify-center">
-          {getNextLabel()}
-        </span>
-        {!isPending && (
-          <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!canAdvance || isPending}
+          aria-describedby={blockedHint ? hintId : undefined}
+          className="onside-btn onside-btn-acid min-h-12 px-5"
+        >
+          {isPending ? (
+            <Loader
+              size={16}
+              color="currentColor"
+              className="animate-spin"
+              aria-hidden="true"
+            />
+          ) : null}
+          <span className="inline-flex min-w-[8ch] justify-center">
+            {getNextLabel()}
+          </span>
+          {!isPending && (
+            <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+          )}
+        </button>
+      </div>
     </div>
   )
 }
