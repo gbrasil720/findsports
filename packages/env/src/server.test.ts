@@ -65,24 +65,33 @@ describe('preview switches', () => {
   })
 
   it('recusa chave viva do Stripe fora do domínio de produção', () => {
-    const preview = loadServerEnv({
-      STRIPE_SECRET_KEY: 'sk_live_exemplo',
-      PUBLIC_APP_URL: 'https://onside-web-preview.example.workers.dev'
-    })
-    expect(preview.exitCode).not.toBe(0)
-    expect(preview.stderr.toString()).toContain('STRIPE_SECRET_KEY')
+    const preview = 'https://onside-web-preview.example.workers.dev'
+    // Padrão (`sk_`) e restrita (`rk_`): as duas cobram de verdade.
+    for (const key of ['sk_live_exemplo', 'rk_live_exemplo']) {
+      const recusada = loadServerEnv({
+        STRIPE_SECRET_KEY: key,
+        PUBLIC_APP_URL: preview
+      })
+      expect(recusada.exitCode).not.toBe(0)
+      expect(recusada.stderr.toString()).toContain('STRIPE_SECRET_KEY')
 
-    expect(
-      loadServerEnv({
-        STRIPE_SECRET_KEY: 'sk_live_exemplo',
-        PUBLIC_APP_URL: 'https://www.onside.sh'
-      }).exitCode
-    ).toBe(0)
-    expect(
-      loadServerEnv({
-        STRIPE_SECRET_KEY: 'sk_test_exemplo',
-        PUBLIC_APP_URL: 'https://onside-web-preview.example.workers.dev'
-      }).exitCode
-    ).toBe(0)
+      expect(
+        loadServerEnv({
+          STRIPE_SECRET_KEY: key,
+          PUBLIC_APP_URL: 'https://www.onside.sh'
+        }).exitCode
+      ).toBe(0)
+    }
+    for (const key of ['sk_test_exemplo', 'rk_test_exemplo']) {
+      expect(
+        loadServerEnv({ STRIPE_SECRET_KEY: key, PUBLIC_APP_URL: preview })
+          .exitCode
+      ).toBe(0)
+    }
+  })
+
+  it('recusa STRIPE_SECRET_KEY que não é chave do Stripe', () => {
+    const result = loadServerEnv({ STRIPE_SECRET_KEY: 'pk_live_exemplo' })
+    expect(result.exitCode).not.toBe(0)
   })
 })

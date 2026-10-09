@@ -22,14 +22,18 @@ const rawEnv = createEnv({
      */
     EMAIL_DELIVERY: z.literal('console').optional(),
     /**
-     * Cobrança pelo Stripe (WEB-31). O modo vem da própria chave: `sk_test_`
-     * é o sandbox, `sk_live_` cobra de verdade — por isso a chave viva é
-     * recusada fora do domínio de produção, logo abaixo.
+     * Cobrança pelo Stripe (WEB-31). O modo vem da própria chave: `_test_` é o
+     * sandbox, `_live_` cobra de verdade — por isso a chave viva é recusada
+     * fora do domínio de produção, logo abaixo. Aceita a chave secreta padrão
+     * (`sk_`) e a restrita (`rk_`), que é a de produção.
      *
      * Opcionais, como a LocationIQ: faltando, só a cobrança para (checkout,
      * portal e webhook respondem erro) e o resto do app sobe.
      */
-    STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
+    STRIPE_SECRET_KEY: z
+      .string()
+      .regex(/^(sk|rk)_(test|live)_/, 'STRIPE_SECRET_KEY inválida')
+      .optional(),
     STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
     /**
      * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
@@ -121,7 +125,10 @@ if (
 
 // O preview e o `vite dev` não podem cobrar cartão de verdade: chave viva do
 // Stripe só no domínio de produção.
-if (rawEnv.STRIPE_SECRET_KEY?.startsWith('sk_live_')) {
+if (
+  rawEnv.STRIPE_SECRET_KEY &&
+  /^(sk|rk)_live_/.test(rawEnv.STRIPE_SECRET_KEY)
+) {
   const host = new URL(rawEnv.PUBLIC_APP_URL ?? rawEnv.BETTER_AUTH_URL).hostname
   if (!/(^|\.)onside\.sh$/.test(host)) {
     throw new Error(
