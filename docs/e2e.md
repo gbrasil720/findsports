@@ -252,7 +252,7 @@ serviço Postgres/PostGIS próprio. Instala só o Chromium. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
 
-O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
+O job é uma matriz: `desktop` e `mobile` em 6 shards (`--shard=N/6`) e os
 projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os
 serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
 Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
