@@ -120,8 +120,14 @@ function PlanSelection() {
       // o Stripe; ver `startCheckout` (WEB-241).
       if (await startCheckout(selected)) return
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
-    } catch {
-      setError('Não foi possível iniciar o pagamento. Tente novamente.')
+    } catch (checkoutError) {
+      // Plano parado (WEB-172): a recusa do servidor já diz o que fazer.
+      const refusal = checkoutError as { code?: string; message?: string }
+      setError(
+        refusal?.code === 'SUBSCRIPTION_PAST_DUE' && refusal.message
+          ? refusal.message
+          : 'Não foi possível iniciar o pagamento. Tente novamente.'
+      )
     } finally {
       setLoading(false)
     }

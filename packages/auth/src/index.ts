@@ -16,7 +16,11 @@ import { twoFactor } from 'better-auth/plugins/two-factor'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { runInBackground } from './background'
-import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
+import {
+  blocksNewCheckout,
+  canAccessPubBilling,
+  requiresPubBillingAccess
+} from './billing-access'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
@@ -125,6 +129,21 @@ export function createAuth() {
             message:
               'Apenas bares com e-mail verificado podem acessar cobrança.'
           })
+        }
+        // WEB-172: plano parado regulariza a assinatura que existe; a tela já
+        // não oferece checkout, isto cobre a rota chamada direto.
+        if (ctx.path === '/subscription/upgrade' && session) {
+          const ownerBar = await db.query.bar.findFirst({
+            where: eq(bar.userId, session.user.id),
+            with: { subscription: true }
+          })
+          if (blocksNewCheckout(ownerBar?.subscription ?? null)) {
+            throw new APIError('CONFLICT', {
+              message:
+                'Seu plano está com pagamento pendente. Regularize a assinatura em “Assinatura e pagamentos” antes de contratar de novo.',
+              code: 'SUBSCRIPTION_PAST_DUE'
+            })
+          }
         }
       })
     },
