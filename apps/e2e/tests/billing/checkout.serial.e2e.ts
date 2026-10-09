@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { STUB_URL } from '../../env'
+import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query, resetAppConfig, setAppConfig } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
@@ -228,6 +229,9 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
 
   // Quem já paga e escolhe outro plano confirma a troca no portal do Stripe.
   await page.goto('/plan')
+  // Só depois de a assinatura carregar a tela abre no plano pago; clicar antes
+  // disso, com a página ainda hidratando, não troca a seleção.
+  await expect(page.getByRole('radio', { name: /^Pro,/ })).toBeChecked()
   await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
   await page.getByRole('button', { name: 'Continuar com Elite' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/portal/**`)
@@ -249,4 +253,37 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
     'flow_data[subscription_update_confirm][items][0][price]':
       'price_e2e_elite_monthly'
   })
+})
+
+test('assinatura parada no Stripe: o servidor recusa checkout novo e manda regularizar (WEB-172)', async ({
+  page
+}) => {
+  await setAppConfig('billing.checkout_enabled', true)
+  const { user } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'past_due',
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
+    }
+  })
+  await signIn(page, user)
+
+  // A tela não oferece checkout para plano parado (WEB-170); o que se prova
+  // aqui é o servidor, para quem chama a rota direto ou tem uma aba antiga.
+  const response = await page.request.post('/api/auth/subscription/upgrade', {
+    data: {
+      plan: 'pro',
+      successUrl: '/plan/confirmed',
+      cancelUrl: '/plan',
+      disableRedirect: true
+    },
+    headers: { origin: BASE_URL }
+  })
+  expect(response.status(), await response.text()).toBe(409)
+  expect(await response.json()).toMatchObject({
+    code: 'SUBSCRIPTION_PAST_DUE',
+    message: expect.stringContaining('Assinatura e pagamentos')
+  })
+  // Nada foi pedido ao Stripe: nem cliente, nem sessão.
+  expect(await checkoutSessionOf(page, user.id)).toBeUndefined()
 })
