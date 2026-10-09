@@ -52,7 +52,15 @@ integrationTest(
           address: 'Rua Aspicuelta, 123'
         })
       ).rejects.toMatchObject(JA_CONCLUIDO)
-      expect(fetchSpy).not.toHaveBeenCalled()
+      // Só o geocoding interessa: o processo de teste é compartilhado, e outra
+      // chamada de rede em curso não é deste envio.
+      expect(
+        fetchSpy.mock.calls.filter(([input]) =>
+          String(input instanceof Request ? input.url : input).includes(
+            '/v1/search'
+          )
+        )
+      ).toEqual([])
       expect(
         await ctx.db
           .select({ id: bar.id })
