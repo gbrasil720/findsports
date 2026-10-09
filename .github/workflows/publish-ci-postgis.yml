@@ -20,6 +20,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/gbrasil720/findsports/ci-postgis
+  BASE_IMAGE: public.ecr.aws/docker/library/postgres:17-alpine
 
 jobs:
   publish:
@@ -31,16 +32,17 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v3
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: https://github.com/postgis/docker-postgis.git#master:17-3.5/alpine
-          build-args: |
-            BASE_IMAGE=public.ecr.aws/docker/library/postgres:17-alpine
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:17-3.5-alpine
-            ${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Evita buildx/bootkit no Docker Hub (moby/buildkit); o daemon do runner basta.
+      - name: Build PostGIS (PostGIS 3.5 / Postgres 17 alpine)
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch master https://github.com/postgis/docker-postgis.git /tmp/docker-postgis
+          docker build \
+            --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
+            -t "${IMAGE_NAME}:17-3.5-alpine" \
+            -t "${IMAGE_NAME}:latest" \
+            /tmp/docker-postgis/17-3.5/alpine
+      - name: Push
+        run: |
+          docker push "${IMAGE_NAME}:17-3.5-alpine"
+          docker push "${IMAGE_NAME}:latest"
