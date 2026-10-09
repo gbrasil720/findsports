@@ -229,6 +229,9 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
 
   // Quem já paga e escolhe outro plano confirma a troca no portal do Stripe.
   await page.goto('/plan')
+  // Só depois de a assinatura carregar a tela abre no plano pago; clicar antes
+  // disso, com a página ainda hidratando, não troca a seleção.
+  await expect(page.getByRole('radio', { name: /^Pro,/ })).toBeChecked()
   await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
   await page.getByRole('button', { name: 'Continuar com Elite' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/portal/**`)
