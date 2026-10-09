@@ -27,13 +27,41 @@
  * dele. Enquanto ele existe, o documento ganha no fim a altura do aviso (que
  * o componente mede) mais o respiro de baixo e um de cima. Some junto com o
  * aviso; como é espaço depois do conteúdo, nada acima se desloca.
+ *
+ * O espaço é do `body`, que é branco, e quem pinta o fundo é a casca de cada
+ * tela (`.onside-app` e `.onside-page`, as duas em `--onside-paper`): sem cor
+ * aqui ele aparecia como uma faixa branca depois da página. O `body` pinta a
+ * faixa com a cor da página — literal, porque os tokens não chegam até ele —
+ * e, onde a página termina no rodapé escuro (landing e páginas legais), com a
+ * do rodapé. O fundo no `:root` segura o do `body` dentro da caixa dele: sem
+ * isso ele vaza para a tela inteira e muda a cor de fora da página também.
  */
-:root:has(.onside-consent) body {
-  padding-bottom: calc(
+:root:has(.onside-consent) {
+  --onside-consent-space: calc(
     var(--onside-consent-h, 0px) +
     32px +
     env(safe-area-inset-bottom, 0px)
   );
+
+  background: var(--background);
+}
+
+:root:has(.onside-consent) body {
+  padding-bottom: var(--onside-consent-space);
+  background: #f1eee6; /* --onside-paper */
+}
+
+:root:has(.onside-consent):has(.onside-site-footer) body {
+  background: #12120f; /* --onside-ink */
+}
+
+/*
+ * Login, cadastro e senha no desktop: a página é o painel escuro ao lado do
+ * formulário. A sombra, sem desfoque, continua o painel pela faixa — só
+ * pintura, sem mexer na altura de nada.
+ */
+:root:has(.onside-consent) .onside-app > aside {
+  box-shadow: 0 var(--onside-consent-space) 0 var(--onside-ink);
 }
 
 .onside-consent p {

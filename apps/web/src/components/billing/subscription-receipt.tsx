@@ -3,14 +3,19 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
-import type { Plan } from '@/lib/plan-catalog'
+import {
+  FOUNDER_DISCOUNT_NOTE,
+  formatPlanPrice,
+  type Plan
+} from '@/lib/plan-catalog'
 import {
   formatReceiptDate,
   formatReceiptTimestamp,
   formatSubscriptionRef,
   type ReceiptStage,
   receiptChargeLabel,
-  receiptCycleLabel
+  receiptCycleLabel,
+  receiptStampLabel
 } from '@/lib/subscription-receipt'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -18,9 +23,13 @@ const STATUS_LABEL: Record<string, string> = {
   trialing: 'Trial gratuito'
 }
 
-/** O que o visor da máquina mostra — e o que o leitor de tela anuncia. */
+/**
+ * O que o visor da máquina mostra — e o que o leitor de tela anuncia. Antes da
+ * confirmação a situação é desconhecida, e quem está em trial passa por
+ * `processing` enquanto a consulta carrega: o texto não pode falar em pagamento.
+ */
 const STAGE_SCREEN: Record<ReceiptStage, string> = {
-  processing: 'Confirmando o pagamento',
+  processing: 'Confirmando a assinatura',
   printing: 'Imprimindo comprovante',
   done: 'Comprovante impresso',
   delayed: 'Confirmação demorando'
@@ -277,7 +286,11 @@ function PaperContent({
 }) {
   const rows = [
     { label: 'Plano', value: `${plan.name} — ${plan.tagline}` },
-    { label: 'Valor', value: `${plan.price}${plan.period}` },
+    // Tabela cheia: o app não sabe se a assinatura levou o cupom de fundador.
+    {
+      label: 'Valor',
+      value: `${formatPlanPrice(plan.tablePrice)}${plan.period}`
+    },
     { label: 'Ciclo', value: receiptCycleLabel(plan.period) },
     { label: 'Situação', value: STATUS_LABEL[status] ?? status },
     {
@@ -326,6 +339,7 @@ function PaperContent({
         <p className="onside-receipt-ref">
           Assinatura {formatSubscriptionRef(subscriptionRef)}
         </p>
+        <p className="onside-receipt-legal">{FOUNDER_DISCOUNT_NOTE}</p>
         <p className="onside-receipt-legal">
           Comprovante de contratação, não é documento fiscal. O histórico de
           pagamentos fica em Assinatura e pagamentos.
@@ -333,11 +347,11 @@ function PaperContent({
         {/*
          * O carimbo só bate quando a folha termina de sair: antes disso o
          * papel ainda está preso na máquina, e carimbo em papel preso é
-         * promessa, não comprovante.
+         * promessa, não comprovante. O texto é o da situação: trial não pagou.
          */}
         <p className="onside-receipt-stamp" data-printed={printed}>
           <Check size={14} color="currentColor" aria-hidden="true" />
-          Pago e liberado
+          {receiptStampLabel(status)}
         </p>
       </footer>
     </article>

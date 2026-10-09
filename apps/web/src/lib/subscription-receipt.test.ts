@@ -10,6 +10,7 @@ import {
   RECEIPT_MAX_WAIT_MS,
   receiptChargeLabel,
   receiptPrintDurationMs,
+  receiptStampLabel,
   resolveReceiptStage,
   resolveReceiptWait,
   serializeCheckoutIntent,
@@ -204,6 +205,11 @@ describe('formatação do recibo', () => {
   test('trial fala de primeira cobrança', () => {
     expect(receiptChargeLabel('trialing')).toBe('Primeira cobrança')
     expect(receiptChargeLabel('active')).toBe('Próxima cobrança')
+  })
+
+  test('carimbo de trial não afirma pagamento', () => {
+    expect(receiptStampLabel('trialing')).toBe('Trial liberado')
+    expect(receiptStampLabel('active')).toBe('Pago e liberado')
   })
 
   test('referência longa é truncada pelo fim, que é a parte útil', () => {

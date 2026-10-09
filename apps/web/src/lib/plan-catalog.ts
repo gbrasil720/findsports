@@ -49,12 +49,38 @@ function analyticsForPlan(id: SubscriptionPlan): PlanAnalytics {
   }
 }
 
+/**
+ * Desconto de fundador, em reais por mês: valor fixo, igual em todos os
+ * planos — a regra dos Termos de Uso ("Desconto de fundador"). O teste amarra
+ * este número e os preços abaixo à tabela publicada lá (WEB-112).
+ */
+export const FOUNDER_DISCOUNT = 28
+
+/** Os dois preços de um plano saem de um número só: a tabela cheia. */
+function pricesFor(tablePrice: number) {
+  return { tablePrice, founderPrice: tablePrice - FOUNDER_DISCOUNT }
+}
+
+export function formatPlanPrice(reais: number): string {
+  return `R$ ${reais}`
+}
+
+/**
+ * Para onde o preço é o de uma assinatura já contratada (comprovante, plano
+ * atual): o app não sabe se ela levou o cupom de fundador, então mostra a
+ * tabela e diz quanto o desconto tira, sem afirmar o valor cobrado.
+ */
+export const FOUNDER_DISCOUNT_NOTE = `Com o desconto de fundador aplicado na contratação, ${formatPlanPrice(FOUNDER_DISCOUNT)} por mês a menos que a tabela cheia.`
+
 export interface Plan {
   id: SubscriptionPlan
   name: string
   tagline: string
   description: string
-  price: string
+  /** Tabela cheia, em reais por mês — o preço do produto no provedor. */
+  tablePrice: number
+  /** Tabela menos `FOUNDER_DISCOUNT`. */
+  founderPrice: number
   period: string
   icon: React.ComponentType<{ size?: number | string; color?: string }>
   features: PlanFeature[]
@@ -70,7 +96,7 @@ export const PLAN_CATALOG: Plan[] = [
     name: PLAN_NAMES.starter,
     tagline: 'Pra começar a aparecer',
     description: 'Analytics básicos para começar a entender seu público.',
-    price: 'R$ 119',
+    ...pricesFor(97),
     period: '/mês',
     icon: Fire,
     features: [
@@ -96,7 +122,7 @@ export const PLAN_CATALOG: Plan[] = [
     name: PLAN_NAMES.pro,
     tagline: 'Pra lotar nos clássicos',
     description: 'Analytics completos para otimizar sua operação.',
-    price: 'R$ 189',
+    ...pricesFor(147),
     period: '/mês',
     icon: Star,
     highlight: true,
@@ -128,7 +154,7 @@ export const PLAN_CATALOG: Plan[] = [
     name: PLAN_NAMES.elite,
     tagline: 'Pra ser referência na cidade',
     description: 'Analytics avançados com insights estratégicos.',
-    price: 'R$ 189',
+    ...pricesFor(297),
     period: '/mês',
     icon: Trophy,
     features: [
@@ -179,6 +205,13 @@ export function getPlan(id: SubscriptionPlan): Plan {
   const entry = PLAN_CATALOG.find((p) => p.id === id)
   if (!entry) throw new Error(`Plan ${id} not found in catalog`)
   return entry
+}
+
+/** Os dois preços de um plano à venda, no vocabulário dos Termos de Uso. */
+export function formatPlanPricing(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
+): string {
+  return `${formatPlanPrice(plan.founderPrice)}${plan.period} com desconto de fundador · tabela cheia ${formatPlanPrice(plan.tablePrice)}${plan.period}`
 }
 
 export function getAnalyticsEntitlement(id: SubscriptionPlan): PlanAnalytics {
