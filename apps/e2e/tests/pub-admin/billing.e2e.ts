@@ -122,6 +122,14 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
   await expect(currentPlan(page)).toContainText(
     'O trial gratuito terminou sem pagamento confirmado.'
   )
+  // WEB-249: sem assinatura no provedor não há o que regularizar no portal;
+  // o caminho para pagar é o checkout em `/plan`.
+  await expect(
+    currentPlan(page).getByRole('link', { name: 'Continuar no Elite' })
+  ).toHaveAttribute('href', '/plan?origin=billing')
+  await expect(currentPlan(page)).not.toContainText(
+    'Atualize o método de pagamento'
+  )
 })
 
 test('bar sem assinatura', async ({ page }) => {

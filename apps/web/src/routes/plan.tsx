@@ -1,7 +1,7 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
@@ -10,11 +10,12 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
-import { isLapsed } from '@/lib/lapsed-plan'
 import {
   CHECKOUT_ENABLED_DEFAULT,
+  getDefaultPlanSelection,
   getPlanExitLink,
   getPlanHeader,
+  getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
   PLAN_CATALOG,
@@ -53,7 +54,6 @@ function PlanSelection() {
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const userTouched = useRef(false)
 
   const subscriptionQuery = useQuery({
     ...trpc.pub.getMySubscription.queryOptions(),
@@ -71,7 +71,10 @@ function PlanSelection() {
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
-  const lapsed = isLapsed(subscription?.standing)
+  // Quem vê o quê sai do nosso estado da assinatura, numa função só (WEB-249).
+  const mode = getPlanPageMode(subscription)
+  const regularize = mode === 'regularize'
+  const onTrial = mode === 'trial'
   const header = getPlanHeader(subscription)
   const trialNotice = getTrialNotice(subscription)
   const exitLink = getPlanExitLink(origin)
@@ -82,21 +85,11 @@ function PlanSelection() {
       )
     : null
 
-  const [selected, setSelected] = useState<Plan['id']>('pro')
-
-  // Sync selection when subscription arrives, without overwriting user choice
-  useEffect(() => {
-    if (userTouched.current) return
-    if (!currentPlan) return
-    if (currentPlan === 'starter') setSelected('pro')
-    else if (currentPlan === 'pro') setSelected('elite')
-    else setSelected('pro')
-  }, [currentPlan])
-
-  const handleSelectPlan = (planId: Plan['id']) => {
-    userTouched.current = true
-    setSelected(planId)
-  }
+  // Enquanto o dono não escolhe, vale o plano da assinatura: derivado, e não
+  // estado sincronizado por efeito, para a tela nunca abrir num plano que não
+  // é o dele (WEB-249).
+  const [picked, setPicked] = useState<Plan['id'] | null>(null)
+  const selected = picked ?? getDefaultPlanSelection(subscription)
 
   const handleCheckout = async () => {
     if (!checkoutLiberado) {
@@ -162,7 +155,7 @@ function PlanSelection() {
             {header.title}
           </h1>
           <p className="text-[var(--onside-muted)] text-lg">{header.text}</p>
-          {lapsed ? (
+          {regularize ? (
             <Link
               to="/admin/billing"
               className="onside-btn onside-btn-ink mt-6 min-h-11"
@@ -205,8 +198,10 @@ function PlanSelection() {
             <span className="font-bold">
               {PLAN_CATALOG.find((p) => p.id === currentPlan)?.name}
             </span>
-            . {trialNotice ? `${trialNotice}. ` : null}Selecione outro plano
-            abaixo para fazer a troca.
+            . {trialNotice ? `${trialNotice}. ` : null}
+            {onTrial
+              ? null
+              : 'Selecione outro plano abaixo para fazer a troca.'}
           </p>
         </div>
       ) : null}
@@ -218,8 +213,10 @@ function PlanSelection() {
             key={plan.id}
             plan={plan}
             isSelected={selected === plan.id}
-            isCurrent={(lapsed ? subscription?.plan : currentPlan) === plan.id}
-            onSelect={handleSelectPlan}
+            isCurrent={
+              (regularize ? subscription?.plan : currentPlan) === plan.id
+            }
+            onSelect={setPicked}
           />
         ))}
       </fieldset>
@@ -277,15 +274,17 @@ function PlanSelection() {
           {exitLink.label}
         </Link>
 
-        {/* Plano parado não passa pelo checkout: o topo já leva a
-            regularizar (WEB-170). */}
-        {lapsed ? null : (
+        {/* Assinatura paga parada não passa pelo checkout: o topo já leva a
+            regularizar (WEB-170). Em trial o botão fica, desabilitado:
+            contratar é só depois do vencimento (WEB-249). */}
+        {regularize ? null : (
           <button
             type="button"
             onClick={handleCheckout}
             disabled={
               loading ||
               isSamePlan ||
+              onTrial ||
               subscriptionQuery.isLoading ||
               !checkoutLiberado
             }
@@ -294,7 +293,9 @@ function PlanSelection() {
                 ? 'Contratação temporariamente indisponível'
                 : isSamePlan
                   ? 'Este já é seu plano atual'
-                  : undefined
+                  : onTrial
+                    ? 'A contratação abre quando o trial terminar'
+                    : undefined
             }
             className="onside-btn onside-btn-acid min-h-11"
           >
@@ -310,8 +311,10 @@ function PlanSelection() {
               ? 'Redirecionando…'
               : isSamePlan
                 ? 'Plano atual'
-                : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-            {!isSamePlan && !loading ? (
+                : onTrial
+                  ? 'Disponível ao fim do trial'
+                  : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
+            {!isSamePlan && !onTrial && !loading ? (
               <ArrowRight size={16} color="currentColor" aria-hidden="true" />
             ) : null}
           </button>
