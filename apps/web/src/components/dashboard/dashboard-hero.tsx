@@ -5,13 +5,16 @@ type Props = {
   count: number
   radiusKm: RadiusKm
   locationState: LocationState
+  /** A cidade em que a busca cai sem a localização: a do perfil ou São Paulo. */
+  fallbackCityName: string
 }
 
 export function DashboardHero({
   isLoading,
   count,
   radiusKm,
-  locationState
+  locationState,
+  fallbackCityName
 }: Props) {
   const hasRealLocation = locationState === 'granted'
 
@@ -23,9 +26,10 @@ export function DashboardHero({
   } else if (locationState === 'requesting') {
     statusLabel = 'Obtendo sua localização…'
   } else {
-    // Sem localização a busca parte do centro de São Paulo, no raio marcado —
-    // "em São Paulo" prometia a cidade inteira (WEB-287).
-    statusLabel = `${count} ${count === 1 ? 'bar' : 'bares'} a até ${radiusKm} km do centro de São Paulo`
+    // Sem localização a busca parte do centro da cidade do perfil — ou de São
+    // Paulo, sem ela (WEB-319) —, no raio marcado: "em São Paulo" prometia a
+    // cidade inteira (WEB-287).
+    statusLabel = `${count} ${count === 1 ? 'bar' : 'bares'} a até ${radiusKm} km do centro de ${fallbackCityName}`
   }
 
   return (

@@ -13,6 +13,7 @@ const button = (page: Page, name: string | RegExp) =>
 const back = (page: Page) => button(page, 'Voltar')
 const radius = (page: Page, km: number) =>
   page.getByRole('button', { name: new RegExp(`^${km} km`) })
+const city = (page: Page) => page.getByRole('combobox', { name: 'Sua cidade' })
 
 async function startOnboarding(page: Page) {
   const fan = await createUser({ onboardingCompleted: false })
@@ -71,6 +72,13 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   await radius(page, 10).click()
   await expect(radius(page, 10)).toHaveAttribute('aria-pressed', 'true')
   await expect(radius(page, 3)).toHaveAttribute('aria-pressed', 'false')
+
+  // Cidade (WEB-319), no mesmo passo: a busca ignora acento, e texto
+  // digitado sem escolher na lista não deixa seguir.
+  await city(page).fill('sao jose dos camp')
+  await expect(button(page, 'Continuar')).toBeDisabled()
+  await page.getByRole('option', { name: /^São José dos Campos\s*SP$/ }).click()
+  await expect(city(page)).toHaveValue('São José dos Campos, SP')
   await button(page, 'Continuar').click()
 
   // Revisão
@@ -78,7 +86,12 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
     page.getByRole('heading', { name: 'Pronto para salvar' })
   ).toBeVisible()
   await expect(progress(page)).toHaveText('Passo 5 de 5')
-  for (const badge of ['Futebol', 'Basquete', '10 km']) {
+  for (const badge of [
+    'Futebol',
+    'Basquete',
+    '10 km',
+    'São José dos Campos, SP'
+  ]) {
     await expect(page.getByText(badge, { exact: true })).toBeVisible()
   }
 
@@ -93,10 +106,18 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   await search
 
   const [user] = await query(
-    'SELECT onboarding_completed, search_radius_km FROM "user" WHERE id = $1',
+    `SELECT onboarding_completed, search_radius_km, search_city_name, search_city_uf,
+            search_city_lat IS NOT NULL AND search_city_lng IS NOT NULL AS has_center
+     FROM "user" WHERE id = $1`,
     [fan.id]
   )
-  expect(user).toEqual({ onboarding_completed: true, search_radius_km: 10 })
+  expect(user).toEqual({
+    onboarding_completed: true,
+    search_radius_km: 10,
+    search_city_name: 'São José dos Campos',
+    search_city_uf: 'SP',
+    has_center: true
+  })
   const sports = await query<{ name: string }>(
     `SELECT s.name FROM user_preference_sports p JOIN sport s ON s.id = p.sport_id
      WHERE p.user_id = $1 ORDER BY s.name`,
@@ -162,11 +183,12 @@ test('voltar entre passos preserva esportes, times e raio', async ({
 
   await button(page, /Salvar e encontrar bares/).click()
   await expect(page).toHaveURL(/\/dashboard$/)
+  // Este torcedor seguiu sem cidade: ela é opcional.
   const [user] = await query(
-    'SELECT search_radius_km FROM "user" WHERE id = $1',
+    'SELECT search_radius_km, search_city_name FROM "user" WHERE id = $1',
     [fan.id]
   )
-  expect(user?.search_radius_km).toBe(5)
+  expect(user).toEqual({ search_radius_km: 5, search_city_name: null })
   const teams = await query<{ team_id: string }>(
     'SELECT team_id FROM user_favorite_teams WHERE user_id = $1',
     [fan.id]

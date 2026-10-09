@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { SAO_PAULO } from '../../env'
-import { insert } from '../../fixtures/db'
+import { insert, query } from '../../fixtures/db'
 import {
   createEvent,
   days,
@@ -60,6 +60,30 @@ test.describe('localização negada', () => {
     await expect(page.getByText('São Paulo, SP', { exact: true })).toBeVisible()
     await search(page).fill(central.name)
     await expect(card(page, central.name)).toBeVisible()
+  })
+
+  test('parte da cidade do perfil, quando o torcedor informou uma', async ({
+    page
+  }) => {
+    // WEB-319. O centro gravado é um ponto próprio, e não a Campinas de
+    // verdade: a busca é por raio, e assim os testes paralelos não se veem.
+    const spot = uniqueSpot()
+    const near = await pubAt(north(spot, 0.5))
+    await createEvent({ barId: near.barId, startsAt: days(2) })
+    const fan = await signInFanAt(page, uniqueSpot())
+    await query(
+      `UPDATE "user" SET search_city_name = 'Campinas', search_city_uf = 'SP',
+              search_city_lat = $2, search_city_lng = $3 WHERE id = $1`,
+      [fan.id, spot.latitude, spot.longitude]
+    )
+
+    await page.goto('/dashboard')
+
+    await expect(card(page, near.name)).toBeVisible()
+    await expect(
+      page.getByText(/^1 bar a até \d+ km do centro de Campinas$/)
+    ).toBeAttached()
+    await expect(page.getByText('Campinas, SP', { exact: true })).toBeVisible()
   })
 })
 

@@ -32,6 +32,7 @@
       "!**/convex/_generated",
       "!apps/web/public/map",
       "!apps/web/src/data/municipios.json",
+      "!packages/api/src/data/municipios-centros.json",
       "!apps/e2e/.auth",
       "!apps/e2e/.outbox",
       "!apps/e2e/test-results",

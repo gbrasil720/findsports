@@ -23,6 +23,11 @@ import {
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
+import {
+  findSearchCity,
+  searchCityColumns,
+  searchCitySchema
+} from '../lib/search-city'
 
 /**
  * WEB-324: lê o banco, não `ctx.session` — a sessão pode vir do cookie cache,
@@ -172,13 +177,19 @@ export const onboardingRouter = router({
           z.literal(10)
         ]),
         // WEB-68: opcional — o passo de times pode ser pulado.
-        teamIds: favoriteTeamIdsSchema.default([])
+        teamIds: favoriteTeamIdsSchema.default([]),
+        // WEB-319: opcional — a tela deixa seguir sem cidade, e um app aberto
+        // antes do campo existir conclui o onboarding sem mandá-la.
+        city: searchCitySchema.optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       await assertOnboardingPending(userId)
+
+      // Antes da transação: cidade fora da lista recusa sem gravar nada.
+      const city = input.city ? await findSearchCity(input.city) : null
 
       await db.transaction(async (tx) => {
         await tx
@@ -192,6 +203,7 @@ export const onboardingRouter = router({
           .update(user)
           .set({
             searchRadiusKm: input.searchRadiusKm,
+            ...(city ? searchCityColumns(city) : {}),
             onboardingCompleted: true
           })
           .where(eq(user.id, userId))

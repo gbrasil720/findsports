@@ -30,7 +30,8 @@ import {
   normalizeRadiusKm,
   parseDashboardFilters,
   type RadiusKm,
-  SAO_PAULO_FALLBACK,
+  resolveSearchCenter,
+  SAO_PAULO_CITY,
   serializeDashboardFilters
 } from '@/domain/discovery'
 import { canRecordCommercialEvents } from '@/domain/viewer'
@@ -247,7 +248,17 @@ function FanDashboard() {
   const appConfigQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
   const canSortByRating =
     appConfigQuery.data?.['rating.public_display'] === true
-  const searchCenter = coords ?? SAO_PAULO_FALLBACK
+  /*
+   * O centro da busca (WEB-319): localização do navegador, senão a cidade do
+   * perfil, senão São Paulo. A cidade vem por tRPC — não está na sessão. Se a
+   * leitura falhar, a busca segue por São Paulo, como antes de o campo existir.
+   */
+  const cityQuery = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const profileCity = cityQuery.data ?? null
+  const searchCenter = resolveSearchCenter(coords, profileCity)
   const primaryQuery = useQuery({
     ...trpc.pubs.search.queryOptions({
       ...searchCenter,
@@ -260,7 +271,12 @@ function FanDashboard() {
       limit: 30
     }),
     // Espera a URL ser lida e, com esporte nela, o catálogo que traduz o slug.
-    enabled: hashRead && !(sportSlug && sportsQuery.isLoading),
+    // Sem localização, espera também a cidade do perfil: buscar antes
+    // mostraria São Paulo a quem informou outra cidade, para trocar em seguida.
+    enabled:
+      hashRead &&
+      (coords !== null || !cityQuery.isPending) &&
+      !(sportSlug && sportsQuery.isLoading),
     meta: { errorToast: false }
   })
   // Termo, esporte ou característica marcada é pedido explícito. Com um deles
@@ -604,6 +620,7 @@ function FanDashboard() {
         count={displayedBars.length}
         radiusKm={radiusKm}
         locationState={locationState}
+        fallbackCityName={(profileCity ?? SAO_PAULO_CITY).name}
       />
       <AttendanceReportCard />
       {pendingRatingsQuery.data && pendingRatingsQuery.data.length > 0 ? (
@@ -668,6 +685,7 @@ function FanDashboard() {
         hasActiveFilters={activeFilters.length > 0}
         locationState={locationState}
         coords={coords}
+        profileCity={profileCity}
         hoveredId={hoveredId}
         favoriteIds={favoriteIds}
         favoritePending={

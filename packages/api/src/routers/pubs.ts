@@ -7,6 +7,7 @@ import {
   or,
   sql
 } from '@findsports_oficial/db'
+import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   sport,
@@ -45,6 +46,11 @@ import {
   withSeatAvailability
 } from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
+import {
+  findSearchCity,
+  searchCityColumns,
+  searchCitySchema
+} from '../lib/search-city'
 import { createSharedCache } from '../lib/shared-cache'
 import { utcIso } from '../lib/utc-timestamp'
 
@@ -649,6 +655,48 @@ export const pubsRouter = router({
       )
 
       return { success: true }
+    }),
+
+  /**
+   * WEB-319: a cidade que o torcedor informou, com o centro dela. `null` para
+   * quem não informou — conta anterior ao campo, ou quem seguiu sem ela no
+   * onboarding. Vem por aqui, e não pela sessão, porque as colunas não são
+   * campos do better-auth.
+   */
+  getMyCity: fanProcedure.query(async ({ ctx }) => {
+    const [row] = await db
+      .select({
+        name: user.searchCityName,
+        uf: user.searchCityUf,
+        lat: user.searchCityLat,
+        lng: user.searchCityLng
+      })
+      .from(user)
+      .where(eq(user.id, ctx.session.user.id))
+
+    if (
+      !row ||
+      row.name === null ||
+      row.uf === null ||
+      row.lat === null ||
+      row.lng === null
+    ) {
+      return null
+    }
+    return { name: row.name, uf: row.uf, lat: row.lat, lng: row.lng }
+  }),
+
+  updateMyCity: fanProcedure
+    .input(searchCitySchema)
+    .mutation(async ({ ctx, input }) => {
+      const city = await findSearchCity(input)
+
+      await db
+        .update(user)
+        .set(searchCityColumns(city))
+        .where(eq(user.id, ctx.session.user.id))
+
+      return city
     }),
 
   searchByLocation: protectedProcedure

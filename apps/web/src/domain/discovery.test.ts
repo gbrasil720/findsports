@@ -7,6 +7,8 @@ import {
   isValidCoordinates,
   normalizeRadiusKm,
   parseDashboardFilters,
+  resolveSearchCenter,
+  SAO_PAULO_FALLBACK,
   serializeDashboardFilters
 } from './discovery'
 
@@ -42,6 +44,28 @@ describe('normalizeRadiusKm', () => {
     expect(normalizeRadiusKm(undefined)).toBe(DEFAULT_RADIUS_KM)
     expect(normalizeRadiusKm(null)).toBe(DEFAULT_RADIUS_KM)
     expect(normalizeRadiusKm(Number.NaN)).toBe(DEFAULT_RADIUS_KM)
+  })
+})
+
+describe('centro da busca (WEB-319)', () => {
+  const NAVEGADOR = { lat: -22.9, lng: -43.2 }
+  const CAMPINAS = { name: 'Campinas', uf: 'SP', lat: -22.9053, lng: -47.0659 }
+
+  test('a localização do navegador vence a cidade do perfil', () => {
+    expect(resolveSearchCenter(NAVEGADOR, CAMPINAS)).toEqual(NAVEGADOR)
+  })
+
+  test('sem localização, parte da cidade do perfil — só lat e lng', () => {
+    expect(resolveSearchCenter(null, CAMPINAS)).toEqual({
+      lat: -22.9053,
+      lng: -47.0659
+    })
+  })
+
+  test('sem localização e sem cidade, cai no centro de São Paulo', () => {
+    expect(resolveSearchCenter(null, null)).toEqual(SAO_PAULO_FALLBACK)
+    // `undefined` é a consulta da cidade ainda sem resposta, ou com erro.
+    expect(resolveSearchCenter(null, undefined)).toEqual(SAO_PAULO_FALLBACK)
   })
 })
 
