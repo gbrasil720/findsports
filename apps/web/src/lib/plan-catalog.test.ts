@@ -8,6 +8,8 @@ import {
   FOUNDER_DISCOUNT_NOTE,
   formatComparison,
   formatHistoryWindow,
+  formatMonthlyCharge,
+  formatMonthlyChargeWithList,
   formatPerGame,
   formatPlanPricing,
   getAnalyticsEntitlement,
@@ -88,6 +90,15 @@ describe('preços (WEB-112)', () => {
     )
     expect(FOUNDER_DISCOUNT_NOTE).toBe(
       'Com o desconto de fundador aplicado na contratação, R$ 28 por mês a menos que a tabela cheia.'
+    )
+  })
+
+  test('cobrança mensal com cupom bate o preço de lista menos fundador', () => {
+    expect(
+      PLAN_CATALOG.map((p) => formatMonthlyCharge(p))
+    ).toEqual(['R$ 69/mês', 'R$ 119/mês', 'R$ 269/mês'])
+    expect(formatMonthlyChargeWithList(getPlan('elite'))).toBe(
+      'R$ 269/mês (tabela cheia R$ 297/mês)'
     )
   })
 })

@@ -3,11 +3,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
-import {
-  FOUNDER_DISCOUNT_NOTE,
-  formatPlanPrice,
-  type Plan
-} from '@/lib/plan-catalog'
+import { formatMonthlyChargeWithList, type Plan } from '@/lib/plan-catalog'
 import {
   formatReceiptDate,
   formatReceiptTimestamp,
@@ -286,10 +282,9 @@ function PaperContent({
 }) {
   const rows = [
     { label: 'Plano', value: `${plan.name} — ${plan.tagline}` },
-    // Tabela cheia: o app não sabe se a assinatura levou o cupom de fundador.
     {
       label: 'Valor',
-      value: `${formatPlanPrice(plan.tablePrice)}${plan.period}`
+      value: formatMonthlyChargeWithList(plan)
     },
     { label: 'Ciclo', value: receiptCycleLabel(plan.period) },
     { label: 'Situação', value: STATUS_LABEL[status] ?? status },
@@ -339,7 +334,6 @@ function PaperContent({
         <p className="onside-receipt-ref">
           Assinatura {formatSubscriptionRef(subscriptionRef)}
         </p>
-        <p className="onside-receipt-legal">{FOUNDER_DISCOUNT_NOTE}</p>
         <p className="onside-receipt-legal">
           Comprovante de contratação, não é documento fiscal. O histórico de
           pagamentos fica em Assinatura e pagamentos.

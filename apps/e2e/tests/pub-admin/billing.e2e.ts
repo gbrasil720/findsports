@@ -53,6 +53,8 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   await page.goto('/admin/billing')
 
   await expect(currentPlan(page)).toContainText('Elite')
+  await expect(currentPlan(page)).toContainText('R$ 269')
+  await expect(currentPlan(page)).toContainText('R$ 297')
   await expect(currentPlan(page)).toContainText('Ativo')
   await expect(currentPlan(page)).toContainText('Próxima cobrança em')
   await expect(

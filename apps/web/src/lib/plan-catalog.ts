@@ -66,6 +66,24 @@ export function formatPlanPrice(reais: number): string {
 }
 
 /**
+ * Valor mensal que o Stripe cobra quando o cupom de fundador (Early Bird,
+ * R$ {@link FOUNDER_DISCOUNT} off) entra no checkout — preço de lista no
+ * Stripe menos o desconto (WEB-112).
+ */
+export function formatMonthlyCharge(
+  plan: Pick<Plan, 'founderPrice' | 'period'>
+): string {
+  return `${formatPlanPrice(plan.founderPrice)}${plan.period}`
+}
+
+/** Cobrança mensal + tabela cheia, para comprovante e leitor de tela. */
+export function formatMonthlyChargeWithList(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
+): string {
+  return `${formatMonthlyCharge(plan)} (tabela cheia ${formatPlanPrice(plan.tablePrice)}${plan.period})`
+}
+
+/**
  * Para onde o preço é o de uma assinatura já contratada (comprovante, plano
  * atual): o app não sabe se ela levou o cupom de fundador, então mostra a
  * tabela e diz quanto o desconto tira, sem afirmar o valor cobrado.

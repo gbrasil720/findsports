@@ -9,12 +9,11 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
-  FOUNDER_DISCOUNT_NOTE,
-  formatPlanPrice,
   formatPlanPricing,
   getPlan,
   getPlanPageMode,
@@ -219,13 +218,7 @@ function BillingPage() {
                       <div className="onside-display text-xl">
                         {planInfo.name}
                       </div>
-                      <div className="text-sm text-[var(--onside-muted)]">
-                        {formatPlanPrice(planInfo.tablePrice)}
-                        {planInfo.period}
-                      </div>
-                      <div className="mt-0.5 text-xs text-[var(--onside-muted)]">
-                        {FOUNDER_DISCOUNT_NOTE}
-                      </div>
+                      <PlanMonthlyCharge plan={planInfo} />
                     </div>
                   </div>
                   {statusInfo ? (
