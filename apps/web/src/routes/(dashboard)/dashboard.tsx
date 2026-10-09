@@ -305,23 +305,6 @@ function FanDashboard() {
     ...trpc.ratings.getPending.queryOptions(),
     retry: false
   })
-  const submitRatingMutation = useMutation(
-    trpc.ratings.submit.mutationOptions({
-      onSuccess: () => {
-        toast.success('Obrigado! Sua resposta ajuda outros torcedores.')
-        queryClient.invalidateQueries({
-          queryKey: trpc.ratings.getPending.queryKey()
-        })
-      },
-      onError: (err) =>
-        toast.error(
-          getUserFacingMessage(
-            err,
-            'Não foi possível registrar sua avaliação. Tente novamente.'
-          )
-        )
-    })
-  )
 
   const resultState = useMemo(
     () =>
@@ -623,13 +606,7 @@ function FanDashboard() {
         fallbackCityName={(profileCity ?? SAO_PAULO_CITY).name}
       />
       <AttendanceReportCard />
-      {pendingRatingsQuery.data && pendingRatingsQuery.data.length > 0 ? (
-        <PendingRatingCard
-          pending={pendingRatingsQuery.data}
-          isPending={submitRatingMutation.isPending}
-          onAnswer={(answer) => submitRatingMutation.mutate(answer)}
-        />
-      ) : null}
+      <PendingRatingCard pending={pendingRatingsQuery.data ?? []} />
       <SearchFilterBar
         championship={searchText}
         onChampionshipChange={(value) => setSearch(value, value === '')}
@@ -721,7 +698,14 @@ function FanDashboard() {
               sourceEventId: bar.nextEvent.id
             })
           }
-          navigate({ to: '/pub/$pubId', params: { pubId: barId } })
+          // O ponto do mapa leva o jogo que o card do mesmo bar mostra (WEB-258).
+          const eventId =
+            bar && 'nextEvent' in bar ? bar.nextEvent?.id : undefined
+          navigate({
+            to: '/pub/$pubId',
+            params: { pubId: barId },
+            search: eventId ? { eventId } : undefined
+          })
         }}
       />
       {session ? (

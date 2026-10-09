@@ -2,7 +2,11 @@ import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
-import { createEvent, soccerSportId } from '../../fixtures/reservations'
+import {
+  createEvent,
+  createReservation,
+  soccerSportId
+} from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -97,7 +101,16 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   await expect(edited).not.toContainText(away)
   expect(await participantsOf(barId)).toEqual([home, other])
 
+  // Excluir pede confirmação: cancelar não apaga nada.
   await edited.getByRole('button', { name: 'Excluir evento' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
+  await expect(confirm).toContainText('sai da sua grade e do seu perfil')
+  await confirm.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(confirm).toBeHidden()
+  await expect(edited).toHaveCount(1)
+
+  await edited.getByRole('button', { name: 'Excluir evento' }).click()
+  await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
   await expect(edited).toHaveCount(0)
   await expect
     .poll(
@@ -105,6 +118,55 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
         (await query('SELECT id FROM event WHERE bar_id = $1', [barId])).length
     )
     .toBe(0)
+})
+
+test('jogo com reserva ativa não é excluído, e o que foi recusado vai junto', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page)
+  const blocked = await createEvent(barId, { championship: 'Bloqueado E2E' })
+  await createReservation(blocked.eventId, { status: 'confirmed' })
+  const free = await createEvent(barId, { championship: 'Liberado E2E' })
+  await createReservation(free.eventId, { status: 'declined' })
+  await gotoSchedule(page)
+
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Bloqueado E2E' })
+    .getByRole('button', { name: 'Excluir evento' })
+    .click()
+  const refusal = page.getByRole('dialog', {
+    name: 'Este jogo não pode ser excluído'
+  })
+  await expect(refusal).toContainText('Este jogo tem 1 reserva confirmada.')
+  await expect(
+    refusal.getByRole('button', { name: 'Excluir jogo' })
+  ).toHaveCount(0)
+  await refusal.getByRole('button', { name: 'Entendi' }).click()
+
+  // A tela esconder o botão não é a regra: o servidor recusa também.
+  const response = await page.request.post('/api/trpc/pub.deleteEvent', {
+    data: { eventId: blocked.eventId }
+  })
+  expect(response.status()).toBe(412)
+
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Liberado E2E' })
+    .getByRole('button', { name: 'Excluir evento' })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
+  await expect(confirm).toContainText('Também apaga 1 reserva encerrada')
+  await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
+  await expect
+    .poll(async () =>
+      (
+        await query<{ id: string }>('SELECT id FROM event WHERE bar_id = $1', [
+          barId
+        ])
+      ).map((row) => row.id)
+    )
+    .toEqual([blocked.eventId])
 })
 
 test('término antes do início não deixa salvar', async ({ page }) => {

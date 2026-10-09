@@ -47,8 +47,8 @@ const pubOnly: [string, string][] = [
 
 // `pubs.isFavorited` e `ratings.getPending` devolviam vazio para quem não é
 // torcedor, e `ratings.remove` não olhava papel. Nenhuma tela depende disso: o
-// perfil do bar só pergunta `isFavorited` quando `canFavoriteBars`, o card de
-// avaliação do /dashboard só busca para torcedor, e `remove` não tem chamador.
+// perfil do bar só pergunta `isFavorited` quando `canFavoriteBars`, e o card de
+// avaliação do /dashboard, que também chama `remove`, só existe para torcedor.
 // Resposta vazia para bar ou admin escondia um cliente chamando o que não devia.
 const fanOnly: [string, string][] = [
   ...all('reservations', reservationsRouter._def.procedures),
@@ -66,6 +66,7 @@ const fanOnly: [string, string][] = [
   ['ratings', 'getPending'],
   ['ratings', 'submit'],
   ['ratings', 'remove'],
+  ['attendance', 'removeReport'],
   ['onboarding', 'completeFan'],
   ['commercialAnalytics', 'recordCommercialEvent']
 ]

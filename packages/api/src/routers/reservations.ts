@@ -1,5 +1,8 @@
-import { and, db, eq, isNull } from '@findsports_oficial/db'
-import { getValidationWindow } from '@findsports_oficial/db/event-window'
+import { and, db, eq, inArray, isNull } from '@findsports_oficial/db'
+import {
+  getEventEnd,
+  getValidationWindow
+} from '@findsports_oficial/db/event-window'
 import { generateReservationCode } from '@findsports_oficial/db/reservation-code'
 import {
   normalizeReservationNote,
@@ -12,7 +15,8 @@ import { event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
   reservation,
-  reservationCode
+  reservationCode,
+  reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -63,11 +67,13 @@ async function readOwnReservations(userId: string, reservationId?: string) {
     ),
     columns: {
       id: true,
+      eventId: true,
       status: true,
       partySize: true,
       note: true,
       offerSnapshot: true,
-      createdAt: true
+      createdAt: true,
+      updatedAt: true
     },
     with: {
       event: {
@@ -85,24 +91,75 @@ async function readOwnReservations(userId: string, reservationId?: string) {
       },
       codes: {
         where: isNull(reservationCode.retiredAt),
-        columns: { code: true, usedCount: true }
+        columns: { code: true, usedCount: true, maxUses: true },
+        with: {
+          uses: {
+            where: isNull(reservationCodeUse.undoneAt),
+            columns: { usedAt: true }
+          }
+        }
       }
     },
     orderBy: (row, { desc }) => [desc(row.createdAt)],
     limit: HISTORY_LIMIT
   })
+  // "Vou assistir aqui" dos mesmos jogos: a tela diz se a presença ficou
+  // depois de um cancelamento ou saiu com a recusa (WEB-296).
+  const attended = new Set(
+    rows.length
+      ? (
+          await db
+            .select({ eventId: attendance.eventId })
+            .from(attendance)
+            .where(
+              and(
+                eq(attendance.userId, userId),
+                inArray(
+                  attendance.eventId,
+                  rows.map((row) => row.eventId)
+                )
+              )
+            )
+        ).map((row) => row.eventId)
+      : []
+  )
 
-  return rows.map(({ event: game, codes, ...row }) => {
+  return rows.map(({ event: game, codes, updatedAt, eventId, ...row }) => {
+    const active = codes[0]
+    const usedCount = active?.usedCount ?? 0
     const { status, showCode } = deriveFanReservation(
       row.status,
       game,
-      (codes[0]?.usedCount ?? 0) > 0,
+      usedCount > 0,
       now
     )
-    const code = showCode ? (codes[0]?.code ?? null) : null
+    const code = showCode ? (active?.code ?? null) : null
+    const answered = row.status === 'confirmed' || row.status === 'declined'
     return {
       ...row,
       status,
+      // Chegadas que o bar registrou no código (WEB-259). `lastAt` é a mais
+      // recente ainda valendo; desfeita não conta.
+      arrival:
+        active && usedCount > 0
+          ? {
+              count: usedCount,
+              of: active.maxUses,
+              lastAt: active.uses.reduce<Date | null>(
+                (last, { usedAt }) => (!last || usedAt > last ? usedAt : last),
+                null
+              )
+            }
+          : null,
+      attending: attended.has(eventId),
+      // Quando o bar respondeu, enquanto isso ainda é notícia: o aviso do
+      // torcedor (WEB-318) compara com o que ele já viu. Depois do jogo não
+      // há o que avisar.
+      // ponytail: lê `updated_at` em vez de coluna própria. Vale porque
+      // nenhuma outra escrita toca uma reserva que segue confirmada ou
+      // recusada; se passar a existir (editar pessoas, por exemplo), criar
+      // `responded_at`.
+      decidedAt: answered && getEventEnd(game) > now ? updatedAt : null,
       bar: game.bar,
       event: {
         id: game.id,
@@ -113,7 +170,7 @@ async function readOwnReservations(userId: string, reservationId?: string) {
       },
       code,
       window: code ? getValidationWindow(game) : null,
-      canCancel: isActive(status) && game.startsAt > now
+      canCancel: isActive(status) && game.startsAt > now && usedCount === 0
     }
   })
 }
@@ -244,10 +301,12 @@ export const reservationsRouter = router({
             // feita a este torcedor não muda.
             offerSnapshot: game.bar.houseOffer
           })
-          // Reserva implica presença (ADR 0003). Cancelar não desfaz.
+          // Reserva implica presença (ADR 0003). Cancelar não desfaz; a
+          // recusa do bar desfaz só a que nasceu aqui. Presença que já
+          // existia fica com a origem que tinha.
           await tx
             .insert(attendance)
-            .values({ userId, eventId: input.eventId })
+            .values({ userId, eventId: input.eventId, source: 'reservation' })
             .onConflictDoNothing()
           for (let attempt = 1; ; attempt++) {
             const [issued] = await tx
@@ -285,6 +344,9 @@ export const reservationsRouter = router({
   /**
    * Não passa pelo recebimento de reservas nem pelo plano do bar. Repetir o
    * cancelamento de um pedido já cancelado devolve o mesmo estado.
+   *
+   * Chegada registrada trava o cancelamento (ADR 0003, WEB-259): sem isso o
+   * código aposentava com gente já validada nele.
    */
   cancel: fanProcedure
     .input(z.object({ reservationId: z.string().uuid() }))
@@ -317,6 +379,31 @@ export const reservationsRouter = router({
           throw new TRPCError({
             code: 'PRECONDITION_FAILED',
             message: 'O jogo já começou. Não dá mais para cancelar este pedido.'
+          })
+        }
+
+        // Trava a linha do código antes de ler o contador. O `+1` de
+        // `registerArrival` atualiza essa mesma linha pela trigger: se ele
+        // chegou antes, esta leitura espera e já vê a chegada; se chega
+        // depois, espera o cancelamento e encontra o código aposentado. É
+        // `NO KEY UPDATE`, a trava do próprio `UPDATE` abaixo, para não
+        // disputar com a chave estrangeira do uso que está sendo inserido.
+        const [activeCode] = await tx
+          .select({ usedCount: reservationCode.usedCount })
+          .from(reservationCode)
+          .where(
+            and(
+              eq(reservationCode.reservationId, input.reservationId),
+              isNull(reservationCode.retiredAt)
+            )
+          )
+          .limit(1)
+          .for('no key update')
+        if ((activeCode?.usedCount ?? 0) > 0) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message:
+              'O bar já registrou chegada nesta reserva. Ela não pode mais ser cancelada.'
           })
         }
 

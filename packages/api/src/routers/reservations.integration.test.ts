@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
-import { eq, inArray } from '@findsports_oficial/db'
+import { and, eq, inArray } from '@findsports_oficial/db'
 import { isReservationCodeComplete } from '@findsports_oficial/db/reservation-code'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -8,7 +9,11 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
-import { reservationCode } from '@findsports_oficial/db/schema/reservation'
+import {
+  reservation,
+  reservationCode,
+  reservationCodeUse
+} from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
 import { contextFor, load, type Role, refusal } from './integration-seed'
@@ -87,9 +92,22 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
   const queue = (userId: string) =>
     appRouter.createCaller(contextFor(userId, 'pub')).barReservations
 
+  /** Origem da presença do torcedor no jogo futuro; `null` sem presença. */
+  const presenceOf = async (userId: string) => {
+    const [row] = await db
+      .select({ source: attendance.source })
+      .from(attendance)
+      .where(
+        and(eq(attendance.userId, userId), eq(attendance.eventId, future.id))
+      )
+    return row?.source ?? null
+  }
+
   return {
     db,
     barId,
+    fanId,
+    otherFanId,
     futureId: future.id,
     pastId: past.id,
     fan: api(fanId, 'fan'),
@@ -97,6 +115,19 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
     owner: api(ownerId, 'pub'),
     queue: queue(ownerId),
     queueOf: queue,
+    validation: appRouter.createCaller(contextFor(ownerId, 'pub'))
+      .reservationValidation,
+    attend: (userId: string, attending = true) =>
+      appRouter
+        .createCaller(contextFor(userId, 'fan'))
+        .attendance.set({ eventId: future.id, attending }),
+    presenceOf,
+    /** Jogo daqui a 1h: a janela de validação já abriu e ainda dá para cancelar. */
+    openWindow: () =>
+      db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() + HOUR) })
+        .where(eq(event.id, future.id)),
     request: (eventId = future.id) => ({
       requestId: crypto.randomUUID(),
       eventId,
@@ -619,6 +650,228 @@ integrationTest(
       ).toBe('PRECONDITION_FAILED')
       const [after] = await ctx.fan.mine()
       expect(after?.status).toBe('expired')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+/* Chegada registrada trava o cancelamento (WEB-259) */
+
+integrationTest(
+  'chegada registrada aparece para o torcedor e trava o cancelamento; desfeita, libera',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: created.id,
+        status: 'confirmed'
+      })
+      await ctx.openWindow()
+      const found = await ctx.validation.lookup({ code: created.code ?? '' })
+      if (!found) throw new Error('código não resolveu')
+
+      const [before] = await ctx.fan.mine()
+      expect(before).toMatchObject({ arrival: null, canCancel: true })
+
+      const arrival = await ctx.validation.registerArrival({
+        codeId: found.codeId,
+        requestId: crypto.randomUUID()
+      })
+      const [arrived] = await ctx.fan.mine()
+      expect(arrived).toMatchObject({
+        status: 'confirmed',
+        code: created.code,
+        arrival: { count: 1, of: 3 },
+        canCancel: false
+      })
+      expect(arrived?.arrival?.lastAt).toBeInstanceOf(Date)
+
+      expect(
+        await refusal(ctx.fan.cancel({ reservationId: created.id }))
+      ).toEqual({
+        code: 'CONFLICT',
+        message:
+          'O bar já registrou chegada nesta reserva. Ela não pode mais ser cancelada.'
+      })
+      const [code] = await ctx.db
+        .select({ retiredAt: reservationCode.retiredAt })
+        .from(reservationCode)
+        .where(eq(reservationCode.reservationId, created.id))
+      expect(code?.retiredAt).toBeNull()
+
+      // O contador é a regra: chegada desfeita devolve o cancelamento.
+      await ctx.validation.undoArrival({ useId: arrival.useId })
+      const [undone] = await ctx.fan.mine()
+      expect(undone).toMatchObject({ arrival: null, canCancel: true })
+      expect((await ctx.fan.cancel({ reservationId: created.id })).status).toBe(
+        'cancelled'
+      )
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'cancelamento espera a chegada que está sendo gravada e não deixa reserva cancelada com chegada',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: created.id,
+        status: 'confirmed'
+      })
+      await ctx.openWindow()
+      const found = await ctx.validation.lookup({ code: created.code ?? '' })
+      if (!found) throw new Error('código não resolveu')
+
+      // A chegada já somou no código, mas a transação dela ainda não fechou:
+      // quem lê o contador sem travar a linha vê zero e cancela por cima.
+      let cancelling: ReturnType<typeof refusal> | undefined
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(reservationCodeUse).values({ codeId: found.codeId })
+        cancelling = refusal(ctx.fan.cancel({ reservationId: created.id }))
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      })
+      expect((await cancelling)?.code).toBe('CONFLICT')
+
+      const [row] = await ctx.db
+        .select({
+          status: reservation.status,
+          usedCount: reservationCode.usedCount,
+          retiredAt: reservationCode.retiredAt
+        })
+        .from(reservation)
+        .innerJoin(
+          reservationCode,
+          eq(reservationCode.reservationId, reservation.id)
+        )
+        .where(eq(reservation.id, created.id))
+      expect(row).toEqual({
+        status: 'confirmed',
+        usedCount: 1,
+        retiredAt: null
+      })
+
+      // No outro sentido quem recusa é a trigger: código aposentado pelo
+      // cancelamento não aceita chegada.
+      const other = await ctx.otherFan.create(ctx.request())
+      await ctx.queue.respond({ reservationId: other.id, status: 'confirmed' })
+      const otherCode = await ctx.validation.lookup({ code: other.code ?? '' })
+      if (!otherCode) throw new Error('código não resolveu')
+      await ctx.otherFan.cancel({ reservationId: other.id })
+      expect(
+        (
+          await refusal(
+            ctx.validation.registerArrival({
+              codeId: otherCode.codeId,
+              requestId: crypto.randomUUID()
+            })
+          )
+        ).code
+      ).toBe('NOT_FOUND')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+/* Origem da presença (WEB-296) */
+
+integrationTest(
+  'recusa apaga só a presença que veio da reserva; a marcada à mão fica',
+  async () => {
+    const ctx = await seed()
+    try {
+      // Um chega pela reserva; o outro já tinha marcado "Vou assistir aqui".
+      await ctx.attend(ctx.otherFanId)
+      const fromReservation = await ctx.fan.create(ctx.request())
+      const alreadyMarked = await ctx.otherFan.create(ctx.request())
+      expect(await ctx.presenceOf(ctx.fanId)).toBe('reservation')
+      expect(await ctx.presenceOf(ctx.otherFanId)).toBe('manual')
+      expect(fromReservation.attending).toBe(true)
+
+      for (const { id } of [fromReservation, alreadyMarked]) {
+        await ctx.queue.respond({ reservationId: id, status: 'declined' })
+      }
+      expect(await ctx.presenceOf(ctx.fanId)).toBeNull()
+      expect(await ctx.presenceOf(ctx.otherFanId)).toBe('manual')
+      const [declined] = await ctx.fan.mine()
+      expect(declined).toMatchObject({ status: 'declined', attending: false })
+      const [kept] = await ctx.otherFan.mine()
+      expect(kept).toMatchObject({ status: 'declined', attending: true })
+
+      // Marcar à mão em cima da presença da reserva a torna do torcedor.
+      const again = await ctx.fan.create(ctx.request())
+      expect(await ctx.presenceOf(ctx.fanId)).toBe('reservation')
+      await ctx.attend(ctx.fanId)
+      expect(await ctx.presenceOf(ctx.fanId)).toBe('manual')
+      await ctx.queue.respond({ reservationId: again.id, status: 'declined' })
+      expect(await ctx.presenceOf(ctx.fanId)).toBe('manual')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'cancelar mantém a presença, e o torcedor desmarca se quiser',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      const cancelled = await ctx.fan.cancel({ reservationId: created.id })
+      expect(cancelled).toMatchObject({ status: 'cancelled', attending: true })
+      expect(await ctx.presenceOf(ctx.fanId)).toBe('reservation')
+
+      await ctx.attend(ctx.fanId, false)
+      const [mine] = await ctx.fan.mine()
+      expect(mine?.attending).toBe(false)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+/* Aviso de resposta do bar (WEB-318) */
+
+integrationTest(
+  'a data da resposta do bar só existe em reserva confirmada ou recusada de jogo que não acabou',
+  async () => {
+    const ctx = await seed()
+    try {
+      const confirmed = await ctx.fan.create(ctx.request())
+      const declined = await ctx.otherFan.create(ctx.request())
+      expect(confirmed.decidedAt).toBeNull()
+
+      const askedAt = Date.now()
+      await ctx.queue.respond({
+        reservationId: confirmed.id,
+        status: 'confirmed'
+      })
+      await ctx.queue.respond({
+        reservationId: declined.id,
+        status: 'declined'
+      })
+      const [mine] = await ctx.fan.mine()
+      expect(mine?.decidedAt?.getTime()).toBeGreaterThanOrEqual(askedAt)
+      const [theirs] = await ctx.otherFan.mine()
+      expect(theirs?.decidedAt?.getTime()).toBeGreaterThanOrEqual(askedAt)
+
+      // Cancelada pelo torcedor não é resposta do bar.
+      const cancelled = await ctx.fan.cancel({ reservationId: confirmed.id })
+      expect(cancelled.decidedAt).toBeNull()
+
+      // Jogo encerrado: a recusa deixa de ser notícia.
+      await ctx.db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() - 5 * HOUR) })
+        .where(eq(event.id, ctx.futureId))
+      const [after] = await ctx.otherFan.mine()
+      expect(after).toMatchObject({ status: 'declined', decidedAt: null })
     } finally {
       await ctx.cleanup()
     }

@@ -154,8 +154,13 @@ function refusalMessage(
   )
 }
 
+/**
+ * O servidor responde igual para código inexistente, de outro bar e de
+ * reserva recusada ou cancelada, de propósito (ADR 0003, WEB-255). O texto
+ * diz o que essa resposta única cobre, sem distinguir os casos.
+ */
 export const CODE_NOT_FOUND_MESSAGE =
-  'Código não encontrado. Confira com o torcedor e tente de novo.'
+  'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
 
 export function getLookupErrorMessage(error: unknown): string {
   return refusalMessage(

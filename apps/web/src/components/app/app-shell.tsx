@@ -22,6 +22,7 @@ import Ticket from 'reicon-react/icons/Ticket'
 import User from 'reicon-react/icons/User'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import type { ShellVariant } from '@/domain/viewer'
+import { useReservationNews } from '@/hooks/use-reservation-news'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { ProductFrame } from './product-frame'
@@ -52,7 +53,19 @@ export function AppShell({ variant, userMeta, children }: Props) {
         .slice(0, 2)
     : '…'
 
-  const menuLabel = name ? `Menu da conta de ${name}` : 'Menu da conta'
+  // Respostas do bar que o torcedor ainda não viu (WEB-318). Só pergunta
+  // quando a sessão é de torcedor: `reservations.mine` recusa os outros.
+  const news = useReservationNews(
+    variant === 'fan' && session?.user?.role === 'fan'
+      ? session.user.id
+      : undefined
+  )
+  const newsLabel =
+    news === 1
+      ? '1 reserva com resposta nova'
+      : `${news} reservas com resposta nova`
+
+  const menuLabel = `${name ? `Menu da conta de ${name}` : 'Menu da conta'}${news ? ` (${newsLabel})` : ''}`
 
   const header = (
     <>
@@ -94,10 +107,16 @@ export function AppShell({ variant, userMeta, children }: Props) {
               <button
                 type="button"
                 aria-label={menuLabel}
-                className="ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
+                className="relative ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
               />
             }
           >
+            {news > 0 && (
+              <span
+                aria-hidden="true"
+                className="-top-1 -right-1 absolute size-2.5 border border-[var(--onside-ink)] bg-[var(--onside-acid)]"
+              />
+            )}
             <Avatar className="size-8 shrink-0 rounded-none">
               {session?.user?.image && (
                 <AvatarImage
@@ -177,6 +196,12 @@ export function AppShell({ variant, userMeta, children }: Props) {
                     aria-hidden="true"
                   />
                   Minhas reservas
+                  {news > 0 && (
+                    <span className="ml-auto border border-[var(--onside-ink)] bg-[var(--onside-acid)] px-1.5 font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-ink)]">
+                      <span aria-hidden="true">{news}</span>
+                      <span className="sr-only">{newsLabel}</span>
+                    </span>
+                  )}
                 </DropdownMenuItem>
               ) : null}
 

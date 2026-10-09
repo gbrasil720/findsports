@@ -149,7 +149,8 @@ function ComparisonControls({
   return (
     <fieldset className="onside-fieldset mb-4">
       <legend className="onside-fieldset-legend">
-        Comparação disponível no plano {mode === 'advanced' ? 'Elite' : 'Pro'}
+        Comparação entre jogos · recurso do seu plano{' '}
+        {mode === 'advanced' ? 'Elite' : 'Pro'}
       </legend>
 
       <RadioGroup
@@ -530,26 +531,50 @@ function PerformanceError({
  * As três colunas contam pessoas (WEB-251): a taxa é interessados sobre quem
  * viu, a mesma da Visão geral. Aberturas e ações por canal, que são vezes e
  * não pessoas, ficam no painel expandido.
+ *
+ * Reservas e chegadas (WEB-323) são registros do próprio bar, não reação do
+ * torcedor: em tela larga ganham duas colunas depois de um fio, fora do trio
+ * que forma a taxa, e só para o plano que tem reserva de mesa. A ADR 0003
+ * proíbe que apareçam como contagens somáveis a "Interesse".
  */
 const ROW_GRID =
   'grid grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]'
+const ROW_GRID_RESERVATIONS = `${ROW_GRID} lg:grid-cols-[minmax(0,1fr)_repeat(5,4.25rem)_1.25rem]`
+const RESERVATIONS_RULE =
+  'hidden border-[var(--onside-line)] border-l text-right lg:block'
 
-function PerformanceColumns() {
+function PerformanceColumns({
+  showReservations
+}: {
+  showReservations: boolean
+}) {
   return (
     <div
-      className={`${ROW_GRID} border-[var(--onside-line)] border-b pb-1.5 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]`}
+      className={`${showReservations ? ROW_GRID_RESERVATIONS : ROW_GRID} border-[var(--onside-line)] border-b pb-1.5 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]`}
       aria-hidden="true"
     >
       <span />
       <span className="hidden text-right sm:block">Viram</span>
       <span className="text-right">Interesse</span>
       <span className="hidden text-right sm:block">Taxa</span>
+      {showReservations && (
+        <>
+          <span className={RESERVATIONS_RULE}>Reservas</span>
+          <span className="hidden text-right lg:block">Chegadas</span>
+        </>
+      )}
       <span />
     </div>
   )
 }
 
-function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
+function EventPerformanceRow({
+  item,
+  showReservations
+}: {
+  item: EventAnalyticsRow
+  showReservations: boolean
+}) {
   const rate =
     item.interestedPeople === null
       ? formatAnalyticsValue(null)
@@ -559,7 +584,7 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
     <AccordionItem value={item.eventId}>
       <AccordionTrigger
         headingLevel={4}
-        className={`${ROW_GRID} px-2 py-2.5 text-sm`}
+        className={`${showReservations ? ROW_GRID_RESERVATIONS : ROW_GRID} px-2 py-2.5 text-sm`}
       >
         <span className="flex min-w-0 items-baseline gap-2">
           <span className="truncate font-medium text-[var(--onside-ink)]">
@@ -584,6 +609,20 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
           <span className="sr-only">Taxa: </span>
           {rate}
         </span>
+        {showReservations && (
+          <>
+            <span
+              className={`${RESERVATIONS_RULE} font-medium text-[var(--onside-ink)] tabular-nums`}
+            >
+              <span className="sr-only">Reservas: </span>
+              {formatAnalyticsValue(item.reservedPeople)}
+            </span>
+            <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums lg:block">
+              <span className="sr-only">Chegadas: </span>
+              {formatAnalyticsValue(item.arrivals)}
+            </span>
+          </>
+        )}
       </AccordionTrigger>
 
       <AccordionContent className="px-2 pb-3">
@@ -627,6 +666,30 @@ function EventPerformanceRow({ item }: { item: EventAnalyticsRow }) {
             <dd className="font-medium tabular-nums">{rate}</dd>
           </div>
         </dl>
+
+        {/* Bloco à parte, com o próprio fio: é o resultado da reserva de
+            mesa, não mais um canal de interesse. */}
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-[var(--onside-line)] border-t pt-3 text-[var(--onside-ink)] text-sm sm:grid-cols-4">
+          <div>
+            <dt className="onside-hint">Reservas</dt>
+            <dd className="font-medium tabular-nums">
+              {formatAnalyticsValue(item.reservedPeople)}
+            </dd>
+          </div>
+          <div>
+            <dt className="onside-hint">Chegadas</dt>
+            <dd className="font-medium tabular-nums">
+              {formatAnalyticsValue(item.arrivals)}
+            </dd>
+          </div>
+        </dl>
+        {showReservations && (
+          <p className="onside-hint mt-2">
+            Pessoas com reserva confirmada e chegadas que você registrou em
+            Validar código. São as mesmas pessoas, vistas pelo seu bar: não se
+            somam a Interesse nem entram na taxa.
+          </p>
+        )}
       </AccordionContent>
     </AccordionItem>
   )
@@ -690,6 +753,8 @@ export function EventPerformance({
   }, null)
 
   const topEventIntent = topEvent?.interestedPeople ?? null
+  // O servidor manda `null` para o plano sem reserva de mesa.
+  const showReservations = items.some((item) => item.reservedPeople !== null)
 
   return (
     <div className="onside-panel-acid p-4">
@@ -724,10 +789,14 @@ export function EventPerformance({
         </div>
       )}
 
-      <PerformanceColumns />
+      <PerformanceColumns showReservations={showReservations} />
       <Accordion>
         {items.map((item) => (
-          <EventPerformanceRow key={item.eventId} item={item} />
+          <EventPerformanceRow
+            key={item.eventId}
+            item={item}
+            showReservations={showReservations}
+          />
         ))}
       </Accordion>
     </div>

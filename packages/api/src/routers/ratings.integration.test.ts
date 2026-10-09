@@ -4,8 +4,10 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   event,
+  eventParticipants,
   sport,
-  subscription
+  subscription,
+  team
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
@@ -111,6 +113,24 @@ integrationTest(
           startsAt: new Date(now.getTime() + 6 * 60 * 60_000)
         }
       ])
+
+      // WEB-258: o jogo é nomeado pelos times, não só pelo campeonato.
+      // Inseridos fora de ordem: a leitura devolve em ordem alfabética.
+      const times = ['Palmeiras', 'Corinthians'].map((name) => ({
+        id: crypto.randomUUID(),
+        sportId,
+        name,
+        slug: `${name}-${sportId}`
+      }))
+      await db.insert(team).values(times)
+      await db
+        .insert(eventParticipants)
+        .values(times.map(({ id }) => ({ eventId: jogoPassadoId, teamId: id })))
+      const quemJoga = {
+        championship: 'Jogo que acabou',
+        participantFreeText: null,
+        participants: ['Corinthians', 'Palmeiras']
+      }
 
       // Intenção registrada: todos menos `semIntencao`, e um deles também
       // para o jogo futuro (que não deve liberar avaliação ainda).
@@ -227,6 +247,14 @@ integrationTest(
         .ratings.getPending()
       expect(pendentes.map((item) => item.eventId)).toContain(jogoPassadoId)
       expect(pendentes[0]?.barName).toBe('Bar da avaliação')
+      expect(pendentes[0]).toMatchObject(quemJoga)
+
+      // A lista de avaliações do dono nomeia o jogo do mesmo jeito.
+      const doDono = await appRouter
+        .createCaller(contextFor(ownerId, 'pub', now))
+        .pub.getMyRatings()
+      expect(doDono.recent).toHaveLength(3)
+      expect(doDono.recent[0]).toMatchObject(quemJoga)
 
       // --- remoção -------------------------------------------------------
 
@@ -234,6 +262,13 @@ integrationTest(
         .createCaller(contextFor(extra2, 'fan', now))
         .ratings.remove({ barId, eventId: jogoPassadoId })
       expect(await contadores()).toEqual({ ratingCount: 2, ratingPositive: 2 })
+      // É o "Desfazer" do card (WEB-321): a pergunta volta para quem desfez.
+      const depoisDeDesfazer = await appRouter
+        .createCaller(contextFor(extra2, 'fan', now))
+        .ratings.getPending()
+      expect(depoisDeDesfazer.map((item) => item.eventId)).toContain(
+        jogoPassadoId
+      )
     } finally {
       await db.delete(user).where(inArray(user.id, [ownerId, ...fanIds]))
       await db.delete(sport).where(inArray(sport.id, [sportId]))

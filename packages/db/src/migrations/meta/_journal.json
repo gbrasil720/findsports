@@ -323,6 +323,13 @@
       "when": 1791502942659,
       "tag": "0046_user_search_city",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791507039483,
+      "tag": "0047_bar_uf_attendance_source_team_kind",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import {
 } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { RESERVATION_CAP_MAX } from '@findsports_oficial/db/reservation-limits'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
   reservation,
@@ -238,6 +239,9 @@ export const barReservationsRouter = router({
    * não o mostra) e não muda mais. Repetir a MESMA resposta devolve o estado
    * atual com `changed: false`; responder diferente, ou responder pedido
    * cancelado ou expirado, falha.
+   *
+   * O `updated_at` gravado aqui é a data da resposta que o aviso do torcedor
+   * lê (WEB-318, `decidedAt` em `reservations.mine`).
    */
   respond: ownerProcedure
     .input(
@@ -258,7 +262,10 @@ export const barReservationsRouter = router({
           .update(reservation)
           .set({ status: input.status })
           .where(and(own(notEnded), eq(reservation.status, 'pending')))
-          .returning({ id: reservation.id })
+          .returning({
+            userId: reservation.userId,
+            eventId: reservation.eventId
+          })
         if (!updated) return false
 
         if (input.status === 'declined') {
@@ -270,6 +277,17 @@ export const barReservationsRouter = router({
               and(
                 eq(reservationCode.reservationId, input.reservationId),
                 isNull(reservationCode.retiredAt)
+              )
+            )
+          // A recusa leva junto a presença que a reserva criou, e só ela: a
+          // marcada à mão é intenção do torcedor e fica (ADR 0003, WEB-296).
+          await tx
+            .delete(attendance)
+            .where(
+              and(
+                eq(attendance.userId, updated.userId),
+                eq(attendance.eventId, updated.eventId),
+                eq(attendance.source, 'reservation')
               )
             )
         }
