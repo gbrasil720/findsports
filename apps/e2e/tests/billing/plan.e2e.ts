@@ -28,6 +28,27 @@ test('mostra Starter, Pro e Elite para quem ainda não assinou', async ({
   }
 })
 
+test('diz em nome de quem a assinatura sai, com o caminho para corrigir o bar (WEB-328)', async ({
+  page
+}) => {
+  const { user, barId } = await createPub({
+    subscription: null,
+    user: { name: 'Dona Marta' }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  // O checkout não pede nome nem empresa: saem do cadastro, e a tela avisa.
+  await expect(
+    page.getByText(
+      `Assinatura em nome de Dona Marta · Bar E2E ${barId.slice(0, 8)}.`
+    )
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Alterar o nome do bar' })
+  ).toHaveAttribute('href', '/admin#admin-espaco')
+})
+
 test('pagamento pendente: aviso para regularizar, sem checkout novo', async ({
   page
 }) => {
@@ -47,6 +68,8 @@ test('pagamento pendente: aviso para regularizar, sem checkout novo', async ({
   await expect(
     page.getByRole('button', { name: /^Continuar com/ })
   ).toHaveCount(0)
+  // WEB-328: sem checkout, não há o que anunciar.
+  await expect(page.getByText(/Assinatura em nome de/)).toHaveCount(0)
 })
 
 // WEB-249: o trial do onboarding é uma linha local, sem assinatura no

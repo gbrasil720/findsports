@@ -158,6 +158,55 @@ export async function applyStripeSubscription(
     .where(eq(bar.id, foundBar.id))
 }
 
+/**
+ * Nome de quem paga e nome da empresa no cliente do Stripe (WEB-328): sempre
+ * os do cadastro, o dono e o bar. É o que sai em recibo, fatura e portal. Os
+ * dois campos próprios aceitam até 150 caracteres.
+ */
+export function customerNamesFor(ownerName: string, barName: string) {
+  return {
+    name: ownerName,
+    individual_name: ownerName.slice(0, 150),
+    business_name: barName.slice(0, 150)
+  }
+}
+
+/**
+ * Fim do checkout: nome e empresa do cliente voltam a ser os do cadastro
+ * (WEB-328). A sessão vai com `customer_update.name: 'auto'` (ver
+ * `stripe-checkout.ts`), então o Stripe pode ter gravado ali o nome do cartão
+ * ou a razão social digitada junto do CNPJ.
+ *
+ * Recusa do Stripe só vai para o log: a assinatura já está gravada, e webhook
+ * respondendo erro por causa de um nome não conserta nada.
+ */
+async function restoreCustomerNames(
+  session: Stripe.Checkout.Session,
+  client: Stripe
+) {
+  const customerId =
+    typeof session.customer === 'string'
+      ? session.customer
+      : session.customer?.id
+  if (!customerId) return
+  const owner = await db.query.user.findFirst({
+    where: eq(user.stripeCustomerId, customerId)
+  })
+  if (!owner) return
+  const ownerBar = await db.query.bar.findFirst({
+    where: eq(bar.userId, owner.id)
+  })
+  if (!ownerBar) return
+  await client.customers
+    .update(customerId, customerNamesFor(owner.name, ownerBar.name))
+    .catch((error: unknown) =>
+      logBillingError('stripe_customer_names_failed', {
+        customerId,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    )
+}
+
 /** O que o plugin entrega em `onEvent`: todo evento já com a assinatura conferida. */
 export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const subscriptionId = subscriptionIdOf(event)
@@ -165,4 +214,7 @@ export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   await applyStripeSubscription(
     await client.subscriptions.retrieve(subscriptionId)
   )
+  if (event.type === 'checkout.session.completed') {
+    await restoreCustomerNames(event.data.object, client)
+  }
 }

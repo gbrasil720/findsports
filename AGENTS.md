@@ -154,6 +154,13 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Teste grátis nasce no cadastro, sem cartão** (`billing.onboarding_trial`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
+- **Nome e empresa da assinatura vêm do cadastro, não do checkout** (WEB-328): o
+  checkout não pede nenhum dos dois. Antes de a sessão abrir, o cliente do Stripe
+  recebe `user.name`, `bar.name` e, se ainda não tiver endereço, o do bar
+  (`stripe-checkout.ts`); no `checkout.session.completed` os nomes são regravados
+  (`stripe-sync.ts`). O checkout hospedado não mostra esses dados preenchidos: o
+  endereço de cobrança é digitado na primeira compra. `/plan` avisa em nome de quem
+  a assinatura sai. Cobrança sempre em BRL (Adaptive Pricing desligado na sessão).
 - Chaves de `app_config`: `billing.checkout_enabled` (abre a contratação),
   `billing.onboarding_trial` (teste do cadastro) e `billing.founder_coupon` (cupom de
   fundador no checkout).
