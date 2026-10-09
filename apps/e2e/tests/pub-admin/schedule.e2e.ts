@@ -25,13 +25,16 @@ async function gotoSchedule(page: Page) {
   )
 }
 
-/** `datetime-local` de amanhã às 21h, no fuso do navegador (São Paulo). */
+/**
+ * Amanhã às `hour`h no formato do campo com máscara (`dd/mm/aaaa hh:mm`), no
+ * fuso do navegador (São Paulo).
+ */
 function tomorrowAt(hour: number): string {
   const date = new Date(Date.now() + 86_400_000)
-  const day = date.toLocaleDateString('sv-SE', {
+  const day = date.toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo'
   })
-  return `${day}T${String(hour).padStart(2, '0')}:00`
+  return `${day} ${String(hour).padStart(2, '0')}:00`
 }
 
 /** Três times de futebol semeados, em ordem alfabética. */

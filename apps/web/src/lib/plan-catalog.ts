@@ -148,9 +148,11 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Tudo do Pro', status: 'live' },
       { label: 'Selo Elite no topo do perfil', status: 'live' },
       { label: 'Link do cardápio e preço médio no perfil', status: 'live' },
+      { label: 'Reserva de mesa pela plataforma', status: 'live' },
+      // Sem exemplo de oferta: a Onside não sugere o conteúdo (WEB-120).
+      { label: 'Oferta da casa para quem chega pela Onside', status: 'live' },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
-      { label: 'Promoções no perfil', status: 'soon' },
-      { label: 'Reserva de mesa pela plataforma', status: 'soon' }
+      { label: 'Promoções no perfil', status: 'soon' }
     ],
     analytics: {
       ...analyticsForPlan('elite')

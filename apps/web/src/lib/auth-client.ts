@@ -15,16 +15,18 @@ export const authClient = createAuthClient({
     twoFactorClient(),
     adminClient(),
     dodopaymentsClient(),
-    // Tipa `authClient.revokeSessionById` (WEB-150).
+    // Tipa `authClient.revokeSessionById` (WEB-150) e `expireSessionCache`.
     {
       id: 'session-token-guard',
-      $InferServerPlugin: {} as ReturnType<typeof sessionTokenGuard>
+      $InferServerPlugin: {} as ReturnType<typeof sessionTokenGuard>,
+      // Chamada sem corpo sairia como GET.
+      pathMethods: { '/expire-session-cache': 'POST' }
     } satisfies BetterAuthClientPlugin
   ]
 })
 
 /**
- * Relê a sessão no banco e regrava o cookie de cache com o estado novo.
+ * Descarta o cookie de cache da sessão: a requisição seguinte relê o banco.
  *
  * Necessário depois de qualquer mutação que altere campos da sessão usados
  * pelos guards de rota (`role`, `onboardingCompleted`) por fora do
@@ -32,12 +34,13 @@ export const authClient = createAuthClient({
  * Sem isto o guard leria o estado antigo por até `cookieCache.maxAge` e
  * devolveria o usuário ao onboarding que ele acabou de concluir.
  *
+ * Expira em vez de reler (WEB-324): `getSession` com `disableCookieCache` não
+ * regrava o cache de sessão "não lembrar de mim", que é a da impersonação.
+ *
  * Nunca rejeita: quem chama já gravou a mutação, e uma falha aqui (rede) não
  * pode virar erro dela. O guard revalida no servidor; o pior caso é ver o
  * onboarding de novo.
  */
 export async function refreshSessionCache() {
-  await authClient
-    .getSession({ query: { disableCookieCache: true } })
-    .catch(() => {})
+  await authClient.expireSessionCache().catch(() => {})
 }

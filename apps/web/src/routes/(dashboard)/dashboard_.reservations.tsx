@@ -8,7 +8,7 @@ import { formatDateTime, getGameTitle } from '@/domain/reservation-validation'
 import {
   type FanReservation,
   getCancelErrorMessage,
-  RESERVATION_STATUS_DETAIL,
+  getStatusDetail,
   RESERVATION_STATUS_LABEL
 } from '@/domain/reservations'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -32,7 +32,8 @@ const STATUS_BADGE: Record<FanReservation['status'], string> = {
   confirmed: 'onside-badge onside-badge-acid',
   declined: 'onside-badge onside-badge-ink',
   cancelled: 'onside-badge onside-badge-ink',
-  expired: 'onside-badge onside-badge-ink'
+  expired: 'onside-badge onside-badge-ink',
+  ended: 'onside-badge onside-badge-ink'
 }
 
 /**
@@ -172,9 +173,7 @@ function ReservationCard({
         </span>
       </div>
 
-      <p className="mt-2 text-sm">
-        {RESERVATION_STATUS_DETAIL[reservation.status]}
-      </p>
+      <p className="mt-2 text-sm">{getStatusDetail(reservation)}</p>
 
       {reservation.code ? (
         <div className="mt-3 border-[1.5px] border-[var(--onside-line)] p-3">

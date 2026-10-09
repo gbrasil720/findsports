@@ -24,6 +24,24 @@ import {
 } from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
 
+/**
+ * WEB-324: lê o banco, não `ctx.session` — a sessão pode vir do cookie cache,
+ * até 60s atrasada, e um segundo envio passava: no bar, geocoding pago de novo
+ * e 500 na unicidade de `bar.user_id` em vez desta mensagem.
+ */
+async function assertOnboardingPending(userId: string) {
+  const [row] = await db
+    .select({ done: user.onboardingCompleted })
+    .from(user)
+    .where(eq(user.id, userId))
+  if (row?.done) {
+    throw new TRPCError({
+      code: 'CONFLICT',
+      message: 'Onboarding já concluído.'
+    })
+  }
+}
+
 export const onboardingRouter = router({
   completePub: pubProcedure
     .input(
@@ -44,12 +62,7 @@ export const onboardingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      if (ctx.session.user.onboardingCompleted) {
-        throw new TRPCError({
-          code: 'CONFLICT',
-          message: 'Onboarding já concluído.'
-        })
-      }
+      await assertOnboardingPending(userId)
 
       const motivoTelefone = motivoTelefoneInvalido(input.phone)
       if (motivoTelefone) {
@@ -165,12 +178,7 @@ export const onboardingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      if (ctx.session.user.onboardingCompleted) {
-        throw new TRPCError({
-          code: 'CONFLICT',
-          message: 'Onboarding já concluído.'
-        })
-      }
+      await assertOnboardingPending(userId)
 
       await db.transaction(async (tx) => {
         await tx
