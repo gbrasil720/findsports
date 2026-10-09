@@ -61,6 +61,20 @@ export function ehIOS(userAgent: string, maxTouchPoints: number): boolean {
 }
 
 /**
+ * Android, celular ou tablet (WEB-289). `beforeinstallprompt` sozinho não
+ * serve de sinal: o Chrome desktop também dispara, e lá o convite fala de
+ * "tela inicial" e abre um balão fora da página.
+ *
+ * É o `userAgent` e não `userAgentData.mobile` porque este é `false` em tablet
+ * Android, que instala igual — e o iPad já entra por `ehIOS`. O token
+ * `Android` sobrevive à redução de UA do Chrome; com "site para computador"
+ * ligado ele some, e o convite também.
+ */
+export function ehAndroid(userAgent: string): boolean {
+  return /Android/.test(userAgent)
+}
+
+/**
  * A dispensa é por usuário, não por aba: `sessionStorage` traria o convite de
  * volta na aba seguinte, que é exatamente o comportamento que faz um aviso
  * virar incômodo.

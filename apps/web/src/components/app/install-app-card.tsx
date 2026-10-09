@@ -8,6 +8,7 @@ import {
   type InstallSurface
 } from '@/lib/analytics'
 import {
+  ehAndroid,
   ehIOS,
   estaInstalado,
   foiDispensado,
@@ -71,6 +72,9 @@ export function InstallAppCard({
 
   useEffect(() => {
     function aoPoderInstalar(evento: Event) {
+      // WEB-289: o convite é só de celular. No desktop o evento segue o
+      // caminho padrão do Chrome (o ícone na barra de endereço).
+      if (!ehAndroid(navigator.userAgent)) return
       // Sem o preventDefault o Chrome decide a hora sozinho, e o botão daqui
       // perde o evento.
       evento.preventDefault()

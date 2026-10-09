@@ -8,7 +8,7 @@ const password = 'Senha-de-teste-150!'
 async function setup() {
   // `index.ts` instancia o cliente da Dodo no import; o teste não o usa.
   process.env.DODO_PAYMENTS_API_KEY ||= 'test'
-  const [{ db, inArray, sql }, { account, rateLimit, user }, { auth }] =
+  const [{ db, eq, inArray, sql }, { account, rateLimit, user }, { auth }] =
     await Promise.all([
       import('@findsports_oficial/db'),
       import('@findsports_oficial/db/schema/auth'),
@@ -18,7 +18,10 @@ async function setup() {
   const passwordHash = await (await auth.$context).password.hash(password)
   const userIds: string[] = []
 
-  async function createUser(role: 'fan' | 'admin' = 'fan') {
+  async function createUser(
+    role: 'fan' | 'admin' = 'fan',
+    onboardingCompleted = true
+  ) {
     const id = crypto.randomUUID()
     const email = `${id}@integration.invalid`
     await db.insert(user).values({
@@ -27,7 +30,7 @@ async function setup() {
       email,
       emailVerified: true,
       role,
-      onboardingCompleted: true
+      onboardingCompleted
     })
     userIds.push(id)
     await db.insert(account).values({
@@ -45,14 +48,18 @@ async function setup() {
   const octet = () => Math.floor(Math.random() * 256)
   const clientIp = `10.${octet()}.${octet()}.${octet()}`
 
-  // Aplica o `Set-Cookie` da resposta sobre o cookie enviado, por nome.
+  // Aplica o `Set-Cookie` da resposta sobre o cookie enviado, por nome. Como
+  // o navegador, descarta o que chega expirado (`Max-Age=0`).
   function withSetCookies(cookie: string, response: Response) {
     const jar = new Map<string, string>()
-    const setCookies = response.headers
-      .getSetCookie()
-      .map((c) => c.slice(0, c.indexOf(';')))
-    for (const pair of [...cookie.split('; '), ...setCookies]) {
+    for (const pair of cookie.split('; ')) {
       if (pair) jar.set(pair.slice(0, pair.indexOf('=')), pair)
+    }
+    for (const setCookie of response.headers.getSetCookie()) {
+      const pair = setCookie.slice(0, setCookie.indexOf(';'))
+      const name = pair.slice(0, pair.indexOf('='))
+      if (/;\s*max-age=0/i.test(setCookie)) jar.delete(name)
+      else jar.set(name, pair)
     }
     return [...jar.values()].join('; ')
   }
@@ -89,7 +96,11 @@ async function setup() {
       .where(sql`${rateLimit.key} like ${`${clientIp}|%`}`)
   }
 
-  return { createUser, call, signIn, cleanup }
+  // Como o onboarding: grava em `user` pelo Drizzle, por fora do better-auth.
+  const completeOnboarding = (id: string) =>
+    db.update(user).set({ onboardingCompleted: true }).where(eq(user.id, id))
+
+  return { createUser, call, signIn, completeOnboarding, cleanup }
 }
 
 integrationTest(
@@ -200,6 +211,55 @@ integrationTest(
         revokeOtherSessions: true
       })
       expect(changed.data).not.toHaveProperty('token')
+    } finally {
+      await cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'expirar o cookie cache faz a sessão reler o banco, com ou sem "não lembrar de mim" (WEB-324)',
+  async () => {
+    const { createUser, call, signIn, completeOnboarding, cleanup } =
+      await setup()
+
+    type Current = { user: { onboardingCompleted: boolean } }
+    const getSession = (cookie: string, query = '') =>
+      call<Current>(cookie, `/get-session${query}`)
+    const onboardingDone = async (cookie: string) =>
+      (await getSession(cookie)).data.user.onboardingCompleted
+
+    const admin = await createUser('admin')
+    const fan = await createUser('fan', false)
+    try {
+      const remembered = (await signIn(fan.email)).cookie
+      // A impersonação cria a sessão com `dontRememberMe` e grava o cache.
+      const adminCookie = (await signIn(admin.email)).cookie
+      const impersonated = (
+        await call(adminCookie, '/admin/impersonate-user', { userId: fan.id })
+      ).cookie
+      expect(remembered).not.toContain('dont_remember=')
+      expect(impersonated).toContain('dont_remember=')
+
+      await completeOnboarding(fan.id)
+
+      // O defeito: reler do banco devolve o valor novo, mas na sessão "não
+      // lembrar de mim" o better-auth não regrava o cache, e a leitura
+      // seguinte volta ao valor antigo. Se uma versão nova do better-auth
+      // mudar isso, é este trecho que avisa.
+      const reread = await getSession(impersonated, '?disableCookieCache=true')
+      expect(reread.data.user.onboardingCompleted).toBe(true)
+      expect(await onboardingDone(reread.cookie)).toBe(false)
+
+      for (const cookie of [remembered, impersonated]) {
+        expect(cookie).toContain('session_data=')
+        expect(await onboardingDone(cookie)).toBe(false)
+
+        const expired = await call(cookie, '/expire-session-cache', {})
+        expect(expired.data).toEqual({ status: true })
+        expect(expired.cookie).not.toContain('session_data=')
+        expect(await onboardingDone(expired.cookie)).toBe(true)
+      }
     } finally {
       await cleanup()
     }

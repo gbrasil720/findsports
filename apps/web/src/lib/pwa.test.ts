@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import {
   chaveDeDispensa,
+  ehAndroid,
   ehIOS,
   estaInstalado,
   foiDispensado,
@@ -67,6 +68,41 @@ describe('ehIOS', () => {
 
   test('Android não é iOS', () => {
     expect(ehIOS('Mozilla/5.0 (Linux; Android 14; Pixel 8)', 5)).toBe(false)
+  })
+})
+
+describe('ehAndroid', () => {
+  test('reconhece celular e tablet Android, inclusive com UA reduzido', () => {
+    expect(
+      ehAndroid(
+        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36'
+      )
+    ).toBe(true)
+    expect(
+      ehAndroid(
+        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+      )
+    ).toBe(true)
+  })
+
+  // WEB-289: o Chrome desktop também dispara `beforeinstallprompt`.
+  test('Chrome desktop não é Android', () => {
+    for (const plataforma of [
+      'Windows NT 10.0; Win64; x64',
+      'Macintosh; Intel Mac OS X 10_15_7',
+      'X11; Linux x86_64',
+      'X11; CrOS x86_64 14541.0.0'
+    ]) {
+      expect(
+        ehAndroid(
+          `Mozilla/5.0 (${plataforma}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36`
+        )
+      ).toBe(false)
+    }
+  })
+
+  test('iPhone não é Android', () => {
+    expect(ehAndroid('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)')).toBe(false)
   })
 })
 

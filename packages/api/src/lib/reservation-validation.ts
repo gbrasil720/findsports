@@ -1,4 +1,7 @@
-import { getValidationWindow } from '@findsports_oficial/db/event-window'
+import {
+  getEventEnd,
+  getValidationWindow
+} from '@findsports_oficial/db/event-window'
 import type { ReservationStatus } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
 import { COMMERCIAL_TIME_ZONE } from './commercial-analytics/commercial-day'
@@ -81,6 +84,44 @@ export function assertReservationConfirmed(status: ReservationStatus): void {
           ? 'Esta reserva foi recusada pelo bar.'
           : 'Esta reserva foi cancelada pelo torcedor.'
   })
+}
+
+/**
+ * `expired` e `ended` são leitura derivada do relógio do jogo, nunca estado
+ * gravado: o fim derivado já é a regra, e não há job para manter.
+ */
+export type FanReservationStatus = ReservationStatus | 'expired' | 'ended'
+
+/**
+ * O que o torcedor vê da própria reserva, pelo relógio do jogo.
+ *
+ * - `pending` vira `expired` no fim do jogo: a fila do bar e `respond` usam o
+ *   mesmo corte, então ninguém muda o pedido depois dele.
+ * - `confirmed` vira `ended` no fim do jogo (WEB-322). O nome é neutro de
+ *   propósito: o MVP registra o comparecimento e não julga (ADR 0003), então
+ *   nada aqui diz "não compareceu". O código segue à mostra enquanto a janela
+ *   de validação estiver aberta, que é quando o bar ainda consegue registrar.
+ * - Com chegada registrada nada muda: o estado de chegada é do WEB-259.
+ */
+export function deriveFanReservation(
+  status: ReservationStatus,
+  game: { startsAt: Date; endsAt: Date | null },
+  hasArrival: boolean,
+  now = new Date()
+): { status: FanReservationStatus; showCode: boolean } {
+  const over = getEventEnd(game) <= now
+  if (status === 'pending') {
+    return over
+      ? { status: 'expired', showCode: false }
+      : { status, showCode: true }
+  }
+  // Recusado ou cancelado: o código não vale.
+  if (status !== 'confirmed') return { status, showCode: false }
+  if (!over || hasArrival) return { status, showCode: true }
+  return {
+    status: 'ended',
+    showCode: now <= getValidationWindow(game).closesAt
+  }
 }
 
 /** "12/09, 18:30", no fuso em que os bares operam. */

@@ -1,8 +1,5 @@
 import { and, db, eq, isNull } from '@findsports_oficial/db'
-import {
-  getEventEnd,
-  getValidationWindow
-} from '@findsports_oficial/db/event-window'
+import { getValidationWindow } from '@findsports_oficial/db/event-window'
 import { generateReservationCode } from '@findsports_oficial/db/reservation-code'
 import {
   normalizeReservationNote,
@@ -14,7 +11,6 @@ import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
-  type ReservationStatus,
   reservation,
   reservationCode
 } from '@findsports_oficial/db/schema/reservation'
@@ -26,7 +22,11 @@ import {
   assertReceivesReservations,
   withSeatAvailability
 } from '../lib/reservation-intake'
-import { pgField } from '../lib/reservation-validation'
+import {
+  deriveFanReservation,
+  type FanReservationStatus,
+  pgField
+} from '../lib/reservation-validation'
 
 /**
  * Pedido de reserva do lado do torcedor (WEB-124): pedir, acompanhar,
@@ -49,9 +49,6 @@ const CODE_ATTEMPTS = 5
 
 // ponytail: sem paginação; o torcedor vê os 50 pedidos mais recentes.
 const HISTORY_LIMIT = 50
-
-/** Pendente depois do fim derivado do jogo; ver `readOwnReservations`. */
-type FanReservationStatus = ReservationStatus | 'expired'
 
 function isActive(status: FanReservationStatus) {
   return ACTIVE_RESERVATION_STATUSES.some((active) => active === status)
@@ -88,7 +85,7 @@ async function readOwnReservations(userId: string, reservationId?: string) {
       },
       codes: {
         where: isNull(reservationCode.retiredAt),
-        columns: { code: true }
+        columns: { code: true, usedCount: true }
       }
     },
     orderBy: (row, { desc }) => [desc(row.createdAt)],
@@ -96,17 +93,13 @@ async function readOwnReservations(userId: string, reservationId?: string) {
   })
 
   return rows.map(({ event: game, codes, ...row }) => {
-    // Pedido que o bar não respondeu até o fim do jogo expira. É leitura
-    // derivada, não transição gravada: o fim derivado já é a regra, e a fila
-    // do bar e `respond` usam o mesmo corte, então ninguém muda o pedido
-    // depois dele e não há job para manter.
-    const status: FanReservationStatus =
-      row.status === 'pending' && getEventEnd(game) <= now
-        ? 'expired'
-        : row.status
-    const active = isActive(status)
-    // Código de pedido recusado, cancelado ou expirado não vale: não mostrar.
-    const code = active ? (codes[0]?.code ?? null) : null
+    const { status, showCode } = deriveFanReservation(
+      row.status,
+      game,
+      (codes[0]?.usedCount ?? 0) > 0,
+      now
+    )
+    const code = showCode ? (codes[0]?.code ?? null) : null
     return {
       ...row,
       status,
@@ -120,7 +113,7 @@ async function readOwnReservations(userId: string, reservationId?: string) {
       },
       code,
       window: code ? getValidationWindow(game) : null,
-      canCancel: active && game.startsAt > now
+      canCancel: isActive(status) && game.startsAt > now
     }
   })
 }

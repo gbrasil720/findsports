@@ -19,7 +19,9 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   confirmed: 'Confirmada',
   declined: 'Recusada',
   cancelled: 'Cancelada',
-  expired: 'Sem resposta'
+  expired: 'Sem resposta',
+  // Neutro de propósito: a ADR 0003 registra o comparecimento e não julga.
+  ended: 'Jogo encerrado'
 }
 
 export const RESERVATION_STATUS_DETAIL: Record<ReservationStatus, string> = {
@@ -27,7 +29,22 @@ export const RESERVATION_STATUS_DETAIL: Record<ReservationStatus, string> = {
   confirmed: 'O bar aceitou. Mostre o código ao chegar.',
   declined: 'O bar não aceitou este pedido.',
   cancelled: 'Você cancelou este pedido.',
-  expired: 'O bar não respondeu até o fim do jogo. O pedido não vale mais.'
+  expired: 'O bar não respondeu até o fim do jogo. O pedido não vale mais.',
+  ended: 'O jogo já acabou. O código ainda vale no bar até o prazo abaixo.'
+}
+
+/**
+ * Texto do estado. Só `ended` varia (WEB-322): o servidor tira o código
+ * quando a janela de validação fecha, e o texto acompanha.
+ */
+export function getStatusDetail({
+  status,
+  code
+}: Pick<FanReservation, 'status' | 'code'>): string {
+  if (status === 'ended' && !code) {
+    return 'O jogo já acabou e o código desta reserva não vale mais.'
+  }
+  return RESERVATION_STATUS_DETAIL[status]
 }
 
 export const PENDING_NOTICE =
