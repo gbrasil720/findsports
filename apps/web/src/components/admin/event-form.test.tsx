@@ -49,6 +49,7 @@ function render(form: Partial<EventForm>) {
     (button) => button.textContent === 'Salvar'
   )
   return {
+    fields: [...doc.querySelectorAll('input[placeholder="dd/mm/aaaa hh:mm"]')],
     text: doc.body.textContent ?? '',
     alerts: [...doc.querySelectorAll('[role="alert"]')].map(
       (alert) => alert.textContent
@@ -107,4 +108,34 @@ test('campeonato e texto livre acima do limite avisam e travam o salvar', () => 
   expect(freeText.alerts).toEqual([
     'O texto livre aceita até 200 caracteres. Tire 5.'
   ])
+})
+
+// WEB-306: o formato não depende mais do idioma do navegador.
+test('data e hora abrem com máscara dd/mm/aaaa hh:mm, sem campo nativo', () => {
+  const form = render({ endsAt: '2026-10-10T23:30' })
+  expect(form.fields.map((field) => field.getAttribute('value'))).toEqual([
+    '10/10/2026 21:00',
+    '10/10/2026 23:30'
+  ])
+  for (const field of form.fields) {
+    expect(field.getAttribute('type')).toBe('text')
+    expect(field.getAttribute('inputmode')).toBe('numeric')
+    expect(field.getAttribute('autocomplete')).toBe('off')
+  }
+  expect(form.text).toContain('Dia, mês, ano e horário de 24 h')
+  expect(form.saveDisabled).toBe(false)
+})
+
+test('término igual ou anterior ao início avisa e trava o salvar', () => {
+  const form = render({ endsAt: '2026-10-10T21:00' })
+  expect(form.saveDisabled).toBe(true)
+  expect(form.alerts).toEqual(['Término deve ser posterior ao início.'])
+
+  // Virada de ano: 23h → 00h30 do dia seguinte é depois.
+  const overnight = render({
+    startsAt: '2026-12-31T23:00',
+    endsAt: '2027-01-01T00:30'
+  })
+  expect(overnight.saveDisabled).toBe(false)
+  expect(overnight.alerts).toEqual([])
 })

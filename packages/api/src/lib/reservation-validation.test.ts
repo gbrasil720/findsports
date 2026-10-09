@@ -5,6 +5,7 @@ import {
   assertReservationConfirmed,
   assertWindowOpen,
   codeNotFoundError,
+  deriveFanReservation,
   translateArrivalWriteError
 } from './reservation-validation'
 
@@ -153,5 +154,77 @@ describe('translateArrivalWriteError', () => {
       )
     ).toBeNull()
     expect(translateArrivalWriteError(new Error('rede caiu'), 2)).toBeNull()
+  })
+})
+
+describe('deriveFanReservation', () => {
+  // Sem `endsAt`: o fim derivado é início + 3h, e a janela fecha 3h depois.
+  const game = (startedHoursAgo: number) => ({
+    startsAt: new Date(now.getTime() - startedHoursAgo * HOUR),
+    endsAt: null
+  })
+  const duringGame = game(1)
+  const afterGame = game(4)
+  const afterWindow = game(7)
+
+  test('confirmada antes do fim do jogo segue confirmada, com código', () => {
+    expect(deriveFanReservation('confirmed', game(-24), false, now)).toEqual({
+      status: 'confirmed',
+      showCode: true
+    })
+    expect(deriveFanReservation('confirmed', duringGame, false, now)).toEqual({
+      status: 'confirmed',
+      showCode: true
+    })
+  })
+
+  test('entre o fim do jogo e o fim da janela: encerrada, código à mostra', () => {
+    expect(deriveFanReservation('confirmed', afterGame, false, now)).toEqual({
+      status: 'ended',
+      showCode: true
+    })
+    // O limite da janela é inclusivo, como em `assertWindowOpen`.
+    expect(deriveFanReservation('confirmed', game(6), false, now)).toEqual({
+      status: 'ended',
+      showCode: true
+    })
+  })
+
+  test('depois da janela: encerrada, sem código', () => {
+    expect(deriveFanReservation('confirmed', afterWindow, false, now)).toEqual({
+      status: 'ended',
+      showCode: false
+    })
+  })
+
+  test('com chegada registrada nada muda (WEB-259)', () => {
+    for (const times of [afterGame, afterWindow]) {
+      expect(deriveFanReservation('confirmed', times, true, now)).toEqual({
+        status: 'confirmed',
+        showCode: true
+      })
+    }
+  })
+
+  test('pendente expira no fim do jogo e perde o código', () => {
+    expect(deriveFanReservation('pending', duringGame, false, now)).toEqual({
+      status: 'pending',
+      showCode: true
+    })
+    expect(deriveFanReservation('pending', afterGame, false, now)).toEqual({
+      status: 'expired',
+      showCode: false
+    })
+  })
+
+  test('recusada e cancelada não mudam com o relógio nem mostram código', () => {
+    for (const status of ['declined', 'cancelled'] as const) {
+      for (const times of [duringGame, afterWindow]) {
+        expect(deriveFanReservation(status, times, false, now)).toEqual({
+          status,
+          showCode: false
+        })
+      }
+    }
   })
 })

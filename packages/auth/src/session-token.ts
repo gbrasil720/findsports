@@ -4,6 +4,7 @@ import {
   createAuthMiddleware,
   sensitiveSessionMiddleware
 } from 'better-auth/api'
+import { createSessionStore } from 'better-auth/cookies'
 import { z } from 'zod'
 
 type WithToken = { token?: unknown }
@@ -84,6 +85,23 @@ export const sessionTokenGuard = () =>
           if (target) {
             await ctx.context.internalAdapter.deleteSession(target.token)
           }
+          return ctx.json({ status: true })
+        }
+      ),
+      // WEB-324: descarta o cookie cache da sessão; a leitura seguinte vai ao
+      // banco. É para quem altera `user` por fora do better-auth (onboarding).
+      // Reler com `disableCookieCache` não serve: em sessão "não lembrar de
+      // mim" — a da impersonação — o `get-session` responde sem regravar o
+      // cache. O cookie é `httpOnly`, então só o servidor o expira. Sem sessão
+      // exigida e sem corpo: não lê nem devolve nada.
+      expireSessionCache: createAuthEndpoint(
+        '/expire-session-cache',
+        { method: 'POST', requireHeaders: true },
+        async (ctx) => {
+          // Mesmo passo do `deleteSessionCookie`: cobre o cookie em pedaços.
+          const { name, attributes } = ctx.context.authCookies.sessionData
+          const store = createSessionStore(name, attributes, ctx)
+          store.setCookies(store.clean())
           return ctx.json({ status: true })
         }
       )

@@ -546,6 +546,47 @@ integrationTest('sem teto no bar nem no jogo, não há teto', async () => {
 })
 
 integrationTest(
+  'reserva confirmada vira jogo encerrado no fim do jogo e perde o código quando a janela fecha',
+  async () => {
+    const ctx = await seed()
+    try {
+      const created = await ctx.fan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: created.id,
+        status: 'confirmed'
+      })
+      const startedAgo = (hours: number) =>
+        ctx.db
+          .update(event)
+          .set({ startsAt: new Date(Date.now() - hours * HOUR) })
+          .where(eq(event.id, ctx.futureId))
+
+      // Fim derivado há 1h: a janela de validação ainda está aberta.
+      await startedAgo(4)
+      const [open] = await ctx.fan.mine()
+      expect(open).toMatchObject({
+        status: 'ended',
+        code: created.code,
+        canCancel: false
+      })
+      expect(open?.window).not.toBeNull()
+
+      // Fim derivado há 4h: a janela fechou.
+      await startedAgo(7)
+      const [closed] = await ctx.fan.mine()
+      expect(closed).toMatchObject({
+        status: 'ended',
+        code: null,
+        window: null,
+        canCancel: false
+      })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'pedido sem resposta até o fim do jogo expira para o torcedor e para o bar',
   async () => {
     const ctx = await seed()

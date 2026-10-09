@@ -9,6 +9,7 @@ import { type ReactNode, useId, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
+import { DateTimeInput, formatDateTime, parseDateTime } from './date-time-input'
 
 const DIRECT_CONFRONTATION_SLUGS = new Set([
   'futebol',
@@ -95,6 +96,12 @@ export function EventFormComponent({
   const freeTextErrorId = `${ids}-free-text-error`
   const missingId = `${ids}-missing`
   const [form, setForm] = useState<EventForm>(initial)
+  // Data e hora ficam como texto com máscara enquanto se digita (WEB-306);
+  // `onSave` recebe o mesmo `aaaa-mm-ddThh:mm` que o campo nativo entregava.
+  const [startsText, setStartsText] = useState(formatDateTime(initial.startsAt))
+  const [endsText, setEndsText] = useState(formatDateTime(initial.endsAt))
+  const starts = parseDateTime(startsText)
+  const ends = parseDateTime(endsText)
 
   const { data: teams = [], isLoading: loadingTeams } = useQuery({
     ...trpc.pubs.getTeamsBySport.queryOptions({ sportId: form.sportId }),
@@ -125,8 +132,10 @@ export function EventFormComponent({
     }))
   }
 
+  const endsBeforeStart =
+    !!ends.value && !!starts.value && ends.value <= starts.value
   const endsAtValid =
-    !form.endsAt || (!!form.startsAt && form.endsAt > form.startsAt)
+    ends.value === '' || (!!ends.value && !!starts.value && !endsBeforeStart)
   // Os mesmos números do servidor (`pub.createEvent`), contados igual.
   const championshipTooLong =
     form.championship.length > EVENT_CHAMPIONSHIP_MAX_LENGTH
@@ -136,10 +145,13 @@ export function EventFormComponent({
     !form.sportId && 'esporte',
     form.championship.trim().length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
       `campeonato (pelo menos ${EVENT_CHAMPIONSHIP_MIN_LENGTH} caracteres)`,
-    !form.startsAt && 'data e horário'
+    // Incompleto também é "falta preencher"; data ou hora impossível tem a
+    // própria mensagem embaixo do campo.
+    (starts.value === '' || starts.problem === 'incomplete') && 'data e horário'
   ].filter(Boolean)
   const canSave =
     missing.length === 0 &&
+    !!starts.value &&
     endsAtValid &&
     !championshipTooLong &&
     !freeTextTooLong
@@ -189,32 +201,21 @@ export function EventFormComponent({
         />
       </div>
 
-      <label className="block">
-        <span className="onside-label mb-1.5 block">Data e horário *</span>
-        <input
-          type="datetime-local"
-          value={form.startsAt}
-          onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-          className="onside-input font-semibold"
-          required
-        />
-      </label>
+      <DateTimeInput
+        label="Data e horário *"
+        value={startsText}
+        onChange={setStartsText}
+        required
+      />
 
-      <label className="block">
-        <span className="onside-label mb-1.5 block">Horário de término</span>
-        <input
-          type="datetime-local"
-          value={form.endsAt}
-          min={form.startsAt || undefined}
-          onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
-          className="onside-input font-semibold"
-        />
-        {form.endsAt && form.startsAt && form.endsAt <= form.startsAt && (
-          <p className="text-xs text-[var(--onside-live-text)] mt-1">
-            Término deve ser posterior ao início.
-          </p>
-        )}
-      </label>
+      <DateTimeInput
+        label="Horário de término"
+        value={endsText}
+        onChange={setEndsText}
+        error={
+          endsBeforeStart ? 'Término deve ser posterior ao início.' : undefined
+        }
+      />
 
       {form.sportId && (
         <div>
@@ -330,7 +331,13 @@ export function EventFormComponent({
         </button>
         <button
           type="button"
-          onClick={() => onSave(form)}
+          onClick={() =>
+            onSave({
+              ...form,
+              startsAt: starts.value ?? '',
+              endsAt: ends.value ?? ''
+            })
+          }
           disabled={!canSave || isSaving}
           aria-describedby={missing.length > 0 ? missingId : undefined}
           className="onside-btn onside-btn-acid min-h-11 px-5 text-xs"

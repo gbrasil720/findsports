@@ -297,11 +297,28 @@ describe('profilePerks', () => {
     ).toBe(false)
   })
 
+  test('reserva de mesa e oferta da casa são entregues só no Elite', () => {
+    for (const label of [
+      'Reserva de mesa pela plataforma',
+      'Oferta da casa para quem chega pela Onside'
+    ]) {
+      expect(getPlan('elite').profilePerks).toContainEqual({
+        label,
+        status: 'live'
+      })
+      for (const id of ['starter', 'pro'] as const) {
+        expect(getPlan(id).profilePerks.some((p) => p.label === label)).toBe(
+          false
+        )
+      }
+    }
+  })
+
   test('o que ainda não existe está marcado como tal', () => {
     const roadmap = PLAN_CATALOG.flatMap((plan) =>
       plan.profilePerks.filter((perk) => perk.status === 'soon')
     )
-    // Galeria, promoções e reserva dependem de schema que ainda não existe.
+    // Galeria e promoções dependem de schema que ainda não existe.
     expect(roadmap.length).toBeGreaterThan(0)
     expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
   })

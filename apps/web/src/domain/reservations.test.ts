@@ -5,6 +5,8 @@ import {
   findActiveRequest,
   getCancelErrorMessage,
   getCreateErrorMessage,
+  getStatusDetail,
+  RESERVATION_STATUS_LABEL,
   SOLD_OUT_MESSAGE
 } from './reservations'
 
@@ -64,5 +66,25 @@ describe('getCancelErrorMessage', () => {
     expect(getCancelErrorMessage(refusal('NOT_FOUND'))).toBe(
       'Reserva não encontrada.'
     )
+  })
+})
+
+describe('getStatusDetail', () => {
+  test('confirmada antes do fim do jogo manda mostrar o código ao chegar', () => {
+    expect(getStatusDetail({ status: 'confirmed', code: 'QXUNQM' })).toContain(
+      'ao chegar'
+    )
+  })
+
+  // WEB-322: depois do jogo ninguém mais "chega", e a ADR 0003 não julga.
+  test('jogo encerrado não manda chegar nem acusa falta', () => {
+    const open = getStatusDetail({ status: 'ended', code: 'QXUNQM' })
+    const closed = getStatusDetail({ status: 'ended', code: null })
+    expect(RESERVATION_STATUS_LABEL.ended).toBe('Jogo encerrado')
+    expect(open).toContain('ainda vale')
+    expect(closed).toContain('não vale mais')
+    for (const text of [open, closed]) {
+      expect(text).not.toMatch(/chegar|compareceu/)
+    }
   })
 })
