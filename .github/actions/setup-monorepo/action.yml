@@ -1,0 +1,28 @@
+name: Setup monorepo (Bun + deps)
+description: Pin Bun, restore install cache, and run bun install --frozen-lockfile
+
+inputs:
+  bun-version:
+    description: Bun version to install
+    required: false
+    default: '1.3.1'
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+    - uses: actions/cache@v4
+      id: bun-cache
+      with:
+        path: |
+          ~/.bun/install/cache
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-bun-
+    - shell: bash
+      run: bun install --frozen-lockfile

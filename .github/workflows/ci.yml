@@ -12,7 +12,41 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
+  # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
+  # que mudou (e dependentes); no push em master, suíte completa.
+  static-checks:
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.gate.outputs.target }}
+    steps:
+      - id: gate
+        env:
+          TARGET: ${{ github.event_name == 'push' && 'production' || 'preview' }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DEPLOY_DATABASE_URL: ${{ github.event_name == 'push' && secrets.DATABASE_URL_PROD || github.event_name != 'push' && secrets.DATABASE_URL_PREVIEW || '' }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$DEPLOY_DATABASE_URL" ]; then
+            echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Deploy de $TARGET pulado: faltam segredos do Cloudflare ou do banco (WEB-204)."
+          fi
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-monorepo
+      - name: Fetch base branch (affected)
+        if: github.event_name == 'pull_request'
+        run: git fetch origin master --no-tags
+      - name: Check types (affected packages)
+        if: github.event_name == 'pull_request'
+        run: bunx turbo run check-types --filter=...[origin/master]
+      - name: Check types (full tree)
+        if: github.event_name != 'pull_request'
+        run: bun run check-types
+
+  unit-test:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -33,43 +67,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-    outputs:
-      target: ${{ steps.gate.outputs.target }}
     steps:
-      # Portão do `deploy` (WEB-204): o `if` de job não enxerga `secrets`,
-      # então eles são lidos aqui e viram o output `target`. Vazio = deploy
-      # pulado. Mora neste job, que já roda em todo evento, para não pagar um
-      # job à parte por um step de 3 s (WEB-236).
-      - id: gate
-        env:
-          TARGET: ${{ github.event_name == 'push' && 'production' || 'preview' }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Sem `a && b || c`: com o segredo de produção vazio, `|| c` entregaria
-          # o banco de preview a um deploy de produção. O `|| ''` final evita
-          # que `false` vire a string "false" e abra o portão.
-          DEPLOY_DATABASE_URL: ${{ github.event_name == 'push' && secrets.DATABASE_URL_PROD || github.event_name != 'push' && secrets.DATABASE_URL_PREVIEW || '' }}
-        run: |
-          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$DEPLOY_DATABASE_URL" ]; then
-            echo "target=$TARGET" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Deploy de $TARGET pulado: faltam segredos do Cloudflare ou do banco (WEB-204)."
-          fi
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.1
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup-monorepo
       - run: bun run db:migrate
         working-directory: packages/db
-      - run: bun run check-types
       - run: bun run test
 
   e2e:
     # Suíte Playwright (WEB-174, docs/e2e.md): `vite dev` contra um Postgres
     # descartável, Chromium desktop + Pixel 7, sem rede externa.
-    # `desktop`/`mobile` divididos em 4 shards; os `*-serial` num job à parte,
-    # porque como dependência eles puxariam a suíte inteira para cada shard.
+    # `desktop`/`mobile` divididos em 6 shards (WEB-330); os `*-serial` num job
+    # à parte, porque como dependência eles puxariam a suíte inteira para cada shard.
     #
     # Só em PR: o push em `master` é o merge de uma PR que já passou por
     # aqui, e rodar de novo dobrava os minutos e atrasava o deploy (WEB-236).
@@ -79,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [1, 2, 3, 4, serial]
+        part: [1, 2, 3, 4, 5, 6, serial]
     env:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
@@ -98,25 +107,17 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.1
-      - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
-        working-directory: apps/e2e
+      - uses: ./.github/actions/setup-monorepo
+      - uses: ./.github/actions/setup-playwright
       - if: matrix.part != 'serial'
-        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/4
+        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/6
         working-directory: apps/e2e
-      # `--no-deps` pula desktop/mobile (já cobertos nos shards); um projeto
-      # por vez porque os dois mexem no mesmo `app_config`.
       - if: matrix.part == 'serial'
         run: |
           bunx playwright test --project=setup
           bunx playwright test --project=desktop-serial --no-deps
           bunx playwright test --project=mobile-serial --no-deps
         working-directory: apps/e2e
-      # Trace, vídeo e screenshot só existem para teste que falhou
-      # (`retain-on-failure` no playwright.config.ts).
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -126,56 +127,39 @@ jobs:
             apps/e2e/test-results
           retention-days: 14
 
-  # WEB-204: deploy no Cloudflare Workers depois de check (e de e2e, em PR). Push em
-  # master → migration no banco de produção e Worker `onside-web`; PR →
-  # migration no branch `preview` do Neon e Worker `onside-web-preview`
-  # (uma URL só: o último PR publicado ganha).
-  #
-  # Este job é o ÚNICO lugar que migra produção. Sem os segredos (PR de fork, ou antes de cadastrá-los) o deploy é
-  # pulado e o CI segue verde: o step `gate` do `check` deixa `target` vazio.
+  # WEB-204: deploy no Cloudflare Workers (produção = Worker `onside-web`, preview =
+  # `onside-web-preview`). Não há deploy Vercel neste repositório — só Workers.
   deploy:
-    needs: [check, e2e]
-    # `e2e` é pulado no push em `master`, e um `needs` pulado pularia este job
-    # junto; o `!cancelled()` desliga esse padrão e os resultados são
-    # conferidos à mão.
+    needs: [static-checks, unit-test, e2e]
     if: >-
       ${{ !cancelled()
-      && needs.check.result == 'success'
+      && needs.static-checks.result == 'success'
+      && needs.unit-test.result == 'success'
       && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped')
-      && needs.check.outputs.target != '' }}
+      && needs.static-checks.outputs.target != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
-      name: ${{ needs.check.outputs.target }}
-      url: ${{ needs.check.outputs.target == 'production' && 'https://www.onside.sh' || 'https://onside-web-preview.dev-guilhermebrasil.workers.dev' }}
-    # Um deploy por alvo de cada vez, sem cancelar o que já começou: migration
-    # pela metade não volta sozinha.
+      name: ${{ needs.static-checks.outputs.target }}
+      url: ${{ needs.static-checks.outputs.target == 'production' && 'https://www.onside.sh' || 'https://onside-web-preview.dev-guilhermebrasil.workers.dev' }}
     concurrency:
-      group: deploy-${{ needs.check.outputs.target }}
+      group: deploy-${{ needs.static-checks.outputs.target }}
       cancel-in-progress: false
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.1
-      - run: bun install --frozen-lockfile
-      # Antes do deploy: a migration tem de ser compatível com o código
-      # anterior (expand → contract), que segue no ar até o `wrangler deploy`
-      # terminar e é para onde o rollback volta.
+      - uses: ./.github/actions/setup-monorepo
       - name: Migrations
         env:
           NODE_ENV: production
-          DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.check.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
+          DATABASE_URL: ${{ needs.static-checks.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.static-checks.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
         run: bun run db:migrate:deploy
-      # O ambiente do wrangler.jsonc é escolhido no build (`CLOUDFLARE_ENV`);
-      # o `wrangler deploy` só lê o dist/server/wrangler.json já resolvido.
       - name: Build
         working-directory: apps/web
         env:
-          CLOUDFLARE_ENV: ${{ needs.check.outputs.target == 'preview' && 'preview' || '' }}
+          CLOUDFLARE_ENV: ${{ needs.static-checks.outputs.target == 'preview' && 'preview' || '' }}
           VITE_MAP_TILES_URL: ${{ vars.VITE_MAP_TILES_URL }}
           VITE_POSTHOG_KEY: ${{ vars.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}

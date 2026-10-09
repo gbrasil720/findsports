@@ -1,0 +1,23 @@
+name: Setup Playwright (Chromium)
+description: Restore browser cache or install Chromium with OS deps for E2E
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-chromium-
+    - name: Install Playwright (full)
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: apps/e2e
+      run: bunx playwright install --with-deps chromium
+    - name: Install Playwright OS deps (browser cache hit)
+      if: steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      working-directory: apps/e2e
+      run: bunx playwright install-deps chromium
