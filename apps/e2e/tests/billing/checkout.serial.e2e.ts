@@ -204,9 +204,10 @@ test('/plan: cupom esgotado mostra tabela cheia, não o preço com desconto', as
   await signIn(page, user)
   await page.goto('/plan')
 
-  const eliteCard = page.getByRole('radio', { name: /^Elite,/ })
-  await expect(eliteCard).toContainText('R$ 297')
-  await expect(eliteCard).not.toContainText('R$ 269')
+  await expect(
+    page.getByRole('radio', { name: /^Elite, R\$ 297\/mês\./ })
+  ).toBeVisible()
+  await expect(page.getByRole('radio', { name: /R\$ 269/ })).toHaveCount(0)
 })
 
 test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo vira troca no portal, não segunda assinatura (WEB-172)', async ({
