@@ -162,3 +162,51 @@ test('"você foi?" pergunta depois do jogo marcado e grava a resposta', async ({
   )
   expect(report).toEqual({ attended: true })
 })
+
+// WEB-321: toque errado se corrige pelo "Desfazer" do aviso de confirmação.
+test('"Desfazer" no aviso apaga a resposta e devolve a pergunta', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const pub = await pubAt(spot)
+  const eventId = await pastGame(pub.barId, 2)
+  const fan = await signInFanAt(page, spot)
+  await intent(fan.id, pub.barId, eventId)
+  await insert('attendance', { user_id: fan.id, event_id: eventId })
+  const undo = (message: string) =>
+    page
+      .locator('[data-sonner-toast]', { hasText: message })
+      .getByRole('button', { name: 'Desfazer' })
+  const answers = (table: string, actor: string) =>
+    query(`SELECT 1 FROM ${table} WHERE ${actor} = $1 AND event_id = $2`, [
+      fan.id,
+      eventId
+    ])
+
+  await page.goto('/dashboard')
+  const went = page.getByRole('region', { name: `Você foi ao ${pub.name}?` })
+  await went.getByRole('button', { name: 'Não fui' }).click()
+  await expect(went).toHaveCount(0)
+  await undo('Resposta registrada. Obrigado!').click()
+  await expect(
+    went.getByRole('button', { name: 'Fui', exact: true })
+  ).toBeVisible()
+  expect(await answers('attendance_report', 'user_id')).toEqual([])
+
+  const rate = page.getByRole('region', { name: question(pub.name) })
+  await rate.getByRole('button', { name: 'Não voltaria' }).click()
+  await expect(rate).toHaveCount(0)
+  // Pelo teclado também: o botão do aviso recebe foco e responde ao Enter.
+  await undo('Obrigado! Sua resposta ajuda outros torcedores.').focus()
+  await page.keyboard.press('Enter')
+  await expect(
+    rate.getByRole('button', { name: 'Voltaria', exact: true })
+  ).toBeVisible()
+  expect(await answers('bar_rating', 'actor_user_id')).toEqual([])
+  // A nota do bar não guarda o toque desfeito.
+  expect(
+    await query('SELECT rating_count, rating_positive FROM bar WHERE id = $1', [
+      pub.barId
+    ])
+  ).toEqual([{ rating_count: 0, rating_positive: 0 }])
+})

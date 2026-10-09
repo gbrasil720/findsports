@@ -207,29 +207,36 @@ describe('commercial-analytics entitlements', () => {
       events: [
         {
           eventId: 'event-1',
-          eventName: 'Campeonato - Evento',
+          eventName: 'Corinthians × Palmeiras',
           startsAt: '2026-09-05T22:00:00.000Z',
           uniqueVisitors: 8,
           interestedPeople: 4,
           profileViews: 10,
           directionsOpened: 3,
           phoneClicked: 2,
-          whatsappOpened: 1
+          whatsappOpened: 1,
+          reservedPeople: 6,
+          arrivals: 5
         }
       ]
     }
 
     const expected = {
       eventId: 'event-1',
-      eventName: 'Campeonato - Evento',
+      eventName: 'Corinthians × Palmeiras',
       startsAt: '2026-09-05T22:00:00.000Z',
       uniqueVisitors: 8,
       interestedPeople: 4,
       profileViews: 10,
       directionsOpened: 3,
       phoneClicked: 2,
-      whatsappOpened: 1
+      whatsappOpened: 1,
+      reservedPeople: 6,
+      arrivals: 5
     }
+    // WEB-323: reserva de mesa é do Elite. Sem ela o número vem nulo, e não
+    // zero, que diria "ninguém reservou".
+    const semReserva = { reservedPeople: null, arrivals: null }
 
     const starter = applyEventBreakdownEntitlements(
       response,
@@ -242,7 +249,8 @@ describe('commercial-analytics entitlements', () => {
         interestedPeople: null,
         directionsOpened: null,
         phoneClicked: null,
-        whatsappOpened: null
+        whatsappOpened: null,
+        ...semReserva
       }
     ])
 
@@ -250,7 +258,7 @@ describe('commercial-analytics entitlements', () => {
       response,
       getAnalyticsEntitlements('pro')
     )
-    expect(pro.events).toEqual([expected])
+    expect(pro.events).toEqual([{ ...expected, ...semReserva }])
 
     const elite = applyEventBreakdownEntitlements(
       response,

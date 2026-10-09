@@ -10,10 +10,15 @@ import {
 } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { CATALOG_QUERY } from '@/lib/query-cache'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import {
+  getErrorCode,
+  getUserFacingMessage,
+  isRetryableError
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { EventsState, PolicyState } from './admin-model'
 import { EmptyEventsState } from './empty-events-state'
+import { EventDeleteDialog } from './event-delete-dialog'
 import { type EventForm, EventFormComponent } from './event-form'
 import { EventListItem } from './event-list-item'
 import { Modal } from './modal'
@@ -54,10 +59,22 @@ export function getCreateBlockReason(policyState: PolicyState): string | null {
   return null
 }
 
+export function getDeleteErrorMessage(error: unknown): string {
+  // Chegou reserva ou avaliação depois que a grade carregou.
+  if (getErrorCode(error) === 'PRECONDITION_FAILED') {
+    return 'Este jogo recebeu reserva ou avaliação e não pode mais ser excluído.'
+  }
+  return getUserFacingMessage(
+    error,
+    'Não foi possível excluir o jogo. Tente novamente.'
+  )
+}
+
 export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -96,12 +113,14 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
     (loadingSports ? 'Carregando esportes…' : sportsErrorMessage)
   const createBlocked = blockReason !== null
 
+  const invalidateMyEvents = () =>
+    queryClient.invalidateQueries({
+      queryKey: trpc.pub.getMyEvents.queryKey()
+    })
   // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`.
   const invalidateEvents = () =>
     Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: trpc.pub.getMyEvents.queryKey()
-      }),
+      invalidateMyEvents(),
       queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
     ])
   const invalidateEventsAndPolicy = () =>
@@ -114,7 +133,13 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
 
   const deleteMutation = useMutation(
     trpc.pub.deleteEvent.mutationOptions({
-      onSuccess: invalidateEventsAndPolicy
+      onSuccess: () => {
+        setDeletingId(null)
+        return invalidateEventsAndPolicy()
+      },
+      // Recusa quer dizer que a grade está velha: recarregada, o diálogo
+      // passa a explicar o bloqueio (ou fecha, se o jogo já não existe).
+      onError: () => invalidateMyEvents()
     })
   )
   const createMutation = useMutation(
@@ -136,6 +161,9 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   )
 
   const editingEvent = editingId ? events.find((e) => e.id === editingId) : null
+  const deletingEvent = deletingId
+    ? events.find((e) => e.id === deletingId)
+    : null
 
   const handleSave = (form: EventForm) => {
     const startsAt = toISOWithTimezone(form.startsAt)
@@ -351,7 +379,11 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   interestRatio={interestByEvent.get(item.id)}
                   onEdit={openEdit}
                   onDelete={(id) => {
-                    deleteMutation.mutate({ eventId: id })
+                    deleteMutation.reset()
+                    setDeletingId(id)
+                    // As contagens do diálogo vêm da grade: pedido que
+                    // chegou ou foi recusado desde a carga entra agora.
+                    void invalidateMyEvents()
                   }}
                   isDeleting={deleteMutation.isPending}
                 />
@@ -403,6 +435,20 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           }
         />
       </Modal>
+
+      {deletingEvent ? (
+        <EventDeleteDialog
+          event={deletingEvent}
+          isDeleting={deleteMutation.isPending}
+          error={
+            deleteMutation.error
+              ? getDeleteErrorMessage(deleteMutation.error)
+              : undefined
+          }
+          onConfirm={() => deleteMutation.mutate({ eventId: deletingEvent.id })}
+          onCancel={() => setDeletingId(null)}
+        />
+      ) : null}
     </>
   )
 }

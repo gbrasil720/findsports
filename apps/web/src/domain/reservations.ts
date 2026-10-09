@@ -1,5 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
+import { formatEventTime } from '@/domain/pub-profile'
 import { errorCode } from '@/domain/reservation-validation'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 
@@ -33,14 +34,33 @@ export const RESERVATION_STATUS_DETAIL: Record<ReservationStatus, string> = {
   ended: 'O jogo já acabou. O código ainda vale no bar até o prazo abaixo.'
 }
 
+/** "Chegada registrada (1 de 2) às 16:40", com a chegada mais recente. */
+export function formatArrival({
+  count,
+  of,
+  lastAt
+}: NonNullable<FanReservation['arrival']>): string {
+  const at = lastAt ? ` às ${formatEventTime(new Date(lastAt))}` : ''
+  return `Chegada registrada (${count} de ${of})${at}`
+}
+
 /**
- * Texto do estado. Só `ended` varia (WEB-322): o servidor tira o código
- * quando a janela de validação fecha, e o texto acompanha.
+ * Texto do estado. Chegada registrada pelo bar vem antes de tudo (WEB-259).
+ * `ended` varia (WEB-322): o servidor tira o código quando a janela de
+ * validação fecha, e o texto acompanha.
  */
 export function getStatusDetail({
   status,
-  code
-}: Pick<FanReservation, 'status' | 'code'>): string {
+  code,
+  arrival
+}: Pick<FanReservation, 'status' | 'code' | 'arrival'>): string {
+  if (arrival) {
+    const rest =
+      arrival.count < arrival.of && code
+        ? ' O mesmo código vale para quem ainda vai chegar.'
+        : ''
+    return `${formatArrival(arrival)}.${rest}`
+  }
   if (status === 'ended' && !code) {
     return 'O jogo já acabou e o código desta reserva não vale mais.'
   }
@@ -103,6 +123,9 @@ export function getCreateErrorMessage(
 
 export function getCancelErrorMessage(error: unknown): string {
   switch (errorCode(error)) {
+    // Chegada registrada trava o cancelamento (WEB-259).
+    case 'CONFLICT':
+      return 'O bar já registrou chegada nesta reserva. Ela não pode mais ser cancelada.'
     case 'PRECONDITION_FAILED':
       return 'Este pedido não pode mais ser cancelado.'
     case 'NOT_FOUND':
@@ -113,6 +136,86 @@ export function getCancelErrorMessage(error: unknown): string {
         'Não foi possível cancelar o pedido. Tente novamente.'
       )
   }
+}
+
+/* "Vou assistir aqui" depois que a reserva acaba (WEB-296) */
+
+export const PRESENCE_KEPT_MESSAGE =
+  'Você continua marcado em “Vou assistir aqui” neste jogo.'
+
+export const PRESENCE_REMOVED_MESSAGE =
+  'Você não está mais marcado em “Vou assistir aqui” neste jogo.'
+
+/**
+ * O que a reserva encerrada diz sobre a presença. Cancelar mantém; a recusa
+ * do bar desfaz só a que a reserva criou (ADR 0003). `kept` vem com a ação de
+ * desmarcar. Depois do início do jogo a presença não muda mais, então não há
+ * o que dizer.
+ */
+export function getPresenceNote(
+  {
+    status,
+    attending,
+    event
+  }: Pick<FanReservation, 'status' | 'attending'> & {
+    event: Pick<FanReservation['event'], 'startsAt'>
+  },
+  now = Date.now()
+): 'kept' | 'removed' | null {
+  if (status !== 'cancelled' && status !== 'declined') return null
+  if (new Date(event.startsAt).getTime() <= now) return null
+  if (attending) return 'kept'
+  return status === 'declined' ? 'removed' : null
+}
+
+/* Aviso de resposta do bar (WEB-318) */
+
+const decidedAtMs = ({ decidedAt }: Pick<FanReservation, 'decidedAt'>) =>
+  decidedAt ? new Date(decidedAt).getTime() : 0
+
+/**
+ * Respostas do bar mais novas que a última que este navegador já mostrou,
+ * da mais recente para a mais antiga. O servidor só manda `decidedAt` em
+ * reserva confirmada ou recusada de jogo que ainda não acabou.
+ */
+export function getUnseenDecisions<T extends Pick<FanReservation, 'decidedAt'>>(
+  reservations: T[] | undefined,
+  seenUntil: number
+): T[] {
+  return (reservations ?? [])
+    .filter((item) => decidedAtMs(item) > seenUntil)
+    .sort((a, b) => decidedAtMs(b) - decidedAtMs(a))
+}
+
+/** A resposta mais recente da lista, em ms; `0` sem nenhuma. */
+export function getLatestDecision(
+  reservations: Pick<FanReservation, 'decidedAt'>[]
+): number {
+  return Math.max(0, ...reservations.map(decidedAtMs))
+}
+
+/**
+ * Texto do toast. Na recusa é aqui que o torcedor fica sabendo o que houve
+ * com "Vou assistir aqui" (WEB-296), então o aviso sempre diz.
+ */
+export function getDecisionNotice({
+  status,
+  attending,
+  bar
+}: Pick<FanReservation, 'status' | 'attending'> & {
+  bar: Pick<FanReservation['bar'], 'name'>
+}): { title: string; description: string } {
+  return status === 'declined'
+    ? {
+        title: `${bar.name} recusou seu pedido de reserva.`,
+        description: attending
+          ? PRESENCE_KEPT_MESSAGE
+          : PRESENCE_REMOVED_MESSAGE
+      }
+    : {
+        title: `${bar.name} confirmou sua reserva.`,
+        description: 'O código para mostrar no bar está em Minhas reservas.'
+      }
 }
 
 /* Fila do bar (WEB-125) */

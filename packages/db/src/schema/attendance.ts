@@ -17,7 +17,9 @@ import { event } from './platform'
  * interface do torcedor se chama "Vou assistir aqui".
  *
  * Criar uma reserva também grava presença; cancelar a reserva não a apaga.
- * O número absoluto nunca sai para o bar, só o sinal relativo de interesse.
+ * Recusada pelo bar, a reserva leva junto só a presença que ela mesma criou
+ * (`source`, WEB-296). O número absoluto nunca sai para o bar, só o sinal
+ * relativo de interesse.
  */
 export const attendance = pgTable(
   'attendance',
@@ -29,6 +31,13 @@ export const attendance = pgTable(
     eventId: text('event_id')
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
+    // Quem criou a linha: o torcedor em "Vou assistir aqui" (`manual`) ou a
+    // criação de uma reserva (`reservation`). O default é `manual` de
+    // propósito: as linhas anteriores à coluna não sabem a origem, e tratar
+    // presença marcada à mão como vinda da reserva a apagaria numa recusa.
+    source: text('source', { enum: ['manual', 'reservation'] })
+      .default('manual')
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull()

@@ -378,6 +378,76 @@ integrationTest(
 )
 
 integrationTest(
+  'desfazer a resposta pós-jogo: só a própria, na janela, e a pergunta volta',
+  async () => {
+    const ctx = await seed({
+      elite: true,
+      fans: 2,
+      offsets: [DAY, -DAY, -(ATTENDANCE_REPORT_WINDOW_DAYS + 1) * DAY]
+    })
+    const [future, ended, stale] = ctx.gameIds as [string, string, string]
+    const [fan, other] = ctx.fanIds as [string, string]
+    const answers = (eventId: string) =>
+      ctx.db
+        .select({ userId: attendanceReport.userId })
+        .from(attendanceReport)
+        .where(eq(attendanceReport.eventId, eventId))
+    const pending = async () =>
+      (await ctx.fan(0).attendance.pendingReports()).map(
+        ({ eventId, offer }) => ({ eventId, offer })
+      )
+    try {
+      await ctx.reserve(ended, fan, { offer: 'Chopp em dobro' })
+      await ctx.attend(ended, [other])
+      // Resposta antiga, de quando a janela do jogo ainda estava aberta.
+      await ctx.attend(stale, [fan])
+      await ctx.db
+        .insert(attendanceReport)
+        .values({ eventId: stale, userId: fan, attended: true })
+      const question = [{ eventId: ended, offer: 'Chopp em dobro' }]
+      expect(await pending()).toEqual(question)
+
+      await ctx.fan(0).attendance.report({
+        eventId: ended,
+        attended: true,
+        offerReceived: true
+      })
+      await ctx.fan(1).attendance.report({ eventId: ended, attended: false })
+      expect(await pending()).toEqual([])
+
+      // Apaga só a resposta de quem pediu, e a pergunta volta igual.
+      await ctx.fan(0).attendance.removeReport({ eventId: ended })
+      expect(await answers(ended)).toEqual([{ userId: other }])
+      expect(await pending()).toEqual(question)
+
+      // Desfazer de novo, sem resposta gravada, não é erro.
+      expect(
+        await ctx.fan(0).attendance.removeReport({ eventId: ended })
+      ).toEqual({ success: true })
+      expect(await answers(ended)).toEqual([{ userId: other }])
+
+      // Fora da janela a resposta não muda mais, nem por remoção.
+      expect(
+        (await refusal(ctx.fan(0).attendance.removeReport({ eventId: stale })))
+          .code
+      ).toBe('NOT_FOUND')
+      expect(await answers(stale)).toEqual([{ userId: fan }])
+      // Jogo em que o torcedor não tem pergunta.
+      expect(
+        (await refusal(ctx.fan(0).attendance.removeReport({ eventId: future })))
+          .code
+      ).toBe('NOT_FOUND')
+      expect(
+        (await refusal(ctx.owner.attendance.removeReport({ eventId: ended })))
+          .code
+      ).toBe('FORBIDDEN')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'alerta interno só com "foi, mas o bar não registrou" repetido',
   async () => {
     const offsets = Array.from(
@@ -425,6 +495,10 @@ integrationTest(
         burned: 1,
         noShow: 0
       })
+
+      // O alerta conta na leitura: resposta desfeita sai do cruzamento.
+      await ctx.fan(0).attendance.removeReport({ eventId: last })
+      expect(await alertFor()).toBeUndefined()
 
       expect(
         (await refusal(ctx.owner.attendance.unregisteredAlerts())).code

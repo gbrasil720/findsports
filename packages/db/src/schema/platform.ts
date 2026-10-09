@@ -70,6 +70,10 @@ export const bar = pgTable(
     address: text('address').notNull(),
     neighborhood: text('neighborhood').notNull(),
     city: text('city').notNull(),
+    // Sigla da UF (WEB-270). Anulável: bar cadastrado antes do campo fica sem,
+    // e o geocoding dele segue só com rua e cidade. Quem valida a sigla é a
+    // API (`UFS` em `packages/api/src/lib/bar-profile-validation.ts`).
+    uf: text('uf'),
     latitude: numeric('latitude', { precision: 10, scale: 8 }).notNull(),
     longitude: numeric('longitude', { precision: 11, scale: 8 }).notNull(),
     // Derivada de latitude/longitude pelo próprio Postgres. Existe para que a
@@ -207,6 +211,9 @@ export const team = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull().unique(),
     country: text('country'),
+    // Seleção nacional, e não clube (WEB-284). Dado, não heurística: "Brasil"
+    // e "Flamengo" têm o mesmo `country`. Quem agrupa é a tela de escolha.
+    isNationalTeam: boolean('is_national_team').default(false).notNull(),
     logoUrl: text('logo_url'),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },

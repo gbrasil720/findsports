@@ -360,7 +360,7 @@ describe('busca do código', () => {
     await find(api)
 
     expect(alertText()).toBe(
-      'Código não encontrado. Confira com o torcedor e tente de novo.'
+      'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
     )
     expect(document.body.textContent).not.toContain('texto do servidor')
     expect(document.activeElement).toBe(input())

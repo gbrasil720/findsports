@@ -22,6 +22,8 @@ const snapshot = (
   directionsOpened: 0,
   phoneClicked: 4,
   whatsappOpened: 0,
+  reservedPeople: 0,
+  arrivals: 0,
   ...values
 })
 

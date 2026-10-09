@@ -1,7 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { PolicyState } from './admin-model'
-import { getCreateBlockReason } from './events-manager'
+import { getCreateBlockReason, getDeleteErrorMessage } from './events-manager'
+
+test('recusa do servidor na exclusão vira texto da tela', () => {
+  expect(getDeleteErrorMessage({ data: { code: 'PRECONDITION_FAILED' } })).toBe(
+    'Este jogo recebeu reserva ou avaliação e não pode mais ser excluído.'
+  )
+  expect(getDeleteErrorMessage(new Error('boom'))).toBe(
+    'Não foi possível excluir o jogo. Tente novamente.'
+  )
+})
 
 const PERIOD = {
   periodStart: '2026-08-01T00:00:00.000Z',

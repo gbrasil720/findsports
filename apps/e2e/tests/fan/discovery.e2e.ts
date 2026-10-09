@@ -299,7 +299,7 @@ test('o mapa marca os bares e o marcador abre a página do bar', async ({
 }) => {
   const spot = uniqueSpot()
   const pub = await pubAt(north(spot, 0.5))
-  await createEvent({ barId: pub.barId, startsAt: days(2) })
+  const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
   await signInFanAt(page, spot)
 
   await page.goto('/dashboard')
@@ -308,7 +308,47 @@ test('o mapa marca os bares e o marcador abre a página do bar', async ({
     .and(page.getByRole('button', { name: pub.name, exact: true }))
   await expect(marker).toBeVisible()
   await marker.click()
-  await expect(page).toHaveURL(new RegExp(`/pub/${pub.barId}$`))
+  // WEB-258: o ponto leva o jogo que o card do bar mostra.
+  await expect(page).toHaveURL(
+    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
+  )
+})
+
+// WEB-258: "Aberturas" por jogo só conta quem chegou pelo jogo. O card leva o
+// `eventId`, e a volta devolve os filtros que estavam no hash (WEB-293).
+test('o card abre o perfil pelo jogo e voltar restaura os filtros', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const pub = await pubAt(north(spot, 4))
+  const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
+  const fan = await signInFanAt(page, spot)
+
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: /^5 km/ }).click()
+  await card(page, pub.name).click()
+  await expect(page).toHaveURL(
+    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
+  )
+  await expect
+    .poll(
+      async () =>
+        (
+          await query(
+            `SELECT 1 FROM bar_commercial_event
+             WHERE actor_user_id = $1 AND source_event_id = $2 AND type = 'profile_view'`,
+            [fan.id, eventId]
+          )
+        ).length
+    )
+    .toBe(1)
+
+  await page.goBack()
+  await expect(page).toHaveURL(/\/dashboard#/)
+  await expect(
+    page.getByRole('button', { name: 'Remover filtro Até 5 km' })
+  ).toBeVisible()
+  await expect(card(page, pub.name)).toBeVisible()
 })
 
 test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({

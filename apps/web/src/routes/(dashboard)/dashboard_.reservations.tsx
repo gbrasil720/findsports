@@ -7,8 +7,12 @@ import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import { formatDateTime, getGameTitle } from '@/domain/reservation-validation'
 import {
   type FanReservation,
+  findActiveRequest,
   getCancelErrorMessage,
+  getPresenceNote,
   getStatusDetail,
+  PRESENCE_KEPT_MESSAGE,
+  PRESENCE_REMOVED_MESSAGE,
   RESERVATION_STATUS_LABEL
 } from '@/domain/reservations'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -85,7 +89,13 @@ function MyReservationsPage() {
               <li key={reservation.id}>
                 <ReservationCard
                   reservation={reservation}
-                  onCancelled={() => setAnnouncement('Pedido cancelado.')}
+                  // Com outro pedido ativo no mesmo jogo, a presença é dele.
+                  presenceNote={
+                    findActiveRequest(query.data, reservation.event.id)
+                      ? null
+                      : getPresenceNote(reservation)
+                  }
+                  onAnnounce={setAnnouncement}
                 />
               </li>
             ))}
@@ -113,10 +123,12 @@ function MyReservationsPage() {
 
 function ReservationCard({
   reservation,
-  onCancelled
+  presenceNote,
+  onAnnounce
 }: {
   reservation: FanReservation
-  onCancelled: () => void
+  presenceNote: ReturnType<typeof getPresenceNote>
+  onAnnounce: (message: string) => void
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -134,12 +146,41 @@ function ReservationCard({
     trpc.reservations.cancel.mutationOptions({
       onSuccess: () => {
         setConfirming(false)
-        onCancelled()
+        onAnnounce('Pedido cancelado.')
         void queryClient.invalidateQueries({
           queryKey: trpc.reservations.mine.queryKey()
         })
       },
-      onError: (err) => setError(getCancelErrorMessage(err))
+      onError: (err) => {
+        setError(getCancelErrorMessage(err))
+        // Recusado por chegada registrada: a lista precisa mostrar a chegada.
+        void queryClient.invalidateQueries({
+          queryKey: trpc.reservations.mine.queryKey()
+        })
+      }
+    })
+  )
+
+  // Desfazer do "Vou assistir aqui" que ficou depois do cancelamento
+  // (WEB-296): a mesma mutation do perfil do bar.
+  const unmarkMutation = useMutation(
+    trpc.attendance.set.mutationOptions({
+      onSuccess: () => {
+        onAnnounce('Marcação desfeita.')
+        void queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getById.queryKey()
+        })
+        return queryClient.invalidateQueries({
+          queryKey: trpc.reservations.mine.queryKey()
+        })
+      },
+      onError: (err) =>
+        setError(
+          getUserFacingMessage(
+            err,
+            'Não foi possível desmarcar. Tente novamente.'
+          )
+        )
     })
   )
 
@@ -199,6 +240,30 @@ function ReservationCard({
       {reservation.note ? (
         <p className="mt-1 text-[var(--onside-muted)] text-sm [overflow-wrap:anywhere]">
           Sua observação: {reservation.note}
+        </p>
+      ) : null}
+
+      {presenceNote ? (
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {presenceNote === 'kept'
+            ? PRESENCE_KEPT_MESSAGE
+            : PRESENCE_REMOVED_MESSAGE}
+          {presenceNote === 'kept' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null)
+                unmarkMutation.mutate({
+                  eventId: reservation.event.id,
+                  attending: false
+                })
+              }}
+              disabled={unmarkMutation.isPending}
+              className="onside-btn onside-btn-ghost min-h-11 text-sm disabled:opacity-50"
+            >
+              {unmarkMutation.isPending ? 'Desmarcando…' : 'Desmarcar'}
+            </button>
+          ) : null}
         </p>
       ) : null}
 

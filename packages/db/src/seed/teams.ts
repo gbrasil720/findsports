@@ -5,7 +5,10 @@ import { sport, team } from '../schema/platform'
 // Times por esporte (slug do esporte → lista de times)
 // --------------------------------------------------------------------------
 
-const TEAMS_BY_SPORT: Record<string, { name: string; country: string }[]> = {
+const TEAMS_BY_SPORT: Record<
+  string,
+  { name: string; country: string; isNationalTeam?: true }[]
+> = {
   futebol: [
     // Clubes brasileiros
     { name: 'Flamengo', country: 'BR' },
@@ -39,19 +42,19 @@ const TEAMS_BY_SPORT: Record<string, { name: string; country: string }[]> = {
     { name: 'Milan', country: 'IT' },
     { name: 'Atlético de Madrid', country: 'ES' },
     // Seleções Copa do Mundo 2026
-    { name: 'Brasil', country: 'BR' },
-    { name: 'Argentina', country: 'AR' },
-    { name: 'França', country: 'FR' },
-    { name: 'Espanha', country: 'ES' },
-    { name: 'Inglaterra', country: 'GB' },
-    { name: 'Alemanha', country: 'DE' },
-    { name: 'Portugal', country: 'PT' },
-    { name: 'Uruguai', country: 'UY' },
-    { name: 'Colômbia', country: 'CO' },
-    { name: 'México', country: 'MX' },
-    { name: 'EUA', country: 'US' },
-    { name: 'Japão', country: 'JP' },
-    { name: 'Marrocos', country: 'MA' }
+    { name: 'Brasil', country: 'BR', isNationalTeam: true },
+    { name: 'Argentina', country: 'AR', isNationalTeam: true },
+    { name: 'França', country: 'FR', isNationalTeam: true },
+    { name: 'Espanha', country: 'ES', isNationalTeam: true },
+    { name: 'Inglaterra', country: 'GB', isNationalTeam: true },
+    { name: 'Alemanha', country: 'DE', isNationalTeam: true },
+    { name: 'Portugal', country: 'PT', isNationalTeam: true },
+    { name: 'Uruguai', country: 'UY', isNationalTeam: true },
+    { name: 'Colômbia', country: 'CO', isNationalTeam: true },
+    { name: 'México', country: 'MX', isNationalTeam: true },
+    { name: 'EUA', country: 'US', isNationalTeam: true },
+    { name: 'Japão', country: 'JP', isNationalTeam: true },
+    { name: 'Marrocos', country: 'MA', isNationalTeam: true }
   ],
 
   basquete: [
@@ -103,7 +106,8 @@ const TEAMS_BY_SPORT: Record<string, { name: string; country: string }[]> = {
     { name: 'Sesi-SP', country: 'BR' },
     { name: 'Itambé/Minas', country: 'BR' },
     { name: 'EMS Taubaté Funvic', country: 'BR' },
-    { name: 'Brasil Vôlei', country: 'BR' },
+    // Lido como a seleção brasileira (sem cidade nem patrocinador no nome).
+    { name: 'Brasil Vôlei', country: 'BR', isNationalTeam: true },
     { name: 'Pinheiros', country: 'BR' }
   ],
 
@@ -220,6 +224,7 @@ async function main() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, ''),
       country: t.country,
+      isNationalTeam: t.isNationalTeam ?? false,
       logoUrl: null
     }))
 

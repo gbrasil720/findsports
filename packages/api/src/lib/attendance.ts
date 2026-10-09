@@ -14,6 +14,7 @@ import {
   reservationCode,
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
+import { participantNames } from './game-participants'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -166,6 +167,8 @@ export async function readAttendanceQuestions(
     .select({
       eventId: event.id,
       championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
       startsAt: event.startsAt,
       barName: bar.name,
       neighborhood: bar.neighborhood,
