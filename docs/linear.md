@@ -148,12 +148,16 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 
 | Label | Escopo |
 |---|---|
-| `waitlist` | Inscrição, confirmação, convite, ativação, painel interno da waitlist |
+| `waitlist` | Inscrição, confirmação, convite, painel interno da waitlist |
+| `auth` | Login, cadastro, sessão, ativação de convite, 2FA, recuperação de senha, Turnstile |
+| `onboarding` | Onboarding do torcedor e do bar, `/verify-email` |
 | `email` | Templates, envio, Resend, entregabilidade, DNS de e-mail |
 | `landing` | Página pública, copy, SEO, performance de first paint |
 | `admin` | Painéis `/internal/*`, gestão de usuários, flags |
 | `infra` | Banco, migrations, deploy, ambiente, variáveis |
 | `app` | App autenticado: `/dashboard`, perfil, página do bar, mapa |
+| `reservations` | Reserva de mesa, presença ("Vou assistir aqui"), validação de código, oferta da casa |
+| `analytics` | Métricas do painel do bar: Visão geral, "Como cada jogo foi", eventos comerciais |
 | `billing` | Planos, cobrança, fornecedor pago, cota e faturamento de API de terceiro |
 | `dx` | Testes, CI, tipos, lint, ferramentas de desenvolvimento |
 
@@ -203,6 +207,7 @@ Todo ticket entra em um project. Nenhum órfão.
 | `Release: merge para master` | Levar o acumulado do branch para master e produção |
 | `Monetização` | Planos, cobrança, funil de preço para bares |
 | `Migração para Cloudflare` | Hospedagem no Worker, DNS, R2, Hyperdrive e a saída da Vercel |
+| `QA pré-lançamento — 08/10/2026` | Achados do QA de produção de 08/10/2026 e os tickets retroativos das correções dele |
 
 Todos pertencem ao time `WEB`. O time `PRO` não tem project — ticket de `PRO` fica órfão
 mesmo.
