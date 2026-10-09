@@ -16,6 +16,9 @@ import {
 } from '@/lib/dodo-customer-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
+  FOUNDER_DISCOUNT_NOTE,
+  formatPlanPrice,
+  formatPlanPricing,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
@@ -243,7 +246,11 @@ function BillingPage() {
                         {planInfo.name}
                       </div>
                       <div className="text-sm text-[var(--onside-muted)]">
-                        {planInfo.price}/mês
+                        {formatPlanPrice(planInfo.tablePrice)}
+                        {planInfo.period}
+                      </div>
+                      <div className="mt-0.5 text-xs text-[var(--onside-muted)]">
+                        {FOUNDER_DISCOUNT_NOTE}
                       </div>
                     </div>
                   </div>
@@ -481,7 +488,7 @@ function BillingPage() {
                   <div>
                     <div className="text-sm font-bold">{info.name}</div>
                     <div className="text-xs text-[var(--onside-muted)]">
-                      {info.price}/mês
+                      {formatPlanPricing(info)}
                     </div>
                   </div>
                 </div>

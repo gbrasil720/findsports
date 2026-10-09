@@ -220,6 +220,14 @@ export function receiptChargeLabel(status: string): string {
 }
 
 /**
+ * O carimbo segue a mesma separação: em trial o plano está liberado e nada
+ * foi pago.
+ */
+export function receiptStampLabel(status: string): string {
+  return status === 'trialing' ? 'Trial liberado' : 'Pago e liberado'
+}
+
+/**
  * O ciclo sai do próprio catálogo (`period`), e não de um texto novo: plano
  * cobrado por outro intervalo passa a imprimir o intervalo certo sem que esta
  * tela precise saber que ele existe.

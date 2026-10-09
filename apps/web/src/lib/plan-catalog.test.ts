@@ -1,11 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 
 import { appConfigDefault } from '@findsports_oficial/api/lib/app-config/registry'
+import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
 import {
   CHECKOUT_ENABLED_DEFAULT,
+  FOUNDER_DISCOUNT,
+  FOUNDER_DISCOUNT_NOTE,
   formatComparison,
   formatHistoryWindow,
   formatPerGame,
+  formatPlanPricing,
   getAnalyticsEntitlement,
   getDefaultPlanSelection,
   getPlan,
@@ -39,12 +43,52 @@ describe('PLAN_CATALOG structure', () => {
     for (const plan of PLAN_CATALOG) {
       expect(plan.id).toBeDefined()
       expect(plan.name).toBeTruthy()
-      expect(plan.price).toBeTruthy()
+      expect(plan.tablePrice).toBeGreaterThan(0)
       expect(plan.period).toBeTruthy()
       expect(plan.features).toBeInstanceOf(Array)
       expect(plan.features.length).toBeGreaterThan(0)
       expect(plan.analytics).toBeDefined()
     }
+  })
+})
+
+describe('preços (WEB-112)', () => {
+  test('tabela cheia e preço de fundador de cada plano', () => {
+    expect(
+      PLAN_CATALOG.map((p) => [p.id, p.tablePrice, p.founderPrice])
+    ).toEqual([
+      ['starter', 97, 69],
+      ['pro', 147, 119],
+      ['elite', 297, 269]
+    ])
+  })
+
+  test('os Termos de Uso publicam os mesmos números', () => {
+    const tabela = TERMOS_DE_USO.sections
+      .flatMap((section) => section.blocks)
+      .find(
+        (block) => block.type === 'table' && block.head.includes('Tabela cheia')
+      )
+    const reais = (valor: number) => `R$ ${valor},00/mês`
+
+    expect(tabela).toMatchObject({
+      head: ['Plano', 'Desconto de fundador', 'Lançamento', 'Tabela cheia'],
+      rows: PLAN_CATALOG.map((p) => [
+        p.name,
+        reais(FOUNDER_DISCOUNT),
+        reais(p.founderPrice),
+        reais(p.tablePrice)
+      ])
+    })
+  })
+
+  test('texto mostra os dois preços, sem percentual nem prazo', () => {
+    expect(formatPlanPricing(getPlan('starter'))).toBe(
+      'R$ 69/mês com desconto de fundador · tabela cheia R$ 97/mês'
+    )
+    expect(FOUNDER_DISCOUNT_NOTE).toBe(
+      'Com o desconto de fundador aplicado na contratação, R$ 28 por mês a menos que a tabela cheia.'
+    )
   })
 })
 

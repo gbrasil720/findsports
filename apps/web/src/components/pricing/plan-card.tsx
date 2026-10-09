@@ -1,6 +1,7 @@
 import type { ComponentType, SVGAttributes } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
+import { formatPlanPrice, formatPlanPricing } from '@/lib/plan-catalog'
 
 type IconProps = SVGAttributes<SVGSVGElement> & {
   size?: number | string
@@ -16,7 +17,8 @@ type Plan = {
   id: 'starter' | 'pro' | 'elite'
   name: string
   tagline: string
-  price: string
+  tablePrice: number
+  founderPrice: number
   period: string
   icon: ComponentType<IconProps>
   features: string[]
@@ -50,7 +52,7 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
         checked={isSelected}
         onChange={() => onSelect(plan.id)}
         className="sr-only"
-        aria-label={`${plan.name}, ${plan.price}${plan.period}. ${plan.tagline}`}
+        aria-label={`${plan.name}, ${formatPlanPricing(plan)}. ${plan.tagline}`}
       />
       {isCurrent ? (
         <span className="onside-badge onside-badge-ink absolute -top-3 left-5">
@@ -84,11 +86,23 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
         </div>
       </div>
 
-      <div className="mb-6 flex items-baseline gap-1">
-        <span className="onside-display text-4xl">{plan.price}</span>
-        <span className="text-sm text-[var(--onside-muted)]">
+      {/* Preço de fundador com a tabela cheia como referência (WEB-112). */}
+      <div className="mb-6">
+        <div className="flex items-baseline gap-1">
+          <span className="onside-display text-4xl">
+            {formatPlanPrice(plan.founderPrice)}
+          </span>
+          <span className="text-sm text-[var(--onside-muted)]">
+            {plan.period}
+          </span>
+        </div>
+        <p className="mt-1.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
+          Com desconto de fundador
+        </p>
+        <p className="mt-1 text-xs text-[var(--onside-muted)]">
+          Tabela cheia: {formatPlanPrice(plan.tablePrice)}
           {plan.period}
-        </span>
+        </p>
       </div>
 
       <ul className="space-y-2.5">

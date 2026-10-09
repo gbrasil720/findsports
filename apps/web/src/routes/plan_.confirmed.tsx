@@ -31,7 +31,8 @@ import { useTRPC } from '@/utils/trpc'
 export const Route = createFileRoute('/plan_/confirmed')({
   head: () => ({
     meta: [
-      { title: 'Assinatura confirmada — Onside' },
+      // Vale para a espera e para o trial: nem sempre há algo confirmado ou pago.
+      { title: 'Comprovante de assinatura — Onside' },
       {
         name: 'description',
         content: 'Comprovante da assinatura do seu bar no Onside.'

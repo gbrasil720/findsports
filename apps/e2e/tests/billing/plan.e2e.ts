@@ -201,7 +201,7 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   await page.goto('/plan/confirmed')
   // O visor da impressora é o `status` que anuncia cada estágio.
   const screen = page.locator('.onside-receipt-screen')
-  await expect(screen).toHaveText(/Confirmando o pagamento/)
+  await expect(screen).toHaveText(/Confirmando a assinatura/)
   await expect(page).toHaveURL(/\/plan\/confirmed$/)
 
   const subscriptionId = `sub_e2e_${user.id}`
