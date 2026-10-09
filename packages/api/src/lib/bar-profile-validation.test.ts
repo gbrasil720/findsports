@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 
-import { motivoTelefoneInvalido } from './bar-profile-validation'
+import {
+  mensagemEnderecoNaoEncontrado,
+  motivoTelefoneInvalido,
+  UFS
+} from './bar-profile-validation'
 
 test('aceita celular, fixo, formato legado e vazio', () => {
   expect(motivoTelefoneInvalido('+5511988446094')).toBeNull()
@@ -38,4 +42,19 @@ test('diz o que está errado', () => {
   )
   expect(motivoTelefoneInvalido('+5501988446094')).toContain('DDD 01')
   expect(motivoTelefoneInvalido('+551188446094')).toContain('fixo')
+})
+
+test('as UFs são as do arquivo de municípios do IBGE, sem faltar nem sobrar', async () => {
+  const { default: centros } = await import('../data/municipios-centros.json')
+  const doIbge = [...new Set((centros as [string, string][]).map((m) => m[1]))]
+  expect(Object.keys(UFS).sort()).toEqual(doIbge.sort())
+})
+
+test('a recusa de endereço cita a UF quando o bar tem uma', () => {
+  expect(mensagemEnderecoNaoEncontrado(' Bonito ', 'MS')).toBe(
+    'Não encontramos esse endereço em Bonito, MS. Confira a rua, o número, a cidade e o estado.'
+  )
+  expect(mensagemEnderecoNaoEncontrado('Bonito', null)).toBe(
+    'Não encontramos esse endereço em Bonito. Confira a rua, o número e a cidade.'
+  )
 })

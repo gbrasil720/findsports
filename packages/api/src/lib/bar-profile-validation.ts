@@ -15,9 +15,59 @@
  * A recusa do geocoding: a rua não existe na cidade informada. Quem cai aqui
  * digitou endereço de outro lugar ou a cidade errada.
  */
-export function mensagemEnderecoNaoEncontrado(cidade: string): string {
-  return `Não encontramos esse endereço em ${cidade.trim()}. Confira a rua, o número e a cidade.`
+export function mensagemEnderecoNaoEncontrado(
+  cidade: string,
+  uf?: string | null
+): string {
+  return uf
+    ? `Não encontramos esse endereço em ${cidade.trim()}, ${uf}. Confira a rua, o número, a cidade e o estado.`
+    : `Não encontramos esse endereço em ${cidade.trim()}. Confira a rua, o número e a cidade.`
 }
+
+/**
+ * As 27 UFs (WEB-270), sigla → nome. A sigla é o que o formulário mostra e o
+ * banco guarda; o nome é o que vai ao geocoder, que casa estado por extenso.
+ *
+ * As siglas são as mesmas de `municipios-centros.json` (IBGE) — o teste ao
+ * lado confere, para esta lista não virar uma terceira fonte.
+ */
+export const UFS = {
+  AC: 'Acre',
+  AL: 'Alagoas',
+  AP: 'Amapá',
+  AM: 'Amazonas',
+  BA: 'Bahia',
+  CE: 'Ceará',
+  DF: 'Distrito Federal',
+  ES: 'Espírito Santo',
+  GO: 'Goiás',
+  MA: 'Maranhão',
+  MT: 'Mato Grosso',
+  MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais',
+  PA: 'Pará',
+  PB: 'Paraíba',
+  PR: 'Paraná',
+  PE: 'Pernambuco',
+  PI: 'Piauí',
+  RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte',
+  RS: 'Rio Grande do Sul',
+  RO: 'Rondônia',
+  RR: 'Roraima',
+  SC: 'Santa Catarina',
+  SP: 'São Paulo',
+  SE: 'Sergipe',
+  TO: 'Tocantins'
+} as const
+
+export type Uf = keyof typeof UFS
+
+export const ehUf = (valor: unknown): valor is Uf =>
+  typeof valor === 'string' && Object.hasOwn(UFS, valor)
+
+/** Para `z.enum`, que pede tupla não vazia. */
+export const UF_SIGLAS = Object.keys(UFS) as [Uf, ...Uf[]]
 
 /**
  * O geocoding fora do ar depois das tentativas. Não é endereço errado: dizer

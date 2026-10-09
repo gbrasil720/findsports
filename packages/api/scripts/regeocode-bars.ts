@@ -54,6 +54,7 @@ async function main(aplicar: boolean) {
       address: bar.address,
       neighborhood: bar.neighborhood,
       city: bar.city,
+      uf: bar.uf,
       latitude: bar.latitude,
       longitude: bar.longitude
     })
@@ -70,7 +71,12 @@ async function main(aplicar: boolean) {
     let atual: Coordenadas
     try {
       atual = await geocodeAddress(
-        { street: b.address, city: b.city, neighborhood: b.neighborhood },
+        {
+          street: b.address,
+          city: b.city,
+          neighborhood: b.neighborhood,
+          uf: b.uf
+        },
         apiKey
       )
     } catch (err) {

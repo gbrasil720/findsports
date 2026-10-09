@@ -1,5 +1,6 @@
 import { motivoTelasInvalido } from '@findsports_oficial/api/lib/amenities'
 import {
+  ehUf,
   mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado,
   motivoTelefoneInvalido
@@ -80,7 +81,10 @@ export function SpaceTab({
           // O telefone já foi conferido no `onSave`; sobra a recusa do
           // endereço (WEB-115) ou o geocoding fora do ar (WEB-191).
           err.data?.code === 'UNPROCESSABLE_CONTENT'
-            ? mensagemEnderecoNaoEncontrado(input.city ?? bar?.city ?? '')
+            ? mensagemEnderecoNaoEncontrado(
+                input.city ?? bar?.city ?? '',
+                input.uf ?? bar?.uf
+              )
             : err.data?.code === 'SERVICE_UNAVAILABLE'
               ? mensagemEnderecoIndisponivel
               : getUserFacingMessage(
@@ -233,6 +237,9 @@ export function SpaceTab({
             address: data.address || undefined,
             neighborhood: data.neighborhood || undefined,
             city: data.city || undefined,
+            // Sem UF escolhida vira "não mexer", como os vizinhos: bar
+            // anterior ao campo salva o resto do perfil sem ela (WEB-270).
+            uf: ehUf(data.uf) ? data.uf : undefined,
             phone: data.phone,
             description: data.description,
             amenities: data.amenities,

@@ -7,6 +7,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useId, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
+import { groupTeamsByKind, TeamGroup } from '@/components/sports/team-groups'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { DateTimeInput, formatDateTime, parseDateTime } from './date-time-input'
@@ -237,31 +238,35 @@ export function EventFormComponent({
             </div>
           ) : teams.length > 0 ? (
             <>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {teams.map((t) => {
-                  const selected = form.participantIds.includes(t.id)
-                  const maxReached =
-                    hasLimit && form.participantIds.length >= 2 && !selected
-                  const disabled = maxReached || hasFreeText
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => !disabled && toggleTeam(t.id)}
-                      disabled={disabled}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
-                        selected
-                          ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                          : disabled
-                            ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
-                            : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-                      }`}
-                    >
-                      {selected && <Check size={12} color="currentColor" />}
-                      {t.name}
-                    </button>
-                  )
-                })}
+              <div className="mb-3 space-y-3">
+                {groupTeamsByKind(teams).map((group) => (
+                  <TeamGroup key={group.label} label={group.label}>
+                    {group.teams.map((t) => {
+                      const selected = form.participantIds.includes(t.id)
+                      const maxReached =
+                        hasLimit && form.participantIds.length >= 2 && !selected
+                      const disabled = maxReached || hasFreeText
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => !disabled && toggleTeam(t.id)}
+                          disabled={disabled}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
+                            selected
+                              ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                              : disabled
+                                ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
+                                : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
+                          }`}
+                        >
+                          {selected && <Check size={12} color="currentColor" />}
+                          {t.name}
+                        </button>
+                      )
+                    })}
+                  </TeamGroup>
+                ))}
               </div>
               {!hasFreeText && (
                 <p className="text-[10px] text-[var(--onside-muted)] mb-2">

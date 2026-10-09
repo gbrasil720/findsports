@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
+import { groupTeamsByKind, TeamGroup } from './team-groups'
 
 /** Forma comum a `pubs.getTeamsBySport` e `pubs.getMyTeams`. */
 export type FavoriteTeam = { id: string; name: string; sportId: string }
@@ -60,17 +61,23 @@ export function TeamPicker({ sports, selected, onChange }: Props) {
                 </button>
               </p>
             ) : query?.data?.length ? (
-              <div className="flex flex-wrap gap-2">
-                {query.data.map((team) => (
-                  <button
-                    key={team.id}
-                    type="button"
-                    aria-pressed={selectedIds.has(team.id)}
-                    onClick={() => onChange(toggleFavoriteTeam(selected, team))}
-                    className="onside-chip"
-                  >
-                    {team.name}
-                  </button>
+              <div className="space-y-3">
+                {groupTeamsByKind(query.data).map((group) => (
+                  <TeamGroup key={group.label} label={group.label}>
+                    {group.teams.map((team) => (
+                      <button
+                        key={team.id}
+                        type="button"
+                        aria-pressed={selectedIds.has(team.id)}
+                        onClick={() =>
+                          onChange(toggleFavoriteTeam(selected, team))
+                        }
+                        className="onside-chip"
+                      >
+                        {team.name}
+                      </button>
+                    ))}
+                  </TeamGroup>
                 ))}
               </div>
             ) : (

@@ -81,6 +81,29 @@ test('mudar o endereço geocodifica a rua nova e grava', async ({ page }) => {
   expect(bar?.address).toBe(newStreet)
 })
 
+// WEB-270: bar cadastrado antes do campo abre sem UF (e salva o resto sem ela,
+// como o primeiro teste mostra); escolhê-la confere o endereço com o estado.
+test('escolher a UF num bar sem UF geocodifica com o estado e grava', async ({
+  page
+}) => {
+  const { barId, street } = await openProfile(page)
+
+  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+  const uf = editor(page).getByLabel('Estado (UF)')
+  await expect(uf).toHaveValue('')
+  await uf.selectOption('SP')
+  expect((await save(page)).ok()).toBe(true)
+
+  const [bar] = await query('SELECT uf FROM bar WHERE id = $1', [barId])
+  expect(bar?.uf).toBe('SP')
+  const response = await page.request.get(`${STUB_URL}/locationiq/calls`)
+  const calls = (await response.json()) as {
+    street: string
+    state: string | null
+  }[]
+  expect(calls.find((c) => c.street === street)?.state).toBe('São Paulo')
+})
+
 test('endereço que o geocoding não acha é recusado com a mensagem certa', async ({
   page
 }) => {

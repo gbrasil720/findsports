@@ -10,6 +10,7 @@ import Xmark from 'reicon-react/icons/Xmark'
 import { BarAvatar } from '@/components/admin/pub-avatar'
 import { PhoneInput } from '@/components/phone-input'
 import { AmenityChecklist } from '@/components/pub-profile/amenity-checklist'
+import { conciliarUfComCidade, UfSelect } from '@/components/uf-select'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -27,6 +28,8 @@ type Bar = {
   address?: string
   neighborhood?: string
   city?: string
+  /** `null` em bar cadastrado antes do campo (WEB-270). */
+  uf?: string | null
   phone?: string | null
   description?: string | null
   photoUrl?: string | null
@@ -40,6 +43,7 @@ type EditForm = {
   address: string
   neighborhood: string
   city: string
+  uf: string
   phone: string
   description: string
   amenities: number[]
@@ -73,6 +77,7 @@ export function PubHeroSection({
     address: bar.address ?? '',
     neighborhood: bar.neighborhood ?? '',
     city: bar.city ?? '',
+    uf: bar.uf ?? '',
     phone: bar.phone ?? '',
     description: bar.description ?? '',
     amenities: bar.amenities ?? [],
@@ -221,8 +226,26 @@ export function PubHeroSection({
                         onChange={(e) =>
                           setForm({ ...form, city: e.target.value })
                         }
+                        onBlur={() =>
+                          conciliarUfComCidade(form.city, (proxima) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              uf: proxima(prev.uf)
+                            }))
+                          )
+                        }
                         placeholder="Cidade"
                         className="onside-input onside-input-ink"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <label htmlFor="admin-bar-uf" className="sr-only">
+                        Estado (UF)
+                      </label>
+                      <UfSelect
+                        id="admin-bar-uf"
+                        value={form.uf}
+                        onChange={(uf) => setForm((prev) => ({ ...prev, uf }))}
                       />
                     </div>
                     <div className="min-w-0">

@@ -1,7 +1,9 @@
 import {
+  ehUf,
   mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado,
-  motivoTelefoneInvalido
+  motivoTelefoneInvalido,
+  type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { mensagemCidadeNaoLiberada } from '@findsports_oficial/api/lib/city-match'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
@@ -13,6 +15,11 @@ export type PubOnboardingDraft = {
   name: string
   neighborhood: string
   city?: string
+  /**
+   * Ausente em rascunho gravado antes do campo (WEB-270): ele continua
+   * abrindo, e quem o lê manda o dono ao formulário para escolher a UF.
+   */
+  uf?: Uf
   address: string
   phone?: string
   description?: string
@@ -66,7 +73,11 @@ export function parsePubOnboardingDraft(
     ) {
       return null
     }
-    return parsed.draft
+    // UF que não é sigla sai sozinha, sem derrubar o resto do rascunho.
+    return {
+      ...parsed.draft,
+      uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined
+    }
   } catch {
     return null
   }
@@ -92,7 +103,8 @@ export function mensagemFalhaCadastroBar(
   if (code === 'SERVICE_UNAVAILABLE') return mensagemEnderecoIndisponivel
   if (code === 'UNPROCESSABLE_CONTENT') {
     return (
-      motivoTelefoneInvalido(draft.phone) ?? mensagemEnderecoNaoEncontrado(city)
+      motivoTelefoneInvalido(draft.phone) ??
+      mensagemEnderecoNaoEncontrado(city, draft.uf)
     )
   }
   return getUserFacingMessage(

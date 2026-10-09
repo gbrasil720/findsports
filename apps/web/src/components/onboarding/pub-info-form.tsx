@@ -1,12 +1,16 @@
 import { PhoneInput } from '@/components/phone-input'
+import { UfSelect } from '@/components/uf-select'
 
 type Props = {
   name: string
   address: string
   neighborhood: string
   city: string
+  uf: string
   phone: string
   onChange: (field: string, value: string) => void
+  /** Ao sair da cidade, a tela concilia a UF com ela (`uf-select.tsx`). */
+  onCityBlur?: () => void
   errors?: Partial<
     Record<'name' | 'address' | 'neighborhood' | 'city' | 'phone', string>
   >
@@ -23,8 +27,10 @@ export function PubInfoForm({
   address,
   neighborhood,
   city,
+  uf,
   phone,
   onChange,
+  onCityBlur,
   errors = {}
 }: Props) {
   return (
@@ -116,6 +122,7 @@ export function PubInfoForm({
             name="city"
             value={city}
             onChange={(e) => onChange('city', e.target.value)}
+            onBlur={onCityBlur}
             placeholder="São Paulo"
             autoComplete="address-level2"
             maxLength={100}
@@ -131,24 +138,37 @@ export function PubInfoForm({
         </div>
       </div>
 
-      <div>
-        <label htmlFor="pub-phone" className={labelClass}>
-          Telefone
-        </label>
-        <PhoneInput
-          id="pub-phone"
-          name="phone"
-          defaultValue={phone}
-          onChange={(p) => onChange('phone', p)}
-          tone="ink"
-          invalid={Boolean(errors.phone)}
-          describedBy={errors.phone ? 'pub-phone-error' : undefined}
-        />
-        {errors.phone ? (
-          <p id="pub-phone-error" className="onside-field-error" role="alert">
-            {errors.phone}
-          </p>
-        ) : null}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <label htmlFor="pub-uf" className={labelClass}>
+            Estado (UF) *
+          </label>
+          <UfSelect
+            id="pub-uf"
+            value={uf}
+            onChange={(value) => onChange('uf', value)}
+            required
+          />
+        </div>
+        <div className="min-w-0">
+          <label htmlFor="pub-phone" className={labelClass}>
+            Telefone
+          </label>
+          <PhoneInput
+            id="pub-phone"
+            name="phone"
+            defaultValue={phone}
+            onChange={(p) => onChange('phone', p)}
+            tone="ink"
+            invalid={Boolean(errors.phone)}
+            describedBy={errors.phone ? 'pub-phone-error' : undefined}
+          />
+          {errors.phone ? (
+            <p id="pub-phone-error" className="onside-field-error" role="alert">
+              {errors.phone}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   )

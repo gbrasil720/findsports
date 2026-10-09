@@ -30,7 +30,10 @@ import {
   parseAverageSpendCentsInput,
   parseMenuUrlInput
 } from '../lib/bar-menu'
-import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
+import {
+  motivoTelefoneInvalido,
+  UF_SIGLAS
+} from '../lib/bar-profile-validation'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
@@ -105,10 +108,20 @@ export function resolvePhoneAcceptsWhatsapp(
  * LocationIQ e segura o salvar esperando a resposta.
  */
 export function addressFieldsChanged(
-  input: { address?: string; neighborhood?: string; city?: string },
-  existing: { address: string; neighborhood: string; city: string }
+  input: {
+    address?: string
+    neighborhood?: string
+    city?: string
+    uf?: string
+  },
+  existing: {
+    address: string
+    neighborhood: string
+    city: string
+    uf?: string | null
+  }
 ): boolean {
-  return (['address', 'neighborhood', 'city'] as const).some(
+  return (['address', 'neighborhood', 'city', 'uf'] as const).some(
     (field) => input[field] !== undefined && input[field] !== existing[field]
   )
 }
@@ -199,6 +212,9 @@ export const pubRouter = router({
         address: z.string().min(5).max(255).optional(),
         neighborhood: z.string().min(2).max(100).optional(),
         city: z.string().min(2).max(100).optional(),
+        // WEB-270. Opcional: bar anterior ao campo edita o resto do perfil sem
+        // UF, e o cliente antigo, aberto durante o deploy, não a manda.
+        uf: z.enum(UF_SIGLAS).optional(),
         photoUrl: z.string().url().optional(),
         // Lista completa, não incremental: o formulário manda o estado final
         // das características. Array vazio desmarca tudo, e `undefined` não
@@ -265,7 +281,8 @@ export const pubRouter = router({
           {
             street: input.address ?? existingBar.address,
             city: input.city ?? existingBar.city,
-            neighborhood: input.neighborhood ?? existingBar.neighborhood
+            neighborhood: input.neighborhood ?? existingBar.neighborhood,
+            uf: input.uf ?? existingBar.uf
           },
           apiKey
         )
@@ -282,6 +299,7 @@ export const pubRouter = router({
           ...(input.address && { address: input.address }),
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
           ...(input.city && { city: input.city }),
+          ...(input.uf && { uf: input.uf }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
             amenities: normalizeAmenityIds(input.amenities)

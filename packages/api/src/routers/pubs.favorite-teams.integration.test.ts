@@ -42,6 +42,13 @@ integrationTest(
         name: 'Água Santa',
         slug: `d-${suffix}`
       },
+      {
+        id: crypto.randomUUID(),
+        sportId: footballId,
+        name: 'Brasil',
+        slug: `e-${suffix}`,
+        isNationalTeam: true
+      },
       { id: constructorId, sportId: f1Id, name: 'C', slug: `c-${suffix}` }
     ])
     await db.insert(user).values(
@@ -100,9 +107,17 @@ integrationTest(
       // WEB-284: ordem alfabética em pt-BR, não a de bytes do banco — que
       // poria "PSG" antes de "Palmeiras" e "Água Santa" no fim.
       const nomes = (rows: { name: string }[]) => rows.map((row) => row.name)
-      expect(
-        nomes(await fan.pubs.getTeamsBySport({ sportId: footballId }))
-      ).toEqual(['Água Santa', 'Palmeiras', 'PSG'])
+      const futebol = await fan.pubs.getTeamsBySport({ sportId: footballId })
+      expect(nomes(futebol)).toEqual([
+        'Água Santa',
+        'Brasil',
+        'Palmeiras',
+        'PSG'
+      ])
+      // Seleção vem marcada do banco; quem não declara nada é clube.
+      expect(nomes(futebol.filter((row) => row.isNationalTeam))).toEqual([
+        'Brasil'
+      ])
       expect(nomes(await fan.pubs.getMyTeams())).toEqual([
         'C',
         'Palmeiras',
