@@ -19,6 +19,9 @@ import { authClient } from './auth-client'
 export async function startCheckout(plan: SubscriptionPlan): Promise<boolean> {
   const { data, error } = await authClient.subscription.upgrade({
     plan,
+    // Idioma do checkout. A confirmação de troca no portal não recebe isto do
+    // plugin e segue o idioma do navegador do dono.
+    locale: 'pt-BR',
     successUrl: '/plan/confirmed',
     cancelUrl: '/plan',
     returnUrl: '/admin/billing'
