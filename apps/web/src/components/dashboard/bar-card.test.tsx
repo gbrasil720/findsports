@@ -13,15 +13,17 @@ import { BarCard } from './bar-card'
 mock.module('@tanstack/react-router', () => ({
   Link: ({
     to,
+    search,
     children,
     ...rest
   }: {
     to?: string
+    search?: { eventId?: string }
     children?: ReactNode
     className?: string
     'aria-label'?: string
   }) => (
-    <a href={String(to ?? '')} {...rest}>
+    <a href={String(to ?? '')} data-event-id={search?.eventId} {...rest}>
       {children}
     </a>
   )
@@ -93,6 +95,26 @@ function selo(documento: Document): Element | null {
     ) ?? null
   )
 }
+
+// WEB-258: `profile_view` só é atribuído a um jogo quando o perfil abre com
+// `?eventId=`. O card leva o jogo que ele mesmo mostra, e nada quando não há.
+describe('link do perfil', () => {
+  const link = (documento: Document) =>
+    documento.querySelector('a[aria-label^="Ver "]')
+
+  test('leva o jogo mostrado no card', () => {
+    const bar = criarBar('pro', eventoEm(new Date(Date.now() + 3_600_000)))
+    expect(link(renderizar(bar))?.getAttribute('data-event-id')).toBe(
+      'evento-1'
+    )
+  })
+
+  test('sem jogo, abre o perfil sem atribuir a nenhum', () => {
+    expect(
+      link(renderizar(criarBar('pro')))?.hasAttribute('data-event-id')
+    ).toBe(false)
+  })
+})
 
 describe('selo de plano', () => {
   test('starter não ganha selo nem penalidade textual', () => {

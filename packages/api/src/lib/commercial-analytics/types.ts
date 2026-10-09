@@ -194,6 +194,13 @@ export interface EventAnalyticsRow {
   directionsOpened: number
   phoneClicked: number
   whatsappOpened: number
+  /**
+   * Pessoas com reserva confirmada e chegadas que o bar registrou em "Validar
+   * código" (WEB-323). Dados do próprio bar: não entram em taxa nem se somam
+   * a `interestedPeople` (ADR 0003, "Separação").
+   */
+  reservedPeople: number
+  arrivals: number
 }
 
 /** Raw per-game snapshot used to calculate comparison and advanced insights. */
@@ -209,6 +216,8 @@ export interface EventAnalyticsSnapshot {
   directionsOpened: number
   phoneClicked: number
   whatsappOpened: number
+  reservedPeople: number
+  arrivals: number
 }
 
 export interface ComparisonMetricValues {
@@ -287,6 +296,8 @@ export interface AnalyticsEntitlements {
   canViewWhatsappOpened: boolean
   canViewDirectionsOpened: boolean
   canViewClassicPlacement: boolean
+  /** Reservas e chegadas por jogo: reserva de mesa é do Elite (ADR 0003). */
+  canViewReservations: boolean
   canViewComparison: boolean
   /** Comparison capability sold by the plan; the server is authoritative. */
   comparison: AnalyticsComparisonMode

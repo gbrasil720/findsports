@@ -34,6 +34,11 @@ import { motivoTelefoneInvalido } from '../lib/bar-profile-validation'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
+import {
+  getEventDeletionBlock,
+  readEventDeletionImpact
+} from '../lib/event-deletion'
+import { participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -441,6 +446,8 @@ export const pubRouter = router({
         r.would_return,
         r.created_at,
         e.championship,
+        e.participant_free_text,
+        ${participantNames(sql`e.id`)} AS participants,
         e.starts_at
       FROM bar_rating r
       JOIN event e ON e.id = r.event_id
@@ -463,12 +470,16 @@ export const pubRouter = router({
           would_return: boolean
           created_at: string
           championship: string
+          participant_free_text: string | null
+          participants: string[]
           starts_at: string
         }[]
       ).map((row) => ({
         wouldReturn: row.would_return,
         createdAt: row.created_at,
         championship: row.championship,
+        participantFreeText: row.participant_free_text,
+        participants: row.participants,
         startsAt: utcIso(row.starts_at)
       }))
     }
@@ -479,16 +490,26 @@ export const pubRouter = router({
 
     const existingBar = await getBarByUserId(userId)
 
-    return db.query.event.findMany({
-      where: eq(event.barId, existingBar.id),
-      with: {
-        sport: true,
-        participants: {
-          with: { team: true }
-        }
-      },
-      orderBy: (event, { asc }) => [asc(event.startsAt)]
-    })
+    // O que a exclusão levaria junto vem na mesma leitura (WEB-252): a grade
+    // avisa do bloqueio antes do clique, sem uma ida por jogo.
+    const [events, deletionImpact] = await Promise.all([
+      db.query.event.findMany({
+        where: eq(event.barId, existingBar.id),
+        with: {
+          sport: true,
+          participants: {
+            with: { team: true }
+          }
+        },
+        orderBy: (event, { asc }) => [asc(event.startsAt)]
+      }),
+      readEventDeletionImpact(db, existingBar.id)
+    ])
+
+    return events.map((item) => ({
+      ...item,
+      deletion: deletionImpact.get(item.id) ?? null
+    }))
   }),
 
   /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
@@ -706,18 +727,37 @@ export const pubRouter = router({
 
       const existingBar = await getBarByUserId(userId)
 
-      const existingEvent = await db.query.event.findFirst({
-        where: eq(event.id, input.eventId)
+      await db.transaction(async (tx) => {
+        // A trava na linha do jogo fecha a corrida com o pedido que chega no
+        // meio: o insert de reserva ou avaliação pega KEY SHARE nesta linha
+        // pelo FK, então ou ele já está gravado e entra na contagem abaixo,
+        // ou espera e falha porque o jogo sumiu. Nunca é apagado junto.
+        const [lockedEvent] = await tx
+          .select({ id: event.id })
+          .from(event)
+          .where(
+            and(eq(event.id, input.eventId), eq(event.barId, existingBar.id))
+          )
+          .for('update')
+          .limit(1)
+
+        if (!lockedEvent) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Evento não encontrado.'
+          })
+        }
+
+        const impact = (
+          await readEventDeletionImpact(tx, existingBar.id, input.eventId)
+        ).get(input.eventId)
+        const block = impact ? getEventDeletionBlock(impact) : null
+        if (block) {
+          throw new TRPCError({ code: 'PRECONDITION_FAILED', message: block })
+        }
+
+        await tx.delete(event).where(eq(event.id, input.eventId))
       })
-
-      if (!existingEvent || existingEvent.barId !== existingBar.id) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Evento não encontrado.'
-        })
-      }
-
-      await db.delete(event).where(eq(event.id, input.eventId))
 
       return { success: true }
     }),

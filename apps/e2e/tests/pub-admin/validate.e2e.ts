@@ -145,7 +145,7 @@ test('código incompleto, inexistente e de outro bar', async ({ page }) => {
   ).toBeVisible()
 
   const notFound =
-    'Código não encontrado. Confira com o torcedor e tente de novo.'
+    'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
   await lookup(page, 'ZZZZZ9')
   await expect(
     page.getByRole('alert').filter({ hasText: notFound })

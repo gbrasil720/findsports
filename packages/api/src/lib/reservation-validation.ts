@@ -101,7 +101,9 @@ export type FanReservationStatus = ReservationStatus | 'expired' | 'ended'
  *   propósito: o MVP registra o comparecimento e não julga (ADR 0003), então
  *   nada aqui diz "não compareceu". O código segue à mostra enquanto a janela
  *   de validação estiver aberta, que é quando o bar ainda consegue registrar.
- * - Com chegada registrada nada muda: o estado de chegada é do WEB-259.
+ * - Com chegada registrada a reserva segue `confirmed` depois do jogo: não
+ *   há o que encerrar em quem foi. A chegada em si vai num campo próprio
+ *   (`arrival`, WEB-259), e o código some com a janela, como em `ended`.
  */
 export function deriveFanReservation(
   status: ReservationStatus,
@@ -117,9 +119,9 @@ export function deriveFanReservation(
   }
   // Recusado ou cancelado: o código não vale.
   if (status !== 'confirmed') return { status, showCode: false }
-  if (!over || hasArrival) return { status, showCode: true }
+  if (!over) return { status, showCode: true }
   return {
-    status: 'ended',
+    status: hasArrival ? status : 'ended',
     showCode: now <= getValidationWindow(game).closesAt
   }
 }

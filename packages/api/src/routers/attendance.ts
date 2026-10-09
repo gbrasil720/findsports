@@ -13,6 +13,18 @@ import {
   readUnregisteredAlerts
 } from '../lib/attendance'
 
+/** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
+async function openQuestion(userId: string, eventId: string) {
+  const [question] = await readAttendanceQuestions(userId, eventId)
+  if (!question) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Não há pergunta aberta para este jogo.'
+    })
+  }
+  return question
+}
+
 /**
  * "Vou assistir aqui" (WEB-127): o torcedor marca e desmarca presença num
  * jogo futuro. Vale para bar de qualquer plano (ADR 0003, "Recorte de
@@ -43,10 +55,15 @@ export const attendanceRouter = router({
       }
 
       if (input.attending) {
+        // Marcar à mão vale mais que a presença que a reserva criou: vira
+        // `manual` e uma recusa do bar já não a apaga (WEB-296).
         await db
           .insert(attendance)
           .values({ userId, eventId: input.eventId })
-          .onConflictDoNothing()
+          .onConflictDoUpdate({
+            target: [attendance.userId, attendance.eventId],
+            set: { source: 'manual' }
+          })
       } else {
         await db
           .delete(attendance)
@@ -85,13 +102,7 @@ export const attendanceRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      const [question] = await readAttendanceQuestions(userId, input.eventId)
-      if (!question) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Não há pergunta aberta para este jogo.'
-        })
-      }
+      const question = await openQuestion(userId, input.eventId)
       // Pergunta que não foi feita não tem resposta gravada.
       const offerReceived =
         question.offer !== null && input.attended
@@ -110,6 +121,28 @@ export const attendanceRouter = router({
           set: { attended: input.attended, offerReceived }
         })
       return { attended: input.attended, offerReceived }
+    }),
+
+  /**
+   * "Desfazer" do aviso de confirmação (WEB-321): apaga a resposta do próprio
+   * torcedor e a pergunta volta a `pendingReports`. Vale enquanto `report`
+   * vale. Sem resposta gravada não há o que apagar, e não é erro. Nada é
+   * materializado a partir da resposta: o alerta interno conta na leitura.
+   */
+  removeReport: fanProcedure
+    .input(z.object({ eventId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      await openQuestion(userId, input.eventId)
+      await db
+        .delete(attendanceReport)
+        .where(
+          and(
+            eq(attendanceReport.userId, userId),
+            eq(attendanceReport.eventId, input.eventId)
+          )
+        )
+      return { success: true }
     }),
 
   /** Alerta interno de "foi, mas o bar não registrou" repetido. */

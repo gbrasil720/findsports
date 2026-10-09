@@ -4,7 +4,8 @@ import type { inferRouterOutputs } from '@trpc/server'
 import Check from 'reicon-react/icons/Check'
 import EyeSlash from 'reicon-react/icons/EyeSlash'
 import Xmark from 'reicon-react/icons/Xmark'
-import { formatDayLabel } from '@/domain/pub-profile'
+import { formatDayLabel, formatGameSubtitle } from '@/domain/pub-profile'
+import { getGameTitle } from '@/domain/reservation-validation'
 
 type Ratings = inferRouterOutputs<AppRouter>['pub']['getMyRatings']
 
@@ -165,11 +166,14 @@ export function RatingsPanel({ state }: Props) {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-sm">
-                    {item.championship}
+                    {getGameTitle(item)}
                   </p>
                   <p className="text-[var(--onside-muted)] text-xs">
-                    {formatDayLabel(new Date(item.startsAt))} ·{' '}
-                    {item.wouldReturn ? 'Voltaria' : 'Não voltaria'}
+                    {formatGameSubtitle(getGameTitle(item), [
+                      item.championship,
+                      formatDayLabel(new Date(item.startsAt)),
+                      item.wouldReturn ? 'Voltaria' : 'Não voltaria'
+                    ])}
                   </p>
                 </div>
               </li>

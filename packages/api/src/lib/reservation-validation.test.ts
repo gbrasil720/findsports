@@ -197,13 +197,15 @@ describe('deriveFanReservation', () => {
     })
   })
 
-  test('com chegada registrada nada muda (WEB-259)', () => {
-    for (const times of [afterGame, afterWindow]) {
-      expect(deriveFanReservation('confirmed', times, true, now)).toEqual({
-        status: 'confirmed',
-        showCode: true
-      })
-    }
+  test('com chegada registrada segue confirmada; o código some com a janela (WEB-259)', () => {
+    expect(deriveFanReservation('confirmed', afterGame, true, now)).toEqual({
+      status: 'confirmed',
+      showCode: true
+    })
+    expect(deriveFanReservation('confirmed', afterWindow, true, now)).toEqual({
+      status: 'confirmed',
+      showCode: false
+    })
   })
 
   test('pendente expira no fim do jogo e perde o código', () => {

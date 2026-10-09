@@ -3,6 +3,7 @@ import { db, eq, sql } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { EVENT_LIVE_WINDOW_HOURS } from '../event-profile-window'
+import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
@@ -443,7 +444,11 @@ async function getEventAnalyticsSnapshots(
     )
     SELECT
       e.id AS event_id,
-      COALESCE(e.championship || ' - ', '') || 'Evento' AS event_name,
+      ${gameTitle({
+        id: sql`e.id`,
+        participantFreeText: sql`e.participant_free_text`,
+        championship: sql`e.championship`
+      })} AS event_name,
       e.starts_at,
       GREATEST(
         EXTRACT(
@@ -464,7 +469,20 @@ async function getEventAnalyticsSnapshots(
       COALESCE(bruto.profile_views, 0) + COALESCE(podado.profile_views, 0) AS profile_views,
       COALESCE(bruto.directions_opened, 0) + COALESCE(podado.directions_opened, 0) AS directions_opened,
       COALESCE(bruto.phone_clicked, 0) + COALESCE(podado.phone_clicked, 0) AS phone_clicked,
-      COALESCE(bruto.whatsapp_opened, 0) + COALESCE(podado.whatsapp_opened, 0) AS whatsapp_opened
+      COALESCE(bruto.whatsapp_opened, 0) + COALESCE(podado.whatsapp_opened, 0) AS whatsapp_opened,
+      -- WEB-323: dados do próprio bar, não analytics de torcedor. Saem das
+      -- tabelas de reserva, então a poda dos eventos brutos não os alcança.
+      (
+        SELECT COALESCE(SUM(r.party_size), 0)
+        FROM reservation r
+        WHERE r.event_id = e.id AND r.status = 'confirmed'
+      ) AS reserved_people,
+      (
+        SELECT COALESCE(SUM(rc.used_count), 0)
+        FROM reservation r
+        JOIN reservation_code rc ON rc.reservation_id = r.id
+        WHERE r.event_id = e.id AND r.status = 'confirmed'
+      ) AS arrivals
     FROM event e
     LEFT JOIN bruto ON bruto.event_id = e.id
     LEFT JOIN podado ON podado.event_id = e.id
@@ -486,6 +504,8 @@ async function getEventAnalyticsSnapshots(
     directions_opened: string | number
     phone_clicked: string | number
     whatsapp_opened: string | number
+    reserved_people: string | number
+    arrivals: string | number
   }>
 
   return rows.map((row) => ({
@@ -499,7 +519,9 @@ async function getEventAnalyticsSnapshots(
     profileViews: Number(row.profile_views),
     directionsOpened: Number(row.directions_opened),
     phoneClicked: Number(row.phone_clicked),
-    whatsappOpened: Number(row.whatsapp_opened)
+    whatsappOpened: Number(row.whatsapp_opened),
+    reservedPeople: Number(row.reserved_people),
+    arrivals: Number(row.arrivals)
   }))
 }
 
@@ -548,7 +570,9 @@ export async function getMyEventAnalytics(
     profileViews: row.profileViews,
     directionsOpened: row.directionsOpened,
     phoneClicked: row.phoneClicked,
-    whatsappOpened: row.whatsappOpened
+    whatsappOpened: row.whatsappOpened,
+    reservedPeople: row.reservedPeople,
+    arrivals: row.arrivals
   }))
 
   const response: EventAnalyticsResponse = {

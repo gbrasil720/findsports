@@ -31,6 +31,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: false,
     canViewDirectionsOpened: false,
     canViewClassicPlacement: false,
+    canViewReservations: false,
     canViewComparison: true,
     comparison: 'previous_period',
     canViewDailyBreakdown: false,
@@ -44,6 +45,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
     canViewClassicPlacement: false,
+    canViewReservations: false,
     canViewComparison: true,
     comparison: 'cross_game',
     canViewDailyBreakdown: false,
@@ -57,6 +59,7 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewWhatsappOpened: true,
     canViewDirectionsOpened: true,
     canViewClassicPlacement: true,
+    canViewReservations: true,
     canViewComparison: true,
     comparison: 'advanced',
     canViewDailyBreakdown: true,
@@ -201,7 +204,13 @@ export function applyEventBreakdownEntitlements(
         : null,
       whatsappOpened: entitlements.canViewWhatsappOpened
         ? event.whatsappOpened
-        : null
+        : null,
+      // Bar sem reserva de mesa no plano veria zero, que parece "ninguém
+      // reservou" e não "seu plano não tem reserva".
+      reservedPeople: entitlements.canViewReservations
+        ? event.reservedPeople
+        : null,
+      arrivals: entitlements.canViewReservations ? event.arrivals : null
     })),
     ...(response.comparison
       ? {

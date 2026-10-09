@@ -140,6 +140,9 @@ export function BarCard({
       <Link
         to="/pub/$pubId"
         params={{ pubId: bar.id }}
+        // WEB-258: quem chega pelo jogo do card leva o jogo junto, e é só
+        // assim que a abertura do perfil é atribuída a ele.
+        search={event ? { eventId: event.id } : undefined}
         onClick={() => {
           analytics.barOpened({
             bar_id: bar.id,

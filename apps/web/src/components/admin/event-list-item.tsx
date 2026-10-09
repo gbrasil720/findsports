@@ -3,6 +3,7 @@ import Trash from 'reicon-react/icons/Trash'
 import { getEventTemporalState } from '@/domain/events'
 import { formatGameSubtitle } from '@/domain/pub-profile'
 import type { AdminEvent } from './admin-model'
+import { getDeleteBlock } from './event-delete-dialog'
 
 function isUpcomingSoon(startsAt: string | Date): boolean {
   const diff = new Date(startsAt).getTime() - Date.now()
@@ -72,6 +73,8 @@ export function EventListItem({
     e.participants?.map((p) => p.team.name).join(' × ') ||
     e.participantFreeText ||
     e.championship
+  // Bloqueado, a lixeira continua ali: o clique abre o motivo (WEB-252).
+  const deleteBlock = getDeleteBlock(e.deletion)
 
   return (
     <li
@@ -163,7 +166,12 @@ export function EventListItem({
           onClick={() => onDelete(e.id)}
           disabled={isDeleting}
           aria-label="Excluir evento"
-          className="grid min-h-11 min-w-11 place-items-center border border-[var(--onside-ink)] text-[var(--onside-live)] hover:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))] disabled:opacity-40"
+          title={deleteBlock?.reason}
+          className={`grid min-h-11 min-w-11 place-items-center border border-[var(--onside-ink)] disabled:opacity-40 ${
+            deleteBlock
+              ? 'text-[var(--onside-muted)] hover:bg-[var(--onside-stone)]'
+              : 'text-[var(--onside-live)] hover:bg-[color-mix(in_srgb,var(--onside-live)_10%,var(--onside-paper))]'
+          }`}
         >
           <Trash size={16} color="currentColor" aria-hidden="true" />
         </button>

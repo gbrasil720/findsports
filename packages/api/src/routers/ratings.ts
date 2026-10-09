@@ -8,6 +8,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, router } from '../index'
+import { participantNames } from '../lib/game-participants'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
 import { utcIso } from '../lib/utc-timestamp'
 
@@ -119,6 +120,8 @@ export const ratingsRouter = router({
       SELECT DISTINCT ON (e.id)
         e.id AS event_id,
         e.championship,
+        e.participant_free_text,
+        ${participantNames(sql`e.id`)} AS participants,
         e.starts_at,
         b.id AS bar_id,
         b.name AS bar_name,
@@ -158,6 +161,8 @@ export const ratingsRouter = router({
       rows.rows as {
         event_id: string
         championship: string
+        participant_free_text: string | null
+        participants: string[]
         starts_at: string
         bar_id: string
         bar_name: string
@@ -168,6 +173,8 @@ export const ratingsRouter = router({
     ).map((row) => ({
       eventId: row.event_id,
       championship: row.championship,
+      participantFreeText: row.participant_free_text,
+      participants: row.participants,
       startsAt: utcIso(row.starts_at),
       barId: row.bar_id,
       barName: row.bar_name,

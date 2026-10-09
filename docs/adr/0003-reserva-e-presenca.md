@@ -3,7 +3,8 @@
 - Status: aceita
 - Data: 2026-09-13
 - Tickets: WEB-38 (guarda-chuva, precisa ser fatiado); decisões dos pontos em
-  aberto em WEB-121, WEB-122, WEB-123 e WEB-132 (2026-09-29)
+  aberto em WEB-121, WEB-122, WEB-123 e WEB-132 (2026-09-29); decisões do QA
+  de produção em WEB-255, WEB-259, WEB-296 e WEB-318 (2026-10-08)
 
 ## Contexto
 
@@ -31,6 +32,10 @@ nenhum do contrato.
 - Uma reserva implica presença para efeito de contagem. O painel do bar nunca
   soma reservas e presenças como números independentes: seriam as mesmas
   pessoas contadas duas vezes.
+- A presença guarda a origem (`attendance.source`): `manual`, marcada pelo
+  torcedor em "Vou assistir aqui", ou `reservation`, criada junto com um
+  pedido de reserva. É o único ponto em que uma feature olha para a outra, e
+  existe para a regra de recusa em "Fim da reserva e presença".
 
 ### Reserva
 
@@ -70,6 +75,12 @@ nenhum do contrato.
   contador (`2 de 4 validados`), e cada uso é um `+1` com confirmação e desfazer
   curto. Exigir N digitações do mesmo código não sobrevive a um sábado de jogo,
   e `+1` sem proteção de duplo envio rouba o brinde de um torcedor real.
+- Código inexistente, aposentado (reserva recusada ou cancelada) e de outro
+  bar recebem a mesma resposta, e isso não muda: distinguir os casos daria um
+  oráculo de enumeração, e o código aposentado volta a circular e pode já ser
+  de outra reserva. Decidido no WEB-255, opção 1: só o texto da tela diz o
+  que a resposta única cobre — "Código não encontrado, recusado ou cancelado.
+  Confira com o torcedor." O bar não fica sabendo qual dos motivos é.
 - Não há leitura por QR code nem aplicativo de garçom nesta versão. Escaneamento
   exigiria identidade de equipe — papel novo, convite, escopo, revogação — ou
   compartilhamento do login do dono, que dá acesso a faturamento e assinatura.
@@ -103,6 +114,70 @@ nenhum do contrato.
 - O MVP registra as duas fontes e não julga. Não há sistema de disputa nem
   punição automática. O padrão "torcedor diz que foi, bar nunca registra" gera
   alerta interno, não sanção.
+- O registro do bar volta para ele em "Como cada jogo foi" (WEB-323,
+  2026-10-08): por jogo, inclusive encerrado, as pessoas com reserva
+  confirmada e as chegadas registradas, só para o plano com reserva de mesa.
+  São dados do próprio bar, mostrados à parte de "Interesse" e fora de
+  qualquer taxa; a resposta do torcedor e o número de presenças continuam
+  fora do painel.
+
+### Cancelamento depois de chegada
+
+Decidido no WEB-259, opção 1: qualquer chegada registrada trava o
+cancelamento.
+
+- A janela de validação abre 3 horas antes do jogo e o torcedor pode cancelar
+  até o início. Nesse intervalo o servidor recusa o cancelamento de reserva
+  cujo código tem `used_count > 0`. Cancelar aposentaria o código, que volta a
+  circular, com chegadas presas a ele.
+- A regra olha o contador, não o histórico: chegada desfeita pelo bar no
+  prazo curto devolve o uso, e a reserva volta a poder ser cancelada.
+- Cancelar e registrar chegada ao mesmo tempo disputam a linha do código, e
+  só um dos dois vence: nunca sobra reserva cancelada com chegada.
+- O torcedor vê a chegada em "Minhas reservas" ("Chegada registrada (1 de 2)
+  às 16:40") e não vê "Cancelar pedido".
+- Consequência aceita: o grupo que chegou em parte não consegue liberar os
+  lugares de quem não veio. Reduzir a quantidade de pessoas de uma reserva
+  não existe nesta versão.
+
+### Fim da reserva e presença
+
+Decidido no WEB-296: a recusa desfaz só a presença que veio da reserva; o
+cancelamento continua mantendo.
+
+- **O torcedor cancela:** a presença fica, qualquer que seja a origem. Quem
+  desiste da mesa pode continuar indo ao bar. "Minhas reservas" diz isso na
+  reserva cancelada — "Você continua marcado em “Vou assistir aqui” neste
+  jogo." — com a ação de desmarcar ao lado.
+- **O bar recusa:** na mesma transação da recusa, a presença sai se a origem
+  for `reservation`. Quem só estava marcado porque pediu mesa provavelmente
+  vai a outro lugar, e deixá-lo contando infla o sinal de interesse, que é o
+  número inflado que esta ADR existe para evitar. Presença `manual` fica: é
+  intenção declarada pelo torcedor, independente da mesa.
+- Criar uma reserva grava presença `reservation` só se ainda não havia
+  presença; a que já existia mantém a origem. Marcar "Vou assistir aqui" à mão
+  em cima de uma presença `reservation` a transforma em `manual`.
+- As presenças anteriores à coluna de origem são todas `manual`. Elas não
+  sabem de onde vieram, e dos dois erros possíveis — manter uma presença de
+  reserva recusada ou apagar uma marcada à mão — o segundo é o caro.
+- A recusa vale até o fim do jogo, então pode apagar presença de um jogo que
+  já começou. É a única escrita em presença depois do início; o torcedor não
+  marca nem desmarca mais.
+
+### Aviso ao torcedor
+
+Decidido no WEB-318, opção 2: aviso dentro do app, sem e-mail e sem push.
+
+- Confirmação e recusa aparecem como selo no caminho para "Minhas reservas"
+  (o menu da conta) e como toast ao abrir o app, enquanto houver resposta que
+  o torcedor ainda não viu. Abrir "Minhas reservas" marca tudo como visto.
+- O aviso de recusa é onde o torcedor fica sabendo que a presença criada pela
+  reserva foi desfeita, e o texto diz isso.
+- "Ainda não viu" compara a data da resposta do bar com a última que este
+  navegador já mostrou. Não há estado no servidor, então o aviso não acompanha
+  o torcedor entre aparelhos: num segundo aparelho ele aparece de novo, uma
+  vez. Resposta de jogo que já acabou não avisa.
+- Consequência aceita: só vê quem abre o app. E-mail e push ficam de fora.
 
 ### Recorte de plano
 
@@ -149,6 +224,8 @@ desta seção:
 
 - O torcedor marca que vai assistir a um jogo em um bar. Não gera código, não
   gera brinde, não exige ação do bar.
+- O que acontece com a presença quando a reserva do mesmo jogo acaba está em
+  "Fim da reserva e presença".
 - O único retorno ao torcedor é ver quantas pessoas confirmaram.
 - O bar nunca vê o número absoluto de presenças. Vê um sinal relativo de
   interesse.

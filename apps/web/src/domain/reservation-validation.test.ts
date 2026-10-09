@@ -141,7 +141,7 @@ describe('mensagens de recusa', () => {
 
   test('busca: código desconhecido e limite de tentativas', () => {
     expect(getLookupErrorMessage(trpcError('NOT_FOUND'))).toBe(
-      'Código não encontrado. Confira com o torcedor e tente de novo.'
+      'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
     )
     expect(getLookupErrorMessage(trpcError('TOO_MANY_REQUESTS'))).toBe(
       'Muitas tentativas seguidas. Aguarde um pouco e tente novamente.'

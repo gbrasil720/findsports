@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { formatDayLabel } from '@/domain/pub-profile'
+import { getGameTitle } from '@/domain/reservation-validation'
+import { toastWithUndo } from '@/lib/undo-toast'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -12,7 +14,10 @@ type Answer = { attended: boolean; offerReceived?: boolean }
  * responder; com oferta congelada na reserva, as opções já trazem o brinde,
  * para continuar sendo um toque só.
  *
- * O anúncio fica fora da seção porque a seção some com a última resposta.
+ * O card só troca de pergunta quando a resposta grava; se falhar, a pergunta
+ * continua ali, com o erro. A confirmação é um aviso com "Desfazer"
+ * (WEB-321), que guarda o jogo respondido: desfazer nunca age sobre a
+ * pergunta que estiver na tela.
  */
 export function AttendanceReportCard() {
   const trpc = useTRPC()
@@ -23,20 +28,35 @@ export function AttendanceReportCard() {
     meta: { errorToast: false }
   })
   const [skipped, setSkipped] = useState<string[]>([])
-  const [announcement, setAnnouncement] = useState('')
+  // A pergunta desfeita volta na frente das outras: é a que o torcedor quer
+  // corrigir.
+  const [front, setFront] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Os botões clicados trocam de pergunta; o foco vai para o título, que é o
   // mesmo nó de uma pergunta para a outra.
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const item = query.data?.find(({ eventId }) => !skipped.includes(eventId))
+  const open = query.data?.filter(({ eventId }) => !skipped.includes(eventId))
+  const item = open?.find(({ eventId }) => eventId === front) ?? open?.[0]
 
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: trpc.attendance.pendingReports.queryKey()
+    })
+  const undo = useMutation(
+    trpc.attendance.removeReport.mutationOptions({
+      onSuccess: (_data, { eventId }) => {
+        setFront(eventId)
+        return refresh()
+      }
+    })
+  )
   const mutation = useMutation(
     trpc.attendance.report.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: trpc.attendance.pendingReports.queryKey()
-        })
-        setAnnouncement('Resposta registrada. Obrigado!')
+      onSuccess: async (_data, { eventId }) => {
+        await refresh()
+        toastWithUndo('Resposta registrada. Obrigado!', () =>
+          undo.mutateAsync({ eventId })
+        )
         titleRef.current?.focus()
       },
       onError: (err) =>
@@ -52,7 +72,6 @@ export function AttendanceReportCard() {
   const answer = (value: Answer) => {
     if (!item) return
     setError(null)
-    setAnnouncement('')
     mutation.mutate({ eventId: item.eventId, ...value })
   }
 
@@ -77,9 +96,6 @@ export function AttendanceReportCard() {
 
   return (
     <>
-      <p className="sr-only" role="status" aria-live="polite">
-        {announcement}
-      </p>
       {item ? (
         <section
           className="onside-panel mb-6 p-4 md:p-5"
@@ -95,7 +111,7 @@ export function AttendanceReportCard() {
             Você foi ao {item.barName}?
           </h2>
           <p className="mt-1 text-[var(--onside-muted)] text-sm">
-            {item.championship} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
+            {getGameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
             {item.neighborhood}
           </p>
           {item.offer ? (

@@ -676,7 +676,8 @@ integrationTest(
       const novoDepois = depoisEventos.events.find(
         (e) => e.eventId === recentEventId
       )
-      expect(velhoDepois?.eventName).toBe('Torneio WEB-98 - Evento')
+      // Jogo sem times nem texto livre: o campeonato é o nome (WEB-258).
+      expect(velhoDepois?.eventName).toBe('Torneio WEB-98')
       expect(velhoDepois?.profileViews).toBe(1)
       expect(velhoDepois?.phoneClicked).toBe(1)
       // Pessoas distintas saem só dos brutos: a projeção por jogo não as tem.
