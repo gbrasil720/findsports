@@ -60,7 +60,8 @@ async function setup() {
       plan: sub?.plan ?? null,
       provider: sub?.provider ?? null,
       externalSubscriptionId: sub?.externalSubscriptionId ?? null,
-      currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null
+      currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
+      monthlyDiscountReais: sub?.monthlyDiscountReais ?? null
     }
   }
 
@@ -83,12 +84,16 @@ function stripeSubscription(options: {
   lookupKey?: string | null
   customerId: string
   userId?: string
+  founderDiscount?: boolean
 }) {
   return {
     id: options.id,
     status: options.status,
     customer: options.customerId,
     metadata: options.userId ? { userId: options.userId } : {},
+    discounts: options.founderDiscount
+      ? [{ coupon: { amount_off: 2800, currency: 'brl' } }]
+      : [],
     items: {
       data: [
         {
@@ -132,7 +137,8 @@ integrationTest(
       plan: 'pro',
       provider: 'stripe',
       externalSubscriptionId: sub.id,
-      currentPeriodEnd: periodEnd.toISOString()
+      currentPeriodEnd: periodEnd.toISOString(),
+      monthlyDiscountReais: 0
     } as const
     expect(await stateOf(owner.barId)).toEqual(expected)
 
@@ -161,10 +167,30 @@ integrationTest(
       isActive: true,
       status: 'active',
       plan: 'starter',
-      provider: 'stripe'
+      provider: 'stripe',
+      monthlyDiscountReais: 0
     })
   }
 )
+
+integrationTest('desconto de fundador na assinatura grava monthlyDiscountReais', async () => {
+  const { applyStripeSubscription, createBar, stateOf } = ready()
+  const owner = await createBar(null)
+  await applyStripeSubscription(
+    stripeSubscription({
+      id: `sub_${owner.barId}`,
+      status: 'active',
+      lookupKey: 'elite_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId,
+      founderDiscount: true
+    })
+  )
+  expect(await stateOf(owner.barId)).toMatchObject({
+    plan: 'elite',
+    monthlyDiscountReais: 28
+  })
+})
 
 integrationTest(
   'ciclo de vida: recusa vira past_due, encerramento tira o bar do ar',

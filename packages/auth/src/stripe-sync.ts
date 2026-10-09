@@ -2,6 +2,7 @@ import { db, eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
+import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
 
 type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive'
@@ -146,7 +147,8 @@ export async function applyStripeSubscription(
     plan,
     provider: 'stripe' as const,
     externalSubscriptionId: stripeSubscription.id,
-    currentPeriodEnd: new Date(item.current_period_end * 1000)
+    currentPeriodEnd: new Date(item.current_period_end * 1000),
+    monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription)
   }
   await db
     .insert(subscription)
@@ -212,7 +214,9 @@ export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const subscriptionId = subscriptionIdOf(event)
   if (!subscriptionId) return
   await applyStripeSubscription(
-    await client.subscriptions.retrieve(subscriptionId)
+    await client.subscriptions.retrieve(subscriptionId, {
+      expand: ['discounts.source.coupon']
+    })
   )
   if (event.type === 'checkout.session.completed') {
     await restoreCustomerNames(event.data.object, client)

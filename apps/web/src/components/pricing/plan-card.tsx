@@ -1,7 +1,8 @@
 import type { ComponentType, SVGAttributes } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
-import { formatPlanPrice, formatPlanPricing } from '@/lib/plan-catalog'
+import { formatPlanChargeLine, planChargeForShowcase } from '@/lib/plan-catalog'
+import { PlanMonthlyCharge } from './plan-monthly-charge'
 
 type IconProps = SVGAttributes<SVGSVGElement> & {
   size?: number | string
@@ -32,9 +33,18 @@ type Props = {
   isSelected: boolean
   isCurrent?: boolean
   onSelect: (id: Plan['id']) => void
+  /** Quando true, mostra preço com cupom de fundador; senão, tabela cheia. */
+  founderCouponAvailable: boolean
 }
 
-export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
+export function PlanCard({
+  plan,
+  isSelected,
+  isCurrent,
+  onSelect,
+  founderCouponAvailable
+}: Props) {
+  const charge = planChargeForShowcase(plan, founderCouponAvailable)
   const Icon = plan.icon
 
   return (
@@ -52,7 +62,7 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
         checked={isSelected}
         onChange={() => onSelect(plan.id)}
         className="sr-only"
-        aria-label={`${plan.name}, ${formatPlanPricing(plan)}. ${plan.tagline}`}
+        aria-label={`${plan.name}, ${formatPlanChargeLine(charge, plan.period)}. ${plan.tagline}`}
       />
       {isCurrent ? (
         <span className="onside-badge onside-badge-ink absolute -top-3 left-5">
@@ -86,23 +96,8 @@ export function PlanCard({ plan, isSelected, isCurrent, onSelect }: Props) {
         </div>
       </div>
 
-      {/* Preço de fundador com a tabela cheia como referência (WEB-112). */}
       <div className="mb-6">
-        <div className="flex items-baseline gap-1">
-          <span className="onside-display text-4xl">
-            {formatPlanPrice(plan.founderPrice)}
-          </span>
-          <span className="text-sm text-[var(--onside-muted)]">
-            {plan.period}
-          </span>
-        </div>
-        <p className="mt-1.5 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--onside-ink)]">
-          Com desconto de fundador
-        </p>
-        <p className="mt-1 text-xs text-[var(--onside-muted)]">
-          Tabela cheia: {formatPlanPrice(plan.tablePrice)}
-          {plan.period}
-        </p>
+        <PlanMonthlyCharge display={charge} period={plan.period} size="lg" />
       </div>
 
       <ul className="space-y-2.5">

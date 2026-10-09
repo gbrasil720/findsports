@@ -65,11 +65,70 @@ export function formatPlanPrice(reais: number): string {
   return `R$ ${reais}`
 }
 
+export type PlanChargeDisplay = {
+  chargeReais: number
+  /** Preço de lista no Stripe, só quando há desconto confirmado ou prometido. */
+  listReais: number | null
+  hint: string | null
+}
+
+export function planChargeForShowcase(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  founderCouponAvailable: boolean
+): PlanChargeDisplay {
+  if (founderCouponAvailable) {
+    return {
+      chargeReais: plan.founderPrice,
+      listReais: plan.tablePrice,
+      hint: 'Com desconto de fundador no checkout'
+    }
+  }
+  return {
+    chargeReais: plan.tablePrice,
+    listReais: null,
+    hint: null
+  }
+}
+
 /**
- * Para onde o preço é o de uma assinatura já contratada (comprovante, plano
- * atual): o app não sabe se ela levou o cupom de fundador, então mostra a
- * tabela e diz quanto o desconto tira, sem afirmar o valor cobrado.
+ * Valor mensal com base no desconto gravado pelo webhook (`monthlyDiscountReais`).
+ * `null` no banco = não sabemos: mostra só a tabela, sem riscar.
  */
+export function planChargeFromSubscription(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  monthlyDiscountReais: number | null | undefined
+): PlanChargeDisplay {
+  if (monthlyDiscountReais == null) {
+    return {
+      chargeReais: plan.tablePrice,
+      listReais: null,
+      hint: null
+    }
+  }
+  if (monthlyDiscountReais <= 0) {
+    return {
+      chargeReais: plan.tablePrice,
+      listReais: null,
+      hint: null
+    }
+  }
+  return {
+    chargeReais: plan.tablePrice - monthlyDiscountReais,
+    listReais: plan.tablePrice,
+    hint: 'Com desconto de fundador na assinatura'
+  }
+}
+
+export function formatPlanChargeLine(
+  display: PlanChargeDisplay,
+  period: string
+): string {
+  const charge = `${formatPlanPrice(display.chargeReais)}${period}`
+  if (display.listReais == null) return charge
+  return `${charge} (tabela cheia ${formatPlanPrice(display.listReais)}${period})`
+}
+
+/** @deprecated Só para textos legais; preferir {@link formatPlanChargeLine}. */
 export const FOUNDER_DISCOUNT_NOTE = `Com o desconto de fundador aplicado na contratação, ${formatPlanPrice(FOUNDER_DISCOUNT)} por mês a menos que a tabela cheia.`
 
 export interface Plan {

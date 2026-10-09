@@ -9,6 +9,7 @@ import {
   formatComparison,
   formatHistoryWindow,
   formatPerGame,
+  formatPlanChargeLine,
   formatPlanPricing,
   getAnalyticsEntitlement,
   getDefaultPlanSelection,
@@ -21,7 +22,9 @@ import {
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
-  parsePlanOrigin
+  parsePlanOrigin,
+  planChargeForShowcase,
+  planChargeFromSubscription
 } from '@/lib/plan-catalog'
 
 describe('PLAN_CATALOG structure', () => {
@@ -89,6 +92,29 @@ describe('preços (WEB-112)', () => {
     expect(FOUNDER_DISCOUNT_NOTE).toBe(
       'Com o desconto de fundador aplicado na contratação, R$ 28 por mês a menos que a tabela cheia.'
     )
+  })
+
+  test('vitrine só promete desconto com cupom disponível', () => {
+    const elite = getPlan('elite')
+    expect(
+      formatPlanChargeLine(planChargeForShowcase(elite, true), elite.period)
+    ).toBe('R$ 269/mês (tabela cheia R$ 297/mês)')
+    expect(
+      formatPlanChargeLine(planChargeForShowcase(elite, false), elite.period)
+    ).toBe('R$ 297/mês')
+  })
+
+  test('assinatura gravada reflete desconto do webhook', () => {
+    const pro = getPlan('pro')
+    expect(
+      formatPlanChargeLine(planChargeFromSubscription(pro, 28), pro.period)
+    ).toBe('R$ 119/mês (tabela cheia R$ 147/mês)')
+    expect(
+      formatPlanChargeLine(planChargeFromSubscription(pro, 0), pro.period)
+    ).toBe('R$ 147/mês')
+    expect(
+      formatPlanChargeLine(planChargeFromSubscription(pro, null), pro.period)
+    ).toBe('R$ 147/mês')
   })
 })
 

@@ -29,6 +29,8 @@ export function stripeSubscription(options: {
   userId: string
   currentPeriodEnd?: Date
   lookupKey?: string
+  /** Cupom Early Bird (R$ 28 off) ativo na assinatura. */
+  founderDiscount?: boolean
   /** Cliente no Stripe; por padrão um que não é de ninguém no nosso banco. */
   customerId?: string
 }) {
@@ -40,6 +42,20 @@ export function stripeSubscription(options: {
     customer: options.customerId ?? `cus_e2e_wh_${options.userId}`,
     metadata: { userId: options.userId },
     cancel_at_period_end: false,
+    discounts: options.founderDiscount
+      ? [
+          {
+            id: `di_e2e_${options.id}`,
+            coupon: {
+              id: 'eM7dQpMF',
+              object: 'coupon',
+              amount_off: 2800,
+              currency: 'brl',
+              valid: true
+            }
+          }
+        ]
+      : [],
     items: {
       object: 'list',
       data: [

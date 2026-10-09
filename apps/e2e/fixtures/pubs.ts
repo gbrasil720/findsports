@@ -20,6 +20,8 @@ export type PubOptions = {
     currentPeriodEnd?: Date | null
     /** Id da assinatura no Stripe; presente, a linha é do provedor. */
     externalSubscriptionId?: string
+    /** Desconto mensal em reais gravado pelo webhook; omitido = null. */
+    monthlyDiscountReais?: number | null
   } | null
   /** Colunas de `bar` em snake_case, por cima dos padrões. */
   bar?: Record<string, unknown>
@@ -60,7 +62,9 @@ export async function createPub(options: PubOptions = {}): Promise<TestPub> {
       current_period_end:
         sub.currentPeriodEnd === undefined ? inDays(30) : sub.currentPeriodEnd,
       provider: sub.externalSubscriptionId ? 'stripe' : null,
-      external_subscription_id: sub.externalSubscriptionId ?? null
+      external_subscription_id: sub.externalSubscriptionId ?? null,
+      monthly_discount_reais:
+        sub.monthlyDiscountReais === undefined ? null : sub.monthlyDiscountReais
     })
   }
 

@@ -4,9 +4,9 @@ import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
 import {
-  FOUNDER_DISCOUNT_NOTE,
-  formatPlanPrice,
-  type Plan
+  formatPlanChargeLine,
+  type Plan,
+  planChargeFromSubscription
 } from '@/lib/plan-catalog'
 import {
   formatReceiptDate,
@@ -55,6 +55,8 @@ type Props = {
   stage: ReceiptStage
   /** Plano gravado na assinatura — nunca o que a pessoa clicou antes de pagar. */
   plan: Plan | null
+  /** Desconto mensal gravado pelo webhook; null se desconhecido. */
+  monthlyDiscountReais?: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -92,6 +94,7 @@ type Props = {
 export function SubscriptionReceipt({
   stage,
   plan,
+  monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
   subscriptionRef,
@@ -158,6 +161,7 @@ export function SubscriptionReceipt({
       {hasPaper ? (
         <PaperOutput
           plan={plan}
+          monthlyDiscountReais={monthlyDiscountReais}
           status={status}
           currentPeriodEnd={currentPeriodEnd}
           subscriptionRef={subscriptionRef}
@@ -217,6 +221,7 @@ function StageIcon({ stage }: { stage: ReceiptStage }) {
  */
 function PaperOutput(props: {
   plan: Plan
+  monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -265,6 +270,7 @@ function PaperOutput(props: {
 
 function PaperContent({
   plan,
+  monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
   subscriptionRef,
@@ -275,6 +281,7 @@ function PaperContent({
   paperRef
 }: {
   plan: Plan
+  monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
   subscriptionRef: string | null
@@ -284,12 +291,12 @@ function PaperContent({
   onPrinted: () => void
   paperRef: React.RefObject<HTMLElement | null>
 }) {
+  const charge = planChargeFromSubscription(plan, monthlyDiscountReais)
   const rows = [
     { label: 'Plano', value: `${plan.name} — ${plan.tagline}` },
-    // Tabela cheia: o app não sabe se a assinatura levou o cupom de fundador.
     {
       label: 'Valor',
-      value: `${formatPlanPrice(plan.tablePrice)}${plan.period}`
+      value: formatPlanChargeLine(charge, plan.period)
     },
     { label: 'Ciclo', value: receiptCycleLabel(plan.period) },
     { label: 'Situação', value: STATUS_LABEL[status] ?? status },
@@ -339,7 +346,6 @@ function PaperContent({
         <p className="onside-receipt-ref">
           Assinatura {formatSubscriptionRef(subscriptionRef)}
         </p>
-        <p className="onside-receipt-legal">{FOUNDER_DISCOUNT_NOTE}</p>
         <p className="onside-receipt-legal">
           Comprovante de contratação, não é documento fiscal. O histórico de
           pagamentos fica em Assinatura e pagamentos.

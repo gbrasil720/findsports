@@ -259,7 +259,8 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
       id: subscriptionId,
       status: 'active',
       plan: 'pro',
-      userId: user.id
+      userId: user.id,
+      founderDiscount: true
     })
   )
   expect(webhook.ok(), await webhook.text()).toBe(true)
@@ -268,6 +269,7 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   await expect(screen).toHaveText(/Comprovante impresso/, { timeout: 20_000 })
   const receipt = page.locator('.onside-receipt-paper')
   await expect(receipt).toContainText('Pago e liberado')
+  await expect(receipt).toContainText('R$ 119/mês (tabela cheia R$ 147/mês)')
   await expect(receipt).toContainText(subscriptionId.slice(-16))
   // Recibo confirmado apaga a marca.
   const { origins } = await page.context().storageState()

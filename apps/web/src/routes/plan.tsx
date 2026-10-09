@@ -67,8 +67,12 @@ function PlanSelection() {
   // Enquanto carrega, vale o mesmo padrão do servidor: a tela não promete
   // uma contratação que o servidor, sem linha no banco, recusaria.
   const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const founderCouponQuery = useQuery(
+    trpc.pub.getFounderCouponAvailable.queryOptions()
+  )
   const checkoutLiberado =
     configQuery.data?.['billing.checkout_enabled'] ?? CHECKOUT_ENABLED_DEFAULT
+  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
@@ -224,6 +228,7 @@ function PlanSelection() {
               (regularize ? subscription?.plan : currentPlan) === plan.id
             }
             onSelect={setPicked}
+            founderCouponAvailable={founderCouponAvailable}
           />
         ))}
       </fieldset>
