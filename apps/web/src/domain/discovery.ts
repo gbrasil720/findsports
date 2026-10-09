@@ -41,6 +41,29 @@ export type LocationState =
 
 export type Coordinates = { lat: number; lng: number }
 
+/** A cidade que o torcedor informou, com a sede dela (`pubs.getMyCity`). */
+export type SearchCity = Coordinates & { name: string; uf: string }
+
+/** A cidade em que a busca cai quando não há localização nem cidade no perfil. */
+export const SAO_PAULO_CITY: SearchCity = {
+  name: 'São Paulo',
+  uf: 'SP',
+  ...SAO_PAULO_FALLBACK
+}
+
+/**
+ * De onde a busca parte (WEB-319): localização do navegador → cidade do
+ * perfil → centro de São Paulo. Devolve só `lat`/`lng`, que é o que as
+ * consultas recebem.
+ */
+export function resolveSearchCenter(
+  coords: Coordinates | null,
+  profileCity: SearchCity | null | undefined
+): Coordinates {
+  const { lat, lng } = coords ?? profileCity ?? SAO_PAULO_FALLBACK
+  return { lat, lng }
+}
+
 export function isValidCoordinate(value: number, axis: 'lat' | 'lng'): boolean {
   if (!Number.isFinite(value)) return false
   return axis === 'lat'

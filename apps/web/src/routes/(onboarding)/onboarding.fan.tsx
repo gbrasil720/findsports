@@ -9,6 +9,12 @@ import Check from 'reicon-react/icons/Check'
 import Fire from 'reicon-react/icons/Fire'
 import Location from 'reicon-react/icons/Location'
 import { toast } from 'sonner'
+import {
+  CityField,
+  cityFieldValue,
+  cityLabel,
+  isCityPending
+} from '@/components/app/city-field'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
@@ -69,6 +75,7 @@ function FanOnboarding() {
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
   const [selectedTeams, setSelectedTeams] = useState<FavoriteTeam[]>([])
   const [radius, setRadius] = useState<RadiusKm>(3)
+  const [city, setCity] = useState(() => cityFieldValue(null))
   const [error, setError] = useState<string | null>(null)
 
   const sportsQuery = useQuery({
@@ -124,7 +131,9 @@ function FanOnboarding() {
   const canAdvance = (() => {
     if (step === 0) return true
     if (step === 1) return selectedSportIds.length > 0
-    if (step === 3) return radius > 0
+    // Cidade é opcional, mas texto digitado sem escolher na lista não é
+    // cidade: seguir assim salvaria o perfil sem ela, em silêncio (WEB-319).
+    if (step === 3) return radius > 0 && !isCityPending(city)
     return true
   })()
 
@@ -137,7 +146,8 @@ function FanOnboarding() {
       completeMutation.mutate({
         sportIds: selectedSportIds,
         searchRadiusKm: radius,
-        teamIds: selectedTeams.map((t) => t.id)
+        teamIds: selectedTeams.map((t) => t.id),
+        city: city.city ?? undefined
       })
     }
   }
@@ -236,8 +246,17 @@ function FanOnboarding() {
               Quão longe você topa ir?
             </h2>
             <p className="onside-text-muted-on-ink mb-6">
-              A distância define quais bares aparecem pra você.
+              Sua cidade e a distância definem quais bares aparecem pra você.
             </p>
+            <div className="mb-6">
+              <CityField
+                ink
+                label="Sua cidade"
+                value={city}
+                onChange={setCity}
+                hint="Opcional. Sem a localização do navegador, a busca parte do centro dela."
+              />
+            </div>
             <RadiusSelector
               value={radius}
               options={SEARCH_RADII}
@@ -274,6 +293,11 @@ function FanOnboarding() {
               <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
                 {radius} km
               </span>
+              {city.city ? (
+                <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+                  {cityLabel(city.city)}
+                </span>
+              ) : null}
             </div>
           </div>
         )}

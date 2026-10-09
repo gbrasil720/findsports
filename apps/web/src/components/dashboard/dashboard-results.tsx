@@ -9,7 +9,13 @@ import type {
   DiscoveryBar,
   DiscoveryResultState
 } from '@/domain/dashboard-selectors'
-import type { Coordinates, LocationState, RadiusKm } from '@/domain/discovery'
+import {
+  type Coordinates,
+  type LocationState,
+  type RadiusKm,
+  SAO_PAULO_CITY,
+  type SearchCity
+} from '@/domain/discovery'
 import { BarCard } from './bar-card'
 import { BarResultsHeader } from './bar-results-header'
 
@@ -23,6 +29,8 @@ type Props = {
   hasActiveFilters: boolean
   locationState: LocationState
   coords: Coordinates | null
+  /** A cidade que o torcedor informou; sem ela a busca cai em São Paulo. */
+  profileCity: SearchCity | null
   hoveredId: string | null
   favoriteIds: ReadonlySet<string>
   favoritePending: boolean
@@ -46,6 +54,7 @@ function EmptyResults({
   radiusKm,
   needsLocation,
   hasActiveFilters,
+  profileCity,
   onRadiusChange,
   onRequestLocation,
   onReset
@@ -53,6 +62,7 @@ function EmptyResults({
   Props,
   | 'radiusKm'
   | 'hasActiveFilters'
+  | 'profileCity'
   | 'onRadiusChange'
   | 'onRequestLocation'
   | 'onReset'
@@ -75,7 +85,8 @@ function EmptyResults({
       {needsLocation ? (
         <>
           <p className="mx-auto mt-2 max-w-xs text-[var(--onside-muted)] text-xs leading-snug">
-            Sem a sua localização, a busca parte do centro de São Paulo.
+            Sem a sua localização, a busca parte do centro de{' '}
+            {(profileCity ?? SAO_PAULO_CITY).name}.
           </p>
           <button
             type="button"
@@ -225,6 +236,7 @@ function ResultContent(props: Props) {
         radiusKm={props.radiusKm}
         needsLocation={resultState.status === 'location-required'}
         hasActiveFilters={props.hasActiveFilters}
+        profileCity={props.profileCity}
         onRadiusChange={props.onRadiusChange}
         onRequestLocation={props.onRequestLocation}
         onReset={props.onReset}
@@ -255,6 +267,7 @@ export function DashboardResults(props: Props) {
     bars,
     mapBars,
     coords,
+    profileCity,
     locationState,
     radiusKm,
     hoveredId,
@@ -264,6 +277,7 @@ export function DashboardResults(props: Props) {
   const loading = resultState.status === 'loading'
   const locationError =
     locationState === 'denied' || locationState === 'unavailable'
+  const fallbackCity = profileCity ?? SAO_PAULO_CITY
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,0.58fr)] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-x-5 lg:gap-y-0 lg:items-stretch">
@@ -293,7 +307,9 @@ export function DashboardResults(props: Props) {
         <section className="onside-map-frame relative h-[280px] sm:h-[320px] lg:h-auto lg:min-h-[360px] lg:flex-1">
           <OnsideMap
             bars={mapBars}
-            center={coords ?? undefined}
+            // Sem localização o mapa enquadra o raio em volta da cidade do
+            // perfil, que é onde a busca foi feita (WEB-319).
+            center={coords ?? profileCity ?? undefined}
             showUserLocation={Boolean(coords) && !locationError}
             radiusKm={radiusKm}
             hoveredId={hoveredId}
@@ -301,7 +317,9 @@ export function DashboardResults(props: Props) {
             onSelect={onSelectMapBar}
           />
           <div className="onside-map-label pointer-events-none">
-            {coords && !locationError ? 'Perto de você' : 'São Paulo, SP'}
+            {coords && !locationError
+              ? 'Perto de você'
+              : `${fallbackCity.name}, ${fallbackCity.uf}`}
           </div>
         </section>
       </div>

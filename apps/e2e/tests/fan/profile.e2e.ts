@@ -25,8 +25,13 @@ const section = (page: Page, heading: string) =>
   })
 
 const userRow = (id: string) =>
-  query<{ name: string; image: string | null; search_radius_km: number }>(
-    'SELECT name, image, search_radius_km FROM "user" WHERE id = $1',
+  query<{
+    name: string
+    image: string | null
+    search_radius_km: number
+    search_city_name: string | null
+  }>(
+    'SELECT name, image, search_radius_km, search_city_name FROM "user" WHERE id = $1',
     [id]
   ).then(([row]) => row)
 
@@ -88,7 +93,7 @@ test('sugestão dispensada some e volta depois de recomeçar', async ({
   await expect(suggestion).toBeVisible()
 })
 
-test('edita nome, esportes, raio e times', async ({ page }) => {
+test('edita nome, esportes, raio, cidade e times', async ({ page }) => {
   const fan = await signInFanAt(page, uniqueSpot())
   await setPreferences(fan.id, { sports: ['futebol'] })
   const newName = `Torcedor ${fan.id.slice(0, 6)}`
@@ -123,6 +128,18 @@ test('edita nome, esportes, raio e times', async ({ page }) => {
   await expect
     .poll(async () => (await userRow(fan.id))?.search_radius_km)
     .toBe(10)
+
+  // Cidade (WEB-319): busca sem acento, e escolher na lista já salva.
+  const city = section(page, 'Sua cidade')
+  await city.getByRole('combobox', { name: 'Cidade' }).fill('sao jose dos camp')
+  await city.getByRole('option', { name: /^São José dos Campos\s*SP$/ }).click()
+  await expect(page.getByText('Cidade salva.')).toBeVisible()
+  await expect(city.getByRole('combobox', { name: 'Cidade' })).toHaveValue(
+    'São José dos Campos, SP'
+  )
+  await expect
+    .poll(async () => (await userRow(fan.id))?.search_city_name)
+    .toBe('São José dos Campos')
 
   // Times
   const teams = section(page, 'Quem você acompanha')

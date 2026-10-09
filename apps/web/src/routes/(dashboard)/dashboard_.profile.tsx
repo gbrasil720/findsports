@@ -38,7 +38,7 @@ import {
 import {
   normalizeRadiusKm,
   type RadiusKm,
-  SAO_PAULO_FALLBACK
+  resolveSearchCenter
 } from '@/domain/discovery'
 import { authClient } from '@/lib/auth-client'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -153,9 +153,17 @@ function ProfilePage() {
         'Não foi possível carregar seus esportes. Tente novamente.'
       )
     : null
+  // Mesmo centro da busca do dashboard (WEB-319): navegador, cidade do
+  // perfil, São Paulo. Trocar a cidade em Configurações refaz as sugestões.
+  const cityQuery = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
   const recommendationsQuery = useQuery({
-    ...trpc.recommendations.get.queryOptions(coords ?? SAO_PAULO_FALLBACK),
-    enabled: tab === 'Visão geral',
+    ...trpc.recommendations.get.queryOptions(
+      resolveSearchCenter(coords, cityQuery.data)
+    ),
+    enabled: tab === 'Visão geral' && (coords !== null || !cityQuery.isPending),
     meta: { errorToast: false }
   })
 
@@ -483,7 +491,10 @@ function ProfilePage() {
             onRetryFavorites={() => void favoritesQuery.refetch()}
             upcomingEvents={upcomingEvents}
             recommendations={recommendationsQuery.data?.recommendations ?? []}
-            loadingRecommendations={recommendationsQuery.isLoading}
+            // `isPending`, e não `isLoading`: enquanto a consulta espera a
+            // cidade do perfil ela ainda não está buscando, e "sem sugestões"
+            // piscaria na tela.
+            loadingRecommendations={recommendationsQuery.isPending}
             recommendationsError={recommendationsQuery.isError}
             recommendationsRetryable={isRetryableError(
               recommendationsQuery.error

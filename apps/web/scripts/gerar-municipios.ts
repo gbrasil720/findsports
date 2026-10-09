@@ -11,6 +11,10 @@
  * (microrregião, mesorregião, região imediata) não é usado em lugar nenhum e
  * só engordaria o bundle.
  *
+ * WEB-319: gera também `packages/api/src/data/municipios-centros.json`, com a
+ * coordenada da sede de cada município — o centro da busca do torcedor que
+ * informou a cidade. Fica no servidor: o navegador só precisa de nome e UF.
+ *
  * Rodar quando um município novo for criado — evento raro no Brasil:
  *
  *   bun apps/web/scripts/gerar-municipios.ts
@@ -21,7 +25,23 @@ const URL_IBGE =
 
 const DESTINO = new URL('../src/data/municipios.json', import.meta.url)
 
+/**
+ * Sede de cada município, por código do IBGE. O IBGE não serve isso pela API:
+ * o `centroide` da API de malhas é o centro geométrico do território, e o de
+ * São Paulo cai 13 km ao sul da Sé — fora de qualquer raio de busca. A sede
+ * vem do repositório kelvins/municipios-brasileiros (MIT, dados do IBGE),
+ * preso num commit para a geração ser reproduzível.
+ */
+const URL_SEDES =
+  'https://raw.githubusercontent.com/kelvins/municipios-brasileiros/975a51d6f2e7a9ee22a734a42ebd624263812f0c/csv/municipios.csv'
+
+const DESTINO_CENTROS = new URL(
+  '../../../packages/api/src/data/municipios-centros.json',
+  import.meta.url
+)
+
 interface MunicipioIBGE {
+  id: number
   nome: string
   microrregiao?: {
     mesorregiao?: {
@@ -82,6 +102,46 @@ const linhas = municipios
 
 await Bun.write(DESTINO, `${JSON.stringify(linhas)}\n`)
 
+const respostaSedes = await fetch(URL_SEDES)
+if (!respostaSedes.ok) {
+  throw new Error(
+    `${URL_SEDES} respondeu ${respostaSedes.status} ${respostaSedes.statusText}`
+  )
+}
+
+/**
+ * `codigo_ibge,nome,latitude,longitude,capital,codigo_uf,siafi_id,ddd,fuso`.
+ * Latitude e longitude são lidas contando do fim da linha, para um nome com
+ * vírgula não deslocar as colunas.
+ */
+const sedes = new Map<number, [lat: number, lng: number]>()
+for (const linha of (await respostaSedes.text()).trim().split('\n').slice(1)) {
+  const campos = linha.trim().split(',')
+  sedes.set(Number(campos[0]), [
+    Number(campos[campos.length - 7]),
+    Number(campos[campos.length - 6])
+  ])
+}
+
+const centros = municipios
+  .map((municipio): [string, string, number, number] => {
+    const sede = sedes.get(municipio.id)
+    // Caixa folgada em volta do Brasil: pega coluna trocada e linha quebrada.
+    if (
+      !sede ||
+      !(sede[0] > -34.5 && sede[0] < 6) ||
+      !(sede[1] > -74.5 && sede[1] < -28)
+    ) {
+      throw new Error(
+        `Sem sede válida para ${municipio.nome} (${municipio.id}): ${JSON.stringify(sede)}. Abortado para não gravar centro errado.`
+      )
+    }
+    return [municipio.nome, extrairUf(municipio) as string, ...sede]
+  })
+  .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'))
+
+await Bun.write(DESTINO_CENTROS, `${JSON.stringify(centros)}\n`)
+
 console.log(
-  `${linhas.length} municípios gravados em ${DESTINO.pathname.replace(/.*\/apps\/web\//, 'apps/web/')}`
+  `${linhas.length} municípios gravados em ${DESTINO.pathname.replace(/.*\/apps\/web\//, 'apps/web/')} e os centros em ${DESTINO_CENTROS.pathname.replace(/.*\/packages\/api\//, 'packages/api/')}`
 )

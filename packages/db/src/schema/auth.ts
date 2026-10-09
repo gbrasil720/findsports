@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm'
 import {
   bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -22,6 +23,14 @@ export const user = pgTable('user', {
   onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
   admittedAt: timestamp('admitted_at'),
   searchRadiusKm: integer('search_radius_km').default(3).notNull(),
+  // WEB-319: cidade que o torcedor informou e a sede dela, centro da busca
+  // quando o navegador não dá a localização. Anuláveis: conta anterior ao
+  // campo não tem cidade. Ficam fora dos `additionalFields` do better-auth de
+  // propósito — quem lê e grava é o tRPC (`pubs.getMyCity`), não a sessão.
+  searchCityName: text('search_city_name'),
+  searchCityUf: text('search_city_uf'),
+  searchCityLat: doublePrecision('search_city_lat'),
+  searchCityLng: doublePrecision('search_city_lng'),
   twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
   // better-auth admin plugin fields
   banned: boolean('banned').default(false),

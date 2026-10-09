@@ -10,6 +10,7 @@ import {
   type RadiusKm,
   SEARCH_RADII
 } from '@/domain/discovery'
+import { ProfileCity } from './profile-city'
 import { ProfileFavoriteTeams } from './profile-favorite-teams'
 import type { Preference, ProfileUser, Sport } from './profile-model'
 
@@ -119,6 +120,8 @@ export function ProfileSettings(props: Props) {
         preferences={props.preferences}
         loadingPreferences={props.loadingPreferences}
       />
+
+      <ProfileCity />
 
       <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
         <h3 className="mb-1 flex items-center gap-2 font-bold text-lg">

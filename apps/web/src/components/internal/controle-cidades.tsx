@@ -34,7 +34,7 @@ const MAXIMO_SUGESTOES = 8
 let municipiosEmCache: Municipio[] | null = null
 let carregamentoEmCurso: Promise<Municipio[]> | null = null
 
-function carregarMunicipios(): Promise<Municipio[]> {
+export function carregarMunicipios(): Promise<Municipio[]> {
   if (municipiosEmCache) return Promise.resolve(municipiosEmCache)
   if (!carregamentoEmCurso) {
     carregamentoEmCurso = import('@/data/municipios.json').then((modulo) => {
