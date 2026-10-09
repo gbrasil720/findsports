@@ -1,7 +1,7 @@
 import { db, eq } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
-import { logBillingError } from './stripe-sync'
+import { customerNamesFor, logBillingError } from './stripe-sync'
 
 type TrialSubscription = {
   status: string
@@ -64,34 +64,112 @@ async function usableFounderCoupon(client: Stripe): Promise<string | null> {
   return null
 }
 
+type BarForCustomer = {
+  name: string
+  address: string
+  neighborhood: string
+  city: string
+  uf: string | null
+}
+
 /**
- * Parâmetros nossos da sessão de checkout, por cima dos do plugin.
+ * O que o cliente do Stripe recebe do cadastro antes do checkout (WEB-328).
  *
- * O que o checkout coleta é o que os Payment Links coletavam: endereço de
- * cobrança, nome de quem paga, nome da empresa e, se o dono quiser, o CNPJ.
- * O Stripe não deixa o lojista preencher esses campos de antemão (só o e-mail
- * vem do cliente), então os dados do cadastro do bar não entram aqui.
+ * Nome e empresa são sempre regravados: a fonte é o cadastro. O endereço só
+ * entra quando o cliente ainda não tem um — o dono pode ter posto outro
+ * endereço de cobrança no checkout ou no portal, e essa edição fica. Sem CEP:
+ * o cadastro não tem. Bar anterior à UF (WEB-270) vai sem estado.
+ */
+export function customerPrefillFor(
+  customer: { address?: unknown },
+  ownerName: string,
+  ownerBar: BarForCustomer
+): Stripe.CustomerUpdateParams {
+  return {
+    ...customerNamesFor(ownerName, ownerBar.name),
+    ...(customer.address
+      ? {}
+      : {
+          address: {
+            line1: ownerBar.address,
+            line2: ownerBar.neighborhood,
+            city: ownerBar.city,
+            ...(ownerBar.uf ? { state: ownerBar.uf } : {}),
+            country: 'BR'
+          }
+        })
+  }
+}
+
+// Nunca impede a venda: se o Stripe recusar, o checkout abre com o cliente
+// como estava.
+async function prefillCustomer(
+  client: Stripe,
+  customerId: string,
+  ownerName: string,
+  ownerBar: BarForCustomer
+) {
+  try {
+    const customer = await client.customers.retrieve(customerId)
+    if (customer.deleted) return
+    await client.customers.update(
+      customerId,
+      customerPrefillFor(customer, ownerName, ownerBar)
+    )
+  } catch (error) {
+    logBillingError('stripe_customer_prefill_failed', {
+      customerId,
+      message: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
+/**
+ * O que a sessão pode gravar no cliente. Endereço `auto`: o que o dono
+ * digitar no checkout vira o endereço de cobrança dele.
+ *
+ * Nome `auto`, e não `never`: a documentação do Stripe manda `auto` para
+ * `tax_id_collection` com cliente que já existe (docs.stripe.com/tax/checkout/
+ * tax-ids, "Existing customers"). Em troca o checkout pode sobrescrever o
+ * nome, e quem o devolve ao do cadastro é o webhook (`restoreCustomerNames`,
+ * em `stripe-sync.ts`). Combinação a conferir no sandbox: se a API aceitar
+ * `name: 'never'` com `tax_id_collection`, basta trocar aqui.
+ */
+const CUSTOMER_UPDATE = { name: 'auto', address: 'auto' } as const
+
+/**
+ * Parâmetros nossos da sessão de checkout, por cima dos do plugin (WEB-328).
+ *
+ * Nome de quem paga e nome da empresa não são pedidos no checkout: vêm do
+ * cadastro, gravados no cliente do Stripe antes de a sessão abrir, junto do
+ * endereço do bar. O checkout hospedado não mostra esses dados preenchidos
+ * (conferido no sandbox em 09/10/2026: só o e-mail vem do cliente), então o
+ * endereço de cobrança é digitado na primeira compra, e o CNPJ continua
+ * opcional. Sem Adaptive Pricing: a cobrança é sempre em BRL, onde quer que
+ * o navegador esteja.
  * Código promocional só quando não há cupom de fundador — o Stripe não aceita
  * os dois na mesma sessão.
  */
 export async function checkoutParamsFor(
-  userId: string,
+  owner: { id: string; name: string },
+  customerId: string | null | undefined,
   client: Stripe
 ): Promise<Stripe.Checkout.SessionCreateParams> {
   const ownerBar = await db.query.bar.findFirst({
-    where: eq(bar.userId, userId),
+    where: eq(bar.userId, owner.id),
     with: { subscription: true }
   })
+  if (ownerBar && customerId) {
+    await prefillCustomer(client, customerId, owner.name, ownerBar)
+  }
   const trialEnd = trialEndForCheckout(ownerBar?.subscription ?? null)
   const coupon = await usableFounderCoupon(client)
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
-    name_collection: {
-      individual: { enabled: true },
-      business: { enabled: true }
-    },
     tax_id_collection: { enabled: true },
+    customer_update: CUSTOMER_UPDATE,
+    adaptive_pricing: { enabled: false },
     ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
     ...(trialEnd ? { subscription_data: { trial_end: trialEnd } } : {})
   }

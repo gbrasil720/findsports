@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { trialEndForCheckout } from './stripe-checkout'
+import { customerPrefillFor, trialEndForCheckout } from './stripe-checkout'
 
 const now = new Date('2026-10-09T12:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -43,5 +43,62 @@ describe('fim do teste grátis herdado pelo checkout (WEB-31)', () => {
         now
       )
     ).toBeUndefined()
+  })
+})
+
+describe('cliente do Stripe com os dados do cadastro (WEB-328)', () => {
+  const ownerBar = {
+    name: 'Bar do Zé',
+    address: 'Rua Augusta, 100',
+    neighborhood: 'Consolação',
+    city: 'São Paulo',
+    uf: 'SP'
+  }
+
+  it('cliente sem endereço: nome, empresa e endereço do bar', () => {
+    expect(customerPrefillFor({ address: null }, 'Zé Dono', ownerBar)).toEqual({
+      name: 'Zé Dono',
+      individual_name: 'Zé Dono',
+      business_name: 'Bar do Zé',
+      address: {
+        line1: 'Rua Augusta, 100',
+        line2: 'Consolação',
+        city: 'São Paulo',
+        state: 'SP',
+        country: 'BR'
+      }
+    })
+  })
+
+  it('bar anterior à UF: endereço sem estado', () => {
+    const { address } = customerPrefillFor({ address: null }, 'Zé Dono', {
+      ...ownerBar,
+      uf: null
+    })
+    expect(address).toEqual({
+      line1: 'Rua Augusta, 100',
+      line2: 'Consolação',
+      city: 'São Paulo',
+      country: 'BR'
+    })
+  })
+
+  it('cliente que já tem endereço: só nome e empresa são regravados', () => {
+    expect(
+      customerPrefillFor({ address: { line1: 'Outro' } }, 'Zé Dono', ownerBar)
+    ).toEqual({
+      name: 'Zé Dono',
+      individual_name: 'Zé Dono',
+      business_name: 'Bar do Zé'
+    })
+  })
+
+  it('nomes além do limite do Stripe são cortados em 150 caracteres', () => {
+    const prefill = customerPrefillFor({ address: null }, 'a'.repeat(200), {
+      ...ownerBar,
+      name: 'b'.repeat(200)
+    })
+    expect(prefill.individual_name).toHaveLength(150)
+    expect(prefill.business_name).toHaveLength(150)
   })
 })

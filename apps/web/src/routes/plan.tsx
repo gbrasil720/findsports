@@ -9,6 +9,7 @@ import Loader from 'reicon-react/icons/Loader'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
+import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
@@ -78,6 +79,13 @@ function PlanSelection() {
   const header = getPlanHeader(subscription)
   const trialNotice = getTrialNotice(subscription)
   const exitLink = getPlanExitLink(origin)
+  // WEB-328: o checkout não pede nome nem empresa; saem do cadastro. A tela
+  // diz em nome de quem a assinatura sai antes de mandar para o Stripe.
+  const ownerName = useSession()?.user.name
+  const barName = useQuery({
+    ...trpc.pub.getMe.queryOptions(),
+    meta: { errorToast: false }
+  }).data?.name
   const subscriptionErrorFeedback = subscriptionQuery.error
     ? getUserFacingError(
         subscriptionQuery.error,
@@ -236,6 +244,22 @@ function PlanSelection() {
         >
           <p className="text-sm font-semibold">
             Atenção: você está selecionando um plano inferior ao atual.
+          </p>
+        </div>
+      ) : null}
+
+      {!regularize && !subscriptionQuery.isLoading && ownerName && barName ? (
+        <div className="onside-callout onside-callout-stone mx-auto mb-4 max-w-2xl">
+          <p className="text-sm">
+            Assinatura em nome de <span className="font-bold">{ownerName}</span>{' '}
+            · <span className="font-bold">{barName}</span>.{' '}
+            <Link
+              to="/admin"
+              hash="admin-espaco"
+              className="font-bold underline underline-offset-2"
+            >
+              Alterar o nome do bar
+            </Link>
           </p>
         </div>
       ) : null}

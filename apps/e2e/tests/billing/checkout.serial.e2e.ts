@@ -25,6 +25,19 @@ async function checkoutSessionOf(page: Page, userId: string) {
   )?.body
 }
 
+/** O que o app gravou no cliente do Stripe (`POST /v1/customers/{id}`), em ordem. */
+async function customerUpdatesOf(page: Page, customerId: string | undefined) {
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { method: string; path: string; body: Record<string, string> }[]
+  return calls
+    .filter(
+      (call) =>
+        call.method === 'POST' && call.path === `/customers/${customerId}`
+    )
+    .map((call) => call.body)
+}
+
 test('trial vencido sem assinatura no provedor: o botão padrão contrata o plano do trial e cobra na hora (WEB-249)', async ({
   page
 }) => {
@@ -92,12 +105,33 @@ test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', asy
   expect(session).not.toHaveProperty('discounts[0][coupon]')
   expect(session).toMatchObject({
     allow_promotion_codes: 'true',
-    // O que os Payment Links coletavam: endereço, nomes e CNPJ opcional.
+    // O checkout pede endereço e, opcional, o CNPJ. Sempre em BRL.
     billing_address_collection: 'required',
-    'name_collection[individual][enabled]': 'true',
-    'name_collection[business][enabled]': 'true',
-    'tax_id_collection[enabled]': 'true'
+    'tax_id_collection[enabled]': 'true',
+    'customer_update[name]': 'auto',
+    'customer_update[address]': 'auto',
+    'adaptive_pricing[enabled]': 'false'
   })
+  // WEB-328: nome de quem paga e nome da empresa não são pedidos no checkout.
+  expect(
+    Object.keys(session ?? {}).filter((key) =>
+      key.startsWith('name_collection')
+    )
+  ).toEqual([])
+
+  // Vêm do cadastro, gravados no cliente do Stripe antes de a sessão abrir,
+  // junto do endereço do bar.
+  expect(await customerUpdatesOf(page, session?.customer)).toEqual([
+    {
+      name: user.name,
+      individual_name: user.name,
+      business_name: expect.stringMatching(/^Bar E2E /),
+      'address[line1]': 'Rua Augusta, 100',
+      'address[line2]': 'Consolação',
+      'address[city]': 'São Paulo',
+      'address[country]': 'BR'
+    }
+  ])
 })
 
 test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o fim do teste (WEB-31)', async ({
@@ -193,6 +227,7 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
         id: 'cs_e2e_concluida',
         object: 'checkout.session',
         mode: 'subscription',
+        customer: session.customer,
         subscription: subscription.id,
         client_reference_id: user.id,
         metadata: {
@@ -224,6 +259,14 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
     is_active: true,
     plugin_status: 'active',
     plugin_subscription: subscription.id
+  })
+
+  // WEB-328: o checkout pode ter gravado outro nome no cliente; o webhook
+  // devolve o do cadastro, e só o nome — o endereço é do dono.
+  expect((await customerUpdatesOf(page, session.customer)).at(-1)).toEqual({
+    name: user.name,
+    individual_name: user.name,
+    business_name: expect.stringMatching(/^Bar E2E /)
   })
 
   // Quem já paga e escolhe outro plano confirma a troca no portal do Stripe.
