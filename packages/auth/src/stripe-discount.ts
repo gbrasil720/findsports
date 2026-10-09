@@ -1,23 +1,52 @@
 import type Stripe from 'stripe'
 
-type DiscountLike = {
+type DiscountEntry = {
   coupon?: Stripe.Coupon | string | null
+  source?: {
+    type?: string
+    coupon?: Stripe.Coupon | string | null
+  }
 }
 
-function discountObjects(subscription: Stripe.Subscription): DiscountLike[] {
-  const out: DiscountLike[] = []
+function hasUnexpandedDiscountEntry(
+  subscription: Stripe.Subscription
+): boolean {
+  for (const entry of subscription.discounts ?? []) {
+    if (typeof entry === 'string') return true
+  }
+  const legacy = (
+    subscription as Stripe.Subscription & {
+      discount?: string | DiscountEntry | null
+    }
+  ).discount
+  return typeof legacy === 'string'
+}
+
+function expandedDiscountObjects(
+  subscription: Stripe.Subscription
+): DiscountEntry[] {
+  const out: DiscountEntry[] = []
   for (const entry of subscription.discounts ?? []) {
     if (entry && typeof entry === 'object') {
-      out.push(entry as DiscountLike)
+      out.push(entry as DiscountEntry)
     }
   }
   const legacy = (
     subscription as Stripe.Subscription & {
-      discount?: DiscountLike | null
+      discount?: DiscountEntry | null
     }
   ).discount
   if (legacy && typeof legacy === 'object') out.push(legacy)
   return out
+}
+
+function couponFromDiscount(
+  discount: DiscountEntry
+): Stripe.Coupon | string | null | undefined {
+  if (discount.source?.type === 'coupon') {
+    return discount.source.coupon
+  }
+  return discount.coupon
 }
 
 /**
@@ -27,14 +56,16 @@ function discountObjects(subscription: Stripe.Subscription): DiscountLike[] {
 export function monthlyDiscountReaisFromStripe(
   subscription: Stripe.Subscription
 ): number | null {
-  const discounts = discountObjects(subscription)
+  if (hasUnexpandedDiscountEntry(subscription)) return null
+
+  const discounts = expandedDiscountObjects(subscription)
   if (discounts.length === 0) return 0
 
   let totalCents = 0
   let inferred = false
 
   for (const discount of discounts) {
-    const coupon = discount.coupon
+    const coupon = couponFromDiscount(discount)
     if (!coupon || typeof coupon === 'string') return null
     if (coupon.amount_off != null) {
       const currency = (coupon.currency ?? 'brl').toLowerCase()

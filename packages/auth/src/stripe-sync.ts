@@ -215,7 +215,7 @@ export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   if (!subscriptionId) return
   await applyStripeSubscription(
     await client.subscriptions.retrieve(subscriptionId, {
-      expand: ['discounts.coupon']
+      expand: ['discounts.source.coupon']
     })
   )
   if (event.type === 'checkout.session.completed') {

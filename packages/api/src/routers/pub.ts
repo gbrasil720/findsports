@@ -786,8 +786,12 @@ export const pubRouter = router({
   getFounderCouponAvailable: pubProcedure.query(async () => {
     const config = await getAppConfig('billing.founder_coupon')
     if (!config.enabled) return { available: false as const }
-    return {
-      available: await founderCouponUsable(stripeClient, config.couponId)
+    try {
+      return {
+        available: await founderCouponUsable(stripeClient, config.couponId)
+      }
+    } catch {
+      return { available: false as const }
     }
   }),
 
