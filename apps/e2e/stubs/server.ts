@@ -20,6 +20,8 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * `STRIPE_API_BASE_URL`), com respostas fixas e válidas para o SDK:
  * - `GET /v1/customers/search`: nunca acha ninguém, então o plugin cria o
  *   cliente em `POST /v1/customers` (`cus_e2e_` + hash do e-mail);
+ * - `GET` e `POST /v1/customers/{id}`: cliente sem endereço nem nome de
+ *   empresa — o checkout manda os do cadastro do bar;
  * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
@@ -161,6 +163,18 @@ async function stripe(request: Request, url: URL) {
       email,
       name: body.name ?? null,
       metadata: { userId: body['metadata[userId]'] ?? '' }
+    })
+  }
+
+  // Cliente lido e atualizado pelo pré-preenchimento do checkout: sempre
+  // "sem endereço nem nome de empresa", para o app mandar os do cadastro.
+  const customer = /^\/customers\/(cus_[^/]+)$/.exec(path)
+  if (customer) {
+    return Response.json({
+      id: customer[1],
+      object: 'customer',
+      address: null,
+      business_name: null
     })
   }
 

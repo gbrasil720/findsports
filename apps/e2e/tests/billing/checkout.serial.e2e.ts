@@ -87,8 +87,36 @@ test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', asy
     // O retorno do provedor cai no recibo, que espera o webhook (WEB-59).
     success_url: expect.stringMatching(/callbackURL=%2Fplan%2Fconfirmed/)
   })
-  // Sem a chave do cupom de fundador ligada, o checkout sai a preço de tabela.
+  // Sem a chave do cupom de fundador ligada, o checkout sai a preço de tabela
+  // e aceita código promocional.
   expect(session).not.toHaveProperty('discounts[0][coupon]')
+  expect(session).toMatchObject({
+    allow_promotion_codes: 'true',
+    // O que os Payment Links coletavam: endereço, nomes e CNPJ opcional.
+    billing_address_collection: 'required',
+    'name_collection[individual][enabled]': 'true',
+    'name_collection[business][enabled]': 'true',
+    'tax_id_collection[enabled]': 'true'
+  })
+
+  // O cliente no Stripe recebe o que o bar informou no cadastro, para o
+  // checkout abrir preenchido.
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { method: string; path: string; body: Record<string, string> }[]
+  expect(
+    calls.find(
+      (call) =>
+        call.method === 'POST' &&
+        call.path === `/customers/${session?.customer}`
+    )?.body
+  ).toMatchObject({
+    business_name: expect.stringMatching(/^Bar E2E /),
+    'address[line1]': 'Rua Augusta, 100',
+    'address[line2]': 'Consolação',
+    'address[city]': 'São Paulo',
+    'address[country]': 'BR'
+  })
 })
 
 test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o fim do teste (WEB-31)', async ({
@@ -138,9 +166,10 @@ test('cupom de fundador: ligado entra no checkout, esgotado não trava a venda (
     return session
   }
 
-  expect(await contractPro('eM7dQpMF')).toMatchObject({
-    'discounts[0][coupon]': 'eM7dQpMF'
-  })
+  const comCupom = await contractPro('eM7dQpMF')
+  expect(comCupom).toMatchObject({ 'discounts[0][coupon]': 'eM7dQpMF' })
+  // O Stripe recusa cupom e código promocional na mesma sessão.
+  expect(comCupom).not.toHaveProperty('allow_promotion_codes')
   // O stub responde `valid: false` para este id, como um cupom que bateu o
   // teto de usos no Stripe.
   const semCupom = await contractPro('esgotado')
