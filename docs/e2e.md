@@ -2,7 +2,7 @@
 
 Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
 descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
-Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Dodo e tiles
+Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Stripe e tiles
 do mapa são dublês.
 
 ```bash
@@ -51,7 +51,7 @@ Os argumentos depois de `--` chegam inteiros ao Playwright; o script só faz
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
-| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API da Dodo e tiles) |
+| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API do Stripe e tiles) |
 | `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
 
 Várias worktrees podem rodar ao mesmo tempo desde que cada uma tenha portas e
@@ -72,7 +72,7 @@ worktree por engano.
 
 O resto do ambiente do servidor está em `apps/e2e/env.ts` (`SERVER_ENV`). Toda
 chave que o `apps/web/.env` de quem roda local pode trazer com valor real
-(Resend, LocationIQ, Dodo, Redis, PostHog) é sobrescrita ali, nem que seja com
+(Resend, LocationIQ, Stripe, Redis, PostHog) é sobrescrita ali, nem que seja com
 vazio.
 
 ## Estrutura
@@ -81,8 +81,7 @@ vazio.
 apps/e2e/
   playwright.config.ts   projetos, webServer, trace/vídeo só em falha
   env.ts                 portas, URLs, segredos de teste, ambiente do servidor
-  stubs/server.ts        LocationIQ + API da Dodo + PMTiles vazio (Bun)
-  stubs/dodo-api.mjs     desvia o fetch do servidor da Dodo para o stub
+  stubs/server.ts        LocationIQ + API do Stripe + PMTiles vazio (Bun)
   fixtures/              blocos para os testes — um arquivo por assunto
   tests/setup.setup.ts   estado global limpo + uma sessão por papel
   tests/smoke/           sentinela e prova de que cada dublê está ligado
@@ -194,19 +193,18 @@ com o de `/privacidade` (WEB-240).
 | E-mail (Resend) | `E2E_EMAIL_OUTBOX`: `sendEmailWithResend` grava uma linha JSON por e-mail em `apps/e2e/.outbox/emails.jsonl` e responde como entregue. Vem antes da Resend, então nem uma chave real sai | `lastEmailTo(email, { subject })` em `fixtures/email.ts`, com `.link` (o link de ação) |
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
 | R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
-| Dodo (webhook) | `DODO_PAYMENTS_WEBHOOK_SECRET` de teste no servidor; o helper assina como a Dodo (Standard Webhooks). O corpo precisa passar no `WebhookPayloadSchema` do `@dodopayments/core` | `sendDodoWebhook(request, payload)` em `fixtures/dodo.ts`; corpo de `subscription.*` pronto em `subscriptionWebhook(tipo, { email, subscriptionId, plan })` (`fixtures/dodo-payloads.ts`). Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
-| Dodo (API) | `stubs/dodo-api.mjs` entra no `vite dev` por `NODE_OPTIONS=--import` e reescreve todo `fetch` para `https://{test,live}.dodopayments.com` para `${STUB_URL}/dodo` (`E2E_DODO_API_URL`). Respostas fixas: customer achado pelo e-mail (`cus_e2e_…`), portal em `${STUB_URL}/dodo/portal/<customer>`, um pagamento `succeeded` de 9900, sessão de checkout com `checkout_url` em `${STUB_URL}/dodo/checkout/<session>` (página do stub, para o teste esperar o redirect). Abrir checkout exige `setAppConfig('billing.checkout_enabled', true)`, então é teste serial | `GET ${STUB_URL}/dodo/calls` lista `{ method, path, query, body }` de cada chamada; filtre pelo e-mail do seu usuário |
+| Stripe (webhook) | `STRIPE_WEBHOOK_SECRET` de teste no servidor; o helper assina como o Stripe (`stripe-signature: t=…,v1=HMAC-SHA256`). O app não confia no corpo do evento: busca no Stripe (o stub) o estado atual da assinatura, então ela precisa estar semeada | `deliverSubscription(request, tipo, stripeSubscription({ id, status, plan, userId }))` em `fixtures/stripe.ts` semeia e entrega; `sendStripeWebhook(request, evento)` só entrega. Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
+| Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido menos o id `esgotado`. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`. Abrir checkout exige `setAppConfig('billing.checkout_enabled', true)`, então é teste serial | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
 | Mapa | `VITE_MAP_TILES_URL` aponta para um PMTiles válido e vazio servido pelo stub: o mapa monta sem tiles, marcadores aparecem | — |
 | Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
 
 Rede externa está bloqueada no Chromium (`--host-resolver-rules`): o que não é
 local nem interceptado falha na hora, em vez de ir para a internet.
 
-Por que a Dodo é desviada no `fetch`, e não por um `baseURL` no `dodoClient`:
-a sessão de checkout não usa o nosso cliente. O `@dodopayments/core` monta um
-`DodoPayments` próprio com `environment` fixo, e esse construtor lança
-"Ambiguous URL" se `DODO_PAYMENTS_BASE_URL` estiver no ambiente. O desvio só
-existe no processo da suíte; o código do app não muda.
+O SDK do Stripe aceita host, porta e protocolo na criação do cliente
+(`packages/auth/src/stripe-client.ts`), e o plugin usa esse mesmo cliente em tudo —
+não há desvio de `fetch`. `STRIPE_API_BASE_URL` está na lista de chaves só de E2E
+que o `packages/env` recusa em produção.
 
 ## Caches de 60s
 
@@ -222,8 +220,8 @@ consulta, e um teste leria a busca que outro deixou em cache. O custo é o E2E
 não exercitar o cache em si — isso fica com os testes unitários
 (`ttl-cache.test.ts`, `shared-cache.test.ts`).
 
-`E2E_DISABLE_CACHES`, `E2E_EMAIL_OUTBOX`, `LOCATIONIQ_BASE_URL` e
-`E2E_DATABASE_URL` são recusadas por `packages/env` quando
+`E2E_DISABLE_CACHES`, `E2E_EMAIL_OUTBOX`, `LOCATIONIQ_BASE_URL`,
+`STRIPE_API_BASE_URL` e `E2E_DATABASE_URL` são recusadas por `packages/env` quando
 `NODE_ENV=production`: o app não sobe.
 
 ## Armadilhas

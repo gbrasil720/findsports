@@ -77,10 +77,24 @@ describe('registro de configuração (ESC-19)', () => {
       validateAppConfigValue('billing.onboarding_trial', valor).ok
 
     expect(aceita({ ...base, enabled: true })).toBe(true)
+    // WEB-31: o teste grátis do lançamento é de 120 dias.
+    expect(aceita({ ...base, days: 120 })).toBe(true)
     expect(aceita({ ...base, days: 0 })).toBe(false)
     expect(aceita({ ...base, days: 365 })).toBe(false)
     expect(aceita({ ...base, days: 1.5 })).toBe(false)
     expect(aceita({ ...base, plan: 'premium' })).toBe(false)
+  })
+
+  it('cupom de fundador nasce desligado e recusa id que o Stripe não aceita', () => {
+    const base = appConfigDefault('billing.founder_coupon')
+    const aceita = (valor: unknown) =>
+      validateAppConfigValue('billing.founder_coupon', valor).ok
+
+    expect(base.enabled).toBe(false)
+    expect(aceita({ ...base, enabled: true })).toBe(true)
+    expect(aceita({ ...base, couponId: '' })).toBe(false)
+    expect(aceita({ ...base, couponId: 'com espaço' })).toBe(false)
+    expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('billing.founder_coupon')
   })
 
   it('erro de validação aponta o campo', () => {

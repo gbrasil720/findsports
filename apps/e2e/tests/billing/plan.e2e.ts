@@ -1,15 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
-import { sendDodoWebhook } from '../../fixtures/dodo'
-import { subscriptionWebhook } from '../../fixtures/dodo-payloads'
 import { createPub, inDays } from '../../fixtures/pubs'
+import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
 // `/plan` e `/plan/confirmed` com `billing.checkout_enabled` no padrão
 // (desligado). O checkout ligado está em `checkout.serial.e2e.ts`.
 
-/** A marca que `/plan` grava antes de mandar para a Dodo (WEB-59). */
+/** A marca que `/plan` grava antes de mandar para o Stripe (WEB-59). */
 const CHECKOUT_INTENT_KEY = 'onside:checkout-intent'
 
 test('mostra Starter, Pro e Elite para quem ainda não assinou', async ({
@@ -87,7 +86,7 @@ test('trial encerrado com assinatura no provedor: regulariza, sem checkout novo'
       plan: 'elite',
       status: 'trialing',
       currentPeriodEnd: inDays(-1),
-      dodoSubscriptionId: `sub_e2e_${randomUUID()}`
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
     }
   })
   await signIn(page, user)
@@ -101,7 +100,7 @@ test('trial encerrado com assinatura no provedor: regulariza, sem checkout novo'
   ).toHaveCount(0)
 })
 
-test('trial em vigor: cabeçalho do trial e "Plano atual" desabilitado', async ({
+test('trial em vigor: sem cartão, e contratar qualquer plano já é possível (WEB-31)', async ({
   page
 }) => {
   const { user } = await createPub({
@@ -120,20 +119,45 @@ test('trial em vigor: cabeçalho do trial e "Plano atual" desabilitado', async (
   ).toBeVisible()
   await expect(page.getByText('Alterar plano')).toHaveCount(0)
   await expect(page.getByText(/ciclo de cobrança/)).toHaveCount(0)
+  await expect(page.getByText('O teste grátis não pede cartão.')).toBeVisible()
+  await expect(
+    page.getByText(/primeira cobrança só sai em \d+ de /)
+  ).toBeVisible()
 
   // WEB-249: abre no plano do trial, não num inferior a um clique do checkout.
   await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
   await expect(page.getByText(/plano inferior ao atual/)).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
+  // O plano do teste ainda não foi contratado: o botão contrata, não diz
+  // "Plano atual". Fica desabilitado aqui só porque o checkout está desligado.
+  await expect(page.getByRole('button', { name: 'Plano atual' })).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Contratar Elite' })
+  ).toBeVisible()
 
-  // Contratar é só depois do vencimento, qualquer que seja o plano.
   await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
   await expect(
-    page.getByRole('button', { name: 'Disponível ao fim do trial' })
-  ).toBeDisabled()
-  await expect(
-    page.getByRole('button', { name: /^Continuar com/ })
-  ).toHaveCount(0)
+    page.getByRole('button', { name: 'Contratar Pro' })
+  ).toBeVisible()
+  await expect(page.getByText(/plano inferior ao atual/)).toBeVisible()
+})
+
+test('trial que já é do Stripe: troca de plano, com o plano contratado como atual', async ({
+  page
+}) => {
+  const { user } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'trialing',
+      currentPeriodEnd: inDays(14),
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  await expect(page.getByText('Alterar plano')).toBeVisible()
+  await expect(page.getByRole('radio', { name: /^Pro,/ })).toBeChecked()
+  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
 })
 
 test('assinatura paga abre no próprio plano, sem checkout de outro por padrão', async ({
@@ -162,10 +186,10 @@ test('checkout desligado: aviso na tela e o servidor recusa com CHECKOUT_DISABLE
   ).toBeDisabled()
 
   // A tela é só sugestão: quem chama o endpoint direto também é barrado.
-  const response = await page.request.post(
-    '/api/auth/dodopayments/checkout-session',
-    { data: { slug: 'pro' }, headers: { origin: BASE_URL } }
-  )
+  const response = await page.request.post('/api/auth/subscription/upgrade', {
+    data: { plan: 'pro', successUrl: '/plan/confirmed', cancelUrl: '/plan' },
+    headers: { origin: BASE_URL }
+  })
   expect(response.status()).toBe(503)
   expect(await response.json()).toMatchObject({ code: 'CHECKOUT_DISABLED' })
 })
@@ -205,12 +229,14 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   await expect(page).toHaveURL(/\/plan\/confirmed$/)
 
   const subscriptionId = `sub_e2e_${user.id}`
-  const webhook = await sendDodoWebhook(
+  const webhook = await deliverSubscription(
     request,
-    subscriptionWebhook('subscription.active', {
-      email: user.email,
-      subscriptionId,
-      plan: 'pro'
+    'customer.subscription.created',
+    stripeSubscription({
+      id: subscriptionId,
+      status: 'active',
+      plan: 'pro',
+      userId: user.id
     })
   )
   expect(webhook.ok(), await webhook.text()).toBe(true)
@@ -225,6 +251,51 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   expect(
     origins.flatMap((origin) => origin.localStorage).map((item) => item.name)
   ).not.toContain(CHECKOUT_INTENT_KEY)
+})
+
+test('/plan/confirmed de quem contratou no teste grátis espera o Stripe, não imprime o plano do teste (WEB-31)', async ({
+  page,
+  request
+}) => {
+  const trialEnd = inDays(100)
+  const { user } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: trialEnd
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+  await page.evaluate(
+    `localStorage.setItem(${JSON.stringify(CHECKOUT_INTENT_KEY)}, ${JSON.stringify(
+      JSON.stringify({ plan: 'starter', expiresAt: Date.now() + 30 * 60_000 })
+    )})`
+  )
+
+  await page.goto('/plan/confirmed')
+  const screen = page.locator('.onside-receipt-screen')
+  // O bar já tem plano vigente (o teste do Elite), mas o que ele contratou
+  // ainda não chegou: a tela espera em vez de imprimir o Elite.
+  await expect(screen).toHaveText(/Confirmando a assinatura/)
+
+  const webhook = await deliverSubscription(
+    request,
+    'customer.subscription.created',
+    stripeSubscription({
+      id: `sub_e2e_${user.id}`,
+      status: 'trialing',
+      plan: 'starter',
+      userId: user.id,
+      currentPeriodEnd: trialEnd
+    })
+  )
+  expect(webhook.ok(), await webhook.text()).toBe(true)
+
+  await expect(screen).toHaveText(/Comprovante impresso/, { timeout: 20_000 })
+  const receipt = page.locator('.onside-receipt-paper')
+  await expect(receipt).toContainText('Starter')
+  await expect(receipt).toContainText('Trial gratuito')
 })
 
 test.describe('torcedor', () => {

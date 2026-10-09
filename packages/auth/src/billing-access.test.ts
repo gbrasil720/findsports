@@ -3,12 +3,11 @@ import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
 
 describe('acesso às rotas comerciais do bar', () => {
   it('protege checkout e portal, mas não o webhook assinado', () => {
-    expect(requiresPubBillingAccess('/dodopayments/checkout')).toBe(true)
-    expect(requiresPubBillingAccess('/dodopayments/checkout-session')).toBe(
-      true
-    )
-    expect(requiresPubBillingAccess('/dodopayments/customer/portal')).toBe(true)
-    expect(requiresPubBillingAccess('/dodopayments/webhooks')).toBe(false)
+    expect(requiresPubBillingAccess('/subscription/upgrade')).toBe(true)
+    expect(requiresPubBillingAccess('/subscription/billing-portal')).toBe(true)
+    expect(requiresPubBillingAccess('/subscription/cancel')).toBe(true)
+    expect(requiresPubBillingAccess('/stripe/webhook')).toBe(false)
+    expect(requiresPubBillingAccess('/sign-in/email')).toBe(false)
   })
 
   it('libera somente bar com e-mail verificado', () => {

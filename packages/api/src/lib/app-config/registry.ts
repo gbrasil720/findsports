@@ -81,7 +81,7 @@ export const APP_CONFIG_DEFINITIONS = {
   }),
 
   /**
-   * Libera o checkout do Dodo Payments.
+   * Libera o checkout de assinatura (Stripe).
    *
    * O MVP subiu com cobrança desligada e plano definido à mão. Ligar era
    * editar `packages/auth` e fazer deploy — decisão comercial presa a uma
@@ -115,13 +115,13 @@ export const APP_CONFIG_DEFINITIONS = {
    *
    * Desligada — o padrão — nada muda: o bar nasce fora do ar, sem assinatura.
    * O teto de `days` existe para um erro de digitação não virar plano grátis
-   * por anos.
+   * por anos. Cabe o teste de 120 dias do lançamento (WEB-31), com folga.
    */
   'billing.onboarding_trial': definir({
     schema: z.object({
       enabled: z.boolean(),
       plan: z.enum(['starter', 'pro', 'elite']),
-      days: z.number().int().min(1).max(90)
+      days: z.number().int().min(1).max(180)
     }),
     padrao: { enabled: false, plan: 'elite', days: 14 },
     publico: false,
@@ -129,6 +129,40 @@ export const APP_CONFIG_DEFINITIONS = {
       'Bar novo nasce publicado e com trial do plano escolhido por `days` ' +
       'dias. Desligado, o bar nasce fora do ar e só a assinatura paga o ' +
       'publica. Não altera bares já cadastrados.'
+  }),
+
+  /**
+   * Desconto de fundador no checkout (WEB-31).
+   *
+   * Os termos de uso prometem R$ 28,00 a menos por mês, em qualquer plano e
+   * enquanto a assinatura durar, ao bar que aderir durante o lançamento. No
+   * Stripe isso é um cupom (`Early Bird`, id `eM7dQpMF`, com teto de 100 usos);
+   * esta chave diz se o checkout o aplica.
+   *
+   * Ligada, todo checkout NOVO sai com o cupom. Quem já assinou com ele não
+   * perde nada quando a chave desliga: o desconto fica preso à assinatura.
+   * Cupom esgotado ou apagado no Stripe não trava a venda — o checkout segue
+   * a preço de tabela e o servidor registra `stripe_founder_coupon_unavailable`.
+   *
+   * `couponId` é o ID do cupom no painel do Stripe, o mesmo no sandbox e em
+   * produção. Só letras, números, `_` e `-`: é o que o Stripe aceita.
+   */
+  'billing.founder_coupon': definir({
+    schema: z.object({
+      enabled: z.boolean(),
+      couponId: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{1,64}$/, 'ID de cupom do Stripe inválido')
+    }),
+    padrao: { enabled: false, couponId: 'eM7dQpMF' },
+    publico: false,
+    descricao:
+      'Desconto de fundador. Ligado: todo bar que contratar um plano ganha ' +
+      'R$ 28 de desconto por mês, para sempre, em qualquer plano. Desligado: ' +
+      'quem contratar paga o preço cheio. Quem já ganhou o desconto continua ' +
+      'com ele nos dois casos. O Stripe só deixa 100 bares usarem; depois ' +
+      'disso a venda continua, sem desconto. Não mexa em `couponId`: é o ' +
+      'código do cupom no Stripe.'
   }),
 
   /**

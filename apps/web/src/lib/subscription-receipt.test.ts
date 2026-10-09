@@ -18,6 +18,28 @@ import {
 } from '@/lib/subscription-receipt'
 
 describe('isSubscriptionConfirmed', () => {
+  test('voltando do checkout, só vale a assinatura confirmada pelo provedor (WEB-31)', () => {
+    const localTrial = {
+      status: 'trialing',
+      currentPlan: 'elite',
+      currentPeriodEnd: null,
+      externalSubscriptionId: null
+    } as const
+    // Fora do checkout o teste grátis do cadastro já conta como plano vigente.
+    expect(isSubscriptionConfirmed(localTrial)).toBe(true)
+    expect(isSubscriptionConfirmed(localTrial, true)).toBe(false)
+    expect(
+      isSubscriptionConfirmed(
+        {
+          ...localTrial,
+          currentPlan: 'starter',
+          externalSubscriptionId: 'sub_1'
+        },
+        true
+      )
+    ).toBe(true)
+  })
+
   test('assinatura ausente não confirma nada', () => {
     expect(isSubscriptionConfirmed(null)).toBe(false)
   })

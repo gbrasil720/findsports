@@ -1,14 +1,8 @@
-import {
-  checkout,
-  dodopayments,
-  portal,
-  webhooks
-} from '@dodopayments/better-auth'
+import { stripe } from '@better-auth/stripe'
 import { emailAssetUrls } from '@findsports_oficial/config/site'
-import { and, db, eq, isNull } from '@findsports_oficial/db'
+import { db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
-import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { bar } from '@findsports_oficial/db/schema/platform'
 import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -19,18 +13,20 @@ import {
 } from 'better-auth/api'
 import { admin, captcha } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
-import DodoPayments from 'dodopayments'
 import { z } from 'zod'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 import { runInBackground } from './background'
 import { canAccessPubBilling, requiresPubBillingAccess } from './billing-access'
-import { DODO_PRODUCTS, dodoEnvironment, planForProduct } from './dodo-plan'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
 import { sessionTokenGuard } from './session-token'
 import { startCookies } from './start-cookies'
+import { checkoutParamsFor } from './stripe-checkout'
+import { stripeClient } from './stripe-client'
+import { STRIPE_PLANS } from './stripe-plan'
+import { syncStripeEvent } from './stripe-sync'
 import { buildTrustedOrigins } from './trusted-origins'
 import {
   publicEmailUrl,
@@ -41,171 +37,6 @@ function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
   if (host === 'onside.sh') return host
   return undefined
-}
-
-export const dodoClient = new DodoPayments({
-  bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
-  environment: dodoEnvironment(env.DODO_PAYMENTS_ENVIRONMENT, env.NODE_ENV)
-})
-
-// WEB-194: caso de cobrança que o webhook não aplica. Vai como uma linha JSON
-// no log para dar para filtrar e reconciliar à mão; a resposta segue 200 (ver
-// `handleSubscriptionActivated`).
-function logBillingError(event: string, details: Record<string, unknown>) {
-  console.error(JSON.stringify({ level: 'error', event, ...details }))
-}
-
-// Busca o bar pelo email do customer no payload
-async function getBarByCustomer(
-  email: string,
-  dodoCustomerId: string | undefined
-) {
-  let foundUser = dodoCustomerId
-    ? await db.query.user.findFirst({
-        where: eq(user.dodoCustomerId, dodoCustomerId)
-      })
-    : null
-  if (!foundUser) {
-    const byEmail = await db.query.user.findFirst({
-      where: eq(user.email, email)
-    })
-    if (!byEmail?.emailVerified) return null
-    if (
-      dodoCustomerId &&
-      byEmail.dodoCustomerId &&
-      byEmail.dodoCustomerId !== dodoCustomerId
-    ) {
-      logBillingError('dodo_webhook_customer_mismatch', {
-        userId: byEmail.id,
-        email,
-        storedCustomerId: byEmail.dodoCustomerId,
-        payloadCustomerId: dodoCustomerId
-      })
-      return null
-    }
-    foundUser = byEmail
-    if (foundUser && dodoCustomerId && !foundUser.dodoCustomerId) {
-      await db
-        .update(user)
-        .set({ dodoCustomerId })
-        .where(and(eq(user.id, foundUser.id), isNull(user.dodoCustomerId)))
-    }
-  }
-  if (!foundUser?.emailVerified) return null
-
-  return db.query.bar.findFirst({
-    where: eq(bar.userId, foundUser.id)
-  })
-}
-
-async function handleSubscriptionActivated(payload: any) {
-  const data = payload.data ?? payload
-  const email = data?.customer?.email
-  const customerId = data?.customer?.customer_id ?? data?.customer_id
-  const dodoSubId = data?.subscription_id
-  const productId = data?.product_id
-
-  if (!email || !dodoSubId) return
-
-  // Produto ausente ou fora do mapa não ativa nem troca plano, nem em
-  // renovação: nada é gravado. Responde 200 de propósito — reenvio da Dodo
-  // não conserta produto desconhecido nem customer divergente, só repete o
-  // erro; quem resolve é a reconciliação a partir do log.
-  const plan = planForProduct(productId)
-  if (!plan) {
-    logBillingError('dodo_webhook_unknown_product', {
-      type: payload?.type ?? null,
-      productId: productId ?? null,
-      subscriptionId: dodoSubId,
-      customerId: customerId ?? null,
-      email
-    })
-    return
-  }
-
-  const foundBar = await getBarByCustomer(email, customerId)
-  if (!foundBar) {
-    logBillingError('dodo_webhook_bar_not_found', {
-      type: payload?.type ?? null,
-      plan,
-      subscriptionId: dodoSubId,
-      customerId: customerId ?? null,
-      email
-    })
-    return
-  }
-
-  // Verifica se já existe subscription para esse bar
-  const existing = await db.query.subscription.findFirst({
-    where: eq(subscription.barId, foundBar.id)
-  })
-
-  if (existing) {
-    // Atualiza a subscription existente
-    await db
-      .update(subscription)
-      .set({
-        status: 'active',
-        plan,
-        dodoSubscriptionId: dodoSubId,
-        currentPeriodEnd: data?.next_billing_date
-          ? new Date(data.next_billing_date)
-          : undefined
-      })
-      .where(eq(subscription.barId, foundBar.id))
-  } else {
-    // Cria nova subscription
-    await db.insert(subscription).values({
-      barId: foundBar.id,
-      status: 'active',
-      plan,
-      dodoSubscriptionId: dodoSubId,
-      currentPeriodEnd: data?.next_billing_date
-        ? new Date(data.next_billing_date)
-        : undefined
-    })
-  }
-
-  // Ativa o bar
-  await db.update(bar).set({ isActive: true }).where(eq(bar.id, foundBar.id))
-}
-
-async function handleSubscriptionOnHold(payload: any) {
-  const data = payload.data ?? payload
-  const dodoSubId = data?.subscription_id
-  if (!dodoSubId) return
-
-  const existing = await db.query.subscription.findFirst({
-    where: eq(subscription.dodoSubscriptionId, dodoSubId)
-  })
-  if (!existing) return
-
-  await db
-    .update(subscription)
-    .set({ status: 'past_due' })
-    .where(eq(subscription.barId, existing.barId))
-  // Janela de 5 dias — bar continua ativo até subscription.cancelled
-}
-
-async function handleSubscriptionCancelled(payload: any) {
-  const data = payload.data ?? payload
-  const dodoSubId = data?.subscription_id
-  if (!dodoSubId) return
-
-  const existing = await db.query.subscription.findFirst({
-    where: eq(subscription.dodoSubscriptionId, dodoSubId)
-  })
-  if (!existing) return
-
-  await db
-    .update(subscription)
-    .set({ status: 'inactive' })
-    .where(eq(subscription.barId, existing.barId))
-
-  await db
-    .update(bar)
-    .set({ isActive: false })
-    .where(eq(bar.id, existing.barId))
 }
 
 /**
@@ -341,7 +172,7 @@ export function createAuth() {
         banReason: null,
         banExpires: null,
         twoFactorEnabled: false,
-        dodoCustomerId: null,
+        stripeCustomerId: null,
         ...additionalFields,
         id
       })
@@ -486,32 +317,30 @@ export function createAuth() {
           }
         }
       },
-      dodopayments({
-        client: dodoClient,
-        // MVP launches with payments disabled (single bar, manually set to
-        // pro plan). Disabled so signup doesn't depend on a working Dodo
-        // API key/environment.
+      // Cobrança pelo Stripe (WEB-31). O plugin cuida de checkout, portal e
+      // da verificação da assinatura do webhook (`/stripe/webhook`); o estado
+      // dele fica em `stripe_subscription`. O que o app lê — plano, situação e
+      // fim do período em `subscription` — quem grava é o `onEvent`.
+      stripe({
+        stripeClient,
+        // Sem o segredo o webhook responde 500 em vez de aceitar sem conferir.
+        stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
+        // O cliente no Stripe nasce no primeiro checkout, com o e-mail do
+        // dono do bar: é para lá que o Stripe manda recibo e aviso (PRO-5).
         createCustomerOnSignUp: false,
-        use: [
-          checkout({
-            products: DODO_PRODUCTS,
-            // WEB-59: o retorno do provedor cai no recibo, não no painel. O
-            // webhook `onSubscriptionActive` é quem confirma a assinatura, e
-            // pode chegar depois deste redirect — `/plan/confirmed` é a tela
-            // que espera por ele em vez de mostrar um painel sem plano.
-            successUrl: '/plan/confirmed',
-            authenticatedUsersOnly: true
-          }),
-          portal(),
-          webhooks({
-            webhookKey: process.env.DODO_PAYMENTS_WEBHOOK_SECRET!,
-            onSubscriptionActive: handleSubscriptionActivated,
-            onSubscriptionRenewed: handleSubscriptionActivated,
-            onSubscriptionOnHold: handleSubscriptionOnHold,
-            onSubscriptionFailed: handleSubscriptionOnHold,
-            onSubscriptionCancelled: handleSubscriptionCancelled
+        // `subscription` já é a nossa tabela, em `platform.ts`.
+        schema: { subscription: { modelName: 'stripeSubscription' } },
+        // Aqui, e não nos `onSubscription*`: o plugin engole o erro desses e
+        // responde 200, e o Stripe não reenviaria. Erro no `onEvent` vira 400.
+        onEvent: (event) => syncStripeEvent(event, stripeClient),
+        subscription: {
+          enabled: true,
+          plans: STRIPE_PLANS,
+          requireEmailVerification: true,
+          getCheckoutSessionParams: async ({ user }) => ({
+            params: await checkoutParamsFor(user.id, stripeClient)
           })
-        ]
+        }
       }),
       sessionTokenGuard(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os

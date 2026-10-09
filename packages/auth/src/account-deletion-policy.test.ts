@@ -8,7 +8,7 @@ describe('bar account deletion policy', () => {
     expect(
       getBarAccountDeletionBlock(
         {
-          dodoSubscriptionId: null,
+          externalSubscriptionId: null,
           status: 'active',
           currentPeriodEnd: null
         },
@@ -25,7 +25,7 @@ describe('bar account deletion policy', () => {
     expect(
       getBarAccountDeletionBlock(
         {
-          dodoSubscriptionId: 'sub_123',
+          externalSubscriptionId: 'sub_123',
           status,
           currentPeriodEnd: null
         },
@@ -38,7 +38,7 @@ describe('bar account deletion policy', () => {
     expect(
       getBarAccountDeletionBlock(
         {
-          dodoSubscriptionId: 'sub_123',
+          externalSubscriptionId: 'sub_123',
           status: 'cancelled',
           currentPeriodEnd: new Date('2026-08-22T12:00:00.000Z')
         },
@@ -56,7 +56,7 @@ describe('bar account deletion policy', () => {
     expect(
       getBarAccountDeletionBlock(
         {
-          dodoSubscriptionId: 'sub_123',
+          externalSubscriptionId: 'sub_123',
           status,
           currentPeriodEnd: end
         },

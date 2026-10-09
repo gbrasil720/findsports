@@ -14,6 +14,7 @@ import {
   respostaPortaoFechado
 } from '@findsports_oficial/api/lib/waitlist-gate'
 import { auth } from '@findsports_oficial/auth'
+import { setFounderCouponSource } from '@findsports_oficial/auth/stripe-checkout'
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
@@ -29,6 +30,14 @@ import { createFileRoute } from '@tanstack/react-router'
  * endpoint sem passar pela tela. Do lado do servidor, e não da interface,
  * porque a interface é só uma sugestão.
  */
+
+// Cupom de fundador do checkout (WEB-31). A chave mora em `packages/api` e o
+// checkout em `packages/auth`, que não enxerga a configuração: é a mesma
+// razão de este handler existir. Lida a cada checkout, como os portões.
+setFounderCouponSource(async () => {
+  const cupom = await getAppConfig('billing.founder_coupon')
+  return cupom.enabled ? cupom.couponId : null
+})
 
 async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   const acao = acaoDeEntrada(request.url)

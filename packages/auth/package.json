@@ -14,13 +14,13 @@
     "test": "bun test --preload=../../test-env.preload.ts"
   },
   "dependencies": {
-    "@dodopayments/better-auth": "^1.6.3",
+    "@better-auth/stripe": "1.6.22",
     "@findsports_oficial/config": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
     "@tanstack/react-start": "^1.168.60",
     "better-auth": "catalog:",
-    "dodopayments": "^2.37.0",
+    "stripe": "^22.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

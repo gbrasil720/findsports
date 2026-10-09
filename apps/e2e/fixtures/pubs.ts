@@ -18,7 +18,8 @@ export type PubOptions = {
     plan?: Plan
     status?: SubscriptionStatus
     currentPeriodEnd?: Date | null
-    dodoSubscriptionId?: string
+    /** Id da assinatura no Stripe; presente, a linha é do provedor. */
+    externalSubscriptionId?: string
   } | null
   /** Colunas de `bar` em snake_case, por cima dos padrões. */
   bar?: Record<string, unknown>
@@ -58,7 +59,8 @@ export async function createPub(options: PubOptions = {}): Promise<TestPub> {
       status: sub.status ?? 'active',
       current_period_end:
         sub.currentPeriodEnd === undefined ? inDays(30) : sub.currentPeriodEnd,
-      dodo_subscription_id: sub.dodoSubscriptionId ?? null
+      provider: sub.externalSubscriptionId ? 'stripe' : null,
+      external_subscription_id: sub.externalSubscriptionId ?? null
     })
   }
 

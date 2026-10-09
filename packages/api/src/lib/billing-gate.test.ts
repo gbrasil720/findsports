@@ -6,14 +6,9 @@ import {
 } from './billing-gate'
 
 describe('portão de abertura de checkout (ESC-19)', () => {
-  it('reconhece as duas rotas de abertura', () => {
+  it('reconhece a rota de abertura', () => {
     expect(
-      ehAberturaDeCheckout('https://onside.app/api/auth/dodopayments/checkout')
-    ).toBe(true)
-    expect(
-      ehAberturaDeCheckout(
-        'https://onside.app/api/auth/dodopayments/checkout-session'
-      )
+      ehAberturaDeCheckout('https://onside.app/api/auth/subscription/upgrade')
     ).toBe(true)
   })
 
@@ -27,10 +22,11 @@ describe('portão de abertura de checkout (ESC-19)', () => {
    */
   it('não pega webhook, portal nem listagens', () => {
     for (const caminho of [
-      '/api/auth/dodopayments/webhooks',
-      '/api/auth/dodopayments/customer/portal',
-      '/api/auth/dodopayments/customer/subscriptions/list',
-      '/api/auth/dodopayments/customer/payments/list',
+      '/api/auth/stripe/webhook',
+      '/api/auth/subscription/billing-portal',
+      '/api/auth/subscription/cancel',
+      '/api/auth/subscription/list',
+      '/api/auth/subscription/success',
       '/api/auth/sign-in/email',
       '/api/auth/get-session'
     ]) {
@@ -41,17 +37,17 @@ describe('portão de abertura de checkout (ESC-19)', () => {
   it('ignora query string e barra final', () => {
     expect(
       ehAberturaDeCheckout(
-        'https://onside.app/api/auth/dodopayments/checkout/?slug=pro'
+        'https://onside.app/api/auth/subscription/upgrade/?plan=pro'
       )
     ).toBe(true)
     expect(
-      ehAberturaDeCheckout('/api/auth/dodopayments/checkout-session?slug=pro')
+      ehAberturaDeCheckout('/api/auth/subscription/upgrade?plan=pro')
     ).toBe(true)
   })
 
   it('aceita caminho relativo, sem host', () => {
-    expect(ehAberturaDeCheckout('/api/auth/dodopayments/checkout')).toBe(true)
-    expect(ehAberturaDeCheckout('/api/auth/dodopayments/webhooks')).toBe(false)
+    expect(ehAberturaDeCheckout('/api/auth/subscription/upgrade')).toBe(true)
+    expect(ehAberturaDeCheckout('/api/auth/stripe/webhook')).toBe(false)
   })
 
   /**

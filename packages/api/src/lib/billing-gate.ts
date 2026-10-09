@@ -1,8 +1,8 @@
 /**
  * Portão de abertura de checkout (ESC-19).
  *
- * O plugin do Dodo Payments é montado dentro do `better-auth`, que resolve as
- * suas rotas antes de qualquer coisa nossa rodar — e a configuração dele é
+ * A cobrança é um plugin do `better-auth` (`@better-auth/stripe`), que resolve
+ * as suas rotas antes de qualquer coisa nossa rodar — e a configuração dele é
  * estática, decidida quando o módulo carrega. Não há onde encaixar uma flag
  * lida por requisição lá dentro.
  *
@@ -12,20 +12,18 @@
  *
  * O que NÃO é bloqueado, e a razão de cada um:
  *
- *   - `webhooks`: assinatura que ativa é dinheiro real. Ignorar o aviso
- *     deixaria o banco mentindo sobre o que o cliente comprou, e o Dodo não
- *     reenvia para sempre.
- *   - `customer/portal` e as listagens: quem quer cancelar precisa conseguir
- *     cancelar. Sempre. Bloquear isso junto transformaria um interruptor
- *     operacional em armadilha para o cliente.
+ *   - `stripe/webhook`: assinatura que ativa é dinheiro real. Ignorar o aviso
+ *     deixaria o banco mentindo sobre o que o cliente comprou.
+ *   - `subscription/billing-portal` e as demais: quem quer cancelar precisa
+ *     conseguir cancelar. Sempre. Bloquear isso junto transformaria um
+ *     interruptor operacional em armadilha para o cliente.
  *
- * Só a ABERTURA de cobrança nova passa por aqui.
+ * Só a ABERTURA de cobrança nova passa por aqui. No plugin ela é uma rota só,
+ * `subscription/upgrade`, que serve tanto a primeira contratação quanto a
+ * troca de plano de quem já paga.
  */
 
-const CAMINHOS_DE_ABERTURA = [
-  '/dodopayments/checkout',
-  '/dodopayments/checkout-session'
-]
+const CAMINHOS_DE_ABERTURA = ['/subscription/upgrade']
 
 export function ehAberturaDeCheckout(url: string): boolean {
   let caminho: string

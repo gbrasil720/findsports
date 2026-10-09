@@ -357,7 +357,13 @@ export const subscription = pgTable('subscription', {
     .references(() => bar.id, { onDelete: 'cascade' }),
   plan: subscriptionPlanEnum('plan').notNull().default('starter'),
   status: subscriptionStatusEnum('status').notNull().default('trialing'),
+  // WEB-31: coluna da Dodo, sem leitor; sai na migration de contração.
   dodoSubscriptionId: text('dodo_subscription_id').unique(),
+  // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
+  // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
+  // segundo provedor (Pix) não pedir coluna nova.
+  provider: text('provider', { enum: ['stripe'] }),
+  externalSubscriptionId: text('external_subscription_id').unique(),
   currentPeriodEnd: timestamp('current_period_end'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')

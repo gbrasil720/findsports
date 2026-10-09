@@ -22,10 +22,15 @@ const rawEnv = createEnv({
      */
     EMAIL_DELIVERY: z.literal('console').optional(),
     /**
-     * Ausente, segue o NODE_ENV (`production` → `live_mode`). O preview roda
-     * com NODE_ENV=production e chaves de teste, então fixa `test_mode`.
+     * Cobrança pelo Stripe (WEB-31). O modo vem da própria chave: `sk_test_`
+     * é o sandbox, `sk_live_` cobra de verdade — por isso a chave viva é
+     * recusada fora do domínio de produção, logo abaixo.
+     *
+     * Opcionais, como a LocationIQ: faltando, só a cobrança para (checkout,
+     * portal e webhook respondem erro) e o resto do app sobe.
      */
-    DODO_PAYMENTS_ENVIRONMENT: z.enum(['test_mode', 'live_mode']).optional(),
+    STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
     /**
      * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
      * servidor assina um PUT com a chave S3 do bucket e o navegador sobe
@@ -68,10 +73,12 @@ const rawEnv = createEnv({
      * `E2E_EMAIL_OUTBOX`: arquivo JSONL onde os e-mails são gravados em vez
      * de ir para a Resend. `E2E_DISABLE_CACHES=1`: zera os caches de servidor
      * (TTL e cookie de sessão). `LOCATIONIQ_BASE_URL`: stub do geocoding.
+     * `STRIPE_API_BASE_URL`: stub da API do Stripe.
      */
     E2E_EMAIL_OUTBOX: z.string().min(1).optional(),
     E2E_DISABLE_CACHES: z.literal('1').optional(),
     LOCATIONIQ_BASE_URL: z.url().optional(),
+    STRIPE_API_BASE_URL: z.url().optional(),
     LAUNCH_ADMISSION_MODE: z
       .enum(['open', 'invite-only'])
       .default('invite-only'),
@@ -89,7 +96,8 @@ const TEST_ONLY_ENV_KEYS = [
   'E2E_DATABASE_URL',
   'E2E_EMAIL_OUTBOX',
   'E2E_DISABLE_CACHES',
-  'LOCATIONIQ_BASE_URL'
+  'LOCATIONIQ_BASE_URL',
+  'STRIPE_API_BASE_URL'
 ]
 
 if (rawEnv.NODE_ENV === 'production') {
@@ -109,6 +117,17 @@ if (
   /(^|\.)onside\.sh$/.test(new URL(rawEnv.PUBLIC_APP_URL).hostname)
 ) {
   throw new Error('EMAIL_DELIVERY=console recusada no domínio de produção.')
+}
+
+// O preview e o `vite dev` não podem cobrar cartão de verdade: chave viva do
+// Stripe só no domínio de produção.
+if (rawEnv.STRIPE_SECRET_KEY?.startsWith('sk_live_')) {
+  const host = new URL(rawEnv.PUBLIC_APP_URL ?? rawEnv.BETTER_AUTH_URL).hostname
+  if (!/(^|\.)onside\.sh$/.test(host)) {
+    throw new Error(
+      'STRIPE_SECRET_KEY viva recusada fora do domínio de produção.'
+    )
+  }
 }
 
 const LOCAL_HOSTNAMES = new Set([

@@ -32,7 +32,8 @@ describe('test-only switches (WEB-174)', () => {
       'E2E_DATABASE_URL',
       'E2E_EMAIL_OUTBOX',
       'E2E_DISABLE_CACHES',
-      'LOCATIONIQ_BASE_URL'
+      'LOCATIONIQ_BASE_URL',
+      'STRIPE_API_BASE_URL'
     ]) {
       const value = key === 'E2E_DISABLE_CACHES' ? '1' : 'http://127.0.0.1:1'
       const result = loadServerEnv({ [key]: value })
@@ -63,12 +64,25 @@ describe('preview switches', () => {
     }
   })
 
-  it('validates DODO_PAYMENTS_ENVIRONMENT', () => {
+  it('recusa chave viva do Stripe fora do domínio de produção', () => {
+    const preview = loadServerEnv({
+      STRIPE_SECRET_KEY: 'sk_live_exemplo',
+      PUBLIC_APP_URL: 'https://onside-web-preview.example.workers.dev'
+    })
+    expect(preview.exitCode).not.toBe(0)
+    expect(preview.stderr.toString()).toContain('STRIPE_SECRET_KEY')
+
     expect(
-      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'test_mode' }).exitCode
+      loadServerEnv({
+        STRIPE_SECRET_KEY: 'sk_live_exemplo',
+        PUBLIC_APP_URL: 'https://www.onside.sh'
+      }).exitCode
     ).toBe(0)
     expect(
-      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'sandbox' }).exitCode
-    ).not.toBe(0)
+      loadServerEnv({
+        STRIPE_SECRET_KEY: 'sk_test_exemplo',
+        PUBLIC_APP_URL: 'https://onside-web-preview.example.workers.dev'
+      }).exitCode
+    ).toBe(0)
   })
 })

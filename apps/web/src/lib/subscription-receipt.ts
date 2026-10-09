@@ -4,7 +4,7 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
  * Regras da tela de conclusão de assinatura (WEB-59).
  *
  * A confirmação de uma assinatura não chega pelo redirect do provedor: quem
- * grava `status: 'active'` é o webhook `onSubscriptionActive`, e ele pode
+ * grava a assinatura é o webhook do Stripe, e ele pode
  * chegar depois do navegador. Tudo aqui existe para atravessar essa janela
  * sem mentir — nem afirmar pagamento que não está no nosso banco, nem
  * declarar falha de algo que provavelmente deu certo.
@@ -47,7 +47,7 @@ export type ReceiptSubscription = {
   status: string
   currentPlan: SubscriptionPlan | null
   currentPeriodEnd: Date | string | null
-  dodoSubscriptionId?: string | null
+  externalSubscriptionId?: string | null
 } | null
 
 /**
@@ -55,12 +55,19 @@ export type ReceiptSubscription = {
  * provedor. `currentPlan` já vem do servidor com a regra de trial vencido
  * aplicada (`getCurrentPlan`), então um `trialing` com período no passado não
  * conta como confirmado nem aqui nem no painel.
+ *
+ * `awaitingCheckout` é quem está voltando do checkout. Para ele só vale a
+ * assinatura que o provedor já confirmou (WEB-31): o bar no teste grátis do
+ * cadastro já tem plano vigente antes de pagar, e sem isto o recibo imprimia
+ * o plano do teste no lugar do contratado, antes de o webhook chegar.
  */
 export function isSubscriptionConfirmed(
-  subscription: ReceiptSubscription
+  subscription: ReceiptSubscription,
+  awaitingCheckout = false
 ): boolean {
   if (!subscription) return false
   if (subscription.currentPlan === null) return false
+  if (awaitingCheckout && !subscription.externalSubscriptionId) return false
   return subscription.status === 'active' || subscription.status === 'trialing'
 }
 

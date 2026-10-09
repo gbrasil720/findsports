@@ -16,7 +16,11 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
+  // WEB-31: coluna da Dodo, sem leitor. Fica até a migration de contração:
+  // derrubá-la junto quebraria o código anterior na janela do deploy.
   dodoCustomerId: text('dodo_customer_id').unique(),
+  // Cliente no Stripe. Nome e escrita são do plugin `@better-auth/stripe`.
+  stripeCustomerId: text('stripe_customer_id').unique(),
   role: text('role', { enum: ['fan', 'pub', 'admin'] })
     .notNull()
     .default('fan'),
@@ -42,6 +46,44 @@ export const user = pgTable('user', {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull()
 })
+
+/**
+ * Estado que o plugin `@better-auth/stripe` guarda da assinatura no Stripe
+ * (WEB-31). Quem escreve aqui é só o plugin: é por esta tabela que ele sabe
+ * se o dono já tem assinatura viva antes de abrir outro checkout.
+ *
+ * O app NÃO lê plano nem situação daqui. A fonte é `subscription`, em
+ * `platform.ts`, que o webhook mantém em dia (`packages/auth/src/stripe-sync.ts`).
+ * `referenceId` é o `user.id` do dono do bar.
+ */
+export const stripeSubscription = pgTable(
+  'stripe_subscription',
+  {
+    id: text('id').primaryKey(),
+    plan: text('plan').notNull(),
+    referenceId: text('reference_id').notNull(),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    status: text('status').default('incomplete'),
+    periodStart: timestamp('period_start'),
+    periodEnd: timestamp('period_end'),
+    trialStart: timestamp('trial_start'),
+    trialEnd: timestamp('trial_end'),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
+    cancelAt: timestamp('cancel_at'),
+    canceledAt: timestamp('canceled_at'),
+    endedAt: timestamp('ended_at'),
+    seats: integer('seats'),
+    billingInterval: text('billing_interval'),
+    stripeScheduleId: text('stripe_schedule_id')
+  },
+  (table) => [
+    index('stripe_subscription_referenceId_idx').on(table.referenceId),
+    index('stripe_subscription_stripeSubscriptionId_idx').on(
+      table.stripeSubscriptionId
+    )
+  ]
+)
 
 export const session = pgTable(
   'session',

@@ -10,7 +10,7 @@ import {
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
-import { getCustomerPortalUrl } from '@/lib/dodo-customer-client'
+import { openBillingPortal } from '@/lib/billing-client'
 import { getPlan } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
@@ -48,8 +48,8 @@ export const Route = createFileRoute('/plan_/confirmed')({
 /**
  * Conclusão do checkout (WEB-59).
  *
- * O `successUrl` do plugin do Dodo aponta para cá, e não mais para `/admin`:
- * quem confirma a assinatura é o webhook `onSubscriptionActive`, que pode
+ * O `successUrl` do checkout do Stripe aponta para cá, e não mais para `/admin`:
+ * quem confirma a assinatura é o webhook do Stripe, que pode
  * chegar depois do redirect. Esta tela é o lugar onde essa corrida acontece à
  * vista — o recibo fica imprimindo enquanto a confirmação não chega.
  *
@@ -82,6 +82,13 @@ function SubscriptionConfirmed() {
     setReducedMotion(prefersReducedMotion())
   }, [])
 
+  // Até saber que não há marca, vale a regra de quem volta do checkout: só a
+  // assinatura confirmada pelo provedor imprime recibo. Em ref para a consulta
+  // em andamento ler o valor atual.
+  const awaitingCheckout = checkoutIntent !== 'absent'
+  const awaitingCheckoutRef = useRef(awaitingCheckout)
+  awaitingCheckoutRef.current = awaitingCheckout
+
   const subscriptionOptions = trpc.pub.getMySubscription.queryOptions()
   const fetchSubscription = subscriptionOptions.queryFn
 
@@ -104,7 +111,10 @@ function SubscriptionConfirmed() {
     meta: { errorToast: false },
     refetchInterval: (query) =>
       resolveReceiptWait({
-        confirmed: isSubscriptionConfirmed(query.state.data ?? null),
+        confirmed: isSubscriptionConfirmed(
+          query.state.data ?? null,
+          awaitingCheckoutRef.current
+        ),
         attempts: attemptsRef.current,
         elapsedMs: Date.now() - startedAtRef.current
       }).shouldPoll
@@ -113,7 +123,7 @@ function SubscriptionConfirmed() {
   })
 
   const subscription = subscriptionQuery.data ?? null
-  const confirmed = isSubscriptionConfirmed(subscription)
+  const confirmed = isSubscriptionConfirmed(subscription, awaitingCheckout)
   const plan = subscription?.currentPlan
     ? getPlan(subscription.currentPlan)
     : null
@@ -194,8 +204,8 @@ function SubscriptionConfirmed() {
     setPortalError(null)
     try {
       // Com URL na resposta o cliente do better-auth já está navegando para
-      // o portal; ver `getCustomerPortalUrl`.
-      if (await getCustomerPortalUrl()) return
+      // o portal; ver `openBillingPortal`.
+      if (await openBillingPortal()) return
       setPortalError('Não foi possível abrir o portal. Tente novamente.')
     } catch {
       setPortalError('Não foi possível abrir o portal. Tente novamente.')
@@ -213,7 +223,7 @@ function SubscriptionConfirmed() {
         plan={plan}
         status={subscription?.status ?? ''}
         currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
-        subscriptionRef={subscription?.dodoSubscriptionId ?? null}
+        subscriptionRef={subscription?.externalSubscriptionId ?? null}
         barName={barQuery.data?.name ?? null}
         issuedAt={issuedAt}
         printDurationMs={printDurationMs}

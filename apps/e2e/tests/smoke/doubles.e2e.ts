@@ -1,9 +1,9 @@
-import { MEDIA_PUBLIC_ORIGIN, SAO_PAULO, STUB_URL } from '../../env'
+import { BASE_URL, MEDIA_PUBLIC_ORIGIN, SAO_PAULO, STUB_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { sendDodoWebhook } from '../../fixtures/dodo'
 import { lastEmailTo } from '../../fixtures/email'
 import { interceptMediaUploads } from '../../fixtures/media'
+import { sendStripeWebhook } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -47,50 +47,54 @@ test('geocoding vai para o stub da LocationIQ, inclusive o modo de erro', async 
   expect(Number(bar?.latitude)).toBeCloseTo(SAO_PAULO.latitude)
 })
 
-test('webhook da Dodo assinado passa da verificação de assinatura', async ({
+test('webhook do Stripe: assinatura errada é recusada, a certa passa', async ({
   request
 }) => {
-  const payload = { type: 'e2e.signature-check' }
+  // Evento que o app ignora: o que se prova aqui é só a assinatura.
+  const event = {
+    id: 'evt_e2e_signature_check',
+    object: 'event',
+    type: 'e2e.signature-check',
+    data: { object: {} }
+  }
 
-  const forged = await sendDodoWebhook(request, payload, {
-    secret: `whsec_${Buffer.from('outro-segredo').toString('base64')}`
+  const forged = await sendStripeWebhook(request, event, {
+    secret: 'whsec_outro_segredo'
   })
   expect(forged.status()).toBe(400)
-  expect(await forged.text()).toMatch(/signature/i)
 
-  // Assinatura certa: a recusa agora é do esquema do corpo, não da assinatura.
-  const signed = await sendDodoWebhook(request, payload)
-  expect(signed.status()).toBe(400)
-  expect(await signed.text()).not.toMatch(/signature/i)
+  const signed = await sendStripeWebhook(request, event)
+  expect(signed.ok(), await signed.text()).toBe(true)
 })
 
-test('API da Dodo vai para o stub: portal e pagamentos', async ({ page }) => {
+test('API do Stripe vai para o stub: portal', async ({ page }) => {
   const owner = await createUser({ role: 'pub' })
+  const customerId = `cus_e2e_smoke_${owner.id}`
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    owner.id
+  ])
   await signIn(page, owner)
 
-  const portal = await page.request.get(
-    '/api/auth/dodopayments/customer/portal'
+  const portal = await page.request.post(
+    '/api/auth/subscription/billing-portal',
+    {
+      data: { returnUrl: '/admin/billing', disableRedirect: true },
+      headers: { origin: BASE_URL }
+    }
   )
   expect(portal.ok(), await portal.text()).toBe(true)
-  expect((await portal.json()).url).toContain(
-    `${STUB_URL}/dodo/portal/cus_e2e_`
+  expect((await portal.json()).url).toBe(
+    `${STUB_URL}/stripe/portal/${customerId}`
   )
-
-  const payments = await page.request.get(
-    '/api/auth/dodopayments/customer/payments/list'
-  )
-  expect(payments.ok(), await payments.text()).toBe(true)
-  expect((await payments.json()).items).toEqual([
-    expect.objectContaining({ status: 'succeeded', total_amount: 9900 })
-  ])
 
   const calls = (await (
-    await page.request.get(`${STUB_URL}/dodo/calls`)
-  ).json()) as { path: string; query: Record<string, string> }[]
+    await page.request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { path: string; body: Record<string, string> }[]
   expect(calls).toContainEqual(
     expect.objectContaining({
-      path: '/customers',
-      query: { email: owner.email }
+      path: '/billing_portal/sessions',
+      body: expect.objectContaining({ customer: customerId })
     })
   )
 })
