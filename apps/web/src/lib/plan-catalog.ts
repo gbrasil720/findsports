@@ -218,19 +218,69 @@ export function getPlanExitLink(origin: PlanOrigin | undefined) {
   }
 }
 
+/** O que `/plan` e `/admin/billing` leem da assinatura para escolher a ação. */
+type PlanSubscription =
+  | {
+      plan: SubscriptionPlan
+      status: string
+      standing: SubscriptionStanding | null
+      currentPeriodEnd: string | Date | null
+      dodoSubscriptionId: string | null
+    }
+  | null
+  | undefined
+
+/**
+ * O que `/plan` oferece, pelo nosso estado da assinatura — nunca por consulta
+ * ao provedor (WEB-249):
+ *
+ * - `trial`: trial em vigor. O plano aparece como atual e nada é contratado
+ *   antes do vencimento.
+ * - `regularize`: assinatura paga parada. Ela existe no provedor, e um
+ *   checkout novo abriria outra (WEB-170).
+ * - `checkout`: o resto. Inclui o trial vencido sem assinatura no provedor: é
+ *   uma linha local, sem nada a regularizar — esse bar ainda não contratou.
+ */
+export type PlanPageMode = 'checkout' | 'trial' | 'regularize'
+
+export function getPlanPageMode(subscription: PlanSubscription): PlanPageMode {
+  switch (subscription?.standing) {
+    case 'current':
+      return subscription.status === 'trialing' ? 'trial' : 'checkout'
+    case 'past_due':
+      return 'regularize'
+    case 'trial_ended':
+      return subscription.dodoSubscriptionId ? 'regularize' : 'checkout'
+    default:
+      return 'checkout'
+  }
+}
+
+/**
+ * Plano que `/plan` abre selecionado: o da assinatura, vigente ou não, e o Pro
+ * só para quem nunca teve uma. Nunca um plano abaixo do atual, nem outro plano
+ * a um clique do checkout (WEB-249).
+ */
+export function getDefaultPlanSelection(
+  subscription: { plan: SubscriptionPlan } | null | undefined
+): SubscriptionPlan {
+  return subscription?.plan ?? 'pro'
+}
+
 /**
  * Cabeçalho de `/plan` pela situação da assinatura (WEB-170). Plano parado
  * regulariza em vez de contratar: checkout do provedor sempre abre assinatura
  * nova, e a parada seguiria cobrando quando o cartão voltasse. Quem já teve
- * assinatura não está no "último passo" do cadastro.
+ * assinatura não está no "último passo" do cadastro, e quem está em trial
+ * ainda não paga: nada de "próximo ciclo de cobrança" (WEB-261).
  */
-export function getPlanHeader(
-  subscription:
-    | { plan: SubscriptionPlan; standing: SubscriptionStanding | null }
-    | null
-    | undefined
-): { kicker: string; title: string; text: string } {
+export function getPlanHeader(subscription: PlanSubscription): {
+  kicker: string
+  title: string
+  text: string
+} {
   const name = subscription ? getPlan(subscription.plan).name : ''
+  const mode = getPlanPageMode(subscription)
   switch (subscription?.standing) {
     case 'past_due':
       return {
@@ -242,9 +292,22 @@ export function getPlanHeader(
       return {
         kicker: LAPSED_COPY.trial_ended.label,
         title: `Continue no plano ${name}.`,
-        text: `${LAPSED_COPY.trial_ended.cause} Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
+        text:
+          mode === 'regularize'
+            ? `${LAPSED_COPY.trial_ended.cause} Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
+            : `${LAPSED_COPY.trial_ended.cause} Contrate o plano para os recursos voltarem, ou escolha outro abaixo.`
       }
     case 'current':
+      if (mode === 'trial' && subscription.currentPeriodEnd) {
+        const until = new Date(
+          subscription.currentPeriodEnd
+        ).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+        return {
+          kicker: 'Trial gratuito',
+          title: `Você está no trial do ${name} até ${until}.`,
+          text: 'A contratação abre aqui quando o trial terminar. Até lá, os recursos do plano seguem liberados.'
+        }
+      }
       return {
         kicker: 'Alterar plano',
         title: 'Escolha seu novo plano.',
@@ -260,7 +323,9 @@ export function getPlanHeader(
       return {
         kicker: 'Último passo',
         title: 'Escolha o plano do seu bar.',
-        text: 'Você pode trocar ou cancelar quando quiser. Comece com 45 dias grátis — sem cobranças até o fim do período.'
+        // Sem prometer dias grátis: o número que estava aqui não existia em
+        // fonte nenhuma (WEB-261). Qual prometer é assunto da WEB-114.
+        text: 'Você pode trocar ou cancelar quando quiser.'
       }
   }
 }

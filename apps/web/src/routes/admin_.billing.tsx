@@ -15,7 +15,12 @@ import {
   listCustomerPayments
 } from '@/lib/dodo-customer-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
-import { getPlan, getTrialNotice, PLAN_CATALOG } from '@/lib/plan-catalog'
+import {
+  getPlan,
+  getPlanPageMode,
+  getTrialNotice,
+  PLAN_CATALOG
+} from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -144,6 +149,10 @@ function BillingPage() {
   // (WEB-141). Sem isso a página dizia "nenhuma assinatura" para quem deve.
   const standing = subscription?.standing
   const lapsed = isLapsed(standing) ? standing : null
+  // Trial vencido sem assinatura no provedor não tem o que regularizar no
+  // portal: esse bar ainda não contratou, e o caminho é `/plan` (WEB-249).
+  const contractInPlan =
+    lapsed !== null && getPlanPageMode(subscription) === 'checkout'
   const shownPlan = plan ?? (lapsed ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
   const statusInfo =
@@ -268,9 +277,10 @@ function BillingPage() {
                 {lapsed ? (
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">
                     {LAPSED_COPY[lapsed].cause} Recursos do plano, como o
-                    cardápio no perfil, ficam suspensos até a assinatura ser
-                    regularizada. Atualize o método de pagamento em “Gerenciar
-                    assinatura”.
+                    cardápio no perfil, ficam suspensos até{' '}
+                    {contractInPlan
+                      ? 'o plano ser contratado.'
+                      : 'a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
                   </p>
                 ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
@@ -286,6 +296,20 @@ function BillingPage() {
             )}
 
             <div className="flex flex-wrap gap-3">
+              {contractInPlan && planInfo ? (
+                <Link
+                  to="/plan"
+                  search={{ origin: 'billing' }}
+                  className="onside-btn onside-btn-acid min-h-11"
+                >
+                  <ArrowRight
+                    size={14}
+                    color="currentColor"
+                    aria-hidden="true"
+                  />
+                  Continuar no {planInfo.name}
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={handleOpenPortal}

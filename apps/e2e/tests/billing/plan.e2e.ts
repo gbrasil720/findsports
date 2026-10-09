@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { sendDodoWebhook } from '../../fixtures/dodo'
@@ -49,7 +50,12 @@ test('pagamento pendente: aviso para regularizar, sem checkout novo', async ({
   ).toHaveCount(0)
 })
 
-test('trial encerrado: aviso para continuar no plano', async ({ page }) => {
+// WEB-249: o trial do onboarding é uma linha local, sem assinatura no
+// provedor. Vencido, não há o que regularizar: o bar ainda não contratou. O
+// clique que abre o checkout está em `checkout.serial.e2e.ts`.
+test('trial encerrado sem assinatura no provedor: checkout do plano do trial', async ({
+  page
+}) => {
   const { user } = await createPub({
     subscription: {
       plan: 'elite',
@@ -64,9 +70,81 @@ test('trial encerrado: aviso para continuar no plano', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Continue no plano Elite.' })
   ).toBeVisible()
+  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
+  await expect(
+    page.getByRole('button', { name: 'Continuar com Elite' })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Regularizar assinatura' })
+  ).toHaveCount(0)
+})
+
+test('trial encerrado com assinatura no provedor: regulariza, sem checkout novo', async ({
+  page
+}) => {
+  const { user } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: inDays(-1),
+      dodoSubscriptionId: `sub_e2e_${randomUUID()}`
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
   await expect(
     page.getByRole('link', { name: 'Regularizar assinatura' })
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /^Continuar com/ })
+  ).toHaveCount(0)
+})
+
+test('trial em vigor: cabeçalho do trial e "Plano atual" desabilitado', async ({
+  page
+}) => {
+  const { user } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: inDays(14)
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  // WEB-261: quem ainda não paga não lê "alterar plano" nem "ciclo de cobrança".
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+  ).toBeVisible()
+  await expect(page.getByText('Alterar plano')).toHaveCount(0)
+  await expect(page.getByText(/ciclo de cobrança/)).toHaveCount(0)
+
+  // WEB-249: abre no plano do trial, não num inferior a um clique do checkout.
+  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
+  await expect(page.getByText(/plano inferior ao atual/)).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
+
+  // Contratar é só depois do vencimento, qualquer que seja o plano.
+  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
+  await expect(
+    page.getByRole('button', { name: 'Disponível ao fim do trial' })
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: /^Continuar com/ })
+  ).toHaveCount(0)
+})
+
+test('assinatura paga abre no próprio plano, sem checkout de outro por padrão', async ({
+  page
+}) => {
+  const { user } = await createPub({ subscription: { plan: 'starter' } })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  await expect(page.getByRole('radio', { name: /^Starter,/ })).toBeChecked()
+  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
 })
 
 test('checkout desligado: aviso na tela e o servidor recusa com CHECKOUT_DISABLED', async ({

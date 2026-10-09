@@ -7,9 +7,11 @@ import {
   formatHistoryWindow,
   formatPerGame,
   getAnalyticsEntitlement,
+  getDefaultPlanSelection,
   getPlan,
   getPlanExitLink,
   getPlanHeader,
+  getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
   isDowngrade,
@@ -324,31 +326,107 @@ describe('profilePerks', () => {
   })
 })
 
-describe('getPlanHeader', () => {
-  test('sem assinatura é o último passo do cadastro', () => {
-    expect(getPlanHeader(null).kicker).toBe('Último passo')
+/** Assinaturas como `pub.getMySubscription` devolve, uma por situação. */
+const paid = {
+  plan: 'pro',
+  status: 'active',
+  standing: 'current',
+  currentPeriodEnd: '2026-11-08T15:00:00.000Z',
+  dodoSubscriptionId: 'sub_1'
+} as const
+const liveTrial = {
+  plan: 'elite',
+  status: 'trialing',
+  standing: 'current',
+  currentPeriodEnd: '2026-10-22T15:00:00.000Z',
+  dodoSubscriptionId: null
+} as const
+const endedTrial = { ...liveTrial, standing: 'trial_ended' } as const
+const pastDue = { ...paid, status: 'past_due', standing: 'past_due' } as const
+const ended = { ...paid, status: 'inactive', standing: 'ended' } as const
+
+describe('getPlanPageMode (WEB-249)', () => {
+  test('trial em vigor não contrata: o plano é o atual até vencer', () => {
+    expect(getPlanPageMode(liveTrial)).toBe('trial')
   })
 
-  test('plano parado manda regularizar, com o nome do plano', () => {
-    expect(getPlanHeader({ plan: 'pro', standing: 'past_due' })).toMatchObject({
+  test('trial vencido sem assinatura no provedor ainda não contratou', () => {
+    expect(getPlanPageMode(endedTrial)).toBe('checkout')
+  })
+
+  test('assinatura paga parada regulariza, sem checkout novo', () => {
+    expect(getPlanPageMode(pastDue)).toBe('regularize')
+    expect(
+      getPlanPageMode({ ...endedTrial, dodoSubscriptionId: 'sub_1' })
+    ).toBe('regularize')
+  })
+
+  test('sem assinatura, paga em dia ou encerrada passam pelo checkout', () => {
+    expect(getPlanPageMode(null)).toBe('checkout')
+    expect(getPlanPageMode(undefined)).toBe('checkout')
+    expect(getPlanPageMode(paid)).toBe('checkout')
+    expect(getPlanPageMode(ended)).toBe('checkout')
+  })
+})
+
+describe('getDefaultPlanSelection (WEB-249)', () => {
+  test('abre no plano da assinatura, nunca abaixo nem em outro', () => {
+    for (const plan of ['starter', 'pro', 'elite'] as const) {
+      expect(getDefaultPlanSelection({ plan })).toBe(plan)
+      // Selecionado o próprio plano, o botão é "Plano atual", desabilitado.
+      expect(
+        getPlanSelectionState(plan, getDefaultPlanSelection({ plan }))
+      ).toEqual({ isDowngrade: false, isSamePlan: true })
+    }
+  })
+
+  test('quem nunca teve assinatura começa no Pro', () => {
+    expect(getDefaultPlanSelection(null)).toBe('pro')
+    expect(getDefaultPlanSelection(undefined)).toBe('pro')
+  })
+})
+
+describe('getPlanHeader', () => {
+  test('sem assinatura é o último passo do cadastro, sem prometer dias grátis', () => {
+    const header = getPlanHeader(null)
+    expect(header.kicker).toBe('Último passo')
+    expect(header.text).not.toMatch(/\d|grátis/)
+  })
+
+  test('assinatura paga parada manda regularizar, com o nome do plano', () => {
+    expect(getPlanHeader(pastDue)).toMatchObject({
       kicker: 'Pagamento pendente',
       title: 'Regularize seu plano Pro.'
     })
     expect(
-      getPlanHeader({ plan: 'elite', standing: 'trial_ended' })
-    ).toMatchObject({
+      getPlanHeader({ ...endedTrial, dodoSubscriptionId: 'sub_1' }).text
+    ).toContain('sem contratar de novo')
+  })
+
+  test('trial vencido sem assinatura no provedor chama para contratar', () => {
+    const header = getPlanHeader(endedTrial)
+    expect(header).toMatchObject({
       kicker: 'Trial encerrado',
       title: 'Continue no plano Elite.'
     })
+    expect(header.text).toContain('Contrate o plano')
+    expect(header.text).not.toContain('sem contratar de novo')
   })
 
-  test('vigente troca e encerrado reativa', () => {
-    expect(getPlanHeader({ plan: 'pro', standing: 'current' }).kicker).toBe(
-      'Alterar plano'
+  test('trial em vigor diz até quando vai, sem falar em troca nem cobrança (WEB-261)', () => {
+    const header = getPlanHeader(liveTrial)
+    expect(header).toMatchObject({
+      kicker: 'Trial gratuito',
+      title: 'Você está no trial do Elite até 22 de outubro.'
+    })
+    expect(Object.values(header).join(' ')).not.toMatch(
+      /alterar plano|novo plano|ciclo de cobrança/i
     )
-    expect(getPlanHeader({ plan: 'pro', standing: 'ended' }).kicker).toBe(
-      'Reativar plano'
-    )
+  })
+
+  test('paga em dia troca e encerrada reativa', () => {
+    expect(getPlanHeader(paid).kicker).toBe('Alterar plano')
+    expect(getPlanHeader(ended).kicker).toBe('Reativar plano')
   })
 })
 
