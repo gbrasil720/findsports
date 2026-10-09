@@ -11,10 +11,6 @@ on:
 permissions:
   contents: read
 
-# PostGIS para service containers — espelho no GHCR (WEB-330), sem Docker Hub.
-env:
-  CI_POSTGIS_IMAGE: ghcr.io/gbrasil720/findsports/ci-postgis:17-3.5-alpine
-
 jobs:
   # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
   # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
@@ -62,7 +58,8 @@ jobs:
       RUN_DISPOSABLE_DB_TESTS: "1"
     services:
       postgres:
-        image: ${{ env.CI_POSTGIS_IMAGE }}
+        # GHCR (WEB-330): literal obrigatório — `services.*.image` não aceita `env`.
+        image: ghcr.io/gbrasil720/findsports/ci-postgis:17-3.5-alpine
         credentials:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -106,7 +103,7 @@ jobs:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
       postgres:
-        image: ${{ env.CI_POSTGIS_IMAGE }}
+        image: ghcr.io/gbrasil720/findsports/ci-postgis:17-3.5-alpine
         credentials:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
