@@ -10,6 +10,7 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
 import { analytics } from '@/lib/analytics'
+import { startCheckout } from '@/lib/billing-client'
 import {
   CHECKOUT_ENABLED_DEFAULT,
   getDefaultPlanSelection,
@@ -27,7 +28,6 @@ import { roleAccountLabel } from '@/lib/roles'
 import { markCheckoutIntent } from '@/lib/subscription-receipt'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { authClient } from '../lib/auth-client'
 
 export const Route = createFileRoute('/plan')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -108,18 +108,10 @@ function PlanSelection() {
     setError(null)
 
     try {
-      const { data, error: checkoutError } =
-        await authClient.dodopayments.checkoutSession({
-          slug: selected
-        })
-
-      if (checkoutError || !data?.url) {
-        setError('Não foi possível iniciar o pagamento. Tente novamente.')
-        return
-      }
-      // Sem `window.location.href = data.url`: a resposta vem com
-      // `redirect: true`, e o cliente do better-auth já navega para ela
-      // (`redirectPlugin`). Navegar de novo abortava a primeira ida (WEB-241).
+      // Com URL na resposta o cliente do better-auth já está navegando para
+      // o Stripe; ver `startCheckout` (WEB-241).
+      if (await startCheckout(selected)) return
+      setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } catch {
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } finally {
@@ -127,10 +119,11 @@ function PlanSelection() {
     }
   }
 
-  const { isDowngrade, isSamePlan } = getPlanSelectionState(
-    currentPlan,
-    selected
-  )
+  const selection = getPlanSelectionState(currentPlan, selected)
+  const { isDowngrade } = selection
+  // No teste grátis o plano vigente ainda não foi contratado: escolher o
+  // mesmo plano é contratar, não "plano atual" (WEB-31).
+  const isSamePlan = selection.isSamePlan && !onTrial
 
   return (
     <OnboardingLayout variant="plan">
@@ -200,7 +193,7 @@ function PlanSelection() {
             </span>
             . {trialNotice ? `${trialNotice}. ` : null}
             {onTrial
-              ? null
+              ? 'Contratar agora não antecipa a cobrança.'
               : 'Selecione outro plano abaixo para fazer a troca.'}
           </p>
         </div>
@@ -275,8 +268,8 @@ function PlanSelection() {
         </Link>
 
         {/* Assinatura paga parada não passa pelo checkout: o topo já leva a
-            regularizar (WEB-170). Em trial o botão fica, desabilitado:
-            contratar é só depois do vencimento (WEB-249). */}
+            regularizar (WEB-170). Em trial o botão contrata, e o Stripe só
+            cobra no fim do teste (WEB-31). */}
         {regularize ? null : (
           <button
             type="button"
@@ -284,7 +277,6 @@ function PlanSelection() {
             disabled={
               loading ||
               isSamePlan ||
-              onTrial ||
               subscriptionQuery.isLoading ||
               !checkoutLiberado
             }
@@ -293,9 +285,7 @@ function PlanSelection() {
                 ? 'Contratação temporariamente indisponível'
                 : isSamePlan
                   ? 'Este já é seu plano atual'
-                  : onTrial
-                    ? 'A contratação abre quando o trial terminar'
-                    : undefined
+                  : undefined
             }
             className="onside-btn onside-btn-acid min-h-11"
           >
@@ -311,10 +301,8 @@ function PlanSelection() {
               ? 'Redirecionando…'
               : isSamePlan
                 ? 'Plano atual'
-                : onTrial
-                  ? 'Disponível ao fim do trial'
-                  : `Continuar com ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-            {!isSamePlan && !onTrial && !loading ? (
+                : `${onTrial ? 'Contratar' : 'Continuar com'} ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
+            {!isSamePlan && !loading ? (
               <ArrowRight size={16} color="currentColor" aria-hidden="true" />
             ) : null}
           </button>

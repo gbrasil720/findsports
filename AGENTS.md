@@ -79,10 +79,12 @@ compatível com o código anterior (expand → contract). PR publica no Worker
 **Preview** (`https://onside-web-preview.dev-guilhermebrasil.workers.dev`): uma URL só,
 o último PR publicado ganha. Banco = branch `preview` do Neon (cópia de produção, com
 e-mails de usuários reais) via Hyperdrive `onside-db-preview`; o CI migra pelo segredo
-`DATABASE_URL_PREVIEW`. Segredos do Worker: `BETTER_AUTH_SECRET` próprio, chaves de
-teste da Dodo, `LOCATIONIQ_API_KEY`. Ele roda com `NODE_ENV=production`, então duas
-vars em `env.preview` desligam o que isso ligaria: `DODO_PAYMENTS_ENVIRONMENT=test_mode`
-(sem ela a Dodo iria para `live_mode`) e `EMAIL_DELIVERY=console` — **nenhum e-mail sai
+`DATABASE_URL_PREVIEW`. Segredos do Worker: `BETTER_AUTH_SECRET` próprio, chaves do
+sandbox do Stripe (`STRIPE_SECRET_KEY` com `sk_test_`, `STRIPE_WEBHOOK_SECRET`),
+`LOCATIONIQ_API_KEY`. No Stripe o modo vem da chave, e o env recusa chave viva
+(`sk_live_`) fora do domínio `onside.sh`, então o preview não cobra cartão de verdade.
+Ele roda com `NODE_ENV=production`, e uma var em `env.preview` desliga o que isso
+ligaria: `EMAIL_DELIVERY=console` — **nenhum e-mail sai
 do preview**: cadastro, verificação e reset de senha gravam o e-mail, com link e token,
 no log do Worker (`bunx wrangler tail onside-web-preview`), que é como se testa.
 Aceitável por ser ambiente de teste; o env recusa `EMAIL_DELIVERY=console` com
@@ -119,7 +121,7 @@ Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 ### Environment variables
 
 Split by runtime boundary:
-- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `LOCATIONIQ_API_KEY`, `NODE_ENV`
+- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
@@ -133,6 +135,28 @@ Onde os valores de produção moram (Worker `onside-web`): o que não é segredo
 `apps/web/.dev.vars.example`); `VITE_*` são de build e vêm das `vars` do GitHub
 Actions no job `deploy`. O Worker não lê `DATABASE_URL` — o banco vem do binding
 `HYPERDRIVE`; ela só existe para migration e scripts.
+
+### Cobrança (Stripe)
+
+Cartão pelo Stripe, via plugin `@better-auth/stripe` (WEB-31). Checkout
+(`/api/auth/subscription/upgrade`), portal (`/api/auth/subscription/billing-portal`)
+e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do plugin.
+
+- **Fonte do app é a tabela `subscription`** (`packages/db/src/schema/platform.ts`):
+  plano, situação, fim do período. Quem a mantém é o `onEvent` do plugin, em
+  `packages/auth/src/stripe-sync.ts`, que busca no Stripe o estado atual da
+  assinatura a cada evento — por isso evento repetido ou fora de ordem não estraga
+  nada. A tabela de tradução Stripe → `subscription_status` está no topo desse arquivo.
+- `stripe_subscription` é do plugin (é como ele evita segunda assinatura para o mesmo
+  dono). O app não lê plano dali.
+- Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
+  `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
+- **Teste grátis nasce no cadastro, sem cartão** (`billing.onboarding_trial`). Quem
+  contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
+  quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
+- Chaves de `app_config`: `billing.checkout_enabled` (abre a contratação),
+  `billing.onboarding_trial` (teste do cadastro) e `billing.founder_coupon` (cupom de
+  fundador no checkout).
 
 ### UI / Styling
 
@@ -160,7 +184,7 @@ sprite/glyphs, `maplibre-gl` fora do `optimizeDeps` do Vite).
 
 Playwright em `apps/e2e`, job `e2e` no CI. **Antes de escrever ou rodar teste de
 navegador, leia `docs/e2e.md`** — fixtures, dublês (outbox de e-mail, stub da
-LocationIQ, R2, webhook da Dodo), por que o servidor roda sem cache e as
+LocationIQ, R2, API e webhook do Stripe), por que o servidor roda sem cache e as
 variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
 ### Routing

@@ -3,18 +3,18 @@ import type { APIRequestContext, PlaywrightWorkerArgs } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { sendDodoWebhook } from '../../fixtures/dodo'
-import {
-  type SubscriptionEvent,
-  subscriptionWebhook
-} from '../../fixtures/dodo-payloads'
 import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
+import {
+  deliverSubscription,
+  sendStripeWebhook,
+  stripeSubscription
+} from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
-// Transições de assinatura pelo webhook assinado da Dodo. Webhook não passa
-// pelo portão de `billing.checkout_enabled`, então nada aqui é serial. O
-// `request` dos testes vai sem cookie, como a Dodo: com sessão, o better-auth
-// exigiria `Origin`.
+// Transições de assinatura pelo webhook assinado do Stripe (WEB-31). Webhook
+// não passa pelo portão de `billing.checkout_enabled`, então nada aqui é
+// serial. O `request` dos testes vai sem cookie, como o Stripe: com sessão, o
+// better-auth exigiria `Origin`.
 
 /**
  * Um ponto no interior do Amazonas, longe de São Paulo e dos outros testes:
@@ -60,11 +60,12 @@ async function stateOf(barId: string) {
   const [row] = await query<{
     status: string
     plan: string
-    dodo_subscription_id: string | null
+    provider: string | null
+    external_subscription_id: string | null
     current_period_end: string | null
     is_active: boolean
   }>(
-    `SELECT s.status, s.plan, s.dodo_subscription_id, b.is_active,
+    `SELECT s.status, s.plan, s.provider, s.external_subscription_id, b.is_active,
             -- Coluna sem fuso, gravada em UTC pelo app: lida como texto, e
             -- não como Date, que o pg interpretaria no fuso local.
             to_char(s.current_period_end, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS current_period_end
@@ -77,17 +78,18 @@ async function stateOf(barId: string) {
 
 async function deliver(
   request: APIRequestContext,
-  type: SubscriptionEvent,
-  options: Parameters<typeof subscriptionWebhook>[1]
+  type: Parameters<typeof deliverSubscription>[1],
+  subscription: Parameters<typeof stripeSubscription>[0]
 ) {
-  const response = await sendDodoWebhook(
+  const response = await deliverSubscription(
     request,
-    subscriptionWebhook(type, options)
+    type,
+    stripeSubscription(subscription)
   )
   expect(response.ok(), await response.text()).toBe(true)
 }
 
-test('ativo: cria a assinatura, ativa o bar e o bar aparece na busca', async ({
+test('ativa: cria a assinatura, ativa o bar e o bar aparece na busca', async ({
   playwright,
   request
 }) => {
@@ -97,25 +99,29 @@ test('ativo: cria a assinatura, ativa o bar e o bar aparece na busca', async ({
   })
   expect(await fanSearch(playwright, spot)).not.toContain(barId)
 
-  const nextBillingDate = inDays(40)
-  await deliver(request, 'subscription.active', {
-    email: user.email,
-    subscriptionId: `sub_e2e_${barId}`,
+  const currentPeriodEnd = inDays(40)
+  // O Stripe conta o período em segundos inteiros.
+  currentPeriodEnd.setMilliseconds(0)
+  await deliver(request, 'customer.subscription.created', {
+    id: `sub_e2e_${barId}`,
+    status: 'active',
     plan: 'elite',
-    nextBillingDate
+    userId: user.id,
+    currentPeriodEnd
   })
 
   expect(await stateOf(barId)).toEqual({
     status: 'active',
     plan: 'elite',
-    dodo_subscription_id: `sub_e2e_${barId}`,
-    current_period_end: nextBillingDate.toISOString(),
+    provider: 'stripe',
+    external_subscription_id: `sub_e2e_${barId}`,
+    current_period_end: currentPeriodEnd.toISOString(),
     is_active: true
   })
   expect(await fanSearch(playwright, spot)).toContain(barId)
 })
 
-test('renovado: assinatura parada volta a ativa, com o novo período', async ({
+test('renovada: assinatura parada volta a ativa, com o novo período', async ({
   request
 }) => {
   const subscriptionId = `sub_e2e_${randomInt(1e9)}`
@@ -123,28 +129,30 @@ test('renovado: assinatura parada volta a ativa, com o novo período', async ({
     subscription: {
       plan: 'pro',
       status: 'past_due',
-      dodoSubscriptionId: subscriptionId
+      externalSubscriptionId: subscriptionId
     }
   })
 
-  const nextBillingDate = inDays(60)
-  await deliver(request, 'subscription.renewed', {
-    email: user.email,
-    subscriptionId,
+  const currentPeriodEnd = inDays(60)
+  currentPeriodEnd.setMilliseconds(0)
+  await deliver(request, 'customer.subscription.updated', {
+    id: subscriptionId,
+    status: 'active',
     plan: 'pro',
-    nextBillingDate
+    userId: user.id,
+    currentPeriodEnd
   })
 
   expect(await stateOf(barId)).toMatchObject({
     status: 'active',
     plan: 'pro',
-    current_period_end: nextBillingDate.toISOString(),
+    current_period_end: currentPeriodEnd.toISOString(),
     is_active: true
   })
 })
 
-for (const type of ['subscription.on_hold', 'subscription.failed'] as const) {
-  test(`${type}: vira past_due e o painel avisa o pagamento pendente`, async ({
+for (const status of ['past_due', 'unpaid'] as const) {
+  test(`${status}: vira past_due e o painel avisa o pagamento pendente`, async ({
     page,
     request
   }) => {
@@ -153,14 +161,15 @@ for (const type of ['subscription.on_hold', 'subscription.failed'] as const) {
       subscription: {
         plan: 'pro',
         status: 'active',
-        dodoSubscriptionId: subscriptionId
+        externalSubscriptionId: subscriptionId
       }
     })
 
-    await deliver(request, type, {
-      email: user.email,
-      subscriptionId,
-      plan: 'pro'
+    await deliver(request, 'customer.subscription.updated', {
+      id: subscriptionId,
+      status,
+      plan: 'pro',
+      userId: user.id
     })
 
     // Bar segue no ar: a janela de regularização vai até o cancelamento.
@@ -181,7 +190,7 @@ for (const type of ['subscription.on_hold', 'subscription.failed'] as const) {
   })
 }
 
-test('cancelado: desativa a assinatura e o bar some da busca', async ({
+test('encerrada: desativa a assinatura e o bar some da busca', async ({
   playwright,
   request
 }) => {
@@ -190,15 +199,16 @@ test('cancelado: desativa a assinatura e o bar some da busca', async ({
     subscription: {
       plan: 'elite',
       status: 'active',
-      dodoSubscriptionId: subscriptionId
+      externalSubscriptionId: subscriptionId
     }
   })
   expect(await fanSearch(playwright, spot)).toContain(barId)
 
-  await deliver(request, 'subscription.cancelled', {
-    email: user.email,
-    subscriptionId,
-    plan: 'elite'
+  await deliver(request, 'customer.subscription.deleted', {
+    id: subscriptionId,
+    status: 'canceled',
+    plan: 'elite',
+    userId: user.id
   })
 
   expect(await stateOf(barId)).toMatchObject({
@@ -208,10 +218,101 @@ test('cancelado: desativa a assinatura e o bar some da busca', async ({
   expect(await fanSearch(playwright, spot)).not.toContain(barId)
 })
 
+test('troca de plano no portal do Stripe muda o plano do bar', async ({
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomInt(1e9)}`
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'active',
+      externalSubscriptionId: subscriptionId
+    }
+  })
+
+  await deliver(request, 'customer.subscription.updated', {
+    id: subscriptionId,
+    status: 'active',
+    plan: 'elite',
+    userId: user.id
+  })
+
+  expect(await stateOf(barId)).toMatchObject({
+    status: 'active',
+    plan: 'elite',
+    is_active: true
+  })
+})
+
+test('contratou no teste grátis: segue em teste, agora com assinatura no Stripe', async ({
+  request
+}) => {
+  const trialEnd = inDays(100)
+  trialEnd.setMilliseconds(0)
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: trialEnd
+    }
+  })
+
+  await deliver(request, 'customer.subscription.created', {
+    id: `sub_e2e_${barId}`,
+    status: 'trialing',
+    plan: 'pro',
+    userId: user.id,
+    currentPeriodEnd: trialEnd
+  })
+
+  expect(await stateOf(barId)).toEqual({
+    status: 'trialing',
+    plan: 'pro',
+    provider: 'stripe',
+    external_subscription_id: `sub_e2e_${barId}`,
+    current_period_end: trialEnd.toISOString(),
+    is_active: true
+  })
+})
+
+test('o corpo do evento não manda: vale o estado atual no Stripe', async ({
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomInt(1e9)}`
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'active',
+      externalSubscriptionId: subscriptionId
+    }
+  })
+  const current = { id: subscriptionId, plan: 'pro', userId: user.id } as const
+  await deliver(request, 'customer.subscription.updated', {
+    ...current,
+    status: 'active'
+  })
+
+  // Evento antigo chegando atrasado, ou repetido: diz "encerrada", mas no
+  // Stripe a assinatura está ativa. Nada muda.
+  const stale = await sendStripeWebhook(request, {
+    id: `evt_e2e_atrasado_${subscriptionId}`,
+    object: 'event',
+    type: 'customer.subscription.deleted',
+    data: { object: stripeSubscription({ ...current, status: 'canceled' }) }
+  })
+  expect(stale.ok(), await stale.text()).toBe(true)
+
+  expect(await stateOf(barId)).toMatchObject({
+    status: 'active',
+    plan: 'pro',
+    is_active: true
+  })
+})
+
 // WEB-194: casos que o webhook não aplica respondem 200 (reenvio não conserta)
 // e não mexem em plano, assinatura nem bar.
 
-test('produto desconhecido: não cria assinatura nem ativa o bar', async ({
+test('preço desconhecido: não cria assinatura nem ativa o bar', async ({
   request
 }) => {
   const { user, barId } = await createPub({
@@ -219,23 +320,25 @@ test('produto desconhecido: não cria assinatura nem ativa o bar', async ({
     bar: { is_active: false }
   })
 
-  await deliver(request, 'subscription.active', {
-    email: user.email,
-    subscriptionId: `sub_e2e_${barId}`,
+  await deliver(request, 'customer.subscription.created', {
+    id: `sub_e2e_${barId}`,
+    status: 'active',
     plan: 'starter',
-    productId: 'pdt_inexistente'
+    lookupKey: 'plano_inexistente',
+    userId: user.id
   })
 
   expect(await stateOf(barId)).toEqual({
     status: null,
     plan: null,
-    dodo_subscription_id: null,
+    provider: null,
+    external_subscription_id: null,
     current_period_end: null,
     is_active: false
   })
 })
 
-test('produto desconhecido na renovação: o plano pago não vira Starter', async ({
+test('preço desconhecido na renovação: o plano pago não vira Starter', async ({
   request
 }) => {
   const subscriptionId = `sub_e2e_${randomInt(1e9)}`
@@ -243,43 +346,38 @@ test('produto desconhecido na renovação: o plano pago não vira Starter', asyn
     subscription: {
       plan: 'elite',
       status: 'past_due',
-      dodoSubscriptionId: subscriptionId
+      externalSubscriptionId: subscriptionId
     }
   })
   const before = await stateOf(barId)
   expect(before).toMatchObject({ plan: 'elite', status: 'past_due' })
 
-  await deliver(request, 'subscription.renewed', {
-    email: user.email,
-    subscriptionId,
+  await deliver(request, 'customer.subscription.updated', {
+    id: subscriptionId,
+    status: 'active',
     plan: 'elite',
-    productId: 'pdt_inexistente',
-    nextBillingDate: inDays(60)
+    lookupKey: 'plano_inexistente',
+    userId: user.id,
+    currentPeriodEnd: inDays(60)
   })
 
   expect(await stateOf(barId)).toEqual(before)
 })
 
-test('customer divergente: nada é gravado', async ({ request }) => {
+test('pagamento que não concluiu não derruba o teste grátis do cadastro', async ({
+  request
+}) => {
   const { user, barId } = await createPub({
-    subscription: null,
-    bar: { is_active: false }
+    subscription: { plan: 'elite', status: 'trialing' }
   })
-  await query('UPDATE "user" SET dodo_customer_id = $1 WHERE id = $2', [
-    `cus_e2e_a_${barId}`,
-    user.id
-  ])
+  const before = await stateOf(barId)
 
-  await deliver(request, 'subscription.active', {
-    email: user.email,
-    subscriptionId: `sub_e2e_${barId}`,
-    plan: 'pro',
-    customerId: `cus_e2e_b_${barId}`
+  await deliver(request, 'customer.subscription.created', {
+    id: `sub_e2e_${barId}`,
+    status: 'incomplete',
+    plan: 'starter',
+    userId: user.id
   })
 
-  expect(await stateOf(barId)).toMatchObject({
-    status: null,
-    plan: null,
-    is_active: false
-  })
+  expect(await stateOf(barId)).toEqual(before)
 })

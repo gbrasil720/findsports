@@ -1,5 +1,5 @@
 type SubscriptionForDeletion = {
-  dodoSubscriptionId: string | null
+  externalSubscriptionId: string | null
   status: 'trialing' | 'active' | 'inactive' | 'past_due' | 'cancelled'
   currentPeriodEnd: Date | null
 }
@@ -10,7 +10,7 @@ export function getBarAccountDeletionBlock(
   subscription: SubscriptionForDeletion | null,
   now = new Date()
 ): BarAccountDeletionBlock | null {
-  if (!subscription?.dodoSubscriptionId) return null
+  if (!subscription?.externalSubscriptionId) return null
   if (
     subscription.status === 'active' ||
     subscription.status === 'trialing' ||

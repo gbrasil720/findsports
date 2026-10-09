@@ -6,9 +6,9 @@ import { query } from '../../fixtures/db'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
-// /admin/billing: plano atual, histórico de pagamentos e portal da Dodo. A
-// API da Dodo é o stub (`stubs/server.ts`): um pagamento de R$ 99,00 pago e
-// portal em `${STUB_URL}/dodo/portal/<customer>`.
+// /admin/billing: plano atual e portal do Stripe, onde ficam faturas, cartão,
+// troca de plano e cancelamento. A API do Stripe é o stub (`stubs/server.ts`):
+// portal em `${STUB_URL}/stripe/portal/<customer>`.
 
 async function openBilling(page: Page, options: PubOptions = {}) {
   const pub = await createPub(options)
@@ -38,12 +38,19 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/validate$/)
 })
 
-test('Elite ativo: plano, histórico e portal da Dodo', async ({ page }) => {
-  // O histórico só é pedido à Dodo para quem tem cliente lá (WEB-264): o id
-  // da assinatura é o rastro de quem já passou pelo checkout.
-  await openBilling(page, {
-    subscription: { dodoSubscriptionId: `sub_e2e_${randomUUID()}` }
+test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
+  // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
+  // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
+  const pub = await createPub({
+    subscription: { externalSubscriptionId: `sub_e2e_${randomUUID()}` }
   })
+  const customerId = `cus_e2e_${randomUUID()}`
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    pub.user.id
+  ])
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
 
   await expect(currentPlan(page)).toContainText('Elite')
   await expect(currentPlan(page)).toContainText('Ativo')
@@ -51,23 +58,21 @@ test('Elite ativo: plano, histórico e portal da Dodo', async ({ page }) => {
   await expect(
     currentPlan(page).getByRole('link', { name: 'Fazer upgrade' })
   ).toHaveCount(0)
-
-  const history = page.getByRole('region', { name: 'Histórico de pagamentos' })
-  await expect(history.getByRole('listitem')).toHaveCount(1)
-  await expect(history).toContainText(/R\$\s99,00/)
-  await expect(history).toContainText('Pago')
+  await expect(
+    page.getByText(/faturas e os recibos de cada cobrança ficam no portal/)
+  ).toBeVisible()
 
   const navigations: string[] = []
   page.on('request', (request) => {
     if (
       request.isNavigationRequest() &&
-      request.url().startsWith(`${STUB_URL}/dodo/portal/`)
+      request.url().startsWith(`${STUB_URL}/stripe/portal/`)
     ) {
       navigations.push(request.url())
     }
   })
   await page.getByRole('button', { name: 'Gerenciar assinatura' }).click()
-  await expect(page).toHaveURL(new RegExp(`^${STUB_URL}/dodo/portal/cus_e2e_`))
+  await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
   // WEB-241: uma navegação só; a segunda abortava a primeira.
   expect(navigations).toHaveLength(1)
 })
@@ -100,11 +105,20 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   await expect(currentPlan(page)).toContainText('Pro')
   await expect(currentPlan(page)).toContainText('Trial gratuito até')
   await expect(currentPlan(page)).toContainText(/faltam \d+ dias/)
-  // WEB-264: trial do onboarding não tem cliente na Dodo — o histórico é
-  // vazio, sem perguntar ao provedor.
+  // WEB-264: trial do cadastro não tem cliente no Stripe — sem portal para
+  // abrir e sem pagamento; o caminho é contratar em `/plan` (WEB-31).
   await expect(
     page.getByText('Nenhum pagamento registrado ainda.')
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Gerenciar assinatura' })
+  ).toHaveCount(0)
+  await expect(
+    currentPlan(page).getByText('O teste grátis não pede cartão.')
+  ).toBeVisible()
+  await expect(
+    currentPlan(page).getByRole('link', { name: 'Contratar plano' })
+  ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
 test('trial vencido sem pagamento mostra "Trial encerrado"', async ({

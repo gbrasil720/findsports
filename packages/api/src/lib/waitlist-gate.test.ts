@@ -18,7 +18,7 @@ describe('admissão da waitlist', () => {
       '/api/auth/sign-out',
       '/api/auth/get-session',
       '/api/auth/forget-password',
-      '/api/auth/dodopayments/webhooks'
+      '/api/auth/stripe/webhook'
     ]) {
       expect(acaoDeEntrada(`https://onside.app${path}`)).toBeNull()
     }

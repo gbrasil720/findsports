@@ -16,7 +16,7 @@ test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', 
   await setAppConfig('billing.onboarding_trial', {
     enabled: true,
     plan: 'elite',
-    days: 14
+    days: 120
   })
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
   await signIn(page, owner)
@@ -37,13 +37,13 @@ test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', 
     bar_plan: string
     plan: string
     status: string
-    dodo_subscription_id: string | null
-    vence_em_14_dias: boolean
+    external_subscription_id: string | null
+    vence_em_120_dias: boolean
   }>(
     `SELECT b.id, b.is_active, b.plan AS bar_plan, s.plan, s.status,
-            s.dodo_subscription_id,
-            s.current_period_end BETWEEN now() + interval '14 days' - interval '5 minutes'
-                                     AND now() + interval '14 days' AS vence_em_14_dias
+            s.external_subscription_id,
+            s.current_period_end BETWEEN now() + interval '120 days' - interval '5 minutes'
+                                     AND now() + interval '120 days' AS vence_em_120_dias
      FROM bar b LEFT JOIN subscription s ON s.bar_id = b.id
      WHERE b.user_id = $1`,
     [owner.id]
@@ -54,8 +54,9 @@ test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', 
     bar_plan: 'elite',
     plan: 'elite',
     status: 'trialing',
-    dodo_subscription_id: null,
-    vence_em_14_dias: true
+    // Trial do cadastro: sem cartão e sem nada no Stripe (WEB-31).
+    external_subscription_id: null,
+    vence_em_120_dias: true
   })
 
   // O repro do ticket: antes, outra conta recebia "Bar não encontrado.".

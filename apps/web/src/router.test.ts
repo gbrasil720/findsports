@@ -46,7 +46,6 @@ beforeAll(() => {
   process.env.BETTER_AUTH_SECRET ??= 'test-secret-with-at-least-32-chars'
   process.env.BETTER_AUTH_URL ??= 'http://localhost:3001'
   process.env.CORS_ORIGIN ??= 'http://localhost:3001'
-  process.env.DODO_PAYMENTS_API_KEY ??= 'test-api-key'
 })
 
 afterEach(() => {

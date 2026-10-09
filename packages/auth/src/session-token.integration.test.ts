@@ -6,8 +6,6 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 const password = 'Senha-de-teste-150!'
 
 async function setup() {
-  // `index.ts` instancia o cliente da Dodo no import; o teste não o usa.
-  process.env.DODO_PAYMENTS_API_KEY ||= 'test'
   const [{ db, eq, inArray, sql }, { account, rateLimit, user }, { auth }] =
     await Promise.all([
       import('@findsports_oficial/db'),

@@ -1,7 +1,7 @@
 import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
 
 /**
- * Dublês HTTP que o servidor (LocationIQ, Dodo) e o navegador (tiles do mapa)
+ * Dublês HTTP que o servidor (LocationIQ, Stripe) e o navegador (tiles do mapa)
  * chamam fora do alcance do `page.route`. Sobe pelo `webServer` do Playwright.
  *
  * LocationIQ, decidido pelo endereço pedido — sem estado, então testes em
@@ -16,17 +16,23 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * que o geocoding foi (ou não) chamado. Filtre pela rua do seu teste. `state`
  * é o estado por extenso, ou `null` quando o bar não tem UF (WEB-270).
  *
- * API da Dodo em `/dodo/*` (o `dodo-api.mjs` desvia o servidor para cá), com
- * respostas fixas e válidas para o SDK:
- * - `GET /customers?email=`: sempre acha um customer (`cus_e2e_` + hash do
- *   e-mail), então o plugin nunca cria um;
- * - `POST /customers/{id}/customer-portal/session`: link `/dodo/portal/{id}`;
- * - `GET /payments`: um pagamento `succeeded` de R$ 99,00 do customer pedido;
- * - `POST /checkouts`: `checkout_url` em `/dodo/checkout/{session_id}`, uma
- *   página do stub — o teste espera o redirect para lá.
+ * API do Stripe em `/v1/*` (o app aponta o SDK para cá por
+ * `STRIPE_API_BASE_URL`), com respostas fixas e válidas para o SDK:
+ * - `GET /v1/customers/search`: nunca acha ninguém, então o plugin cria o
+ *   cliente em `POST /v1/customers` (`cus_e2e_` + hash do e-mail);
+ * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
+ * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
+ *   cliente — vazia para quem ainda não passou pelo checkout;
+ * - `GET /v1/subscriptions/{id}`: o que o teste semeou em
+ *   `POST /stripe/subscriptions`, ou 404 — é o que o webhook lê;
+ * - `GET /v1/coupons/{id}`: cupom válido, menos o id `esgotado`;
+ * - `POST /v1/checkout/sessions`: `url` em `/stripe/checkout/{id}`, uma página
+ *   do stub — o teste espera o redirect para lá;
+ * - `POST /v1/billing_portal/sessions`: `url` em `/stripe/portal/{customer}`.
  *
- * `GET /dodo/calls` devolve as chamadas recebidas (`path` sem o `/dodo`, com
- * `query` e `body`). Filtre pelo e-mail ou customer do seu teste.
+ * `GET /stripe/calls` devolve as chamadas recebidas (`path` sem o `/v1`, com
+ * `query` e `body` — o corpo é formulário, com as chaves como o SDK manda:
+ * `line_items[0][price]`). Filtre pelo cliente ou e-mail do seu teste.
  */
 
 const calls: {
@@ -36,14 +42,16 @@ const calls: {
   at: string
 }[] = []
 
-type DodoCall = {
+type StripeCall = {
   method: string
   path: string
   query: Record<string, string>
-  body: unknown
+  body: Record<string, string>
   at: string
 }
-const dodoCalls: DodoCall[] = []
+const stripeCalls: StripeCall[] = []
+/** Assinaturas semeadas pelos testes, por id. É o "estado atual no Stripe". */
+const stripeSubscriptions = new Map<string, unknown>()
 
 function customerIdFor(email: string) {
   return `cus_e2e_${Bun.hash(email).toString(36)}`
@@ -89,8 +97,21 @@ Bun.serve({
 
     if (url.pathname === '/locationiq/calls') return Response.json(calls)
 
-    if (url.pathname === '/dodo/calls') return Response.json(dodoCalls)
-    if (url.pathname.startsWith('/dodo/')) return dodo(request, url)
+    if (url.pathname.startsWith('/v1/')) return stripe(request, url)
+    if (url.pathname === '/stripe/calls') return Response.json(stripeCalls)
+    if (url.pathname === '/stripe/subscriptions' && request.method === 'POST') {
+      const subscription = (await request.json()) as { id: string }
+      stripeSubscriptions.set(subscription.id, subscription)
+      return Response.json({ ok: true })
+    }
+    if (
+      url.pathname.startsWith('/stripe/checkout/') ||
+      url.pathname.startsWith('/stripe/portal/')
+    ) {
+      return new Response('<!doctype html><title>Stripe (stub)</title>', {
+        headers: { 'content-type': 'text/html' }
+      })
+    }
 
     if (url.pathname === '/tiles.pmtiles') {
       return new Response(EMPTY_PMTILES, {
@@ -102,76 +123,110 @@ Bun.serve({
   }
 })
 
-async function dodo(request: Request, url: URL) {
-  const path = url.pathname.slice('/dodo'.length)
+function stripeError(status: number, message: string) {
+  return Response.json(
+    { error: { type: 'invalid_request_error', message } },
+    { status }
+  )
+}
+
+async function stripe(request: Request, url: URL) {
+  const path = url.pathname.slice('/v1'.length)
   const query = Object.fromEntries(url.searchParams)
-  const text = await request.text()
-  const body = text ? JSON.parse(text) : null
-  dodoCalls.push({
+  const body = Object.fromEntries(new URLSearchParams(await request.text()))
+  stripeCalls.push({
     method: request.method,
     path,
     query,
     body,
     at: new Date().toISOString()
   })
-  const now = new Date().toISOString()
+  const list = (data: unknown[]) =>
+    Response.json({ object: 'list', data, has_more: false, url: path })
 
-  if (request.method === 'GET' && path === '/customers') {
-    const email = query.email ?? ''
+  if (request.method === 'GET' && path === '/customers/search') {
     return Response.json({
-      items: [
-        {
-          business_id: 'bus_e2e',
-          customer_id: customerIdFor(email),
-          email,
-          name: email,
-          created_at: now
-        }
-      ]
+      object: 'search_result',
+      data: [],
+      has_more: false,
+      url: path
     })
   }
 
-  const portal = /^\/customers\/([^/]+)\/customer-portal\/session$/.exec(path)
-  if (request.method === 'POST' && portal) {
-    return Response.json({ link: `${STUB_URL}/dodo/portal/${portal[1]}` })
-  }
-
-  if (request.method === 'GET' && path === '/payments') {
-    const customerId = query.customer_id ?? 'cus_e2e'
+  if (request.method === 'POST' && path === '/customers') {
+    const email = body.email ?? ''
     return Response.json({
-      items: [
-        {
-          payment_id: `pay_e2e_${customerId}`,
-          brand_id: 'brd_e2e',
-          created_at: now,
-          currency: 'BRL',
-          customer: { customer_id: customerId, email: '', name: '' },
-          digital_products_delivered: false,
-          has_license_key: false,
-          metadata: {},
-          payment_provider: 'dodo',
-          status: 'succeeded',
-          total_amount: 9900
-        }
-      ]
+      id: customerIdFor(email),
+      object: 'customer',
+      email,
+      name: body.name ?? null,
+      metadata: { userId: body['metadata[userId]'] ?? '' }
     })
   }
 
-  if (request.method === 'POST' && path === '/checkouts') {
-    const sessionId = `cks_e2e_${crypto.randomUUID()}`
+  if (request.method === 'GET' && path === '/subscriptions') {
+    return list(
+      [...stripeSubscriptions.values()].filter(
+        (item) => (item as { customer?: string }).customer === query.customer
+      )
+    )
+  }
+
+  const subscription = /^\/subscriptions\/([^/]+)$/.exec(path)
+  if (request.method === 'GET' && subscription) {
+    const found = stripeSubscriptions.get(subscription[1] ?? '')
+    return found
+      ? Response.json(found)
+      : stripeError(404, `No such subscription: ${subscription[1]}`)
+  }
+
+  if (request.method === 'GET' && path === '/prices') {
+    const lookupKey =
+      Object.entries(query).find(([key]) =>
+        key.startsWith('lookup_keys')
+      )?.[1] ?? ''
+    return list([
+      {
+        id: `price_e2e_${lookupKey}`,
+        object: 'price',
+        active: true,
+        currency: 'brl',
+        lookup_key: lookupKey,
+        recurring: { interval: 'month', usage_type: 'licensed' }
+      }
+    ])
+  }
+
+  const coupon = /^\/coupons\/([^/]+)$/.exec(path)
+  if (request.method === 'GET' && coupon) {
     return Response.json({
-      session_id: sessionId,
-      checkout_url: `${STUB_URL}/dodo/checkout/${sessionId}`
+      id: coupon[1],
+      object: 'coupon',
+      valid: coupon[1] !== 'esgotado'
     })
   }
 
-  if (path.startsWith('/checkout/') || path.startsWith('/portal/')) {
-    return new Response('<!doctype html><title>Dodo (stub)</title>', {
-      headers: { 'content-type': 'text/html' }
+  if (request.method === 'POST' && path === '/checkout/sessions') {
+    const id = `cs_e2e_${crypto.randomUUID()}`
+    return Response.json({
+      id,
+      object: 'checkout.session',
+      url: `${STUB_URL}/stripe/checkout/${id}`
     })
   }
 
-  return Response.json({ code: 'NOT_FOUND', message: path }, { status: 404 })
+  if (request.method === 'POST' && path === '/billing_portal/sessions') {
+    return Response.json({
+      id: `bps_e2e_${crypto.randomUUID()}`,
+      object: 'billing_portal.session',
+      url: `${STUB_URL}/stripe/portal/${body.customer}`
+    })
+  }
+
+  return stripeError(
+    404,
+    `Unrecognized request URL (${request.method}: ${path})`
+  )
 }
 
 /**

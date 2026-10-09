@@ -258,32 +258,43 @@ type PlanSubscription =
       status: string
       standing: SubscriptionStanding | null
       currentPeriodEnd: string | Date | null
-      dodoSubscriptionId: string | null
+      externalSubscriptionId: string | null
     }
   | null
   | undefined
 
 /**
+ * O teste grátis nasce no cadastro, sem cartão (WEB-31). Dito com as mesmas
+ * palavras onde o teste aparece, para ninguém achar que precisa pagar antes.
+ */
+export const TRIAL_NO_CARD_NOTE = 'O teste grátis não pede cartão.'
+
+/**
  * O que `/plan` oferece, pelo nosso estado da assinatura — nunca por consulta
  * ao provedor (WEB-249):
  *
- * - `trial`: trial em vigor. O plano aparece como atual e nada é contratado
- *   antes do vencimento.
+ * - `trial`: teste grátis do cadastro em vigor, sem nada no provedor. O bar
+ *   pode contratar qualquer plano já: o checkout guarda o cartão e a primeira
+ *   cobrança só sai quando o teste acabaria (WEB-31).
  * - `regularize`: assinatura paga parada. Ela existe no provedor, e um
  *   checkout novo abriria outra (WEB-170).
- * - `checkout`: o resto. Inclui o trial vencido sem assinatura no provedor: é
- *   uma linha local, sem nada a regularizar — esse bar ainda não contratou.
+ * - `checkout`: o resto. Inclui o teste vencido sem assinatura no provedor (é
+ *   uma linha local, sem nada a regularizar — esse bar ainda não contratou) e
+ *   quem já contratou e quer trocar de plano.
  */
 export type PlanPageMode = 'checkout' | 'trial' | 'regularize'
 
 export function getPlanPageMode(subscription: PlanSubscription): PlanPageMode {
   switch (subscription?.standing) {
     case 'current':
-      return subscription.status === 'trialing' ? 'trial' : 'checkout'
+      return subscription.status === 'trialing' &&
+        !subscription.externalSubscriptionId
+        ? 'trial'
+        : 'checkout'
     case 'past_due':
       return 'regularize'
     case 'trial_ended':
-      return subscription.dodoSubscriptionId ? 'regularize' : 'checkout'
+      return subscription.externalSubscriptionId ? 'regularize' : 'checkout'
     default:
       return 'checkout'
   }
@@ -338,13 +349,13 @@ export function getPlanHeader(subscription: PlanSubscription): {
         return {
           kicker: 'Trial gratuito',
           title: `Você está no trial do ${name} até ${until}.`,
-          text: 'A contratação abre aqui quando o trial terminar. Até lá, os recursos do plano seguem liberados.'
+          text: `${TRIAL_NO_CARD_NOTE} Se quiser garantir o plano desde já, contrate abaixo: o cartão fica guardado e a primeira cobrança só sai em ${until}.`
         }
       }
       return {
         kicker: 'Alterar plano',
         title: 'Escolha seu novo plano.',
-        text: 'A mudança entra em vigor no próximo ciclo de cobrança.'
+        text: 'A troca vale na hora, e a diferença de preço do mês é acertada de forma proporcional.'
       }
     case 'ended':
       return {

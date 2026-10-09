@@ -376,22 +376,28 @@ const paid = {
   status: 'active',
   standing: 'current',
   currentPeriodEnd: '2026-11-08T15:00:00.000Z',
-  dodoSubscriptionId: 'sub_1'
+  externalSubscriptionId: 'sub_1'
 } as const
 const liveTrial = {
   plan: 'elite',
   status: 'trialing',
   standing: 'current',
   currentPeriodEnd: '2026-10-22T15:00:00.000Z',
-  dodoSubscriptionId: null
+  externalSubscriptionId: null
 } as const
 const endedTrial = { ...liveTrial, standing: 'trial_ended' } as const
 const pastDue = { ...paid, status: 'past_due', standing: 'past_due' } as const
 const ended = { ...paid, status: 'inactive', standing: 'ended' } as const
 
 describe('getPlanPageMode (WEB-249)', () => {
-  test('trial em vigor não contrata: o plano é o atual até vencer', () => {
+  test('trial do cadastro em vigor é o modo trial', () => {
     expect(getPlanPageMode(liveTrial)).toBe('trial')
+  })
+
+  test('trial que já é do Stripe (contratou antes do fim) troca de plano', () => {
+    expect(
+      getPlanPageMode({ ...liveTrial, externalSubscriptionId: 'sub_1' })
+    ).toBe('checkout')
   })
 
   test('trial vencido sem assinatura no provedor ainda não contratou', () => {
@@ -401,7 +407,7 @@ describe('getPlanPageMode (WEB-249)', () => {
   test('assinatura paga parada regulariza, sem checkout novo', () => {
     expect(getPlanPageMode(pastDue)).toBe('regularize')
     expect(
-      getPlanPageMode({ ...endedTrial, dodoSubscriptionId: 'sub_1' })
+      getPlanPageMode({ ...endedTrial, externalSubscriptionId: 'sub_1' })
     ).toBe('regularize')
   })
 
@@ -443,7 +449,7 @@ describe('getPlanHeader', () => {
       title: 'Regularize seu plano Pro.'
     })
     expect(
-      getPlanHeader({ ...endedTrial, dodoSubscriptionId: 'sub_1' }).text
+      getPlanHeader({ ...endedTrial, externalSubscriptionId: 'sub_1' }).text
     ).toContain('sem contratar de novo')
   })
 
@@ -457,12 +463,14 @@ describe('getPlanHeader', () => {
     expect(header.text).not.toContain('sem contratar de novo')
   })
 
-  test('trial em vigor diz até quando vai, sem falar em troca nem cobrança (WEB-261)', () => {
+  test('trial em vigor diz até quando vai, que não pede cartão e quando sairia a primeira cobrança (WEB-31)', () => {
     const header = getPlanHeader(liveTrial)
     expect(header).toMatchObject({
       kicker: 'Trial gratuito',
       title: 'Você está no trial do Elite até 22 de outubro.'
     })
+    expect(header.text).toContain('O teste grátis não pede cartão.')
+    expect(header.text).toContain('primeira cobrança só sai em 22 de outubro')
     expect(Object.values(header).join(' ')).not.toMatch(
       /alterar plano|novo plano|ciclo de cobrança/i
     )

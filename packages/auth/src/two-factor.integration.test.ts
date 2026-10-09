@@ -7,8 +7,6 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 integrationTest(
   'ativar 2FA e entrar com código TOTP gravam o contador de falhas',
   async () => {
-    // `index.ts` instancia o cliente da Dodo no import; o teste não o usa.
-    process.env.DODO_PAYMENTS_API_KEY ||= 'test'
     const [{ db, eq, sql }, { account, rateLimit, twoFactor, user }, { auth }] =
       await Promise.all([
         import('@findsports_oficial/db'),

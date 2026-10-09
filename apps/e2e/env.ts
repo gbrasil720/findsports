@@ -22,8 +22,8 @@ export const OUTBOX_FILE = fileURLToPath(
   new URL('./.outbox/emails.jsonl', import.meta.url)
 )
 
-/** Formato do Standard Webhooks que a Dodo usa: `whsec_` + base64. */
-export const DODO_WEBHOOK_SECRET = `whsec_${Buffer.from('e2e-only-dodo-webhook-secret').toString('base64')}`
+/** Segredo de assinatura do webhook do Stripe; o servidor e o helper usam o mesmo. */
+export const STRIPE_WEBHOOK_SECRET = 'whsec_e2e_only_stripe_webhook_secret'
 
 /** Domínio público falso do bucket de fotos; `fixtures/media.ts` serve a leitura. */
 export const MEDIA_PUBLIC_ORIGIN = 'https://media.e2e.test'
@@ -59,10 +59,10 @@ export const SERVER_ENV: Record<string, string> = {
   R2_MEDIA_ACCESS_KEY_ID: 'e2e-fake-key',
   R2_MEDIA_SECRET_ACCESS_KEY: 'e2e-fake-secret',
   MEDIA_PUBLIC_ORIGIN,
-  DODO_PAYMENTS_API_KEY: 'e2e-fake-key',
-  DODO_PAYMENTS_WEBHOOK_SECRET: DODO_WEBHOOK_SECRET,
-  // Lida pelo `stubs/dodo-api.mjs`, não pelo app.
-  E2E_DODO_API_URL: `${STUB_URL}/dodo`,
+  STRIPE_SECRET_KEY: 'sk_test_e2e_fake_key',
+  STRIPE_WEBHOOK_SECRET,
+  // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
+  STRIPE_API_BASE_URL: STUB_URL,
   LAUNCH_ADMISSION_MODE: 'invite-only',
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',

@@ -6,8 +6,11 @@
 BETTER_AUTH_SECRET=
 RESEND_API_KEY=
 LOCATIONIQ_API_KEY=
-DODO_PAYMENTS_API_KEY=
-DODO_PAYMENTS_WEBHOOK_SECRET=
+# Stripe (WEB-31): `sk_test_...` fora de produção — a chave viva é recusada
+# fora do domínio onside.sh. O segredo do webhook sai do endpoint cadastrado
+# no painel do Stripe (`/api/auth/stripe/webhook`).
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 R2_MEDIA_ACCESS_KEY_ID=
 R2_MEDIA_SECRET_ACCESS_KEY=
 # Opcional: sem ela o Turnstile não é verificado no servidor.

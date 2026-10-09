@@ -117,7 +117,7 @@ test('bar com assinatura em curso não exclui a conta', async ({ page }) => {
   const { user } = await createPub({
     subscription: {
       status: 'active',
-      dodoSubscriptionId: `sub_e2e_${randomUUID()}`
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
     }
   })
   await signIn(page, user)

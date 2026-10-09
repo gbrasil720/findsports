@@ -1,4 +1,4 @@
-import { dodopaymentsClient } from '@dodopayments/better-auth'
+import { stripeClient } from '@better-auth/stripe/client'
 import type { auth } from '@findsports_oficial/auth'
 import type { sessionTokenGuard } from '@findsports_oficial/auth/session-token'
 import type { BetterAuthClientPlugin } from 'better-auth/client'
@@ -14,7 +14,7 @@ export const authClient = createAuthClient({
     inferAdditionalFields<typeof auth>(),
     twoFactorClient(),
     adminClient(),
-    dodopaymentsClient(),
+    stripeClient({ subscription: true }),
     // Tipa `authClient.revokeSessionById` (WEB-150) e `expireSessionCache`.
     {
       id: 'session-token-guard',

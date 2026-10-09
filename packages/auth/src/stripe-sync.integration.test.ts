@@ -1,0 +1,279 @@
+import { afterAll, expect, test } from 'bun:test'
+import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import type Stripe from 'stripe'
+
+const integrationTest = isDisposableTestDatabase() ? test : test.skip
+
+async function setup() {
+  const [{ db, eq, inArray }, { user }, { bar, subscription }, sync] =
+    await Promise.all([
+      import('@findsports_oficial/db'),
+      import('@findsports_oficial/db/schema/auth'),
+      import('@findsports_oficial/db/schema/platform'),
+      import('./stripe-sync')
+    ])
+  const userIds: string[] = []
+
+  async function createBar(
+    trial?: { plan: 'starter' | 'pro' | 'elite'; currentPeriodEnd: Date } | null
+  ) {
+    const userId = crypto.randomUUID()
+    const barId = crypto.randomUUID()
+    const customerId = `cus_${userId}`
+    await db.insert(user).values({
+      id: userId,
+      name: 'Dono WEB-31',
+      email: `${userId}@integration.invalid`,
+      emailVerified: true,
+      role: 'pub',
+      stripeCustomerId: customerId
+    })
+    userIds.push(userId)
+    await db.insert(bar).values({
+      id: barId,
+      userId,
+      name: 'Bar do webhook',
+      address: 'Rua descartável, 1',
+      neighborhood: 'Teste',
+      city: 'Teste',
+      latitude: '-35.75000000',
+      longitude: '-37.25000000',
+      isActive: Boolean(trial)
+    })
+    if (trial) {
+      await db
+        .insert(subscription)
+        .values({ barId, status: 'trialing', ...trial })
+    }
+    return { userId, barId, customerId }
+  }
+
+  async function stateOf(barId: string) {
+    const row = await db.query.bar.findFirst({
+      where: eq(bar.id, barId),
+      with: { subscription: true }
+    })
+    const sub = row?.subscription
+    return {
+      isActive: row?.isActive,
+      status: sub?.status ?? null,
+      plan: sub?.plan ?? null,
+      provider: sub?.provider ?? null,
+      externalSubscriptionId: sub?.externalSubscriptionId ?? null,
+      currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null
+    }
+  }
+
+  async function cleanup() {
+    // `bar` e `subscription` caem em cascata com o dono.
+    if (userIds.length > 0) {
+      await db.delete(user).where(inArray(user.id, userIds))
+    }
+  }
+
+  return { ...sync, createBar, stateOf, cleanup }
+}
+
+const periodEnd = new Date('2027-02-05T12:00:00.000Z')
+
+/** Assinatura como `stripe.subscriptions.retrieve` devolve, só o que lemos. */
+function stripeSubscription(options: {
+  id: string
+  status: Stripe.Subscription.Status
+  lookupKey?: string | null
+  customerId: string
+  userId?: string
+}) {
+  return {
+    id: options.id,
+    status: options.status,
+    customer: options.customerId,
+    metadata: options.userId ? { userId: options.userId } : {},
+    items: {
+      data: [
+        {
+          current_period_end: Math.floor(periodEnd.getTime() / 1000),
+          price: { id: 'price_1', lookup_key: options.lookupKey ?? null }
+        }
+      ]
+    }
+  } as unknown as Stripe.Subscription
+}
+
+const context = isDisposableTestDatabase() ? await setup() : null
+function ready() {
+  if (!context) throw new Error('banco descartável indisponível')
+  return context
+}
+afterAll(async () => {
+  await context?.cleanup()
+})
+
+integrationTest(
+  'checkout no teste grátis: guarda o cartão, troca o plano e mantém o bar no ar',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar({
+      plan: 'elite',
+      currentPeriodEnd: periodEnd
+    })
+    const sub = stripeSubscription({
+      id: `sub_${owner.barId}`,
+      status: 'trialing',
+      lookupKey: 'pro_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    })
+
+    await applyStripeSubscription(sub)
+    const expected = {
+      isActive: true,
+      status: 'trialing',
+      plan: 'pro',
+      provider: 'stripe',
+      externalSubscriptionId: sub.id,
+      currentPeriodEnd: periodEnd.toISOString()
+    } as const
+    expect(await stateOf(owner.barId)).toEqual(expected)
+
+    // O mesmo evento de novo grava o mesmo estado: idempotente.
+    await applyStripeSubscription(sub)
+    expect(await stateOf(owner.barId)).toEqual(expected)
+  }
+)
+
+integrationTest(
+  'bar sem assinatura: o primeiro pagamento cria a linha e publica o bar',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    // Sem `metadata.userId`: assinatura criada por fora do nosso checkout, o
+    // dono é achado pelo cliente do Stripe.
+    await applyStripeSubscription(
+      stripeSubscription({
+        id: `sub_${owner.barId}`,
+        status: 'active',
+        lookupKey: 'starter_monthly',
+        customerId: owner.customerId
+      })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      isActive: true,
+      status: 'active',
+      plan: 'starter',
+      provider: 'stripe'
+    })
+  }
+)
+
+integrationTest(
+  'ciclo de vida: recusa vira past_due, encerramento tira o bar do ar',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const base = {
+      id: `sub_${owner.barId}`,
+      lookupKey: 'elite_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    }
+
+    await applyStripeSubscription(
+      stripeSubscription({ ...base, status: 'active' })
+    )
+    for (const status of ['past_due', 'unpaid'] as const) {
+      await applyStripeSubscription(stripeSubscription({ ...base, status }))
+      expect(await stateOf(owner.barId)).toMatchObject({
+        isActive: true,
+        status: 'past_due',
+        plan: 'elite'
+      })
+    }
+
+    await applyStripeSubscription(
+      stripeSubscription({ ...base, status: 'canceled' })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      isActive: false,
+      status: 'inactive',
+      plan: 'elite'
+    })
+  }
+)
+
+integrationTest(
+  'encerramento atrasado da assinatura antiga não derruba a nova',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const base = {
+      lookupKey: 'pro_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    }
+    await applyStripeSubscription(
+      stripeSubscription({
+        ...base,
+        id: `sub_nova_${owner.barId}`,
+        status: 'active'
+      })
+    )
+    await applyStripeSubscription(
+      stripeSubscription({
+        ...base,
+        id: `sub_antiga_${owner.barId}`,
+        status: 'canceled'
+      })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      isActive: true,
+      status: 'active',
+      externalSubscriptionId: `sub_nova_${owner.barId}`
+    })
+  }
+)
+
+integrationTest(
+  'preço desconhecido, checkout incompleto e cliente sem bar não gravam nada',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar({
+      plan: 'elite',
+      currentPeriodEnd: periodEnd
+    })
+    const before = await stateOf(owner.barId)
+    const base = {
+      id: `sub_${owner.barId}`,
+      customerId: owner.customerId,
+      userId: owner.userId
+    }
+
+    // Produto fora do catálogo nunca vira plano, nem o padrão (WEB-194).
+    await applyStripeSubscription(
+      stripeSubscription({
+        ...base,
+        status: 'active',
+        lookupKey: 'outro_plano'
+      })
+    )
+    // Pagamento que não concluiu não pode derrubar o teste grátis do cadastro.
+    for (const status of ['incomplete', 'incomplete_expired'] as const) {
+      await applyStripeSubscription(
+        stripeSubscription({ ...base, status, lookupKey: 'starter_monthly' })
+      )
+    }
+    expect(await stateOf(owner.barId)).toEqual(before)
+
+    // Assinatura feita por fora (Payment Link), de cliente que não é de bar
+    // nenhum: responde sem lançar, para o Stripe não ficar reenviando.
+    await applyStripeSubscription(
+      stripeSubscription({
+        id: 'sub_orfa',
+        status: 'active',
+        lookupKey: 'starter_monthly',
+        customerId: 'cus_de_ninguem'
+      })
+    )
+    expect(await stateOf(owner.barId)).toEqual(before)
+  }
+)

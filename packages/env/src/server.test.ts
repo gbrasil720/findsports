@@ -32,7 +32,8 @@ describe('test-only switches (WEB-174)', () => {
       'E2E_DATABASE_URL',
       'E2E_EMAIL_OUTBOX',
       'E2E_DISABLE_CACHES',
-      'LOCATIONIQ_BASE_URL'
+      'LOCATIONIQ_BASE_URL',
+      'STRIPE_API_BASE_URL'
     ]) {
       const value = key === 'E2E_DISABLE_CACHES' ? '1' : 'http://127.0.0.1:1'
       const result = loadServerEnv({ [key]: value })
@@ -63,12 +64,34 @@ describe('preview switches', () => {
     }
   })
 
-  it('validates DODO_PAYMENTS_ENVIRONMENT', () => {
-    expect(
-      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'test_mode' }).exitCode
-    ).toBe(0)
-    expect(
-      loadServerEnv({ DODO_PAYMENTS_ENVIRONMENT: 'sandbox' }).exitCode
-    ).not.toBe(0)
+  it('recusa chave viva do Stripe fora do domínio de produção', () => {
+    const preview = 'https://onside-web-preview.example.workers.dev'
+    // Padrão (`sk_`) e restrita (`rk_`): as duas cobram de verdade.
+    for (const key of ['sk_live_exemplo', 'rk_live_exemplo']) {
+      const recusada = loadServerEnv({
+        STRIPE_SECRET_KEY: key,
+        PUBLIC_APP_URL: preview
+      })
+      expect(recusada.exitCode).not.toBe(0)
+      expect(recusada.stderr.toString()).toContain('STRIPE_SECRET_KEY')
+
+      expect(
+        loadServerEnv({
+          STRIPE_SECRET_KEY: key,
+          PUBLIC_APP_URL: 'https://www.onside.sh'
+        }).exitCode
+      ).toBe(0)
+    }
+    for (const key of ['sk_test_exemplo', 'rk_test_exemplo']) {
+      expect(
+        loadServerEnv({ STRIPE_SECRET_KEY: key, PUBLIC_APP_URL: preview })
+          .exitCode
+      ).toBe(0)
+    }
+  })
+
+  it('recusa STRIPE_SECRET_KEY que não é chave do Stripe', () => {
+    const result = loadServerEnv({ STRIPE_SECRET_KEY: 'pk_live_exemplo' })
+    expect(result.exitCode).not.toBe(0)
   })
 })
