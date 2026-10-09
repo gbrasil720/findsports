@@ -337,12 +337,8 @@ export function createAuth() {
           enabled: true,
           plans: STRIPE_PLANS,
           requireEmailVerification: true,
-          getCheckoutSessionParams: async ({ user, subscription }) => ({
-            params: await checkoutParamsFor(
-              user.id,
-              subscription.stripeCustomerId,
-              stripeClient
-            )
+          getCheckoutSessionParams: async ({ user }) => ({
+            params: await checkoutParamsFor(user.id, stripeClient)
           })
         }
       }),

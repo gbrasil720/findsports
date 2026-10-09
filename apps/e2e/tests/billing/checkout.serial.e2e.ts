@@ -98,25 +98,6 @@ test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', asy
     'name_collection[business][enabled]': 'true',
     'tax_id_collection[enabled]': 'true'
   })
-
-  // O cliente no Stripe recebe o que o bar informou no cadastro, para o
-  // checkout abrir preenchido.
-  const calls = (await (
-    await page.request.get(`${STUB_URL}/stripe/calls`)
-  ).json()) as { method: string; path: string; body: Record<string, string> }[]
-  expect(
-    calls.find(
-      (call) =>
-        call.method === 'POST' &&
-        call.path === `/customers/${session?.customer}`
-    )?.body
-  ).toMatchObject({
-    business_name: expect.stringMatching(/^Bar E2E /),
-    'address[line1]': 'Rua Augusta, 100',
-    'address[line2]': 'Consolação',
-    'address[city]': 'São Paulo',
-    'address[country]': 'BR'
-  })
 })
 
 test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o fim do teste (WEB-31)', async ({

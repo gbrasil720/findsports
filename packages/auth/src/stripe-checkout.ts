@@ -64,73 +64,24 @@ async function usableFounderCoupon(client: Stripe): Promise<string | null> {
   return null
 }
 
-type BarForCheckout = {
-  name: string
-  address: string
-  neighborhood: string
-  city: string
-  uf: string | null
-}
-
-/**
- * Leva para o cliente do Stripe o que o bar já informou no cadastro, para o
- * checkout abrir com nome da empresa e endereço preenchidos em vez de pedir
- * tudo de novo. Só preenche o que está vazio: o que o dono corrigir no
- * checkout ou no portal fica como ele deixou.
- *
- * Nunca impede a venda: se o Stripe recusar, o checkout abre com os campos em
- * branco, como abriria sem isto.
- */
-async function prefillCustomer(
-  client: Stripe,
-  customerId: string,
-  ownerBar: BarForCheckout
-) {
-  try {
-    const customer = await client.customers.retrieve(customerId)
-    if (customer.deleted) return
-    const update: Stripe.CustomerUpdateParams = {}
-    if (!customer.business_name) update.business_name = ownerBar.name
-    if (!customer.address) {
-      update.address = {
-        line1: ownerBar.address,
-        line2: ownerBar.neighborhood,
-        city: ownerBar.city,
-        ...(ownerBar.uf ? { state: ownerBar.uf } : {}),
-        country: 'BR'
-      }
-    }
-    if (Object.keys(update).length > 0) {
-      await client.customers.update(customerId, update)
-    }
-  } catch (error) {
-    logBillingError('stripe_customer_prefill_failed', {
-      customerId,
-      message: error instanceof Error ? error.message : String(error)
-    })
-  }
-}
-
 /**
  * Parâmetros nossos da sessão de checkout, por cima dos do plugin.
  *
  * O que o checkout coleta é o que os Payment Links coletavam: endereço de
  * cobrança, nome de quem paga, nome da empresa e, se o dono quiser, o CNPJ.
+ * O Stripe não deixa o lojista preencher esses campos de antemão (só o e-mail
+ * vem do cliente), então os dados do cadastro do bar não entram aqui.
  * Código promocional só quando não há cupom de fundador — o Stripe não aceita
  * os dois na mesma sessão.
  */
 export async function checkoutParamsFor(
   userId: string,
-  customerId: string | null | undefined,
   client: Stripe
 ): Promise<Stripe.Checkout.SessionCreateParams> {
   const ownerBar = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
     with: { subscription: true }
   })
-  if (ownerBar && customerId) {
-    await prefillCustomer(client, customerId, ownerBar)
-  }
   const trialEnd = trialEndForCheckout(ownerBar?.subscription ?? null)
   const coupon = await usableFounderCoupon(client)
   return {
