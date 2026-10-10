@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const TERMOS_DE_USO: LegalDocument = {
   kicker: 'Legal · Termos de Uso',
   title: 'Termos de uso',
-  updated: '9 de outubro de 2026',
+  updated: '10 de outubro de 2026',
   reading: '19 seções · ~26 min',
   intro: [
     'Estes Termos de Uso (“Termos”) regulam o acesso e o uso da plataforma Onside (“Onside”, “plataforma”, “nós”), operada por Onside Tecnologia da Informação Ltda., inscrita no CNPJ sob o nº 69.032.124/0001-55, com sede na Rua Cláudio Soares, 72, sala 1418, Pinheiros, São Paulo/SP, CEP 05422-030.',
@@ -499,7 +499,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'A troca vale a partir do ciclo seguinte. Na subida de plano, o novo valor é cobrado proporcionalmente ao tempo restante do ciclo em curso, se o parceiro quiser o acesso imediato aos recursos.'
+            'A troca vale na hora: os recursos do novo plano ficam disponíveis assim que o parceiro confirma. Na subida de plano, a diferença de preço referente ao tempo que resta do ciclo em curso é cobrada no ato, de forma proporcional. Na descida, o valor proporcional já pago e não utilizado vira crédito na conta do parceiro e é abatido das mensalidades seguintes; esse crédito não é devolvido em dinheiro nem estornado no cartão. Durante o período de teste gratuito, trocar de plano não gera cobrança nem crédito, e a primeira cobrança continua na data em que o teste termina.'
         },
         {
           type: 'h3',
