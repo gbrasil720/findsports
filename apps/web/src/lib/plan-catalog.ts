@@ -574,7 +574,8 @@ export const TRIAL_NO_CARD_NOTE = 'O teste grátis não pede cartão.'
  *
  * - `trial`: teste grátis do cadastro em vigor, sem nada no provedor. O bar
  *   pode contratar qualquer plano já: o checkout guarda o cartão e a primeira
- *   cobrança só sai quando o teste acabaria (WEB-31).
+ *   cobrança só sai quando o teste acabaria (WEB-31). Também pode trocar o
+ *   plano do teste sem cartão, quantas vezes quiser (WEB-358).
  * - `regularize`: assinatura paga parada. Ela existe no provedor, e um
  *   checkout novo abriria outra (WEB-170).
  * - `checkout`: o resto. Inclui o teste vencido sem assinatura no provedor (é
@@ -650,7 +651,8 @@ export function getPlanHeader(subscription: PlanSubscription): {
         return {
           kicker: 'Trial gratuito',
           title: `Você está no trial do ${name} até ${until}.`,
-          text: `${TRIAL_NO_CARD_NOTE} Se quiser garantir o plano desde já, contrate abaixo: o cartão fica guardado e a primeira cobrança só sai em ${until}.`
+          // WEB-358: o teste vale para qualquer plano, com a mesma data.
+          text: `${TRIAL_NO_CARD_NOTE} Até lá você pode testar qualquer plano abaixo, sem mudar a data. Se quiser garantir o plano desde já, contrate: o cartão fica guardado e a primeira cobrança só sai em ${until}.`
         }
       }
       {

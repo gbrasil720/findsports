@@ -44,13 +44,11 @@ export interface EventCreationPeriod {
   end: Date | null
 }
 
-/** Subtracts one UTC calendar month while clamping invalid month-end dates. */
-export function subtractUtcMonthClamped(value: Date): Date {
-  const sourceYear = value.getUTCFullYear()
-  const sourceMonth = value.getUTCMonth()
-  const targetMonthIndex = sourceMonth - 1
-  const targetYear = targetMonthIndex < 0 ? sourceYear - 1 : sourceYear
-  const targetMonth = (targetMonthIndex + 12) % 12
+/** Subtracts UTC calendar months while clamping invalid month-end dates. */
+export function subtractUtcMonthClamped(value: Date, months = 1): Date {
+  const target = value.getUTCFullYear() * 12 + value.getUTCMonth() - months
+  const targetYear = Math.floor(target / 12)
+  const targetMonth = target % 12
   const lastTargetDay = new Date(
     Date.UTC(targetYear, targetMonth + 1, 0)
   ).getUTCDate()
@@ -75,9 +73,15 @@ export function getEventCreationPeriod(
   // Período já encerrado (trial vencido, pagamento pendente) não é ciclo de
   // cobrança: a janela congelaria ali e a contagem nunca zeraria.
   if (currentPeriodEnd && currentPeriodEnd > now) {
+    // Período maior que um mês é o teste grátis, que dura meses (WEB-358): o
+    // ciclo é o mês que contém `now`, contado de trás para frente a partir do
+    // fim. Sem isso a janela começava no futuro e nenhum jogo criado hoje
+    // entrava na conta do Starter.
+    let months = 1
+    while (subtractUtcMonthClamped(currentPeriodEnd, months) > now) months++
     return {
-      start: subtractUtcMonthClamped(currentPeriodEnd),
-      end: currentPeriodEnd
+      start: subtractUtcMonthClamped(currentPeriodEnd, months),
+      end: subtractUtcMonthClamped(currentPeriodEnd, months - 1)
     }
   }
 

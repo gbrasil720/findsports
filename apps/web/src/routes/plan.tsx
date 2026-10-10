@@ -1,5 +1,5 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
@@ -60,7 +60,13 @@ function PlanSelection() {
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmingDowngrade, setConfirmingDowngrade] = useState(false)
+  // Plano menor confirma antes o que o bar perde (WEB-351), contratando ou só
+  // trocando o plano do teste (WEB-358).
+  const [confirming, setConfirming] = useState<'checkout' | 'trial' | null>(
+    null
+  )
+  const [testing, setTesting] = useState<Plan['id'] | null>(null)
+  const queryClient = useQueryClient()
 
   const subscriptionQuery = useQuery({
     ...trpc.pub.getMySubscription.queryOptions(),
@@ -144,7 +150,40 @@ function PlanSelection() {
     }
   }
 
+  // WEB-358: o teste do cadastro troca de plano sem cartão e sem Stripe. Quem
+  // decide se pode é o servidor; a data do fim do teste não muda.
+  const trialPlan = useMutation(
+    trpc.pub.changeTrialPlan.mutationOptions({
+      onMutate: () => {
+        setError(null)
+        setTesting(null)
+      },
+      // O plano muda o painel inteiro: limite de jogos, perfil, analytics.
+      onSettled: () =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: trpc.pub.pathKey() }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pubs.getById.pathKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.commercialAnalytics.pathKey()
+          })
+        ]),
+      onSuccess: ({ plan }) => {
+        setPicked(null)
+        setTesting(plan)
+      },
+      onError: () =>
+        setError(
+          'Não foi possível trocar o plano do teste. Atualize a página e tente novamente.'
+        )
+    })
+  )
+
   const selection = getPlanSelectionState(currentPlan, selected)
+  const selectedName = PLAN_CATALOG.find((p) => p.id === selected)?.name
+  const checkoutLabel = `${onTrial ? 'Contratar' : 'Continuar com'} ${selectedName}`
+  const trialLabel = `Testar o ${selectedName} grátis`
   const { isDowngrade } = selection
   // No teste grátis o plano vigente ainda não foi contratado: escolher o
   // mesmo plano é contratar, não "plano atual" (WEB-31).
@@ -302,6 +341,19 @@ function PlanSelection() {
         </div>
       ) : null}
 
+      {testing ? (
+        <div
+          className="onside-callout onside-callout-acid mx-auto mb-4 max-w-2xl"
+          role="status"
+        >
+          <p className="text-sm font-semibold">
+            Agora você está testando o{' '}
+            {PLAN_CATALOG.find((p) => p.id === testing)?.name}. A data do fim do
+            teste não mudou.
+          </p>
+        </div>
+      ) : null}
+
       {error ? (
         <p
           className="mb-4 text-center text-sm text-[var(--onside-live-text)]"
@@ -333,59 +385,89 @@ function PlanSelection() {
             regularizar (WEB-170). Em trial o botão contrata, e o Stripe só
             cobra no fim do teste (WEB-31). */}
         {regularize ? null : (
-          <button
-            type="button"
-            // Plano menor confirma antes o que o bar perde (WEB-351).
-            onClick={
-              isDowngrade ? () => setConfirmingDowngrade(true) : handleCheckout
-            }
-            disabled={
-              loading ||
-              isSamePlan ||
-              subscriptionQuery.isLoading ||
-              !checkoutLiberado
-            }
-            title={
-              !checkoutLiberado
-                ? 'Contratação temporariamente indisponível'
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Testar é sem cartão e não passa pelo checkout: não depende de a
+                contratação estar aberta (WEB-358). */}
+            {onTrial ? (
+              <button
+                type="button"
+                onClick={() =>
+                  isDowngrade
+                    ? setConfirming('trial')
+                    : trialPlan.mutate({ plan: selected })
+                }
+                disabled={
+                  loading || trialPlan.isPending || selection.isSamePlan
+                }
+                title={
+                  selection.isSamePlan
+                    ? 'Você já está testando este plano'
+                    : undefined
+                }
+                className="onside-btn onside-btn-outline min-h-11"
+              >
+                {trialPlan.isPending
+                  ? 'Trocando…'
+                  : selection.isSamePlan
+                    ? `Testando o ${selectedName}`
+                    : trialLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={
+                isDowngrade ? () => setConfirming('checkout') : handleCheckout
+              }
+              disabled={
+                loading ||
+                trialPlan.isPending ||
+                isSamePlan ||
+                subscriptionQuery.isLoading ||
+                !checkoutLiberado
+              }
+              title={
+                !checkoutLiberado
+                  ? 'Contratação temporariamente indisponível'
+                  : isSamePlan
+                    ? 'Este já é seu plano atual'
+                    : undefined
+              }
+              className="onside-btn onside-btn-acid min-h-11"
+            >
+              {loading ? (
+                <Loader
+                  size={16}
+                  color="currentColor"
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              ) : null}
+              {loading
+                ? 'Redirecionando…'
                 : isSamePlan
-                  ? 'Este já é seu plano atual'
-                  : undefined
-            }
-            className="onside-btn onside-btn-acid min-h-11"
-          >
-            {loading ? (
-              <Loader
-                size={16}
-                color="currentColor"
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : null}
-            {loading
-              ? 'Redirecionando…'
-              : isSamePlan
-                ? 'Plano atual'
-                : `${onTrial ? 'Contratar' : 'Continuar com'} ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-            {!isSamePlan && !loading ? (
-              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-            ) : null}
-          </button>
+                  ? 'Plano atual'
+                  : checkoutLabel}
+              {!isSamePlan && !loading ? (
+                <ArrowRight size={16} color="currentColor" aria-hidden="true" />
+              ) : null}
+            </button>
+          </div>
         )}
       </div>
 
-      {confirmingDowngrade && isDowngrade && currentPlan ? (
+      {confirming && isDowngrade && currentPlan ? (
         <DowngradeConfirmDialog
           from={currentPlan}
           to={selected}
           // WEB-350: só assinatura paga no Stripe gera crédito proporcional;
           // em teste grátis não há o que creditar.
           earnsCredit={earnsDowngradeCredit(subscription)}
-          confirmLabel={`${onTrial ? 'Contratar' : 'Continuar com'} ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
-          onCancel={() => setConfirmingDowngrade(false)}
+          confirmLabel={confirming === 'trial' ? trialLabel : checkoutLabel}
+          onCancel={() => setConfirming(null)}
           onConfirm={() => {
-            setConfirmingDowngrade(false)
-            handleCheckout()
+            setConfirming(null)
+            if (confirming === 'trial') trialPlan.mutate({ plan: selected })
+            else handleCheckout()
           }}
         />
       ) : null}

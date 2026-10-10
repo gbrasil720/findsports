@@ -154,6 +154,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Teste grátis nasce no cadastro, sem cartão** (`billing.onboarding_trial`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
+- **O teste do cadastro vale para qualquer plano** (WEB-358): o bar nasce no plano da
+  chave e troca em `/plan` ("Testar o X grátis"), sem cartão e quantas vezes quiser,
+  por `pub.changeTrialPlan`. Só `subscription.plan` muda; o fim do teste é o mesmo.
+  Com assinatura no Stripe ou teste vencido a troca é recusada: o caminho é contratar.
+  No Starter o limite de jogos conta por mês, de trás para frente a partir do fim do
+  teste (`getEventCreationPeriod`).
 - **Teste do cadastro vencido tira o bar do ar** (WEB-357): sem assinatura no Stripe e
   com o período encerrado, a reconciliação diária (`reconcileBarPlans`, em
   `packages/api/src/lib/bar-plan-sync.ts`) desliga `bar.is_active` junto com o

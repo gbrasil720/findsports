@@ -1,7 +1,7 @@
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
-import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
@@ -14,6 +14,7 @@ import {
   event,
   eventParticipants,
   subscription,
+  subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
@@ -893,6 +894,39 @@ export const pubRouter = router({
       )
     }
   }),
+
+  // Troca o plano do teste grátis do cadastro, sem cartão e sem Stripe
+  // (WEB-358). A regra vai no próprio UPDATE, e não numa leitura antes: o
+  // webhook de quem contrata no meio do caminho grava a assinatura do Stripe,
+  // e ela não pode ter o plano trocado por aqui. O fim do teste não muda, e
+  // `bar.plan` acompanha pela trigger `subscription_bar_plan_sync`.
+  changeTrialPlan: pubProcedure
+    .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [changed] = await db
+        .update(subscription)
+        .set({ plan: input.plan })
+        .where(
+          and(
+            eq(subscription.barId, existingBar.id),
+            eq(subscription.status, 'trialing'),
+            isNull(subscription.externalSubscriptionId),
+            // `timestamp` sem fuso, lido como UTC: a mesma comparação de
+            // `subscription_current_plan`.
+            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+          )
+        )
+        .returning({ plan: subscription.plan })
+      if (!changed) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Só dá para trocar o plano sem cartão durante o teste grátis. Para mudar de plano agora, contrate.'
+        })
+      }
+      return changed
+    }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
