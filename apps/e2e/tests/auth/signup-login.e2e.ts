@@ -5,6 +5,7 @@ import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
 import {
+  acceptTerms,
   loginWithForm,
   submitSignup,
   uniqueEmail,
@@ -29,11 +30,20 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await fan.click()
   await expect(fan).toHaveAttribute('aria-pressed', 'true')
 
+  // Sem o aceite dos Termos e da Política o botão não envia. O aceite vem
+  // antes dos campos: marcado depois de um campo inválido, o blur mostra o
+  // erro, o formulário desce no meio do clique e o clique se perde (o mesmo
+  // defeito de layout descrito mais abaixo).
+  const enviar = page.getByRole('button', { name: 'Entrar no time' })
+  await expect(enviar).toBeDisabled()
+  await acceptTerms(page)
+  await expect(enviar).toBeEnabled()
+
   await page.getByLabel('Nome completo').fill('Torcedor E2E')
   await page.getByLabel('E-mail').fill(email)
   await page.getByLabel('Senha', { exact: true }).fill('curta')
   await page.getByLabel('Confirmar senha', { exact: true }).fill('outra')
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await enviar.click()
   await expect(
     page.getByText('A senha deve ter pelo menos 8 caracteres.')
   ).toBeVisible()
