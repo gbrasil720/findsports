@@ -98,6 +98,11 @@ export function EventsList<T extends ProfileEvent>({
   const rest = events.filter((event) => event.id !== highlightedEventId)
   const groups = groupEventsByDay(rest, new Date(now))
 
+  // Com um jogo em destaque e nenhum outro, a seção não tem o que mostrar, e
+  // o estado vazio dizia "ainda não cadastrou jogos" logo abaixo de um jogo
+  // (WEB-345). Sem jogo nenhum o vazio continua: aí ele é a resposta.
+  if (highlightedEventId && rest.length === 0) return null
+
   return (
     <section className="onside-panel p-5 md:p-6">
       <h2 className="onside-display mb-4 text-2xl">

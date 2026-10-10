@@ -19,6 +19,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import { byTeamName } from '../lib/game-participants'
 import {
   assertCanEnableReservations,
   withSeatAvailability
@@ -140,7 +141,10 @@ export const barReservationsRouter = router({
             startsAt: true
           },
           with: {
-            participants: { with: { team: { columns: { name: true } } } }
+            participants: {
+              with: { team: { columns: { name: true } } },
+              orderBy: byTeamName
+            }
           }
         }
       },
@@ -182,7 +186,10 @@ export const barReservationsRouter = router({
             reservationCap: true
           },
           with: {
-            participants: { with: { team: { columns: { name: true } } } }
+            participants: {
+              with: { team: { columns: { name: true } } },
+              orderBy: byTeamName
+            }
           },
           orderBy: (row, { asc }) => [asc(row.startsAt)]
         }

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar } from '@findsports_oficial/db/schema/platform'
+import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { contextFor, load } from './integration-seed'
 
@@ -63,6 +63,8 @@ integrationTest(
       // A prévia precisa dizer que ainda está fora do ar: é o que separa
       // "ninguém vê isto" de "assim é o que o torcedor vê".
       expect(preview.isActive).toBe(false)
+      // Nunca publicado não é assinatura encerrada (WEB-345).
+      expect(preview.subscriptionEnded).toBe(false)
 
       const asFan = appRouter.createCaller(contextFor(fanId, 'fan'))
       await expect(asFan.pubs.getById({ id: barId })).rejects.toThrow(
@@ -74,6 +76,16 @@ integrationTest(
       const publicado = await asFan.pubs.getById({ id: barId })
       expect(publicado.id).toBe(barId)
       expect(publicado.isOwner).toBe(false)
+
+      // Assinatura encerrada tira o bar do ar (`stripe-sync`): o dono recebe
+      // o motivo, para o aviso da prévia não dizer "ainda fora do ar".
+      await db.update(bar).set({ isActive: false }).where(eq(bar.id, barId))
+      await db
+        .insert(subscription)
+        .values({ barId, plan: 'pro', status: 'cancelled' })
+      const encerrado = await asOwner.pubs.getById({ id: barId })
+      expect(encerrado.isActive).toBe(false)
+      expect(encerrado.subscriptionEnded).toBe(true)
     } finally {
       await db.delete(user).where(eq(user.id, ownerId))
       await db.delete(user).where(eq(user.id, fanId))

@@ -1,4 +1,5 @@
 import { type SQL, sql } from '@findsports_oficial/db'
+import type { eventParticipants } from '@findsports_oficial/db/schema/platform'
 
 /**
  * Quem joga, para as leituras em SQL cru (WEB-258). Sem os times o jogo era
@@ -18,6 +19,24 @@ export const participantNames = (eventId: SQL) =>
   sql<
     string[]
   >`COALESCE(${teams(eventId, sql`json_agg(t.name ORDER BY t.name)`)}, '[]'::json)`
+
+/**
+ * Times com escudo, para o card da busca. Na ordem dos nomes: sem ela o card
+ * e o perfil mostravam o mesmo jogo com os times trocados (WEB-345).
+ */
+export const participantTeams = (eventId: SQL) =>
+  sql<
+    { name: string; logoUrl: string | null }[]
+  >`COALESCE(${teams(eventId, sql`json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url) ORDER BY t.name)`)}, '[]'::json)`
+
+/**
+ * A mesma ordem nas leituras relacionais do Drizzle:
+ * `participants: { orderBy: byTeamName }`. `event_participants` não guarda
+ * ordem; sem isto cada consulta devolve a que o plano der.
+ */
+export const byTeamName = (participant: {
+  teamId: typeof eventParticipants.teamId
+}) => sql`(SELECT t.name FROM team t WHERE t.id = ${participant.teamId})`
 
 /** O título pronto, na ordem de `getGameTitle`: times, texto livre, campeonato. */
 export const gameTitle = (game: {

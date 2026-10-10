@@ -1,6 +1,7 @@
 import { db, sql } from '@findsports_oficial/db'
 
 import { currentClassicRulesCte } from '../classics'
+import { participantTeams } from '../game-participants'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -107,17 +108,11 @@ export async function executarBuscaLinear(
       agg.next_participant_free_text,
       agg.next_classic_rule_version,
       agg.next_classic_rule_reason,
-      COALESCE(parts.next_participants, '[]'::json) AS next_participants
+      ${participantTeams(sql`agg.next_event_id`)} AS next_participants
     FROM nearby n
     JOIN LATERAL (
       SELECT COUNT(*) OVER ()::int AS event_count, ${proximoJogo(sql`n`)}
     ) agg ON agg.event_count > 0
-    LEFT JOIN LATERAL (
-      SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants
-      FROM event_participants ep
-      JOIN team t ON t.id = ep.team_id
-      WHERE ep.event_id = agg.next_event_id
-    ) parts ON true
     ${keysetFilter}
     ORDER BY
       ${classicRankSql} ASC,
