@@ -55,9 +55,9 @@ de segurança sem perder o desenho e o contexto próprios de cada experiência.
 - Exigir senha atual e a frase `EXCLUIR MINHA CONTA` para qualquer exclusão.
   A exclusão é permanente e não cria estado de soft delete.
 - Para assinatura externa, bloquear nos estados `active`, `trialing` e
-  `past_due`; em `cancelled`, bloquear enquanto `currentPeriodEnd` estiver no
-  futuro. Liberar quando o período terminar e o estado for `cancelled` ou
-  `inactive`.
+  `past_due`. Liberar em `cancelled` ou `inactive`. No Stripe, cancelamento
+  marcado para o fim do período segue `active` até lá; `cancelled` só é gravado
+  quando a assinatura já acabou, então não há período a esperar (WEB-60).
 - Permitir excluir um bar cujo trial ainda não virou assinatura externa (sem
   `externalSubscriptionId`), pois não existe cobrança externa a deixar órfã.
 - Informar que os dados locais serão apagados, mas o provedor de pagamento pode

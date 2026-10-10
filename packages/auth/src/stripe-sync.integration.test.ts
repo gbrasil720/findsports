@@ -216,14 +216,25 @@ integrationTest(
       })
     }
 
-    await applyStripeSubscription(
-      stripeSubscription({ ...base, status: 'canceled' })
-    )
-    expect(await stateOf(owner.barId)).toMatchObject({
-      isActive: false,
-      status: 'inactive',
-      plan: 'elite'
-    })
+    // WEB-60: cancelada e pausada saem do ar, cada uma com o seu status, e o
+    // plano contratado continua gravado.
+    for (const [status, local] of [
+      ['paused', 'inactive'],
+      ['canceled', 'cancelled']
+    ] as const) {
+      await applyStripeSubscription(stripeSubscription({ ...base, status }))
+      expect(await stateOf(owner.barId)).toMatchObject({
+        isActive: false,
+        status: local,
+        plan: 'elite'
+      })
+      // Evento repetido grava o mesmo estado.
+      await applyStripeSubscription(stripeSubscription({ ...base, status }))
+      expect(await stateOf(owner.barId)).toMatchObject({
+        isActive: false,
+        status: local
+      })
+    }
   }
 )
 
@@ -244,12 +255,55 @@ integrationTest(
         status: 'active'
       })
     )
+    for (const status of ['canceled', 'paused'] as const) {
+      await applyStripeSubscription(
+        stripeSubscription({
+          ...base,
+          id: `sub_antiga_${owner.barId}`,
+          status
+        })
+      )
+      expect(await stateOf(owner.barId)).toMatchObject({
+        isActive: true,
+        status: 'active',
+        externalSubscriptionId: `sub_nova_${owner.barId}`
+      })
+    }
+  }
+)
+
+integrationTest(
+  'quem cancelou e contrata de novo volta ao ar com a assinatura nova',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const base = {
+      lookupKey: 'pro_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    }
+    const old = { ...base, id: `sub_antiga_${owner.barId}` }
+    await applyStripeSubscription(
+      stripeSubscription({ ...old, status: 'active' })
+    )
+    await applyStripeSubscription(
+      stripeSubscription({ ...old, status: 'canceled' })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      isActive: false,
+      status: 'cancelled'
+    })
+
     await applyStripeSubscription(
       stripeSubscription({
         ...base,
-        id: `sub_antiga_${owner.barId}`,
-        status: 'canceled'
+        id: `sub_nova_${owner.barId}`,
+        status: 'active'
       })
+    )
+    // O cancelamento da antiga, entregue de novo, não derruba a nova.
+    await applyStripeSubscription(
+      stripeSubscription({ ...old, status: 'canceled' })
     )
     expect(await stateOf(owner.barId)).toMatchObject({
       isActive: true,
