@@ -32,33 +32,6 @@ html:has(.onside-legal) body {
   text-underline-offset: 2px;
 }
 
-/* ─── Cabeçalho sobre a tinta ─── */
-.onside-page .onside-site-header.is-on-ink {
-  border-bottom-color: rgb(241 238 230 / 18%);
-  background: transparent;
-  color: var(--onside-paper);
-  backdrop-filter: none;
-}
-
-.onside-page .onside-site-header.is-on-ink .onside-brand-wordmark {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-.onside-page .onside-site-header.is-on-ink .onside-nav-cta {
-  border-color: var(--onside-paper);
-}
-
-.onside-page .onside-site-header.is-on-ink .onside-menu-button {
-  color: var(--onside-paper);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .onside-page .onside-site-header.is-on-ink .onside-nav-cta:hover {
-    background: var(--onside-paper);
-    color: var(--onside-ink);
-  }
-}
-
 /* ─── Hero ─── */
 .onside-legal .onside-legal-hero {
   padding: 170px 0 88px;

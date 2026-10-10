@@ -1,21 +1,26 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link, useRouteContext } from '@tanstack/react-router'
-import { useEffect, useId, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useRef,
+  useState
+} from 'react'
 import Add from 'reicon-react/icons/Add'
+import ArrowDown from 'reicon-react/icons/ArrowDown'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
 import Check from 'reicon-react/icons/Check'
-import ChevronDown from 'reicon-react/icons/ChevronDown'
 import Menu from 'reicon-react/icons/Menu'
 import Pause from 'reicon-react/icons/Pause'
 import Play from 'reicon-react/icons/Play'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
-import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
+import { OnsideBrand } from '@/components/brand/onside-brand'
 import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
-import { HIGHLIGHTS_QUERY } from '@/lib/query-cache'
-import { useTRPC } from '../../utils/trpc'
-import { OnsideAppDemo } from './onside-app-demo'
 import {
   DEFINITION_POINTS,
   FAQ_ITEMS,
@@ -23,11 +28,11 @@ import {
   type JourneyStep,
   LANDING_COPY,
   NAV_ITEMS,
+  OCCASION_ITEMS,
   PROBLEM_ITEMS,
-  TICKER_BENEFITS,
-  type TickerLiveItem
+  TICKER_BENEFITS
 } from './onside-landing-content'
-import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
+import { OnsideFinalStage, OnsideHeroStage } from './onside-scene-stage'
 
 type OnsideChromeProps = {
   /**
@@ -45,24 +50,30 @@ type OnsideHeaderProps = OnsideChromeProps & {
   inkHeroId?: string
 }
 
+const HERO_ID = 'top'
+const FINAL_ID = 'final'
+/** O cadastro de bar (WEB-232 lê o `role`). O e-mail fica só no rodapé. */
+const PUB_SIGNUP_HREF = '/signup?role=pub'
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
+
 /**
- * WEB-278: com sessão, as chamadas levam ao app em vez da lista de espera.
+ * WEB-278: com sessão, as chamadas levam ao app em vez do cadastro.
  * Lê a sessão que o `beforeLoad` da raiz já põe no contexto da rota: igual no
  * SSR e na hidratação, sem requisição a mais na página pública. `/app`
  * escolhe o destino pelo papel.
  */
-function usePrimaryCta(home: '' | '/' = '') {
+function usePrimaryCta() {
   const hasSession = useRouteContext({
     from: '__root__',
     select: (ctx) => Boolean(ctx.session)
   })
   return hasSession
     ? { hasSession, href: '/app', label: 'Ir para o app' }
-    : { hasSession, href: `${home}#lista`, label: LANDING_COPY.primaryCta }
+    : { hasSession, href: '/signup', label: LANDING_COPY.primaryCta }
 }
 
 export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
-  const cta = usePrimaryCta(home)
+  const cta = usePrimaryCta()
   const [scrolled, setScrolled] = useState(false)
   // Começa sobre a tinta no servidor e no primeiro render: a página abre no
   // topo, e um valor diferente aqui piscaria o cabeçalho na hidratação.
@@ -142,11 +153,7 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
           ))}
         </nav>
 
-        <a
-          className="onside-nav-cta"
-          href={cta.href}
-          data-cta="nav_city_waitlist"
-        >
+        <a className="onside-nav-cta" href={cta.href} data-cta="nav_signup">
           {cta.label}{' '}
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
@@ -202,7 +209,7 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
         <a
           className="onside-button onside-button-acid"
           href={cta.href}
-          data-cta="nav_city_waitlist"
+          data-cta="nav_signup"
         >
           {cta.label}
         </a>
@@ -211,120 +218,301 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
   )
 }
 
-function startOfDayInTimeZone(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(date)
-  const year = parts.find((p) => p.type === 'year')?.value
-  const month = parts.find((p) => p.type === 'month')?.value
-  const day = parts.find((p) => p.type === 'day')?.value
-  return `${year}-${month}-${day}`
+/**
+ * Botão que acompanha o ponteiro, como no desenho. Só onde há mouse e sem
+ * movimento reduzido. O deslocamento vai em variáveis CSS; quem suaviza é a
+ * transição do próprio botão.
+ */
+function useMagnet<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+    if (window.matchMedia(REDUCED_MOTION).matches) return
+
+    const move = (event: PointerEvent) => {
+      const box = element.getBoundingClientRect()
+      const dx = event.clientX - box.left - box.width / 2
+      const dy = event.clientY - box.top - box.height / 2
+      element.style.setProperty('--magnet-x', `${dx * 0.22}px`)
+      element.style.setProperty('--magnet-y', `${dy * 0.35}px`)
+    }
+    const leave = () => {
+      element.style.removeProperty('--magnet-x')
+      element.style.removeProperty('--magnet-y')
+    }
+    element.addEventListener('pointermove', move)
+    element.addEventListener('pointerleave', leave)
+    return () => {
+      element.removeEventListener('pointermove', move)
+      element.removeEventListener('pointerleave', leave)
+    }
+  }, [])
+
+  return ref
 }
 
-function relativeDayLabel(startsAt: Date, now = new Date()) {
-  const timeZone = 'America/Sao_Paulo'
-  const eventDay = startOfDayInTimeZone(startsAt, timeZone)
-  const today = startOfDayInTimeZone(now, timeZone)
-
-  if (eventDay === today) return 'HOJE'
-
-  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const tomorrow = startOfDayInTimeZone(tomorrowDate, timeZone)
-  if (eventDay === tomorrow) return 'AMANHÃ'
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone,
-    weekday: 'short'
-  })
-    .format(startsAt)
-    .replace('.', '')
-    .toUpperCase()
+/**
+ * Chamada principal: cadastro para quem chega, app para quem tem sessão.
+ * `place` vira o `data-cta` (`hero_signup`, `final_signup`…).
+ */
+function PrimaryCta({
+  place,
+  className
+}: {
+  place: string
+  className: string
+}) {
+  const cta = usePrimaryCta()
+  const ref = useMagnet<HTMLAnchorElement>()
+  return (
+    <a
+      ref={ref}
+      className={`onside-magnet ${className}`}
+      href={cta.href}
+      data-cta={`${place}_signup`}
+    >
+      {cta.label}
+      <span className="onside-inline-icon" aria-hidden="true">
+        <ArrowRight size={16} aria-hidden="true" focusable="false" />
+      </span>
+    </a>
+  )
 }
 
-function formatTickerEvent(event: {
-  bar_name?: unknown
-  championship?: unknown
-  starts_at?: unknown
-  sport_name?: unknown
-  neighborhood?: unknown
-  city?: unknown
-}): TickerLiveItem {
-  const startsAtRaw = event.starts_at
-  const startsAt = new Date(String(startsAtRaw ?? ''))
-  const valid = !Number.isNaN(startsAt.getTime())
+/** Rodapé da landing v2 (Claude Design), usado também nas páginas legais. */
+export function OnsideFooter({ home = '' }: OnsideChromeProps) {
+  const cta = usePrimaryCta()
+  const bigmarkRef = useRef<HTMLDivElement>(null)
 
-  const time = valid
-    ? new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).format(startsAt)
-    : '--:--'
+  // O letreiro sobe quando entra na tela. Só esconde se ainda estiver abaixo
+  // da dobra e com o JavaScript de pé: sem ele, fica visível.
+  useEffect(() => {
+    const element = bigmarkRef.current
+    if (!element) return
+    if (window.matchMedia(REDUCED_MOTION).matches) return
+    if (element.getBoundingClientRect().top < window.innerHeight * 0.95) return
 
-  const dayLabel = valid ? relativeDayLabel(startsAt) : 'EM BREVE'
-  const championship = String(
-    event.championship ?? event.sport_name ?? 'Partida'
+    element.setAttribute('data-reveal', 'pending')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        element.setAttribute('data-reveal', 'in')
+        observer.disconnect()
+      },
+      { rootMargin: '0px 0px -5% 0px' }
+    )
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <footer className="onside-site-footer">
+      <div className="onside-shell onside-footer-grid">
+        <div className="onside-footer-lead">
+          <a
+            className="onside-brand-link onside-footer-brand"
+            href={`${home}#top`}
+            aria-label="Onside — início"
+          >
+            <OnsideBrand />
+          </a>
+          <p>Feito por quem prefere a mesa ao sofá.</p>
+          <PrimaryCta place="footer" className="onside-footer-cta" />
+        </div>
+
+        <nav className="onside-footer-nav" aria-label="Rodapé">
+          <div className="onside-footer-column">
+            <p>Produto</p>
+            {NAV_ITEMS.map((item) => (
+              <a key={item.id} href={`${home}${item.href}`}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div className="onside-footer-column">
+            <p>Conta</p>
+            {cta.hasSession ? (
+              <a href={cta.href}>{cta.label}</a>
+            ) : (
+              <>
+                <Link to="/login">Entrar</Link>
+                <Link to="/signup">Criar conta</Link>
+              </>
+            )}
+          </div>
+          <div className="onside-footer-column">
+            <p>Para bares</p>
+            <a href={PUB_SIGNUP_HREF} data-cta="footer_pub_signup">
+              Cadastre seu bar
+            </a>
+            <a href="mailto:contato@onside.sh">Fale com a gente</a>
+          </div>
+          <div className="onside-footer-column">
+            <p>Onside</p>
+            <a href="mailto:contato@onside.sh">Contato</a>
+            <Link to="/termos">Termos</Link>
+            <Link to="/privacidade">Privacidade</Link>
+            <CookiePreferencesButton />
+          </div>
+        </nav>
+      </div>
+
+      <div className="onside-shell onside-footer-bar">
+        <span>© 2026 Onside</span>
+        <span className="onside-footer-status">
+          <span aria-hidden="true" />
+          {LANDING_COPY.footerStatus}
+        </span>
+      </div>
+
+      <div
+        ref={bigmarkRef}
+        className="onside-footer-bigmark"
+        aria-hidden="true"
+      >
+        <div className="onside-shell">Onside</div>
+      </div>
+    </footer>
   )
-    .trim()
-    .toUpperCase()
-  const place = String(
-    event.neighborhood || event.city || event.bar_name || 'Bar'
-  )
-    .trim()
-    .toUpperCase()
+}
 
-  return {
-    id: `${String(event.bar_name)}-${String(startsAtRaw)}-${championship}`,
-    timeLabel: `${dayLabel} ${time}`,
-    event: championship,
-    place
-  }
+/**
+ * Em que altura da janela (em %) o topo do elemento dispara cada entrada.
+ * São os gatilhos de rolagem do protótipo.
+ */
+const MOTION_START: Record<string, number> = {
+  reveal: 86,
+  group: 82,
+  split: 85,
+  tilt: 80,
+  compare: 78,
+  stamp: 85,
+  zoom: 85
+}
+
+/**
+ * Entradas da página (`data-motion`), todas em CSS: este efeito só marca o
+ * que ainda está abaixo da dobra como `pending` e troca para `in` quando o
+ * elemento chega. Sem JavaScript, ou com movimento reduzido, nada é
+ * escondido.
+ */
+function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    if (window.matchMedia(REDUCED_MOTION).matches) return
+
+    const observers = new Map<number, IntersectionObserver>()
+    for (const element of root.querySelectorAll<HTMLElement>('[data-motion]')) {
+      const start = MOTION_START[element.dataset.motion ?? ''] ?? 86
+      const limit = (window.innerHeight * start) / 100
+      if (element.getBoundingClientRect().top < limit) continue
+
+      let observer = observers.get(start)
+      if (!observer) {
+        observer = new IntersectionObserver(
+          (entries, self) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue
+              entry.target.setAttribute('data-motion-state', 'in')
+              self.unobserve(entry.target)
+            }
+          },
+          { rootMargin: `0px 0px -${100 - start}% 0px` }
+        )
+        observers.set(start, observer)
+      }
+      element.setAttribute('data-motion-state', 'pending')
+      observer.observe(element)
+    }
+    return () => {
+      for (const observer of observers.values()) observer.disconnect()
+    }
+  }, [rootRef])
+}
+
+/**
+ * A chamada fixa aparece depois do hero e some perto do CTA final, que já
+ * traz o mesmo botão.
+ */
+function useStickyCta() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const hero = document.getElementById(HERO_ID)
+      const final = document.getElementById(FINAL_ID)
+      const heroHeight = hero ? hero.offsetHeight : window.innerHeight
+      const nearEnd = final
+        ? window.scrollY + window.innerHeight > final.offsetTop + 120
+        : false
+      setVisible(window.scrollY > heroHeight * 0.9 && !nearEnd)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return visible
+}
+
+/**
+ * Palavras em máscaras, para o título subir palavra por palavra
+ * (`data-motion="split"`). `from` continua a contagem do trecho anterior.
+ */
+function words(text: string, from = 0) {
+  return text.split(' ').map((word, index) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: texto estático, nunca reordenado
+    <Fragment key={index}>
+      {index > 0 ? ' ' : null}
+      <span className="onside-word">
+        <span style={{ '--word': from + index } as CSSProperties}>{word}</span>
+      </span>
+    </Fragment>
+  ))
+}
+
+/** Título em duas partes, a segunda em destaque (`<em>`). */
+function SplitTitle({ parts }: { parts: readonly [string, string] }) {
+  const [lead, accent] = parts
+  return (
+    <>
+      {words(lead)} <em>{words(accent, lead.split(' ').length)}</em>
+    </>
+  )
+}
+
+function ProofList({
+  items,
+  className
+}: {
+  items: readonly string[]
+  className: string
+}) {
+  return (
+    <div className={`onside-proof ${className}`}>
+      {items.map((item) => (
+        <span key={item}>
+          <span className="onside-inline-icon" aria-hidden="true">
+            <Check size={12} aria-hidden="true" focusable="false" />
+          </span>
+          {item}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function OnsideTicker() {
-  const trpc = useTRPC()
   const [isPaused, setIsPaused] = useState(false)
-  const session = useRouteContext({
-    from: '__root__',
-    select: (ctx) => ctx.session
-  })
-  const { data: eliteEvents = [] } = useQuery({
-    ...trpc.pubs.getEliteEvents.queryOptions(),
-    ...HIGHLIGHTS_QUERY,
-    enabled: !!session
-  })
-
-  const hasLiveEvents = eliteEvents.length > 0
-  const liveItems = hasLiveEvents
-    ? eliteEvents.map((event) =>
-        formatTickerEvent(event as Record<string, unknown>)
-      )
-    : []
-
-  const liveLoop = [0, 1].flatMap((copy) =>
-    liveItems.map((item) => ({
-      ...item,
-      key: `${copy}-${item.id}`
-    }))
-  )
-
-  const benefitLoop = [0, 1].flatMap((copy) =>
-    TICKER_BENEFITS.map((item) => ({
-      ...item,
-      key: `${copy}-${item.id}`
-    }))
-  )
 
   return (
     <section
-      className={`onside-schedule-strip${isPaused ? ' is-paused' : ''}${hasLiveEvents ? '' : ' is-benefits'}`}
-      aria-label={
-        hasLiveEvents ? 'Agenda confirmada pelos bares' : 'Benefícios da Onside'
-      }
+      className={`onside-ticker${isPaused ? ' is-paused' : ''}`}
+      aria-label="Benefícios da Onside"
     >
       <button
         className="onside-ticker-control"
@@ -342,24 +530,59 @@ function OnsideTicker() {
         )}
         {isPaused ? 'Retomar' : 'Pausar'}
       </button>
-      {hasLiveEvents ? (
-        <div className="onside-schedule-track">
-          {liveLoop.map((item) => (
-            <span key={item.key}>
-              <b>{item.timeLabel}</b> {item.event} · {item.place}
+      <div className="onside-ticker-track">
+        {[false, true].flatMap((copy) =>
+          TICKER_BENEFITS.map((text) => (
+            <span key={`${copy}-${text}`} aria-hidden={copy || undefined}>
+              {text}
             </span>
-          ))}
-        </div>
-      ) : (
-        <div className="onside-schedule-track">
-          {benefitLoop.map((item) => (
-            <span key={item.key}>
-              <b>{item.text}</b>
-            </span>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </section>
+  )
+}
+
+/**
+ * Passo 01: alguém digita o jogo na busca. Meio segundo depois de entrar na
+ * tela, uma letra a cada 70 ms, como no protótipo.
+ */
+function TypedSearch() {
+  const ref = useRef<HTMLElement>(null)
+  const [typed, setTyped] = useState<string | null>(null)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    if (window.matchMedia(REDUCED_MOTION).matches) return
+
+    const text = LANDING_COPY.journey.searchTyped
+    let timer = 0
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        observer.disconnect()
+        let length = 0
+        const type = () => {
+          setTyped(text.slice(0, length))
+          if (length++ < text.length) timer = window.setTimeout(type, 70)
+        }
+        timer = window.setTimeout(type, 500)
+      },
+      { rootMargin: '0px 0px -20% 0px' }
+    )
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(timer)
+    }
+  }, [])
+
+  return (
+    <strong ref={ref} className={typed === null ? undefined : 'is-typed'}>
+      {typed ?? LANDING_COPY.journey.searchPlaceholder}
+      {typed === null ? null : <i />}
+    </strong>
   )
 }
 
@@ -371,7 +594,7 @@ function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
           <span className="onside-inline-icon">
             <Search size={16} aria-hidden="true" focusable="false" />
           </span>
-          <strong>Qual jogo você quer ver?</strong>
+          <TypedSearch />
         </div>
         <div className="onside-sport-options">
           <span>Futebol</span>
@@ -387,6 +610,7 @@ function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
     return (
       <div
         className="onside-journey-visual onside-compare-visual"
+        data-motion="compare"
         aria-hidden="true"
       >
         <div className="onside-compare-row">
@@ -423,340 +647,84 @@ function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
         <div>
           <span>Atualizada</span>
           <span>há 18 min</span>
-          <span>Confirmada</span>
+          <span data-motion="stamp">Confirmada</span>
         </div>
       </div>
     </div>
   )
 }
 
-function FanDashboardMock() {
-  return (
-    <div className="onside-dashboard-mock" aria-hidden="true">
-      <p className="onside-dashboard-preview-label">
-        Prévia do dashboard · ainda não disponível
-      </p>
-      <div className="onside-dash-header">
-        <div className="onside-dash-brand">
-          <OnsideMark className="onside-dash-symbol" size={17} />
-          <b>ONSIDE</b>
-        </div>
-        <span className="onside-dash-select">
-          São Paulo{' '}
-          <span className="onside-inline-icon">
-            <ChevronDown size={12} aria-hidden="true" focusable="false" />
-          </span>
-        </span>
-      </div>
-      <div className="onside-dash-body">
-        <aside>
-          <b>Hoje</b>
-          <span>Mapa</span>
-          <span>Favoritos</span>
-          <span>Perfil</span>
-        </aside>
-        <div className="onside-dash-main">
-          <div className="onside-dash-title">
-            <div>
-              <small>BARES PERTO DE VOCÊ</small>
-              <h3>Onde você assiste hoje?</h3>
-            </div>
-            <span className="onside-dash-add">
-              <span className="onside-inline-icon">
-                <Add size={12} aria-hidden="true" focusable="false" />
-              </span>{' '}
-              Usar localização
-            </span>
-          </div>
-          <div className="onside-dash-stats">
-            <div>
-              <small>ESPORTE</small>
-              <strong>Futebol</strong>
-              <span>Selecionado</span>
-            </div>
-            <div>
-              <small>DISTÂNCIA</small>
-              <strong>5 km</strong>
-              <span>Raio da busca</span>
-            </div>
-            <div>
-              <small>PREÇO MÉDIO</small>
-              <strong>$$</strong>
-              <span>No lançamento</span>
-            </div>
-          </div>
-          <div className="onside-dash-list">
-            <div>
-              <span className="onside-day">
-                1,2
-                <br />
-                <b>KM</b>
-              </span>
-              <span className="onside-game">
-                <b>Bar Exemplo</b>
-                <small>3 telões · som no jogo · $$</small>
-              </span>
-              <span className="onside-published">EXEMPLO</span>
-            </div>
-            <div>
-              <span className="onside-day">
-                2,4
-                <br />
-                <b>KM</b>
-              </span>
-              <span className="onside-game">
-                <b>Espaço Central</b>
-                <small>Ambiente esportivo · preço médio $</small>
-              </span>
-              <span className="onside-published">EXEMPLO</span>
-            </div>
-            <div>
-              <span className="onside-day">
-                3,1
-                <br />
-                <b>KM</b>
-              </span>
-              <span className="onside-game">
-                <b>Casa da Torcida</b>
-                <small>Telão · comida · preço médio $$</small>
-              </span>
-              <span className="onside-draft">EXEMPLO</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ProofList({
-  items,
-  className
-}: {
-  items: readonly string[]
-  className: string
-}) {
-  return (
-    <div className={className}>
-      {items.map((item) => (
-        <span key={item}>
-          <span className="onside-inline-icon" aria-hidden="true">
-            <Check size={12} aria-hidden="true" focusable="false" />
-          </span>
-          {item}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-/**
- * Botão que acompanha o ponteiro, como no desenho. Só onde há mouse e sem
- * movimento reduzido. O deslocamento vai em variáveis CSS; quem suaviza é a
- * transição do próprio botão.
- */
-function useMagnet<T extends HTMLElement>() {
-  const ref = useRef<T>(null)
-
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-    const move = (event: PointerEvent) => {
-      const box = element.getBoundingClientRect()
-      const dx = event.clientX - box.left - box.width / 2
-      const dy = event.clientY - box.top - box.height / 2
-      element.style.setProperty('--magnet-x', `${dx * 0.22}px`)
-      element.style.setProperty('--magnet-y', `${dy * 0.35}px`)
-    }
-    const leave = () => {
-      element.style.removeProperty('--magnet-x')
-      element.style.removeProperty('--magnet-y')
-    }
-    element.addEventListener('pointermove', move)
-    element.addEventListener('pointerleave', leave)
-    return () => {
-      element.removeEventListener('pointermove', move)
-      element.removeEventListener('pointerleave', leave)
-    }
-  }, [])
-
-  return ref
-}
-
-/** Rodapé da landing v2 (Claude Design), usado também nas páginas legais. */
-export function OnsideFooter({ home = '' }: OnsideChromeProps) {
-  const cta = usePrimaryCta(home)
-  const ctaRef = useMagnet<HTMLAnchorElement>()
-  const bigmarkRef = useRef<HTMLDivElement>(null)
-
-  // O letreiro sobe quando entra na tela. Só esconde se ainda estiver abaixo
-  // da dobra e com o JavaScript de pé: sem ele, fica visível.
-  useEffect(() => {
-    const element = bigmarkRef.current
-    if (!element) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    if (element.getBoundingClientRect().top < window.innerHeight * 0.95) return
-
-    element.setAttribute('data-reveal', 'pending')
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return
-        element.setAttribute('data-reveal', 'in')
-        observer.disconnect()
-      },
-      { rootMargin: '0px 0px -5% 0px' }
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [])
-
-  return (
-    <footer className="onside-site-footer">
-      <div className="onside-shell onside-footer-grid">
-        <div className="onside-footer-lead">
-          <a
-            className="onside-brand-link onside-footer-brand"
-            href={`${home}#top`}
-            aria-label="Onside — início"
-          >
-            <OnsideBrand />
-          </a>
-          <p>Feito por quem prefere a mesa ao sofá.</p>
-          <a
-            ref={ctaRef}
-            className="onside-footer-cta"
-            href={cta.href}
-            data-cta="footer_city_waitlist"
-          >
-            {cta.label}
-            <span className="onside-inline-icon" aria-hidden="true">
-              <ArrowRight size={16} aria-hidden="true" focusable="false" />
-            </span>
-          </a>
-        </div>
-
-        <nav className="onside-footer-nav" aria-label="Rodapé">
-          <div className="onside-footer-column">
-            <p>Produto</p>
-            {NAV_ITEMS.map((item) => (
-              <a key={item.id} href={`${home}${item.href}`}>
-                {item.label}
-              </a>
-            ))}
-          </div>
-          <div className="onside-footer-column">
-            <p>Conta</p>
-            {cta.hasSession ? (
-              <a href={cta.href}>{cta.label}</a>
-            ) : (
-              <>
-                <Link to="/login">Entrar</Link>
-                <Link to="/signup">Criar conta</Link>
-              </>
-            )}
-          </div>
-          <div className="onside-footer-column">
-            <p>Para bares</p>
-            <a href={`${home}#bar-form`}>Cadastre seu bar</a>
-            <a href="mailto:contato@onside.sh">Fale com a gente</a>
-          </div>
-          <div className="onside-footer-column">
-            <p>Onside</p>
-            <a href="mailto:contato@onside.sh">Contato</a>
-            <Link to="/termos">Termos</Link>
-            <Link to="/privacidade">Privacidade</Link>
-            <CookiePreferencesButton />
-          </div>
-        </nav>
-      </div>
-
-      <div className="onside-shell onside-footer-bar">
-        <span>© 2026 Onside</span>
-        <span className="onside-footer-status">
-          <span aria-hidden="true" />
-          {LANDING_COPY.hero.eyebrow}
-        </span>
-      </div>
-
-      <div
-        ref={bigmarkRef}
-        className="onside-footer-bigmark"
-        aria-hidden="true"
-      >
-        <div className="onside-shell">Onside</div>
-      </div>
-    </footer>
-  )
+function SectionKicker({ children }: { children: ReactNode }) {
+  return <p className="onside-section-kicker">{children}</p>
 }
 
 export function OnsideLanding() {
-  const { href: primaryHref, label: primaryLabel } = usePrimaryCta()
+  const pageRef = useRef<HTMLDivElement>(null)
+  const sticky = useStickyCta()
+  useLandingMotion(pageRef)
+
+  const [heroLead, heroAccent, heroTail] = LANDING_COPY.hero.title
+  const [finalLead, finalAccent] = LANDING_COPY.final.title
 
   return (
-    <div className="onside-page">
+    <div ref={pageRef} className="onside-page onside-landing">
       <a className="onside-skip-link" href="#main">
         Pular para o conteúdo
       </a>
 
-      <OnsideHeader />
+      <OnsideHeader inkHeroId={HERO_ID} />
 
       <main id="main">
-        <section className="onside-hero" id="top">
-          <div className="onside-shell onside-hero-grid">
+        <section className="onside-hero" id={HERO_ID}>
+          <OnsideHeroStage />
+          <div className="onside-shell onside-hero-content">
             <div className="onside-hero-copy">
               <div className="onside-eyebrow">
                 <span className="onside-live-dot" aria-hidden="true" />
                 {LANDING_COPY.hero.eyebrow}
               </div>
-              <h1>{LANDING_COPY.hero.title}</h1>
+              <h1>
+                {heroLead} <em>{heroAccent}</em> {heroTail}
+              </h1>
               <p>{LANDING_COPY.hero.body}</p>
               <div className="onside-hero-actions">
+                <PrimaryCta
+                  place="hero"
+                  className="onside-button onside-button-acid onside-button-lg"
+                />
                 <a
-                  className="onside-button onside-button-acid"
-                  href={primaryHref}
-                  data-cta="hero_city_waitlist"
+                  className="onside-button onside-button-ghost onside-button-lg"
+                  href="#como-funciona"
                 >
-                  {primaryLabel}{' '}
+                  {LANDING_COPY.hero.secondaryCta}
                   <span className="onside-inline-icon" aria-hidden="true">
-                    <ArrowRight
-                      size={16}
-                      aria-hidden="true"
-                      focusable="false"
-                    />
+                    <ArrowDown size={16} aria-hidden="true" focusable="false" />
                   </span>
                 </a>
               </div>
               <ProofList
                 className="onside-hero-proof"
-                items={[
-                  'Grátis para torcedores',
-                  'Sem e-mails promocionais',
-                  'Aviso no lançamento'
-                ]}
+                items={LANDING_COPY.proof}
               />
-              <p className="onside-hero-note">{LANDING_COPY.hero.note}</p>
             </div>
-            <OnsideAppDemo />
+            <p className="onside-hero-hint" aria-hidden="true">
+              {LANDING_COPY.hero.hint}
+            </p>
           </div>
         </section>
 
         <OnsideTicker />
 
-        <section className="onside-section-pad" id="produto">
+        <section className="onside-problem onside-section-pad" id="produto">
           <div className="onside-shell">
-            <div className="onside-split-intro">
-              <p className="onside-section-kicker">
-                {LANDING_COPY.problem.kicker}
-              </p>
-              <h2>{LANDING_COPY.problem.title}</h2>
+            <div className="onside-split-intro" data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.problem.kicker}</SectionKicker>
+              <h2 data-motion="split">{words(LANDING_COPY.problem.title)}</h2>
             </div>
-            <div className="onside-problem-rows">
+            <div className="onside-problem-cards" data-motion="tilt">
               {PROBLEM_ITEMS.map((item) => (
                 <article key={item.id}>
-                  <span className="onside-row-number">{item.number}</span>
+                  <span>{item.number}</span>
                   <h3>{item.title}</h3>
                   <p>{item.body}</p>
                 </article>
@@ -765,15 +733,13 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section className="onside-definition onside-section-pad onside-dark-section">
+        <section className="onside-definition onside-section-pad">
           <div className="onside-shell onside-definition-grid">
-            <div>
-              <p className="onside-section-kicker onside-acid-text">
-                {LANDING_COPY.solution.kicker}
-              </p>
-              <h2>{LANDING_COPY.solution.title}</h2>
+            <div data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.solution.kicker}</SectionKicker>
+              <h2 data-motion="split">{words(LANDING_COPY.solution.title)}</h2>
             </div>
-            <div className="onside-definition-copy">
+            <div className="onside-definition-copy" data-motion="reveal">
               <p className="onside-big-copy">{LANDING_COPY.solution.body}</p>
               <div className="onside-definition-points">
                 {DEFINITION_POINTS.map((point) => (
@@ -790,20 +756,18 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section className="onside-section-pad" id="como-funciona">
+        <section
+          className="onside-journey-section onside-section-pad"
+          id="como-funciona"
+        >
           <div className="onside-shell">
-            <div className="onside-centered-intro">
-              <p className="onside-section-kicker">
-                {LANDING_COPY.journey.kicker}
-              </p>
-              <h2>{LANDING_COPY.journey.title}</h2>
+            <div className="onside-centered-intro" data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.journey.kicker}</SectionKicker>
+              <h2 data-motion="split">{words(LANDING_COPY.journey.title)}</h2>
             </div>
-            <div className="onside-journey">
+            <div className="onside-journey" data-motion="group">
               {JOURNEY_STEPS.map((step) => (
-                <article
-                  key={step.id}
-                  className={`onside-journey-step${step.reverse ? ' is-reverse' : ''}`}
-                >
+                <article key={step.id}>
                   <JourneyVisual variant={step.variant} />
                   <div className="onside-journey-copy">
                     <span>{step.number}</span>
@@ -816,20 +780,23 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section className="onside-trust onside-section-pad">
-          <div className="onside-shell onside-trust-grid">
-            <div>
-              <p className="onside-section-kicker">
-                {LANDING_COPY.variety.kicker}
-              </p>
-              <h2>{LANDING_COPY.variety.title}</h2>
+        <section className="onside-occasions onside-section-pad">
+          <div className="onside-shell onside-occasions-grid">
+            <div data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.variety.kicker}</SectionKicker>
+              <h2 data-motion="split">{words(LANDING_COPY.variety.title)}</h2>
+              <p>{LANDING_COPY.variety.body}</p>
             </div>
-            <div className="onside-trust-list">
-              <div>
-                <strong>01</strong>
-                <h3>Barato, animado ou mais tranquilo.</h3>
-                <p>{LANDING_COPY.variety.body}</p>
-              </div>
+            <div className="onside-occasion-list" data-motion="group">
+              {OCCASION_ITEMS.map((item) => (
+                <div key={item.id}>
+                  <strong>{item.number}</strong>
+                  <span>{item.title}</span>
+                  <small className={item.highlight ? 'is-acid' : undefined}>
+                    {item.tag}
+                  </small>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -848,91 +815,61 @@ export function OnsideLanding() {
             />
           </picture>
           <div className="onside-community-overlay" aria-hidden="true" />
-          <div className="onside-shell onside-community-content">
-            <p className="onside-section-kicker">
-              {LANDING_COPY.community.kicker}
-            </p>
-            <h2>{LANDING_COPY.community.title}</h2>
+          <div
+            className="onside-shell onside-community-content"
+            data-motion="reveal"
+          >
+            <SectionKicker>{LANDING_COPY.community.kicker}</SectionKicker>
+            <h2 data-motion="split">
+              <SplitTitle parts={LANDING_COPY.community.title} />
+            </h2>
             <p>{LANDING_COPY.community.body}</p>
-            <a
+            <PrimaryCta
+              place="community"
               className="onside-button onside-button-acid"
-              href={primaryHref}
-              data-cta="community_city_waitlist"
-            >
-              {primaryLabel}{' '}
-              <span className="onside-inline-icon" aria-hidden="true">
-                <ArrowRight size={16} aria-hidden="true" focusable="false" />
-              </span>
-            </a>
+            />
           </div>
         </section>
 
-        <section className="onside-waitlist onside-section-pad" id="lista">
-          <div className="onside-shell onside-waitlist-grid">
-            <div className="onside-waitlist-copy">
-              <p className="onside-section-kicker onside-acid-text">
-                {LANDING_COPY.waitlist.kicker}
-              </p>
-              <h2>{LANDING_COPY.waitlist.title}</h2>
-              <p>{LANDING_COPY.waitlist.body}</p>
-              <ProofList
-                className="onside-waitlist-facts"
-                items={[
-                  'Grátis para torcedores',
-                  'Sem e-mails promocionais',
-                  'Aviso no lançamento'
-                ]}
-              />
-            </div>
-            <OnsideFanWaitlistForm />
-          </div>
-        </section>
-
-        <section className="onside-bars onside-section-pad" id="historia">
-          <div className="onside-shell onside-bars-grid">
-            <div className="onside-bars-copy">
-              <p className="onside-section-kicker">
-                {LANDING_COPY.story.kicker}
-              </p>
-              <h2>{LANDING_COPY.story.title}</h2>
+        <section className="onside-story onside-section-pad" id="historia">
+          <div className="onside-shell onside-story-grid">
+            <div className="onside-story-copy" data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.story.kicker}</SectionKicker>
+              <h2 data-motion="split">
+                <SplitTitle parts={LANDING_COPY.story.title} />
+              </h2>
               <p>{LANDING_COPY.story.body}</p>
               <p>{LANDING_COPY.story.closing}</p>
-              <a
+              <PrimaryCta
+                place="story"
                 className="onside-button onside-button-ink"
-                href={primaryHref}
-                data-cta="story_city_waitlist"
-              >
-                {primaryLabel}{' '}
-                <span className="onside-inline-icon" aria-hidden="true">
-                  <ArrowRight size={16} aria-hidden="true" focusable="false" />
-                </span>
-              </a>
+              />
             </div>
-            <FanDashboardMock />
-          </div>
-        </section>
-
-        <section className="onside-bar-mini-form" id="bar-form">
-          <div className="onside-shell onside-bar-form-inner">
-            <div>
-              <p className="onside-section-kicker">VOCÊ TEM UM BAR?</p>
-              <h2>ENTRE NA WAITLIST.</h2>
+            <div className="onside-story-mark" aria-hidden="true">
+              {/* biome-ignore lint/performance/noImgElement: marca estática de `public/` */}
+              <img
+                src="/onside-icone-preto.png"
+                alt=""
+                width={360}
+                height={360}
+                loading="lazy"
+                decoding="async"
+              />
             </div>
-            <OnsideBarInterestForm />
           </div>
         </section>
 
         <section className="onside-faq onside-section-pad" id="duvidas">
           <div className="onside-shell onside-faq-grid">
-            <div>
-              <p className="onside-section-kicker">DÚVIDAS ANTES DO CADASTRO</p>
+            <div data-motion="reveal">
+              <SectionKicker>{LANDING_COPY.faq.kicker}</SectionKicker>
               <h2>
-                O QUE VOCÊ PRECISA
+                {LANDING_COPY.faq.title[0]}
                 <br />
-                <em>SABER ANTES DE SE CADASTRAR.</em>
+                <em>{LANDING_COPY.faq.title[1]}</em>
               </h2>
             </div>
-            <div className="onside-faq-list">
+            <div className="onside-faq-list" data-motion="reveal">
               {FAQ_ITEMS.map((item, index) => (
                 <details key={item.id} open={index === 0 || undefined}>
                   <summary>
@@ -948,34 +885,46 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section className="onside-final-cta">
-          <div className="onside-shell onside-final-cta-inner">
-            <OnsideMark className="onside-final-symbol" size={72} />
-            <p>ONSIDE · {LANDING_COPY.final.kicker}</p>
-            <h2>{LANDING_COPY.final.title}</h2>
-            <a
-              className="onside-button onside-button-ink"
-              href={primaryHref}
-              data-cta="final_city_waitlist"
-            >
-              {primaryLabel}{' '}
-              <span className="onside-inline-icon" aria-hidden="true">
-                <ArrowRight size={16} aria-hidden="true" focusable="false" />
-              </span>
-            </a>
+        <section className="onside-final-cta" id={FINAL_ID}>
+          <OnsideFinalStage />
+          <div
+            className="onside-shell onside-final-cta-inner"
+            data-motion="reveal"
+          >
+            <p>{LANDING_COPY.final.kicker}</p>
+            <h2>
+              {finalLead} <em>{finalAccent}</em>
+            </h2>
+            <div className="onside-hero-actions">
+              <PrimaryCta
+                place="final"
+                className="onside-button onside-button-acid onside-button-lg"
+              />
+              <a
+                className="onside-button onside-button-ghost onside-button-lg"
+                href="#como-funciona"
+              >
+                {LANDING_COPY.hero.secondaryCta}
+              </a>
+            </div>
             <ProofList
               className="onside-final-proof"
-              items={[
-                'Grátis',
-                'Sem e-mails promocionais',
-                'Aviso no lançamento'
-              ]}
+              items={LANDING_COPY.final.proof}
             />
           </div>
         </section>
       </main>
 
       <OnsideFooter />
+
+      <div
+        className={`onside-sticky-cta${sticky ? ' is-visible' : ''}`}
+        aria-hidden={!sticky}
+        inert={!sticky}
+      >
+        <span>{LANDING_COPY.sticky}</span>
+        <PrimaryCta place="sticky" className="onside-sticky-button" />
+      </div>
     </div>
   )
 }
