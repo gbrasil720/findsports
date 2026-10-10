@@ -372,6 +372,13 @@
       "when": 1791644200061,
       "tag": "0053_event_participants_position",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791672785717,
+      "tag": "0054_drop_waitlist",
+      "breakpoints": true
     }
   ]
 }
