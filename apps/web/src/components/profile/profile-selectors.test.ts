@@ -33,6 +33,7 @@ function makeFavorite({
       latitude: '-23.55052000',
       longitude: '-46.63330800',
       photoUrl: null,
+      plan: 'starter',
       phoneAcceptsWhatsapp: false,
       amenities: [],
       screenCount: null,

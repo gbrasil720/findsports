@@ -53,7 +53,12 @@ for (const { name, subscription, allowed } of cases) {
     if (allowed) {
       await expect(field).toBeVisible()
     } else {
-      await expect(page.getByText('Trial do plano Pro encerrado')).toBeVisible()
+      // Só a aba aberta: as outras ficam montadas e podem repetir o texto.
+      await expect(
+        page
+          .getByRole('tabpanel', { name: 'Meu espaço' })
+          .getByText('Trial do plano Pro encerrado')
+      ).toBeVisible()
       await expect(field).toHaveCount(0)
     }
 

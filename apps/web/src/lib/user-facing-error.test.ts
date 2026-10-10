@@ -100,3 +100,26 @@ test('captcha recusado vira instrução, não falta de permissão', () => {
     ).message
   ).toBe(message)
 })
+
+test('recusa da nossa API mostra o motivo; 403 de terceiro continua genérico', () => {
+  const refusal = Object.assign(
+    new Error(
+      'Seu plano Elite está parado. Regularize a assinatura para cadastrar mais jogos.'
+    ),
+    { data: { code: 'FORBIDDEN', httpStatus: 403, path: 'pub.createEvent' } }
+  )
+  expect(getUserFacingError(refusal, 'x')).toEqual({
+    message:
+      'Seu plano Elite está parado. Regularize a assinatura para cadastrar mais jogos.',
+    retryable: false
+  })
+  expect(
+    getUserFacingError({ status: 403, message: 'Forbidden' }, 'x').message
+  ).toBe('Você não tem permissão para realizar esta ação.')
+  expect(
+    getUserFacingError(
+      { code: 'FORBIDDEN', message: 'You are not allowed' },
+      'x'
+    ).message
+  ).toBe('Você não tem permissão para realizar esta ação.')
+})

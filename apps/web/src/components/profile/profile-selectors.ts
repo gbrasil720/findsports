@@ -1,4 +1,6 @@
+import { pinDoPlano } from '@/components/app/map-icons'
 import type { MapBar } from '@/components/app/onside-map'
+import { getEventTemporalState } from '@/domain/events'
 import type {
   CompletionItem,
   Favorite,
@@ -101,7 +103,15 @@ export function createFavoriteMapBars(favorites: Favorite[]): MapBar[] {
         name: favorite.bar.name,
         lat,
         lng,
-        pin: 'starter' as const
+        // Mesmo pino do mapa da busca: plano vigente, e vermelho com jogo
+        // rolando.
+        pin: pinDoPlano(
+          favorite.bar.plan,
+          favorite.bar.events.some(
+            (event) =>
+              getEventTemporalState(event.startsAt, event.endsAt) === 'live'
+          )
+        )
       }
     ]
   })

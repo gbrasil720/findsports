@@ -30,7 +30,7 @@ type SubscriptionForCheckout = {
  * As demais não passam por aqui porque o plugin do Stripe já as resolve sem
  * checkout: assinatura viva (`active` ou `trialing`) vira troca de plano na
  * mesma assinatura. Teste grátis do cadastro e assinatura encerrada não têm
- * nada no provedor a duplicar.
+ * nada no provedor a duplicar, e a pausada (`inactive`) não gera fatura.
  */
 export function blocksNewCheckout(
   subscription: SubscriptionForCheckout

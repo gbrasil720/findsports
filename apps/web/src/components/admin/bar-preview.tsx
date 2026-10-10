@@ -128,6 +128,7 @@ export function BarPreview({
                 id: nextEvent.id,
                 championship: nextEvent.championship,
                 startsAt: nextEvent.startsAt.toString(),
+                endsAt: nextEvent.endsAt?.toString() ?? null,
                 sport: {
                   name: nextEvent.sport?.name ?? '',
                   slug: nextEvent.sport?.slug ?? ''

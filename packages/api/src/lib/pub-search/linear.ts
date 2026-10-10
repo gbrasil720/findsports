@@ -101,6 +101,7 @@ export async function executarBuscaLinear(
       agg.next_event_id,
       agg.next_championship,
       agg.next_event_starts_at,
+      agg.next_event_ends_at,
       agg.next_sport_name,
       agg.next_sport_slug,
       agg.next_participant_free_text,

@@ -4,6 +4,7 @@ import { currentClassicRulesCte } from '../classics'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
+  jogoNaoAcabou,
   type LinhaBusca,
   legacySearchCursorSchema,
   montarFiltrosBusca,
@@ -125,6 +126,7 @@ export async function executarBuscaEmCamadas(
         agg.next_event_id,
         agg.next_championship,
         agg.next_event_starts_at,
+        agg.next_event_ends_at,
         agg.next_sport_name,
         agg.next_sport_slug,
         agg.next_participant_free_text,
@@ -172,7 +174,7 @@ export async function executarBuscaEmCamadas(
       SELECT COUNT(*)::int AS event_count
       FROM event e
       WHERE e.bar_id = r.id
-        AND e.starts_at >= NOW()
+        AND ${jogoNaoAcabou(sql`e`)}
         ${eventFilter}
         ${champBarFilterR}
     ) cnt ON true

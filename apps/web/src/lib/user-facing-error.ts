@@ -68,6 +68,19 @@ function getErrorStatus(error: unknown): number | undefined {
   return undefined
 }
 
+/**
+ * Recusa da nossa API (tRPC), que já vem escrita para quem usa: "Seu plano
+ * Elite está parado…", "Confirme seu e-mail para continuar.". O better-auth
+ * também responde 403, mas em inglês e sem `data.httpStatus`.
+ */
+function isOwnApiRefusal(error: unknown): boolean {
+  return (
+    typeof asRecord(asRecord(error)?.data)?.httpStatus === 'number' ||
+    typeof asRecord(asRecord(asRecord(error)?.shape)?.data)?.httpStatus ===
+      'number'
+  )
+}
+
 export function isRetryableError(error: unknown): boolean {
   const code = getErrorCode(error)
   const status = getErrorStatus(error)
@@ -155,8 +168,13 @@ export function getUserFacingError(
   }
 
   if (status === 403 || code === 'FORBIDDEN') {
+    // A recusa da nossa API diz o motivo e o que fazer; trocá-la por "sem
+    // permissão" deixava o dono do bar sem saber que bateu o limite de jogos.
     return {
-      message: 'Você não tem permissão para realizar esta ação.',
+      message:
+        text && isOwnApiRefusal(error)
+          ? text
+          : 'Você não tem permissão para realizar esta ação.',
       retryable: false
     }
   }

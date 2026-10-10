@@ -34,6 +34,8 @@ import { AnalyticsPeriodSelector } from './analytics-period-selector'
 import { QueryError } from './query-error'
 import { RecommendationQualityStatus } from './recommendation-quality-status'
 
+const restantes = (n: number) => `${n} ${n === 1 ? 'restante' : 'restantes'}`
+
 export function OverviewTab({
   active,
   analyticsRange,
@@ -439,10 +441,10 @@ export function OverviewTab({
           </div>
           <div className="onside-stat-label">
             {isStarter && eventsRemaining !== null
-              ? `${eventsRemaining} restantes`
+              ? restantes(eventsRemaining)
               : isLapsed(standing)
                 ? lapsedPlan && eventsRemaining !== null
-                  ? `${lapsedPlan.label} · ${eventsRemaining} restantes`
+                  ? `${lapsedPlan.label} · ${restantes(eventsRemaining)}`
                   : LAPSED_COPY[standing].label
                 : 'Plano atual'}
           </div>

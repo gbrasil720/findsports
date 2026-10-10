@@ -14,6 +14,10 @@ export type BarAccountDeletionBlock = 'subscription-active'
  * lá, e cai no bloqueio acima; quando o `canceled` chega, a assinatura já
  * acabou, o bar já saiu do ar e não há mais o que cobrar. Período no futuro
  * só sobra no cancelamento imediato, que encerra o serviço na hora.
+ *
+ * `inactive` (assinatura `paused` no Stripe) também libera: pausada, ela não
+ * gera fatura, e só volta a cobrar se o cliente puser um meio de pagamento e
+ * a assinatura for retomada.
  */
 export function getBarAccountDeletionBlock(
   subscription: SubscriptionForDeletion | null

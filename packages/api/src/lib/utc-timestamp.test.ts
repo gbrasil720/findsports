@@ -46,6 +46,7 @@ describe('montarPaginaBusca', () => {
     next_championship: 'Brasileirão',
     // Exatamente o que o `db.execute` entrega para `event.starts_at`.
     next_event_starts_at: '2026-10-08 19:55:00',
+    next_event_ends_at: null,
     next_sport_name: 'Futebol',
     next_sport_slug: 'futebol',
     next_participant_free_text: null,
