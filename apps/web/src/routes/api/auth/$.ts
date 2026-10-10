@@ -1,9 +1,5 @@
 import { getAppConfig } from '@findsports_oficial/api/lib/app-config'
 import {
-  ehAberturaDeCheckout,
-  respostaCheckoutIndisponivel
-} from '@findsports_oficial/api/lib/billing-gate'
-import {
   acaoDeEntrada,
   admitirConta,
   consultarEntrada,
@@ -14,11 +10,10 @@ import {
   respostaPortaoFechado
 } from '@findsports_oficial/api/lib/waitlist-gate'
 import { auth } from '@findsports_oficial/auth'
-import { setFounderCouponSource } from '@findsports_oficial/auth/stripe-checkout'
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
- * ESC-19: dois portões antes do `better-auth`.
+ * ESC-19: o portão da waitlist antes do `better-auth`.
  *
  * Os plugins do better-auth montam as rotas deles na carga do módulo, com
  * configuração estática — não há como consultar uma flag lá dentro por
@@ -30,14 +25,6 @@ import { createFileRoute } from '@tanstack/react-router'
  * endpoint sem passar pela tela. Do lado do servidor, e não da interface,
  * porque a interface é só uma sugestão.
  */
-
-// Cupom de fundador do checkout (WEB-31). A chave mora em `packages/api` e o
-// checkout em `packages/auth`, que não enxerga a configuração: é a mesma
-// razão de este handler existir. Lida a cada checkout, como os portões.
-setFounderCouponSource(async () => {
-  const cupom = await getAppConfig('billing.founder_coupon')
-  return cupom.enabled ? cupom.couponId : null
-})
 
 async function portaoDaWaitlist(request: Request): Promise<Response | null> {
   const acao = acaoDeEntrada(request.url)
@@ -68,11 +55,6 @@ async function portaoDaWaitlist(request: Request): Promise<Response | null> {
 }
 
 async function despachar(request: Request): Promise<Response> {
-  if (ehAberturaDeCheckout(request.url)) {
-    const liberado = await getAppConfig('billing.checkout_enabled')
-    if (!liberado) return respostaCheckoutIndisponivel()
-  }
-
   const acao = acaoDeEntrada(request.url)
   const loginEmail = ehLoginEmail(request.url)
   const email =

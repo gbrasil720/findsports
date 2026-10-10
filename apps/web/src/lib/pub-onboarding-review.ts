@@ -1,13 +1,13 @@
-import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { getPlan } from './plan-catalog'
+import {
+  ONBOARDING_TRIAL,
+  PLAN_NAMES
+} from '@findsports_oficial/api/lib/plan-limits'
 
 type Review = { titulo: string; texto: string; botao: string }
 
 /**
- * O que o último passo do cadastro de bar promete (WEB-238). Com o teste do
- * cadastro ligado, concluir publica o bar e já dá o plano; chave desligada,
- * ausente, carregando ou com erro de leitura cai no texto de sempre, que é o
- * padrão do registro.
+ * O que o último passo do cadastro de bar promete (WEB-238): concluir publica
+ * o bar e já dá o plano do teste grátis.
  *
  * A promessa segue o que acontece de fato ao continuar. Sem e-mail confirmado
  * o cadastro só é enviado de `/verify-email`: o bar entra no ar depois da
@@ -16,23 +16,13 @@ type Review = { titulo: string; texto: string; botao: string }
  * pelos planos.
  */
 export function getPubOnboardingReview({
-  trial,
   emailVerified,
   goesToPlan
 }: {
-  trial: { enabled: boolean; plan: SubscriptionPlan; days: number } | undefined
   emailVerified: boolean
   goesToPlan: boolean
 }): Review {
-  if (!trial?.enabled) {
-    return {
-      titulo: 'Pronto para escolher o plano',
-      texto:
-        'Revise os dados do bar. Ao continuar, salvamos o cadastro e você escolhe o plano.',
-      botao: 'Escolher meu plano'
-    }
-  }
-  const oferta = `seu bar entra no ar e você ganha o plano ${getPlan(trial.plan).name} grátis por ${trial.days} ${trial.days === 1 ? 'dia' : 'dias'}, sem cartão.`
+  const oferta = `seu bar entra no ar e você ganha o plano ${PLAN_NAMES[ONBOARDING_TRIAL.plan]} grátis por ${ONBOARDING_TRIAL.days} dias, sem cartão.`
   if (!emailVerified) {
     return {
       titulo: 'Falta só confirmar seu e-mail',

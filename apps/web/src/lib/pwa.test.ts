@@ -16,8 +16,8 @@ const janelaOriginal = globalThis.window
 /**
  * Troca `globalThis.window` por `defineProperty`, e não por atribuição.
  *
- * Outros arquivos de teste — `product-frame.test.tsx`, `posthog-flag.test.tsx`
- * — instalam o `window` do JSDOM com `Object.defineProperty(globalThis,
+ * Outros arquivos de teste — `product-frame.test.tsx`, por exemplo —
+ * instalam o `window` do JSDOM com `Object.defineProperty(globalThis,
  * 'window', { value, configurable: true })`. Sem `writable`, a propriedade
  * nasce somente-leitura, e uma atribuição simples depois disso lança
  * `TypeError: Attempted to assign to readonly property` em módulo ESM.

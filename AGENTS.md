@@ -151,11 +151,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
-- **Teste grátis nasce no cadastro, sem cartão** (`billing.onboarding_trial`). Quem
+- **Teste grátis nasce no cadastro, sem cartão**: 120 dias no Elite, para todo bar
+  novo (`ONBOARDING_TRIAL`, em `packages/api/src/lib/plan-limits.ts`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
-- **O teste do cadastro vale para qualquer plano** (WEB-358): o bar nasce no plano da
-  chave e troca em `/plan` ("Testar o X grátis"), sem cartão e quantas vezes quiser,
+- **O teste do cadastro vale para qualquer plano** (WEB-358): o bar nasce no Elite
+  e troca em `/plan` ("Testar o X grátis"), sem cartão e quantas vezes quiser,
   por `pub.changeTrialPlan`. Só `subscription.plan` muda; o fim do teste é o mesmo.
   Com assinatura no Stripe ou teste vencido a troca é recusada: o caminho é contratar.
   No Starter o limite de jogos conta por mês, de trás para frente a partir do fim do
@@ -176,9 +177,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   (`stripe-sync.ts`). O checkout hospedado não mostra esses dados preenchidos: o
   endereço de cobrança é digitado na primeira compra. `/plan` avisa em nome de quem
   a assinatura sai. Cobrança sempre em BRL (Adaptive Pricing desligado na sessão).
-- Chaves de `app_config`: `billing.checkout_enabled` (abre a contratação),
-  `billing.onboarding_trial` (teste do cadastro) e `billing.founder_coupon` (cupom de
-  fundador no checkout).
+- **Cobrança não tem chave em `app_config`** (WEB-233): a contratação está sempre
+  aberta, o teste do cadastro é a constante acima e o cupom de fundador é
+  `FOUNDER_COUPON_ID` (`stripe-checkout.ts`), o mesmo id no sandbox e em produção.
+  Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
+  expirado ou inexistente na conta, o checkout segue a preço de tabela
+  (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 
 ### UI / Styling
 

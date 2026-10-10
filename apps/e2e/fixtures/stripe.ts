@@ -165,3 +165,18 @@ export async function seedStripeBalance(
     if (!seeded.ok()) throw new Error(`stub do Stripe recusou ${path}`)
   }
 }
+
+/**
+ * O que o "Stripe" (o stub) passa a dizer do cupom de fundador: `exhausted`
+ * bateu o teto de usos, `missing` não existe nesta conta. O estado é global:
+ * só em `*.serial.e2e.ts`, e com `'valid'` de volta no `afterEach`.
+ */
+export async function setFounderCoupon(
+  request: APIRequestContext,
+  state: 'valid' | 'exhausted' | 'missing'
+) {
+  const changed = await request.post(`${STUB_URL}/stripe/coupon`, {
+    data: { state }
+  })
+  if (!changed.ok()) throw new Error('stub do Stripe recusou o cupom')
+}

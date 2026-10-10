@@ -27,6 +27,7 @@ import {
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
+import { ONBOARDING_TRIAL } from '../lib/plan-limits'
 import {
   findSearchCity,
   searchCityColumns,
@@ -145,11 +146,6 @@ export const onboardingRouter = router({
         apiKey
       )
 
-      // WEB-113: com o trial ligado o bar já nasce publicado e com assinatura
-      // `trialing`. Desligado — o padrão — nasce fora do ar, à espera da
-      // assinatura paga, como sempre foi.
-      const trial = await getAppConfig('billing.onboarding_trial')
-
       await db.transaction(async (tx) => {
         const [newBar] = await tx
           .insert(bar)
@@ -166,7 +162,8 @@ export const onboardingRouter = router({
             screenCount: input.screenCount ?? null,
             latitude,
             longitude,
-            isActive: trial.enabled
+            // WEB-113: o bar nasce publicado, com o teste grátis abaixo.
+            isActive: true
           })
           .returning({ id: bar.id })
 
@@ -177,17 +174,15 @@ export const onboardingRouter = router({
           })
         }
 
-        if (trial.enabled) {
-          // `bar.plan` acompanha pela trigger `subscription_bar_plan_sync`.
-          // O vencimento usa o `now()` do banco: a coluna é `timestamp` sem
-          // fuso, e um `Date` do JS entraria no fuso do processo que grava.
-          await tx.insert(subscription).values({
-            barId: newBar.id,
-            plan: trial.plan,
-            status: 'trialing',
-            currentPeriodEnd: sql`now() + make_interval(days => ${trial.days}::int)`
-          })
-        }
+        // `bar.plan` acompanha pela trigger `subscription_bar_plan_sync`.
+        // O vencimento usa o `now()` do banco: a coluna é `timestamp` sem
+        // fuso, e um `Date` do JS entraria no fuso do processo que grava.
+        await tx.insert(subscription).values({
+          barId: newBar.id,
+          plan: ONBOARDING_TRIAL.plan,
+          status: 'trialing',
+          currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
+        })
 
         await tx
           .update(user)

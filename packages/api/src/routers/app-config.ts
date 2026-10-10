@@ -64,9 +64,8 @@ export const appConfigRouter = router({
     }),
 
   /**
-   * Subconjunto público. Aberto de propósito: a tela de planos precisa saber
-   * que a cobrança está fechada ANTES do clique, e o onboarding de bar
-   * precisa listar as cidades abertas antes de o dono digitar o endereço.
+   * Subconjunto público. Aberto de propósito: o onboarding de bar precisa
+   * listar as cidades abertas antes de o dono digitar o endereço.
    *
    * Nada aqui é decisão de segurança — o servidor recusa de novo, sozinho,
    * em `api/auth/$` e em `onboarding.completePub`. Isto é só cortesia com

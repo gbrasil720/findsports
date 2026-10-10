@@ -71,7 +71,7 @@ test('campo booleano de flag em objeto liga sem digitar JSON', async ({
 })
 
 test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
-  const key = 'billing.checkout_enabled'
+  const key = 'rating.public_display'
   await page.goto('/internal/flags')
   const flag = card(page, key)
   await flag.getByText('Editar como JSON').click()
@@ -102,8 +102,8 @@ test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
 test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrão pede confirmação', async ({
   page
 }) => {
-  const key = 'billing.onboarding_trial'
-  const value = { enabled: true, plan: 'elite', days: 30 }
+  const key = 'launch.pub_cities'
+  const value = ['Campinas']
   let resets = 0
   page.on('request', (request) => {
     if (request.url().includes('appConfig.reset')) resets += 1
@@ -114,12 +114,12 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
   const field = flag.getByLabel('Valor (JSON)')
   const save = flag.getByRole('button', { name: 'Salvar' })
 
-  await field.fill(JSON.stringify({ ...value, days: 365 }))
+  await field.fill(JSON.stringify(['x'.repeat(101)]))
   await save.click()
   await expect(
     page.locator('[data-sonner-toast][data-type="error"]')
   ).toContainText(
-    'Valor recusado — days: Grande demais: esperava que o número fosse <= 180'
+    'Valor recusado — 0: Grande demais: esperava que o texto tivesse <= 100 caracteres'
   )
   expect(await storedValue(key)).toBeUndefined()
 
@@ -137,9 +137,9 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
     void dialog.dismiss()
   })
   await reset.click()
-  // Flag de cobrança: a pergunta diz o efeito, não o JSON do padrão.
+  // A pergunta diz o valor que passa a valer.
   expect(question).toBe(
-    `Voltar ${key} ao padrão? O trial do cadastro será desligado para bares novos. Continuar?`
+    `Voltar ${key} ao padrão? O valor gravado é apagado e passa a valer [].`
   )
   await expect(flag).toContainText('Sobrescrito')
   expect(resets).toBe(0)
@@ -154,7 +154,7 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
 test('alteração de conta que não existe mais não mostra o id', async ({
   page
 }) => {
-  const key = 'billing.checkout_enabled'
+  const key = 'rating.public_display'
   await query(
     `INSERT INTO app_config (key, value, updated_by) VALUES ($1, 'true'::jsonb, 'conta-apagada')`,
     [key]
@@ -207,6 +207,18 @@ function anotherValue(value: unknown): unknown {
 test('toda chave edita como JSON, salva e volta ao padrão', async ({
   page
 }) => {
+  // WEB-233: as linhas das chaves de cobrança seguem gravadas em produção até
+  // a migration de limpeza, e não viram cartão.
+  for (const name of [
+    'checkout_enabled',
+    'onboarding_trial',
+    'founder_coupon'
+  ]) {
+    await query(
+      `INSERT INTO app_config (key, value) VALUES ($1, 'true'::jsonb)`,
+      [`billing.${name}`]
+    )
+  }
   await page.goto('/internal/flags')
   // No mobile os toasts empilham no rodapé por cima do último cartão, que não
   // tem como rolar para fora deles. Os toasts seguem visíveis para as
@@ -218,17 +230,14 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
   // `allTextContents` não espera: só lê depois que os cartões renderizaram.
   await expect(card(page, 'launch.pub_cities')).toBeVisible()
   const keys = await page.locator('article h2').allTextContents()
-  // As seis chaves de hoje; chave nova entra no laço sozinha.
-  expect(keys).toEqual(
-    expect.arrayContaining([
-      'search.tiered_plan_query',
-      'billing.checkout_enabled',
-      'waitlist.rate_limit',
-      'launch.waitlist_gate',
-      'rating.public_display',
-      'launch.pub_cities'
-    ])
-  )
+  // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
+  expect([...keys].sort()).toEqual([
+    'launch.pub_cities',
+    'launch.waitlist_gate',
+    'rating.public_display',
+    'search.tiered_plan_query',
+    'waitlist.rate_limit'
+  ])
 
   for (const key of keys) {
     await test.step(key, async () => {

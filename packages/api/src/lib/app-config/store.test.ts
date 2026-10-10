@@ -92,7 +92,7 @@ describe('leitura da configuração (ESC-19)', () => {
         throw new Error('connection refused')
       }
     ])
-    expect(await store.get('billing.checkout_enabled')).toBe(false)
+    expect(await store.get('rating.public_display')).toBe(false)
     expect(await store.get('launch.pub_cities')).toEqual([])
   })
 
@@ -106,11 +106,11 @@ describe('leitura da configuração (ESC-19)', () => {
       async () => {
         throw new Error('connection refused')
       },
-      async () => ({ 'billing.checkout_enabled': true })
+      async () => ({ 'rating.public_display': true })
     ])
 
-    expect(await store.get('billing.checkout_enabled')).toBe(false)
-    expect(await store.get('billing.checkout_enabled')).toBe(true)
+    expect(await store.get('rating.public_display')).toBe(false)
+    expect(await store.get('rating.public_display')).toBe(true)
     expect(chamadas()).toBe(2)
   })
 
@@ -122,7 +122,7 @@ describe('leitura da configuração (ESC-19)', () => {
     )
 
     await store.get('search.tiered_plan_query')
-    await store.get('billing.checkout_enabled')
+    await store.get('rating.public_display')
     await store.get('launch.pub_cities')
     expect(chamadas()).toBe(1)
 
@@ -135,15 +135,15 @@ describe('leitura da configuração (ESC-19)', () => {
     const relogio = relogioFalso()
     const { store, chamadas } = montar(
       [
-        async () => ({ 'billing.checkout_enabled': false }),
-        async () => ({ 'billing.checkout_enabled': true })
+        async () => ({ 'rating.public_display': false }),
+        async () => ({ 'rating.public_display': true })
       ],
       relogio.now
     )
 
-    expect(await store.get('billing.checkout_enabled')).toBe(false)
+    expect(await store.get('rating.public_display')).toBe(false)
     await store.invalidate()
-    expect(await store.get('billing.checkout_enabled')).toBe(true)
+    expect(await store.get('rating.public_display')).toBe(true)
     expect(chamadas()).toBe(2)
   })
 
@@ -151,7 +151,7 @@ describe('leitura da configuração (ESC-19)', () => {
     const { store } = montar([
       async () => ({
         'search.tiered_plan_query': false,
-        'billing.checkout_enabled': true,
+        'rating.public_display': true,
         'launch.pub_cities': ['Recife']
       })
     ])
@@ -159,7 +159,7 @@ describe('leitura da configuração (ESC-19)', () => {
     const publico = await store.getPublic()
 
     // As públicas saem, com valor gravado ou com padrão.
-    expect(publico['billing.checkout_enabled']).toBe(true)
+    expect(publico['rating.public_display']).toBe(true)
     expect(publico['launch.pub_cities']).toEqual(['Recife'])
     expect(publico['launch.waitlist_gate']).toEqual({
       signup: process.env.LAUNCH_ADMISSION_MODE !== 'open'
@@ -179,7 +179,7 @@ describe('leitura da configuração (ESC-19)', () => {
     const { store } = montar([
       async () =>
         ({
-          'billing.checkout_enabled': true,
+          'rating.public_display': true,
           // Chave fora do catálogo — o carregador do banco já a descarta, mas a
           // resolução não pode reintroduzi-la nem por acidente.
           'algo.injetado': 'valor'
@@ -187,7 +187,7 @@ describe('leitura da configuração (ESC-19)', () => {
     ])
 
     const publico = await store.getPublic()
-    expect(publico['billing.checkout_enabled']).toBe(true)
+    expect(publico['rating.public_display']).toBe(true)
     expect(Object.keys(publico).sort()).toEqual(
       [...PUBLIC_APP_CONFIG_KEYS].sort()
     )
@@ -203,13 +203,13 @@ describe('leitura da configuração (ESC-19)', () => {
 describe('montagem das entradas para o painel (ESC-19)', () => {
   it('marca o que é desvio e o que é padrão', () => {
     const entradas = montarEntradasAppConfig({
-      'billing.checkout_enabled': true,
+      'rating.public_display': true,
       // Malformado: não conta como desvio, porque não é o que vai valer.
       'launch.pub_cities': 'Recife'
     })
     const porChave = new Map(entradas.map((entrada) => [entrada.key, entrada]))
 
-    expect(porChave.get('billing.checkout_enabled')).toMatchObject({
+    expect(porChave.get('rating.public_display')).toMatchObject({
       valor: true,
       padrao: false,
       sobrescrito: true
@@ -230,16 +230,5 @@ describe('montagem das entradas para o painel (ESC-19)', () => {
       [...APP_CONFIG_KEYS].sort()
     )
     expect(entradas.every((entrada) => !entrada.sobrescrito)).toBe(true)
-  })
-
-  // A confirmação de "Voltar ao padrão" diz o efeito nas flags de cobrança.
-  it('leva o efeito de voltar ao padrão das flags de `billing.*`', () => {
-    for (const entrada of montarEntradasAppConfig({})) {
-      if (entrada.key.startsWith('billing.')) {
-        expect(entrada.efeitoPadrao).toEqual(expect.any(String))
-      } else {
-        expect(entrada.efeitoPadrao).toBeNull()
-      }
-    }
   })
 })

@@ -26,7 +26,6 @@ import {
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
-import { getAppConfig } from '../lib/app-config'
 import { readInterestSignal } from '../lib/attendance'
 import {
   assertCanConfigureBarMenu,
@@ -837,12 +836,8 @@ export const pubRouter = router({
 
   /** Cupom Early Bird disponível para novos checkouts (WEB-112). */
   getFounderCouponAvailable: pubProcedure.query(async () => {
-    const config = await getAppConfig('billing.founder_coupon')
-    if (!config.enabled) return { available: false as const }
     try {
-      return {
-        available: await founderCouponUsable(stripeClient, config.couponId)
-      }
+      return { available: await founderCouponUsable(stripeClient) }
     } catch {
       return { available: false as const }
     }

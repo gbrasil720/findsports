@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, it, spyOn } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 import type Stripe from 'stripe'
 import {
   customerPrefillFor,
   founderCouponUsable,
   prefillCustomer,
-  setFounderCouponSource,
   trialEndForCheckout,
   usableFounderCoupon
 } from './stripe-checkout'
@@ -128,11 +127,9 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
   // O que o SDK devolve quando o teto estoura.
   const slow = () => Promise.reject(new Error('Request aborted due to timeout'))
 
-  afterEach(() => setFounderCouponSource(async () => null))
-
   it('consulta com teto de 5s e sem nova tentativa', async () => {
     const { client, requests } = stripeWith(async () => ({ valid: true }))
-    expect(await founderCouponUsable(client, 'eM7dQpMF')).toBe(true)
+    expect(await founderCouponUsable(client)).toBe(true)
     expect(requests).toEqual([{ timeout: 5000, maxNetworkRetries: 0 }])
   })
 
@@ -140,7 +137,6 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
   async function checkoutWith(answer: () => Promise<{ valid: boolean }>) {
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      setFounderCouponSource(async () => 'eM7dQpMF')
       const coupon = await usableFounderCoupon(stripeWith(answer).client)
       const logs = error.mock.calls.map(([line]) => JSON.parse(String(line)))
       return { coupon, logs }
@@ -162,9 +158,7 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
         }
       ]
     })
-    expect(await founderCouponUsable(stripeWith(slow).client, 'eM7dQpMF')).toBe(
-      true
-    )
+    expect(await founderCouponUsable(stripeWith(slow).client)).toBe(true)
   })
 
   const unavailable = {
@@ -193,13 +187,10 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
         })
       )
     expect(await checkoutWith(missing)).toEqual(unavailable)
-    expect(
-      await founderCouponUsable(stripeWith(missing).client, 'eM7dQpMF')
-    ).toBe(false)
+    expect(await founderCouponUsable(stripeWith(missing).client)).toBe(false)
   })
 
   it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
-    setFounderCouponSource(async () => 'eM7dQpMF')
     const { client } = stripeWith(async () => ({ valid: true }))
     expect(await usableFounderCoupon(client)).toBe('eM7dQpMF')
   })

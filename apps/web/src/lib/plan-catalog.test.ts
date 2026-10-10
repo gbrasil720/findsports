@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { appConfigDefault } from '@findsports_oficial/api/lib/app-config/registry'
 import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
 import {
-  CHECKOUT_ENABLED_DEFAULT,
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
   FOUNDER_DISCOUNT_NOTE,
@@ -883,10 +881,4 @@ describe('getTrialNotice (WEB-260)', () => {
     ).toBeNull()
     expect(getTrialNotice({ ...trial, currentPeriodEnd: null }, now)).toBeNull()
   })
-})
-
-test('padrão do checkout na tela é o mesmo do servidor', () => {
-  expect(CHECKOUT_ENABLED_DEFAULT).toBe(
-    appConfigDefault('billing.checkout_enabled')
-  )
 })
