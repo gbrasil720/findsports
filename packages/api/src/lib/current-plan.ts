@@ -8,9 +8,10 @@ export type SubscriptionForPlan = Pick<
 /**
  * Plano que a assinatura dá direito agora, ou `null` sem benefício vigente.
  *
- * `bar.plan` não serve para isso: é projeção de `subscription.plan` para a
- * ordenação da busca e ignora o status — um `past_due` continua lá como
- * `elite`. Recurso pago decide por aqui.
+ * `bar.plan` projeta esta mesma regra para a ordenação da busca (função
+ * `subscription_current_plan`, migration 0050), mas só acompanha o relógio
+ * uma vez por dia: um trial vencido pode seguir lá por até 24 horas
+ * (`reconcileBarPlans`). Recurso pago decide por aqui.
  */
 export function getCurrentPlan(
   subscription: SubscriptionForPlan | null,

@@ -10,7 +10,8 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  * Regras da oferta da casa (WEB-120) que dependem do plano.
  *
  * O plano vem da assinatura via `getCurrentPlan` — `active`, ou `trialing`
- * com período vigente — e nunca de `bar.plan`, que ignora o status.
+ * com período vigente — e nunca de `bar.plan`, que só acompanha o fim do
+ * trial uma vez por dia.
  */
 
 export function canConfigureHouseOffer(

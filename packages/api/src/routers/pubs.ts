@@ -198,7 +198,7 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
 /**
  * Gasto médio declarado dos bares de uma página de busca (WEB-144), pela
  * regra do perfil: só com Pro/Elite vigente pela assinatura (`canShowBarMenu`),
- * nunca por `bar.plan`, que ignora o status (WEB-129).
+ * nunca por `bar.plan`, que só acompanha o fim do trial uma vez por dia.
  *
  * Roda depois do cache, pelo mesmo motivo da nota: um trial que vence ou uma
  * assinatura que vira `past_due` esconde o valor na hora, e não um TTL depois.
@@ -363,7 +363,8 @@ export const pubsRouter = router({
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
           // cardápio e o gasto médio; sai da resposta.
-          // `plan` acima é projeção que ignora o status da assinatura.
+          // `plan` acima é a projeção do plano vigente, com até um dia de
+          // atraso no fim do trial.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
           },
