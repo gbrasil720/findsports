@@ -1,23 +1,15 @@
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
-import { query, resetAppConfig, setAppConfig } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// WEB-113. Serial porque grava `billing.onboarding_trial`, que é global. O
-// caso da chave desligada — bar nasce inativo — está em `pub.e2e.ts`.
+// WEB-113: o teste grátis do cadastro, regra fixa desde o WEB-233.
 
-test.afterEach(resetAppConfig)
-
-test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', async ({
+test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre', async ({
   page,
   browser
 }) => {
-  await setAppConfig('billing.onboarding_trial', {
-    enabled: true,
-    plan: 'elite',
-    days: 120
-  })
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
   await signIn(page, owner)
 
@@ -75,16 +67,10 @@ test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', 
   }
 })
 
-// WEB-238: a revisão prometia só "escolher o plano". Os dias fogem do padrão do
-// registro (14) e dos 120 de produção, para o número vir mesmo da chave.
-test('com o trial ligado a revisão avisa que o bar entra no ar com o plano grátis, e segue para /plan', async ({
+// WEB-238: a revisão prometia só "escolher o plano".
+test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /plan', async ({
   page
 }) => {
-  await setAppConfig('billing.onboarding_trial', {
-    enabled: true,
-    plan: 'elite',
-    days: 45
-  })
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
   await signIn(page, owner)
   await page.goto('/onboarding/pub')
@@ -101,7 +87,7 @@ test('com o trial ligado a revisão avisa que o bar entra no ar com o plano grá
   ).toBeVisible()
   await expect(
     page.getByText(
-      'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 45 dias, sem cartão. Em seguida você conhece os planos.'
+      'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão. Em seguida você conhece os planos.'
     )
   ).toBeVisible()
   await expect(

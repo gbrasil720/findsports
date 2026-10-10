@@ -13,6 +13,16 @@
 export const STARTER_EVENT_LIMIT = 5
 
 /**
+ * Teste grátis do cadastro (WEB-113, WEB-31): todo bar novo nasce publicado e
+ * com assinatura `trialing` neste plano, por estes dias, sem cartão. O plano é
+ * só o de nascimento: o bar troca em `/plan` sem mudar a data (WEB-358).
+ *
+ * Vence sozinho: `getCurrentPlan` deixa de reconhecer o plano na data, e sem
+ * contratação o bar sai do ar no cron diário (WEB-357).
+ */
+export const ONBOARDING_TRIAL = { plan: 'elite', days: 120 } as const
+
+/**
  * Nome de exibição de cada plano. Mensagem de erro do servidor e catálogo da
  * tela leem daqui, para o usuário nunca ver o id interno (`starter`).
  */

@@ -37,7 +37,11 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   a exclusão da conta chama (WEB-336);
  * - `POST /v1/invoices/create_preview`: a prévia da próxima fatura da
  *   assinatura semeada, com `amount_due` = `nextAmountDue`; 404 sem ela;
- * - `GET /v1/coupons/{id}`: cupom válido, menos o id `esgotado`;
+ * - `GET /v1/coupons/{id}`: cupom válido. `POST /stripe/coupon` com
+ *   `{ state }` troca a resposta para todo cupom: `exhausted` (`valid: false`,
+ *   teto de usos batido) ou `missing` (404, cupom que não existe nesta conta);
+ *   `valid` desfaz. Fora de `valid`, a sessão de checkout que mandar cupom é
+ *   recusada com 400, como no Stripe;
  * - `POST /v1/checkout/sessions`: `url` em `/stripe/checkout/{id}`, uma página
  *   do stub — o teste espera o redirect para lá;
  * - `POST /v1/billing_portal/sessions`: `url` em `/stripe/portal/{customer}`.
@@ -69,6 +73,9 @@ const stripeBalances = new Map<
   string,
   { balance: number; nextAmountDue: number }
 >()
+
+/** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
+let couponState: 'valid' | 'exhausted' | 'missing' = 'valid'
 
 function customerIdFor(email: string) {
   return `cus_e2e_${Bun.hash(email).toString(36)}`
@@ -117,6 +124,11 @@ Bun.serve({
     if (url.pathname === '/stripe/subscriptions' && request.method === 'POST') {
       const subscription = (await request.json()) as { id: string }
       stripeSubscriptions.set(subscription.id, subscription)
+      return Response.json({ ok: true })
+    }
+    if (url.pathname === '/stripe/coupon' && request.method === 'POST') {
+      couponState = ((await request.json()) as { state: typeof couponState })
+        .state
       return Response.json({ ok: true })
     }
     if (url.pathname === '/stripe/balances' && request.method === 'POST') {
@@ -285,14 +297,20 @@ async function stripe(request: Request, url: URL) {
 
   const coupon = /^\/coupons\/([^/]+)$/.exec(path)
   if (request.method === 'GET' && coupon) {
+    if (couponState === 'missing') {
+      return stripeError(404, `No such coupon: ${coupon[1]}`)
+    }
     return Response.json({
       id: coupon[1],
       object: 'coupon',
-      valid: coupon[1] !== 'esgotado'
+      valid: couponState === 'valid'
     })
   }
 
   if (request.method === 'POST' && path === '/checkout/sessions') {
+    if (body['discounts[0][coupon]'] && couponState !== 'valid') {
+      return stripeError(400, `No such coupon: ${body['discounts[0][coupon]']}`)
+    }
     const id = `cs_e2e_${crypto.randomUUID()}`
     return Response.json({
       id,
