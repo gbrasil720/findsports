@@ -62,7 +62,7 @@ Add new routers in `packages/api/src/routers/`, export from `routers/index.ts`.
 
 ### Database schema
 
-Schema files live in `packages/db/src/schema/`. Each domain gets its own file; all are re-exported from `schema/index.ts`. `auth.ts` holds the better-auth tables. `user.admitted_at` is an orphan column: it is gone from the Drizzle schema and from the snapshots but still exists in the database, and `db:generate` will never propose dropping it. It waits for a hand-written migration (WEB-232, Fase 2, etapa B), which can only ship after the code that no longer selects it is in production.
+Schema files live in `packages/db/src/schema/`. Each domain gets its own file; all are re-exported from `schema/index.ts`. `auth.ts` holds the better-auth tables.
 
 IDs use `crypto.randomUUID()` as default.
 
