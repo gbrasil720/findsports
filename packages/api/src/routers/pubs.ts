@@ -27,11 +27,13 @@ import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
+import { getSubscriptionStanding } from '../lib/current-plan'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
+import { byTeamName } from '../lib/game-participants'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -385,7 +387,8 @@ export const pubsRouter = router({
             with: {
               sport: true,
               participants: {
-                with: { team: true }
+                with: { team: true },
+                orderBy: byTeamName
               }
             },
             orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -473,7 +476,12 @@ export const pubsRouter = router({
           subscription ?? null,
           now
         ),
-        isOwner: userId === ctx.session.user.id
+        isOwner: userId === ctx.session.user.id,
+        // Só para o aviso da prévia do dono: bar fora do ar por assinatura
+        // encerrada não é bar que nunca foi publicado (WEB-345).
+        subscriptionEnded:
+          userId === ctx.session.user.id &&
+          getSubscriptionStanding(subscription ?? null, now) === 'ended'
       }
     }),
 
@@ -594,7 +602,7 @@ export const pubsRouter = router({
               columns: { reservationCap: false },
               with: {
                 sport: true,
-                participants: { with: { team: true } }
+                participants: { with: { team: true }, orderBy: byTeamName }
               },
               orderBy: (event, { asc }) => [asc(event.startsAt)],
               limit: 3

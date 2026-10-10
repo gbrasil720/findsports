@@ -9,6 +9,7 @@ import {
   isFavorite,
   pubAt,
   signInFanAt,
+  team,
   uniqueSpot
 } from '../../fixtures/fan'
 import { createPub } from '../../fixtures/pubs'
@@ -261,6 +262,68 @@ test('dono vê o banner de pré-visualização, publicado ou não', async ({
   await expect(
     page.getByText('Prévia do seu perfil — ainda fora do ar')
   ).toBeVisible()
+
+  // WEB-345: fora do ar por assinatura encerrada tem outro motivo e outro
+  // caminho de volta.
+  const ended = await createPub({
+    bar: { is_active: false },
+    subscription: { status: 'cancelled' }
+  })
+  await page.context().clearCookies()
+  await signIn(page, ended.user)
+  await page.goto(`/pub/${ended.barId}`)
+  await expect(
+    page.getByText('Seu bar está fora do ar: a assinatura terminou')
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Contratar um plano' })
+  ).toHaveAttribute('href', '/plan')
+  await expect(page.getByText('ainda fora do ar')).toHaveCount(0)
+})
+
+// WEB-345: com um jogo só, "Também vai passar" dizia que o bar não tinha jogo
+// logo abaixo do destaque, e o card da busca trazia os times em outra ordem.
+test('jogo único fica só no destaque, e os times saem na ordem do card', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const pub = await pubAt(spot)
+  const arsenal = await team('arsenal')
+  const argentina = await team('argentina')
+  // Gravados fora da ordem alfabética.
+  await createEvent({
+    barId: pub.barId,
+    startsAt: days(2),
+    teamIds: [arsenal.id, argentina.id]
+  })
+  await signInFanAt(page, spot)
+  const matchup = `${argentina.name} × ${arsenal.name}`
+
+  await page.goto('/dashboard')
+  await expect(
+    page
+      .locator('.onside-bar-card', {
+        has: page.getByRole('link', { name: `Ver ${pub.name}` })
+      })
+      .getByTitle(matchup)
+  ).toBeVisible()
+
+  await page.goto(`/pub/${pub.barId}`)
+  await expect(page.getByText(matchup).first()).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Também vai passar' })
+  ).toHaveCount(0)
+  await expect(
+    page.getByText('Esse bar ainda não cadastrou jogos')
+  ).toHaveCount(0)
+
+  // Com um segundo jogo a seção volta, só com ele.
+  const second = `Segundo ${randomUUID().slice(0, 6)}`
+  await createEvent({ barId: pub.barId, startsAt: days(3), freeText: second })
+  await page.goto(`/pub/${pub.barId}`)
+  const agenda = page.locator('section', { hasText: 'Também vai passar' })
+  await expect(agenda.getByText(second)).toBeVisible()
+  await expect(agenda.getByText(matchup)).toHaveCount(0)
 })
 
 // O `getById` responde NOT_FOUND na hora, mas o React Query refaz a consulta

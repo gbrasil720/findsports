@@ -47,7 +47,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { participantNames } from '../lib/game-participants'
+import { byTeamName, participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -542,7 +542,8 @@ export const pubRouter = router({
         with: {
           sport: true,
           participants: {
-            with: { team: true }
+            with: { team: true },
+            orderBy: byTeamName
           }
         },
         orderBy: (event, { asc }) => [asc(event.startsAt)]
