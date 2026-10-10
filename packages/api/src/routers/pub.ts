@@ -36,6 +36,7 @@ import {
   motivoTelefoneInvalido,
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
+import { readBillingBalance } from '../lib/billing-balance'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   getCurrentPlan,
@@ -833,6 +834,16 @@ export const pubRouter = router({
           standing: getSubscriptionStanding(existingBar.subscription, now)
         }
       : null
+  }),
+
+  // Saldo e próxima fatura no Stripe (WEB-350). Fora de `getMySubscription`
+  // para o card do plano não esperar o Stripe.
+  getMyBillingBalance: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readBillingBalance(
+      stripeClient,
+      existingBar.subscription?.externalSubscriptionId
+    )
   }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {

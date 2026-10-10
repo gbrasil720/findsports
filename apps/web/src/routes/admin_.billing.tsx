@@ -9,6 +9,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
@@ -292,6 +293,8 @@ function BillingPage() {
                 Nenhuma assinatura ativa encontrada.
               </p>
             )}
+
+            {subscription?.externalSubscriptionId ? <BillingBalance /> : null}
 
             <div className="flex flex-wrap gap-3">
               {contractInPlan && planInfo ? (

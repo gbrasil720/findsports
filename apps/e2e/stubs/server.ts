@@ -26,7 +26,12 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
  * - `GET /v1/subscriptions/{id}`: o que o teste semeou em
- *   `POST /stripe/subscriptions`, ou 404 — é o que o webhook lê;
+ *   `POST /stripe/subscriptions`, ou 404 — é o que o webhook lê. Com
+ *   `expand[]=customer`, o cliente vem como objeto, com o `balance` semeado
+ *   em `POST /stripe/balances` (`{ customer, balance, nextAmountDue }`, em
+ *   centavos; crédito é saldo negativo) ou zero (WEB-350);
+ * - `POST /v1/invoices/create_preview`: a prévia da próxima fatura da
+ *   assinatura semeada, com `amount_due` = `nextAmountDue`; 404 sem ela;
  * - `GET /v1/coupons/{id}`: cupom válido, menos o id `esgotado`;
  * - `POST /v1/checkout/sessions`: `url` em `/stripe/checkout/{id}`, uma página
  *   do stub — o teste espera o redirect para lá;
@@ -54,6 +59,11 @@ type StripeCall = {
 const stripeCalls: StripeCall[] = []
 /** Assinaturas semeadas pelos testes, por id. É o "estado atual no Stripe". */
 const stripeSubscriptions = new Map<string, unknown>()
+/** Saldo e valor da próxima fatura semeados, por cliente, em centavos. */
+const stripeBalances = new Map<
+  string,
+  { balance: number; nextAmountDue: number }
+>()
 
 function customerIdFor(email: string) {
   return `cus_e2e_${Bun.hash(email).toString(36)}`
@@ -102,6 +112,15 @@ Bun.serve({
     if (url.pathname === '/stripe/subscriptions' && request.method === 'POST') {
       const subscription = (await request.json()) as { id: string }
       stripeSubscriptions.set(subscription.id, subscription)
+      return Response.json({ ok: true })
+    }
+    if (url.pathname === '/stripe/balances' && request.method === 'POST') {
+      const { customer, ...seeded } = (await request.json()) as {
+        customer: string
+        balance: number
+        nextAmountDue: number
+      }
+      stripeBalances.set(customer, seeded)
       return Response.json({ ok: true })
     }
     if (
@@ -192,10 +211,40 @@ async function stripe(request: Request, url: URL) {
 
   const subscription = /^\/subscriptions\/([^/]+)$/.exec(path)
   if (request.method === 'GET' && subscription) {
-    const found = stripeSubscriptions.get(subscription[1] ?? '')
-    return found
-      ? Response.json(found)
-      : stripeError(404, `No such subscription: ${subscription[1]}`)
+    const found = stripeSubscriptions.get(subscription[1] ?? '') as
+      | { customer: string }
+      | undefined
+    if (!found) {
+      return stripeError(404, `No such subscription: ${subscription[1]}`)
+    }
+    return Response.json(
+      query['expand[0]'] === 'customer'
+        ? {
+            ...found,
+            customer: {
+              id: found.customer,
+              object: 'customer',
+              balance: stripeBalances.get(found.customer)?.balance ?? 0
+            }
+          }
+        : found
+    )
+  }
+
+  if (request.method === 'POST' && path === '/invoices/create_preview') {
+    const found = stripeSubscriptions.get(body.subscription ?? '') as
+      | { customer: string }
+      | undefined
+    if (!found) {
+      return stripeError(404, `No such subscription: ${body.subscription}`)
+    }
+    return Response.json({
+      id: 'upcoming_in_e2e',
+      object: 'invoice',
+      currency: 'brl',
+      customer: found.customer,
+      amount_due: stripeBalances.get(found.customer)?.nextAmountDue ?? 0
+    })
   }
 
   if (request.method === 'GET' && path === '/prices') {

@@ -256,6 +256,15 @@ function PlanSelection() {
           <p className="text-sm font-semibold">
             Atenção: você está selecionando um plano inferior ao atual.
           </p>
+          {/* WEB-350: só assinatura paga no Stripe gera crédito proporcional;
+              em teste grátis não há o que creditar. */}
+          {subscription?.status === 'active' &&
+          subscription.externalSubscriptionId ? (
+            <p className="text-sm">
+              A diferença vira crédito na sua conta e abate as próximas
+              mensalidades (não é reembolsada no cartão).
+            </p>
+          ) : null}
         </div>
       ) : null}
 
