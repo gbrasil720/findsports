@@ -1,19 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import { getBarAccountDeletionBlock } from './account-deletion-policy'
 
-const now = new Date('2026-08-21T12:00:00.000Z')
-
 describe('bar account deletion policy', () => {
   test('allows accounts without an external subscription', () => {
     expect(
-      getBarAccountDeletionBlock(
-        {
-          externalSubscriptionId: null,
-          status: 'active',
-          currentPeriodEnd: null
-        },
-        now
-      )
+      getBarAccountDeletionBlock({
+        externalSubscriptionId: null,
+        status: 'active'
+      })
     ).toBeNull()
   })
 
@@ -23,45 +17,24 @@ describe('bar account deletion policy', () => {
     'past_due'
   ] as const)('blocks an external %s subscription', (status) => {
     expect(
-      getBarAccountDeletionBlock(
-        {
-          externalSubscriptionId: 'sub_123',
-          status,
-          currentPeriodEnd: null
-        },
-        now
-      )
+      getBarAccountDeletionBlock({
+        externalSubscriptionId: 'sub_123',
+        status
+      })
     ).toBe('subscription-active')
   })
 
-  test('blocks cancellation until its paid period really ends', () => {
-    expect(
-      getBarAccountDeletionBlock(
-        {
-          externalSubscriptionId: 'sub_123',
-          status: 'cancelled',
-          currentPeriodEnd: new Date('2026-08-22T12:00:00.000Z')
-        },
-        now
-      )
-    ).toBe('period-active')
-  })
-
+  // WEB-60: `cancelled` é assinatura que já acabou no Stripe, inclusive no
+  // cancelamento imediato, que chega com o período ainda no futuro.
   test.each([
-    ['cancelled', new Date('2026-08-21T12:00:00.000Z')],
-    ['cancelled', null],
-    ['inactive', new Date('2026-08-22T12:00:00.000Z')],
-    ['inactive', null]
-  ] as const)('allows an effectively ended %s subscription', (status, end) => {
+    'cancelled',
+    'inactive'
+  ] as const)('allows an ended %s subscription', (status) => {
     expect(
-      getBarAccountDeletionBlock(
-        {
-          externalSubscriptionId: 'sub_123',
-          status,
-          currentPeriodEnd: end
-        },
-        now
-      )
+      getBarAccountDeletionBlock({
+        externalSubscriptionId: 'sub_123',
+        status
+      })
     ).toBeNull()
   })
 })

@@ -841,8 +841,7 @@ export const pubRouter = router({
 
     return {
       allowed: block === null,
-      block,
-      currentPeriodEnd: existingBar.subscription?.currentPeriodEnd ?? null
+      block
     }
   })
 })
