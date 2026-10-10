@@ -216,14 +216,14 @@ function SignupPage() {
               >
                 <ToggleGroupItem
                   value="fan"
-                  className="onside-choice min-h-12 flex-row items-center justify-center gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
+                  className="onside-choice onside-choice-inline min-h-12 gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
                 >
                   <Fire size={15} color="currentColor" aria-hidden="true" />
                   Torcedor
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="pub"
-                  className="onside-choice min-h-12 flex-row items-center justify-center gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
+                  className="onside-choice onside-choice-inline min-h-12 gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
                 >
                   <Store size={15} color="currentColor" aria-hidden="true" />
                   Dono de Bar
