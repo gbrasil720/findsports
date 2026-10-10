@@ -1,4 +1,5 @@
 import {
+  declaredAmenityIds,
   findAmenity,
   motivoTelasInvalido
 } from '@findsports_oficial/api/lib/amenities'
@@ -206,7 +207,8 @@ function PubOnboarding() {
     conciliarUfComCidade(salvo.city ?? 'São Paulo', setUf)
     setPhone(salvo.phone ?? '')
     setDescription(salvo.description ?? '')
-    setAmenities(salvo.amenities ?? [])
+    // Rascunho antigo pode trazer "Aceita reserva", que saiu do checklist.
+    setAmenities(declaredAmenityIds(salvo.amenities ?? []))
     setScreenCount(salvo.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)

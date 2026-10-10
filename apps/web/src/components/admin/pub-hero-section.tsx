@@ -52,8 +52,6 @@ type EditForm = {
 
 type Props = {
   bar: Bar
-  /** Para o checklist dizer por que "Aceita reserva" não está no perfil. */
-  receivesReservations: boolean
   liveEvent?: Event
   totalCount: number
   onSave: (data: EditForm) => Promise<void>
@@ -65,7 +63,6 @@ type Props = {
 
 export function PubHeroSection({
   bar,
-  receivesReservations,
   liveEvent,
   totalCount,
   onSave,
@@ -290,7 +287,6 @@ export function PubHeroSection({
                       onScreenCountChange={(value) =>
                         setForm((prev) => ({ ...prev, screenCount: value }))
                       }
-                      receivesReservations={receivesReservations}
                     />
                   </div>
                 </div>

@@ -325,39 +325,31 @@ test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
   expect(after?.phone_accepts_whatsapp).toBe(true)
 })
 
-test('"Aceita reserva" diz por que não aparece no perfil de quem não recebe reservas', async ({
+test('"Aceita reserva" não se marca no checklist, e a que já estava gravada sobrevive ao salvar', async ({
   page
 }) => {
-  const hint =
-    'Aparece no perfil quando o bar recebe reservas pela Onside (plano Elite).'
-  const openChecklist = async (pub: Awaited<ReturnType<typeof createPub>>) => {
-    await page.context().clearCookies()
-    await signIn(page, pub.user)
-    await page.goto('/admin#admin-espaco')
-    await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-    // Nome exato: o aviso é descrição do item, não parte do rótulo.
-    return editor(page).getByRole('button', {
-      name: 'Aceita reserva',
-      exact: true
-    })
-  }
+  // 10 = "Aceita reserva", de quando o bar a marcava à mão.
+  const pub = await createPub({ bar: { amenities: [10] } })
+  await signIn(page, pub.user)
+  await page.goto('/admin#admin-espaco')
+  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
 
-  // Sem Elite a opção continua lá e marcável, com o aviso junto.
-  const item = await openChecklist(
-    await createPub({ subscription: { plan: 'pro' } })
-  )
-  await expect(item).toHaveAccessibleDescription(hint)
-  await expect(editor(page).getByText(hint)).toBeVisible()
-  await item.click()
-  await expect(item).toHaveAttribute('aria-pressed', 'true')
-
-  // Elite com o recebimento ligado: a característica aparece, sem aviso.
   await expect(
-    await openChecklist(
-      await createPub({ bar: { accepts_reservations: true } })
-    )
+    editor(page).getByRole('button', { name: 'Estacionamento próximo' })
   ).toBeVisible()
-  await expect(editor(page).getByText(hint)).toHaveCount(0)
+  await expect(
+    editor(page).getByRole('button', { name: 'Aceita reserva' })
+  ).toHaveCount(0)
+  await expect(
+    editor(page).getByText(/“Aceita reserva” aparece sozinha no perfil/)
+  ).toBeVisible()
+
+  await editor(page).getByRole('button', { name: 'Telão / projetor' }).click()
+  expect((await save(page)).ok()).toBe(true)
+  const [bar] = await query('SELECT amenities FROM bar WHERE id = $1', [
+    pub.barId
+  ])
+  expect(bar?.amenities).toEqual([1, 10])
 })
 
 test('Elite salva cardápio, preço médio e oferta, e liga e desliga reservas', async ({
