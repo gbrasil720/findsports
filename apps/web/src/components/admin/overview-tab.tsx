@@ -9,8 +9,8 @@ import Plus from 'reicon-react/icons/Plus'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
-import { getLapsedPaidPlan, isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
-import { getPlan, getTrialNotice } from '@/lib/plan-catalog'
+import { getLapsedPaidPlan, getShownPlan } from '@/lib/lapsed-plan'
+import { getTrialNotice } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { AnalyticsOverviewState } from './admin-model'
@@ -202,7 +202,7 @@ export function OverviewTab({
 
   const planKnown = subFetched && !loadingSub && !subError
   const plan = planKnown ? (subscription?.plan ?? 'starter') : null
-  const planLabel = plan ? getPlan(plan).name : null
+  const shownPlan = planKnown ? getShownPlan(subscription) : null
   const trialNotice = planKnown ? getTrialNotice(subscription) : null
   const isStarter = plan === 'starter'
   const standing = planKnown ? subscription?.standing : null
@@ -436,17 +436,30 @@ export function OverviewTab({
             {loadingSub ? (
               <Skeleton className="h-7 w-24" />
             ) : (
-              (planLabel ?? '—')
+              (shownPlan?.name ?? '—')
             )}
           </div>
+          {/* Plano gravado + pé da assinatura (WEB-344): só o plano em dia é
+              "Plano atual", e sem assinatura o Starter não é plano contratado. */}
           <div className="onside-stat-label">
-            {isStarter && eventsRemaining !== null
-              ? restantes(eventsRemaining)
-              : isLapsed(standing)
-                ? lapsedPlan && eventsRemaining !== null
-                  ? `${lapsedPlan.label} · ${restantes(eventsRemaining)}`
-                  : LAPSED_COPY[standing].label
-                : 'Plano atual'}
+            {shownPlan && !subscription ? (
+              <Link
+                to="/plan"
+                search={{ origin: 'admin' }}
+                className="underline"
+              >
+                {shownPlan.label}
+              </Link>
+            ) : (
+              [
+                shownPlan && standing !== 'current' ? shownPlan.label : null,
+                (isStarter || lapsedPlan) && eventsRemaining !== null
+                  ? restantes(eventsRemaining)
+                  : null
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'Plano atual'
+            )}
           </div>
         </div>
       </div>
@@ -471,6 +484,7 @@ export function OverviewTab({
       <AnalyticsOverview
         overviewState={analyticsOverviewState}
         showComparison={analyticsPreset !== 'all'}
+        planNote={shownPlan?.note}
         onCreateEvent={onCreateEvent}
       />
     </AdminTabPanel>

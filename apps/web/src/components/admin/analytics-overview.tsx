@@ -596,11 +596,14 @@ function PeriodComparison({
 export function AnalyticsOverview({
   overviewState,
   showComparison = true,
+  planNote,
   onCreateEvent
 }: {
   overviewState: AnalyticsOverviewState
   /** `false` no período "Tudo": não existe período anterior (WEB-263). */
   showComparison?: boolean
+  /** Por que o plano em vigor não é o contratado (`getShownPlan`, WEB-344). */
+  planNote?: string | null
   onCreateEvent?: () => void
 }) {
   if (overviewState.status === 'loading') return <OverviewSkeleton />
@@ -661,6 +664,7 @@ export function AnalyticsOverview({
           <p className="mt-1 text-sm text-[var(--onside-ink)] opacity-60">
             {formatAnalyticsPeriod(data.from, data.to)} • Plano:{' '}
             {getPlan(data.plan).name}
+            {planNote ? ` • ${planNote}` : null}
           </p>
         </div>
       </header>
