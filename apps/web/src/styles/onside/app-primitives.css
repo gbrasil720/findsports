@@ -577,6 +577,13 @@
   box-shadow: 3px 3px 0 var(--onside-ink);
 }
 
+/* Ícone ao lado do rótulo, no centro: o seletor de papel do cadastro. */
+.onside-app .onside-choice-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
 .onside-app .onside-choice-ink {
   background: color-mix(in srgb, var(--onside-paper) 8%, transparent);
   border-color: rgb(241 238 230 / 22%);

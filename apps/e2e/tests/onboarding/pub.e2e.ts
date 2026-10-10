@@ -6,6 +6,7 @@ import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
 import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
+import { acceptTerms } from '../auth/forms'
 
 // WEB-177: onboarding do bar (`routes/(onboarding)/onboarding.pub.tsx`). O
 // `completePub` geocodifica no servidor, contra o stub da LocationIQ.
@@ -80,6 +81,7 @@ async function signUpPub(page: Page) {
   await page
     .getByLabel('Confirmar senha', { exact: true })
     .fill(DEFAULT_PASSWORD)
+  await acceptTerms(page)
   await button(page, 'Entrar no time').click()
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   return email
