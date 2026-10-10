@@ -2,7 +2,8 @@ import {
   AMENITIES,
   AMENITY_GROUPS,
   MAX_SCREEN_COUNT,
-  motivoTelasInvalido
+  motivoTelasInvalido,
+  RESERVATIONS_AMENITY_ID
 } from '@findsports_oficial/api/lib/amenities'
 import Check from 'reicon-react/icons/Check'
 
@@ -12,6 +13,12 @@ type Props = {
   screenCount: number | null
   onScreenCountChange: (value: number | null) => void
   idPrefix: string
+  /**
+   * O bar recebe reservas pela Onside agora (interruptor ligado e Elite
+   * vigente). Sem isso o perfil não mostra "Aceita reserva", e o item diz por
+   * quê em vez de sumir: o que o dono marca continua gravado.
+   */
+  receivesReservations: boolean
 }
 
 /**
@@ -30,9 +37,12 @@ export function AmenityChecklist({
   onToggle,
   screenCount,
   onScreenCountChange,
-  idPrefix
+  idPrefix,
+  receivesReservations
 }: Props) {
   const isOn = (id: number) => selected.includes(id)
+  const reservationsLabelId = `${idPrefix}-reservations-label`
+  const reservationsHintId = `${idPrefix}-reservations-hint`
   const screenCountError = motivoTelasInvalido(screenCount)
 
   return (
@@ -47,12 +57,19 @@ export function AmenityChecklist({
             {AMENITIES.filter((amenity) => amenity.group === group.key).map(
               (amenity) => {
                 const on = isOn(amenity.id)
+                const hidden =
+                  amenity.id === RESERVATIONS_AMENITY_ID &&
+                  !receivesReservations
 
                 return (
                   <button
                     key={amenity.id}
                     type="button"
                     aria-pressed={on}
+                    // O aviso fica dentro do botão, mas é descrição: o nome
+                    // do item continua sendo só o rótulo.
+                    aria-labelledby={hidden ? reservationsLabelId : undefined}
+                    aria-describedby={hidden ? reservationsHintId : undefined}
                     onClick={() => onToggle(amenity.id)}
                     className={`flex min-h-11 items-center gap-2.5 border px-3 py-2 text-left text-sm transition-colors ${
                       on
@@ -72,7 +89,20 @@ export function AmenityChecklist({
                         <Check size={13} color="var(--onside-ink)" />
                       ) : null}
                     </span>
-                    <span className="min-w-0">{amenity.label}</span>
+                    {hidden ? (
+                      <span className="min-w-0">
+                        <span id={reservationsLabelId}>{amenity.label}</span>
+                        <span
+                          id={reservationsHintId}
+                          className="mt-0.5 block text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] text-xs leading-snug"
+                        >
+                          Aparece no perfil quando o bar recebe reservas pela
+                          Onside (plano Elite).
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="min-w-0">{amenity.label}</span>
+                    )}
                   </button>
                 )
               }

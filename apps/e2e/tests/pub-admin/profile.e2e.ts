@@ -325,6 +325,41 @@ test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
   expect(after?.phone_accepts_whatsapp).toBe(true)
 })
 
+test('"Aceita reserva" diz por que não aparece no perfil de quem não recebe reservas', async ({
+  page
+}) => {
+  const hint =
+    'Aparece no perfil quando o bar recebe reservas pela Onside (plano Elite).'
+  const openChecklist = async (pub: Awaited<ReturnType<typeof createPub>>) => {
+    await page.context().clearCookies()
+    await signIn(page, pub.user)
+    await page.goto('/admin#admin-espaco')
+    await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+    // Nome exato: o aviso é descrição do item, não parte do rótulo.
+    return editor(page).getByRole('button', {
+      name: 'Aceita reserva',
+      exact: true
+    })
+  }
+
+  // Sem Elite a opção continua lá e marcável, com o aviso junto.
+  const item = await openChecklist(
+    await createPub({ subscription: { plan: 'pro' } })
+  )
+  await expect(item).toHaveAccessibleDescription(hint)
+  await expect(editor(page).getByText(hint)).toBeVisible()
+  await item.click()
+  await expect(item).toHaveAttribute('aria-pressed', 'true')
+
+  // Elite com o recebimento ligado: a característica aparece, sem aviso.
+  await expect(
+    await openChecklist(
+      await createPub({ bar: { accepts_reservations: true } })
+    )
+  ).toBeVisible()
+  await expect(editor(page).getByText(hint)).toHaveCount(0)
+})
+
 test('Elite salva cardápio, preço médio e oferta, e liga e desliga reservas', async ({
   page
 }) => {
