@@ -32,6 +32,7 @@ import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/das
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
 import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
+import { Route as InternalBarsRouteImport } from './routes/internal_.bars'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
@@ -163,6 +164,11 @@ const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
   path: '/internal/attendance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InternalBarsRoute = InternalBarsRouteImport.update({
+  id: '/internal_/bars',
+  path: '/internal/bars',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InternalFlagsRoute = InternalFlagsRouteImport.update({
   id: '/internal_/flags',
   path: '/internal/flags',
@@ -265,6 +271,7 @@ export interface FileRoutesByFullPath {
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
   '/internal/attendance': typeof InternalAttendanceRoute
+  '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
   '/internal/attendance': typeof InternalAttendanceRoute
+  '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
   '/internal/waitlist': typeof InternalWaitlistRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/admin_/billing': typeof AdminBillingRoute
   '/admin_/validate': typeof AdminValidateRoute
   '/internal_/attendance': typeof InternalAttendanceRoute
+  '/internal_/bars': typeof InternalBarsRoute
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
   '/internal_/waitlist': typeof InternalWaitlistRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/admin/billing'
     | '/admin/validate'
     | '/internal/attendance'
+    | '/internal/bars'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -428,6 +438,7 @@ export interface FileRouteTypes {
     | '/admin/billing'
     | '/admin/validate'
     | '/internal/attendance'
+    | '/internal/bars'
     | '/internal/flags'
     | '/internal/manage-users'
     | '/internal/waitlist'
@@ -468,6 +479,7 @@ export interface FileRouteTypes {
     | '/admin_/billing'
     | '/admin_/validate'
     | '/internal_/attendance'
+    | '/internal_/bars'
     | '/internal_/flags'
     | '/internal_/manage-users'
     | '/internal_/waitlist'
@@ -509,6 +521,7 @@ export interface RootRouteChildren {
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
   InternalAttendanceRoute: typeof InternalAttendanceRoute
+  InternalBarsRoute: typeof InternalBarsRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
   InternalWaitlistRoute: typeof InternalWaitlistRoute
@@ -689,6 +702,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalAttendanceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/internal_/bars': {
+      id: '/internal_/bars'
+      path: '/internal/bars'
+      fullPath: '/internal/bars'
+      preLoaderRoute: typeof InternalBarsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/internal_/flags': {
       id: '/internal_/flags'
       path: '/internal/flags'
@@ -821,6 +841,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
   InternalAttendanceRoute: InternalAttendanceRoute,
+  InternalBarsRoute: InternalBarsRoute,
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
   InternalWaitlistRoute: InternalWaitlistRoute,
