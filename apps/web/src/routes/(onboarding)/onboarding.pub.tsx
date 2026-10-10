@@ -34,6 +34,7 @@ import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
+import { getPlan } from '@/lib/plan-catalog'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -142,6 +143,24 @@ function PubOnboarding() {
   const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
   const cidadesAbertas = configQuery.data?.['launch.pub_cities'] ?? []
   const cidadePermitida = cidadeLiberada(city, cidadesAbertas)
+
+  // WEB-238: com o teste do cadastro ligado, concluir publica o bar e já dá o
+  // plano; a revisão diz isso em vez de prometer uma escolha de plano. Chave
+  // desligada, ausente, carregando ou com erro de leitura cai no texto de
+  // sempre, que é o padrão do registro. Quem decide o teste é o `completePub`.
+  const trial = configQuery.data?.['billing.onboarding_trial']
+  const revisao = trial?.enabled
+    ? {
+        titulo: 'Pronto para colocar seu bar no ar',
+        texto: `Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano ${getPlan(trial.plan).name} grátis por ${trial.days} ${trial.days === 1 ? 'dia' : 'dias'}, sem cartão. Em seguida você conhece os planos.`,
+        botao: 'Colocar meu bar no ar'
+      }
+    : {
+        titulo: 'Pronto para escolher o plano',
+        texto:
+          'Revise os dados do bar. Ao continuar, salvamos o cadastro e você escolhe o plano.',
+        botao: 'Escolher meu plano'
+      }
 
   const seguirParaPlano = async () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
@@ -493,11 +512,10 @@ function PubOnboarding() {
               tabIndex={-1}
               className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
             >
-              Pronto para escolher o plano
+              {revisao.titulo}
             </h2>
             <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
-              Revise os dados do bar. Ao continuar, salvamos o cadastro e você
-              escolhe o plano.
+              {revisao.texto}
             </p>
             <div className="inline-flex flex-wrap justify-center gap-2">
               <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
@@ -572,7 +590,7 @@ function PubOnboarding() {
             ? 'Pular'
             : undefined
         }
-        lastLabel="Escolher meu plano"
+        lastLabel={revisao.botao}
       />
     </OnboardingLayout>
   )

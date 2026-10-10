@@ -74,3 +74,48 @@ test('com o trial ligado o bar nasce publicado, em Elite, e o torcedor o abre', 
     await fanContext.close()
   }
 })
+
+// WEB-238: a revisão prometia só "escolher o plano". Os dias fogem do padrão do
+// registro (14) e dos 120 de produção, para o número vir mesmo da chave.
+test('com o trial ligado a revisão avisa que o bar entra no ar com o plano grátis, e segue para /plan', async ({
+  page
+}) => {
+  await setAppConfig('billing.onboarding_trial', {
+    enabled: true,
+    plan: 'elite',
+    days: 45
+  })
+  const owner = await createUser({ role: 'pub', onboardingCompleted: false })
+  await signIn(page, owner)
+  await page.goto('/onboarding/pub')
+
+  await page.getByRole('button', { name: 'Começar', exact: true }).click()
+  await page.getByLabel('Nome do estabelecimento').fill('Bar da Revisão')
+  await page.getByLabel('Endereço').fill(`Rua da Revisão ${owner.id}, 1`)
+  await page.getByLabel('Bairro').fill('Pinheiros')
+  await page.getByRole('button', { name: 'Continuar', exact: true }).click()
+  await page.getByRole('button', { name: 'Pular', exact: true }).click()
+
+  await expect(
+    page.getByRole('heading', { name: 'Pronto para colocar seu bar no ar' })
+  ).toBeVisible()
+  await expect(
+    page.getByText(
+      'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 45 dias, sem cartão. Em seguida você conhece os planos.'
+    )
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Escolher meu plano' })
+  ).toHaveCount(0)
+  await page.getByRole('button', { name: 'Colocar meu bar no ar' }).click()
+
+  await expect(page).toHaveURL(/\/plan$/)
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+  ).toBeVisible()
+  const [bar] = await query<{ is_active: boolean; plan: string }>(
+    'SELECT is_active, plan FROM bar WHERE user_id = $1',
+    [owner.id]
+  )
+  expect(bar).toMatchObject({ is_active: true, plan: 'elite' })
+})
