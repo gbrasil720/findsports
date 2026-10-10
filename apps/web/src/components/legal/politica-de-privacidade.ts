@@ -668,8 +668,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
             [
               'Dados necessários à defesa em processo',
               'Até o encerramento do processo e dos prazos prescricionais'
-            ],
-            ['E-mail em lista de comunicação', 'Até você se descadastrar']
+            ]
           ],
           columnWeights: [1.2, 1.0]
         },
