@@ -193,6 +193,76 @@ integrationTest('desconto de fundador na assinatura grava monthlyDiscountReais',
 })
 
 integrationTest(
+  'checkout inicial com cupom de fundador: o desconto fica gravado já no primeiro evento, sem customer.subscription.updated (WEB-355)',
+  async () => {
+    const { syncStripeEvent, createBar, stateOf } = ready()
+    const owner = await createBar({
+      plan: 'elite',
+      currentPeriodEnd: periodEnd
+    })
+    const id = `sub_${owner.barId}`
+    const base = stripeSubscription({
+      id,
+      status: 'trialing',
+      lookupKey: 'elite_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    })
+    // Formato da API que o SDK fixa (2026-08-26.dahlia): o cupom vem em
+    // `source.coupon`, e só quando a leitura pede a expansão. Sem ela, e no
+    // corpo de todo evento, `discounts` é uma lista de ids.
+    const unexpanded = { ...base, discounts: ['di_early_bird'] }
+    const expanded = {
+      ...base,
+      discounts: [
+        {
+          id: 'di_early_bird',
+          source: {
+            type: 'coupon',
+            coupon: { id: 'eM7dQpMF', amount_off: 2800, currency: 'brl' }
+          }
+        }
+      ]
+    }
+    const client = {
+      subscriptions: {
+        retrieve: async (_id: string, params?: { expand?: string[] }) =>
+          params?.expand?.includes('discounts.source.coupon')
+            ? expanded
+            : unexpanded
+      },
+      customers: { update: async () => ({}) }
+    } as unknown as Stripe
+    const event = (type: string, object: unknown) =>
+      ({ type, data: { object } }) as unknown as Stripe.Event
+
+    // Os dois eventos do checkout inicial, na ordem em que o Stripe os manda.
+    await syncStripeEvent(
+      event('customer.subscription.created', unexpanded),
+      client
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      status: 'trialing',
+      plan: 'elite',
+      externalSubscriptionId: id,
+      monthlyDiscountReais: 28
+    })
+
+    await syncStripeEvent(
+      event('checkout.session.completed', {
+        mode: 'subscription',
+        subscription: id,
+        customer: owner.customerId
+      }),
+      client
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      monthlyDiscountReais: 28
+    })
+  }
+)
+
+integrationTest(
   'ciclo de vida: recusa vira past_due, encerramento tira o bar do ar',
   async () => {
     const { applyStripeSubscription, createBar, stateOf } = ready()
