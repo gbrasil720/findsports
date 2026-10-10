@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { getShownPlan } from './lapsed-plan'
+import { getShownPlan, isStarterSubscription } from './lapsed-plan'
 
 // WEB-344: o card da Visão geral e o "Plano: …" do Desempenho saem daqui.
 describe('getShownPlan', () => {
@@ -44,5 +44,33 @@ describe('getShownPlan', () => {
     }
     expect(getShownPlan(null)).toEqual(none)
     expect(getShownPlan(undefined)).toEqual(none)
+  })
+})
+
+// Aviso de limite da Visão geral: quem não assinou não lê texto do Starter.
+describe('isStarterSubscription', () => {
+  test('assinatura no Starter, em dia ou parada, lê o aviso do Starter', () => {
+    expect(
+      isStarterSubscription({ plan: 'starter', standing: 'current' })
+    ).toBe(true)
+    expect(
+      isStarterSubscription({ plan: 'starter', standing: 'past_due' })
+    ).toBe(true)
+  })
+
+  test('sem assinatura não é Starter, como no card "Sem plano"', () => {
+    for (const none of [null, undefined, { plan: 'starter', standing: null }]) {
+      expect(isStarterSubscription(none as never)).toBe(false)
+      expect(getShownPlan(none as never).name).toBe('Sem plano')
+    }
+  })
+
+  test('Pro e Elite não leem o aviso do Starter', () => {
+    expect(isStarterSubscription({ plan: 'pro', standing: 'current' })).toBe(
+      false
+    )
+    expect(
+      isStarterSubscription({ plan: 'elite', standing: 'trial_ended' })
+    ).toBe(false)
   })
 })
