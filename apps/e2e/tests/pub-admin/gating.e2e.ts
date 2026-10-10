@@ -134,11 +134,14 @@ test('Elite com pagamento atrasado vê "Regularizar assinatura", não os planos'
     offer.getByRole('link', { name: 'Regularizar assinatura' })
   ).toHaveAttribute('href', '/admin/billing')
   await expect(offer.getByRole('link', { name: 'Ver planos' })).toHaveCount(0)
-  // Reservas ligadas sem plano: a aba some, e o interruptor ainda desliga.
+  // Reservas ligadas sem plano: a aba some, e o interruptor ainda desliga,
+  // sem dizer "Ligado" (WEB-353).
   await expect(page.getByRole('tab', { name: 'Reservas' })).toHaveCount(0)
-  await expect(
-    page.getByRole('switch', { name: 'Receber pedidos de reserva' })
-  ).toBeEnabled()
+  const intake = page.getByRole('switch', {
+    name: 'Receber pedidos de reserva'
+  })
+  await expect(intake).toBeEnabled()
+  await expect(intake).toHaveText('Pausado (sem Elite)')
 })
 
 test('o servidor recusa recurso pago fora do plano', async ({ page }) => {

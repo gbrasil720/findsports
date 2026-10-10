@@ -239,6 +239,12 @@ function PlanSelection() {
             }
             onSelect={setPicked}
             founderCouponAvailable={founderCouponAvailable}
+            // Assinatura no provedor, vigente ou parada: a troca e a
+            // regularização não abrem checkout (WEB-353).
+            hasSubscription={
+              Boolean(subscription?.externalSubscriptionId) &&
+              subscription?.standing !== 'ended'
+            }
           />
         ))}
       </fieldset>

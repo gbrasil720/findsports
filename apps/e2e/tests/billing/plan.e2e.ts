@@ -136,12 +136,17 @@ test('trial em vigor: sem cartão, e contratar qualquer plano já é possível (
   await signIn(page, user)
   await page.goto('/plan')
 
-  // WEB-261: quem ainda não paga não lê "alterar plano" nem "ciclo de cobrança".
+  // WEB-261: quem ainda não paga não lê "alterar plano" nem "próximo ciclo de
+  // cobrança". O card do Starter fala em ciclo de cobrança, mas do limite de
+  // jogos (WEB-353).
   await expect(
     page.getByRole('heading', { name: /^Você está no trial do Elite até / })
   ).toBeVisible()
   await expect(page.getByText('Alterar plano')).toHaveCount(0)
-  await expect(page.getByText(/ciclo de cobrança/)).toHaveCount(0)
+  await expect(page.getByText(/próximo ciclo de cobrança/)).toHaveCount(0)
+  await expect(
+    page.getByText('Até 5 jogos por ciclo de cobrança na agenda')
+  ).toBeVisible()
   await expect(page.getByText('O teste grátis não pede cartão.')).toBeVisible()
   await expect(
     page.getByText(/primeira cobrança só sai em \d+ de /)

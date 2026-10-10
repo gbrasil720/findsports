@@ -74,13 +74,17 @@ export type PlanChargeDisplay = {
 
 export function planChargeForShowcase(
   plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
-  founderCouponAvailable: boolean
+  founderCouponAvailable: boolean,
+  // Quem já assina troca de plano pelo portal, sem checkout (WEB-353).
+  hasSubscription = false
 ): PlanChargeDisplay {
   if (founderCouponAvailable) {
     return {
       chargeReais: plan.founderPrice,
       listReais: plan.tablePrice,
-      hint: 'Com desconto de fundador no checkout'
+      hint: hasSubscription
+        ? 'Com desconto de fundador na assinatura'
+        : 'Com desconto de fundador no checkout'
     }
   }
   return {
@@ -178,7 +182,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Fire,
     features: [
       'Perfil do bar no Onside',
-      `Até ${STARTER_EVENT_LIMIT} jogos por mês na agenda`,
+      `Até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança na agenda`,
       'Aparece nas buscas básicas',
       'Suporte por e-mail',
       'Analytics essenciais dos últimos 30 dias',

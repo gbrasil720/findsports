@@ -166,9 +166,9 @@ export function eventLimitMessage(
     subscription.plan !== 'starter' &&
     (standing === 'past_due' || standing === 'trial_ended')
   ) {
-    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por mês. Regularize a assinatura para voltar aos jogos ilimitados.`
+    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Regularize a assinatura para voltar aos jogos ilimitados.`
   }
-  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
+  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
 /**

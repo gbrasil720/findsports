@@ -35,6 +35,8 @@ type Props = {
   onSelect: (id: Plan['id']) => void
   /** Quando true, mostra preço com cupom de fundador; senão, tabela cheia. */
   founderCouponAvailable: boolean
+  /** Quem já assina não passa por checkout: o desconto é dito da assinatura. */
+  hasSubscription?: boolean
 }
 
 export function PlanCard({
@@ -42,9 +44,14 @@ export function PlanCard({
   isSelected,
   isCurrent,
   onSelect,
-  founderCouponAvailable
+  founderCouponAvailable,
+  hasSubscription
 }: Props) {
-  const charge = planChargeForShowcase(plan, founderCouponAvailable)
+  const charge = planChargeForShowcase(
+    plan,
+    founderCouponAvailable,
+    hasSubscription
+  )
   const Icon = plan.icon
 
   return (

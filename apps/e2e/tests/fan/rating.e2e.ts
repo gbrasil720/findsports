@@ -57,7 +57,7 @@ test('quem abriu a rota de um jogo que acabou responde "voltaria?"', async ({
   await page.goto(`/pub/${pub.barId}?eventId=${eventId}`)
   const popup = page.waitForEvent('popup')
   await page
-    .locator('section', { hasText: 'Garanta seu lugar' })
+    .locator('section', { hasText: 'Fale com o bar' })
     .locator('a[href*="google.com/maps"]')
     .click()
   await (await popup).close()

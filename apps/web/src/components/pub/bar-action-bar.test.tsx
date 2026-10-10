@@ -22,6 +22,23 @@ describe('BarActions', () => {
     expect(markup).toContain('Reservar mesa')
     expect(markup).toContain('WhatsApp')
     expect(markup).not.toContain('Falar com o bar')
+    expect(markup).toContain('Garanta seu lugar')
+  })
+
+  // WEB-353: o título não promete lugar quando não há reserva a fazer.
+  test('sem reserva, o título é "Fale com o bar", inclusive com reservas esgotadas', () => {
+    for (const reservationsSoldOut of [false, true]) {
+      const markup = renderToStaticMarkup(
+        <BarActions
+          {...base}
+          onReserve={null}
+          reservationsSoldOut={reservationsSoldOut}
+          variant="panel"
+        />
+      )
+      expect(markup).toContain('Fale com o bar')
+      expect(markup).not.toContain('Garanta seu lugar')
+    }
   })
 
   test('sem reserva, volta ao WhatsApp e à rota, sem botão de reserva', () => {
