@@ -387,6 +387,13 @@ describe('Feature text consistency', () => {
     }
   })
 
+  test('suporte é o mesmo e-mail em todo plano, sem prioridade (WEB-107)', () => {
+    for (const plan of PLAN_CATALOG) {
+      expect(plan.features).toContain('Suporte por e-mail')
+      expect(plan.features.find((f) => /priorit/i.test(f))).toBeUndefined()
+    }
+  })
+
   test('pro includes analytics features from spec', () => {
     const pro = getPlan('pro')
     expect(pro.features).toContain('12 meses de histórico')
