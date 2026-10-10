@@ -74,7 +74,7 @@ mas mantêm composição, hierarquia e textos próprios.
 - A frase é uma confirmação de interface. A senha e a sessão autenticada são a
   autorização efetiva.
 - Aplicar no servidor a política de exclusão do bar, independentemente da UI.
-- Se não houver `dodoSubscriptionId`, permitir exclusão após as confirmações.
+- Se não houver `externalSubscriptionId`, permitir exclusão após as confirmações.
 - Com assinatura externa, bloquear em `active`, `trialing` e `past_due`.
 - Em `cancelled`, bloquear enquanto `currentPeriodEnd` estiver no futuro.
 - Liberar somente com estado `cancelled` ou `inactive` e sem período vigente.

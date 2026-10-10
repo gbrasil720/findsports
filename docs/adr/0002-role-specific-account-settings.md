@@ -58,8 +58,8 @@ de segurança sem perder o desenho e o contexto próprios de cada experiência.
   `past_due`; em `cancelled`, bloquear enquanto `currentPeriodEnd` estiver no
   futuro. Liberar quando o período terminar e o estado for `cancelled` ou
   `inactive`.
-- Permitir excluir um bar com assinatura manual sem `dodoSubscriptionId`, pois
-  não existe cobrança externa a deixar órfã.
+- Permitir excluir um bar cujo trial ainda não virou assinatura externa (sem
+  `externalSubscriptionId`), pois não existe cobrança externa a deixar órfã.
 - Informar que os dados locais serão apagados, mas o provedor de pagamento pode
   reter registros fiscais próprios.
 
