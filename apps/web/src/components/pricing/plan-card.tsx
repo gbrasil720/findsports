@@ -33,8 +33,11 @@ type Props = {
   isSelected: boolean
   isCurrent?: boolean
   onSelect: (id: Plan['id']) => void
-  /** Quando true, mostra preço com cupom de fundador; senão, tabela cheia. */
-  founderCouponAvailable: boolean
+  /**
+   * Quando true, mostra preço com cupom de fundador; false, tabela cheia;
+   * `null`, cupom ainda carregando: o valor fica em carregamento.
+   */
+  founderCouponAvailable: boolean | null
   /** Quem já assina não passa por checkout: o desconto é dito da assinatura. */
   hasSubscription?: boolean
 }
@@ -69,7 +72,7 @@ export function PlanCard({
         checked={isSelected}
         onChange={() => onSelect(plan.id)}
         className="sr-only"
-        aria-label={`${plan.name}, ${formatPlanChargeLine(charge, plan.period)}. ${plan.tagline}`}
+        aria-label={`${plan.name}, ${charge ? `${formatPlanChargeLine(charge, plan.period)}. ` : ''}${plan.tagline}`}
       />
       {isCurrent ? (
         <span className="onside-badge onside-badge-ink absolute -top-3 left-5">

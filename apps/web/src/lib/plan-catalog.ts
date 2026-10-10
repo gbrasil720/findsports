@@ -73,12 +73,38 @@ export type PlanChargeDisplay = {
   hint: string | null
 }
 
+/**
+ * Cupom de fundador para o preço de vitrine, a partir da consulta. `null`
+ * enquanto ela não responde: o valor ainda pode trocar de tabela cheia para
+ * fundador, e quem desenha o preço mostra carregamento no lugar dele.
+ * Consulta que falhou vale tabela cheia, como sempre valeu.
+ */
+export function founderCouponFromQuery(query: {
+  isPending: boolean
+  data?: { available: boolean }
+}): boolean | null {
+  if (query.isPending) return null
+  return query.data?.available ?? false
+}
+
 export function planChargeForShowcase(
   plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
   founderCouponAvailable: boolean,
+  hasSubscription?: boolean
+): PlanChargeDisplay
+export function planChargeForShowcase(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  founderCouponAvailable: boolean | null,
+  hasSubscription?: boolean
+): PlanChargeDisplay | null
+export function planChargeForShowcase(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  // `null`: cupom ainda carregando, sem preço a mostrar (`founderCouponFromQuery`).
+  founderCouponAvailable: boolean | null,
   // Quem já assina troca de plano pelo portal, sem checkout (WEB-353).
   hasSubscription = false
-): PlanChargeDisplay {
+): PlanChargeDisplay | null {
+  if (founderCouponAvailable === null) return null
   if (founderCouponAvailable) {
     return {
       chargeReais: plan.founderPrice,
@@ -136,7 +162,23 @@ export function planChargeForCurrentPlan(
     monthlyDiscountReais: number | null
   },
   founderCouponAvailable: boolean
-): PlanChargeDisplay {
+): PlanChargeDisplay
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean | null
+): PlanChargeDisplay | null
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean | null
+): PlanChargeDisplay | null {
   return subscription.externalSubscriptionId
     ? planChargeFromSubscription(plan, subscription.monthlyDiscountReais)
     : planChargeForShowcase(plan, founderCouponAvailable)

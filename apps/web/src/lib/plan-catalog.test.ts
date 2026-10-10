@@ -12,6 +12,7 @@ import {
   formatPerGame,
   formatPlanChargeLine,
   formatPlanPricing,
+  founderCouponFromQuery,
   getAnalyticsEntitlement,
   getDefaultPlanSelection,
   getPlan,
@@ -105,6 +106,40 @@ describe('preços (WEB-112)', () => {
     expect(
       formatPlanChargeLine(planChargeForShowcase(elite, false), elite.period)
     ).toBe('R$ 297/mês')
+  })
+
+  // Enquanto o cupom carrega não há preço: a tabela cheia trocaria para o de
+  // fundador na frente do dono.
+  test('cupom pendente não vira preço, nem na vitrine nem no plano atual', () => {
+    const pro = getPlan('pro')
+    const pending = founderCouponFromQuery({ isPending: true })
+    expect(pending).toBeNull()
+    expect(planChargeForShowcase(pro, pending)).toBeNull()
+    expect(
+      planChargeForCurrentPlan(
+        pro,
+        { externalSubscriptionId: null, monthlyDiscountReais: null },
+        pending
+      )
+    ).toBeNull()
+    // Com assinatura no Stripe o valor é o gravado, e não espera o cupom.
+    expect(
+      planChargeForCurrentPlan(
+        pro,
+        { externalSubscriptionId: 'sub_1', monthlyDiscountReais: 28 },
+        pending
+      )?.chargeReais
+    ).toBe(119)
+  })
+
+  test('cupom respondido vale a resposta, e consulta que falhou vale tabela cheia', () => {
+    expect(
+      founderCouponFromQuery({ isPending: false, data: { available: true } })
+    ).toBe(true)
+    expect(
+      founderCouponFromQuery({ isPending: false, data: { available: false } })
+    ).toBe(false)
+    expect(founderCouponFromQuery({ isPending: false })).toBe(false)
   })
 
   // WEB-353: quem já assina troca de plano pelo portal, sem checkout.

@@ -16,6 +16,7 @@ import { startCheckout } from '@/lib/billing-client'
 import {
   CHECKOUT_ENABLED_DEFAULT,
   earnsDowngradeCredit,
+  founderCouponFromQuery,
   getDefaultPlanSelection,
   getPlanExitLink,
   getPlanHeader,
@@ -75,7 +76,7 @@ function PlanSelection() {
   )
   const checkoutLiberado =
     configQuery.data?.['billing.checkout_enabled'] ?? CHECKOUT_ENABLED_DEFAULT
-  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
+  const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
