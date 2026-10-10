@@ -88,3 +88,22 @@ test('desktop sem WebGL: o pôster fica, sem erro no console', async ({
   await expect(stage(page).locator('canvas')).toHaveCSS('opacity', '0')
   expect(errors).toEqual([])
 })
+
+test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
+  page
+}) => {
+  await page.goto('/')
+  const cta = page.locator('[data-cta="footer_pub_signup"]')
+  await expect(cta).toHaveText('Cadastre seu bar')
+  await expect(cta).toHaveAttribute('href', '/signup?role=pub')
+
+  await cta.click()
+  await expect(page).toHaveURL(/\/signup\?role=pub$/)
+  await expect(
+    page.getByRole('button', { name: 'Dono de Bar' })
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  )
+})

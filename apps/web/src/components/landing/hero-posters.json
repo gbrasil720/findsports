@@ -54,8 +54,8 @@
       }
     ]
   },
-  "a": {
-    "src": "/landing/hero-mapa-retrato-a.webp",
+  "portrait": {
+    "src": "/landing/hero-mapa-retrato.webp",
     "width": 1170,
     "height": 936,
     "spots": [
@@ -106,116 +106,6 @@
         "pinX": 37.62,
         "pinY": 69.15,
         "pinR": 3.77
-      }
-    ]
-  },
-  "b": {
-    "src": "/landing/hero-mapa-retrato-b.webp",
-    "width": 1170,
-    "height": 1170,
-    "spots": [
-      {
-        "bar": 0,
-        "x": 26.12,
-        "y": 33.48,
-        "pinX": 26.35,
-        "pinY": 36.1,
-        "pinR": 2.58
-      },
-      {
-        "bar": 2,
-        "x": 91.34,
-        "y": 37.06,
-        "pinX": 90.92,
-        "pinY": 39.78,
-        "pinR": 2.78
-      },
-      {
-        "bar": 3,
-        "x": 53.94,
-        "y": 52.5,
-        "pinX": 53.9,
-        "pinY": 55.54,
-        "pinR": 3.21
-      },
-      {
-        "bar": 0,
-        "x": 26.12,
-        "y": 33.48,
-        "pinX": 26.35,
-        "pinY": 36.1,
-        "pinR": 2.58
-      },
-      {
-        "bar": 2,
-        "x": 91.34,
-        "y": 37.06,
-        "pinX": 90.92,
-        "pinY": 39.78,
-        "pinR": 2.78
-      },
-      {
-        "bar": 3,
-        "x": 53.94,
-        "y": 52.5,
-        "pinX": 53.9,
-        "pinY": 55.54,
-        "pinR": 3.21
-      }
-    ]
-  },
-  "c": {
-    "src": "/landing/hero-mapa-retrato-c.webp",
-    "width": 1170,
-    "height": 1464,
-    "spots": [
-      {
-        "bar": 0,
-        "x": 18.62,
-        "y": 30.28,
-        "pinX": 18.97,
-        "pinY": 32.45,
-        "pinR": 2.92
-      },
-      {
-        "bar": 2,
-        "x": 87.09,
-        "y": 47.88,
-        "pinX": 86.61,
-        "pinY": 50.18,
-        "pinR": 3.39
-      },
-      {
-        "bar": 3,
-        "x": 28.96,
-        "y": 57.35,
-        "pinX": 29.25,
-        "pinY": 59.66,
-        "pinR": 3.59
-      },
-      {
-        "bar": 0,
-        "x": 18.62,
-        "y": 30.28,
-        "pinX": 18.97,
-        "pinY": 32.45,
-        "pinR": 2.92
-      },
-      {
-        "bar": 2,
-        "x": 87.09,
-        "y": 47.88,
-        "pinX": 86.61,
-        "pinY": 50.18,
-        "pinR": 3.39
-      },
-      {
-        "bar": 3,
-        "x": 28.96,
-        "y": 57.35,
-        "pinX": 29.25,
-        "pinY": 59.66,
-        "pinR": 3.59
       }
     ]
   },

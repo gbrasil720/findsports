@@ -8,8 +8,8 @@
  * `hero-scenes.js` do protótipo (cópia em `landing-posters/`, three r128 de
  * `node_modules`) num Chromium do Playwright, e grava:
  *
- * - `public/landing/*.webp`: o hero em paisagem, três enquadramentos em
- *   retrato e o bar do CTA final;
+ * - `public/landing/*.webp`: o hero em paisagem, o hero em retrato e o bar
+ *   do CTA final;
  * - `src/components/landing/hero-posters.json`: dimensões e, para cada
  *   enquadramento do hero, os seis tempos do ciclo de cards, com o lugar em
  *   que o pino de cada bar caiu na imagem (em porcentagem). Os cards e o
@@ -17,8 +17,6 @@
  *
  * Com `--out` grava tudo em outro diretório, para comparar enquadramentos sem
  * tocar no que está publicado.
- *
- * Qual retrato a página usa é a constante `PORTRAIT` em `onside-scene-stage.tsx`.
  *
  * ## Como a imagem sai igual toda vez
  *
@@ -60,11 +58,6 @@ type Shot = {
   progress?: number
 }
 
-/**
- * O protótipo não tem versão em retrato: abaixo de 1,3 de proporção ele só
- * afasta a câmera. Os três retratos são propostas de composição (cidade em
- * cima, texto embaixo) para o dono escolher.
- */
 const SHOTS: Record<string, Shot> = {
   // Enquadramento aprovado. Largo (2,4:1) porque a cena tem campo de visão
   // vertical fixo: a página encaixa pela altura e corta as laterais, e assim o
@@ -76,34 +69,17 @@ const SHOTS: Record<string, Shot> = {
     height: 800,
     quality: 0.8
   },
-  // A · faixa (5:4): perto dos três bares da frente. Imagem baixa, e o botão
-  // principal cabe na primeira tela até em celular pequeno.
-  a: {
-    file: 'hero-mapa-retrato-a.webp',
+  // O protótipo não tem versão em retrato: abaixo de 1,3 de proporção ele só
+  // afasta a câmera. Este enquadramento (5:4, escolhido pelo dono entre três)
+  // chega perto dos bares da frente; a imagem fica baixa, e o botão principal
+  // cabe na primeira tela até em celular pequeno.
+  portrait: {
+    file: 'hero-mapa-retrato.webp',
     scene: 'mapa',
     width: 1170,
     height: 936,
     quality: 0.8,
     camera: { target: [15.5, 0.5, -20], yaw: 0.142, pitch: 0.38, radius: 50 }
-  },
-  // B · quadrado (1:1): a câmera do protótipo, afastada como ele mesmo faz em
-  // tela estreita (raio 41,4 × 1,3).
-  b: {
-    file: 'hero-mapa-retrato-b.webp',
-    scene: 'mapa',
-    width: 1170,
-    height: 1170,
-    quality: 0.8,
-    camera: { target: [13, 0.5, -9], yaw: 0.142, pitch: 0.546, radius: 53.8 }
-  },
-  // C · alto (4:5): vista de cima e na diagonal, com mais quarteirões.
-  c: {
-    file: 'hero-mapa-retrato-c.webp',
-    scene: 'mapa',
-    width: 1170,
-    height: 1464,
-    quality: 0.8,
-    camera: { target: [15.5, 0.5, -10], yaw: 0.5, pitch: 0.72, radius: 58 }
   },
   final: {
     file: 'final-bar.webp',

@@ -18,11 +18,7 @@ import type { SceneHandle } from './onside-scenes'
  * faltar, cair ou sair caro (`onside-scenes.ts`).
  */
 
-/**
- * Enquadramento do pôster em retrato: `a`, `b` ou `c`. As três imagens estão
- * em `public/landing/` e são regeradas por `scripts/render-landing-posters.ts`.
- */
-const PORTRAIT = posters.a
+const PORTRAIT = posters.portrait
 
 /** Onde a cena viva roda: mouse de verdade, tela larga e movimento permitido. */
 const LIVE_SCENE =

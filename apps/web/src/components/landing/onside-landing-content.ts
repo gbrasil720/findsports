@@ -24,7 +24,9 @@ export type HeroBar = {
 }
 
 /**
- * Texto da landing v2 (WEB-333), copiado do desenho com o produto já no ar.
+ * Texto da landing v2 (WEB-333): o do desenho com o produto já no ar, com as
+ * frases de pré-lançamento passadas para o presente. No FAQ, as respostas que
+ * a produção já tinha (WEB-232) valem sobre as do desenho.
  * Título com trecho em destaque fica em pedaços: `[antes, destaque, depois]`.
  */
 export const LANDING_COPY = {
@@ -53,12 +55,12 @@ export const LANDING_COPY = {
   solution: {
     kicker: 'Escolha com confiança',
     title: 'Garanta que a experiência vai ser boa antes de convidar a galera.',
-    body: 'Com a Onside, você não vai precisar arriscar. No lançamento, poderá escolher um bar conhecendo os detalhes que importam para o seu rolê.',
+    body: 'Com a Onside, você não precisa arriscar. Escolha um bar conhecendo os detalhes que importam para o seu rolê.',
     closing:
       'Tudo pensado para você convidar a galera com mais confiança de que escolheu o lugar certo.'
   },
   journey: {
-    kicker: 'Como vai funcionar',
+    kicker: 'Como funciona',
     title: 'Tudo isso seguindo apenas três passos simples.',
     searchPlaceholder: 'Qual jogo você quer ver?',
     searchTyped: 'Flamengo × Palmeiras'
@@ -66,7 +68,7 @@ export const LANDING_COPY = {
   variety: {
     kicker: 'Um lugar para cada ocasião',
     title: 'Encontre o espaço certo para o seu jeito de torcer.',
-    body: 'Às vezes você até conhece um bom lugar para ver o jogo, mas ele é caro ou distante demais para alguém. Não importa se você procura o barato, o animado ou o mais tranquilo: a Onside vai ajudar a comparar as opções antes de sair.'
+    body: 'Às vezes você até conhece um bom lugar para ver o jogo, mas ele é caro ou distante demais para alguém. Não importa se você procura o barato, o animado ou o mais tranquilo: a Onside ajuda a comparar as opções antes de sair.'
   },
   community: {
     kicker: 'O esporte é encontro',
@@ -81,7 +83,7 @@ export const LANDING_COPY = {
     title: ['Foi exatamente por isso que a gente criou a', 'Onside.'],
     body: 'O esporte para nós é sagrado. Só que assistir ao jogo em casa toda vez perde a graça. Somos torcedores como você, cansados de abrir o Google Maps na esperança de encontrar um bom lugar e acabar vendo em casa outra vez.',
     closing:
-      'A Onside está sendo criada para quem quer assistir ao esporte fora de casa e com os amigos.'
+      'A Onside é para quem quer assistir ao esporte fora de casa e com os amigos.'
   },
   faq: {
     kicker: 'Dúvidas frequentes',
@@ -211,36 +213,30 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: 'f1',
     question: 'A Onside já funciona na minha cidade?',
     answer:
-      'Ainda não. Estamos registrando a demanda dos torcedores e preparando os primeiros bares para definir as cidades do lançamento.'
+      'O cadastro está aberto para torcedores e bares de qualquer cidade. Os bares aparecem na busca conforme se cadastram, então a quantidade de opções varia de um lugar para outro.'
   },
   {
     id: 'f2',
-    question: 'A Onside será gratuita para torcedores?',
+    question: 'A Onside é gratuita para torcedores?',
     answer:
-      'Sim. Buscar partidas, comparar bares e consultar as informações será gratuito para torcedores.'
+      'Sim. Buscar partidas, comparar bares e consultar as informações é gratuito para torcedores.'
   },
   {
     id: 'f3',
-    question: 'O que poderei comparar?',
+    question: 'O que posso comparar?',
     answer:
-      'A proposta para o lançamento é mostrar a infraestrutura do bar, o preço médio, a distância e as partidas transmitidas.'
+      'A infraestrutura do bar, o preço médio, a distância e as partidas transmitidas.'
   },
   {
     id: 'f4',
     question: 'É só para futebol?',
     answer:
-      'Não. Futebol será o ponto de partida, mas a busca poderá incluir basquete, vôlei, automobilismo, lutas e outros eventos.'
-  },
-  {
-    id: 'f5',
-    question: 'Como as primeiras cidades serão escolhidas?',
-    answer:
-      'Vamos avaliar a demanda registrada por torcedores e a disponibilidade dos bares abordados pela nossa equipe em cada cidade.'
+      'Não. Futebol é o ponto de partida, mas a busca inclui basquete, vôlei, automobilismo, lutas e outros eventos.'
   },
   {
     id: 'f6',
     question: 'O que acontece com meus dados?',
     answer:
-      'Usamos sua cidade para avaliar a demanda e seu e-mail para confirmar o cadastro e avisar sobre o lançamento.'
+      'Usamos seu e-mail para criar a conta e confirmar o cadastro. Os detalhes estão na Política de Privacidade.'
   }
 ]

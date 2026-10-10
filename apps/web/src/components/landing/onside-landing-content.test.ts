@@ -1,16 +1,16 @@
 import { expect, test } from 'bun:test'
 
-import { LANDING_COPY } from './onside-landing-content'
+import { FAQ_ITEMS, LANDING_COPY } from './onside-landing-content'
 
 test('a landing fala do produto no ar e não promete lista de espera', () => {
-  const copy = JSON.stringify(LANDING_COPY)
+  const copy = JSON.stringify([LANDING_COPY, FAQ_ITEMS])
 
   expect(LANDING_COPY.hero.title.join(' ')).toBe(
     '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
   )
   expect(LANDING_COPY.primaryCta).toBe('Entrar / Criar conta')
   expect(copy).not.toMatch(
-    /download|app store|playstore|3 mil|lotação|lista de espera|waitlist/i
+    /download|app store|playstore|3 mil|lotação|lista de espera|waitlist|no lançamento|ainda não/i
   )
 })
 
