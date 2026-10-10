@@ -119,6 +119,24 @@ export function planChargeFromSubscription(
   }
 }
 
+/**
+ * Preço do card "Plano atual" (WEB-343). Sem assinatura no Stripe (teste do
+ * cadastro, vigente ou vencido) não há desconto gravado: vale o que `/plan`
+ * promete para quem contratar. Com assinatura, vale o que o webhook gravou.
+ */
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean
+): PlanChargeDisplay {
+  return subscription.externalSubscriptionId
+    ? planChargeFromSubscription(plan, subscription.monthlyDiscountReais)
+    : planChargeForShowcase(plan, founderCouponAvailable)
+}
+
 export function formatPlanChargeLine(
   display: PlanChargeDisplay,
   period: string

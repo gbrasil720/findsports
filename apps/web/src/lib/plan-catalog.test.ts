@@ -23,6 +23,7 @@ import {
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
   parsePlanOrigin,
+  planChargeForCurrentPlan,
   planChargeForShowcase,
   planChargeFromSubscription
 } from '@/lib/plan-catalog'
@@ -115,6 +116,44 @@ describe('preços (WEB-112)', () => {
     expect(
       formatPlanChargeLine(planChargeFromSubscription(pro, null), pro.period)
     ).toBe('R$ 147/mês')
+  })
+
+  test('card Plano atual: sem assinatura no Stripe segue a vitrine, com assinatura segue o desconto gravado (WEB-343)', () => {
+    const elite = getPlan('elite')
+    const semStripe = {
+      externalSubscriptionId: null,
+      monthlyDiscountReais: null
+    }
+    expect(planChargeForCurrentPlan(elite, semStripe, true)).toEqual(
+      planChargeForShowcase(elite, true)
+    )
+    expect(planChargeForCurrentPlan(elite, semStripe, true)).toMatchObject({
+      chargeReais: 269,
+      listReais: 297,
+      hint: 'Com desconto de fundador no checkout'
+    })
+    expect(planChargeForCurrentPlan(elite, semStripe, false)).toEqual({
+      chargeReais: 297,
+      listReais: null,
+      hint: null
+    })
+
+    // Com assinatura, o cupom disponível hoje não diz nada sobre o que ela paga.
+    const pro = getPlan('pro')
+    const comStripe = (monthlyDiscountReais: number | null) => ({
+      externalSubscriptionId: 'sub_123',
+      monthlyDiscountReais
+    })
+    expect(planChargeForCurrentPlan(pro, comStripe(28), false)).toEqual(
+      planChargeFromSubscription(pro, 28)
+    )
+    expect(planChargeForCurrentPlan(pro, comStripe(28), false)).toMatchObject({
+      chargeReais: 119,
+      listReais: 147
+    })
+    expect(planChargeForCurrentPlan(pro, comStripe(0), true).chargeReais).toBe(
+      147
+    )
   })
 })
 

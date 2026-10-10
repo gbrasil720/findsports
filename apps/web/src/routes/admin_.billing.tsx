@@ -19,8 +19,8 @@ import {
   getPlanPageMode,
   getTrialNotice,
   PLAN_CATALOG,
+  planChargeForCurrentPlan,
   planChargeForShowcase,
-  planChargeFromSubscription,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -140,11 +140,11 @@ function BillingPage() {
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
+  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const planCharge =
     planInfo && subscription
-      ? planChargeFromSubscription(planInfo, subscription.monthlyDiscountReais)
+      ? planChargeForCurrentPlan(planInfo, subscription, founderCouponAvailable)
       : null
-  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const statusInfo =
     STATUS_LABEL[
       standing === 'trial_ended' ? standing : (subscription?.status ?? '')
