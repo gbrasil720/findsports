@@ -473,6 +473,11 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
   await expect(
     currentPlan.getByRole('button', { name: 'Reativar assinatura' })
   ).toBeVisible()
+  // WEB-339: com o fim agendado, o atalho de cancelar dá lugar ao de reativar.
+  const cancelShortcut = page.getByRole('button', {
+    name: 'Cancelar assinatura'
+  })
+  await expect(cancelShortcut).toHaveCount(0)
 
   await page.goto('/plan/confirmed')
   const receipt = page.locator('.onside-receipt-paper')
@@ -507,4 +512,5 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
   await expect(
     page.getByRole('button', { name: 'Reativar assinatura' })
   ).toHaveCount(0)
+  await expect(cancelShortcut).toBeVisible()
 })

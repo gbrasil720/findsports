@@ -22,6 +22,27 @@ export function getScheduledCancelAt(
   return new Date(subscription.cancelAt)
 }
 
+/**
+ * Assinatura que o portal abre direto no cancelamento (WEB-339): viva no
+ * Stripe e sem fim agendado. Teste do cadastro não tem o que cancelar lá;
+ * plano parado e assinatura encerrada a rota do plugin recusa (só `active` e
+ * `trialing`); com o fim agendado, a ação é reativar.
+ */
+export function canCancelSubscription(
+  subscription:
+    | (NonNullable<CancellableSubscription> & {
+        externalSubscriptionId: string | null
+      })
+    | null
+    | undefined
+): boolean {
+  return (
+    subscription?.standing === 'current' &&
+    subscription.externalSubscriptionId !== null &&
+    !subscription.cancelAt
+  )
+}
+
 /** O dia do cancelamento agendado, `DD/MM`: o do aviso e o do cabeçalho de `/plan`. */
 export function getCancelDay(
   subscription: CancellableSubscription

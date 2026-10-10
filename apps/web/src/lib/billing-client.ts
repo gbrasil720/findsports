@@ -39,3 +39,17 @@ export async function openBillingPortal(): Promise<boolean> {
   if (error) throw error
   return typeof data?.url === 'string'
 }
+
+/**
+ * Abre o portal do Stripe direto no cancelamento da assinatura (WEB-339); a
+ * pesquisa de motivo e a confirmação são as do portal. A rota do plugin não
+ * recebe idioma: como a confirmação de troca de plano, a tela segue o do
+ * navegador do dono.
+ */
+export async function openSubscriptionCancel(): Promise<boolean> {
+  const { data, error } = await authClient.subscription.cancel({
+    returnUrl: '/admin/billing'
+  })
+  if (error) throw error
+  return typeof data?.url === 'string'
+}

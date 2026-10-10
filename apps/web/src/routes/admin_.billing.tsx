@@ -9,6 +9,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { CancelSubscriptionButton } from '@/components/billing/cancel-subscription-button'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
@@ -29,7 +30,7 @@ import {
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { getCancelNotice } from '@/lib/scheduled-cancel'
+import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -389,6 +390,12 @@ function BillingPage() {
                   Fazer upgrade
                 </Link>
               ) : null}
+
+              {/* Ação secundária, sem cara de botão: o atalho existe para
+                  quem procura, não para concorrer com o resto (WEB-339). */}
+              {canCancelSubscription(subscription) ? (
+                <CancelSubscriptionButton className="min-h-11 text-sm text-[var(--onside-muted)] underline underline-offset-2 hover:text-[var(--onside-ink)]" />
+              ) : null}
             </div>
 
             {portalError ? (
@@ -410,11 +417,13 @@ function BillingPage() {
               <span>
                 {ended && hasProviderCustomer
                   ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento acima.'
-                  : hasProviderCustomer
-                    ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
-                    : onLocalTrial
-                      ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
-                      : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
+                  : canCancelSubscription(subscription)
+                    ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima. “Cancelar assinatura” abre o portal direto no cancelamento.'
+                    : hasProviderCustomer
+                      ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
+                      : onLocalTrial
+                        ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
+                        : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
               </span>
             </div>
           </section>
