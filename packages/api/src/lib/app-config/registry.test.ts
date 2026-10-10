@@ -107,6 +107,50 @@ describe('registro de configuração (ESC-19)', () => {
     if (!resultado.ok) expect(resultado.erro).toContain('ip.max')
   })
 
+  // Quem lê a recusa é o administrador no painel: português, campo e limite.
+  it('motivo da recusa sai em português, com o campo e o limite', () => {
+    const base = appConfigDefault('billing.onboarding_trial')
+    const motivo = (valor: unknown) => {
+      const resultado = validateAppConfigValue(
+        'billing.onboarding_trial',
+        valor
+      )
+      return resultado.ok ? null : resultado.erro
+    }
+
+    expect(motivo({ ...base, days: 365 })).toBe(
+      'days: Grande demais: esperava que o número fosse <= 180'
+    )
+    expect(motivo({ ...base, days: 0 })).toBe(
+      'days: Pequeno demais: esperava que o número fosse >= 1'
+    )
+    expect(motivo({ ...base, plan: 'premium' })).toBe(
+      'plan: Opção inválida: esperava uma das seguintes opções: "starter"|"pro"|"elite"'
+    )
+    expect(motivo({ ...base, enabled: 'sim' })).toBe(
+      'enabled: Entrada inválida: esperava um valor booleano, recebeu um texto'
+    )
+    // A mensagem escrita no próprio esquema continua valendo.
+    const cupom = validateAppConfigValue('billing.founder_coupon', {
+      enabled: true,
+      couponId: 'com espaço'
+    })
+    expect(cupom).toEqual({
+      ok: false,
+      erro: 'couponId: ID de cupom do Stripe inválido'
+    })
+  })
+
+  it('a tradução da recusa não muda o que é validado nem a leitura', () => {
+    const base = appConfigDefault('billing.onboarding_trial')
+    expect(
+      validateAppConfigValue('billing.onboarding_trial', { ...base, days: 180 })
+    ).toEqual({ ok: true, value: { ...base, days: 180 } })
+    expect(
+      parseAppConfigValue('billing.onboarding_trial', { ...base, days: 181 })
+    ).toBeNull()
+  })
+
   it('subconjunto público não inclui chave interna', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('billing.checkout_enabled')
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('launch.pub_cities')

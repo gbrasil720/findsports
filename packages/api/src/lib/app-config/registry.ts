@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ptBR } from 'zod/locales'
 
 import { WAITLIST_LIMITES_PADRAO } from '../waitlist-rate-limit'
 
@@ -51,6 +52,9 @@ function definir<S extends z.ZodType, P extends boolean>(definicao: {
    *  permite derivar o formato do subconjunto público em tempo de tipo. */
   publico: P
   descricao: string
+  /** O que muda para quem usa quando a chave volta ao padrão. O painel põe
+   *  isto na confirmação de "Voltar ao padrão", no lugar do JSON. */
+  efeitoPadrao?: string
 }) {
   return definicao
 }
@@ -98,7 +102,10 @@ export const APP_CONFIG_DEFINITIONS = {
     publico: true,
     descricao:
       'Permite abrir checkout de assinatura. Desligado, /plan avisa que a ' +
-      'cobrança está indisponível. Webhook e portal do cliente seguem ativos.'
+      'cobrança está indisponível. Webhook e portal do cliente seguem ativos.',
+    efeitoPadrao:
+      'A contratação de planos será fechada: /plan passa a avisar que a ' +
+      'cobrança está indisponível.'
   }),
 
   /**
@@ -128,7 +135,8 @@ export const APP_CONFIG_DEFINITIONS = {
     descricao:
       'Bar novo nasce publicado e com trial do plano escolhido por `days` ' +
       'dias. Desligado, o bar nasce fora do ar e só a assinatura paga o ' +
-      'publica. Não altera bares já cadastrados.'
+      'publica. Não altera bares já cadastrados.',
+    efeitoPadrao: 'O trial do cadastro será desligado para bares novos.'
   }),
 
   /**
@@ -162,7 +170,9 @@ export const APP_CONFIG_DEFINITIONS = {
       'quem contratar paga o preço cheio. Quem já ganhou o desconto continua ' +
       'com ele nos dois casos. O Stripe só deixa 100 bares usarem; depois ' +
       'disso a venda continua, sem desconto. Não mexa em `couponId`: é o ' +
-      'código do cupom no Stripe.'
+      'código do cupom no Stripe.',
+    efeitoPadrao:
+      'O desconto de fundador deixará de ser aplicado em contratações novas.'
   }),
 
   /**
@@ -304,13 +314,17 @@ export function parseAppConfigValue<K extends AppConfigKey>(
 /**
  * Valida antes de gravar. Aqui SIM o erro sobe: quem está escrevendo precisa
  * saber que o valor foi recusado, em vez de descobrir depois que a flag não
- * mudou nada.
+ * mudou nada. O motivo sai em português, com o campo e o limite: quem lê é o
+ * administrador no painel. O mapa de erro vale só nesta chamada — o que é
+ * validado não muda, nem as mensagens do zod no resto da aplicação.
  */
 export function validateAppConfigValue<K extends AppConfigKey>(
   key: K,
   raw: unknown
 ): { ok: true; value: AppConfigValue<K> } | { ok: false; erro: string } {
-  const resultado = APP_CONFIG_DEFINITIONS[key].schema.safeParse(raw)
+  const resultado = APP_CONFIG_DEFINITIONS[key].schema.safeParse(raw, {
+    error: ptBR().localeError
+  })
   if (resultado.success) {
     return { ok: true, value: resultado.data as AppConfigValue<K> }
   }
