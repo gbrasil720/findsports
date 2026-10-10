@@ -76,6 +76,54 @@ test('sem crédito: só o valor da próxima cobrança', async ({
   await expect(currentPlan(page).getByText(/de crédito/)).toHaveCount(0)
 })
 
+// O cliente tRPC agrupa em lote o que é pedido na mesma renderização, e o lote
+// só responde quando a última chamada termina. O bloco do saldo só monta
+// depois que a assinatura chegou, então a consulta dele sai num pedido à
+// parte: Stripe lento não deixa o card em "Carregando assinatura…".
+test('consulta do saldo pendente não segura o card do plano', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const pub = await createPub({
+    subscription: { plan: 'starter', externalSubscriptionId: subscriptionId }
+  })
+  await seedStripeBalance(
+    request,
+    stripeSubscription({
+      id: subscriptionId,
+      status: 'active',
+      plan: 'starter',
+      userId: pub.user.id
+    }),
+    { balance: -19870, nextAmountDue: 0 }
+  )
+  let release = () => {}
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const urls: string[] = []
+  await page.route(/\/api\/trpc\/[^?]*getMyBillingBalance/, async (route) => {
+    urls.push(route.request().url())
+    await held
+    await route.continue()
+  })
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+
+  // Com a consulta do saldo parada, o card já mostra o plano.
+  await expect(currentPlan(page)).toContainText('Starter')
+  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
+  await expect.poll(() => urls.length).toBe(1)
+  expect(urls[0]).not.toContain('getMySubscription')
+  await expect(currentPlan(page).getByText(/de crédito/)).toHaveCount(0)
+
+  release()
+  await expect(currentPlan(page)).toContainText(
+    /Você tem R\$\s198,70 de crédito/
+  )
+})
+
 test('Stripe sem resposta para a assinatura: o card aparece como antes, sem o saldo', async ({
   page
 }) => {
@@ -109,6 +157,11 @@ test('/plan avisa que a diferença do downgrade vira crédito', async ({
   await signIn(page, user)
   await page.goto('/plan')
 
+  // Espera a assinatura chegar: antes disso a tela ainda muda de altura, e o
+  // clique forçado cai fora do rádio.
+  await expect(
+    page.getByRole('heading', { name: 'Escolha seu novo plano.' })
+  ).toBeVisible()
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(0)
   await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
   await expect(page.getByText(/plano inferior ao atual/)).toBeVisible()
@@ -128,6 +181,9 @@ test('/plan em teste grátis: plano menor não promete crédito', async ({
   await signIn(page, user)
   await page.goto('/plan')
 
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+  ).toBeVisible()
   await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
   await expect(page.getByText(/plano inferior ao atual/)).toBeVisible()
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(0)
