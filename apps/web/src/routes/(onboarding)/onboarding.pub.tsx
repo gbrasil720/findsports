@@ -176,6 +176,25 @@ function PubOnboarding() {
     setStep(1)
   }, [sessionEmail])
 
+  // WEB-349: a rota é pública por causa de quem acabou de se cadastrar nesta
+  // aba. Em aba sem sessão e sem esse cadastro (aba nova, link direto) não há
+  // de quem guardar o rascunho: o dono preenchia tudo e, ao concluir, perdia.
+  // Pede o login antes, com o mesmo destino das rotas protegidas, e volta.
+  //
+  // O destino sai de `window.location`, e não do `useLocation`: este muda
+  // assim que a navegação começa, com o wizard ainda montado, e o efeito
+  // dispararia de novo levando o próprio `/login` como destino.
+  useEffect(() => {
+    if (sessionEmail || readPendingEmail()) return
+    navigate({
+      to: '/login',
+      search: {
+        callbackUrl: window.location.pathname + window.location.search
+      },
+      replace: true
+    })
+  }, [sessionEmail, navigate])
+
   const discardDraft = () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     setName('')
