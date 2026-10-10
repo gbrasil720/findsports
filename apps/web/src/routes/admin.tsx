@@ -1,4 +1,5 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { AccountSettings } from '@/components/account/account-settings'
@@ -20,6 +21,7 @@ import { AppShell } from '@/components/app/app-shell'
 import { InstallAppCard } from '@/components/app/install-app-card'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin')({
   head: () => ({
@@ -170,6 +172,11 @@ function PubDashboard() {
     refetch: refetchBar
   } = useMyBar()
   const { data: subscription } = useMySubscription()
+  const trpc = useTRPC()
+  const { data: hasOpenReservations } = useQuery({
+    ...trpc.barReservations.hasOpen.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   if (loadingBar) {
     return (
@@ -197,9 +204,13 @@ function PubDashboard() {
   }
 
   // O servidor confere o plano de novo; aqui só decide se a aba existe.
-  const receivesReservations =
-    bar.acceptsReservations && subscription?.currentPlan === 'elite'
-  const sections = getAdminSections(receivesReservations)
+  const elite = subscription?.currentPlan === 'elite'
+  const receivesReservations = bar.acceptsReservations && elite
+  // Reserva em aberto segura a aba de quem não recebe mais pedido novo: o
+  // torcedor continua com o código, e o bar precisa responder e validar
+  // (WEB-341).
+  const showsReservations = receivesReservations || hasOpenReservations === true
+  const sections = getAdminSections(showsReservations)
   // Link para uma aba que não existe para este bar cai na Visão geral.
   const shownSection = sections.some(({ id }) => id === activeSection)
     ? activeSection
@@ -242,8 +253,12 @@ function PubDashboard() {
             active={shownSection === 'admin-espaco'}
             onCreateEvent={() => changeSection('admin-grade')}
           />
-          {receivesReservations ? (
-            <ReservationsTab active={shownSection === 'admin-reservas'} />
+          {showsReservations ? (
+            <ReservationsTab
+              active={shownSection === 'admin-reservas'}
+              receiving={receivesReservations}
+              elite={elite}
+            />
           ) : null}
           <AdminTabPanel
             id="admin-configuracoes"

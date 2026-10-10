@@ -28,8 +28,20 @@ const STATUS_BADGE: Record<BarReservation['status'], string> = {
 /**
  * Fila de pedidos de reserva do bar (WEB-125). A confirmação é manual (ADR
  * 0003): sem inventário de mesas, nada vira reserva sem o dono.
+ *
+ * Sem `receiving`, a aba só existe porque há reserva em aberto (WEB-341): o
+ * bar responde e honra o que já chegou, avisado de que não chega pedido novo.
+ * O teto é recurso do plano e some sem `elite`.
  */
-export function ReservationsTab({ active }: { active: boolean }) {
+export function ReservationsTab({
+  active,
+  receiving,
+  elite
+}: {
+  active: boolean
+  receiving: boolean
+  elite: boolean
+}) {
   const trpc = useTRPC()
   const query = useQuery({
     ...trpc.barReservations.list.queryOptions(),
@@ -50,7 +62,23 @@ export function ReservationsTab({ active }: { active: boolean }) {
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
-      <ReservationCapPanel />
+      {receiving ? null : (
+        <div className="onside-callout onside-callout-stone mb-6" role="note">
+          <div className="min-w-0 flex-1">
+            <p className="mb-0.5 font-semibold text-sm">
+              Seu bar não está recebendo pedidos novos
+            </p>
+            <p className="text-sm opacity-90">
+              {elite
+                ? 'O recebimento de reservas está desligado em Meu espaço.'
+                : 'Receber reservas é um recurso do plano Elite.'}{' '}
+              As reservas abaixo continuam valendo: responda as pendentes e
+              valide o código de quem chegar.
+            </p>
+          </div>
+        </div>
+      )}
+      {elite ? <ReservationCapPanel /> : null}
 
       {query.isLoading ? (
         <div role="status" aria-busy="true" className="space-y-3">

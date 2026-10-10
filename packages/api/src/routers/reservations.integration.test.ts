@@ -117,6 +117,7 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
     queueOf: queue,
     validation: appRouter.createCaller(contextFor(ownerId, 'pub'))
       .reservationValidation,
+    pub: appRouter.createCaller(contextFor(ownerId, 'pub')).pub,
     attend: (userId: string, attending = true) =>
       appRouter
         .createCaller(contextFor(userId, 'fan'))
@@ -409,7 +410,82 @@ integrationTest(
 )
 
 integrationTest(
-  'dono de outro bar não lê nem responde; sem Elite ninguém responde',
+  'trial Elite vencido: o bar gere e valida o que já existe, sem pedido novo nem teto (WEB-341)',
+  async () => {
+    const ctx = await seed()
+    try {
+      const confirmed = await ctx.fan.create(ctx.request())
+      const pending = await ctx.otherFan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: confirmed.id,
+        status: 'confirmed'
+      })
+      await ctx.openWindow()
+
+      // Como o trial do cadastro vence: `trialing` com o fim no passado.
+      await ctx.db
+        .update(subscription)
+        .set({
+          status: 'trialing',
+          currentPeriodEnd: new Date(Date.now() - HOUR)
+        })
+        .where(eq(subscription.barId, ctx.barId))
+
+      expect(await ctx.queue.hasOpen()).toBe(true)
+      expect((await ctx.queue.list()).map(({ id }) => id).sort()).toEqual(
+        [confirmed.id, pending.id].sort()
+      )
+      const found = await ctx.validation.lookup({ code: confirmed.code ?? '' })
+      if (!found) throw new Error('código não resolveu')
+      expect(
+        (
+          await ctx.validation.registerArrival({
+            codeId: found.codeId,
+            requestId: crypto.randomUUID()
+          })
+        ).usedCount
+      ).toBe(1)
+      expect(
+        await ctx.queue.respond({
+          reservationId: pending.id,
+          status: 'declined'
+        })
+      ).toEqual({ status: 'declined', changed: true })
+
+      // Nada de recurso novo: pedido, interruptor e teto seguem do Elite.
+      expect(await refusal(ctx.otherFan.create(ctx.request()))).toEqual({
+        code: 'PRECONDITION_FAILED',
+        message: 'Este bar não está recebendo reservas pela Onside no momento.'
+      })
+      for (const attempt of [
+        () => ctx.queue.capacity(),
+        () => ctx.queue.setDefaultCap({ reservationCap: 10 }),
+        () =>
+          ctx.queue.setGameCap({ eventId: ctx.futureId, reservationCap: 10 }),
+        () => ctx.pub.updateAcceptsReservations({ acceptsReservations: true })
+      ]) {
+        expect((await refusal(attempt())).code).toBe('FORBIDDEN')
+      }
+
+      // Jogo encerrado, nada em aberto: volta a recusa de quem não é Elite.
+      await ctx.db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() - 24 * HOUR) })
+        .where(eq(event.id, ctx.futureId))
+      expect(await ctx.queue.hasOpen()).toBe(false)
+      expect((await refusal(ctx.queue.list())).code).toBe('FORBIDDEN')
+      expect(
+        (await refusal(ctx.validation.lookup({ code: confirmed.code ?? '' })))
+          .code
+      ).toBe('FORBIDDEN')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'dono de outro bar não lê nem responde; sem Elite e sem reserva em aberto ninguém responde',
   async () => {
     const ctx = await seed()
     const intruderId = crypto.randomUUID()
@@ -462,10 +538,13 @@ integrationTest(
         ).code
       ).toBe('NOT_FOUND')
 
+      // Sem Elite e com o pedido já fora de aberto, a fila fecha (WEB-341).
+      await ctx.fan.cancel({ reservationId: created.id })
       await ctx.db
         .update(subscription)
         .set({ status: 'past_due' })
         .where(eq(subscription.barId, ctx.barId))
+      expect(await ctx.queue.hasOpen()).toBe(false)
       expect((await refusal(ctx.queue.list())).code).toBe('FORBIDDEN')
       expect(
         (
@@ -479,7 +558,7 @@ integrationTest(
       ).toBe('FORBIDDEN')
 
       const [mine] = await ctx.fan.mine()
-      expect(mine?.status).toBe('pending')
+      expect(mine?.status).toBe('cancelled')
     } finally {
       await ctx.db.delete(user).where(eq(user.id, intruderId))
       await ctx.cleanup()

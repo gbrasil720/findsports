@@ -7,7 +7,6 @@ import {
   type SQL,
   sql
 } from '@findsports_oficial/db'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { RESERVATION_CAP_MAX } from '@findsports_oficial/db/reservation-limits'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
@@ -22,6 +21,9 @@ import { pubProcedure, router } from '../index'
 import { byTeamName } from '../lib/game-participants'
 import {
   assertCanEnableReservations,
+  canManageReservations,
+  hasOpenReservations,
+  notEnded,
   withSeatAvailability
 } from '../lib/reservation-intake'
 
@@ -32,12 +34,13 @@ import {
  * escrita filtra pelos jogos dele. Pedido de outro bar responde como
  * inexistente.
  *
- * Exige Elite vigente, mas não o interruptor de recebimento (WEB-131):
- * desligar impede pedidos novos, e os que já chegaram ainda precisam de
- * resposta.
+ * A fila não exige o interruptor de recebimento (WEB-131) nem, havendo
+ * reserva em aberto, o Elite vigente (WEB-341): desligar ou perder o plano
+ * impede pedidos novos, e os que já chegaram ainda precisam de resposta. O
+ * teto é recurso do plano e continua exigindo Elite.
  */
 
-const ownerProcedure = pubProcedure.use(async ({ ctx, next }) => {
+const barProcedure = pubProcedure.use(async ({ ctx, next }) => {
   const ownBar = await db.query.bar.findFirst({
     where: eq(bar.userId, ctx.session.user.id),
     columns: { id: true },
@@ -49,8 +52,22 @@ const ownerProcedure = pubProcedure.use(async ({ ctx, next }) => {
       message: 'Bar não encontrado para este usuário.'
     })
   }
-  assertCanEnableReservations(ownBar.subscription ?? null)
-  return next({ ctx: { ...ctx, barId: ownBar.id } })
+  return next({
+    ctx: { ...ctx, barId: ownBar.id, subscription: ownBar.subscription ?? null }
+  })
+})
+
+/** Listar e responder: Elite vigente, ou reserva em aberto para honrar. */
+const ownerProcedure = barProcedure.use(async ({ ctx, next }) => {
+  if (!(await canManageReservations(ctx.barId, ctx.subscription))) {
+    assertCanEnableReservations(ctx.subscription)
+  }
+  return next()
+})
+
+const eliteProcedure = barProcedure.use(({ ctx, next }) => {
+  assertCanEnableReservations(ctx.subscription)
+  return next()
 })
 
 /** Teto em pessoas; `null` tira o teto (ou, no jogo, volta ao padrão do bar). */
@@ -66,9 +83,6 @@ const ownEvents = (barId: string, extra?: SQL) =>
     .select({ id: event.id })
     .from(event)
     .where(and(eq(event.barId, barId), extra))
-
-/** Jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
-const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
 
 /**
  * O `UPDATE` condicional não alterou nada: passa só se o pedido já está na
@@ -114,6 +128,13 @@ async function assertAlreadyAnswered(
 }
 
 export const barReservationsRouter = router({
+  /**
+   * Há reserva pendente ou confirmada de jogo que ainda não acabou. É o que
+   * mantém a aba Reservas e a validação no painel de quem não recebe mais
+   * pedido novo (WEB-341). Sem guarda de plano: só diz o que desenhar.
+   */
+  hasOpen: barProcedure.query(({ ctx }) => hasOpenReservations(ctx.barId)),
+
   /**
    * Pedidos dos jogos que ainda não acabaram, pendentes primeiro e, dentro de
    * cada estado, por ordem de chegada. Do torcedor, só o nome: telefone e
@@ -171,7 +192,7 @@ export const barReservationsRouter = router({
    * diante do teto efetivo. O teto só fecha pedidos novos; confirmar além
    * dele continua permitido, e é por isso que o dono vê o número.
    */
-  capacity: ownerProcedure.query(async ({ ctx }) => {
+  capacity: eliteProcedure.query(async ({ ctx }) => {
     const ownBar = await db.query.bar.findFirst({
       where: eq(bar.id, ctx.barId),
       columns: { reservationCap: true },
@@ -207,7 +228,7 @@ export const barReservationsRouter = router({
     }
   }),
 
-  setDefaultCap: ownerProcedure
+  setDefaultCap: eliteProcedure
     .input(z.object({ reservationCap: reservationCapInput }))
     .mutation(async ({ ctx, input }) => {
       await db
@@ -217,7 +238,7 @@ export const barReservationsRouter = router({
       return { reservationCap: input.reservationCap }
     }),
 
-  setGameCap: ownerProcedure
+  setGameCap: eliteProcedure
     .input(
       z.object({
         eventId: z.string().uuid(),

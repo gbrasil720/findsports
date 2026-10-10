@@ -6,7 +6,8 @@ import {
   amenitiesByGroup,
   MAX_SCREEN_COUNT,
   motivoTelasInvalido,
-  normalizeAmenityIds
+  normalizeAmenityIds,
+  publicAmenityIds
 } from './amenities'
 
 describe('vocabulário de características', () => {
@@ -82,5 +83,13 @@ describe('motivoTelasInvalido', () => {
         'Informe um número inteiro de 0 a 99.'
       )
     }
+  })
+})
+
+describe('publicAmenityIds', () => {
+  it('esconde "Aceita reserva" de quem não recebe reservas, e só ela', () => {
+    expect(publicAmenityIds([1, 10, 11], false)).toEqual([1, 11])
+    expect(publicAmenityIds([1, 10, 11], true)).toEqual([1, 10, 11])
+    expect(AMENITIES.find(({ id }) => id === 10)?.slug).toBe('reservations')
   })
 })

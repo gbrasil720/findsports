@@ -22,7 +22,11 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, protectedProcedure, router } from '../index'
-import { MAX_AMENITY_FILTER, normalizeAmenityIds } from '../lib/amenities'
+import {
+  MAX_AMENITY_FILTER,
+  normalizeAmenityIds,
+  publicAmenityIds
+} from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
@@ -452,6 +456,7 @@ export const pubsRouter = router({
       const attendance = await readFanAttendance(ctx.session.user, events, now)
       return {
         ...publicBar,
+        amenities: publicAmenityIds(publicBar.amenities, receiving),
         events: games.map(
           ({
             reservationCap,
