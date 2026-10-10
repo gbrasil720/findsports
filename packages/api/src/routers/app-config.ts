@@ -36,7 +36,8 @@ export const appConfigRouter = router({
     return montarEntradasAppConfig(bruto).map((entrada) => ({
       ...entrada,
       updatedAt: auditoria.get(entrada.key)?.updatedAt ?? null,
-      updatedBy: auditoria.get(entrada.key)?.updatedBy ?? null
+      updatedBy: auditoria.get(entrada.key)?.updatedBy ?? null,
+      updatedByNome: auditoria.get(entrada.key)?.updatedByNome ?? null
     }))
   }),
 
