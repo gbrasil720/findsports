@@ -5,25 +5,26 @@ import type Stripe from 'stripe'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
 
-type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive'
+type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive' | 'cancelled'
 
 /**
  * Tradução da situação da assinatura no Stripe para `subscription_status`
  * (WEB-31). É a tabela inteira: situação que não está aqui não é gravada.
  *
- * | Stripe               | Nosso      | Por quê                                   |
- * | -------------------- | ---------- | ----------------------------------------- |
- * | `trialing`           | `trialing` | teste grátis, com cartão guardado         |
- * | `active`             | `active`   | paga em dia, inclusive com cancelamento   |
- * |                      |            | marcado para o fim do período             |
- * | `past_due`           | `past_due` | cobrança recusada, Stripe ainda retenta   |
- * | `unpaid`             | `past_due` | retentativas esgotadas, sem cancelar      |
- * | `canceled`           | `inactive` | acabou: o bar sai do ar                   |
- * | `paused`             | `inactive` | cobrança pausada pelo painel              |
- * | `incomplete`         | —          | primeiro pagamento ainda não concluído    |
- * | `incomplete_expired` | —          | checkout que nunca virou assinatura       |
+ * | Stripe               | Nosso       | Por quê                                  |
+ * | -------------------- | ----------- | ---------------------------------------- |
+ * | `trialing`           | `trialing`  | teste grátis, com cartão guardado        |
+ * | `active`             | `active`    | paga em dia, inclusive com cancelamento  |
+ * |                      |             | marcado para o fim do período            |
+ * | `past_due`           | `past_due`  | cobrança recusada, Stripe ainda retenta  |
+ * | `unpaid`             | `past_due`  | retentativas esgotadas, sem cancelar     |
+ * | `canceled`           | `cancelled` | acabou: o bar sai do ar (WEB-60)         |
+ * | `paused`             | `inactive`  | cobrança pausada: o bar sai do ar, mas a |
+ * |                      |             | assinatura não foi cancelada             |
+ * | `incomplete`         | —           | primeiro pagamento ainda não concluído   |
+ * | `incomplete_expired` | —           | checkout que nunca virou assinatura      |
  *
- * As duas últimas não escrevem nada: gravar `inactive` ali derrubaria o trial
+ * As duas últimas não escrevem nada: tirar o bar do ar ali derrubaria o trial
  * de cadastro de um bar que só tentou pagar e não conseguiu.
  */
 export function localStatusFor(
@@ -38,6 +39,7 @@ export function localStatusFor(
     case 'unpaid':
       return 'past_due'
     case 'canceled':
+      return 'cancelled'
     case 'paused':
       return 'inactive'
     default:
@@ -132,10 +134,12 @@ export async function applyStripeSubscription(
   const existing = await db.query.subscription.findFirst({
     where: eq(subscription.barId, foundBar.id)
   })
+  // Cancelada ou pausada: nos dois casos o bar sai do ar.
+  const offAir = status === 'cancelled' || status === 'inactive'
   // Encerramento de uma assinatura que não é a do bar: o aviso atrasado da
   // antiga não pode derrubar a nova.
   if (
-    status === 'inactive' &&
+    offAir &&
     existing?.externalSubscriptionId &&
     existing.externalSubscriptionId !== stripeSubscription.id
   ) {
@@ -154,10 +158,7 @@ export async function applyStripeSubscription(
     .insert(subscription)
     .values({ barId: foundBar.id, ...values })
     .onConflictDoUpdate({ target: subscription.barId, set: values })
-  await db
-    .update(bar)
-    .set({ isActive: status !== 'inactive' })
-    .where(eq(bar.id, foundBar.id))
+  await db.update(bar).set({ isActive: !offAir }).where(eq(bar.id, foundBar.id))
 }
 
 /**

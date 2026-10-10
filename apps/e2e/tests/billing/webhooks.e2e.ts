@@ -190,7 +190,8 @@ for (const status of ['past_due', 'unpaid'] as const) {
   })
 }
 
-test('encerrada: desativa a assinatura e o bar some da busca', async ({
+test('encerrada: grava cancelled, o bar some da busca e a cobrança diz "Cancelado"', async ({
+  page,
   playwright,
   request
 }) => {
@@ -211,11 +212,50 @@ test('encerrada: desativa a assinatura e o bar some da busca', async ({
     userId: user.id
   })
 
+  // WEB-60: `cancelled`, e não o `inactive` da cobrança pausada. O plano
+  // contratado continua gravado.
   expect(await stateOf(barId)).toMatchObject({
-    status: 'inactive',
+    status: 'cancelled',
+    plan: 'elite',
     is_active: false
   })
   expect(await fanSearch(playwright, spot)).not.toContain(barId)
+
+  await signIn(page, user)
+  await page.goto('/admin/billing')
+  const currentPlan = page.locator('section').filter({
+    has: page.getByRole('heading', { name: 'Plano atual' })
+  })
+  await expect(currentPlan).toContainText('Elite')
+  await expect(currentPlan).toContainText('Cancelado')
+  await expect(currentPlan).not.toContainText('Próxima cobrança')
+  await expect(
+    currentPlan.getByRole('link', { name: 'Contratar plano' })
+  ).toHaveAttribute('href', '/plan?origin=billing')
+})
+
+test('pausada: grava inactive e tira o bar do ar', async ({ request }) => {
+  const subscriptionId = `sub_e2e_${randomInt(1e9)}`
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'active',
+      externalSubscriptionId: subscriptionId
+    }
+  })
+
+  await deliver(request, 'customer.subscription.updated', {
+    id: subscriptionId,
+    status: 'paused',
+    plan: 'pro',
+    userId: user.id
+  })
+
+  expect(await stateOf(barId)).toMatchObject({
+    status: 'inactive',
+    plan: 'pro',
+    is_active: false
+  })
 })
 
 test('troca de plano no portal do Stripe muda o plano do bar', async ({
