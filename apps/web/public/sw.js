@@ -28,11 +28,27 @@ const CACHE_ASSETS = `onside-assets-${VERSAO}`
 const CACHE_SHELL = `onside-shell-${VERSAO}`
 const PAGINA_OFFLINE = '/offline.html'
 
+/**
+ * WEB-269: o Workers assets responde `/offline.html` com 307 para `/offline`,
+ * e `cache.add` guardava a resposta marcada como redirecionada. O navegador
+ * recusa resposta redirecionada numa navegação, então toda falha de rede
+ * virava `ERR_FAILED` em vez da página offline. A cópia nasce sem a marca.
+ */
+function buscarPaginaOffline() {
+  return fetch(PAGINA_OFFLINE).then((resposta) => {
+    if (!resposta.ok) throw new Error(`offline.html: ${resposta.status}`)
+    return new Response(resposta.body, {
+      status: resposta.status,
+      statusText: resposta.statusText,
+      headers: resposta.headers
+    })
+  })
+}
+
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
-    caches
-      .open(CACHE_SHELL)
-      .then((cache) => cache.add(PAGINA_OFFLINE))
+    Promise.all([caches.open(CACHE_SHELL), buscarPaginaOffline()])
+      .then(([cache, pagina]) => cache.put(PAGINA_OFFLINE, pagina))
       .then(() => self.skipWaiting())
   )
 })
