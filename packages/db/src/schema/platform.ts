@@ -127,7 +127,8 @@ export const bar = pgTable(
     ratingScore: doublePrecision('rating_score').generatedAlwaysAs(
       sql`CASE WHEN rating_count <= 0 THEN 0 ELSE (((rating_positive::double precision / rating_count) + (1.96 * 1.96) / (2 * rating_count)) - 1.96 * sqrt((((rating_positive::double precision / rating_count) * (1 - rating_positive::double precision / rating_count)) + (1.96 * 1.96) / (4 * rating_count)) / rating_count)) / (1 + (1.96 * 1.96) / rating_count) END`
     ),
-    // Espelho de `subscription.plan`, mantido por trigger (ESC-09). A busca
+    // Plano VIGENTE da assinatura — `starter` quando ela está parada —,
+    // mantido por trigger e reconciliação diária (ESC-09, WEB-129). A busca
     // ordena por plano antes de qualquer outra chave; ler o plano da própria
     // linha do bar evita um lookup em `subscription` por candidato do raio.
     // `starter` é o mesmo default do `COALESCE` que existia na query.

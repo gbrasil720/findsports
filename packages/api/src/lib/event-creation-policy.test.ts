@@ -18,6 +18,7 @@ function makeBar(
     isActive: true,
     subscription: {
       plan,
+      status: 'active',
       currentPeriodEnd: new Date('2026-08-31T12:00:00.000Z')
     },
     ...overrides
@@ -38,6 +39,15 @@ describe('event creation period', () => {
 
   test('uses the existing 30-day fallback when billing has no period end', () => {
     const period = getEventCreationPeriod(null, NOW)
+    expect(period.end).toBeNull()
+    expect(period.start.toISOString()).toBe('2026-07-14T15:30:00.000Z')
+  })
+
+  test('a period that already ended falls back to the rolling 30 days', () => {
+    const period = getEventCreationPeriod(
+      new Date('2026-05-01T12:00:00.000Z'),
+      NOW
+    )
     expect(period.end).toBeNull()
     expect(period.start.toISOString()).toBe('2026-07-14T15:30:00.000Z')
   })
@@ -64,6 +74,41 @@ describe('event creation policy', () => {
     expect(
       buildEventCreationPolicy({ bar: makeBar(plan), used: 999, now: NOW })
     ).toEqual({ status: 'unlimited', canCreate: true, plan })
+  })
+
+  // WEB-129: plano parado não dá jogos ilimitados.
+  test.each([
+    ['past_due', '2026-08-31T12:00:00.000Z'],
+    ['trialing', '2026-08-01T12:00:00.000Z'],
+    ['inactive', '2026-08-31T12:00:00.000Z']
+  ] as const)('Elite in %s falls under the Starter limit', (status, periodEnd) => {
+    const bar = makeBar('elite', {
+      subscription: {
+        plan: 'elite',
+        status,
+        currentPeriodEnd: new Date(periodEnd)
+      }
+    })
+    expect(buildEventCreationPolicy({ bar, used: 5, now: NOW })).toMatchObject({
+      status: 'limited',
+      plan: 'starter',
+      canCreate: false
+    })
+  })
+
+  test('Elite on a trial still running remains unlimited', () => {
+    const bar = makeBar('elite', {
+      subscription: {
+        plan: 'elite',
+        status: 'trialing',
+        currentPeriodEnd: new Date('2026-08-31T12:00:00.000Z')
+      }
+    })
+    expect(buildEventCreationPolicy({ bar, used: 999, now: NOW })).toEqual({
+      status: 'unlimited',
+      canCreate: true,
+      plan: 'elite'
+    })
   })
 
   test('an inactive bar cannot create regardless of plan', () => {

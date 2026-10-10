@@ -1,6 +1,7 @@
 import type { db } from '@findsports_oficial/db'
 import { and, count, eq, gte } from '@findsports_oficial/db'
 import { event } from '@findsports_oficial/db/schema/platform'
+import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import { STARTER_EVENT_LIMIT } from './plan-limits'
 
 const FALLBACK_PERIOD_MS = 30 * 24 * 60 * 60 * 1000
@@ -35,10 +36,7 @@ export type EventPolicyExecutor = typeof db | PolicyTransaction
 export interface EventPolicyBar {
   id: string
   isActive: boolean
-  subscription: {
-    plan: SubscriptionPlan
-    currentPeriodEnd: Date | null
-  } | null
+  subscription: SubscriptionForPlan | null
 }
 
 export interface EventCreationPeriod {
@@ -74,7 +72,9 @@ export function getEventCreationPeriod(
   currentPeriodEnd: Date | null,
   now: Date
 ): EventCreationPeriod {
-  if (currentPeriodEnd) {
+  // Período já encerrado (trial vencido, pagamento pendente) não é ciclo de
+  // cobrança: a janela congelaria ali e a contagem nunca zeraria.
+  if (currentPeriodEnd && currentPeriodEnd > now) {
     return {
       start: subtractUtcMonthClamped(currentPeriodEnd),
       end: currentPeriodEnd
@@ -87,6 +87,14 @@ export function getEventCreationPeriod(
   }
 }
 
+/**
+ * Plano que vale para o limite de jogos: o vigente (WEB-129). Pro ou Elite em
+ * `past_due`, ou com trial vencido, cai no limite do Starter.
+ */
+function planForEvents(bar: EventPolicyBar, now: Date): SubscriptionPlan {
+  return getCurrentPlan(bar.subscription, now) ?? 'starter'
+}
+
 export function buildEventCreationPolicy({
   bar,
   used,
@@ -96,7 +104,7 @@ export function buildEventCreationPolicy({
   used: number
   now: Date
 }): EventCreationPolicy {
-  const plan = bar.subscription?.plan ?? 'starter'
+  const plan = planForEvents(bar, now)
 
   if (!bar.isActive) {
     return { status: 'inactive', canCreate: false, plan }
@@ -129,7 +137,7 @@ export async function getEventCreationPolicy(
   barSnapshot: EventPolicyBar,
   now = new Date()
 ): Promise<EventCreationPolicy> {
-  const plan = barSnapshot.subscription?.plan ?? 'starter'
+  const plan = planForEvents(barSnapshot, now)
   if (!barSnapshot.isActive || plan === 'pro' || plan === 'elite') {
     return buildEventCreationPolicy({ bar: barSnapshot, used: 0, now })
   }

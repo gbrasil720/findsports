@@ -97,7 +97,13 @@ export function BarPreview({
   profileState
 }: Props) {
   const events = eventsState.status === 'ready' ? eventsState.events : null
-  const plan = planState.status === 'ready' ? planState.plan : null
+  // O torcedor vê o plano vigente (WEB-129): plano parado aparece como Starter.
+  const plan =
+    planState.status !== 'ready'
+      ? null
+      : planState.standing === 'current'
+        ? planState.plan
+        : 'starter'
   const nextEvent = events
     ?.filter(
       (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'

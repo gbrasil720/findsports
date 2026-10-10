@@ -9,8 +9,9 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  * Regras do cardápio e do gasto médio (WEB-39) que dependem do plano.
  *
  * Pro e Elite vigentes, pela assinatura via `getCurrentPlan` — `active`, ou
- * `trialing` com período vigente — e nunca por `bar.plan`, que ignora o
- * status. É a única regra de elegibilidade: gravar e exibir passam por aqui.
+ * `trialing` com período vigente — e nunca por `bar.plan`, que só acompanha
+ * o fim do trial uma vez por dia. É a única regra de elegibilidade: gravar e
+ * exibir passam por aqui.
  */
 export function canShowBarMenu(
   subscription: SubscriptionForPlan | null,

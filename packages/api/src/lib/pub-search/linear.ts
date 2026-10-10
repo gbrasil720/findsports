@@ -20,8 +20,9 @@ import {
  * devolve mais `description` e `address`, que a tela não usa. Ela lê o plano
  * de `subscription` com `LEFT JOIN`, e é exatamente por isso que existe.
  *
- * O caminho em camadas depende de `bar.plan`, uma PROJEÇÃO de
- * `subscription.plan` mantida por trigger. Projeção pode dessincronizar — por
+ * O caminho em camadas depende de `bar.plan`, uma PROJEÇÃO do plano vigente
+ * de `subscription`, mantida por trigger e por reconciliação diária.
+ * Projeção pode dessincronizar — por
  * escrita que contorne a trigger, por restauração parcial, por uma migration
  * futura que mexa em `subscription` de um jeito que a trigger não cubra. E o
  * sintoma é o pior possível: um bar pago aparece na camada errada, sem erro,
@@ -82,7 +83,7 @@ export async function executarBuscaLinear(
         b.rating_count,
         b.rating_positive,
         b.rating_score,
-        COALESCE(s.plan, 'starter') AS plan,
+        subscription_current_plan(s.plan, s.status, s.current_period_end) AS plan,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km
       FROM bar b
       LEFT JOIN subscription s ON s.bar_id = b.id

@@ -33,7 +33,7 @@ export const inDays = (days: number) => new Date(Date.now() + days * 86_400_000)
 
 /**
  * Dono (papel pub, onboarding feito) + bar ativo no centro de São Paulo +
- * assinatura. `bar.plan` acompanha a assinatura por trigger do banco.
+ * assinatura. `bar.plan` acompanha o plano vigente dela por trigger do banco.
  */
 export async function createPub(options: PubOptions = {}): Promise<TestPub> {
   const user = await createUser({ ...options.user, role: 'pub' })
