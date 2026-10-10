@@ -59,8 +59,6 @@ function customerIdFor(email: string) {
   return `cus_e2e_${Bun.hash(email).toString(36)}`
 }
 
-const EMPTY_PMTILES = emptyPmtiles()
-
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': '*',
@@ -115,10 +113,21 @@ Bun.serve({
       })
     }
 
-    if (url.pathname === '/tiles.pmtiles') {
-      return new Response(EMPTY_PMTILES, {
-        headers: { ...cors, 'content-type': 'application/octet-stream' }
-      })
+    if (url.pathname === '/tiles.json') {
+      return Response.json(
+        {
+          tilejson: '3.0.0',
+          tiles: [`${STUB_URL}/tiles/{z}/{x}/{y}.mvt`],
+          minzoom: 0,
+          maxzoom: 15,
+          bounds: [-74.1, -33.9, -34.7, 5.4]
+        },
+        { headers: { ...cors, 'content-type': 'application/json' } }
+      )
+    }
+
+    if (/^\/tiles\/\d+\/\d+\/\d+\.mvt$/.test(url.pathname)) {
+      return new Response(null, { status: 204, headers: cors })
     }
 
     return new Response('not found', { status: 404 })
@@ -236,46 +245,6 @@ async function stripe(request: Request, url: URL) {
     404,
     `Unrecognized request URL (${request.method}: ${path})`
   )
-}
-
-/**
- * PMTiles v3 válido e sem nenhum tile: o MapLibre lê o cabeçalho, monta o
- * mapa e pinta fundo vazio, sem rede externa. Os marcadores são DOM e
- * aparecem normalmente. Spec: github.com/protomaps/PMTiles/blob/main/spec/v3.
- */
-function emptyPmtiles(): Uint8Array {
-  const rootDirectory = new Uint8Array([0]) // varint: zero entradas
-  const metadata = new TextEncoder().encode('{}')
-  const header = new DataView(new ArrayBuffer(127))
-  new Uint8Array(header.buffer).set(new TextEncoder().encode('PMTiles'), 0)
-  header.setUint8(7, 3)
-  const rootOffset = 127
-  const metadataOffset = rootOffset + rootDirectory.length
-  const end = metadataOffset + metadata.length
-  const u64 = (at: number, value: number) =>
-    header.setBigUint64(at, BigInt(value), true)
-  u64(8, rootOffset)
-  u64(16, rootDirectory.length)
-  u64(24, metadataOffset)
-  u64(32, metadata.length)
-  u64(40, end) // diretórios-folha: nenhum
-  u64(56, end) // dados dos tiles: nenhum
-  header.setUint8(96, 1) // clustered
-  header.setUint8(97, 1) // compressão interna: nenhuma
-  header.setUint8(98, 1) // compressão dos tiles: nenhuma
-  header.setUint8(99, 1) // MVT
-  header.setUint8(101, 15) // zoom máximo
-  // bbox do Brasil, em graus * 1e7
-  header.setInt32(102, -74.1e7, true)
-  header.setInt32(106, -33.9e7, true)
-  header.setInt32(110, -34.7e7, true)
-  header.setInt32(114, 5.4e7, true)
-
-  const file = new Uint8Array(end)
-  file.set(new Uint8Array(header.buffer), 0)
-  file.set(rootDirectory, rootOffset)
-  file.set(metadata, metadataOffset)
-  return file
 }
 
 console.log(`[e2e stub] ouvindo em 127.0.0.1:${STUB_PORT}`)

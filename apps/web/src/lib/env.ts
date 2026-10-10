@@ -39,17 +39,12 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
   client: {
     /**
-     * Arquivo PMTiles do basemap (WEB-73).
+     * Basemap (WEB-73, WEB-218).
      *
-     * É a URL pública completa do `.pmtiles` no bucket — o mapa inteiro é um
-     * objeto só, e o navegador lê faixas de bytes dele por HTTP Range. O nome
-     * do arquivo carrega a data do build, então um rebuild trimestral troca
-     * esta variável em vez de invalidar cache.
+     * TileJSON (`.json`) no Worker ou, enquanto Infra não migra, URL pública
+     * do `.pmtiles` no R2 — o cliente escolhe pelo sufixo (`map-style.ts`).
      *
-     * Não é segredo e não é credencial: é um arquivo público, sem chave, sem
-     * cota e sem faturamento. Substituiu o par
-     * `VITE_GOOGLE_MAPS_PUBLIC_KEY` + `VITE_GOOGLE_MAPS_MAP_ID`, que eram os
-     * dois pontos únicos de falha comercial do lado do cliente.
+     * Não é segredo: substituiu o par Google Maps (`VITE_GOOGLE_MAPS_*`).
      */
     VITE_MAP_TILES_URL: z.url().optional(),
 

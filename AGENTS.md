@@ -180,12 +180,13 @@ Import shared components: `import { Button } from "@findsports_oficial/ui/compon
 
 ### Mapa
 
-MapLibre GL JS lendo um arquivo PMTiles próprio — sem chave, sem cota e sem
-faturamento. Componente em `apps/web/src/components/app/onside-map.tsx`, estilo
-versionado em `apps/web/src/lib/map-style.ts`, glyphs e sprite em
-`apps/web/public/map/`. **Antes de mexer em tiles, estilo ou rebuild, leia
-`docs/map-tiles.md`** — ele tem o runbook e as armadilhas (URL absoluta para
-sprite/glyphs, `maplibre-gl` fora do `optimizeDeps` do Vite).
+MapLibre GL JS com basemap Protomaps: archive `.pmtiles` no R2, tiles ZXY via
+Worker `apps/tiles` em `tiles.onside.sh` (WEB-218). Componente em
+`apps/web/src/components/app/onside-map.tsx`, estilo em
+`apps/web/src/lib/map-style.ts`, glyphs e sprite em `apps/web/public/map/`.
+**Antes de mexer em tiles, estilo ou rebuild, leia `docs/map-tiles.md`** —
+runbook, deploy do Worker e armadilhas (URL absoluta para sprite/glyphs,
+`maplibre-gl` fora do `optimizeDeps` do Vite).
 
 ### E2E
 

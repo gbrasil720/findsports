@@ -19,7 +19,10 @@ import {
   limitesDoRaio
 } from '@/domain/geo-circle'
 import { env } from '@/lib/env'
-import { criarEstiloDoMapa } from '@/lib/map-style'
+import {
+  criarEstiloDoMapa,
+  tilesUrlUsaArquivoPmtiles
+} from '@/lib/map-style'
 import { isRetryableError } from '@/lib/user-facing-error'
 import {
   aplicarPino,
@@ -54,10 +57,9 @@ type Props = {
 }
 
 /**
- * WEB-35 continua valendo, com outra causa: se o arquivo PMTiles não
- * responder, o MapLibre nunca emite `load` — ele fica esperando o TileJSON
- * que o protocolo devolve a partir do cabeçalho do arquivo. Sem este limite a
- * UI ficaria presa em "Carregando mapa…" para sempre.
+ * WEB-35 continua valendo: se o TileJSON ou os tiles não responderem, o
+ * MapLibre nunca emite `load`. Sem este limite a UI ficaria presa em
+ * "Carregando mapa…" para sempre.
  */
 const TEMPO_LIMITE_MS = 15_000
 
@@ -141,13 +143,13 @@ type MarkerEntry = {
  * `<script>` tardio do Google dava — agora sem carregador escrito à mão.
  */
 let moduloPromise: Promise<MapLibreModulo> | null = null
+let protocoloPmtilesRegistrado = false
 
-async function carregarMapLibre(): Promise<MapLibreModulo> {
+async function carregarMapLibre(
+  usarProtocoloPmtiles: boolean
+): Promise<MapLibreModulo> {
   moduloPromise ??= (async () => {
-    const [maplibre, { Protocol }] = await Promise.all([
-      import('maplibre-gl'),
-      import('pmtiles')
-    ])
+    const maplibre = await import('maplibre-gl')
     // A URL do worker precisa vir do empacotador (WEB-73).
     //
     // Sem isto o MapLibre a monta sozinho, a partir do `import.meta.url` do
@@ -165,13 +167,6 @@ async function carregarMapLibre(): Promise<MapLibreModulo> {
     // (`maplibre-gl-shared.mjs`) e devolver a URL do arquivo emitido, com hash.
     // O `worker.format: 'es'` do `vite.config.ts` completa o par.
     maplibre.setWorkerUrl(workerUrl)
-    // `pmtiles://` faz o MapLibre ler faixas de bytes do arquivo único por
-    // HTTP Range, em vez de pedir um tile por requisição a um servidor. É o
-    // que permite o basemap inteiro ser um objeto num bucket.
-    maplibre.addProtocol(
-      'pmtiles',
-      new Protocol().tile as unknown as AddProtocolAction
-    )
     return maplibre
   })().catch((reason: unknown) => {
     // Sem isto, uma falha de rede no chunk deixaria a promessa rejeitada em
@@ -179,7 +174,17 @@ async function carregarMapLibre(): Promise<MapLibreModulo> {
     moduloPromise = null
     throw reason
   })
-  return moduloPromise
+
+  const maplibre = await moduloPromise
+  if (usarProtocoloPmtiles && !protocoloPmtilesRegistrado) {
+    const { Protocol } = await import('pmtiles')
+    maplibre.addProtocol(
+      'pmtiles',
+      new Protocol().tile as unknown as AddProtocolAction
+    )
+    protocoloPmtilesRegistrado = true
+  }
+  return maplibre
 }
 
 /**
@@ -262,7 +267,9 @@ function MapaDaOnside({
       return
     }
 
-    carregarMapLibre()
+    const legadoPmtiles = tilesUrlUsaArquivoPmtiles(tilesUrl)
+
+    carregarMapLibre(legadoPmtiles)
       .then((maplibre) => {
         if (cancelado || !containerRef.current) return
         libRef.current = maplibre

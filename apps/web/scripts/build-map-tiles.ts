@@ -192,7 +192,13 @@ if (enviado.ContentLength !== size || enviado.CacheControl !== CACHE_CONTROL) {
 }
 
 console.log(`\npronto — ${size} bytes e Cache-Control conferidos no bucket.`)
-console.log(`\nVITE_MAP_TILES_URL="<url-pública-do-bucket>/${nomeNoBucket}"`)
+const nomeTileset = `onside-br-${build}`
+console.log(
+  `\nVITE_MAP_TILES_URL="https://tiles.onside.sh/${nomeTileset}.json"`
+)
+console.log(
+  `(arquivo no bucket: ${nomeNoBucket}; Worker lê via PMTILES_PATH=maps/{name}.pmtiles)`
+)
 console.log(
   '\nTroque a variável no GitHub (vars) e no .env local, faça o deploy, confirme o' +
     ' mapa no ar e só então apague o arquivo antigo do bucket.'

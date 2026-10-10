@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // WEB-218: ZXY a partir do `.pmtiles` no R2, com Cache API por tile.
+  // O domínio próprio é obrigatório para `cf-cache-status: HIT` — workers.dev
+  // não cacheia da mesma forma. A rota abaixo só entra no ar depois que Infra
+  // publicar este Worker e apontar `tiles.onside.sh` (passo manual; ver
+  // docs/map-tiles.md).
+  "name": "onside-tiles",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // Bucket `onside-maps` (ENAM). Colocar o Worker perto do R2 reduz latência
+  // em cache miss.
+  "placement": { "region": "aws:us-east-1" },
+  "routes": [{ "pattern": "tiles.onside.sh", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "onside-maps"
+    }
+  ],
+  "vars": {
+    "PMTILES_PATH": "maps/{name}.pmtiles",
+    "PUBLIC_HOSTNAME": "tiles.onside.sh",
+    "ALLOWED_ORIGINS": "https://www.onside.sh,https://onside.sh,http://localhost:3001,https://onside-web-preview.dev-guilhermebrasil.workers.dev",
+    "CACHE_CONTROL": "public, max-age=31536000, immutable"
+  }
+}

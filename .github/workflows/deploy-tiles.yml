@@ -1,0 +1,30 @@
+# WEB-218: publicação manual do Worker `onside-tiles`.
+#
+# Não roda em push/PR: `tiles.onside.sh` hoje é custom domain do bucket R2;
+# deploy automático colidiria ou tomaria o hostname sem aprovação.
+name: Deploy tiles worker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-tiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    concurrency:
+      group: deploy-tiles-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-monorepo
+      - name: Deploy onside-tiles
+        working-directory: apps/tiles
+        run: bunx wrangler deploy --message "workflow_dispatch ${{ github.sha }}"
