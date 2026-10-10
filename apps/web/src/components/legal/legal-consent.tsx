@@ -18,6 +18,7 @@ export function LegalConsent({ checked, onCheckedChange }: LegalConsentProps) {
         id="legal-consent"
         checked={checked}
         onCheckedChange={onCheckedChange}
+        className="mt-0.5 border-[var(--onside-ink)] data-checked:border-[var(--onside-ink)] data-checked:bg-[var(--onside-ink)] data-checked:text-[var(--onside-acid)]"
       />
       <FieldLabel htmlFor="legal-consent">
         <span>
