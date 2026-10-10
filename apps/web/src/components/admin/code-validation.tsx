@@ -27,7 +27,7 @@ import { useUndoCountdown } from './use-undo-countdown'
 
 /**
  * `eligible` é Elite vigente (`getMySubscription().currentPlan`) ou reserva
- * em aberto (`barReservations.hasOpen`, WEB-341). É só para decidir o que
+ * em aberto (`barReservations.hasValidatable`, WEB-341). É só para decidir o que
  * desenhar: cada procedimento confere de novo.
  */
 export type ValidationAccess =

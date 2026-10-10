@@ -734,6 +734,61 @@ integrationTest('validar exige benefício Elite vigente', async () => {
   }
 })
 
+integrationTest(
+  'sem Elite, reserva confirmada valida até a janela de validação fechar',
+  async () => {
+    // Sem `endsAt` o jogo dura 3 h: este acabou há 1 h, dentro da margem.
+    const ctx = await seed({
+      plan: 'pro',
+      startsAt: new Date(Date.now() - 4 * HOUR)
+    })
+    try {
+      const { appRouter } = await load()
+      const queue = appRouter.createCaller(
+        contextFor(ctx.ownerId, 'pub')
+      ).barReservations
+
+      expect((await resolved(ctx.owner, ctx.code)).codeId).toBe(ctx.codeId)
+      expect(
+        (
+          await ctx.owner.registerArrival({
+            codeId: ctx.codeId,
+            requestId: crypto.randomUUID()
+          })
+        ).usedCount
+      ).toBe(1)
+
+      // A margem é só da validação: a fila segue fechando no fim do jogo.
+      expect(await queue.hasValidatable()).toBe(true)
+      expect(await queue.hasOpen()).toBe(false)
+      expect((await refusal(queue.list())).code).toBe('FORBIDDEN')
+
+      // Janela fechada há 1 h: volta a recusa de quem não é Elite.
+      await ctx.db
+        .update(event)
+        .set({ startsAt: new Date(Date.now() - 7 * HOUR) })
+        .where(eq(event.barId, ctx.barId))
+      expect(await queue.hasValidatable()).toBe(false)
+      for (const attempt of [
+        () => ctx.owner.lookup({ code: ctx.code }),
+        () =>
+          ctx.owner.registerArrival({
+            codeId: ctx.codeId,
+            requestId: crypto.randomUUID()
+          })
+      ]) {
+        expect(await refusal(attempt())).toEqual({
+          code: 'FORBIDDEN',
+          message: 'A validação de reservas é um recurso do plano Elite.'
+        })
+      }
+      expect(await counterOf(ctx)).toBe(1)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
 integrationTest('torcedor não valida código', async () => {
   const ctx = await seed()
   try {
