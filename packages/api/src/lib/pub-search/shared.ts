@@ -2,6 +2,7 @@ import { type SQL, sql } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
+import { RESERVATIONS_AMENITY_ID } from '../amenities'
 import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
@@ -42,6 +43,24 @@ const MAX_LIVE_SPAN_INTERVAL = '24 hours'
 export const jogoNaoAcabou = (e: SQL) => sql`
   ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
   AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
+
+/**
+ * O bar recebe reservas agora: interruptor ligado e Elite vigente. É
+ * `receivesReservations` (`../reservation-intake`) em SQL, e o teste de
+ * integração do filtro compara as duas.
+ *
+ * Lê `subscription`, e não `bar.plan`: a projeção só acompanha o relógio uma
+ * vez por dia, e um trial vencido seguiria "recebendo" até a reconciliação.
+ */
+export const recebeReservas = (barAlias: SQL) => sql`(
+  ${barAlias}.accepts_reservations
+  AND EXISTS (
+    SELECT 1 FROM subscription assinatura
+    WHERE assinatura.bar_id = ${barAlias}.id
+      AND subscription_current_plan(
+        assinatura.plan, assinatura.status, assinatura.current_period_end
+      ) = 'elite'
+  ))`
 
 export type SearchInput = {
   lat: number
@@ -213,6 +232,11 @@ export type FiltrosBusca = {
    * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
    * uma tabela de junção — ver migration 0021.
    *
+   * "Aceita reserva" é marcada à mão, e o perfil só a mostra de quem recebe
+   * reservas de fato (`publicAmenityIds`). Aqui vale o mesmo: pedir essa
+   * característica exige também `recebeReservas`, ou o filtro traria bar que,
+   * aberto, não aceita.
+   *
    * O alias da tabela do bar muda entre os dois caminhos, então entra como
    * fragmento montado pelo chamador, igual ao filtro de campeonato.
    */
@@ -302,7 +326,12 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       LIMIT 1`,
     amenityFilter: (barAlias) =>
       listaAmenidades
-        ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
+        ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]
+            ${
+              amenities?.includes(RESERVATIONS_AMENITY_ID)
+                ? sql`AND ${recebeReservas(barAlias)}`
+                : sql``
+            }`
         : sql``
   }
 }

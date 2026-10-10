@@ -111,7 +111,7 @@ export function normalizeAmenityIds(ids: readonly number[]): number[] {
   return [...new Set(ids.filter((id) => BY_ID.has(id)))].sort((a, b) => a - b)
 }
 
-const RESERVATIONS_AMENITY_ID = 10
+export const RESERVATIONS_AMENITY_ID = 10
 
 /**
  * O que o perfil público mostra. "Aceita reserva" é marcada à mão, e o perfil
