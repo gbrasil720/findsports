@@ -1,10 +1,15 @@
 import { afterEach, expect, spyOn, test } from 'bun:test'
+import type { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { eq } from '@findsports_oficial/db'
 import { stripeSubscription } from '@findsports_oficial/db/schema/auth'
 import { subscription } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import type Stripe from 'stripe'
 import { inAMonth, seedBar } from './integration-seed'
+
+// `stripe` é dependência do pacote `auth`, não deste: o tipo sai do cliente.
+type StripeSubscriptionStatus = Awaited<
+  ReturnType<typeof stripeClient.subscriptions.retrieve>
+>['status']
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -15,7 +20,7 @@ afterEach(() => {
 
 /** O Stripe como dublê: a situação da assinatura lida e a sessão do portal. */
 async function stubStripe(
-  status: Stripe.Subscription.Status,
+  status: StripeSubscriptionStatus,
   createSession: () => Promise<unknown> = async () => ({
     url: 'https://billing.stripe.test/sessao'
   })
