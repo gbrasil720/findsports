@@ -220,7 +220,7 @@ export const PLAN_CATALOG: Plan[] = [
       'Perfil do bar no Onside',
       'Jogos ilimitados na agenda',
       'Destaque na busca por time e liga',
-      'Pin destacado no mapa',
+      'Pin exclusivo Elite no mapa',
       'Suporte prioritário',
       'Topo na busca por relevância quando há um clássico',
       'Histórico completo',

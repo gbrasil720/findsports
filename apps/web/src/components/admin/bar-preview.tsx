@@ -1,5 +1,6 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Eye from 'reicon-react/icons/Eye'
+import { pinDoPlano } from '@/components/app/map-icons'
 import { OnsideMap } from '@/components/app/onside-map'
 import { BarCard } from '@/components/dashboard/bar-card'
 import { HeroAttendance } from '@/components/pub/attendance-control'
@@ -17,8 +18,7 @@ import type {
   AdminBar,
   EventsState,
   PlanState,
-  ProfileState,
-  SubscriptionPlan
+  ProfileState
 } from './admin-model'
 
 type PreviewBar = Pick<
@@ -84,10 +84,6 @@ function FanActionsPreview({
       />
     </div>
   )
-}
-
-function getPlanAccent(plan: SubscriptionPlan): 'acid' | 'ink' {
-  return plan === 'pro' || plan === 'elite' ? 'acid' : 'ink'
 }
 
 export function BarPreview({
@@ -231,7 +227,7 @@ export function BarPreview({
                     name: bar.name,
                     lat,
                     lng,
-                    accent: getPlanAccent(plan)
+                    pin: pinDoPlano(plan)
                   }
                 ]}
                 center={{ lat, lng }}
@@ -260,7 +256,9 @@ export function BarPreview({
             </p>
           ) : planState.status === 'ready' ? (
             <p className="mt-2 font-semibold text-[var(--onside-ink)] text-xs">
-              ✓ Pin destacado ativo
+              {plan === 'elite'
+                ? '✓ Pin exclusivo Elite ativo'
+                : '✓ Pin destacado ativo'}
             </p>
           ) : (
             <p className="mt-2 text-[var(--onside-live-text)] text-xs">

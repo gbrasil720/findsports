@@ -25,7 +25,8 @@ import {
   aplicarPino,
   criarConteudoDePino,
   criarPontoDoUsuario,
-  type MapAccent
+  type MapPin,
+  ordemDoPino
 } from './map-icons'
 import { MapBoundary, MapCanvas, MapLoadError } from './map-status'
 import {
@@ -39,7 +40,7 @@ export type MapBar = {
   name: string
   lat: number
   lng: number
-  accent: MapAccent
+  pin: MapPin
 }
 
 type Props = {
@@ -545,7 +546,7 @@ function MapaDaOnside({
           lat: bar.lat,
           lng: bar.lng,
           name: bar.name,
-          accent: bar.accent,
+          pin: bar.pin,
           large
         }
         const updates = diffMarkerState(entry.estado, estado)
@@ -559,12 +560,15 @@ function MapaDaOnside({
             raiz.setAttribute('aria-label', estado.name)
           }
           if (updates.icon) {
-            aplicarPino(entry.pintura, estado.accent, estado.large)
+            aplicarPino(entry.pintura, estado.pin, estado.large)
           }
           if (updates.zIndex) {
             // O MapLibre não escreve `zIndex` no elemento do marcador, então
             // esta é a única dona da propriedade — mesma escrita de antes.
-            entry.marker.getElement().style.zIndex = estado.large ? '999' : '10'
+            entry.marker.getElement().style.zIndex = ordemDoPino(
+              estado.pin,
+              estado.large
+            )
           }
           entry.estado = estado
         }

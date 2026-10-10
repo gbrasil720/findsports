@@ -1,4 +1,4 @@
-import type { MapAccent } from './map-icons'
+import { type MapPin, ordemDoPino } from './map-icons'
 
 /**
  * Estado visual de um pino no mapa (ESC-16).
@@ -16,7 +16,7 @@ export type MarkerVisualState = {
   lat: number
   lng: number
   name: string
-  accent: MapAccent
+  pin: MapPin
   large: boolean
 }
 
@@ -50,11 +50,12 @@ export function diffMarkerState(
 
   const position = anterior.lat !== atual.lat || anterior.lng !== atual.lng
   const title = anterior.name !== atual.name
-  // O ícone depende da cor e do tamanho; `large` também muda a ordem de
-  // empilhamento, para o pino destacado ficar por cima.
-  const icon =
-    anterior.accent !== atual.accent || anterior.large !== atual.large
-  const zIndex = anterior.large !== atual.large
+  // O ícone depende do pino e do tamanho. A ordem de empilhamento também: o
+  // pino destacado fica por cima de todos, e o Elite, por cima dos outros.
+  const icon = anterior.pin !== atual.pin || anterior.large !== atual.large
+  const zIndex =
+    ordemDoPino(anterior.pin, anterior.large) !==
+    ordemDoPino(atual.pin, atual.large)
 
   if (!position && !title && !icon && !zIndex) return NADA_A_FAZER
   return { position, title, icon, zIndex }
