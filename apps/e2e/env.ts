@@ -63,13 +63,12 @@ export const SERVER_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
   STRIPE_API_BASE_URL: STUB_URL,
-  LAUNCH_ADMISSION_MODE: 'invite-only',
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
   VITE_MAP_TILES_URL: `${STUB_URL}/tiles.json`,
   VITE_POSTHOG_KEY: '',
-  // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. A
-  // verificação no servidor é coberta por `packages/api/src/lib/turnstile.test.ts`.
+  // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. O
+  // alcance do plugin é coberto por `packages/auth/src/captcha-scope.test.ts`.
   TURNSTILE_SECRET_KEY: '',
   VITE_TURNSTILE_SITE_KEY: ''
 }

@@ -5,9 +5,8 @@ import type { Context } from '../context'
 import { appRouter } from './index'
 
 /**
- * ESC-09: `waitlist.getAll` devolvia a base inteira de e-mails, telefones e
- * cidades para QUALQUER conta com sessão. O guard de rota barrava a página
- * `/internal`, mas não o endpoint.
+ * ESC-09/ESC-10: procedimento de bastidor exige admin no endpoint, e não só
+ * no guard da página `/internal`.
  *
  * Estes testes exercitam a autorização pelo router de verdade. Os casos de
  * recusa não chegam ao banco — o middleware corta antes —, então rodam sem
@@ -32,53 +31,16 @@ function contextoCom(role: 'fan' | 'pub' | 'admin' | null): Context {
   } as unknown as Context
 }
 
-async function chamarGetAll(role: 'fan' | 'pub' | 'admin' | null) {
-  const caller = appRouter.createCaller(contextoCom(role))
-  return caller.waitlist.getAll({})
-}
-
-describe('waitlist.getAll — autorização (ESC-09)', () => {
+describe('commercialAnalytics.cleanupRetention — autorização (ESC-10)', () => {
   it('recusa quem não tem sessão', async () => {
+    const caller = appRouter.createCaller(contextoCom(null))
     try {
-      await chamarGetAll(null)
+      await caller.commercialAnalytics.cleanupRetention({ days: 90 })
       throw new Error('deveria ter recusado')
     } catch (err) {
       expect(err).toBeInstanceOf(TRPCError)
       expect((err as TRPCError).code).toBe('UNAUTHORIZED')
     }
-  })
-
-  it('recusa torcedor — era exatamente esse o vazamento', async () => {
-    try {
-      await chamarGetAll('fan')
-      throw new Error('deveria ter recusado')
-    } catch (err) {
-      expect(err).toBeInstanceOf(TRPCError)
-      expect((err as TRPCError).code).toBe('FORBIDDEN')
-    }
-  })
-
-  it('recusa conta de bar', async () => {
-    try {
-      await chamarGetAll('pub')
-      throw new Error('deveria ter recusado')
-    } catch (err) {
-      expect(err).toBeInstanceOf(TRPCError)
-      expect((err as TRPCError).code).toBe('FORBIDDEN')
-    }
-  })
-
-  it('não recusa admin por papel', async () => {
-    // Um admin passa pelo middleware; se falhar aqui, é por causa do banco
-    // (o teste não provisiona nenhum), nunca por FORBIDDEN.
-    let code: string | undefined
-    try {
-      await chamarGetAll('admin')
-    } catch (err) {
-      code = err instanceof TRPCError ? err.code : 'erro-nao-trpc'
-    }
-    expect(code).not.toBe('FORBIDDEN')
-    expect(code).not.toBe('UNAUTHORIZED')
   })
 
   it('a retenção de analytics também exige admin (ESC-10)', async () => {
@@ -104,16 +66,5 @@ describe('waitlist.getAll — autorização (ESC-09)', () => {
     if (!schema) throw new Error('procedimento sem schema de entrada')
     const parsed = schema.parse({}) as { apagarEventosBrutos: boolean }
     expect(parsed.apagarEventosBrutos).toBe(false)
-  })
-
-  it('limita o tamanho da página pedida', async () => {
-    const caller = appRouter.createCaller(contextoCom('admin'))
-    try {
-      await caller.waitlist.getAll({ limit: 5000 })
-      throw new Error('deveria ter recusado o limite')
-    } catch (err) {
-      expect(err).toBeInstanceOf(TRPCError)
-      expect((err as TRPCError).code).toBe('BAD_REQUEST')
-    }
   })
 })

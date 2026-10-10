@@ -52,8 +52,11 @@ type OnsideHeaderProps = OnsideChromeProps & {
 
 const HERO_ID = 'top'
 const FINAL_ID = 'final'
-/** O cadastro de bar (WEB-232 lê o `role`). O e-mail fica só no rodapé. */
-const PUB_SIGNUP_HREF = '/signup?role=pub'
+/**
+ * WEB-232: para onde vai o bar que chega pela landing. O cadastro abre com o
+ * papel de bar já escolhido.
+ */
+const BAR_SIGNUP_HREF = '/signup?role=pub'
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 /**
@@ -345,7 +348,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
           </div>
           <div className="onside-footer-column">
             <p>Para bares</p>
-            <a href={PUB_SIGNUP_HREF} data-cta="footer_pub_signup">
+            <a href={BAR_SIGNUP_HREF} data-cta="footer_pub_signup">
               Cadastre seu bar
             </a>
             <a href="mailto:contato@onside.sh">Fale com a gente</a>

@@ -159,7 +159,7 @@ function PasswordDialog({
 
   // O erro some assim que o campo passa a valer — inclusive o da confirmação
   // quando a correção foi feita na nova senha. Só tira erro já mostrado; erro
-  // novo espera o envio (o mesmo de `activate-invite`).
+  // novo espera o envio.
   const revalidar = (current: string, next: string, confirm: string) => {
     const atuais = validarTrocaDeSenha(current, next, confirm)
     setErrors((mostrados) => ({

@@ -3,14 +3,13 @@ import {
   ToggleGroupItem
 } from '@findsports_oficial/ui/components/toggle-group'
 import { useForm } from '@tanstack/react-form'
-import { useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   Link,
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
 import Fire from 'reicon-react/icons/Fire'
 import Loader from 'reicon-react/icons/Loader'
@@ -30,9 +29,16 @@ import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
-import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(auth)/signup')({
+  // `?role=pub` abre o cadastro com "Dono de Bar" marcado: é para onde a
+  // landing manda o bar (WEB-232). O destino pós-cadastro segue na URL.
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...(search.role === 'pub' ? { role: 'pub' as const } : {}),
+    ...(typeof search.callbackUrl === 'string'
+      ? { callbackUrl: search.callbackUrl }
+      : {})
+  }),
   head: () => ({
     meta: [
       { title: 'Criar conta — Onside' },
@@ -88,37 +94,16 @@ function validateConfirm({
 function SignupPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
-  const source = new URL(href, 'https://onside.local').searchParams.get(
-    'source'
-  )
-  const waitlistId = new URL(href, 'https://onside.local').searchParams.get(
-    'wid'
-  )
-  const launchTracked = useRef(false)
-  useEffect(() => {
-    if (source !== 'waitlist_launch' || !waitlistId || launchTracked.current)
-      return
-    launchTracked.current = true
-    analytics.identifyWaitlist(waitlistId)
-    analytics.launchNoticeOpened()
-  }, [source, waitlistId])
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [role, setRole] = useState<'fan' | 'pub'>('fan')
+  const [role, setRole] = useState<'fan' | 'pub'>(
+    Route.useSearch().role ?? 'fan'
+  )
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
 
   const callbackUrl = getCallbackUrl(href)
-
-  // ESC-19: quem recusa é o portão no servidor (`api/auth/$`); isto só evita
-  // que a pessoa preencha o cadastro inteiro para levar um erro no fim.
-  // Enquanto carrega, o padrão é ABERTO: se a leitura falhar, esconder o
-  // aviso é melhor do que anunciar um bloqueio que talvez não exista.
-  const trpc = useTRPC()
-  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
-  const portaoFechado =
-    configQuery.data?.['launch.waitlist_gate'].signup ?? false
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
@@ -152,7 +137,6 @@ function SignupPage() {
         return
       }
       analytics.signupCompleted(role)
-      if (source === 'waitlist_launch') analytics.launchSignupCompleted()
       sessionStorage.setItem(
         PENDING_VERIFICATION_KEY,
         JSON.stringify({ email, role })
@@ -206,37 +190,6 @@ function SignupPage() {
                 Entrar agora
               </Link>
             </p>
-          </div>
-
-          <div
-            aria-busy={configQuery.isLoading || undefined}
-            aria-live={configQuery.isLoading ? 'polite' : undefined}
-          >
-            {configQuery.isLoading ? (
-              <span className="sr-only" role="status">
-                Verificando disponibilidade do cadastro…
-              </span>
-            ) : null}
-            {portaoFechado ? (
-              <div
-                className="onside-callout onside-callout-warn mb-6"
-                role="status"
-              >
-                <p className="text-sm font-semibold">
-                  A Onside está abrindo por convite.
-                </p>
-                <p className="text-sm">
-                  Só quem já teve o acesso liberado consegue criar conta agora.{' '}
-                  <Link
-                    to="/"
-                    className="font-semibold underline underline-offset-2"
-                  >
-                    Entre na lista de espera
-                  </Link>{' '}
-                  e avisamos assim que for a sua vez.
-                </p>
-              </div>
-            ) : null}
           </div>
 
           <form

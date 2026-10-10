@@ -63,8 +63,8 @@ const rawEnv = createEnv({
      */
     LOCATIONIQ_API_KEY: z.string().min(1).optional(),
     /**
-     * Cloudflare Turnstile no cadastro, na recuperação de senha, no reenvio
-     * da verificação e na waitlist. Ausente, a verificação no servidor fica
+     * Cloudflare Turnstile no cadastro, na recuperação de senha e no reenvio
+     * da verificação. Ausente, a verificação no servidor fica
      * desligada (um log no boot de produção): o deploy pode chegar antes do
      * segredo. Presente, o token passa a ser obrigatório — então a site key
      * (`VITE_TURNSTILE_SITE_KEY`) precisa estar no build ANTES deste segredo.
@@ -83,9 +83,6 @@ const rawEnv = createEnv({
     E2E_DISABLE_CACHES: z.literal('1').optional(),
     LOCATIONIQ_BASE_URL: z.url().optional(),
     STRIPE_API_BASE_URL: z.url().optional(),
-    LAUNCH_ADMISSION_MODE: z
-      .enum(['open', 'invite-only'])
-      .default('invite-only'),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development')

@@ -13,6 +13,6 @@ describe('getPageSurface', () => {
     expect(getPageSurface('/pub/abc')).toBe('fan')
     expect(getPageSurface('/admin')).toBe('pub')
     expect(getPageSurface('/admin/billing')).toBe('pub')
-    expect(getPageSurface('/internal/waitlist')).toBe('other')
+    expect(getPageSurface('/internal/flags')).toBe('other')
   })
 })

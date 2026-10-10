@@ -3,7 +3,6 @@ import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Settings from 'reicon-react/icons/Settings'
 import SliderH from 'reicon-react/icons/SliderH'
 import Store from 'reicon-react/icons/Store'
-import Users from 'reicon-react/icons/Users'
 import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
 
@@ -45,27 +44,6 @@ function InternalHallPage() {
        * coluna onde há espaço para ela.
        */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Link
-          to="/internal/waitlist"
-          className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"
-        >
-          <div className="grid size-14 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-            <Users size={28} color="var(--onside-ink)" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="onside-display text-2xl tracking-tight">
-              Lista de Espera
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
-              Visualize e exporte os inscritos na lista de espera — torcedores e
-              bares.
-            </p>
-          </div>
-          <span className="onside-kicker text-[var(--onside-ink)]">
-            Acessar →
-          </span>
-        </Link>
-
         <Link
           to="/internal/manage-users"
           className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"

@@ -49,8 +49,8 @@ function VerifyEmailPage() {
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
   const [pubError, setPubError] = useState<string | null>(null)
-  // WEB-248: sem sessão neste navegador (confirmou em outro aparelho, ou a
-  // conta veio de convite) nenhum dos dois botões resolve; o caminho é o login.
+  // WEB-248: sem sessão neste navegador (confirmou em outro aparelho) nenhum
+  // dos dois botões resolve; o caminho é o login.
   const [needsLogin, setNeedsLogin] = useState(false)
   // WEB-273: o Turnstile só serve ao reenvio, então só carrega quando pedem
   // um. Na carga da página ele custava o script e o desafio a quem só espera.

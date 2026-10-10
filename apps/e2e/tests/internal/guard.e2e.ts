@@ -5,7 +5,6 @@ import { expect, test } from '../../fixtures/test'
 
 const INTERNAL_ROUTES = [
   '/internal',
-  '/internal/waitlist',
   '/internal/manage-users',
   '/internal/flags',
   '/internal/attendance',
@@ -42,7 +41,6 @@ test.describe('admin', () => {
 
   test('hall leva a cada painel', async ({ page }) => {
     const panels = [
-      ['Lista de Espera', '/internal/waitlist'],
       ['Gerenciar Usuários', '/internal/manage-users'],
       ['Configuração', '/internal/flags'],
       ['Comparecimento', '/internal/attendance'],

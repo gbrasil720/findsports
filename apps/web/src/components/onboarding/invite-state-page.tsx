@@ -6,8 +6,8 @@ import { OnsideBrand, OnsideMark } from '@/components/brand/onside-brand'
 const YEAR = new Date().getFullYear()
 
 type Props = {
-  /** Rótulo do cabeçalho; a tela nasceu para o convite e esse é o padrão. */
-  label?: string
+  /** Rótulo do cabeçalho. */
+  label: string
   /** Rótulo curto acima do título, na cor `live`. */
   kicker: string
   /** O título quebra em duas linhas fixas: o ponto vermelho fecha a segunda. */
@@ -23,15 +23,12 @@ type Props = {
 }
 
 /**
- * Convite inutilizável ocupa a página inteira (ONS-25).
- *
- * O que existia antes era uma linha de erro de campo dentro do formulário de
- * ativação — estado terminal renderizado como se fosse corrigível ali mesmo.
- * Aqui não há campo nenhum: o estado é a manchete, e toda tela sai com pelo
- * menos uma saída clicável.
+ * Estado terminal ocupa a página inteira (ONS-25). Nasceu para o convite
+ * inutilizável; hoje serve à tela de erro de rota. Não há campo nenhum: o
+ * estado é a manchete, e toda tela sai com pelo menos uma saída clicável.
  */
 export function InviteStatePage({
-  label = 'Ativação de convite',
+  label,
   kicker,
   titleTop,
   titleBottom,

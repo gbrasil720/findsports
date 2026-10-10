@@ -1,6 +1,6 @@
 import type { auth } from '@findsports_oficial/auth'
 import { redirect } from '@tanstack/react-router'
-import { getCallbackUrl, withCallbackUrl } from './callback-url'
+import { getCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
 
@@ -14,9 +14,7 @@ const AUTHENTICATED_PREFIXES = [
   '/app',
   // O onboarding de torcedor chama `pubs.getSports` e `onboarding.completeFan`,
   // ambos protegidos — visitante precisa criar sessão antes de entrar.
-  '/onboarding/fan',
-  // A tela de espera é da conta logada; o login leva o destino que ela levava.
-  '/access-pending'
+  '/onboarding/fan'
 ] as const
 
 export function requiresAuthentication(pathname: string) {
@@ -49,46 +47,13 @@ export function applyAuthGuards(
   // WEB-53: recuperação de senha tem que abrir mesmo com cookie de sessão no
   // navegador — é justamente o caso de quem esqueceu a senha numa aba antiga,
   // ou de quem clica no link do e-mail logado em outra conta. Sem isto, o
-  // guard abaixo mandaria essa pessoa para `/access-pending` ou para o
-  // onboarding e o link do e-mail seria consumido sem redefinir nada.
+  // guard abaixo mandaria essa pessoa para o onboarding e o link do e-mail
+  // seria consumido sem redefinir nada.
   if (
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password')
   ) {
     return
-  }
-
-  if (session.user.role !== 'admin' && session.user.admittedAt === null) {
-    // O destino pedido espera a liberação, como no login (WEB-210).
-    if (!pathname.startsWith('/access-pending')) {
-      throw redirect({ to: '/access-pending', search: { callbackUrl: href } })
-    }
-    // Sem liberação, nada adiante vale — nem o onboarding, que devolveria
-    // para cá num laço.
-    return
-  }
-
-  if (
-    session.user.admittedAt !== null &&
-    pathname.startsWith('/access-pending')
-  ) {
-    // `/dashboard` é o padrão de `getCallbackUrl`: sem destino, casa do papel.
-    let callbackUrl = getCallbackUrl(href)
-    // Quem esperou no próprio onboarding não volta a ele carregando a si
-    // mesmo: vale o destino que o onboarding levava, se houver.
-    if (callbackUrl.startsWith('/onboarding/')) {
-      callbackUrl = getCallbackUrl(callbackUrl)
-    }
-    throw redirect({
-      to: session.user.onboardingCompleted
-        ? session.user.role === 'pub' && callbackUrl === '/dashboard'
-          ? '/admin'
-          : callbackUrl
-        : withCallbackUrl(
-            session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan',
-            callbackUrl
-          )
-    })
   }
 
   if (!session.user.onboardingCompleted) {

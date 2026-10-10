@@ -77,12 +77,12 @@ describe('leitura da configuração (ESC-19)', () => {
     const { store } = montar([
       async () => ({
         'search.tiered_plan_query': 'talvez',
-        'waitlist.rate_limit': { enabled: true, ip: { max: 0 } }
+        'launch.pub_cities': { cidade: 'Recife' }
       })
     ])
     expect(await store.get('search.tiered_plan_query')).toBe(true)
-    expect(await store.get('waitlist.rate_limit')).toEqual(
-      appConfigDefault('waitlist.rate_limit')
+    expect(await store.get('launch.pub_cities')).toEqual(
+      appConfigDefault('launch.pub_cities')
     )
   })
 
@@ -161,13 +161,9 @@ describe('leitura da configuração (ESC-19)', () => {
     // As públicas saem, com valor gravado ou com padrão.
     expect(publico['billing.checkout_enabled']).toBe(true)
     expect(publico['launch.pub_cities']).toEqual(['Recife'])
-    expect(publico['launch.waitlist_gate']).toEqual({
-      signup: process.env.LAUNCH_ADMISSION_MODE !== 'open'
-    })
 
     // As internas não saem — nem as que têm valor gravado.
     expect(Object.hasOwn(publico, 'search.tiered_plan_query')).toBe(false)
-    expect(Object.hasOwn(publico, 'waitlist.rate_limit')).toBe(false)
 
     // Nenhuma chave a mais do que o registro marcou.
     expect(Object.keys(publico).sort()).toEqual(

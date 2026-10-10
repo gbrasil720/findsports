@@ -72,11 +72,5 @@ export const appConfigRouter = router({
    * em `api/auth/$` e em `onboarding.completePub`. Isto é só cortesia com
    * quem está do outro lado da tela.
    */
-  getPublic: publicProcedure.query(async () => {
-    const config = await appConfigStore.getPublic()
-    return {
-      ...config,
-      'launch.waitlist_gate': config['launch.waitlist_gate']
-    }
-  })
+  getPublic: publicProcedure.query(() => appConfigStore.getPublic())
 })

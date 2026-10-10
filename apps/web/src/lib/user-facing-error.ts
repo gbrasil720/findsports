@@ -132,7 +132,7 @@ export function getUserFacingError(
   if (
     code === 'INVALID_TOKEN' ||
     code === 'TOKEN_EXPIRED' ||
-    /invalid[_ -]token|expired[_ -]token|token.*(invalid|expired)|(?:convite|link).*(inválid|expir|não é válido)/i.test(
+    /invalid[_ -]token|expired[_ -]token|token.*(invalid|expired)|link.*(inválid|expir|não é válido)/i.test(
       normalizedText
     )
   ) {
@@ -143,8 +143,8 @@ export function getUserFacingError(
   }
 
   // Turnstile: o plugin `captcha` do better-auth responde MISSING_RESPONSE
-  // (400) ou VERIFICATION_FAILED (403), em inglês; a waitlist (tRPC) manda
-  // "captcha" na mensagem. Antes do 403 genérico, que falaria em permissão.
+  // (400) ou VERIFICATION_FAILED (403), em inglês. Antes do 403 genérico, que
+  // falaria em permissão.
   if (
     code === 'MISSING_RESPONSE' ||
     code === 'VERIFICATION_FAILED' ||

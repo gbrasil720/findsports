@@ -72,9 +72,11 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
       nav.getByRole('link', { name: label, exact: true })
     ).toHaveAttribute('href', href)
   }
-  await expect(
-    footer.getByRole('link', { name: /Entrar \/ Criar conta/ })
-  ).toHaveAttribute('href', '/signup')
+  // Fora da navegação, a chamada do rodapé também leva ao cadastro.
+  await expect(footer.locator('a.onside-footer-cta')).toHaveAttribute(
+    'href',
+    '/signup'
+  )
 
   await nav.getByRole('link', { name: 'Termos', exact: true }).click()
   await expect(page).toHaveURL(/\/termos$/)
@@ -90,10 +92,10 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
   expect(sitemap).toContain('/privacidade</loc>')
 })
 
-test('formulários que coletam dado pessoal apontam para os documentos', async ({
+test('formulário que coleta dado pessoal aponta para os documentos', async ({
   page
 }) => {
-  // A landing v2 (WEB-333) não coleta nada: sem formulário, sem aviso.
+  // A landing não coleta mais nada: quem coleta é o cadastro.
   await page.goto('/')
   await expect(page.locator('.onside-legal-consent')).toHaveCount(0)
 

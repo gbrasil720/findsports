@@ -9,7 +9,7 @@ const HOMEPAGE_SCHEMA = {
   applicationCategory: 'LifestyleApplication',
   operatingSystem: 'Web',
   description:
-    'Com a Onside, você encontra bares com a infraestrutura certa para assistir ao jogo com os amigos, comparando localização e preço antes de sair de casa.',
+    'A Onside ajuda torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.',
   url: SITE_URL,
   inLanguage: 'pt-BR',
   audience: {
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/')({
       {
         name: 'description',
         content:
-          'Com a Onside, você encontra bares com a infraestrutura certa para assistir ao jogo com os amigos, comparando localização e preço antes de sair de casa.'
+          'A Onside ajuda torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
       },
       {
         name: 'theme-color',
@@ -45,7 +45,7 @@ export const Route = createFileRoute('/')({
       {
         property: 'og:description',
         content:
-          'Compare bares por jogo, infraestrutura, preço médio e distância antes de chamar a galera.'
+          'Compare bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
       },
       {
         property: 'og:type',
@@ -87,7 +87,7 @@ export const Route = createFileRoute('/')({
       {
         name: 'twitter:description',
         content:
-          'Compare bares por jogo, infraestrutura, preço médio e distância antes de chamar a galera.'
+          'Compare bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
       },
       {
         name: 'twitter:image',

@@ -7,11 +7,7 @@ import {
   toClientSession
 } from './auth-guards'
 
-function session(
-  role: 'fan' | 'pub' | 'admin',
-  onboardingCompleted = true,
-  admittedAt: Date | null | undefined = undefined
-) {
+function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
   return {
     session: {
       id: 's1',
@@ -29,7 +25,6 @@ function session(
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
       role,
-      admittedAt,
       onboardingCompleted,
       searchRadiusKm: 5,
       twoFactorEnabled: false,
@@ -48,9 +43,8 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/plan')).toBe(true)
     expect(requiresAuthentication('/plan/confirmed')).toBe(true)
     expect(requiresAuthentication('/internal')).toBe(true)
-    expect(requiresAuthentication('/internal/waitlist')).toBe(true)
+    expect(requiresAuthentication('/internal/flags')).toBe(true)
     expect(requiresAuthentication('/onboarding/fan')).toBe(true)
-    expect(requiresAuthentication('/access-pending')).toBe(true)
   })
 
   test('leaves marketing, auth, pubs, pub onboarding and unknown URLs public', () => {
@@ -83,19 +77,6 @@ describe('applyAuthGuards', () => {
     }
     expect(thrown).toMatchObject({
       options: { to: '/login', search: { callbackUrl: '/admin?tab=eventos' } }
-    })
-  })
-
-  test('sends visitors from the pending access screen to login with its destination', () => {
-    const href = '/access-pending?callbackUrl=%2Fapp'
-    let thrown: unknown
-    try {
-      applyAuthGuards(null, '/access-pending', {}, href)
-    } catch (error) {
-      thrown = error
-    }
-    expect(thrown).toMatchObject({
-      options: { to: '/login', search: { callbackUrl: href } }
     })
   })
 
@@ -176,99 +157,15 @@ describe('applyAuthGuards', () => {
 
   test('mantém a recuperação de senha aberta mesmo com sessão no navegador', () => {
     // Quem clica no link do e-mail pode ter cookie de outra conta, ou de uma
-    // conta que ainda não passou pelo onboarding/aprovação. Em qualquer um
-    // desses casos a tela precisa abrir, senão o token é gasto sem redefinir.
+    // conta que ainda não passou pelo onboarding. Em qualquer um desses casos
+    // a tela precisa abrir, senão o token é gasto sem redefinir.
     for (const pathname of ['/forgot-password', '/reset-password']) {
       expect(() =>
         applyAuthGuards(session('pub', false), pathname)
       ).not.toThrow()
-      expect(() =>
-        applyAuthGuards(session('fan', true, null), pathname)
-      ).not.toThrow()
       expect(() => applyAuthGuards(session('fan'), pathname)).not.toThrow()
       expect(() => applyAuthGuards(null, pathname)).not.toThrow()
     }
-  })
-
-  test('sends an existing unapproved account to the pending access screen', () => {
-    expect(() =>
-      applyAuthGuards(session('fan', true, null), '/dashboard')
-    ).toThrow()
-    expect(() =>
-      applyAuthGuards(session('fan', true, null), '/access-pending')
-    ).not.toThrow()
-    // Sem onboarding também espera aqui, sem laço com o onboarding.
-    for (const role of ['fan', 'pub'] as const) {
-      expect(() =>
-        applyAuthGuards(session(role, false, null), '/access-pending')
-      ).not.toThrow()
-    }
-  })
-
-  test('carries the requested path through the pending access screen', () => {
-    function redirectOf(...args: Parameters<typeof applyAuthGuards>) {
-      try {
-        applyAuthGuards(...args)
-      } catch (error) {
-        return (error as { options?: unknown }).options
-      }
-    }
-    expect(
-      redirectOf(session('fan', true, null), '/app', {}, '/app?evento=1')
-    ).toMatchObject({
-      to: '/access-pending',
-      search: { callbackUrl: '/app?evento=1' }
-    })
-    const pending = '/access-pending?callbackUrl=%2Fapp%3Fevento%3D1'
-    // Liberado: segue para o destino, ou passa pelo onboarding levando-o.
-    expect(
-      redirectOf(session('fan'), '/access-pending', {}, pending)
-    ).toMatchObject({ to: '/app?evento=1' })
-    expect(
-      redirectOf(session('fan', false), '/access-pending', {}, pending)
-    ).toMatchObject({
-      to: '/onboarding/fan?callbackUrl=%2Fapp%3Fevento%3D1'
-    })
-    // O bar leva o destino pelo onboarding dele, como o torcedor.
-    expect(
-      redirectOf(session('pub', false), '/access-pending', {}, pending)
-    ).toMatchObject({
-      to: '/onboarding/pub?callbackUrl=%2Fapp%3Fevento%3D1'
-    })
-    // Quem esperou a liberação em `/onboarding/pub` não volta para ela
-    // carregando a si mesma: onboarding sem destino, ou casa se já concluiu.
-    const fromOnboarding = '/access-pending?callbackUrl=%2Fonboarding%2Fpub'
-    expect(
-      redirectOf(session('pub', false), '/access-pending', {}, fromOnboarding)
-    ).toMatchObject({ to: '/onboarding/pub' })
-    expect(
-      redirectOf(session('pub'), '/access-pending', {}, fromOnboarding)
-    ).toMatchObject({ to: '/admin' })
-    // O destino que o onboarding levava sobrevive.
-    expect(
-      redirectOf(
-        session('fan', false),
-        '/access-pending',
-        {},
-        '/access-pending?callbackUrl=%2Fonboarding%2Ffan%3FcallbackUrl%3D%252Fapp'
-      )
-    ).toMatchObject({ to: '/onboarding/fan?callbackUrl=%2Fapp' })
-    // Sem destino, a casa do papel.
-    expect(redirectOf(session('pub'), '/access-pending')).toMatchObject({
-      to: '/admin'
-    })
-    expect(redirectOf(session('fan'), '/access-pending')).toMatchObject({
-      to: '/dashboard'
-    })
-    // Destino de outra origem cai no padrão.
-    expect(
-      redirectOf(
-        session('fan'),
-        '/access-pending',
-        {},
-        '/access-pending?callbackUrl=https%3A%2F%2Fevil.example'
-      )
-    ).toMatchObject({ to: '/dashboard' })
   })
 
   test('separa as superfícies de fan, bar e admin por papel', () => {
@@ -334,9 +231,6 @@ describe('applyAuthGuards', () => {
 
   test('o marcador público não ignora as guardas de acesso', () => {
     expect(() =>
-      applyAuthGuards(session('fan', true, null), '/', { public: '1' })
-    ).toThrow()
-    expect(() =>
       applyAuthGuards(session('fan', false), '/', { public: '1' })
     ).toThrow()
   })
@@ -347,10 +241,6 @@ describe('applyAuthGuards', () => {
 
   test('mantém visitante na landing', () => {
     expect(() => applyAuthGuards(null, '/')).not.toThrow()
-  })
-
-  test('não admitido na landing vai para o acesso pendente', () => {
-    expect(() => applyAuthGuards(session('fan', true, null), '/')).toThrow()
   })
 
   test('sem onboarding na landing vai para o onboarding do papel', () => {

@@ -1,6 +1,15 @@
 import { db, sql } from '@findsports_oficial/db'
 
-import type { DecisaoRateLimit, JanelaLimite } from './waitlist-rate-limit'
+export type JanelaLimite = {
+  max: number
+  windowMs: number
+}
+
+export type DecisaoRateLimit = {
+  allowed: boolean
+  retryAfterMs: number
+  count: number
+}
 
 /**
  * Contador de janela fixa na tabela `rate_limit`, compartilhado por todas as

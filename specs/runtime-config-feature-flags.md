@@ -37,8 +37,6 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
 | `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Stripe. Webhook e portal do cliente **não** passam por este portão. |
 | `billing.onboarding_trial` | `{ enabled: false, plan: 'elite', days: 14 }` | não | Ligada, o bar novo nasce publicado e com assinatura `trialing` do plano por `days` dias (1 a 90). Desligada, nasce fora do ar e só a assinatura paga o publica. Não altera bares já cadastrados. |
-| `waitlist.rate_limit` | 8/IP e 3/e-mail por 10 min | não | Freio da waitlist pública. `enabled: false` desliga o contador inteiro. |
-| `launch.waitlist_gate` | `{ signup: true }` com `LAUNCH_ADMISSION_MODE=invite-only` (produção); `{ signup: false }` com `open` | sim | Fecha o cadastro por aprovação: e-mail não aprovado na waitlist não cria conta. |
 | `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |
 | `launch.pub_cities` | `[]` | sim | Cidades em que um bar conclui o onboarding. Vazio = todas. |
 
@@ -105,25 +103,6 @@ O cursor de paginação é idêntico nos dois caminhos, então a troca pode
 acontecer com gente no meio da navegação. A chave do cache inclui o modo, então
 desligar não continua servindo páginas do caminho suspeito.
 
-### Cadastros legítimos estão sendo barrados na waitlist
-
-Sintoma: `TOO_MANY_REQUESTS` em volume, tipicamente de faculdade, empresa ou
-operadora atrás de NAT — todos compartilham um IP.
-
-Afrouxe só a dimensão que está estourando. Exemplo, dobrando o teto por IP:
-
-```json
-{
-  "enabled": true,
-  "ip": { "max": 40, "windowMs": 600000 },
-  "email": { "max": 3, "windowMs": 600000 }
-}
-```
-
-Mantenha o limite por e-mail: ele é o que segura cadastro repetido, e não sofre
-com NAT. Só use `enabled: false` se o problema for a escrita do contador em si
-(contenção na tabela `rate_limit`), não a carga.
-
 ### Abrir cobrança
 
 Ligue `billing.checkout_enabled`. Confirme antes que a chave e o ambiente do
@@ -131,45 +110,6 @@ Stripe estão corretos — o portão libera a rota, não valida a credencial.
 
 Para fechar de novo: desligue. Assinaturas já ativas continuam valendo, o
 webhook continua sendo processado e o portal do cliente continua aberto.
-
-### Abrir a plataforma por convite
-
-Tudo numa tela só: **`/internal/waitlist`**. O interruptor fica no painel
-*Acesso à plataforma*, no topo, ao lado das contagens de liberados e
-pendentes — de propósito. Numa tela separada dava para fechar o cadastro sem
-enxergar que ninguém foi liberado ainda.
-
-A mesma chave também aparece em `/internal/flags`, junto das outras.
-
-**Estado de hoje: fechado.** O padrão de `launch.waitlist_gate` vem de
-`LAUNCH_ADMISSION_MODE`, que em produção é `invite-only` — então
-`{ "signup": true }` sem linha no banco. Gravar no painel sobrepõe o ambiente.
-
-#### Liberar alguém
-
-- **Já está na lista:** botão *Liberar* na coluna Acesso da tabela. Vale para
-  a pessoa, não para a linha: marca todas as inscrições daquele e-mail, porque
-  o portão consulta por e-mail.
-- **Não está na lista:** campo *Liberar quem não está na lista*, no painel de
-  acesso. Cria a inscrição já liberada, marcada com a cidade
-  `Convite direto`. É o caminho para o bar que a equipe abordou na rua — sem
-  isso, a resposta seria "peça para ela se cadastrar primeiro", que é mandar
-  o convidado bater na porta antes de você abrir.
-
-O portão vive em `launch.waitlist_gate` e tem um lado só, `signup`:
-
-- `{ "signup": true }` — fechado. Cadastro por e-mail só passa se o e-mail
-  estiver aprovado e confirmado na waitlist.
-- `{ "signup": false }` — aberto. Cadastro e login admitem a conta de forma
-  persistente (`user.admitted_at`).
-
-O login não passa por esta chave. Quem barra conta não admitida é o guarda de
-rota e o `protectedProcedure`, pelo `admitted_at` — e administrador é isento
-nos dois, para o painel que abre o portão nunca ficar do outro lado da porta.
-
-Para tirar acesso de alguém que já entrou, o caminho é banir em
-`/internal/manage-users`, não revogar aqui: revogar só impede logins novos, e
-a sessão em curso vale até o cookie expirar.
 
 ### Abrir uma cidade nova
 

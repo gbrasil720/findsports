@@ -59,15 +59,15 @@ test('interruptor booleano grava, vale na hora e volta ao padrão', async ({
 test('campo booleano de flag em objeto liga sem digitar JSON', async ({
   page
 }) => {
-  const key = 'launch.waitlist_gate'
+  const key = 'billing.founder_coupon'
   await page.goto('/internal/flags')
-  const toggle = card(page, key).getByRole('switch', { name: 'signup' })
+  const toggle = card(page, key).getByRole('switch', { name: 'enabled' })
 
-  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await toggle.click()
   await expect(page.getByText(`${key} salvo.`)).toBeVisible()
-  await expect(toggle).toHaveAttribute('aria-checked', 'false')
-  expect(await storedValue(key)).toEqual({ signup: false })
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  expect(await storedValue(key)).toMatchObject({ enabled: true })
 })
 
 test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
@@ -223,8 +223,8 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
     expect.arrayContaining([
       'search.tiered_plan_query',
       'billing.checkout_enabled',
-      'waitlist.rate_limit',
-      'launch.waitlist_gate',
+      'billing.onboarding_trial',
+      'billing.founder_coupon',
       'rating.public_display',
       'launch.pub_cities'
     ])

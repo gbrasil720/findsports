@@ -35,10 +35,8 @@ const HOLD_DURATION = __ENV.HOLD_DURATION || '1m'
 const P95_MS = positiveInteger('P95_MS', 300)
 const BAR_COUNT = positiveInteger('BAR_COUNT', 100_000)
 
-if (!['browse', 'commercial-write', 'waitlist-write'].includes(WORKLOAD)) {
-  throw new Error(
-    'WORKLOAD precisa ser browse, commercial-write ou waitlist-write'
-  )
+if (!['browse', 'commercial-write'].includes(WORKLOAD)) {
+  throw new Error('WORKLOAD precisa ser browse ou commercial-write')
 }
 
 const searchDuration = new Trend('search_duration_ms', true)
@@ -49,7 +47,6 @@ const catalogDuration = new Trend('catalog_duration_ms', true)
 const featuredDuration = new Trend('featured_duration_ms', true)
 const homeDuration = new Trend('home_duration_ms', true)
 const commercialWriteDuration = new Trend('commercial_write_duration_ms', true)
-const waitlistWriteDuration = new Trend('waitlist_write_duration_ms', true)
 
 export const options = {
   stages: [
@@ -63,7 +60,6 @@ export const options = {
     bar_profile_duration_ms: [`p(95)<${P95_MS}`],
     recommendation_duration_ms: [`p(95)<${P95_MS}`],
     commercial_write_duration_ms: [`p(95)<${P95_MS}`],
-    waitlist_write_duration_ms: [`p(95)<${P95_MS}`],
     http_req_failed: ['rate<0.01']
   },
   userAgent: 'FindSportsLocalLoadTest/1.0'
@@ -87,10 +83,6 @@ export function setup() {
   })
   if (!check(health, { 'servidor local saudável': responseOk })) {
     fail(`Health check falhou com HTTP ${health.status}`)
-  }
-
-  if (WORKLOAD === 'waitlist-write') {
-    return { runId: Date.now().toString(36) }
   }
 
   if (!PASSWORD) fail('Defina LOAD_PASSWORD para a conta local de carga')
@@ -122,7 +114,7 @@ export function setup() {
     fail(`Cookie de sessão falhou com HTTP ${privateData.status}`)
   }
 
-  return { cookieHeader, runId: Date.now().toString(36) }
+  return { cookieHeader }
 }
 
 function getTrpc(
@@ -159,24 +151,6 @@ export default function (data) {
     commercialWriteDuration.add(response.timings.duration)
     check(response, {
       'evento comercial gravado': (result) => result.status === 200
-    })
-    sleep(0.5 + Math.random())
-    return
-  }
-
-  if (WORKLOAD === 'waitlist-write') {
-    const email = `load-${data.runId}-${__VU}-${__ITER}@load.invalid`
-    const response = http.post(
-      trpcUrl('waitlist.join'),
-      JSON.stringify({ email, city: 'São Paulo', role: 'fan' }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-        tags: { name: 'POST /api/trpc/waitlist.join' }
-      }
-    )
-    waitlistWriteDuration.add(response.timings.duration)
-    check(response, {
-      'waitlist gravou entrada única': responseOk
     })
     sleep(0.5 + Math.random())
     return
