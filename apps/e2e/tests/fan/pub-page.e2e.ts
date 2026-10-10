@@ -341,8 +341,7 @@ test('jogo único fica só no destaque, e os times saem na ordem do card', async
   await expect(agenda.getByText(matchup)).toHaveCount(0)
 })
 
-// O `getById` responde NOT_FOUND na hora, mas o React Query refaz a consulta
-// três vezes (1 + 2 + 4 s) antes de a tela desistir: daí a espera longa.
+// NOT_FOUND não é refeito (WEB-360): a tela desiste na primeira resposta.
 for (const [label, barId] of [
   [
     'inativo',
@@ -355,9 +354,7 @@ for (const [label, barId] of [
     await signInFanAt(page, uniqueSpot())
 
     await page.goto(`/pub/${id}`)
-    await expect(page.getByText('Bar não encontrado.')).toBeVisible({
-      timeout: 20_000
-    })
+    await expect(page.getByText('Bar não encontrado.')).toBeVisible()
     await expect(page).toHaveURL(/\/dashboard$/)
   })
 }
