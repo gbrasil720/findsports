@@ -155,20 +155,25 @@ export function assertEventIntervalValid(
  * Recusa de `createEvent` no limite de jogos. Pro ou Elite parado (`past_due`
  * ou trial vencido) cai no limite do Starter (WEB-129), mas não é Starter nem
  * resolve com upgrade: o caminho é regularizar a assinatura (WEB-331).
+ *
+ * `periodEnd` é o da política: sem ciclo vigente a janela é a dos últimos 30
+ * dias, dita com as palavras de `apps/web/src/lib/event-limit.ts`.
  */
 export function eventLimitMessage(
   subscription: SubscriptionForPlan | null,
+  periodEnd: string | null,
   now = new Date()
 ): string {
   const standing = getSubscriptionStanding(subscription, now)
+  const window = periodEnd ? 'por ciclo de cobrança' : 'nos últimos 30 dias'
   if (
     subscription &&
     subscription.plan !== 'starter' &&
     (standing === 'past_due' || standing === 'trial_ended')
   ) {
-    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Regularize a assinatura para voltar aos jogos ilimitados.`
+    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Regularize a assinatura para voltar aos jogos ilimitados.`
   }
-  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.`
+  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
 /**
@@ -632,7 +637,10 @@ export const pubRouter = router({
         if (policy.status === 'limited' && !policy.canCreate) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: eventLimitMessage(existingSubscription ?? null)
+            message: eventLimitMessage(
+              existingSubscription ?? null,
+              policy.periodEnd
+            )
           })
         }
 
