@@ -48,6 +48,7 @@ test('interruptor booleano grava, vale na hora e volta ao padrão', async ({
   expect(await storedValue(key)).toBe(true)
   expect(await publicConfig(page)).toContain(`"${key}":true`)
 
+  page.once('dialog', (dialog) => dialog.accept())
   await flag.getByRole('button', { name: 'Voltar ao padrão' }).click()
   await expect(page.getByText(`${key} voltou ao padrão.`)).toBeVisible()
   await expect(toggle).toHaveAttribute('aria-checked', 'false')
@@ -95,6 +96,69 @@ test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
   await save.click()
   await expect(page.getByText(`${key} salvo.`)).toBeVisible()
   expect(await storedValue(key)).toBe(true)
+})
+
+// WEB-346: o motivo da recusa, quem alterou e a confirmação do reset.
+test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrão pede confirmação', async ({
+  page
+}) => {
+  const key = 'billing.onboarding_trial'
+  const value = { enabled: true, plan: 'elite', days: 30 }
+  let resets = 0
+  page.on('request', (request) => {
+    if (request.url().includes('appConfig.reset')) resets += 1
+  })
+  await page.goto('/internal/flags')
+  const flag = card(page, key)
+  await flag.getByText('Editar como JSON').click()
+  const field = flag.getByLabel('Valor (JSON)')
+  const save = flag.getByRole('button', { name: 'Salvar' })
+
+  await field.fill(JSON.stringify({ ...value, days: 365 }))
+  await save.click()
+  await expect(
+    page.locator('[data-sonner-toast][data-type="error"]')
+  ).toContainText('days: Too big: expected number to be <=180')
+  expect(await storedValue(key)).toBeUndefined()
+
+  await field.fill(JSON.stringify(value))
+  await save.click()
+  await expect(page.getByText(`${key} salvo.`)).toBeVisible()
+  // O nome da conta de admin do setup (`createUser`), não o id dela.
+  await expect(flag).toContainText('por E2E admin')
+
+  // Recusar a confirmação não dispara o reset.
+  const reset = flag.getByRole('button', { name: 'Voltar ao padrão' })
+  let question = ''
+  page.once('dialog', (dialog) => {
+    question = dialog.message()
+    void dialog.dismiss()
+  })
+  await reset.click()
+  expect(question).toContain(key)
+  expect(question).toContain('"enabled":false')
+  await expect(flag).toContainText('Sobrescrito')
+  expect(resets).toBe(0)
+  expect(await storedValue(key)).toEqual(value)
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await reset.click()
+  await expect(page.getByText(`${key} voltou ao padrão.`)).toBeVisible()
+  expect(await storedValue(key)).toBeUndefined()
+})
+
+test('alteração de conta que não existe mais não mostra o id', async ({
+  page
+}) => {
+  const key = 'billing.checkout_enabled'
+  await query(
+    `INSERT INTO app_config (key, value, updated_by) VALUES ($1, 'true'::jsonb, 'conta-apagada')`,
+    [key]
+  )
+  await page.goto('/internal/flags')
+  const flag = card(page, key)
+  await expect(flag).toContainText('por uma conta que não existe mais')
+  await expect(flag).not.toContainText('conta-apagada')
 })
 
 test('cidades liberadas: adicionar pela lista e remover', async ({ page }) => {
@@ -175,6 +239,7 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
       await expect(flag).toContainText('Sobrescrito')
       expect(await storedValue(key)).toEqual(next)
 
+      page.once('dialog', (dialog) => dialog.accept())
       await flag.getByRole('button', { name: 'Voltar ao padrão' }).click()
       await expect(page.getByText(`${key} voltou ao padrão.`)).toBeVisible()
       await expect(flag).toContainText('Padrão')

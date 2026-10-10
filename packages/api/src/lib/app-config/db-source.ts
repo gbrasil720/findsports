@@ -41,6 +41,12 @@ export type LinhaAppConfig = {
   value: unknown
   updatedAt: string
   updatedBy: string | null
+  /**
+   * Nome de quem gravou, ou o e-mail se o nome estiver vazio. `null` quando
+   * ninguém assinou a gravação ou a conta não existe mais — `updated_by` não
+   * tem chave estrangeira, então o id sobrevive ao usuário.
+   */
+  updatedByNome: string | null
 }
 
 /**
@@ -55,13 +61,19 @@ export type LinhaAppConfig = {
  */
 export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
   const resultado = await db.execute(
-    sql`SELECT key, value, updated_at, updated_by FROM app_config`
+    sql`
+      SELECT c.key, c.value, c.updated_at, c.updated_by,
+        COALESCE(NULLIF(btrim(u.name), ''), u.email) AS updated_by_nome
+      FROM app_config c
+      LEFT JOIN "user" u ON u.id = c.updated_by
+    `
   )
   const linhas = resultado.rows as {
     key: string
     value: unknown
     updated_at: string | Date
     updated_by: string | null
+    updated_by_nome: string | null
   }[]
 
   return linhas
@@ -70,7 +82,8 @@ export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
       key: linha.key as AppConfigKey,
       value: linha.value,
       updatedAt: utcIso(linha.updated_at),
-      updatedBy: linha.updated_by
+      updatedBy: linha.updated_by,
+      updatedByNome: linha.updated_by_nome
     }))
 }
 
