@@ -181,24 +181,27 @@ integrationTest(
   }
 )
 
-integrationTest('desconto de fundador na assinatura grava monthlyDiscountReais', async () => {
-  const { applyStripeSubscription, createBar, stateOf } = ready()
-  const owner = await createBar(null)
-  await applyStripeSubscription(
-    stripeSubscription({
-      id: `sub_${owner.barId}`,
-      status: 'active',
-      lookupKey: 'elite_monthly',
-      customerId: owner.customerId,
-      userId: owner.userId,
-      founderDiscount: true
+integrationTest(
+  'desconto de fundador na assinatura grava monthlyDiscountReais',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    await applyStripeSubscription(
+      stripeSubscription({
+        id: `sub_${owner.barId}`,
+        status: 'active',
+        lookupKey: 'elite_monthly',
+        customerId: owner.customerId,
+        userId: owner.userId,
+        founderDiscount: true
+      })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      plan: 'elite',
+      monthlyDiscountReais: 28
     })
-  )
-  expect(await stateOf(owner.barId)).toMatchObject({
-    plan: 'elite',
-    monthlyDiscountReais: 28
-  })
-})
+  }
+)
 
 integrationTest(
   'ciclo de vida: recusa vira past_due, encerramento tira o bar do ar',

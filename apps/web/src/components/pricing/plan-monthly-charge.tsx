@@ -1,3 +1,4 @@
+import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import {
   formatPlanPrice,
   type Plan,
@@ -5,7 +6,8 @@ import {
 } from '@/lib/plan-catalog'
 
 type Props = {
-  display: PlanChargeDisplay
+  /** `null`: o valor ainda pode mudar (cupom carregando), e nada é afirmado. */
+  display: PlanChargeDisplay | null
   period: Plan['period']
   /** `lg` espelha o destaque do card de planos; `md` cabe no painel de cobrança. */
   size?: 'md' | 'lg'
@@ -15,6 +17,15 @@ type Props = {
 export function PlanMonthlyCharge({ display, period, size = 'md' }: Props) {
   const priceClass =
     size === 'lg' ? 'onside-display text-4xl' : 'onside-display text-xl'
+
+  if (!display) {
+    return (
+      <div aria-busy="true">
+        <span className="sr-only">Carregando preço…</span>
+        <Skeleton className={size === 'lg' ? 'h-10 w-32' : 'h-7 w-24'} />
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -216,6 +216,8 @@ test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e q
   await expect(
     page.getByRole('button', { name: 'Gerenciar assinatura' })
   ).toBeVisible()
+  // Nem no rodapé nem em outro canto da página.
+  await expect(page.getByText('Trial gratuito')).toHaveCount(0)
 
   await page.goto('/admin')
   await expect(
@@ -363,7 +365,9 @@ test('/plan/confirmed de quem contratou no teste grátis espera o Stripe, não i
   await expect(screen).toHaveText(/Comprovante impresso/, { timeout: 20_000 })
   const receipt = page.locator('.onside-receipt-paper')
   await expect(receipt).toContainText('Starter')
-  await expect(receipt).toContainText('Trial gratuito')
+  // Contratou durante o teste: o mesmo selo de `/admin/billing` (WEB-347).
+  await expect(receipt).toContainText('Contratado · em teste')
+  await expect(receipt).not.toContainText('Trial gratuito')
 })
 
 test.describe('torcedor', () => {

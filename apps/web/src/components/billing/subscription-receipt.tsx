@@ -4,6 +4,7 @@ import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
 import {
+  CONTRACTED_TRIAL_LABEL,
   formatPlanChargeLine,
   type Plan,
   planChargeFromSubscription
@@ -58,6 +59,8 @@ type Props = {
   /** Desconto mensal gravado pelo webhook; null se desconhecido. */
   monthlyDiscountReais?: number | null
   status: string
+  /** Trial que já é do Stripe (`isContractedTrial`): não é "Trial gratuito". */
+  contractedTrial?: boolean
   currentPeriodEnd: Date | string | null
   /** Fim marcado por cancelamento agendado (WEB-335); null sem agendamento. */
   cancelAt: Date | null
@@ -98,6 +101,7 @@ export function SubscriptionReceipt({
   plan,
   monthlyDiscountReais = null,
   status,
+  contractedTrial = false,
   currentPeriodEnd,
   cancelAt,
   subscriptionRef,
@@ -166,6 +170,7 @@ export function SubscriptionReceipt({
           plan={plan}
           monthlyDiscountReais={monthlyDiscountReais}
           status={status}
+          contractedTrial={contractedTrial}
           currentPeriodEnd={currentPeriodEnd}
           cancelAt={cancelAt}
           subscriptionRef={subscriptionRef}
@@ -227,6 +232,7 @@ function PaperOutput(props: {
   plan: Plan
   monthlyDiscountReais: number | null
   status: string
+  contractedTrial: boolean
   currentPeriodEnd: Date | string | null
   cancelAt: Date | null
   subscriptionRef: string | null
@@ -277,6 +283,7 @@ function PaperContent({
   plan,
   monthlyDiscountReais = null,
   status,
+  contractedTrial = false,
   currentPeriodEnd,
   cancelAt,
   subscriptionRef,
@@ -289,6 +296,7 @@ function PaperContent({
   plan: Plan
   monthlyDiscountReais: number | null
   status: string
+  contractedTrial: boolean
   currentPeriodEnd: Date | string | null
   cancelAt: Date | null
   subscriptionRef: string | null
@@ -306,7 +314,12 @@ function PaperContent({
       value: formatPlanChargeLine(charge, plan.period)
     },
     { label: 'Ciclo', value: receiptCycleLabel(plan.period, !cancelAt) },
-    { label: 'Situação', value: STATUS_LABEL[status] ?? status },
+    {
+      label: 'Situação',
+      value: contractedTrial
+        ? CONTRACTED_TRIAL_LABEL
+        : (STATUS_LABEL[status] ?? status)
+    },
     {
       label: receiptChargeLabel(status, cancelAt !== null),
       value: cancelAt

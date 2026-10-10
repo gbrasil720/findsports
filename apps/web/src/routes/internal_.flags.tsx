@@ -479,9 +479,13 @@ function FlagsPage() {
               salvar.mutate({ key: entrada.key, value: valor })
             }
             onResetar={() => {
+              // Com o efeito descrito no registro, a pergunta diz o que muda
+              // para quem usa; sem ele, sobra o valor que passa a valer.
               if (
                 window.confirm(
-                  `Voltar ${entrada.key} ao padrão? O valor gravado é apagado e passa a valer ${JSON.stringify(entrada.padrao)}.`
+                  entrada.efeitoPadrao
+                    ? `Voltar ${entrada.key} ao padrão? ${entrada.efeitoPadrao} Continuar?`
+                    : `Voltar ${entrada.key} ao padrão? O valor gravado é apagado e passa a valer ${JSON.stringify(entrada.padrao)}.`
                 )
               ) {
                 resetar.mutate({ key: entrada.key })

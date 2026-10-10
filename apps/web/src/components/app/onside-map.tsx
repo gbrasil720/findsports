@@ -19,10 +19,7 @@ import {
   limitesDoRaio
 } from '@/domain/geo-circle'
 import { env } from '@/lib/env'
-import {
-  criarEstiloDoMapa,
-  tilesUrlUsaArquivoPmtiles
-} from '@/lib/map-style'
+import { criarEstiloDoMapa, tilesUrlUsaArquivoPmtiles } from '@/lib/map-style'
 import { isRetryableError } from '@/lib/user-facing-error'
 import {
   aplicarPino,

@@ -31,8 +31,7 @@ describe('estilo do mapa (WEB-73)', () => {
   })
 
   it('URL .pmtiles legada usa protocolo pmtiles:// (WEB-218)', () => {
-    const archive =
-      'https://tiles.onside.sh/maps/onside-br-20260906.pmtiles'
+    const archive = 'https://tiles.onside.sh/maps/onside-br-20260906.pmtiles'
     const legado = criarEstiloDoMapa(archive, ORIGEM)
     expect(legado.sources.protomaps).toMatchObject({
       type: 'vector',

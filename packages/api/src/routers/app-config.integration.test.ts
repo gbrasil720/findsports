@@ -75,7 +75,7 @@ integrationTest(
       )
     ).toEqual({
       code: 'BAD_REQUEST',
-      message: 'days: Too big: expected number to be <=180'
+      message: 'days: Grande demais: esperava que o número fosse <= 180'
     })
     expect(
       await refusal(
@@ -86,7 +86,8 @@ integrationTest(
       )
     ).toEqual({
       code: 'BAD_REQUEST',
-      message: 'plan: Invalid option: expected one of "starter"|"pro"|"elite"'
+      message:
+        'plan: Opção inválida: esperava uma das seguintes opções: "starter"|"pro"|"elite"'
     })
 
     const entrada = (await caller.appConfig.list()).find((e) => e.key === KEY)

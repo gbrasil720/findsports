@@ -22,6 +22,18 @@ export function getScheduledCancelAt(
   return new Date(subscription.cancelAt)
 }
 
+/** O dia do cancelamento agendado, `DD/MM`: o do aviso e o do cabeçalho de `/plan`. */
+export function getCancelDay(
+  subscription: CancellableSubscription
+): string | null {
+  const cancelAt = getScheduledCancelAt(subscription)
+  if (!cancelAt) return null
+  return cancelAt.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit'
+  })
+}
+
 /**
  * O aviso que entra no lugar de "Próxima cobrança em …" — o mesmo texto em
  * `/admin/billing` e em `/plan`. Sem ponto final: quem usa pontua.
@@ -29,11 +41,6 @@ export function getScheduledCancelAt(
 export function getCancelNotice(
   subscription: CancellableSubscription
 ): string | null {
-  const cancelAt = getScheduledCancelAt(subscription)
-  if (!cancelAt) return null
-  const day = cancelAt.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit'
-  })
-  return `Cancela em ${day} — o plano segue até lá`
+  const day = getCancelDay(subscription)
+  return day ? `Cancela em ${day} — o plano segue até lá` : null
 }

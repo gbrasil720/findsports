@@ -118,7 +118,12 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
 }) => {
   const pub = await createPub({ subscription: null })
   await signIn(page, pub.user)
+  // O aviso de limite depende da política: só vale conferir depois dela.
+  const policy = page.waitForResponse((response) =>
+    response.url().includes('pub.getMyEventCreationPolicy')
+  )
   await page.goto('/admin')
+  await policy
 
   const panel = page.locator('#admin-visao')
   await expect(panel).toContainText('Sem plano')
@@ -126,4 +131,8 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
     panel.getByRole('link', { name: 'Escolher um plano' })
   ).toHaveAttribute('href', '/plan?origin=admin')
   await expect(panel).not.toContainText('Plano atual')
+  // Sem assinatura o bar cai no limite do Starter, mas não lê aviso do
+  // Starter nem a contagem dele: o Starter é só o default da coluna.
+  await expect(panel).not.toContainText(/Plano Starter —|no plano Starter/)
+  await expect(panel).not.toContainText(/restantes?/)
 })
