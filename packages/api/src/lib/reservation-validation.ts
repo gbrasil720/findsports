@@ -6,7 +6,7 @@ import type { ReservationStatus } from '@findsports_oficial/db/schema/reservatio
 import { TRPCError } from '@trpc/server'
 import { COMMERCIAL_TIME_ZONE } from './commercial-analytics/commercial-day'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
-import type { JanelaLimite } from './waitlist-rate-limit'
+import type { JanelaLimite } from './rate-limit-store'
 
 /**
  * Regras da validação de código de reserva (WEB-126) que não dependem do

@@ -1,7 +1,6 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, eq } from '@findsports_oficial/db'
 import { stripeSubscription } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
-import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { APIError } from 'better-auth/api'
 import type Stripe from 'stripe'
 import { liveStripeSubscriptionId } from './account-deletion-policy'
@@ -77,16 +76,6 @@ export async function endLiveSubscriptionOf(userId: string, client: Stripe) {
       code: 'SUBSCRIPTION_CANCEL_FAILED'
     })
   }
-}
-
-/**
- * Depois de apagar a conta: a inscrição da waitlist com o e-mail dela sai
- * junto (WEB-342). Não há FK entre as duas, a ligação é só o e-mail.
- */
-export async function deleteWaitlistEntryOf(email: string) {
-  await db
-    .delete(waitlistEntries)
-    .where(sql`lower(${waitlistEntries.email}) = ${email.toLowerCase()}`)
 }
 
 /**

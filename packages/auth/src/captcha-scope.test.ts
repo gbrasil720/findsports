@@ -3,11 +3,10 @@ import { betterAuth } from 'better-auth'
 import { memoryAdapter } from 'better-auth/adapters/memory'
 import { captcha } from 'better-auth/plugins'
 
-// `/api/waitlist/activate` entra com a conta recém-ativada por `auth.api`, sem
-// token do Turnstile. Isso só funciona porque o plugin `captcha` age no
-// `onRequest` do roteador HTTP, e não nos hooks que `auth.api` também roda.
-// Se uma versão do better-auth mudar isso, a ativação passa a mandar a pessoa
-// para /login — este teste quebra antes.
+// O plugin `captcha` age no `onRequest` do roteador HTTP, e não nos hooks que
+// `auth.api` também roda: chamada do servidor por `auth.api` entra sem token
+// do Turnstile. Se uma versão do better-auth mudar isso, este teste quebra
+// antes.
 test('captcha barra o login HTTP sem token, mas não a chamada por auth.api', async () => {
   const baseURL = 'http://localhost:3001'
   const auth = betterAuth({

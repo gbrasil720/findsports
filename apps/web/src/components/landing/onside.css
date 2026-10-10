@@ -375,10 +375,6 @@ html:has(.onside-page) {
   border-color: var(--onside-acid);
 }
 
-.onside-page .onside-waitlist-form .onside-full-button {
-  margin-top: 16px;
-}
-
 /* Reset shadcn Button when used as onside button */
 .onside-page .onside-button.onside-button,
 .onside-page button.onside-button {
@@ -1841,79 +1837,11 @@ html:has(.onside-page) {
   font-size: 14px;
 }
 
-/* ─── Waitlist fan ─── */
-.onside-page .onside-waitlist {
-  background: var(--onside-ink);
-  color: var(--onside-paper);
-}
-
-.onside-page .onside-waitlist-grid {
-  display: grid;
-  grid-template-columns: 1fr 0.84fr;
-  gap: 120px;
-  align-items: center;
-}
-
-.onside-page .onside-waitlist-grid > * {
-  min-width: 0;
-}
-
-.onside-page .onside-waitlist-copy h2 {
-  font-size: clamp(70px, 7vw, 108px);
-}
-
-.onside-page .onside-waitlist-copy h2 em {
-  color: var(--onside-acid);
-}
-
-.onside-page .onside-waitlist-copy > p:not(.onside-section-kicker) {
-  max-width: 590px;
-  font-size: 18px;
-  color: #bbb8b0;
-}
-
-.onside-page .onside-waitlist-facts {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin-top: 32px;
-  font-family: var(--onside-mono);
-  font-size: 8px;
-  text-transform: uppercase;
-}
-
-.onside-page .onside-waitlist-facts > span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.onside-page .onside-waitlist-facts .onside-inline-icon {
-  color: var(--onside-acid);
-}
-
-.onside-page .onside-waitlist-form {
-  position: relative;
-  padding: 34px;
-  border: 1.5px solid rgb(255 255 255 / 50%);
-  background: #191915;
-  box-shadow: 10px 10px 0 var(--onside-acid);
-}
-
 .onside-page .onside-form-number {
   margin: 2px 0 7px;
   font-family: var(--onside-mono);
   font-size: 8px;
   color: var(--onside-acid);
-}
-
-.onside-page .onside-waitlist-form label,
-.onside-page .onside-waitlist-form [data-slot="field-label"] {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--onside-paper);
 }
 
 .onside-page .onside-input-wrap {
@@ -1926,25 +1854,6 @@ html:has(.onside-page) {
 
 .onside-page .onside-input-wrap span {
   font-family: var(--onside-mono);
-  color: #77766f;
-}
-
-.onside-page .onside-waitlist-form .onside-input,
-.onside-page .onside-waitlist-form input.onside-input {
-  width: 100%;
-  border: 0 !important;
-  outline: 0;
-  padding: 14px 0;
-  background: transparent !important;
-  color: white !important;
-  font-size: 19px;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  height: auto !important;
-  min-height: 44px;
-}
-
-.onside-page .onside-waitlist-form .onside-input::placeholder {
   color: #77766f;
 }
 
@@ -2561,8 +2470,7 @@ html:has(.onside-page) {
 
   .onside-page .onside-definition-grid,
   .onside-page .onside-bars-grid,
-  .onside-page .onside-trust-grid,
-  .onside-page .onside-waitlist-grid {
+  .onside-page .onside-trust-grid {
     grid-template-columns: 1fr;
     gap: 65px;
   }
@@ -2730,7 +2638,6 @@ html:has(.onside-page) {
   .onside-page .onside-centered-intro h2,
   .onside-page .onside-bars-copy h2,
   .onside-page .onside-trust h2,
-  .onside-page .onside-waitlist-copy h2,
   .onside-page .onside-faq h2 {
     font-size: clamp(52px, 14vw, 74px);
   }
@@ -2880,19 +2787,6 @@ html:has(.onside-page) {
 
   .onside-page .onside-trust-grid {
     gap: 38px;
-  }
-
-  .onside-page .onside-waitlist-grid {
-    gap: 50px;
-  }
-
-  .onside-page .onside-waitlist-form {
-    padding: 25px 20px;
-    box-shadow: 7px 7px 0 var(--onside-acid);
-  }
-
-  .onside-page .onside-waitlist-form .onside-input {
-    font-size: 16px;
   }
 
   .onside-page .onside-bar-form {

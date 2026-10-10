@@ -120,9 +120,8 @@ function LoginPage() {
           O JOGO <span className="text-[var(--onside-acid)]">COMEÇA AQUI.</span>
         </h2>
         {/*
-         * "o maior mapa de bares esportivos do Brasil" era superlativo de
-         * produto lançado, numa tela cujo próprio fluxo depende de convite e
-         * lista de espera. A frase que fica é a que o produto já cumpre.
+         * "o maior mapa de bares esportivos do Brasil" era superlativo que o
+         * produto ainda não sustenta. A frase que fica é a que ele já cumpre.
          */}
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
           Entre na sua conta e veja quais bares estão passando o seu jogo.

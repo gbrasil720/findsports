@@ -48,10 +48,6 @@ describe('router contract', () => {
     expectTypeOf(appRouter).toHaveProperty('pub')
   })
 
-  it('router exposes waitlist', () => {
-    expectTypeOf(appRouter).toHaveProperty('waitlist')
-  })
-
   it('recommendations exposes the personalized read and feedback controls', () => {
     expectTypeOf(appRouter).toHaveProperty('recommendations')
     expectTypeOf(appRouter.recommendations).toHaveProperty('get')

@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { insert, query } from '../../fixtures/db'
 import { DEFAULT_PASSWORD } from '../../fixtures/users'
 
 // Telas e dados repetidos entre os specs de `tests/auth/`.
@@ -9,29 +8,6 @@ export const VERIFICATION_SUBJECT = 'Confirme seu e-mail para entrar em campo'
 
 export const uniqueEmail = (prefix: string) =>
   `${prefix}-${randomUUID()}@e2e.test`
-
-/** Inscrição confirmada e aprovada: o que o portão fechado exige no cadastro. */
-export async function approveOnWaitlist(
-  email: string,
-  role: 'fan' | 'pub' = 'fan'
-) {
-  await insert('waitlist_entries', {
-    id: randomUUID(),
-    email,
-    role,
-    city: 'São Paulo',
-    confirmed_at: new Date(),
-    approved_at: new Date()
-  })
-}
-
-export async function admittedAt(email: string) {
-  const [row] = await query<{ admitted_at: Date | null }>(
-    'SELECT admitted_at FROM "user" WHERE email = $1',
-    [email]
-  )
-  return row?.admitted_at ?? null
-}
 
 /** Preenche e envia o /signup já aberto, com o papel que estiver marcado. */
 export async function submitSignup(

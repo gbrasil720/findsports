@@ -9,8 +9,7 @@
  * Uma linha JSON por chamada, com o que permite investigar: qual
  * procedimento, quanto demorou, se falhou e por quê. O que NÃO entra é tão
  * importante quanto: nada de entrada do usuário, nada de identificador de
- * pessoa. `waitlist.join` carrega e-mail e telefone; `pub.updateMe` carrega
- * endereço. Log não é lugar para isso, e uma vez gravado não se desgrava.
+ * pessoa. `pub.updateMe` carrega endereço e telefone. Log não é lugar para isso, e uma vez gravado não se desgrava.
  */
 
 /** Acima disto, a chamada é marcada como lenta e merece investigação. */

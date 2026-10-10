@@ -128,14 +128,14 @@ describe('e-mail de verificação Onside', () => {
         to: 'ana@example.com',
         subject: 'Confirme seu e-mail',
         html: '<p>Olá</p>',
-        text: 'Olá\n\nhttps://onside.app/confirm-waitlist?token=abc',
+        text: 'Olá\n\nhttps://onside.app/verify-email?token=abc',
         fetcher: async () => {
           throw new Error('não deveria chamar o Resend')
         }
       })
       expect(result).toEqual({ delivered: false })
       expect(String(warnings[0])).toContain(
-        'https://onside.app/confirm-waitlist?token=abc'
+        'https://onside.app/verify-email?token=abc'
       )
     } finally {
       console.warn = warn
@@ -206,15 +206,13 @@ describe('e-mail de verificação Onside', () => {
       subject: 'Onside aberta',
       html: '<p>Olá</p>',
       text: 'Olá',
-      idempotencyKey: 'waitlist-launch-entry-1',
+      idempotencyKey: 'campanha-entrada-1',
       fetcher: async (input, init) => {
         request = new Request(input, init)
         return new Response('{}', { status: 200 })
       }
     })
-    expect(request?.headers.get('idempotency-key')).toBe(
-      'waitlist-launch-entry-1'
-    )
+    expect(request?.headers.get('idempotency-key')).toBe('campanha-entrada-1')
   })
 
   it('usa assets de imagem públicos e estáveis nos e-mails', () => {

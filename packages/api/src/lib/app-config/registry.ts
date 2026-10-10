@@ -1,8 +1,6 @@
 import { z } from 'zod'
 import { ptBR } from 'zod/locales'
 
-import { WAITLIST_LIMITES_PADRAO } from '../waitlist-rate-limit'
-
 /**
  * Registro das chaves de configuração em tempo de execução (ESC-19).
  *
@@ -27,18 +25,6 @@ import { WAITLIST_LIMITES_PADRAO } from '../waitlist-rate-limit'
  * inclusive sem sessão. Só marque assim o que a interface precisa saber para
  * não mentir para o usuário — nunca o que só o servidor deveria decidir.
  */
-
-/** Uma janela de contagem: quantas vezes, em quanto tempo. */
-const janelaSchema = z.object({
-  /** Teto de eventos na janela. Mínimo 1: zero trancaria todo mundo fora. */
-  max: z.number().int().min(1).max(10_000),
-  /** Tamanho da janela. Entre um segundo e um dia. */
-  windowMs: z
-    .number()
-    .int()
-    .min(1_000)
-    .max(24 * 60 * 60 * 1_000)
-})
 
 /**
  * Amarra `padrao` ao tipo do próprio `schema`. Sem isto o par pode divergir
@@ -177,51 +163,6 @@ export const APP_CONFIG_DEFINITIONS = {
       'código do cupom no Stripe.',
     efeitoPadrao:
       'O desconto de fundador deixará de ser aplicado em contratações novas.'
-  }),
-
-  /**
-   * Freio da waitlist pública, por IP e por e-mail normalizado.
-   *
-   * Os números atuais cabem em humano preenchendo formulário e cortam o pico
-   * de ~74 inserts/s medido no teste de carga. O risco conhecido é o oposto:
-   * faculdade, empresa ou operadora atrás de NAT compartilham um IP, e num
-   * dia de lançamento oito cadastros por dez minutos acaba rápido.
-   *
-   * `enabled: false` desliga o freio inteiro. Existe para o caso em que o
-   * limitador é o problema — contenção na tabela `rate_limit`, por exemplo —
-   * e não a carga.
-   */
-  'waitlist.rate_limit': definir({
-    schema: z.object({
-      enabled: z.boolean(),
-      ip: janelaSchema,
-      email: janelaSchema
-    }),
-    padrao: WAITLIST_LIMITES_PADRAO,
-    publico: false,
-    descricao:
-      'Limite de cadastros na waitlist por IP e por e-mail. Afrouxe durante ' +
-      'pico de lançamento; desligue só se o próprio limitador for o gargalo.'
-  }),
-
-  /**
-   * Portão de entrada pela lista de espera.
-   *
-   * A plataforma começa por convite. Fechado, novos acessos dependem de
-   * aprovação; aberto, cadastro e login admitem a conta de forma persistente.
-   *
-   * A configuração persistida é soberana. O ambiente define apenas o padrão
-   * inicial usado antes da primeira alteração pelo painel.
-   */
-  'launch.waitlist_gate': definir({
-    schema: z.object({
-      signup: z.boolean()
-    }),
-    padrao: { signup: process.env.LAUNCH_ADMISSION_MODE !== 'open' },
-    publico: true,
-    descricao:
-      'Fecha o cadastro por aprovação. O painel pode abrir ou fechar o modo ' +
-      'global sem novo deploy.'
   }),
 
   /**

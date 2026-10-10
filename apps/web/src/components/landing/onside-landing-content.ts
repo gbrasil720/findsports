@@ -19,12 +19,12 @@ export type JourneyStep = {
 type FaqItem = { id: string; question: string; answer: string }
 
 export const LANDING_COPY = {
-  primaryCta: 'Quero a Onside na minha cidade',
+  primaryCta: 'Criar conta',
   hero: {
     eyebrow: 'A Onside está chegando',
     title: '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.',
     body: 'Com a Onside, você vai encontrar bares com a infraestrutura certa para chamar seus amigos e assistir ao jogo, comparando localização e preço antes de sair de casa.',
-    note: 'Cadastre sua cidade e seu e-mail. Você será avisado no lançamento.'
+    note: 'Cadastro aberto para torcedores e bares.'
   },
   problem: {
     kicker: 'O problema',
@@ -34,7 +34,7 @@ export const LANDING_COPY = {
   solution: {
     kicker: 'Escolha com confiança',
     title: 'Garanta que a experiência vai ser boa antes de convidar a galera.',
-    body: 'Com a Onside, você não vai precisar arriscar. No lançamento, poderá escolher um bar conhecendo os detalhes que importam para o seu rolê.',
+    body: 'Com a Onside, você não precisa arriscar. Escolha um bar conhecendo os detalhes que importam para o seu rolê.',
     closing:
       'Tudo pensado para você convidar a galera com mais confiança de que escolheu o lugar certo.'
   },
@@ -60,11 +60,6 @@ export const LANDING_COPY = {
     closing:
       'A Onside está sendo criada para quem quer assistir ao esporte fora de casa e com os amigos.'
   },
-  waitlist: {
-    kicker: 'Ajude a Onside a chegar',
-    title: 'Leve a Onside à sua cidade.',
-    body: 'A demanda dos torcedores vai ajudar a definir as primeiras cidades. Cadastre sua cidade e seu e-mail para ser avisado no lançamento.'
-  },
   final: {
     kicker: 'O jogo é aqui',
     title: 'Onde vai passar o próximo jogo? A resposta está chegando.'
@@ -81,7 +76,7 @@ export const TICKER_BENEFITS: TickerBenefitItem[] = [
   { id: 'b1', text: 'BUSQUE PELO JOGO' },
   { id: 'b2', text: 'COMPARE O AMBIENTE' },
   { id: 'b3', text: 'CONFIRA INFRAESTRUTURA E PREÇO' },
-  { id: 'b4', text: 'CADASTRE SUA CIDADE' }
+  { id: 'b4', text: 'CRIE SUA CONTA' }
 ]
 
 export const PROBLEM_ITEMS: ProblemItem[] = [
@@ -148,7 +143,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: 'f1',
     question: 'A Onside já funciona na minha cidade?',
     answer:
-      'Ainda não. Estamos registrando a demanda dos torcedores e preparando os primeiros bares para definir as cidades do lançamento.'
+      'O cadastro está aberto para torcedores e bares de qualquer cidade. Os bares aparecem na busca conforme se cadastram, então a quantidade de opções varia de um lugar para outro.'
   },
   {
     id: 'f2',
@@ -160,7 +155,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     id: 'f3',
     question: 'O que poderei comparar?',
     answer:
-      'A proposta para o lançamento é mostrar a infraestrutura do bar, o preço médio, a distância e as partidas transmitidas.'
+      'A infraestrutura do bar, o preço médio, a distância e as partidas transmitidas.'
   },
   {
     id: 'f4',
@@ -169,15 +164,9 @@ export const FAQ_ITEMS: FaqItem[] = [
       'Não. Futebol será o ponto de partida, mas a busca poderá incluir basquete, vôlei, automobilismo, lutas e outros eventos.'
   },
   {
-    id: 'f5',
-    question: 'Como as primeiras cidades serão escolhidas?',
-    answer:
-      'Vamos avaliar a demanda registrada por torcedores e a disponibilidade dos bares abordados pela nossa equipe em cada cidade.'
-  },
-  {
     id: 'f6',
     question: 'O que acontece com meus dados?',
     answer:
-      'Usamos sua cidade para avaliar a demanda e seu e-mail para confirmar o cadastro e avisar sobre o lançamento.'
+      'Usamos seu e-mail para criar a conta e confirmar o cadastro. Os detalhes estão na Política de Privacidade.'
   }
 ]

@@ -94,7 +94,7 @@ test('captcha recusado vira instrução, não falta de permissão', () => {
       'credentials'
     ).message
   ).toBe(message)
-  // tRPC (waitlist)
+  // Sem código: basta a mensagem falar em captcha.
   expect(
     getUserFacingError(
       Object.assign(new Error('Falha na verificação de segurança (captcha).'), {
