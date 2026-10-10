@@ -250,8 +250,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
                 b: 'No estabelecimento:'
               },
               ' quem iniciou o cadastro e chegou até a página de planos.'
-            ],
-            'Conversão do link de abertura de cadastro até o onboarding concluído.'
+            ]
           ]
         },
         {
