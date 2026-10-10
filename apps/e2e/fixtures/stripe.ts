@@ -36,6 +36,8 @@ export function stripeSubscription(options: {
   founderDiscount?: boolean
   /** Cliente no Stripe; por padrão um que não é de ninguém no nosso banco. */
   customerId?: string
+  /** Últimos 4 dígitos do cartão salvo no checkout; sem isto, sem cartão. */
+  cardLast4?: string
 }) {
   const lookupKey = options.lookupKey ?? LOOKUP_KEY[options.plan]
   return {
@@ -48,6 +50,14 @@ export function stripeSubscription(options: {
       ? Math.floor(options.cancelAt.getTime() / 1000)
       : null,
     cancel_at_period_end: false,
+    default_payment_method: options.cardLast4
+      ? {
+          id: `pm_e2e_${options.id}`,
+          object: 'payment_method',
+          type: 'card',
+          card: { brand: 'visa', last4: options.cardLast4 }
+        }
+      : null,
     discounts: options.founderDiscount
       ? [
           {

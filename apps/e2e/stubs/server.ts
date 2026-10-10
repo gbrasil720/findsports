@@ -27,9 +27,11 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   cliente — vazia para quem ainda não passou pelo checkout;
  * - `GET /v1/subscriptions/{id}`: o que o teste semeou em
  *   `POST /stripe/subscriptions`, ou 404 — é o que o webhook lê. Com
- *   `expand[]=customer`, o cliente vem como objeto, com o `balance` semeado
+ *   `expand[]=customer…`, o cliente vem como objeto, com o `balance` semeado
  *   em `POST /stripe/balances` (`{ customer, balance, nextAmountDue }`, em
- *   centavos; crédito é saldo negativo) ou zero (WEB-350);
+ *   centavos; crédito é saldo negativo) ou zero (WEB-350). A forma de
+ *   pagamento semeada (`default_payment_method`) só vem como objeto com
+ *   `expand[]=default_payment_method`; sem ele, só o id, como no Stripe;
  * - `POST /v1/invoices/create_preview`: a prévia da próxima fatura da
  *   assinatura semeada, com `amount_due` = `nextAmountDue`; 404 sem ela;
  * - `GET /v1/coupons/{id}`: cupom válido, menos o id `esgotado`;
@@ -212,23 +214,28 @@ async function stripe(request: Request, url: URL) {
   const subscription = /^\/subscriptions\/([^/]+)$/.exec(path)
   if (request.method === 'GET' && subscription) {
     const found = stripeSubscriptions.get(subscription[1] ?? '') as
-      | { customer: string }
+      | { customer: string; default_payment_method?: { id: string } | null }
       | undefined
     if (!found) {
       return stripeError(404, `No such subscription: ${subscription[1]}`)
     }
-    return Response.json(
-      query['expand[0]'] === 'customer'
+    const expand = Object.entries(query)
+      .filter(([key]) => key.startsWith('expand['))
+      .map(([, value]) => value)
+    return Response.json({
+      ...found,
+      default_payment_method: expand.includes('default_payment_method')
+        ? (found.default_payment_method ?? null)
+        : (found.default_payment_method?.id ?? null),
+      customer: expand.some((path) => path.split('.')[0] === 'customer')
         ? {
-            ...found,
-            customer: {
-              id: found.customer,
-              object: 'customer',
-              balance: stripeBalances.get(found.customer)?.balance ?? 0
-            }
+            id: found.customer,
+            object: 'customer',
+            balance: stripeBalances.get(found.customer)?.balance ?? 0,
+            invoice_settings: { default_payment_method: null }
           }
-        : found
-    )
+        : found.customer
+    })
   }
 
   if (request.method === 'POST' && path === '/invoices/create_preview') {

@@ -5,9 +5,10 @@ const reais = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 /**
- * Crédito do cliente e valor da próxima fatura, lidos do Stripe (WEB-350).
- * Consulta própria, fora de `getMySubscription`: enquanto carrega, ou se o
- * Stripe falhar, não desenha nada e o card do plano aparece como sempre.
+ * Crédito do cliente, valor da próxima fatura e cartão salvo, lidos do Stripe
+ * (WEB-350). Consulta própria, fora de `getMySubscription`: enquanto carrega,
+ * ou se o Stripe falhar, não desenha nada e o card do plano aparece como
+ * sempre.
  */
 export function BillingBalance() {
   const trpc = useTRPC()
@@ -17,8 +18,8 @@ export function BillingBalance() {
     retry: false
   })
   if (!data) return null
-  const { creditReais, nextChargeReais } = data
-  if (creditReais === null && nextChargeReais === null) return null
+  const { creditReais, nextChargeReais, card } = data
+  if (creditReais === null && nextChargeReais === null && !card) return null
 
   return (
     <div className="onside-callout onside-callout-stone mb-4 flex-col gap-1 text-sm">
@@ -34,6 +35,7 @@ export function BillingBalance() {
           crédito; as próximas cobranças serão descontadas dele.
         </p>
       ) : null}
+      {card ? <p>Cartão •••• {card.last4} salvo</p> : null}
     </div>
   )
 }
