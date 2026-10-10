@@ -9,6 +9,7 @@ import {
   RECEIPT_MAX_ATTEMPTS,
   RECEIPT_MAX_WAIT_MS,
   receiptChargeLabel,
+  receiptCycleLabel,
   receiptPrintDurationMs,
   receiptStampLabel,
   resolveReceiptStage,
@@ -227,6 +228,13 @@ describe('formatação do recibo', () => {
   test('trial fala de primeira cobrança', () => {
     expect(receiptChargeLabel('trialing')).toBe('Primeira cobrança')
     expect(receiptChargeLabel('active')).toBe('Próxima cobrança')
+  })
+
+  test('cancelamento agendado não anuncia cobrança nem renovação (WEB-335)', () => {
+    expect(receiptChargeLabel('active', true)).toBe('Cancela em')
+    expect(receiptChargeLabel('trialing', true)).toBe('Cancela em')
+    expect(receiptCycleLabel('/mês')).toBe('Mensal, renovação automática')
+    expect(receiptCycleLabel('/mês', false)).toBe('Mensal, sem renovação')
   })
 
   test('carimbo de trial não afirma pagamento', () => {

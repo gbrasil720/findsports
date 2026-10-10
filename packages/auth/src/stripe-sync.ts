@@ -100,6 +100,25 @@ async function findBarOf(stripeSubscription: Stripe.Subscription) {
 }
 
 /**
+ * Quando a assinatura acaba por cancelamento agendado, ou `null` (WEB-335).
+ * O portal marca de dois jeitos: no billing `flexible` grava `cancel_at` e
+ * deixa `cancel_at_period_end` falso; no clássico liga a flag, e o fim é o do
+ * período. Reativar zera os dois, e a coluna volta a `null`.
+ */
+function scheduledCancelOf(
+  stripeSubscription: Pick<
+    Stripe.Subscription,
+    'cancel_at' | 'cancel_at_period_end'
+  >,
+  currentPeriodEnd: number
+): Date | null {
+  const at =
+    stripeSubscription.cancel_at ??
+    (stripeSubscription.cancel_at_period_end ? currentPeriodEnd : null)
+  return at ? new Date(at * 1000) : null
+}
+
+/**
  * Grava no nosso banco o estado ATUAL de uma assinatura do Stripe.
  *
  * Recebe a assinatura como está no Stripe agora, não o corpo do evento: é o
@@ -158,6 +177,7 @@ export async function applyStripeSubscription(
     provider: 'stripe' as const,
     externalSubscriptionId: stripeSubscription.id,
     currentPeriodEnd: new Date(item.current_period_end * 1000),
+    cancelAt: scheduledCancelOf(stripeSubscription, item.current_period_end),
     monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription)
   }
   await db
