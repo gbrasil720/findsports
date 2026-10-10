@@ -111,6 +111,23 @@ export function normalizeAmenityIds(ids: readonly number[]): number[] {
   return [...new Set(ids.filter((id) => BY_ID.has(id)))].sort((a, b) => a - b)
 }
 
+const RESERVATIONS_AMENITY_ID = 10
+
+/**
+ * O que o perfil público mostra. "Aceita reserva" é marcada à mão, e o perfil
+ * só tem um caminho de reserva: o da Onside. Sem recebimento de fato (Elite
+ * vigente e interruptor ligado), a característica prometeria um botão que não
+ * existe (WEB-341). O que o dono marcou continua gravado.
+ */
+export function publicAmenityIds(
+  ids: readonly number[],
+  receivesReservations: boolean
+): number[] {
+  return ids.filter(
+    (id) => receivesReservations || id !== RESERVATIONS_AMENITY_ID
+  )
+}
+
 export function amenitiesByGroup(ids: readonly number[]) {
   const selected = new Set(ids)
 

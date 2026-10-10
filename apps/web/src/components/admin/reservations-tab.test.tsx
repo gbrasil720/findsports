@@ -97,14 +97,14 @@ const settle = () =>
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
 
-async function render() {
+async function render(plan = { receiving: true, elite: true }) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
     root?.render(
       <QueryClientProvider client={queryClient}>
-        <ReservationsTab active />
+        <ReservationsTab active {...plan} />
       </QueryClientProvider>
     )
   })
@@ -121,6 +121,26 @@ test('the cap panel polls on the same interval as the queue', async () => {
   const capacity = observerOf(trpc.barReservations.capacity.queryKey())
   expect(queue?.options.refetchInterval).toBeGreaterThan(0)
   expect(capacity?.options.refetchInterval).toBe(queue?.options.refetchInterval)
+})
+
+test('bar que perdeu o Elite vê a fila com o aviso, sem o teto (WEB-341)', async () => {
+  await render({ receiving: false, elite: false })
+
+  expect(document.querySelector('[role="note"]')?.textContent).toContain(
+    'Seu bar não está recebendo pedidos novos'
+  )
+  expect(document.querySelector('article')?.textContent).toContain(
+    'Marina Souza'
+  )
+  expect(document.getElementById('cap-title')).toBeNull()
+  expect(observerOf(trpc.barReservations.capacity.queryKey())).toBeUndefined()
+})
+
+test('bar que recebe reservas não vê o aviso', async () => {
+  await render()
+
+  expect(document.querySelector('[role="note"]')).toBeNull()
+  expect(document.getElementById('cap-title')).not.toBeNull()
 })
 
 test('each request shows the offer frozen in the reservation (WEB-297)', async () => {

@@ -2,7 +2,7 @@ import type { Browser, Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { createPub } from '../../fixtures/pubs'
+import { createPub, inDays } from '../../fixtures/pubs'
 import { createEvent, createReservation } from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 
@@ -180,4 +180,64 @@ test('teto vai até 5000: acima disso a tela barra e o servidor recusa', async (
       return bar?.reservation_cap
     })
     .toBe(5000)
+})
+
+// WEB-341: o trial vence com reserva confirmada em aberto. O bar não recebe
+// pedido novo, mas ainda vê e valida o que já aceitou.
+test('trial Elite vencido com reserva confirmada: a aba Reservas fica, o código valida e o perfil para de anunciar reserva', async ({
+  page,
+  browser
+}) => {
+  const pub = await createPub({
+    subscription: { status: 'trialing', currentPeriodEnd: inDays(-1) },
+    // 1 = "Telão / projetor", 10 = "Aceita reserva".
+    bar: { accepts_reservations: true, amenities: [1, 10] }
+  })
+  const { eventId } = await createEvent(pub.barId)
+  const confirmed = await createReservation(eventId, {
+    offerSnapshot: 'Chopp em dobro'
+  })
+  await signIn(page, pub.user)
+
+  await page.goto('/admin#admin-reservas')
+  await expect(page.getByRole('tab', { name: 'Reservas' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  const panel = page.getByRole('tabpanel', { name: 'Reservas' })
+  await expect(panel.getByRole('note')).toContainText(
+    'Seu bar não está recebendo pedidos novos'
+  )
+  const card = panel.getByRole('article', {
+    name: new RegExp(confirmed.guestName)
+  })
+  await expect(card).toContainText('Confirmada')
+  await expect(card).toContainText('Chopp em dobro')
+  // O teto é recurso do plano: sem Elite, não aparece.
+  await expect(page.getByRole('region', { name: 'Teto por jogo' })).toHaveCount(
+    0
+  )
+
+  await page.goto('/admin/validate')
+  await page.getByLabel('Código', { exact: true }).fill(confirmed.code)
+  await page.getByRole('button', { name: 'Buscar reserva' }).click()
+  await expect(
+    page.getByRole('heading', { name: `Reserva de ${confirmed.guestName}` })
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await page
+    .getByRole('dialog', { name: 'Registrar chegada?' })
+    .getByRole('button', { name: 'Confirmar chegada' })
+    .click()
+  await expect(
+    page.getByText('Chegada registrada. 1 de 2 validados.')
+  ).toBeVisible()
+
+  const fan = await fanSeesPub(browser, pub.barId)
+  await expect(fan.fanPage.getByText('Telão / projetor')).toBeVisible()
+  await expect(fan.fanPage.getByText('Aceita reserva')).toHaveCount(0)
+  await expect(
+    fan.fanPage.getByRole('button', { name: 'Reservar mesa' })
+  ).toHaveCount(0)
+  await fan.close()
 })
