@@ -84,6 +84,11 @@ function IntakeSwitch({
         ? 'Sua oferta da casa está guardada, mas só aparece no perfil com o recebimento ligado.'
         : 'Nenhum pedido chega enquanto estiver desligado.'
 
+  // Ligado sem Elite não recebe pedido nenhum: aparece pausado, em cinza, e
+  // continua clicável para desligar (WEB-353).
+  const paused = !eligible && acceptsReservations
+  const receiving = eligible && acceptsReservations
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -100,7 +105,7 @@ function IntakeSwitch({
           disabled={isSaving || (!eligible && !acceptsReservations)}
           onClick={() => void toggle()}
           className={`flex min-h-11 items-center gap-3 border border-[var(--onside-ink)] px-3 py-2 font-bold text-xs transition-colors disabled:opacity-50 ${
-            acceptsReservations
+            receiving
               ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
               : 'bg-[var(--onside-paper)] text-[var(--onside-muted)]'
           }`}
@@ -109,14 +114,16 @@ function IntakeSwitch({
             aria-hidden="true"
             className="grid size-4 place-items-center border border-current text-[10px] leading-none"
           >
-            {acceptsReservations ? '✓' : ''}
+            {receiving ? '✓' : ''}
           </span>
           <span className="onside-kicker text-[10px]">
             {isSaving
               ? 'Salvando…'
-              : acceptsReservations
-                ? 'Ligado'
-                : 'Desligado'}
+              : paused
+                ? 'Pausado (sem Elite)'
+                : acceptsReservations
+                  ? 'Ligado'
+                  : 'Desligado'}
           </span>
         </button>
       </div>

@@ -710,6 +710,13 @@ integrationTest('validar exige benefício Elite vigente', async () => {
         continue
       }
 
+      // Com reserva em aberto o bar ainda valida (WEB-341, coberto em
+      // `reservations.integration.test.ts`); a recusa é de quem não tem o que
+      // honrar.
+      await ctx.db
+        .update(reservation)
+        .set({ status: 'cancelled' })
+        .where(eq(reservation.id, ctx.reservationId))
       for (const attempt of [
         () => ctx.owner.lookup({ code: ctx.code }),
         () => ctx.owner.registerArrival(arrival),

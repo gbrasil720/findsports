@@ -34,6 +34,45 @@ export const LAPSED_COPY: Record<
 }
 
 /**
+ * Plano mostrado no painel (WEB-344): o gravado mais o pé da assinatura, para
+ * a Visão geral, o Desempenho e `/admin/billing` contarem a mesma história.
+ * Recurso pago continua decidindo por `currentPlan`. `note` acompanha o plano
+ * em vigor onde ele aparece no lugar do gravado; `null` com o plano em dia.
+ */
+export function getShownPlan(
+  subscription:
+    | {
+        plan: keyof typeof PLAN_NAMES
+        standing: SubscriptionStanding | null
+      }
+    | null
+    | undefined
+): { name: string; label: string; note: string | null } {
+  // Sem linha em `subscription`, o Starter de `bar.plan` é só o default da
+  // coluna: não é plano contratado.
+  if (!subscription?.standing) {
+    return {
+      name: 'Sem plano',
+      label: 'Escolher um plano',
+      note: 'Nenhuma assinatura ativa'
+    }
+  }
+  const name = PLAN_NAMES[subscription.plan]
+  if (subscription.standing === 'current') {
+    return { name, label: 'Plano atual', note: null }
+  }
+  if (subscription.standing === 'ended') {
+    return {
+      name,
+      label: 'Assinatura encerrada',
+      note: `Assinatura do plano ${name} encerrada`
+    }
+  }
+  const copy = LAPSED_COPY[subscription.standing]
+  return { name, label: copy.label, note: copy.title(name) }
+}
+
+/**
  * Pro ou Elite parado cai no limite de jogos do Starter (WEB-129), e o que
  * destrava é regularizar a assinatura, não fazer upgrade (WEB-331). Devolve os
  * textos já com o nome do plano, ou `null` para quem segue lendo o aviso do

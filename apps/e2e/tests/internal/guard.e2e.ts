@@ -8,7 +8,8 @@ const INTERNAL_ROUTES = [
   '/internal/waitlist',
   '/internal/manage-users',
   '/internal/flags',
-  '/internal/attendance'
+  '/internal/attendance',
+  '/internal/bars'
 ]
 
 test('visitante é mandado para o /login em toda rota interna', async ({
@@ -44,7 +45,8 @@ test.describe('admin', () => {
       ['Lista de Espera', '/internal/waitlist'],
       ['Gerenciar Usuários', '/internal/manage-users'],
       ['Configuração', '/internal/flags'],
-      ['Comparecimento', '/internal/attendance']
+      ['Comparecimento', '/internal/attendance'],
+      ['Bares e Assinaturas', '/internal/bars']
     ] as const
 
     for (const [name, url] of panels) {

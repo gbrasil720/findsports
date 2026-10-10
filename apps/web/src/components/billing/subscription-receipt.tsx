@@ -59,6 +59,8 @@ type Props = {
   monthlyDiscountReais?: number | null
   status: string
   currentPeriodEnd: Date | string | null
+  /** Fim marcado por cancelamento agendado (WEB-335); null sem agendamento. */
+  cancelAt: Date | null
   subscriptionRef: string | null
   barName: string | null
   issuedAt: Date
@@ -97,6 +99,7 @@ export function SubscriptionReceipt({
   monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
+  cancelAt,
   subscriptionRef,
   barName,
   issuedAt,
@@ -164,6 +167,7 @@ export function SubscriptionReceipt({
           monthlyDiscountReais={monthlyDiscountReais}
           status={status}
           currentPeriodEnd={currentPeriodEnd}
+          cancelAt={cancelAt}
           subscriptionRef={subscriptionRef}
           barName={barName}
           issuedAt={issuedAt}
@@ -224,6 +228,7 @@ function PaperOutput(props: {
   monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
+  cancelAt: Date | null
   subscriptionRef: string | null
   barName: string | null
   issuedAt: Date
@@ -273,6 +278,7 @@ function PaperContent({
   monthlyDiscountReais = null,
   status,
   currentPeriodEnd,
+  cancelAt,
   subscriptionRef,
   barName,
   issuedAt,
@@ -284,6 +290,7 @@ function PaperContent({
   monthlyDiscountReais: number | null
   status: string
   currentPeriodEnd: Date | string | null
+  cancelAt: Date | null
   subscriptionRef: string | null
   barName: string | null
   issuedAt: Date
@@ -298,11 +305,13 @@ function PaperContent({
       label: 'Valor',
       value: formatPlanChargeLine(charge, plan.period)
     },
-    { label: 'Ciclo', value: receiptCycleLabel(plan.period) },
+    { label: 'Ciclo', value: receiptCycleLabel(plan.period, !cancelAt) },
     { label: 'Situação', value: STATUS_LABEL[status] ?? status },
     {
-      label: receiptChargeLabel(status),
-      value: formatReceiptDate(currentPeriodEnd)
+      label: receiptChargeLabel(status, cancelAt !== null),
+      value: cancelAt
+        ? `${formatReceiptDate(cancelAt)} — o plano segue até lá`
+        : formatReceiptDate(currentPeriodEnd)
     }
   ]
 

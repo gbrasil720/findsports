@@ -1,6 +1,7 @@
 import { db, sql } from '@findsports_oficial/db'
 
 import { currentClassicRulesCte } from '../classics'
+import { participantTeams } from '../game-participants'
 import { decodeCursor } from '../keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../rating'
 import {
@@ -117,7 +118,7 @@ export async function executarBuscaPorNota(
     SELECT
       r.*,
       cnt.event_count,
-      COALESCE(parts.next_participants, '[]'::json) AS next_participants
+      ${participantTeams(sql`r.next_event_id`)} AS next_participants
     FROM ranked r
     JOIN LATERAL (
       SELECT COUNT(*)::int AS event_count
@@ -127,12 +128,6 @@ export async function executarBuscaPorNota(
         ${eventFilter}
         ${champBarFilterR}
     ) cnt ON true
-    LEFT JOIN LATERAL (
-      SELECT json_agg(json_build_object('name', t.name, 'logoUrl', t.logo_url)) AS next_participants
-      FROM event_participants ep
-      JOIN team t ON t.id = ep.team_id
-      WHERE ep.event_id = r.next_event_id
-    ) parts ON true
     ORDER BY
       r.cursor_bucket ASC,
       r.cursor_sort_score ASC,

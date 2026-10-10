@@ -3,7 +3,12 @@ import { QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
-import { createTRPCClient, httpBatchLink } from '@trpc/client'
+import {
+  createTRPCClient,
+  httpBatchLink,
+  httpLink,
+  splitLink
+} from '@trpc/client'
 import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { toast } from 'sonner'
 
@@ -54,16 +59,25 @@ export const getRouter = () => {
     defaultOptions: { queries: { staleTime: 60 * 1000 } }
   })
 
+  const linkOptions = {
+    url: '/api/trpc',
+    fetch(url: RequestInfo | URL, options?: RequestInit) {
+      return fetch(url, {
+        ...options,
+        credentials: 'include'
+      })
+    }
+  }
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
-      httpBatchLink({
-        url: '/api/trpc',
-        fetch(url, options) {
-          return fetch(url, {
-            ...options,
-            credentials: 'include'
-          })
-        }
+      // O lote só responde quando a última chamada dele termina. A consulta do
+      // cupom vai ao Stripe; no mesmo lote, segurava a assinatura de
+      // `/admin/billing` e de `/plan` em "Carregando…" até o Stripe responder
+      // (WEB-348). Ela sai em requisição própria.
+      splitLink({
+        condition: (op) => op.path === 'pub.getFounderCouponAvailable',
+        true: httpLink(linkOptions),
+        false: httpBatchLink(linkOptions)
       })
     ]
   })

@@ -29,6 +29,13 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
 
+  // Reserva em aberto mantém a validação de quem perdeu o Elite (WEB-341).
+  const openQuery = useQuery({
+    ...trpc.barReservations.hasOpen.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const elite = subscriptionQuery.data?.currentPlan === 'elite'
+
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
   const { reservationValidation } = useTRPCClient()
@@ -51,16 +58,19 @@ function ValidatePage() {
 
       <CodeValidation
         access={
-          subscriptionQuery.isLoading
+          subscriptionQuery.isLoading || (!elite && openQuery.isLoading)
             ? { status: 'loading' }
-            : subscriptionQuery.isError
+            : subscriptionQuery.isError || (!elite && openQuery.isError)
               ? {
                   status: 'error',
-                  retry: () => void subscriptionQuery.refetch()
+                  retry: () => {
+                    void subscriptionQuery.refetch()
+                    void openQuery.refetch()
+                  }
                 }
               : {
                   status: 'ready',
-                  eligible: subscriptionQuery.data?.currentPlan === 'elite'
+                  eligible: elite || openQuery.data === true
                 }
         }
         now={now}

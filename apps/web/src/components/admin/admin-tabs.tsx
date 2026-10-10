@@ -14,13 +14,14 @@ export type AdminSectionId = (typeof ADMIN_SECTIONS)[number]['id']
 type AdminSection = (typeof ADMIN_SECTIONS)[number]
 
 /**
- * A fila de reservas (WEB-125) só existe para bar que recebe reservas: Elite
- * vigente e interruptor ligado. Para o resto, a aba não aparece.
+ * A fila de reservas (WEB-125) existe para bar que recebe reservas (Elite
+ * vigente e interruptor ligado) e para o que ainda tem reserva em aberto para
+ * honrar (WEB-341). Para o resto, a aba não aparece.
  */
 export function getAdminSections(
-  receivesReservations: boolean
+  showsReservations: boolean
 ): readonly AdminSection[] {
-  return receivesReservations
+  return showsReservations
     ? ADMIN_SECTIONS
     : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-reservas')
 }

@@ -261,7 +261,11 @@ function BarMenuForm({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="submit"
-          disabled={isSaving || (isValid && !isDirty)}
+          // Com erro na tela não há o que salvar (WEB-353). Antes de o erro
+          // aparecer o botão segue ativo: é o envio que o revela.
+          disabled={
+            isSaving || Boolean(urlError || spendError) || (isValid && !isDirty)
+          }
           className="onside-btn onside-btn-acid min-h-11 text-xs disabled:opacity-50"
         >
           {isSaving ? 'Salvando…' : 'Salvar'}

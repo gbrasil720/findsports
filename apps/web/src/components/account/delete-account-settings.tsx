@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import Trash from 'reicon-react/icons/Trash'
+import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
 import { authClient } from '@/lib/auth-client'
 import {
@@ -75,6 +76,10 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
       return
     }
     close()
+    // A home deslogada, sozinha, não distingue conta excluída de sessão caída
+    // (WEB-348). É a única confirmação de algo sem volta, e a tela troca por
+    // baixo dela: fica mais tempo que o toast padrão.
+    toast.success('Sua conta foi excluída.', { duration: 10_000 })
     navigate({ to: '/' })
   }
 

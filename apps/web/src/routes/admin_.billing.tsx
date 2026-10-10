@@ -9,21 +9,26 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
+import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
+  CONTRACTED_TRIAL_LABEL,
   formatPlanChargeLine,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
+  isContractedTrial,
   PLAN_CATALOG,
+  planChargeForCurrentPlan,
   planChargeForShowcase,
-  planChargeFromSubscription,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -60,6 +65,11 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   trialing: {
     label: 'Trial gratuito',
     className: 'onside-badge onside-badge-ink'
+  },
+  // Trial que já é do Stripe: contratou antes do fim (WEB-347).
+  contracted_trial: {
+    label: CONTRACTED_TRIAL_LABEL,
+    className: 'onside-badge onside-badge-acid'
   },
   past_due: { label: LAPSED_COPY.past_due.label, className: PENDING_BADGE },
   trial_ended: {
@@ -140,14 +150,18 @@ function BillingPage() {
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
+  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const planCharge =
     planInfo && subscription
-      ? planChargeFromSubscription(planInfo, subscription.monthlyDiscountReais)
+      ? planChargeForCurrentPlan(planInfo, subscription, founderCouponAvailable)
       : null
-  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const statusInfo =
     STATUS_LABEL[
-      standing === 'trial_ended' ? standing : (subscription?.status ?? '')
+      isContractedTrial(subscription)
+        ? 'contracted_trial'
+        : standing === 'trial_ended'
+          ? standing
+          : (subscription?.status ?? '')
     ]
 
   return (
@@ -280,6 +294,11 @@ function BillingPage() {
                     Assinatura encerrada: o bar fica fora das buscas e do mapa
                     até um plano ser contratado.
                   </p>
+                ) : getCancelNotice(subscription) ? (
+                  <p className="mt-4 text-xs text-[var(--onside-muted)]">
+                    {getCancelNotice(subscription)}.{' '}
+                    <ReactivateSubscriptionButton className="font-bold text-[var(--onside-ink)] underline underline-offset-2" />
+                  </p>
                 ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
                     {getTrialNotice(subscription) ??
@@ -292,6 +311,8 @@ function BillingPage() {
                 Nenhuma assinatura ativa encontrada.
               </p>
             )}
+
+            {subscription?.externalSubscriptionId ? <BillingBalance /> : null}
 
             <div className="flex flex-wrap gap-3">
               {contractInPlan && planInfo ? (
@@ -412,7 +433,7 @@ function BillingPage() {
 
         <aside className="space-y-4">
           <h3 className="onside-display text-2xl">Outros planos</h3>
-          {PLAN_CATALOG.filter((p) => p.id !== plan).map((info) => {
+          {PLAN_CATALOG.filter((p) => p.id !== shownPlan).map((info) => {
             const Icon = info.icon
             return (
               <div key={info.id} className="onside-panel p-5">

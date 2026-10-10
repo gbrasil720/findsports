@@ -29,6 +29,8 @@ export function stripeSubscription(options: {
   plan: Plan
   userId: string
   currentPeriodEnd?: Date
+  /** Cancelamento agendado no portal, como o billing `flexible` grava. */
+  cancelAt?: Date
   lookupKey?: string
   /** Cupom Early Bird (R$ 28 off) ativo na assinatura. */
   founderDiscount?: boolean
@@ -42,6 +44,9 @@ export function stripeSubscription(options: {
     status: options.status,
     customer: options.customerId ?? `cus_e2e_wh_${options.userId}`,
     metadata: { userId: options.userId },
+    cancel_at: options.cancelAt
+      ? Math.floor(options.cancelAt.getTime() / 1000)
+      : null,
     cancel_at_period_end: false,
     discounts: options.founderDiscount
       ? [
@@ -130,4 +135,23 @@ export async function deliverSubscription(
     type,
     data: { object: subscription }
   })
+}
+
+/**
+ * Põe no "Stripe" (o stub) uma assinatura com saldo de cliente e valor da
+ * próxima fatura, em centavos — crédito é saldo negativo, como no Stripe
+ * (WEB-350). Sem webhook: a linha local vem do `createPub`.
+ */
+export async function seedStripeBalance(
+  request: APIRequestContext,
+  subscription: ReturnType<typeof stripeSubscription>,
+  amounts: { balance: number; nextAmountDue: number }
+) {
+  for (const [path, data] of [
+    ['subscriptions', subscription],
+    ['balances', { customer: subscription.customer, ...amounts }]
+  ] as const) {
+    const seeded = await request.post(`${STUB_URL}/stripe/${path}`, { data })
+    if (!seeded.ok()) throw new Error(`stub do Stripe recusou ${path}`)
+  }
 }

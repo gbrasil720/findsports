@@ -19,10 +19,12 @@ import {
   getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
+  isContractedTrial,
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
   parsePlanOrigin,
+  planChargeForCurrentPlan,
   planChargeForShowcase,
   planChargeFromSubscription
 } from '@/lib/plan-catalog'
@@ -104,6 +106,24 @@ describe('preços (WEB-112)', () => {
     ).toBe('R$ 297/mês')
   })
 
+  // WEB-353: quem já assina troca de plano pelo portal, sem checkout.
+  test('dica do desconto fala de checkout só para quem ainda não assina', () => {
+    const pro = getPlan('pro')
+    expect(planChargeForShowcase(pro, true).hint).toBe(
+      'Com desconto de fundador no checkout'
+    )
+    expect(planChargeForShowcase(pro, true, true).hint).toBe(
+      'Com desconto de fundador na assinatura'
+    )
+    expect(planChargeForShowcase(pro, false, true).hint).toBeNull()
+  })
+
+  test('Starter anuncia o limite pelo ciclo de cobrança, não por mês', () => {
+    expect(getPlan('starter').features).toContain(
+      'Até 5 jogos por ciclo de cobrança na agenda'
+    )
+  })
+
   test('assinatura gravada reflete desconto do webhook', () => {
     const pro = getPlan('pro')
     expect(
@@ -115,6 +135,44 @@ describe('preços (WEB-112)', () => {
     expect(
       formatPlanChargeLine(planChargeFromSubscription(pro, null), pro.period)
     ).toBe('R$ 147/mês')
+  })
+
+  test('card Plano atual: sem assinatura no Stripe segue a vitrine, com assinatura segue o desconto gravado (WEB-343)', () => {
+    const elite = getPlan('elite')
+    const semStripe = {
+      externalSubscriptionId: null,
+      monthlyDiscountReais: null
+    }
+    expect(planChargeForCurrentPlan(elite, semStripe, true)).toEqual(
+      planChargeForShowcase(elite, true)
+    )
+    expect(planChargeForCurrentPlan(elite, semStripe, true)).toMatchObject({
+      chargeReais: 269,
+      listReais: 297,
+      hint: 'Com desconto de fundador no checkout'
+    })
+    expect(planChargeForCurrentPlan(elite, semStripe, false)).toEqual({
+      chargeReais: 297,
+      listReais: null,
+      hint: null
+    })
+
+    // Com assinatura, o cupom disponível hoje não diz nada sobre o que ela paga.
+    const pro = getPlan('pro')
+    const comStripe = (monthlyDiscountReais: number | null) => ({
+      externalSubscriptionId: 'sub_123',
+      monthlyDiscountReais
+    })
+    expect(planChargeForCurrentPlan(pro, comStripe(28), false)).toEqual(
+      planChargeFromSubscription(pro, 28)
+    )
+    expect(planChargeForCurrentPlan(pro, comStripe(28), false)).toMatchObject({
+      chargeReais: 119,
+      listReais: 147
+    })
+    expect(planChargeForCurrentPlan(pro, comStripe(0), true).chargeReais).toBe(
+      147
+    )
   })
 })
 
@@ -526,6 +584,38 @@ describe('getTrialNotice (WEB-260)', () => {
         now
       )
     ).toBe('Trial gratuito até 8 de outubro de 2026 · falta 1 dia')
+  })
+
+  test('quem já contratou no Stripe lê a primeira cobrança, não o trial (WEB-347)', () => {
+    const contracted = {
+      ...trial,
+      plan: 'elite' as const,
+      externalSubscriptionId: 'sub_1',
+      monthlyDiscountReais: 28
+    }
+    expect(isContractedTrial(contracted)).toBe(true)
+    expect(getTrialNotice(contracted, now)).toBe(
+      'Primeira cobrança de R$ 269 em 22/10/2026'
+    )
+    // Sem desconto gravado vale a tabela cheia, como no card do plano.
+    expect(
+      getTrialNotice({ ...contracted, monthlyDiscountReais: null }, now)
+    ).toBe('Primeira cobrança de R$ 297 em 22/10/2026')
+
+    // Sem assinatura no Stripe é o teste do cadastro: o texto de sempre.
+    const local = { ...contracted, externalSubscriptionId: null }
+    expect(isContractedTrial(local)).toBe(false)
+    expect(getTrialNotice(local, now)).toBe(
+      'Trial gratuito até 22 de outubro de 2026 · faltam 14 dias'
+    )
+
+    // Paga em dia ou trial vencido não são trial contratado.
+    const active = { ...contracted, status: 'active' }
+    expect(isContractedTrial(active)).toBe(false)
+    expect(getTrialNotice(active, now)).toBeNull()
+    expect(isContractedTrial({ ...contracted, standing: 'trial_ended' })).toBe(
+      false
+    )
   })
 
   test('fica calado fora de um trial em vigor', () => {

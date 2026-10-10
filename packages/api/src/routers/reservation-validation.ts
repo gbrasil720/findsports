@@ -22,6 +22,7 @@ import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
+import { canManageReservations } from '../lib/reservation-intake'
 import {
   ARRIVAL_UNDO_GRACE_MS,
   assertCanValidateReservations,
@@ -46,11 +47,13 @@ import {
 type Reader = Pick<typeof db, 'select'>
 
 /**
- * Só bar com Elite vigente passa. Não depende do código digitado.
+ * Passa o bar com Elite vigente, ou com reserva em aberto para honrar
+ * (WEB-341). Não depende do código digitado.
  *
  * É o nível "capacidade" da ADR 0003. O interruptor de recebimento de
  * reservas (WEB-131) é "disposição" e NÃO entra aqui: desligar impede pedidos
- * novos, mas reserva já criada continua com código validável na janela.
+ * novos, mas reserva já criada continua com código validável na janela. Pelo
+ * mesmo motivo, perder o plano não tranca o código que o torcedor já tem.
  */
 const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
   const ownBar = await db.query.bar.findFirst({
@@ -64,7 +67,13 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
       message: 'Bar não encontrado para este usuário.'
     })
   }
-  assertCanValidateReservations(ownBar.subscription ?? null)
+  const subscription = ownBar.subscription ?? null
+  // ponytail: "em aberto" acaba no fim do jogo, e a janela de validação fecha
+  // uma margem depois. Sem Elite, a chegada registrada nessa margem é
+  // recusada; se fizer falta, `hasOpenReservations` passa a somar a margem.
+  if (!(await canManageReservations(ownBar.id, subscription))) {
+    assertCanValidateReservations(subscription)
+  }
 
   return next({ ctx })
 })

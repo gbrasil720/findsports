@@ -44,9 +44,9 @@ describe('admin tabs keyboard navigation', () => {
     expect(getAdminSectionFromHash('#configuracoes')).toBeNull()
   })
 
-  test('shows the reservations tab only to bars that receive reservations', () => {
-    const ids = (receives: boolean) =>
-      getAdminSections(receives).map((section) => section.id)
+  test('shows the reservations tab only to bars that receive or still owe reservations', () => {
+    const ids = (shows: boolean) =>
+      getAdminSections(shows).map((section) => section.id)
     expect(ids(true)).toContain('admin-reservas')
     expect(ids(false)).not.toContain('admin-reservas')
     expect(ids(false)).toContain('admin-configuracoes')

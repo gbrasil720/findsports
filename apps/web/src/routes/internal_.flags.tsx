@@ -297,7 +297,9 @@ function CartaoFlag({
         <p className="text-[11px] text-[var(--onside-muted)]">
           {entrada.updatedAt
             ? `Alterado em ${formatarData(entrada.updatedAt)}${
-                entrada.updatedBy ? ` por ${entrada.updatedBy}` : ''
+                entrada.updatedBy
+                  ? ` por ${entrada.updatedByNome ?? 'uma conta que não existe mais'}`
+                  : ''
               }`
             : 'Nunca alterado.'}
         </p>
@@ -356,7 +358,16 @@ function FlagsPage() {
       },
       onError: (erro) =>
         toast.error(
-          getUserFacingMessage(erro, 'Não foi possível salvar a configuração.')
+          // Valor recusado: o servidor já diz o campo e o limite. Tratado só
+          // aqui, e não em `getUserFacingMessage`, porque o 400 de outras
+          // telas pode ser a recusa de entrada do tRPC, que é o JSON do zod.
+          // Nesta a entrada é `{key, value}` com a chave vinda do `list`.
+          erro.data?.code === 'BAD_REQUEST'
+            ? `Valor recusado — ${erro.message}`
+            : getUserFacingMessage(
+                erro,
+                'Não foi possível salvar a configuração.'
+              )
         )
     })
   )
@@ -467,7 +478,15 @@ function FlagsPage() {
             onSalvar={(valor) =>
               salvar.mutate({ key: entrada.key, value: valor })
             }
-            onResetar={() => resetar.mutate({ key: entrada.key })}
+            onResetar={() => {
+              if (
+                window.confirm(
+                  `Voltar ${entrada.key} ao padrão? O valor gravado é apagado e passa a valer ${JSON.stringify(entrada.padrao)}.`
+                )
+              ) {
+                resetar.mutate({ key: entrada.key })
+              }
+            }}
           />
         ))}
       </div>

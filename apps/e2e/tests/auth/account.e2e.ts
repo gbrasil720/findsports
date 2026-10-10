@@ -108,9 +108,14 @@ test('excluir conta exige senha e a confirmação digitada', async ({ page }) =>
   await confirm.click()
 
   await expect(page).toHaveURL(/\/(\?.*)?$/)
+  // WEB-348: sem aviso, a home deslogada não distinguia exclusão de sessão caída.
+  await expect(page.getByText('Sua conta foi excluída.')).toBeVisible()
   expect(
     await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
   ).toHaveLength(0)
+
+  await page.reload()
+  await expect(page.getByText('Sua conta foi excluída.')).toHaveCount(0)
 })
 
 test('bar com assinatura em curso não exclui a conta', async ({ page }) => {

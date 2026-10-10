@@ -74,4 +74,15 @@ describe('AnalyticsOverview', () => {
   test('WEB-302: o plano aparece pelo nome do catálogo', () => {
     expect(render()).toContain('Plano: Elite')
   })
+
+  test('WEB-344: plano gravado que não vale acompanha o plano em vigor', () => {
+    const html = renderToStaticMarkup(
+      <AnalyticsOverview
+        overviewState={{ status: 'ready', data }}
+        planNote="Trial do plano Elite encerrado"
+      />
+    )
+    expect(html).toContain('Plano: Elite • Trial do plano Elite encerrado')
+    expect(render()).not.toContain('encerrado')
+  })
 })

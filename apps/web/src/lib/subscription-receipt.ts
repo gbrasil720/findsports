@@ -222,7 +222,9 @@ export function formatReceiptTimestamp(date: Date): string {
  * `trialing` ainda não cobrou nada: chamar de "próxima cobrança" faria o dono
  * procurar uma cobrança anterior que não existe.
  */
-export function receiptChargeLabel(status: string): string {
+export function receiptChargeLabel(status: string, cancelling = false): string {
+  // Cancelamento agendado (WEB-335): não há cobrança a anunciar.
+  if (cancelling) return 'Cancela em'
   return status === 'trialing' ? 'Primeira cobrança' : 'Próxima cobrança'
 }
 
@@ -239,13 +241,15 @@ export function receiptStampLabel(status: string): string {
  * cobrado por outro intervalo passa a imprimir o intervalo certo sem que esta
  * tela precise saber que ele existe.
  */
-export function receiptCycleLabel(period: string): string {
+export function receiptCycleLabel(period: string, renews = true): string {
   const normalized = period.trim().replace(/^\//, '').toLowerCase()
+  // Com o cancelamento agendado a assinatura não renova (WEB-335).
+  const renewal = renews ? 'renovação automática' : 'sem renovação'
   if (normalized === 'mês' || normalized === 'mes') {
-    return 'Mensal, renovação automática'
+    return `Mensal, ${renewal}`
   }
-  if (normalized === 'ano') return 'Anual, renovação automática'
-  return `Por ${normalized}, renovação automática`
+  if (normalized === 'ano') return `Anual, ${renewal}`
+  return `Por ${normalized}, ${renewal}`
 }
 
 /** Referência curta da assinatura, para citar no suporte. */

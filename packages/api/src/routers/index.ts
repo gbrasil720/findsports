@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { adminBarsRouter } from './admin-bars'
 import { adminUsersRouter } from './admin-users'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
@@ -23,6 +24,7 @@ export const appRouter = router({
       user: ctx.session.user
     }
   }),
+  adminBars: adminBarsRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
   waitlist: waitlistRouter,

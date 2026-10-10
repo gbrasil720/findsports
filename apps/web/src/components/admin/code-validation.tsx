@@ -26,8 +26,9 @@ import { ReservationSummary } from './reservation-summary'
 import { useUndoCountdown } from './use-undo-countdown'
 
 /**
- * `eligible` vem de `getMySubscription().currentPlan === 'elite'`. É só para
- * decidir o que desenhar: cada procedimento confere o plano de novo.
+ * `eligible` é Elite vigente (`getMySubscription().currentPlan`) ou reserva
+ * em aberto (`barReservations.hasOpen`, WEB-341). É só para decidir o que
+ * desenhar: cada procedimento confere de novo.
  */
 export type ValidationAccess =
   | { status: 'loading' }

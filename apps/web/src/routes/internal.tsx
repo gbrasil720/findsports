@@ -2,6 +2,7 @@ import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Settings from 'reicon-react/icons/Settings'
 import SliderH from 'reicon-react/icons/SliderH'
+import Store from 'reicon-react/icons/Store'
 import Users from 'reicon-react/icons/Users'
 import { InternalShell } from '@/components/app/internal-shell'
 import { getUser } from '@/functions/get-user'
@@ -128,6 +129,27 @@ function InternalHallPage() {
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Bares em que o torcedor diz que foi e o bar repetidamente não
               registra o código.
+            </p>
+          </div>
+          <span className="onside-kicker text-[var(--onside-ink)]">
+            Acessar →
+          </span>
+        </Link>
+
+        <Link
+          to="/internal/bars"
+          className="onside-panel onside-shadow group flex flex-col gap-5 p-6 no-underline sm:p-8"
+        >
+          <div className="grid size-14 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
+            <Store size={28} color="var(--onside-ink)" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="onside-display text-2xl tracking-tight">
+              Bares e Assinaturas
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
+              Veja plano, situação da assinatura e publicação de cada bar, sem
+              ir ao banco.
             </p>
           </div>
           <span className="onside-kicker text-[var(--onside-ink)]">

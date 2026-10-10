@@ -74,13 +74,17 @@ export type PlanChargeDisplay = {
 
 export function planChargeForShowcase(
   plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
-  founderCouponAvailable: boolean
+  founderCouponAvailable: boolean,
+  // Quem já assina troca de plano pelo portal, sem checkout (WEB-353).
+  hasSubscription = false
 ): PlanChargeDisplay {
   if (founderCouponAvailable) {
     return {
       chargeReais: plan.founderPrice,
       listReais: plan.tablePrice,
-      hint: 'Com desconto de fundador no checkout'
+      hint: hasSubscription
+        ? 'Com desconto de fundador na assinatura'
+        : 'Com desconto de fundador no checkout'
     }
   }
   return {
@@ -117,6 +121,24 @@ export function planChargeFromSubscription(
     listReais: plan.tablePrice,
     hint: 'Com desconto de fundador na assinatura'
   }
+}
+
+/**
+ * Preço do card "Plano atual" (WEB-343). Sem assinatura no Stripe (teste do
+ * cadastro, vigente ou vencido) não há desconto gravado: vale o que `/plan`
+ * promete para quem contratar. Com assinatura, vale o que o webhook gravou.
+ */
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean
+): PlanChargeDisplay {
+  return subscription.externalSubscriptionId
+    ? planChargeFromSubscription(plan, subscription.monthlyDiscountReais)
+    : planChargeForShowcase(plan, founderCouponAvailable)
 }
 
 export function formatPlanChargeLine(
@@ -160,7 +182,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Fire,
     features: [
       'Perfil do bar no Onside',
-      `Até ${STARTER_EVENT_LIMIT} jogos por mês na agenda`,
+      `Até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança na agenda`,
       'Aparece nas buscas básicas',
       'Suporte por e-mail',
       'Analytics essenciais dos últimos 30 dias',
@@ -433,10 +455,37 @@ export function getPlanHeader(subscription: PlanSubscription): {
   }
 }
 
+/** Selo de quem contratou antes do fim do teste (WEB-347). */
+export const CONTRACTED_TRIAL_LABEL = 'Contratado · em teste'
+
+/**
+ * Trial em vigor que já é do Stripe: o dono contratou antes do fim, o cartão
+ * está guardado e o plano segue depois do teste (WEB-347). O avesso do modo
+ * `trial` de `getPlanPageMode`.
+ */
+export function isContractedTrial(
+  subscription:
+    | {
+        status: string
+        standing: SubscriptionStanding | null
+        externalSubscriptionId?: string | null
+      }
+    | null
+    | undefined
+): boolean {
+  return (
+    subscription?.status === 'trialing' &&
+    subscription.standing === 'current' &&
+    Boolean(subscription.externalSubscriptionId)
+  )
+}
+
 /**
  * Status do trial em vigor, com a data final e os dias que faltam — o mesmo
  * texto no painel, na assinatura e em `/plan` (WEB-260). `null` fora dele:
- * trial vencido é plano parado e fala por `LAPSED_COPY`.
+ * trial vencido é plano parado e fala por `LAPSED_COPY`. Quem já contratou
+ * lê quando e quanto sai a primeira cobrança, pelo mesmo cálculo do card do
+ * plano (WEB-347).
  */
 export function getTrialNotice(
   subscription:
@@ -444,6 +493,9 @@ export function getTrialNotice(
         status: string
         standing: SubscriptionStanding | null
         currentPeriodEnd: string | Date | null
+        plan?: SubscriptionPlan
+        externalSubscriptionId?: string | null
+        monthlyDiscountReais?: number | null
       }
     | null
     | undefined,
@@ -457,6 +509,13 @@ export function getTrialNotice(
     return null
   }
   const end = new Date(subscription.currentPeriodEnd)
+  if (isContractedTrial(subscription) && subscription.plan) {
+    const { chargeReais } = planChargeFromSubscription(
+      getPlan(subscription.plan),
+      subscription.monthlyDiscountReais
+    )
+    return `Primeira cobrança de ${formatPlanPrice(chargeReais)} em ${end.toLocaleDateString('pt-BR')}`
+  }
   // `standing` vem do relógio do servidor; o piso cobre o do navegador adiantado.
   const days = Math.max(
     1,

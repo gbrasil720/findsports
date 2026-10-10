@@ -22,6 +22,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, router } from '../index'
+import { byTeamName } from '../lib/game-participants'
 import {
   assertReceivesReservations,
   withSeatAvailability
@@ -86,7 +87,10 @@ async function readOwnReservations(userId: string, reservationId?: string) {
         },
         with: {
           bar: { columns: { id: true, name: true, neighborhood: true } },
-          participants: { with: { team: { columns: { name: true } } } }
+          participants: {
+            with: { team: { columns: { name: true } } },
+            orderBy: byTeamName
+          }
         }
       },
       codes: {

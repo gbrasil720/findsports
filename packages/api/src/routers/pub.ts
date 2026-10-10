@@ -36,6 +36,7 @@ import {
   motivoTelefoneInvalido,
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
+import { readBillingBalance } from '../lib/billing-balance'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   getCurrentPlan,
@@ -47,7 +48,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { participantNames } from '../lib/game-participants'
+import { byTeamName, participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -165,9 +166,9 @@ export function eventLimitMessage(
     subscription.plan !== 'starter' &&
     (standing === 'past_due' || standing === 'trial_ended')
   ) {
-    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por mês. Regularize a assinatura para voltar aos jogos ilimitados.`
+    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Regularize a assinatura para voltar aos jogos ilimitados.`
   }
-  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
+  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
 /**
@@ -542,7 +543,8 @@ export const pubRouter = router({
         with: {
           sport: true,
           participants: {
-            with: { team: true }
+            with: { team: true },
+            orderBy: byTeamName
           }
         },
         orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -833,6 +835,16 @@ export const pubRouter = router({
           standing: getSubscriptionStanding(existingBar.subscription, now)
         }
       : null
+  }),
+
+  // Saldo e próxima fatura no Stripe (WEB-350). Fora de `getMySubscription`
+  // para o card do plano não esperar o Stripe.
+  getMyBillingBalance: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readBillingBalance(
+      stripeClient,
+      existingBar.subscription?.externalSubscriptionId
+    )
   }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {

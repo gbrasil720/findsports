@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto'
 import type { APIRequestContext, PlaywrightWorkerArgs } from '@playwright/test'
-import { BASE_URL } from '../../env'
+import { BASE_URL, STUB_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
@@ -423,4 +423,77 @@ test('pagamento que não concluiu não derruba o teste grátis do cadastro', asy
   })
 
   expect(await stateOf(barId)).toEqual(before)
+})
+
+test('cancelamento agendado no portal: o app avisa até quando o plano vale e leva a reativar (WEB-335)', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomInt(1e9)}`
+  const customerId = `cus_e2e_${randomInt(1e9)}`
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'starter',
+      status: 'active',
+      externalSubscriptionId: subscriptionId
+    }
+  })
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    user.id
+  ])
+  const active = {
+    id: subscriptionId,
+    status: 'active',
+    plan: 'starter',
+    userId: user.id,
+    customerId
+  } as const
+  const notice = /Cancela em \d{2}\/\d{2} — o plano segue até lá/
+
+  // "Cancelar assinatura" no portal: a assinatura segue `active`, com o fim
+  // marcado em `cancel_at`.
+  await deliver(request, 'customer.subscription.updated', {
+    ...active,
+    cancelAt: inDays(20)
+  })
+  expect(await stateOf(barId)).toMatchObject({
+    status: 'active',
+    is_active: true
+  })
+
+  await signIn(page, user)
+  await page.goto('/admin/billing')
+  const currentPlan = page.locator('section').filter({
+    has: page.getByRole('heading', { name: 'Plano atual' })
+  })
+  await expect(currentPlan).toContainText('Ativo')
+  await expect(currentPlan).toContainText(notice)
+  await expect(currentPlan).not.toContainText('Próxima cobrança')
+  await expect(
+    currentPlan.getByRole('button', { name: 'Reativar assinatura' })
+  ).toBeVisible()
+
+  await page.goto('/plan/confirmed')
+  const receipt = page.locator('.onside-receipt-paper')
+  await expect(receipt).toContainText('Cancela em')
+  await expect(receipt).toContainText('Mensal, sem renovação')
+  await expect(receipt).not.toContainText('Próxima cobrança')
+  await expect(
+    page.getByRole('button', { name: 'Reativar assinatura' })
+  ).toBeVisible()
+
+  await page.goto('/plan')
+  await expect(page.getByText(notice)).toBeVisible()
+  await page.getByRole('button', { name: 'Reativar assinatura' }).click()
+  await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
+
+  // "Não cancelar assinatura" no portal: o Stripe zera o agendamento.
+  await deliver(request, 'customer.subscription.updated', active)
+  await page.goto('/admin/billing')
+  await expect(currentPlan).toContainText('Próxima cobrança em')
+  await expect(currentPlan).not.toContainText('Cancela em')
+  await expect(
+    page.getByRole('button', { name: 'Reativar assinatura' })
+  ).toHaveCount(0)
 })
