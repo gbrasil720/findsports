@@ -52,7 +52,7 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
 
 // O checkout e a `/plan` não esperam o Stripe: sem resposta em 5s, e sem nova
 // tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
-const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
+export const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
 
 /**
  * O que o Stripe disse do cupom. `unknown` é o Stripe sem responder (demora,

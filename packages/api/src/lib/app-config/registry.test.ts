@@ -154,9 +154,10 @@ describe('registro de configuração (ESC-19)', () => {
   it('subconjunto público não inclui chave interna', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('billing.checkout_enabled')
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('launch.pub_cities')
+    // WEB-238: a revisão do cadastro do bar anuncia o plano e os dias.
+    expect(PUBLIC_APP_CONFIG_KEYS).toContain('billing.onboarding_trial')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('waitlist.rate_limit')
-    expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('billing.onboarding_trial')
   })
 
   /**

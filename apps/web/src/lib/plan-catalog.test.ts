@@ -18,6 +18,8 @@ import {
   getPlan,
   getPlanExitLink,
   getPlanHeader,
+  getPlanLosses,
+  getPlanLossNote,
   getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
@@ -25,7 +27,9 @@ import {
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
+  parsePlanChange,
   parsePlanOrigin,
+  planChangeReturnUrl,
   planChargeForCurrentPlan,
   planChargeForShowcase,
   planChargeFromSubscription
@@ -437,11 +441,13 @@ describe('profilePerks', () => {
   test('identificam o plano sem prometer verificação', () => {
     expect(getPlan('pro').profilePerks).toContainEqual({
       label: 'Selo Pro no perfil',
-      status: 'live'
+      status: 'live',
+      key: 'badge'
     })
     expect(getPlan('elite').profilePerks).toContainEqual({
       label: 'Selo Elite no topo do perfil',
-      status: 'live'
+      status: 'live',
+      key: 'badge'
     })
 
     for (const id of ['pro', 'elite'] as const) {
@@ -454,7 +460,8 @@ describe('profilePerks', () => {
   test('cardápio e preço médio são entregues em Pro e Elite, não no Starter', () => {
     const perk = {
       label: 'Link do cardápio e preço médio no perfil',
-      status: 'live'
+      status: 'live',
+      key: 'menu'
     } as const
     expect(getPlan('pro').profilePerks).toContainEqual(perk)
     expect(getPlan('elite').profilePerks).toContainEqual(perk)
@@ -464,13 +471,14 @@ describe('profilePerks', () => {
   })
 
   test('reserva de mesa e oferta da casa são entregues só no Elite', () => {
-    for (const label of [
-      'Reserva de mesa pela plataforma',
-      'Oferta da casa para quem chega pela Onside'
-    ]) {
+    for (const [label, key] of [
+      ['Reserva de mesa pela plataforma', 'reservations'],
+      ['Oferta da casa para quem chega pela Onside', 'house_offer']
+    ] as const) {
       expect(getPlan('elite').profilePerks).toContainEqual({
         label,
-        status: 'live'
+        status: 'live',
+        key
       })
       for (const id of ['starter', 'pro'] as const) {
         expect(getPlan(id).profilePerks.some((p) => p.label === label)).toBe(
@@ -487,6 +495,162 @@ describe('profilePerks', () => {
     // Galeria e promoções dependem de schema que ainda não existe.
     expect(roadmap.length).toBeGreaterThan(0)
     expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
+  })
+})
+
+describe('getPlanLosses (WEB-351)', () => {
+  const labels = (from: 'pro' | 'elite', to: 'starter' | 'pro') =>
+    getPlanLosses(from, to).map((loss) => loss.label)
+
+  test('Elite para Pro: só o que o Pro não tem', () => {
+    expect(getPlanLosses('elite', 'pro')).toEqual([
+      { label: 'Pin exclusivo Elite no mapa' },
+      { label: 'Topo na busca por relevância quando há um clássico' },
+      { label: 'Histórico completo' },
+      { label: 'Inteligência avançada' },
+      { label: 'Comparação avançada' },
+      { label: 'Selo Elite no topo do perfil', key: 'badge' },
+      { label: 'Reserva de mesa pela plataforma', key: 'reservations' },
+      {
+        label: 'Oferta da casa para quem chega pela Onside',
+        key: 'house_offer'
+      }
+    ])
+  })
+
+  test('Pro para Starter: jogos ilimitados, cardápio e o que o Pro põe no perfil', () => {
+    const losses = getPlanLosses('pro', 'starter')
+    expect(losses).toContainEqual({
+      label: 'Jogos ilimitados na agenda',
+      key: 'events'
+    })
+    expect(losses).toContainEqual({
+      label: 'Link do cardápio e preço médio no perfil',
+      key: 'menu'
+    })
+    expect(labels('pro', 'starter')).toEqual(
+      expect.arrayContaining([
+        'Selo Pro no perfil',
+        'Capa em destaque, o dobro da altura',
+        '12 meses de histórico'
+      ])
+    )
+    expect(labels('pro', 'starter')).not.toContain(
+      'Reserva de mesa pela plataforma'
+    )
+  })
+
+  test('Elite para Starter: soma o que o Elite herda do Pro, com um selo só', () => {
+    const lost = labels('elite', 'starter')
+    expect(lost).toEqual(
+      expect.arrayContaining([
+        'Jogos ilimitados na agenda',
+        'Capa em destaque, o dobro da altura',
+        'Link do cardápio e preço médio no perfil',
+        'Selo Elite no topo do perfil',
+        'Reserva de mesa pela plataforma',
+        'Oferta da casa para quem chega pela Onside'
+      ])
+    )
+    expect(lost).not.toContain('Selo Pro no perfil')
+    expect(new Set(lost).size).toBe(lost.length)
+  })
+
+  test('nunca lista o que o destino tem, promessa nem "Tudo do"', () => {
+    for (const [from, to] of [
+      ['elite', 'pro'],
+      ['pro', 'starter'],
+      ['elite', 'starter']
+    ] as const) {
+      const lost = labels(from, to)
+      const target = getPlan(to)
+      const soon = getPlan(from)
+        .profilePerks.filter((perk) => perk.status === 'soon')
+        .map((perk) => perk.label)
+      for (const label of [
+        ...target.features,
+        ...target.profilePerks.map((perk) => perk.label),
+        ...soon
+      ]) {
+        expect(lost).not.toContain(label)
+      }
+      expect(lost.some((label) => label.startsWith('Tudo do'))).toBe(false)
+    }
+  })
+
+  test('upgrade e mesmo plano não perdem nada', () => {
+    expect(getPlanLosses('starter', 'pro')).toEqual([])
+    expect(getPlanLosses('starter', 'elite')).toEqual([])
+    expect(getPlanLosses('pro', 'elite')).toEqual([])
+    expect(getPlanLosses('pro', 'pro')).toEqual([])
+  })
+})
+
+describe('getPlanLossNote (WEB-351)', () => {
+  const bar = {
+    upcomingEvents: 7,
+    houseOffer: 'Chopp em dobro',
+    menuUrl: 'https://bar.example/cardapio',
+    averageSpendCents: 6000,
+    acceptsReservations: true
+  }
+  const empty = {
+    upcomingEvents: 0,
+    houseOffer: null,
+    menuUrl: null,
+    averageSpendCents: null,
+    acceptsReservations: false
+  }
+
+  test('jogos: os do bar contra o limite do Starter, e os já cadastrados continuam (WEB-352)', () => {
+    expect(getPlanLossNote('events', bar)).toBe(
+      'Você tem 7 jogos futuros. Os jogos já cadastrados continuam no ar, mas no Starter só dá para criar 5 por ciclo de cobrança.'
+    )
+    expect(getPlanLossNote('events', { ...bar, upcomingEvents: 1 })).toMatch(
+      /^Você tem 1 jogo futuro\. /
+    )
+    expect(getPlanLossNote('events', empty)).toBe(
+      'Os jogos já cadastrados continuam no ar, mas no Starter só dá para criar 5 por ciclo de cobrança.'
+    )
+  })
+
+  test('cardápio, oferta e reservas só falam do que o bar tem', () => {
+    expect(getPlanLossNote('menu', bar)).toBe(
+      'Seu link do cardápio e seu gasto médio saem do perfil e ficam guardados.'
+    )
+    expect(getPlanLossNote('menu', { ...bar, menuUrl: null })).toBe(
+      'Seu gasto médio sai do perfil e fica guardado.'
+    )
+    expect(getPlanLossNote('house_offer', bar)).toBe(
+      'Sua oferta da casa sai do perfil e fica guardada.'
+    )
+    expect(getPlanLossNote('reservations', bar)).toBe(
+      'Seu bar para de receber novos pedidos de reserva.'
+    )
+    for (const key of ['menu', 'house_offer', 'reservations'] as const) {
+      expect(getPlanLossNote(key, empty)).toBeNull()
+    }
+    expect(getPlanLossNote('badge', bar)).toBeNull()
+    expect(getPlanLossNote(undefined, bar)).toBeNull()
+  })
+})
+
+describe('retorno da troca de plano (WEB-351)', () => {
+  test('a URL de retorno leva a troca pedida, e a busca a lê de volta', () => {
+    const url = new URL(planChangeReturnUrl('elite', 'starter'), 'http://x')
+    expect(url.pathname).toBe('/admin/billing')
+    expect(parsePlanChange(Object.fromEntries(url.searchParams))).toEqual({
+      planFrom: 'elite',
+      planTo: 'starter'
+    })
+  })
+
+  test('busca incompleta, com plano desconhecido ou sem troca não é pedido', () => {
+    expect(parsePlanChange({})).toEqual({})
+    expect(parsePlanChange({ planTo: 'starter' })).toEqual({})
+    expect(parsePlanChange({ planFrom: 'elite', planTo: 'gold' })).toEqual({})
+    expect(parsePlanChange({ planFrom: 'pro', planTo: 'pro' })).toEqual({})
+    expect(parsePlanChange({ planFrom: ['elite'], planTo: 'pro' })).toEqual({})
   })
 })
 
@@ -580,6 +744,8 @@ describe('getPlanHeader', () => {
       title: 'Continue no plano Elite.'
     })
     expect(header.text).toContain('Contrate o plano')
+    // Sem contratar, esse bar sai do ar (WEB-357): o que volta é o bar.
+    expect(header.text).toContain('voltar às buscas e ao mapa')
     expect(header.text).not.toContain('sem contratar de novo')
   })
 

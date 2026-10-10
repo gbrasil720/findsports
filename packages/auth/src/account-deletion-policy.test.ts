@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { getBarAccountDeletionBlock } from './account-deletion-policy'
+import { liveStripeSubscriptionId } from './account-deletion-policy'
 
-describe('bar account deletion policy', () => {
-  test('allows accounts without an external subscription', () => {
+describe('assinatura a encerrar na exclusão da conta', () => {
+  test('sem assinatura no Stripe não há o que encerrar', () => {
+    expect(liveStripeSubscriptionId(null)).toBeNull()
     expect(
-      getBarAccountDeletionBlock({
+      liveStripeSubscriptionId({
         externalSubscriptionId: null,
         status: 'active'
       })
@@ -15,13 +16,13 @@ describe('bar account deletion policy', () => {
     'active',
     'trialing',
     'past_due'
-  ] as const)('blocks an external %s subscription', (status) => {
+  ] as const)('assinatura %s no Stripe é encerrada', (status) => {
     expect(
-      getBarAccountDeletionBlock({
+      liveStripeSubscriptionId({
         externalSubscriptionId: 'sub_123',
         status
       })
-    ).toBe('subscription-active')
+    ).toBe('sub_123')
   })
 
   // WEB-60: `cancelled` é assinatura que já acabou no Stripe, inclusive no
@@ -29,9 +30,9 @@ describe('bar account deletion policy', () => {
   test.each([
     'cancelled',
     'inactive'
-  ] as const)('allows an ended %s subscription', (status) => {
+  ] as const)('assinatura %s já não cobra', (status) => {
     expect(
-      getBarAccountDeletionBlock({
+      liveStripeSubscriptionId({
         externalSubscriptionId: 'sub_123',
         status
       })

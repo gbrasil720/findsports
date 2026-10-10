@@ -9,6 +9,8 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { CancelSubscriptionButton } from '@/components/billing/cancel-subscription-button'
+import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
@@ -24,16 +26,18 @@ import {
   getTrialNotice,
   isContractedTrial,
   PLAN_CATALOG,
+  parsePlanChange,
   planChargeForCurrentPlan,
   planChargeForShowcase,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { getCancelNotice } from '@/lib/scheduled-cancel'
+import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/billing')({
+  validateSearch: parsePlanChange,
   head: () => ({
     meta: [
       { title: 'Assinatura e pagamentos — Onside' },
@@ -91,6 +95,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 function BillingPage() {
   const trpc = useTRPC()
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
+  const { planFrom, planTo } = Route.useSearch()
   const [openingPortal, setOpeningPortal] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
@@ -180,6 +185,10 @@ function BillingPage() {
           pagamento.
         </p>
       </div>
+
+      <PlanChangedNotice
+        pending={planFrom && planTo ? { from: planFrom, to: planTo } : null}
+      />
 
       <div className="grid gap-6 md:grid-cols-[1fr_320px]">
         <div className="space-y-6">
@@ -284,11 +293,10 @@ function BillingPage() {
 
                 {lapsed ? (
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">
-                    {LAPSED_COPY[lapsed].cause} Recursos do plano, como o
-                    cardápio no perfil, ficam suspensos até{' '}
+                    {LAPSED_COPY[lapsed].cause}{' '}
                     {contractInPlan
-                      ? 'o plano ser contratado.'
-                      : 'a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
+                      ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
+                      : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
                   </p>
                 ) : ended ? (
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">
@@ -389,6 +397,12 @@ function BillingPage() {
                   Fazer upgrade
                 </Link>
               ) : null}
+
+              {/* Ação secundária, sem cara de botão: o atalho existe para
+                  quem procura, não para concorrer com o resto (WEB-339). */}
+              {canCancelSubscription(subscription) ? (
+                <CancelSubscriptionButton className="min-h-11 text-sm text-[var(--onside-muted)] underline underline-offset-2 hover:text-[var(--onside-ink)]" />
+              ) : null}
             </div>
 
             {portalError ? (
@@ -410,11 +424,13 @@ function BillingPage() {
               <span>
                 {ended && hasProviderCustomer
                   ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento acima.'
-                  : hasProviderCustomer
-                    ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
-                    : onLocalTrial
-                      ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
-                      : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
+                  : canCancelSubscription(subscription)
+                    ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima. “Cancelar assinatura” abre o portal direto no cancelamento.'
+                    : hasProviderCustomer
+                      ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
+                      : onLocalTrial
+                        ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
+                        : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
               </span>
             </div>
           </section>

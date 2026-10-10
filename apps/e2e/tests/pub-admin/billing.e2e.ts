@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { STUB_URL } from '../../env'
+import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
+import { stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
 // /admin/billing: plano atual e portal do Stripe, onde ficam faturas, cartão,
@@ -21,6 +22,9 @@ const currentPlan = (page: Page) =>
   page.locator('section').filter({
     has: page.getByRole('heading', { name: 'Plano atual' })
   })
+
+const cancelShortcut = (page: Page) =>
+  page.getByRole('button', { name: 'Cancelar assinatura' })
 
 test('o painel leva à cobrança e à validação', async ({ page }) => {
   const pub = await createPub()
@@ -100,6 +104,65 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   expect(navigations).toHaveLength(1)
 })
 
+// WEB-339: o atalho abre o portal já no cancelamento, pela rota do plugin
+// (`/subscription/cancel`), que antes confere a assinatura no Stripe.
+test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelamento (WEB-339)', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const customerId = `cus_e2e_${randomUUID()}`
+  const pub = await createPub({
+    subscription: { plan: 'pro', externalSubscriptionId: subscriptionId }
+  })
+  // O cliente fica no usuário e na linha do plugin, como o checkout grava.
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    pub.user.id
+  ])
+  await query(
+    'UPDATE stripe_subscription SET stripe_customer_id = $1 WHERE stripe_subscription_id = $2',
+    [customerId, subscriptionId]
+  )
+  const seeded = await request.post(`${STUB_URL}/stripe/subscriptions`, {
+    data: stripeSubscription({
+      id: subscriptionId,
+      status: 'active',
+      plan: 'pro',
+      userId: pub.user.id,
+      customerId
+    })
+  })
+  expect(seeded.ok()).toBe(true)
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+
+  await expect(currentPlan(page)).toContainText(
+    '“Cancelar assinatura” abre o portal direto no cancelamento.'
+  )
+  // Ação secundária: "Gerenciar assinatura" segue sendo o botão do card.
+  await expect(
+    currentPlan(page).getByRole('button', { name: 'Gerenciar assinatura' })
+  ).toBeVisible()
+  await cancelShortcut(page).click()
+  await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
+
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { path: string; body: Record<string, string> }[]
+  const sessions = calls.filter(
+    (call) =>
+      call.path === '/billing_portal/sessions' &&
+      call.body.customer === customerId
+  )
+  expect(sessions).toHaveLength(1)
+  expect(sessions[0]?.body).toMatchObject({
+    'flow_data[type]': 'subscription_cancel',
+    'flow_data[subscription_cancel][subscription]': subscriptionId,
+    return_url: `${BASE_URL}/admin/billing`
+  })
+})
+
 test('Elite ativo sem desconto gravado: mostra só a tabela cheia', async ({
   page
 }) => {
@@ -153,6 +216,8 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   await expect(
     page.getByRole('button', { name: 'Gerenciar assinatura' })
   ).toHaveCount(0)
+  // WEB-339: sem assinatura no Stripe não há o que cancelar lá.
+  await expect(cancelShortcut(page)).toHaveCount(0)
   await expect(
     currentPlan(page).getByText('O teste grátis não pede cartão.')
   ).toBeVisible()
@@ -175,6 +240,10 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
   await expect(currentPlan(page)).toContainText('Trial encerrado')
   await expect(currentPlan(page)).toContainText(
     'O trial gratuito terminou sem pagamento confirmado.'
+  )
+  // WEB-357: sem contratar, esse bar sai do ar; não são só os recursos.
+  await expect(currentPlan(page)).toContainText(
+    'O bar sai das buscas e do mapa até um plano ser contratado.'
   )
   // WEB-249: sem assinatura no provedor não há o que regularizar no portal;
   // o caminho para pagar é o checkout em `/plan`.
@@ -207,6 +276,7 @@ for (const [status, label] of [
     await expect(currentPlan(page)).toContainText(label)
     await expect(currentPlan(page)).toContainText('Assinatura encerrada')
     await expect(currentPlan(page)).not.toContainText('Próxima cobrança')
+    await expect(cancelShortcut(page)).toHaveCount(0)
     await expect(
       currentPlan(page).getByRole('link', { name: 'Contratar plano' })
     ).toHaveAttribute('href', '/plan?origin=billing')

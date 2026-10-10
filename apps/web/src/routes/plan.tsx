@@ -6,6 +6,7 @@ import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
+import { DowngradeConfirmDialog } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
@@ -59,6 +60,7 @@ function PlanSelection() {
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDowngrade, setConfirmingDowngrade] = useState(false)
 
   const subscriptionQuery = useQuery({
     ...trpc.pub.getMySubscription.queryOptions(),
@@ -127,7 +129,7 @@ function PlanSelection() {
     try {
       // Com URL na resposta o cliente do better-auth já está navegando para
       // o Stripe; ver `startCheckout` (WEB-241).
-      if (await startCheckout(selected)) return
+      if (await startCheckout(selected, currentPlan)) return
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } catch (checkoutError) {
       // Plano parado (WEB-172): a recusa do servidor já diz o que fazer.
@@ -147,6 +149,13 @@ function PlanSelection() {
   // No teste grátis o plano vigente ainda não foi contratado: escolher o
   // mesmo plano é contratar, não "plano atual" (WEB-31).
   const isSamePlan = selection.isSamePlan && !onTrial
+  // Os jogos do bar já estão carregados quando a confirmação de plano menor
+  // abre (WEB-351).
+  useQuery({
+    ...trpc.pub.getMyEvents.queryOptions(),
+    enabled: isDowngrade,
+    meta: { errorToast: false }
+  })
 
   return (
     <OnboardingLayout variant="plan">
@@ -274,14 +283,6 @@ function PlanSelection() {
           <p className="text-sm font-semibold">
             Atenção: você está selecionando um plano inferior ao atual.
           </p>
-          {/* WEB-350: só assinatura paga no Stripe gera crédito proporcional;
-              em teste grátis não há o que creditar. */}
-          {earnsDowngradeCredit(subscription) ? (
-            <p className="text-sm">
-              A diferença vira crédito na sua conta e abate as próximas
-              mensalidades (não é reembolsada no cartão).
-            </p>
-          ) : null}
         </div>
       ) : null}
 
@@ -334,7 +335,10 @@ function PlanSelection() {
         {regularize ? null : (
           <button
             type="button"
-            onClick={handleCheckout}
+            // Plano menor confirma antes o que o bar perde (WEB-351).
+            onClick={
+              isDowngrade ? () => setConfirmingDowngrade(true) : handleCheckout
+            }
             disabled={
               loading ||
               isSamePlan ||
@@ -369,6 +373,22 @@ function PlanSelection() {
           </button>
         )}
       </div>
+
+      {confirmingDowngrade && isDowngrade && currentPlan ? (
+        <DowngradeConfirmDialog
+          from={currentPlan}
+          to={selected}
+          // WEB-350: só assinatura paga no Stripe gera crédito proporcional;
+          // em teste grátis não há o que creditar.
+          earnsCredit={earnsDowngradeCredit(subscription)}
+          confirmLabel={`${onTrial ? 'Contratar' : 'Continuar com'} ${PLAN_CATALOG.find((p) => p.id === selected)?.name}`}
+          onCancel={() => setConfirmingDowngrade(false)}
+          onConfirm={() => {
+            setConfirmingDowngrade(false)
+            handleCheckout()
+          }}
+        />
+      ) : null}
     </OnboardingLayout>
   )
 }

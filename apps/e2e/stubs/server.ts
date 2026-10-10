@@ -32,6 +32,9 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   centavos; crédito é saldo negativo) ou zero (WEB-350). A forma de
  *   pagamento semeada (`default_payment_method`) só vem como objeto com
  *   `expand[]=default_payment_method`; sem ele, só o id, como no Stripe;
+ * - `DELETE /v1/subscriptions/{id}`: encerra a assinatura semeada (passa a
+ *   `canceled`, que é o que as leituras seguintes devolvem), ou 404 — é o que
+ *   a exclusão da conta chama (WEB-336);
  * - `POST /v1/invoices/create_preview`: a prévia da próxima fatura da
  *   assinatura semeada, com `amount_due` = `nextAmountDue`; 404 sem ela;
  * - `GET /v1/coupons/{id}`: cupom válido, menos o id `esgotado`;
@@ -212,6 +215,15 @@ async function stripe(request: Request, url: URL) {
   }
 
   const subscription = /^\/subscriptions\/([^/]+)$/.exec(path)
+  if (request.method === 'DELETE' && subscription) {
+    const found = stripeSubscriptions.get(subscription[1] ?? '')
+    if (!found) {
+      return stripeError(404, `No such subscription: ${subscription[1]}`)
+    }
+    const canceled = { ...found, status: 'canceled' }
+    stripeSubscriptions.set(subscription[1] ?? '', canceled)
+    return Response.json(canceled)
+  }
   if (request.method === 'GET' && subscription) {
     const found = stripeSubscriptions.get(subscription[1] ?? '') as
       | { customer: string; default_payment_method?: { id: string } | null }
