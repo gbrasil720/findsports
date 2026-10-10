@@ -373,9 +373,12 @@ function ProfilePage() {
     // avisar quais, então não salva às cegas.
     let myTeams: FavoriteTeam[]
     try {
-      myTeams = await queryClient.fetchQuery(
-        trpc.pubs.getMyTeams.queryOptions()
-      )
+      // Clique de salvar: falhou, avisa na hora em vez de insistir por
+      // segundos com o retry padrão das queries.
+      myTeams = await queryClient.fetchQuery({
+        ...trpc.pubs.getMyTeams.queryOptions(),
+        retry: false
+      })
     } catch (error) {
       toast.error(
         getUserFacingMessage(

@@ -33,7 +33,7 @@ import { useUndoCountdown } from './use-undo-countdown'
 export type ValidationAccess =
   | { status: 'loading' }
   | { status: 'error'; retry: () => void }
-  | { status: 'ready'; eligible: boolean }
+  | { status: 'ready'; eligible: boolean; elite: boolean }
 
 type Props = {
   access: ValidationAccess
@@ -59,13 +59,18 @@ const TITLE_ID = 'code-validation-title'
  * de jogo do bar de quem está logado.
  */
 export function CodeValidation({ access, ...panel }: Props) {
+  // Sem Elite, a tela só abre pelas reservas já aceitas (WEB-341): dizer
+  // "Plano Elite" ali contava ao dono um plano que ele não tem.
+  const openOnly = access.status === 'ready' && access.eligible && !access.elite
   return (
     <section
       className="onside-panel p-5 md:p-6"
       aria-labelledby={TITLE_ID}
       aria-busy={access.status === 'loading' || undefined}
     >
-      <p className="onside-kicker mb-2">Plano Elite</p>
+      <p className="onside-kicker mb-2">
+        {openOnly ? 'Reservas em aberto' : 'Plano Elite'}
+      </p>
       <h2 id={TITLE_ID} className="onside-display text-2xl">
         Código da reserva
       </h2>
@@ -74,6 +79,13 @@ export function CodeValidation({ access, ...panel }: Props) {
         que chegar. O grupo pode chegar aos poucos: o mesmo código vale até
         completar a reserva.
       </p>
+      {openOnly ? (
+        <p className="mt-2 max-w-2xl text-[var(--onside-muted)] text-sm">
+          Seu plano não recebe reservas novas. As que você já aceitou continuam
+          valendo, e dá para registrar a chegada até a janela de cada jogo
+          fechar.
+        </p>
+      ) : null}
 
       <div className="mt-5">
         {access.status === 'loading' ? (

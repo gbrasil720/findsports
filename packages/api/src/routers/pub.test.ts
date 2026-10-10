@@ -367,6 +367,7 @@ describe('limites de texto do jogo', () => {
 describe('eventLimitMessage', () => {
   const now = new Date('2026-10-09T12:00:00.000Z')
   const past = new Date('2026-10-01T12:00:00.000Z')
+  const future = new Date('2027-01-18T12:00:00.000Z')
   const cycleEnd = '2026-11-01T12:00:00.000Z'
   const STARTER =
     'Plano Starter permite até 5 jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.'
@@ -397,6 +398,19 @@ describe('eventLimitMessage', () => {
         now
       )
     ).toBe(STARTER)
+  })
+
+  // Teste grátis em vigor não tem cobrança: a janela é dita em mês.
+  test('Starter em teste grátis não fala em ciclo de cobrança', () => {
+    expect(
+      eventLimitMessage(
+        { plan: 'starter', status: 'trialing', currentPeriodEnd: future },
+        cycleEnd,
+        now
+      )
+    ).toBe(
+      'Plano Starter permite até 5 jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.'
+    )
   })
 
   test('bar sem assinatura não é chamado de Starter', () => {

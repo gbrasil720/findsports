@@ -168,7 +168,13 @@ export function eventLimitMessage(
   now = new Date()
 ): string {
   const standing = getSubscriptionStanding(subscription, now)
-  const window = periodEnd ? 'por ciclo de cobrança' : 'nos últimos 30 dias'
+  // Teste grátis em vigor não tem cobrança: a janela é o mês em curso.
+  const onTrial = standing === 'current' && subscription?.status === 'trialing'
+  const window = !periodEnd
+    ? 'nos últimos 30 dias'
+    : onTrial
+      ? 'por mês'
+      : 'por ciclo de cobrança'
   if (
     subscription &&
     subscription.plan !== 'starter' &&

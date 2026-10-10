@@ -619,6 +619,10 @@ describe('getPlanLossNote (WEB-351)', () => {
     expect(getPlanLossNote('events', empty)).toBe(
       'Os jogos já cadastrados continuam no ar, mas no Starter só dá para criar 5 por ciclo de cobrança.'
     )
+    // Teste grátis não tem cobrança.
+    expect(getPlanLossNote('events', empty, true)).toBe(
+      'Os jogos já cadastrados continuam no ar, mas no Starter só dá para criar 5 por mês.'
+    )
   })
 
   test('cardápio, oferta e reservas só falam do que o bar tem', () => {

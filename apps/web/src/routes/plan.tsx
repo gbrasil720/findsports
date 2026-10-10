@@ -258,7 +258,7 @@ function PlanSelection() {
             aria-hidden="true"
           />
           <p className="text-sm">
-            Você está no plano{' '}
+            Você está {onTrial ? 'testando o' : 'no'} plano{' '}
             <span className="font-bold">
               {PLAN_CATALOG.find((p) => p.id === currentPlan)?.name}
             </span>
@@ -462,6 +462,7 @@ function PlanSelection() {
           // WEB-350: só assinatura paga no Stripe gera crédito proporcional;
           // em teste grátis não há o que creditar.
           earnsCredit={earnsDowngradeCredit(subscription)}
+          onTrial={onTrial}
           confirmLabel={confirming === 'trial' ? trialLabel : checkoutLabel}
           onCancel={() => setConfirming(null)}
           onConfirm={() => {

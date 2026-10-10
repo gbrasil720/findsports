@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 import { Loader } from './components/loader'
 import { NotFoundPage } from './components/not-found/not-found-page'
 import { RouteErrorPage } from './components/route-error-page'
-import { getUserFacingError } from './lib/user-facing-error'
+import { getUserFacingError, shouldRetryQuery } from './lib/user-facing-error'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
@@ -56,7 +56,9 @@ export const getRouter = () => {
         )
       }
     }),
-    defaultOptions: { queries: { staleTime: 60 * 1000 } }
+    defaultOptions: {
+      queries: { staleTime: 60 * 1000, retry: shouldRetryQuery }
+    }
   })
 
   const linkOptions = {
