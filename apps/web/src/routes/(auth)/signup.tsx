@@ -97,6 +97,7 @@ function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [role, setRole] = useState<'fan' | 'pub'>(
     Route.useSearch().role ?? 'fan'
   )
@@ -312,9 +313,14 @@ function SignupPage() {
               )}
             </form.Field>
 
+            <LegalConsent
+              checked={acceptedTerms}
+              onCheckedChange={setAcceptedTerms}
+            />
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !acceptedTerms}
               className="onside-btn onside-btn-acid onside-btn-full mt-2"
             >
               {isLoading ? (
@@ -336,8 +342,6 @@ function SignupPage() {
               Ao criar conta, você passa a usar o app Onside com o perfil
               escolhido.
             </p>
-            <LegalConsent action="continuar" />
-
             {captcha.widget}
           </form>
         </div>
