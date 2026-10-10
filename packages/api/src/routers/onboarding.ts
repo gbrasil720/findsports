@@ -14,7 +14,7 @@ import { fanProcedure, pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
-  normalizeAmenityIds
+  writableAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import {
@@ -162,7 +162,7 @@ export const onboardingRouter = router({
             address: input.address,
             phone: input.phone ?? null,
             description: input.description ?? null,
-            amenities: normalizeAmenityIds(input.amenities ?? []),
+            amenities: writableAmenityIds(input.amenities ?? []),
             screenCount: input.screenCount ?? null,
             latitude,
             longitude,

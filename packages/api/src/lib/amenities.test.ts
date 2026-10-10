@@ -7,7 +7,8 @@ import {
   MAX_SCREEN_COUNT,
   motivoTelasInvalido,
   normalizeAmenityIds,
-  publicAmenityIds
+  publicAmenityIds,
+  writableAmenityIds
 } from './amenities'
 
 describe('vocabulário de características', () => {
@@ -87,9 +88,30 @@ describe('motivoTelasInvalido', () => {
 })
 
 describe('publicAmenityIds', () => {
-  it('esconde "Aceita reserva" de quem não recebe reservas, e só ela', () => {
-    expect(publicAmenityIds([1, 10, 11], false)).toEqual([1, 11])
-    expect(publicAmenityIds([1, 10, 11], true)).toEqual([1, 10, 11])
+  it('mostra "Aceita reserva" de quem recebe reservas, e só deles, marcada ou não', () => {
     expect(AMENITIES.find(({ id }) => id === 10)?.slug).toBe('reservations')
+
+    // Recebe: aparece uma vez, com o id gravado ou sem ele.
+    expect(publicAmenityIds([1, 11], true)).toEqual([1, 11, 10])
+    expect(publicAmenityIds([1, 10, 11], true)).toEqual([1, 11, 10])
+    expect(publicAmenityIds([], true)).toEqual([10])
+
+    // Não recebe: o id gravado não aparece, e o resto fica.
+    expect(publicAmenityIds([1, 10, 11], false)).toEqual([1, 11])
+    expect(publicAmenityIds([1, 11], false)).toEqual([1, 11])
+  })
+})
+
+describe('writableAmenityIds', () => {
+  it('ignora "Aceita reserva" que vem do cliente e preserva a já gravada', () => {
+    // Não regrava: o cliente manda, o banco não tinha.
+    expect(writableAmenityIds([4, 10, 1])).toEqual([1, 4])
+    expect(writableAmenityIds([4, 10, 1], [2])).toEqual([1, 4])
+    // Não apaga: o banco tinha, o cliente mande ou não.
+    expect(writableAmenityIds([4, 1], [1, 10])).toEqual([1, 4, 10])
+    expect(writableAmenityIds([10], [10])).toEqual([10])
+    expect(writableAmenityIds([], [8, 10])).toEqual([10])
+    // O resto continua normalizado.
+    expect(writableAmenityIds([4, 4, 9999])).toEqual([4])
   })
 })

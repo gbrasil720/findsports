@@ -23,7 +23,7 @@ import { pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
-  normalizeAmenityIds
+  writableAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { readInterestSignal } from '../lib/attendance'
@@ -337,7 +337,10 @@ export const pubRouter = router({
           ...(input.uf && { uf: input.uf }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
-            amenities: normalizeAmenityIds(input.amenities)
+            amenities: writableAmenityIds(
+              input.amenities,
+              existingBar.amenities
+            )
           }),
           ...(input.screenCount !== undefined && {
             screenCount: input.screenCount

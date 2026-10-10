@@ -167,12 +167,13 @@ integrationTest(
 )
 
 /**
- * "Aceita reserva" (10) é marcada à mão. No filtro ela só casa com quem
- * recebe reservas de fato, pela regra de `receivesReservations`; a regra em
- * SQL (`recebeReservas`) e a em TypeScript têm de dizer a mesma coisa.
+ * "Aceita reserva" (10) não é marcada: é a mesma coisa que receber reservas.
+ * O filtro e o perfil a derivam da regra de `receivesReservations`, com o id
+ * gravado em `bar.amenities` ou sem ele; a regra em SQL (`recebeReservas`) e
+ * a em TypeScript têm de dizer a mesma coisa.
  */
 integrationTest(
-  'filtro "Aceita reserva" só devolve bar que recebe reservas, nos três caminhos',
+  'filtro e perfil dão "Aceita reserva" a todo bar que recebe reservas, e só a eles, nos três caminhos',
   async () => {
     const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
       await Promise.all([load(), import('../lib/app-config')])
@@ -184,23 +185,34 @@ integrationTest(
     const now = new Date()
     const HOUR = 3_600_000
 
-    // Todos marcaram a característica; só o primeiro recebe.
+    // 1 = telão, 10 = aceita reserva. Quem não recebe tem o id 10 gravado, de
+    // quando se marcava à mão; dos dois que recebem, um nunca o marcou.
     const casos: {
       rotulo: string
       accepts: boolean
       assinatura?: Omit<typeof subscription.$inferInsert, 'barId'>
+      amenities: number[]
       recebe: boolean
     }[] = [
       {
-        rotulo: 'Elite vigente, ligado',
+        rotulo: 'Elite vigente, ligado, sem o id gravado',
         accepts: true,
         assinatura: { plan: 'elite', status: 'active' },
+        amenities: [1],
+        recebe: true
+      },
+      {
+        rotulo: 'Elite vigente, ligado, com o id gravado',
+        accepts: true,
+        assinatura: { plan: 'elite', status: 'active' },
+        amenities: [10],
         recebe: true
       },
       {
         rotulo: 'Elite vigente, desligado',
         accepts: false,
         assinatura: { plan: 'elite', status: 'active' },
+        amenities: [1, 10],
         recebe: false
       },
       {
@@ -211,15 +223,22 @@ integrationTest(
           status: 'trialing',
           currentPeriodEnd: new Date(now.getTime() - HOUR)
         },
+        amenities: [10],
         recebe: false
       },
       {
         rotulo: 'Pro vigente, ligado',
         accepts: true,
         assinatura: { plan: 'pro', status: 'active' },
+        amenities: [10],
         recebe: false
       },
-      { rotulo: 'sem assinatura', accepts: true, recebe: false }
+      {
+        rotulo: 'sem assinatura',
+        accepts: true,
+        amenities: [10],
+        recebe: false
+      }
     ]
     const fixtures = casos.map((caso, index) => ({
       ...caso,
@@ -233,6 +252,8 @@ integrationTest(
     const quemRecebe = fixtures
       .filter((fixture) => fixture.recebe)
       .map((fixture) => fixture.barId)
+      .sort()
+    const semIdGravado = barIds[0] as string
 
     await db.insert(user).values([
       {
@@ -270,7 +291,7 @@ integrationTest(
           city: 'Teste',
           latitude: (lat + fixture.offset).toFixed(8),
           longitude: lng.toFixed(8),
-          amenities: [10],
+          amenities: fixture.amenities,
           acceptsReservations: fixture.accepts,
           isActive: true
         })
@@ -320,6 +341,14 @@ integrationTest(
 
       const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
+      // No perfil a característica segue o recebimento, não o que está gravado.
+      const noPerfil: Record<string, boolean> = {}
+      for (const barId of barIds) {
+        const perfil = await caller.pubs.getById({ id: barId })
+        noPerfil[barId] = perfil.amenities.includes(10)
+      }
+      expect(noPerfil).toEqual(esperado)
+
       // Coordenada própria por busca, pelo mesmo motivo do teste acima.
       let passo = 0
       const buscar = async (
@@ -344,8 +373,14 @@ integrationTest(
       expect(await buscar([10], 'rating')).toEqual(quemRecebe)
       expect(await buscar(undefined, 'rating')).toEqual([...barIds].sort())
 
+      // Com outra característica continua sendo E: telão por `amenities`,
+      // reserva pelo recebimento. O Elite desligado tem as duas gravadas.
+      expect(await buscar([1, 10])).toEqual([semIdGravado])
+      expect(await buscar([1, 10], 'rating')).toEqual([semIdGravado])
+
       await setAppConfig('search.tiered_plan_query', false, null)
       expect(await buscar([10])).toEqual(quemRecebe)
+      expect(await buscar([1, 10])).toEqual([semIdGravado])
       expect(await buscar(undefined)).toEqual([...barIds].sort())
     } finally {
       await resetAppConfig('search.tiered_plan_query')
