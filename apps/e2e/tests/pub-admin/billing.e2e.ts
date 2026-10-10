@@ -165,6 +165,33 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
   )
 })
 
+// WEB-60: quem cancelou lê "Cancelado"; "Inativo" fica para a cobrança
+// pausada. Nos dois o plano contratado aparece, sem próxima cobrança.
+for (const [status, label] of [
+  ['cancelled', 'Cancelado'],
+  ['inactive', 'Inativo']
+] as const) {
+  test(`assinatura ${status} mostra "${label}" e o caminho para contratar`, async ({
+    page
+  }) => {
+    await openBilling(page, {
+      subscription: {
+        plan: 'pro',
+        status,
+        externalSubscriptionId: `sub_e2e_${randomUUID()}`
+      },
+      bar: { is_active: false }
+    })
+    await expect(currentPlan(page)).toContainText('Pro')
+    await expect(currentPlan(page)).toContainText(label)
+    await expect(currentPlan(page)).toContainText('Assinatura encerrada')
+    await expect(currentPlan(page)).not.toContainText('Próxima cobrança')
+    await expect(
+      currentPlan(page).getByRole('link', { name: 'Contratar plano' })
+    ).toHaveAttribute('href', '/plan?origin=billing')
+  })
+}
+
 test('bar sem assinatura', async ({ page }) => {
   await openBilling(page, { subscription: null })
   await expect(

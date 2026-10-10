@@ -8,7 +8,8 @@ describe('tradução da situação do Stripe (WEB-31)', () => {
     expect(localStatusFor('active')).toBe('active')
     expect(localStatusFor('past_due')).toBe('past_due')
     expect(localStatusFor('unpaid')).toBe('past_due')
-    expect(localStatusFor('canceled')).toBe('inactive')
+    // WEB-60: quem cancelou não se confunde com cobrança pausada.
+    expect(localStatusFor('canceled')).toBe('cancelled')
     expect(localStatusFor('paused')).toBe('inactive')
   })
 
