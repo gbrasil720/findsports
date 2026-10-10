@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'bun:test'
-import { customerPrefillFor, trialEndForCheckout } from './stripe-checkout'
+import { afterEach, describe, expect, it } from 'bun:test'
+import type Stripe from 'stripe'
+import {
+  customerPrefillFor,
+  founderCouponUsable,
+  setFounderCouponSource,
+  trialEndForCheckout,
+  usableFounderCoupon
+} from './stripe-checkout'
 
 const now = new Date('2026-10-09T12:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -100,5 +107,42 @@ describe('cliente do Stripe com os dados do cadastro (WEB-328)', () => {
     })
     expect(prefill.individual_name).toHaveLength(150)
     expect(prefill.business_name).toHaveLength(150)
+  })
+})
+
+describe('consulta do cupom de fundador com teto de tempo', () => {
+  /** Stripe dublado: guarda as opções de cada consulta de cupom. */
+  function stripeWith(answer: () => Promise<{ valid: boolean }>) {
+    const requests: unknown[] = []
+    const client = {
+      coupons: {
+        retrieve: (_id: string, _params: unknown, request: unknown) => {
+          requests.push(request)
+          return answer()
+        }
+      }
+    } as unknown as Stripe
+    return { client, requests }
+  }
+  // O que o SDK devolve quando o teto estoura.
+  const slow = () => Promise.reject(new Error('Request aborted due to timeout'))
+
+  afterEach(() => setFounderCouponSource(async () => null))
+
+  it('consulta com teto de 5s e sem nova tentativa', async () => {
+    const { client, requests } = stripeWith(async () => ({ valid: true }))
+    expect(await founderCouponUsable(client, 'eM7dQpMF')).toBe(true)
+    expect(requests).toEqual([{ timeout: 5000, maxNetworkRetries: 0 }])
+  })
+
+  it('Stripe lento: o checkout segue sem o cupom', async () => {
+    setFounderCouponSource(async () => 'eM7dQpMF')
+    expect(await usableFounderCoupon(stripeWith(slow).client)).toBeNull()
+  })
+
+  it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
+    setFounderCouponSource(async () => 'eM7dQpMF')
+    const { client } = stripeWith(async () => ({ valid: true }))
+    expect(await usableFounderCoupon(client)).toBe('eM7dQpMF')
   })
 })

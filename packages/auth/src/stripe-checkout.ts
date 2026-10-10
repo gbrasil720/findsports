@@ -50,13 +50,22 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
   founderCouponSource = source
 }
 
-/** O cupom existe e ainda aceita resgate no Stripe. */
+// O checkout e a `/plan` não esperam o Stripe pelo cupom: sem resposta em 5s,
+// e sem nova tentativa, seguem sem ele (o padrão do SDK são 80s e 2 tentativas).
+const COUPON_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
+
+/**
+ * O cupom existe e ainda aceita resgate no Stripe. Erro ou demora do Stripe
+ * contam como "não": quem chama segue sem o desconto.
+ */
 export async function founderCouponUsable(
   client: Stripe,
   couponId: string | null | undefined
 ): Promise<boolean> {
   if (!couponId) return false
-  const coupon = await client.coupons.retrieve(couponId).catch(() => null)
+  const coupon = await client.coupons
+    .retrieve(couponId, {}, COUPON_REQUEST)
+    .catch(() => null)
   return Boolean(coupon?.valid)
 }
 
@@ -65,7 +74,9 @@ export async function founderCouponUsable(
  * esgotado, apagado ou com o id errado faria o Stripe recusar a sessão
  * inteira, e o bar não conseguiria contratar por causa de um desconto.
  */
-async function usableFounderCoupon(client: Stripe): Promise<string | null> {
+export async function usableFounderCoupon(
+  client: Stripe
+): Promise<string | null> {
   const couponId = await founderCouponSource()
   if (!(await founderCouponUsable(client, couponId))) {
     if (couponId) {
