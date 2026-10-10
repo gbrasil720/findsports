@@ -52,6 +52,20 @@ export async function endLiveSubscriptionOf(userId: string, client: Stripe) {
       })
     )
   } catch (error) {
+    // O Stripe respondeu que a assinatura não existe (apagada no painel, ou
+    // id de outra conta do Stripe): não há o que encerrar nem o que cobrar.
+    // Travar aqui deixaria o dono sem nunca conseguir excluir a conta.
+    if ((error as { code?: string }).code === 'resource_missing') {
+      console.info(
+        JSON.stringify({
+          level: 'info',
+          event: 'account_deletion_subscription_missing',
+          userId,
+          subscriptionId
+        })
+      )
+      return
+    }
     logBillingError('account_deletion_subscription_cancel_failed', {
       userId,
       subscriptionId,

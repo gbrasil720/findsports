@@ -332,6 +332,29 @@ integrationTest(
 )
 
 integrationTest(
+  'assinatura que o Stripe não conhece: exclui em vez de travar o dono',
+  async () => {
+    const t = ready()
+    const owner = await t.createOwner('active')
+    const stripe = t.stubStripe('active')
+    stripe.retrieve.mockImplementation((() =>
+      Promise.reject(
+        Object.assign(new Error('No such subscription'), {
+          code: 'resource_missing'
+        })
+      )) as unknown as Parameters<typeof stripe.retrieve.mockImplementation>[0])
+    spies.push(stripe.retrieve, stripe.cancel)
+
+    const response = await t.deleteAccount(owner.email)
+
+    expect(response.status).toBe(200)
+    expect(stripe.cancel).not.toHaveBeenCalled()
+    expect(await t.userExists(owner.id)).toBe(false)
+    expect(await t.pluginRowExists(owner.id)).toBe(false)
+  }
+)
+
+integrationTest(
   'assinatura que o Stripe já encerrou: exclui sem cancelar de novo',
   async () => {
     const t = ready()
