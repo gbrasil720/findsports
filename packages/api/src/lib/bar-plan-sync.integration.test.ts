@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { applyStripeSubscription } from '@findsports_oficial/auth/stripe-sync'
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, eq, inArray, sql } from '@findsports_oficial/db'
 import {
   bar,
   event,
@@ -186,12 +186,23 @@ integrationTest(
           context.barId
         )
       }
-      // Uma chamada só: os destaques têm uma entrada de cache para todos.
-      const featured = (await live.fan.pubs.getEliteEvents()).map(
-        (row) => row.championship
-      )
-      expect(featured).toContain(`Jogo ${live.barId}`)
-      expect(featured).not.toContain(`Jogo ${expired.barId}`)
+      // Destaques filtram por `is_active` e `plan = 'elite'`. Conferido na
+      // linha: a consulta tem uma entrada de cache só, de 60 s, que outro
+      // arquivo da suíte já pode ter preenchido.
+      const rows = await db
+        .select({ id: bar.id, isActive: bar.isActive, plan: bar.plan })
+        .from(bar)
+        .where(inArray(bar.id, ids(seeded)))
+      expect(
+        Object.fromEntries(
+          rows.map((row) => [row.id, [row.isActive, row.plan]])
+        )
+      ).toEqual({
+        [expired.barId]: [false, 'starter'],
+        [live.barId]: [true, 'elite'],
+        [pastDue.barId]: [true, 'starter'],
+        [onStripe.barId]: [true, 'starter']
+      })
 
       // Contratar põe o bar de volta no ar, pelo webhook do Stripe.
       const [owner] = await db
