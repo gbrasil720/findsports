@@ -61,6 +61,7 @@ async function setup() {
       provider: sub?.provider ?? null,
       externalSubscriptionId: sub?.externalSubscriptionId ?? null,
       currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
+      cancelAt: sub?.cancelAt?.toISOString() ?? null,
       monthlyDiscountReais: sub?.monthlyDiscountReais ?? null
     }
   }
@@ -85,10 +86,16 @@ function stripeSubscription(options: {
   customerId: string
   userId?: string
   founderDiscount?: boolean
+  cancelAt?: Date
+  cancelAtPeriodEnd?: boolean
 }) {
   return {
     id: options.id,
     status: options.status,
+    cancel_at: options.cancelAt
+      ? Math.floor(options.cancelAt.getTime() / 1000)
+      : null,
+    cancel_at_period_end: options.cancelAtPeriodEnd ?? false,
     customer: options.customerId,
     metadata: options.userId ? { userId: options.userId } : {},
     discounts: options.founderDiscount
@@ -138,6 +145,7 @@ integrationTest(
       provider: 'stripe',
       externalSubscriptionId: sub.id,
       currentPeriodEnd: periodEnd.toISOString(),
+      cancelAt: null,
       monthlyDiscountReais: 0
     } as const
     expect(await stateOf(owner.barId)).toEqual(expected)
@@ -235,6 +243,50 @@ integrationTest(
         status: local
       })
     }
+  }
+)
+
+integrationTest(
+  'cancelamento agendado no portal grava cancelAt, e reativar zera (WEB-335)',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const base = {
+      id: `sub_${owner.barId}`,
+      status: 'active' as const,
+      lookupKey: 'starter_monthly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    }
+    const cancelAt = new Date('2027-01-20T22:54:00.000Z')
+
+    // Billing `flexible`: o portal grava a data e deixa a flag falsa.
+    await applyStripeSubscription(stripeSubscription({ ...base, cancelAt }))
+    // Agendado não é encerrado: o bar segue no ar, com o plano ativo.
+    expect(await stateOf(owner.barId)).toMatchObject({
+      isActive: true,
+      status: 'active',
+      cancelAt: cancelAt.toISOString()
+    })
+
+    // "Não cancelar assinatura" no portal zera os dois campos.
+    await applyStripeSubscription(stripeSubscription(base))
+    expect(await stateOf(owner.barId)).toMatchObject({
+      status: 'active',
+      cancelAt: null
+    })
+
+    // Billing clássico: só a flag, e o fim é o do período.
+    await applyStripeSubscription(
+      stripeSubscription({ ...base, cancelAtPeriodEnd: true })
+    )
+    expect(await stateOf(owner.barId)).toMatchObject({
+      status: 'active',
+      cancelAt: periodEnd.toISOString()
+    })
+
+    await applyStripeSubscription(stripeSubscription(base))
+    expect(await stateOf(owner.barId)).toMatchObject({ cancelAt: null })
   }
 )
 

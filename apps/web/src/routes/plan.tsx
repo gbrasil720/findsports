@@ -6,6 +6,7 @@ import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
+import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
@@ -26,6 +27,7 @@ import {
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
+import { getCancelNotice } from '@/lib/scheduled-cancel'
 import { markCheckoutIntent } from '@/lib/subscription-receipt'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -82,6 +84,7 @@ function PlanSelection() {
   const onTrial = mode === 'trial'
   const header = getPlanHeader(subscription)
   const trialNotice = getTrialNotice(subscription)
+  const cancelNotice = getCancelNotice(subscription)
   const exitLink = getPlanExitLink(origin)
   // WEB-328: o checkout não pede nome nem empresa; saem do cadastro. A tela
   // diz em nome de quem a assinatura sai antes de mandar para o Stripe.
@@ -210,9 +213,16 @@ function PlanSelection() {
               {PLAN_CATALOG.find((p) => p.id === currentPlan)?.name}
             </span>
             . {trialNotice ? `${trialNotice}. ` : null}
-            {onTrial
-              ? 'Contratar agora não antecipa a cobrança.'
-              : 'Selecione outro plano abaixo para fazer a troca.'}
+            {cancelNotice ? (
+              <>
+                {cancelNotice}.{' '}
+                <ReactivateSubscriptionButton className="font-bold underline underline-offset-2" />
+              </>
+            ) : onTrial ? (
+              'Contratar agora não antecipa a cobrança.'
+            ) : (
+              'Selecione outro plano abaixo para fazer a troca.'
+            )}
           </p>
         </div>
       ) : null}

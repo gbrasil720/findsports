@@ -366,6 +366,12 @@ export const subscription = pgTable('subscription', {
   /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
   monthlyDiscountReais: integer('monthly_discount_reais'),
   currentPeriodEnd: timestamp('current_period_end'),
+  /**
+   * Cancelamento agendado no Stripe (WEB-335): quando a assinatura acaba. Null
+   * sem cancelamento marcado, e volta a null se o dono reativar. O status
+   * segue `active` até lá.
+   */
+  cancelAt: timestamp('cancel_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

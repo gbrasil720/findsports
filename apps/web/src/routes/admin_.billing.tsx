@@ -9,6 +9,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
@@ -24,6 +25,7 @@ import {
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -279,6 +281,11 @@ function BillingPage() {
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">
                     Assinatura encerrada: o bar fica fora das buscas e do mapa
                     até um plano ser contratado.
+                  </p>
+                ) : getCancelNotice(subscription) ? (
+                  <p className="mt-4 text-xs text-[var(--onside-muted)]">
+                    {getCancelNotice(subscription)}.{' '}
+                    <ReactivateSubscriptionButton className="font-bold text-[var(--onside-ink)] underline underline-offset-2" />
                   </p>
                 ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">

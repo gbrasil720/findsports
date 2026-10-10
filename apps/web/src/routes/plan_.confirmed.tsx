@@ -3,6 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import ExternalLink from 'reicon-react/icons/ArrowUpRight'
+import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import {
   countReceiptLines,
   SubscriptionReceipt
@@ -14,6 +15,7 @@ import { openBillingPortal } from '@/lib/billing-client'
 import { getPlan } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
+import { getScheduledCancelAt } from '@/lib/scheduled-cancel'
 import {
   clearCheckoutIntent,
   isSubscriptionConfirmed,
@@ -198,6 +200,7 @@ function SubscriptionConfirmed() {
   }, [checkoutIntent, subscriptionQuery.isSuccess, confirmed, navigate])
 
   const stage = resolveReceiptStage({ confirmed, exhausted, printed })
+  const scheduledCancelAt = getScheduledCancelAt(subscription)
 
   const handleOpenPortal = async () => {
     setOpeningPortal(true)
@@ -224,6 +227,7 @@ function SubscriptionConfirmed() {
         monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
         status={subscription?.status ?? ''}
         currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
+        cancelAt={scheduledCancelAt}
         subscriptionRef={subscription?.externalSubscriptionId ?? null}
         barName={barQuery.data?.name ?? null}
         issuedAt={issuedAt}
@@ -343,6 +347,9 @@ function SubscriptionConfirmed() {
               >
                 Assinatura e pagamentos
               </Link>
+              {scheduledCancelAt ? (
+                <ReactivateSubscriptionButton className="onside-btn onside-btn-outline min-h-11" />
+              ) : null}
             </>
           )
         }

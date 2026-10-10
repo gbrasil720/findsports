@@ -29,6 +29,8 @@ export function stripeSubscription(options: {
   plan: Plan
   userId: string
   currentPeriodEnd?: Date
+  /** Cancelamento agendado no portal, como o billing `flexible` grava. */
+  cancelAt?: Date
   lookupKey?: string
   /** Cupom Early Bird (R$ 28 off) ativo na assinatura. */
   founderDiscount?: boolean
@@ -42,6 +44,9 @@ export function stripeSubscription(options: {
     status: options.status,
     customer: options.customerId ?? `cus_e2e_wh_${options.userId}`,
     metadata: { userId: options.userId },
+    cancel_at: options.cancelAt
+      ? Math.floor(options.cancelAt.getTime() / 1000)
+      : null,
     cancel_at_period_end: false,
     discounts: options.founderDiscount
       ? [
