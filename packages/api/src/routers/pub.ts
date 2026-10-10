@@ -39,6 +39,7 @@ import {
 import { readBillingBalance } from '../lib/billing-balance'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
+  canCancelSubscription,
   getCurrentPlan,
   getSubscriptionStanding,
   type SubscriptionForPlan
@@ -61,6 +62,7 @@ import {
   ratingPercentage
 } from '../lib/rating'
 import { assertCanEnableReservations } from '../lib/reservation-intake'
+import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
 import { utcIso } from '../lib/utc-timestamp'
 
 /**
@@ -863,6 +865,33 @@ export const pubRouter = router({
       stripeClient,
       existingBar.subscription?.externalSubscriptionId
     )
+  }),
+
+  // "Cancelar assinatura" de `/admin/billing` (WEB-339): só a URL do portal,
+  // sem escrita no banco. Mutation porque cria uma sessão no Stripe.
+  openSubscriptionCancel: pubProcedure.mutation(async ({ ctx }) => {
+    const { subscription: current } = await getBarByUserId(ctx.session.user.id)
+    const subscriptionId = current?.externalSubscriptionId
+    if (
+      !current ||
+      !subscriptionId ||
+      !canCancelSubscription({
+        ...current,
+        standing: getSubscriptionStanding(current)
+      })
+    ) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Não há assinatura em vigor para cancelar.'
+      })
+    }
+    return {
+      url: await createSubscriptionCancelUrl(
+        stripeClient,
+        subscriptionId,
+        new URL('/admin/billing', env.BETTER_AUTH_URL).href
+      )
+    }
   }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {

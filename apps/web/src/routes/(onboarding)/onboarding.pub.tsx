@@ -34,7 +34,6 @@ import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
-import { getPlan } from '@/lib/plan-catalog'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -42,6 +41,7 @@ import {
   parsePubOnboardingDraft,
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
+import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
 import { roleAccountLabel } from '@/lib/roles'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { formatStoredPhone } from '@/utils/format-phone'
@@ -144,23 +144,13 @@ function PubOnboarding() {
   const cidadesAbertas = configQuery.data?.['launch.pub_cities'] ?? []
   const cidadePermitida = cidadeLiberada(city, cidadesAbertas)
 
-  // WEB-238: com o teste do cadastro ligado, concluir publica o bar e já dá o
-  // plano; a revisão diz isso em vez de prometer uma escolha de plano. Chave
-  // desligada, ausente, carregando ou com erro de leitura cai no texto de
-  // sempre, que é o padrão do registro. Quem decide o teste é o `completePub`.
-  const trial = configQuery.data?.['billing.onboarding_trial']
-  const revisao = trial?.enabled
-    ? {
-        titulo: 'Pronto para colocar seu bar no ar',
-        texto: `Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano ${getPlan(trial.plan).name} grátis por ${trial.days} ${trial.days === 1 ? 'dia' : 'dias'}, sem cartão. Em seguida você conhece os planos.`,
-        botao: 'Colocar meu bar no ar'
-      }
-    : {
-        titulo: 'Pronto para escolher o plano',
-        texto:
-          'Revise os dados do bar. Ao continuar, salvamos o cadastro e você escolhe o plano.',
-        botao: 'Escolher meu plano'
-      }
+  // WEB-238: a revisão diz o que acontece de fato ao continuar. Quem decide o
+  // teste é o `completePub`.
+  const revisao = getPubOnboardingReview({
+    trial: configQuery.data?.['billing.onboarding_trial'],
+    emailVerified: conta?.emailVerified === true,
+    goesToPlan: callbackUrl === '/dashboard'
+  })
 
   const seguirParaPlano = async () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)

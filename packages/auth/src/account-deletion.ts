@@ -1,4 +1,5 @@
 import { db, eq, sql } from '@findsports_oficial/db'
+import { stripeSubscription } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { waitlistEntries } from '@findsports_oficial/db/schema/waitlist'
 import { APIError } from 'better-auth/api'
@@ -9,10 +10,10 @@ import { logBillingError } from './stripe-sync'
 
 /**
  * Antes de apagar a conta: encerra na hora, no Stripe, a assinatura que ainda
- * pode cobrar (WEB-336). Cancelamento já agendado cai no mesmo caminho. Sem
- * proração nem fatura final, que é o padrão do `cancel`: o período pago não é
- * devolvido. O reembolso dos 7 dias da primeira contratação é pedido ao
- * suporte, que acha o caso pela linha de log daqui.
+ * existe lá (WEB-336). Cancelamento já agendado e assinatura pausada caem no
+ * mesmo caminho. Sem proração nem fatura final, que é o padrão do `cancel`: o
+ * período pago não é devolvido. O reembolso dos 7 dias da primeira
+ * contratação é pedido ao suporte, que acha o caso pela linha de log daqui.
  *
  * Stripe recusando ou sem responder, lança, e a conta fica: não pode sobrar
  * assinatura cobrando sem dono.
@@ -51,6 +52,20 @@ export async function endLiveSubscriptionOf(userId: string, client: Stripe) {
       })
     )
   } catch (error) {
+    // O Stripe respondeu que a assinatura não existe (apagada no painel, ou
+    // id de outra conta do Stripe): não há o que encerrar nem o que cobrar.
+    // Travar aqui deixaria o dono sem nunca conseguir excluir a conta.
+    if ((error as { code?: string }).code === 'resource_missing') {
+      console.info(
+        JSON.stringify({
+          level: 'info',
+          event: 'account_deletion_subscription_missing',
+          userId,
+          subscriptionId
+        })
+      )
+      return
+    }
     logBillingError('account_deletion_subscription_cancel_failed', {
       userId,
       subscriptionId,
@@ -72,4 +87,15 @@ export async function deleteWaitlistEntryOf(email: string) {
   await db
     .delete(waitlistEntries)
     .where(sql`lower(${waitlistEntries.email}) = ${email.toLowerCase()}`)
+}
+
+/**
+ * Depois de apagar a conta: a linha que o plugin do Stripe guarda da
+ * assinatura sai junto. `stripe_subscription` não tem FK para `user`, e
+ * ficaria com o id do dono e o do cliente do Stripe de quem foi apagado.
+ */
+export async function deleteStripeSubscriptionOf(userId: string) {
+  await db
+    .delete(stripeSubscription)
+    .where(eq(stripeSubscription.referenceId, userId))
 }
