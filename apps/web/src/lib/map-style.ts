@@ -195,12 +195,30 @@ function semNomeLocal(expressao: unknown): unknown {
 }
 
 /**
- * Monta o estilo apontando para o TileJSON do basemap (WEB-218).
+ * Produção legada ainda aponta `VITE_MAP_TILES_URL` para o `.pmtiles` no R2;
+ * o caminho novo aponta para o TileJSON do Worker (WEB-218). A distinção é
+ * só pelo sufixo da URL — ver `urlDaFonteVetorial`.
+ */
+export function tilesUrlUsaArquivoPmtiles(tilesUrl: string): boolean {
+  try {
+    return new URL(tilesUrl).pathname.endsWith('.pmtiles')
+  } catch {
+    return tilesUrl.endsWith('.pmtiles')
+  }
+}
+
+/** URL da fonte `vector` dentro do estilo MapLibre. */
+export function urlDaFonteVetorial(tilesUrl: string): string {
+  return tilesUrlUsaArquivoPmtiles(tilesUrl)
+    ? `pmtiles://${tilesUrl}`
+    : tilesUrl
+}
+
+/**
+ * Monta o estilo do basemap.
  *
- * `tilesUrl` é a URL pública do `.json` servido pelo Worker em
- * `tiles.onside.sh` — por exemplo
- * `https://tiles.onside.sh/onside-br-20260906.json`. O MapLibre baixa o
- * TileJSON e pede cada tile em `/{z}/{x}/{y}.mvt` na mesma origem.
+ * `tilesUrl` é o valor de `VITE_MAP_TILES_URL`: TileJSON (`.json`) no Worker
+ * ou URL pública do archive `.pmtiles` enquanto Infra não migra a variável.
  *
  * `lang: 'pt'` faz os rótulos preferirem `name:pt` — "Oceano Atlântico" em
  * vez de "Atlantic Ocean" —, caindo no nome local quando não existe tradução,
@@ -208,7 +226,7 @@ function semNomeLocal(expressao: unknown): unknown {
  * latino o nome local não entra: ver `semNomeLocal`.
  */
 export function criarEstiloDoMapa(
-  tileJsonUrl: string,
+  tilesUrl: string,
   /**
    * Origem que prefixa glyphs e sprite. Vem de `window.location.origin` no
    * componente; é parâmetro, e não leitura global, para o estilo continuar
@@ -224,7 +242,7 @@ export function criarEstiloDoMapa(
     sources: {
       [SOURCE]: {
         type: 'vector',
-        url: tileJsonUrl,
+        url: urlDaFonteVetorial(tilesUrl),
         attribution: ATRIBUICAO
       }
     },

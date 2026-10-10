@@ -39,12 +39,10 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
   client: {
     /**
-     * TileJSON do basemap (WEB-73, WEB-218).
+     * Basemap (WEB-73, WEB-218).
      *
-     * URL pública do `.json` no Worker de tiles — por exemplo
-     * `https://tiles.onside.sh/onside-br-20260906.json`. O nome carrega a
-     * data do build; rebuild trimestral troca esta variável em vez de
-     * invalidar cache de borda.
+     * TileJSON (`.json`) no Worker ou, enquanto Infra não migra, URL pública
+     * do `.pmtiles` no R2 — o cliente escolhe pelo sufixo (`map-style.ts`).
      *
      * Não é segredo: substituiu o par Google Maps (`VITE_GOOGLE_MAPS_*`).
      */

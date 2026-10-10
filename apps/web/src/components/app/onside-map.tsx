@@ -1,6 +1,11 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 
-import type { GeoJSONSource, Map as MapLibreMap, Marker } from 'maplibre-gl'
+import type {
+  AddProtocolAction,
+  GeoJSONSource,
+  Map as MapLibreMap,
+  Marker
+} from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -14,7 +19,10 @@ import {
   limitesDoRaio
 } from '@/domain/geo-circle'
 import { env } from '@/lib/env'
-import { criarEstiloDoMapa } from '@/lib/map-style'
+import {
+  criarEstiloDoMapa,
+  tilesUrlUsaArquivoPmtiles
+} from '@/lib/map-style'
 import { isRetryableError } from '@/lib/user-facing-error'
 import {
   aplicarPino,
@@ -134,8 +142,11 @@ type MarkerEntry = {
  * `<script>` tardio do Google dava — agora sem carregador escrito à mão.
  */
 let moduloPromise: Promise<MapLibreModulo> | null = null
+let protocoloPmtilesRegistrado = false
 
-async function carregarMapLibre(): Promise<MapLibreModulo> {
+async function carregarMapLibre(
+  usarProtocoloPmtiles: boolean
+): Promise<MapLibreModulo> {
   moduloPromise ??= (async () => {
     const maplibre = await import('maplibre-gl')
     // A URL do worker precisa vir do empacotador (WEB-73).
@@ -162,7 +173,17 @@ async function carregarMapLibre(): Promise<MapLibreModulo> {
     moduloPromise = null
     throw reason
   })
-  return moduloPromise
+
+  const maplibre = await moduloPromise
+  if (usarProtocoloPmtiles && !protocoloPmtilesRegistrado) {
+    const { Protocol } = await import('pmtiles')
+    maplibre.addProtocol(
+      'pmtiles',
+      new Protocol().tile as unknown as AddProtocolAction
+    )
+    protocoloPmtilesRegistrado = true
+  }
+  return maplibre
 }
 
 /**
@@ -245,7 +266,9 @@ function MapaDaOnside({
       return
     }
 
-    carregarMapLibre()
+    const legadoPmtiles = tilesUrlUsaArquivoPmtiles(tilesUrl)
+
+    carregarMapLibre(legadoPmtiles)
       .then((maplibre) => {
         if (cancelado || !containerRef.current) return
         libRef.current = maplibre

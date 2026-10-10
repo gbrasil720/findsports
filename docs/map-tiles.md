@@ -28,9 +28,16 @@ Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
 | maxzoom | 15 |
 | Esquema | Protomaps v4 (`version 4.15.2`) |
 
-`VITE_MAP_TILES_URL` aponta para o **TileJSON** (`.json`), não para o
-`.pmtiles`. Preview e produção podem usar builds diferentes trocando só essa
-variável nas `vars` do GitHub Actions.
+`VITE_MAP_TILES_URL` aceita os dois formatos até Infra migrar produção:
+
+| Formato | Exemplo | Comportamento no cliente |
+|---|---|---|
+| Legado (produção hoje) | `…/maps/onside-br-20260906.pmtiles` | `pmtiles://` + Range no R2 |
+| Worker (alvo WEB-218) | `https://tiles.onside.sh/onside-br-20260906.json` | TileJSON + MVT no Worker |
+
+A distinção é automática pelo sufixo `.pmtiles` vs `.json`. Trocar a variável
+(nas `vars` do GitHub Actions) **sem** redeploy do web não muda nada — o valor
+entra no build.
 
 ## Por que Brasil inteiro, e não a região de operação
 
@@ -102,36 +109,51 @@ Variáveis (`vars` no wrangler):
 
 Binding R2: `BUCKET` → `onside-maps`.
 
-### Deploy (Infra — manual na primeira vez)
+### Migração para o Worker (Infra — ordem obrigatória)
 
-O CI publica o Worker **só no push em `master`** (job `deploy-tiles` em
-`.github/workflows/ci.yml`). PR não toca produção.
+**Hoje:** `tiles.onside.sh` é custom domain do **bucket R2** `onside-maps`.
+**Não** rode deploy do Worker nesse hostname enquanto o bucket ainda o usa —
+colide ou toma o domínio sem aviso.
 
-Passos que Infra ainda precisa conferir no painel Cloudflare (não automatizados
-neste repositório):
+O deploy do Worker **não** roda em push/PR. Só manualmente:
 
-1. **Rota / domínio:** Worker `onside-tiles` → Settings → Domains & Routes →
-   Custom Domain `tiles.onside.sh` (o `wrangler.jsonc` já declara a rota; o
-   primeiro deploy com token certo costuma criar o registro DNS na zona
-   `onside.sh`).
-2. **Desligar custom domain público do R2** em `onside-maps` quando o Worker
-   estiver servindo tudo — evita bypass do cache indo direto ao `.pmtiles`.
-3. **CORS no bucket:** ainda necessário se alguém ler o objeto direto; o Worker
-   responde CORS pelas origens em `ALLOWED_ORIGINS`.
-4. **Verificação:**
+**GitHub → Actions → “Deploy tiles worker” → Run workflow**  
+(`.github/workflows/deploy-tiles.yml`, `workflow_dispatch`).
+
+Ordem para ligar cache por tile **sem derrubar o mapa**:
+
+1. **Merge do código WEB-218** — seguro sozinho: produção continua com
+   `VITE_MAP_TILES_URL` apontando para `.pmtiles` e o cliente detecta o sufixo.
+2. **Remover custom domain do R2** — R2 → `onside-maps` → Settings → Custom
+   Domains → remover `tiles.onside.sh`. (O DNS some com o domínio; é esperado.)
+3. **Deploy do Worker** — rodar o workflow “Deploy tiles worker” (ou
+   `cd apps/tiles && bunx wrangler deploy` com token local). O `wrangler.jsonc`
+   recria `tiles.onside.sh` como custom domain do Worker `onside-tiles`.
+4. **Verificar cache** — antes de mudar o app:
 
 ```bash
 curl -sI 'https://tiles.onside.sh/onside-br-20260906/0/0/0.mvt' | grep -i cf-cache-status
-# primeira vez: MISS ou DYNAMIC; repetir até HIT
+# repetir até HIT
 
 curl -sI 'https://tiles.onside.sh/onside-br-20260906.json' | grep -i cf-cache-status
 ```
 
-5. **Variável do app:** `VITE_MAP_TILES_URL` nas GitHub Actions `vars` =
-   `https://tiles.onside.sh/onside-br-20260906.json` (ou build novo após
-   rebuild). Deploy do `onside-web` embute no build.
+5. **Trocar variável** — GitHub Actions `vars.VITE_MAP_TILES_URL` para
+   `https://tiles.onside.sh/onside-br-20260906.json` (TileJSON, não `.pmtiles`).
+6. **Redeploy `onside-web`** — push em `master` ou workflow de deploy; o build
+   embute a URL nova.
 
-Deploy local (emergência):
+#### Como desfazer (por etapa)
+
+| Etapa | Desfazer |
+|---|---|
+| 6–5 (app) | Voltar `VITE_MAP_TILES_URL` para a URL `.pmtiles` antiga e redeploy do web. |
+| 4 (cache) | Nada persistente — só validação. |
+| 3 (Worker) | Cloudflare → Workers → `onside-tiles` → Remove route / custom domain; ou `wrangler delete onside-tiles` se for apagar o Worker inteiro. |
+| 2 (R2 domain) | R2 → `onside-maps` → Settings → Custom Domains → recriar `tiles.onside.sh` no bucket (mapa legado volta a funcionar com a variável `.pmtiles`). |
+| 1 (código) | Reverter merge — o cliente legado continua funcionando com URL `.pmtiles`. |
+
+Deploy local de emergência (mesmo risco de colisão de domínio — só depois do passo 2):
 
 ```bash
 cd apps/tiles && bunx wrangler deploy
