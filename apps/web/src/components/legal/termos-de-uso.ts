@@ -430,7 +430,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'A fase sem mensalidade tem duração máxima de 120 dias corridos, contados do início das operações da Onside em cada cidade, prazo que será informado por escrito ao parceiro em termo de adesão individual assinado no momento do cadastro, e que termina, em qualquer caso, com aviso de, no mínimo, 30 dias antes do início da cobrança. É esse termo de adesão individual — e não apenas a data de acesso à plataforma — que comprova a condição de fundador do estabelecimento.'
+            'A fase sem mensalidade dura 120 dias corridos, contados da data em que o estabelecimento conclui o cadastro na plataforma. A data de término fica visível para o parceiro na página de plano. Ao fim do prazo não há cobrança automática: a cobrança só começa se o parceiro contratar um plano, e na data informada no momento da contratação. Sem contratação, o estabelecimento deixa de ser exibido na plataforma após o fim do prazo.'
         },
         {
           type: 'p',
