@@ -756,6 +756,8 @@ describe('getPlanHeader', () => {
       title: 'Você está no trial do Elite até 22 de outubro.'
     })
     expect(header.text).toContain('O teste grátis não pede cartão.')
+    // WEB-358: o teste não é só do plano em que o bar nasceu.
+    expect(header.text).toContain('testar qualquer plano abaixo')
     expect(header.text).toContain('primeira cobrança só sai em 22 de outubro')
     expect(Object.values(header).join(' ')).not.toMatch(
       /alterar plano|novo plano|ciclo de cobrança/i
