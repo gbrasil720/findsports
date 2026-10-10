@@ -179,9 +179,6 @@ function PubPage() {
   } = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: pubId }),
     enabled: Boolean(session),
-    // Bar que não existe não passa a existir na segunda tentativa: insistir
-    // só segurava o esqueleto por 7 s antes de a tela dizer o que houve.
-    retry: (failures, error) => failures < 3 && isRetryableError(error),
     // A tela já avisa e redireciona quando o bar não existe. Com o toast
     // global ligado, o mesmo "Bar não encontrado." aparecia duas vezes.
     meta: { errorToast: false }

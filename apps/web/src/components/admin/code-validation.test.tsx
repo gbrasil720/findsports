@@ -192,7 +192,9 @@ async function render(
   await act(async () => {
     root?.render(
       <CodeValidation
-        access={options.access ?? { status: 'ready', eligible: true }}
+        access={
+          options.access ?? { status: 'ready', eligible: true, elite: true }
+        }
         now={options.now ?? NOW}
         lookup={api.lookup as never}
         registerArrival={api.registerArrival as never}
@@ -279,9 +281,22 @@ async function find(api: Api, options?: Parameters<typeof render>[1]) {
 
 describe('acesso', () => {
   test('sem Elite não oferece campo e aponta para os planos', async () => {
-    await render(fakeApi(), { access: { status: 'ready', eligible: false } })
+    await render(fakeApi(), {
+      access: { status: 'ready', eligible: false, elite: false }
+    })
     expect(document.querySelector('input')).toBeNull()
     expect(document.querySelector('a[href="/plan"]')).not.toBeNull()
+  })
+
+  // WEB-341: quem perdeu o Elite ainda valida as reservas já aceitas, e a
+  // tela não diz que o plano dele é o Elite.
+  test('sem Elite e com reserva em aberto: valida, sem o rótulo do plano', async () => {
+    await render(fakeApi(), {
+      access: { status: 'ready', eligible: true, elite: false }
+    })
+    expect(document.querySelector('input')).not.toBeNull()
+    expect(document.body.textContent).toContain('Reservas em aberto')
+    expect(document.body.textContent).not.toContain('Plano Elite')
   })
 
   test('falha ao conferir o plano oferece tentar de novo', async () => {

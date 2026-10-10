@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 
-import { getUserFacingError, isRetryableError } from './user-facing-error'
+import {
+  getUserFacingError,
+  isRetryableError,
+  shouldRetryQuery
+} from './user-facing-error'
 
 test('converte erros técnicos sem expor a mensagem original', () => {
   const error = Object.assign(new Error('database connection refused'), {
@@ -122,4 +126,11 @@ test('recusa da nossa API mostra o motivo; 403 de terceiro continua genérico', 
       'x'
     ).message
   ).toBe('Você não tem permissão para realizar esta ação.')
+})
+
+test('query não refaz recusa da API, e desiste na terceira falha temporária', () => {
+  expect(shouldRetryQuery(0, { status: 404 })).toBe(false)
+  expect(shouldRetryQuery(0, { status: 403 })).toBe(false)
+  expect(shouldRetryQuery(2, { status: 503 })).toBe(true)
+  expect(shouldRetryQuery(3, { status: 503 })).toBe(false)
 })

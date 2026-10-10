@@ -145,7 +145,9 @@ describe('router SSR', () => {
     await expect(
       queryClient.fetchQuery({
         queryKey,
-        queryFn: () => Promise.reject(new Error('falha de rede'))
+        queryFn: () => Promise.reject(new Error('falha de rede')),
+        // Falha temporária é refeita pelo padrão; aqui interessa só o toast.
+        retry: false
       })
     ).rejects.toThrow('falha de rede')
 

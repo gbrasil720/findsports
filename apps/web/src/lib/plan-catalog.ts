@@ -446,11 +446,12 @@ export interface PlanLossBar {
  * quando não há o que dizer além do item do catálogo. Só o Starter limita
  * jogos, e o limite vale para criar: os já cadastrados continuam no ar
  * (WEB-352). Cardápio, gasto médio e oferta ficam gravados e voltam com o
- * plano.
+ * plano. No teste grátis não há cobrança: o limite conta por mês.
  */
 export function getPlanLossNote(
   key: PlanLoss['key'],
-  bar: PlanLossBar
+  bar: PlanLossBar,
+  onTrial = false
 ): string | null {
   switch (key) {
     case 'events':
@@ -458,7 +459,7 @@ export function getPlanLossNote(
         bar.upcomingEvents > 0
           ? `Você tem ${countLabel(bar.upcomingEvents, 'jogo futuro', 'jogos futuros')}. `
           : ''
-      }Os jogos já cadastrados continuam no ar, mas no ${PLAN_NAMES.starter} só dá para criar ${STARTER_EVENT_LIMIT} por ciclo de cobrança.`
+      }Os jogos já cadastrados continuam no ar, mas no ${PLAN_NAMES.starter} só dá para criar ${STARTER_EVENT_LIMIT} por ${onTrial ? 'mês' : 'ciclo de cobrança'}.`
     case 'menu': {
       const items = [
         ...(bar.menuUrl ? ['seu link do cardápio'] : []),

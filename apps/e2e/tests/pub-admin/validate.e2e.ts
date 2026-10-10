@@ -70,6 +70,13 @@ test('Pro com reserva confirmada ainda valida na margem depois do fim do jogo', 
   await signIn(page, user)
   await page.goto('/admin/validate')
 
+  // Quem valida sem Elite não lê "Plano Elite" sobre o próprio plano.
+  await expect(page.getByText('Reservas em aberto')).toBeVisible()
+  await expect(
+    page.getByText('Seu plano não recebe reservas novas.')
+  ).toBeVisible()
+  await expect(page.getByText('Plano Elite', { exact: true })).toHaveCount(0)
+
   await lookup(page, reservation.code)
   await expect(
     page.getByRole('heading', { name: `Reserva de ${reservation.guestName}` })

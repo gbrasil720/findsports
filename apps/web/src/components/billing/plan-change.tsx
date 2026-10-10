@@ -24,8 +24,9 @@ type Change = { from: SubscriptionPlan; to: SubscriptionPlan }
 function PlanLossList({
   from,
   to,
+  onTrial,
   className
-}: Change & { className?: string }) {
+}: Change & { onTrial?: boolean; className?: string }) {
   const bar = useMyBar().data
   const events = useMyEvents().data
   const numbers =
@@ -44,7 +45,9 @@ function PlanLossList({
       className={`mt-3 space-y-2 text-[var(--onside-ink)] text-sm ${className ?? ''}`}
     >
       {getPlanLosses(from, to).map((loss) => {
-        const note = numbers ? getPlanLossNote(loss.key, numbers) : null
+        const note = numbers
+          ? getPlanLossNote(loss.key, numbers, onTrial)
+          : null
         return (
           <li key={loss.label}>
             <span className="font-bold">{loss.label}</span>
@@ -59,6 +62,8 @@ function PlanLossList({
 type DialogProps = Change & {
   /** Assinatura paga: a diferença vira crédito (WEB-350). */
   earnsCredit: boolean
+  /** Teste grátis do cadastro: sem cobrança, o limite conta por mês. */
+  onTrial: boolean
   confirmLabel: string
   onConfirm: () => void
   onCancel: () => void
@@ -72,6 +77,7 @@ export function DowngradeConfirmDialog({
   from,
   to,
   earnsCredit,
+  onTrial,
   confirmLabel,
   onConfirm,
   onCancel
@@ -100,6 +106,7 @@ export function DowngradeConfirmDialog({
         <PlanLossList
           from={from}
           to={to}
+          onTrial={onTrial}
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         />
         {earnsCredit ? (

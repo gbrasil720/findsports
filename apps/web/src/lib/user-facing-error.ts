@@ -95,6 +95,15 @@ export function isRetryableError(error: unknown): boolean {
   )
 }
 
+/**
+ * `retry` padrão das queries: recusa da API (bar que não existe, sem
+ * permissão) não muda na segunda tentativa, e insistir três vezes segurava o
+ * esqueleto por uns 7 s antes de a tela dizer o que houve.
+ */
+export function shouldRetryQuery(failures: number, error: unknown): boolean {
+  return failures < 3 && isRetryableError(error)
+}
+
 export function getUserFacingError(
   error: unknown,
   fallback: string,

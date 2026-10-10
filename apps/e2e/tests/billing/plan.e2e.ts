@@ -209,6 +209,10 @@ test('trial em vigor: testa outro plano sem cartão, confirma o que perde no men
   await expect(
     page.getByText('Até lá você pode testar qualquer plano abaixo')
   ).toBeVisible()
+  // Plano em teste ainda não é o plano contratado.
+  await expect(
+    page.getByText(/Você está testando o plano Elite\./)
+  ).toBeVisible()
   // O plano em teste não tem para onde trocar.
   await expect(
     page.getByRole('button', { name: 'Testando o Elite' })
@@ -223,7 +227,8 @@ test('trial em vigor: testa outro plano sem cartão, confirma o que perde no men
   ).toBeVisible()
   await expect(dialog).toContainText('Jogos ilimitados na agenda')
   await expect(dialog).toContainText(
-    'no Starter só dá para criar 5 por ciclo de cobrança.'
+    // Teste grátis não tem cobrança: o limite conta por mês.
+    'no Starter só dá para criar 5 por mês.'
   )
   await expect(dialog).toContainText(
     'Sua oferta da casa sai do perfil e fica guardada.'
@@ -287,6 +292,9 @@ test('trial encerrado e trial que já é do Stripe não oferecem testar outro pl
     await page.context().clearCookies()
     await signIn(page, user)
     await page.goto('/plan')
+    // A assinatura chega depois da tela: antes dela o Pro já vem marcado, o
+    // `check` não faz nada e a seleção volta para o plano do bar.
+    await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
     await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
     await expect(
       page.getByRole('button', { name: 'Continuar com Pro' })

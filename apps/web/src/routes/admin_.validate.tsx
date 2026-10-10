@@ -71,7 +71,8 @@ function ValidatePage() {
                 }
               : {
                   status: 'ready',
-                  eligible: elite || openQuery.data === true
+                  eligible: elite || openQuery.data === true,
+                  elite
                 }
         }
         now={now}
