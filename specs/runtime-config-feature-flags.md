@@ -35,7 +35,7 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 | Chave | Padrão | Público | O que faz |
 |---|---|---|---|
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
-| `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Dodo. Webhook e portal do cliente **não** passam por este portão. |
+| `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Stripe. Webhook e portal do cliente **não** passam por este portão. |
 | `billing.onboarding_trial` | `{ enabled: false, plan: 'elite', days: 14 }` | não | Ligada, o bar novo nasce publicado e com assinatura `trialing` do plano por `days` dias (1 a 90). Desligada, nasce fora do ar e só a assinatura paga o publica. Não altera bares já cadastrados. |
 | `waitlist.rate_limit` | 8/IP e 3/e-mail por 10 min | não | Freio da waitlist pública. `enabled: false` desliga o contador inteiro. |
 | `launch.waitlist_gate` | `{ signup: true }` com `LAUNCH_ADMISSION_MODE=invite-only` (produção); `{ signup: false }` com `open` | sim | Fecha o cadastro por aprovação: e-mail não aprovado na waitlist não cria conta. |
@@ -127,7 +127,7 @@ com NAT. Só use `enabled: false` se o problema for a escrita do contador em si
 ### Abrir cobrança
 
 Ligue `billing.checkout_enabled`. Confirme antes que a chave e o ambiente do
-Dodo estão corretos — o portão libera a rota, não valida a credencial.
+Stripe estão corretos — o portão libera a rota, não valida a credencial.
 
 Para fechar de novo: desligue. Assinaturas já ativas continuam valendo, o
 webhook continua sendo processado e o portal do cliente continua aberto.

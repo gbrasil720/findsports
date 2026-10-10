@@ -8,6 +8,7 @@ import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import {
   addressFieldsChanged,
   assertEventIntervalValid,
+  eventLimitMessage,
   pubRouter,
   resolveEventEndsAt,
   resolvePhoneAcceptsWhatsapp
@@ -358,5 +359,41 @@ describe('limites de texto do jogo', () => {
         participantFreeText: `${valid.participantFreeText}t`
       })
     ).toBe(false)
+  })
+})
+
+// WEB-331: Pro ou Elite parado cai no limite do Starter (WEB-129); a recusa
+// não o chama de Starter nem manda fazer upgrade.
+describe('eventLimitMessage', () => {
+  const now = new Date('2026-10-09T12:00:00.000Z')
+  const past = new Date('2026-10-01T12:00:00.000Z')
+  const STARTER =
+    'Plano Starter permite até 5 jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.'
+
+  test.each([
+    ['elite', 'past_due', 'Elite'],
+    ['pro', 'trialing', 'Pro']
+  ] as const)('%s parado (%s) manda regularizar', (plan, status, name) => {
+    expect(
+      eventLimitMessage({ plan, status, currentPeriodEnd: past }, now)
+    ).toBe(
+      `Seu plano ${name} está parado e permite até 5 jogos por mês. Regularize a assinatura para voltar aos jogos ilimitados.`
+    )
+  })
+
+  test('Starter, mesmo parado, e bar sem assinatura seguem com o texto do Starter', () => {
+    expect(
+      eventLimitMessage(
+        { plan: 'starter', status: 'active', currentPeriodEnd: null },
+        now
+      )
+    ).toBe(STARTER)
+    expect(
+      eventLimitMessage(
+        { plan: 'starter', status: 'past_due', currentPeriodEnd: past },
+        now
+      )
+    ).toBe(STARTER)
+    expect(eventLimitMessage(null, now)).toBe(STARTER)
   })
 })

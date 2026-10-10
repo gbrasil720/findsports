@@ -145,3 +145,32 @@ test('bar com assinatura em curso não exclui a conta', async ({ page }) => {
     await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
   ).toHaveLength(1)
 })
+
+test('bar que cancelou exclui a conta, mesmo com o período pago no futuro (WEB-60)', async ({
+  page
+}) => {
+  // Cancelamento imediato: o Stripe encerra na hora e o período fica no
+  // futuro. Não há mais o que cobrar, então nada segura a exclusão.
+  const { user } = await createPub({
+    subscription: {
+      status: 'cancelled',
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
+    },
+    bar: { is_active: false }
+  })
+  await signIn(page, user)
+  await page.goto('/admin#admin-configuracoes')
+
+  await expect(
+    page.getByRole('button', { name: 'Excluir minha conta' })
+  ).toBeEnabled()
+
+  const response = await page.request.post('/api/auth/delete-user', {
+    data: { password: user.password },
+    headers: { origin: BASE_URL }
+  })
+  expect(response.ok(), await response.text()).toBe(true)
+  expect(
+    await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
+  ).toHaveLength(0)
+})

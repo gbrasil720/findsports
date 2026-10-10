@@ -16,9 +16,6 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
-  // WEB-31: coluna da Dodo, sem leitor. Fica até a migration de contração:
-  // derrubá-la junto quebraria o código anterior na janela do deploy.
-  dodoCustomerId: text('dodo_customer_id').unique(),
   // Cliente no Stripe. Nome e escrita são do plugin `@better-auth/stripe`.
   stripeCustomerId: text('stripe_customer_id').unique(),
   role: text('role', { enum: ['fan', 'pub', 'admin'] })

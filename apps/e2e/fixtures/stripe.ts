@@ -15,6 +15,7 @@ type StripeStatus =
   | 'past_due'
   | 'unpaid'
   | 'canceled'
+  | 'paused'
   | 'incomplete'
 
 /**

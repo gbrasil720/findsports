@@ -134,9 +134,7 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
 
       {blocked ? (
         <div className="onside-callout onside-callout-warn mt-4" role="status">
-          {eligibility.data?.block === 'period-active'
-            ? `O cancelamento foi solicitado, mas o período contratado ainda vai até ${formatDate(eligibility.data.currentPeriodEnd)}. A exclusão será liberada depois dessa data.`
-            : 'Encerre a assinatura vigente antes de excluir a conta do bar.'}
+          Encerre a assinatura vigente antes de excluir a conta do bar.
         </div>
       ) : null}
       {surface === 'pub' && eligibility.isError ? (
@@ -220,12 +218,5 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         </form>
       </Modal>
     </section>
-  )
-}
-
-function formatDate(value: Date | string | null | undefined) {
-  if (!value) return 'o fim do período'
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(
-    new Date(value)
   )
 }
