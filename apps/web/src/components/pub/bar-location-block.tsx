@@ -1,5 +1,6 @@
 import Location from 'reicon-react/icons/Location'
 import Route from 'reicon-react/icons/Route'
+import { pinDoPlano } from '@/components/app/map-icons'
 import { OnsideMap } from '@/components/app/onside-map'
 import { env } from '@/lib/env'
 
@@ -99,7 +100,7 @@ export function BarLocationBlock({
                   name,
                   lat,
                   lng,
-                  accent: plan === 'pro' || plan === 'elite' ? 'acid' : 'ink'
+                  pin: pinDoPlano(plan)
                 }
               ]}
               center={{ lat, lng }}

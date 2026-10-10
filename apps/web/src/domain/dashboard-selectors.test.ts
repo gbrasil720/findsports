@@ -283,14 +283,28 @@ describe('dashboard display selectors', () => {
     expect(
       toMapBars([live, invalid]).map((bar) => ({
         id: bar.id,
-        accent: bar.accent,
+        pin: bar.pin,
         lat: bar.lat,
         lng: bar.lng
       }))
-    ).toEqual([{ id: 'live', accent: 'live', lat: -23.5, lng: -46.6 }])
+    ).toEqual([{ id: 'live', pin: 'live', lat: -23.5, lng: -46.6 }])
   })
 
-  test('keeps paid plan accents on fallback location bars (WEB-61)', () => {
+  test('gives each plan its own pin, and live keeps the Elite star (WEB-332)', () => {
+    const startsAt = new Date(Date.now() - 60_000).toISOString()
+    const pins = (live: boolean) =>
+      toMapBars(
+        (['starter', 'pro', 'elite'] as const).map((plan) => ({
+          ...makeBar(plan, live ? startsAt : undefined),
+          plan
+        }))
+      ).map((bar) => bar.pin)
+
+    expect(pins(false)).toEqual(['starter', 'pro', 'elite'])
+    expect(pins(true)).toEqual(['live', 'live', 'elite-live'])
+  })
+
+  test('keeps paid plan pins on fallback location bars (WEB-61)', () => {
     expect(
       toMapBars([
         {
@@ -308,8 +322,8 @@ describe('dashboard display selectors', () => {
         }
       ]).map((bar) => ({
         id: bar.id,
-        accent: bar.accent
+        pin: bar.pin
       }))
-    ).toEqual([{ id: 'pro-location', accent: 'acid' }])
+    ).toEqual([{ id: 'pro-location', pin: 'pro' }])
   })
 })

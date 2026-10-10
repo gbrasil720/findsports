@@ -4,7 +4,10 @@ import { JSDOM } from 'jsdom'
 import {
   aplicarPino,
   criarConteudoDePino,
-  criarPontoDoUsuario
+  criarPontoDoUsuario,
+  type MapPin,
+  ordemDoPino,
+  pinDoPlano
 } from './map-icons'
 
 let dom: JSDOM
@@ -55,7 +58,7 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
     expect(pintura.parentElement).toBe(raiz)
     expect(raiz.style.transform).toBe('')
 
-    aplicarPino(pintura, 'ink', true)
+    aplicarPino(pintura, 'starter', true)
     // Simula o que o MapLibre faz a cada quadro.
     raiz.style.transform = 'translate(-50%, -100%) translate(10px, 20px)'
     expect(pintura.style.transform).toMatch(/^scale\(/)
@@ -67,7 +70,7 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
     aplicarPino(pintura, 'live', false)
     expect(pintura.style.getPropertyValue('--pino-cor')).toBe('#E8320C')
 
-    aplicarPino(pintura, 'acid', false)
+    aplicarPino(pintura, 'elite', false)
     expect(pintura.style.getPropertyValue('--pino-cor')).toBe('#C9F135')
 
     expect(raiz.querySelector('path')?.getAttribute('fill')).toBe(
@@ -78,10 +81,10 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
   test('o destaque escala e volta', () => {
     const { pintura } = criarConteudoDePino()
 
-    aplicarPino(pintura, 'ink', true)
+    aplicarPino(pintura, 'starter', true)
     expect(pintura.style.transform).toMatch(/^scale\(/)
 
-    aplicarPino(pintura, 'ink', false)
+    aplicarPino(pintura, 'starter', false)
     expect(pintura.style.transform).toBe('')
   })
 
@@ -104,14 +107,71 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
     const { raiz, pintura } = criarConteudoDePino()
     const svgAntes = raiz.querySelector('svg')
 
-    aplicarPino(pintura, 'acid', false)
-    aplicarPino(pintura, 'acid', true)
+    aplicarPino(pintura, 'pro', false)
+    aplicarPino(pintura, 'elite', true)
     aplicarPino(pintura, 'live', false)
 
     expect(raiz.querySelector('svg')).toBe(svgAntes)
     expect(raiz.querySelectorAll('svg')).toHaveLength(1)
     expect(raiz.querySelector('filter')).toBeNull()
     expect(pintura.style.filter).toContain('drop-shadow')
+  })
+
+  /**
+   * WEB-332: cada plano tem o seu pino, sem cor nova. O corpo, o miolo e a
+   * estrela leem uma variável cada; `none` apaga a peça que o pino não usa.
+   */
+  test('cada plano e o jogo ao vivo pintam o seu pino', () => {
+    const { raiz, pintura } = criarConteudoDePino()
+    const INK = '#12120F'
+    const ACID = '#C9F135'
+    const LIVE = '#E8320C'
+    const CREME = '#F1EEE6'
+    const esperado: Record<MapPin, [string, string, string]> = {
+      starter: [INK, CREME, 'none'],
+      pro: [INK, ACID, 'none'],
+      elite: [ACID, 'none', INK],
+      live: [LIVE, CREME, 'none'],
+      'elite-live': [LIVE, 'none', INK]
+    }
+
+    for (const [pin, cores] of Object.entries(esperado)) {
+      aplicarPino(pintura, pin as MapPin, false)
+      expect(
+        ['--pino-cor', '--pino-miolo', '--pino-estrela'].map((nome) =>
+          pintura.style.getPropertyValue(nome)
+        )
+      ).toEqual(cores)
+    }
+
+    expect(raiz.querySelector('circle')?.getAttribute('fill')).toBe(
+      'var(--pino-miolo)'
+    )
+    expect(raiz.querySelectorAll('path')[1]?.getAttribute('fill')).toBe(
+      'var(--pino-estrela)'
+    )
+  })
+
+  test('o plano escolhe o pino, e o jogo ao vivo não apaga a estrela do Elite', () => {
+    expect(pinDoPlano('starter')).toBe('starter')
+    expect(pinDoPlano(null)).toBe('starter')
+    expect(pinDoPlano('pro')).toBe('pro')
+    expect(pinDoPlano('elite')).toBe('elite')
+    expect(pinDoPlano('starter', true)).toBe('live')
+    expect(pinDoPlano('pro', true)).toBe('live')
+    expect(pinDoPlano('elite', true)).toBe('elite-live')
+  })
+
+  test('o Elite fica por cima dos outros planos, e o destaque, por cima de todos', () => {
+    const ordem = (pin: MapPin, large = false) =>
+      Number(ordemDoPino(pin, large))
+
+    for (const elite of ['elite', 'elite-live'] as const) {
+      for (const outro of ['starter', 'pro', 'live'] as const) {
+        expect(ordem(elite)).toBeGreaterThan(ordem(outro))
+        expect(ordem(outro, true)).toBeGreaterThan(ordem(elite))
+      }
+    }
   })
 
   /**
