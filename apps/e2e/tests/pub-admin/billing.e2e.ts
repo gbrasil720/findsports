@@ -38,6 +38,24 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
   await expect(page).toHaveURL(/\/admin\/validate$/)
 })
 
+test('a assinatura aparece sem esperar a consulta do cupom ao Stripe (WEB-348)', async ({
+  page
+}) => {
+  const pub = await createPub()
+  await signIn(page, pub.user)
+  // `getFounderCouponAvailable` consulta o Stripe. Aqui ela nunca responde: se
+  // voltar a viajar no mesmo lote HTTP da assinatura, o plano não aparece.
+  let held = 0
+  await page.route(/\/api\/trpc\/[^?]*pub\.getFounderCouponAvailable/, () => {
+    held += 1
+  })
+  await page.goto('/admin/billing')
+
+  await expect(currentPlan(page)).toContainText('Elite')
+  expect(held).toBe(1)
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
 test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
   // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
