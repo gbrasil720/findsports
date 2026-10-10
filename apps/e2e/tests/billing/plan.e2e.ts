@@ -292,6 +292,9 @@ test('trial encerrado e trial que já é do Stripe não oferecem testar outro pl
     await page.context().clearCookies()
     await signIn(page, user)
     await page.goto('/plan')
+    // A assinatura chega depois da tela: antes dela o Pro já vem marcado, o
+    // `check` não faz nada e a seleção volta para o plano do bar.
+    await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
     await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
     await expect(
       page.getByRole('button', { name: 'Continuar com Pro' })
