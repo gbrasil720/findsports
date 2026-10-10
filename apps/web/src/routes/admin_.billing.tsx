@@ -9,6 +9,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
 import { AppShell } from '@/components/app/app-shell'
+import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
@@ -24,6 +25,7 @@ import {
   getTrialNotice,
   isContractedTrial,
   PLAN_CATALOG,
+  parsePlanChange,
   planChargeForCurrentPlan,
   planChargeForShowcase,
   TRIAL_NO_CARD_NOTE
@@ -34,6 +36,7 @@ import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/billing')({
+  validateSearch: parsePlanChange,
   head: () => ({
     meta: [
       { title: 'Assinatura e pagamentos — Onside' },
@@ -91,6 +94,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
 function BillingPage() {
   const trpc = useTRPC()
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
+  const { planFrom, planTo } = Route.useSearch()
   const [openingPortal, setOpeningPortal] = useState(false)
   const [portalError, setPortalError] = useState<string | null>(null)
 
@@ -180,6 +184,10 @@ function BillingPage() {
           pagamento.
         </p>
       </div>
+
+      <PlanChangedNotice
+        pending={planFrom && planTo ? { from: planFrom, to: planTo } : null}
+      />
 
       <div className="grid gap-6 md:grid-cols-[1fr_320px]">
         <div className="space-y-6">
