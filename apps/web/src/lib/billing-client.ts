@@ -1,5 +1,6 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { authClient } from './auth-client'
+import { planChangeReturnUrl } from './plan-catalog'
 
 /**
  * Cobrança pelo plugin do Stripe no better-auth (WEB-31).
@@ -16,7 +17,12 @@ import { authClient } from './auth-client'
  * o checkout; para quem já tem, a confirmação da troca de plano no portal —
  * o servidor decide, e nunca abre uma segunda assinatura.
  */
-export async function startCheckout(plan: SubscriptionPlan): Promise<boolean> {
+export async function startCheckout(
+  plan: SubscriptionPlan,
+  // Plano vigente de quem troca: o retorno do portal leva a troca pedida, e
+  // `/admin/billing` confere se ela aconteceu (WEB-351).
+  currentPlan?: SubscriptionPlan | null
+): Promise<boolean> {
   const { data, error } = await authClient.subscription.upgrade({
     plan,
     // Idioma do checkout. A confirmação de troca no portal não recebe isto do
@@ -24,7 +30,10 @@ export async function startCheckout(plan: SubscriptionPlan): Promise<boolean> {
     locale: 'pt-BR',
     successUrl: '/plan/confirmed',
     cancelUrl: '/plan',
-    returnUrl: '/admin/billing'
+    returnUrl:
+      currentPlan && currentPlan !== plan
+        ? planChangeReturnUrl(currentPlan, plan)
+        : '/admin/billing'
   })
   if (error) throw error
   return typeof data?.url === 'string'

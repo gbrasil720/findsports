@@ -15,6 +15,7 @@ import Fire from 'reicon-react/icons/Fire'
 import Star from 'reicon-react/icons/Star'
 import Trophy from 'reicon-react/icons/Trophy'
 import { LAPSED_COPY } from './lapsed-plan'
+import { countLabel, plural } from './plural'
 import { getCancelDay } from './scheduled-cancel'
 
 export type PlanFeature = string
@@ -29,7 +30,22 @@ export type PlanFeature = string
 export interface PlanProfilePerk {
   label: string
   status: 'live' | 'soon'
+  /** "Tudo do X": o plano herda os itens de X (WEB-351). */
+  includes?: SubscriptionPlan
+  /** O mesmo recurso em planos diferentes: o do plano maior vale (WEB-351). */
+  key?: PlanPerkKey
 }
+
+/**
+ * Recursos que o aviso de troca de plano precisa reconhecer (WEB-351): o selo,
+ * que muda de plano para plano, e os que têm dado do próprio bar para citar.
+ */
+export type PlanPerkKey =
+  | 'badge'
+  | 'events'
+  | 'menu'
+  | 'reservations'
+  | 'house_offer'
 
 export interface PlanAnalytics {
   historyDays: number | null
@@ -214,6 +230,9 @@ export interface Plan {
   badge?: string
 }
 
+/** Sem limite de jogos: o que o Starter troca por `STARTER_EVENT_LIMIT`. */
+const UNLIMITED_EVENTS_FEATURE = 'Jogos ilimitados na agenda'
+
 export const PLAN_CATALOG: Plan[] = [
   {
     id: 'starter',
@@ -252,7 +271,7 @@ export const PLAN_CATALOG: Plan[] = [
     highlight: true,
     features: [
       'Perfil do bar no Onside',
-      'Jogos ilimitados na agenda',
+      UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin destacado no mapa',
       'Suporte prioritário',
@@ -262,10 +281,14 @@ export const PLAN_CATALOG: Plan[] = [
       'Comparação entre jogos'
     ],
     profilePerks: [
-      { label: 'Tudo do Starter', status: 'live' },
-      { label: 'Selo Pro no perfil', status: 'live' },
+      { label: 'Tudo do Starter', status: 'live', includes: 'starter' },
+      { label: 'Selo Pro no perfil', status: 'live', key: 'badge' },
       { label: 'Capa em destaque, o dobro da altura', status: 'live' },
-      { label: 'Link do cardápio e preço médio no perfil', status: 'live' },
+      {
+        label: 'Link do cardápio e preço médio no perfil',
+        status: 'live',
+        key: 'menu'
+      },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
       { label: 'Promoções no perfil', status: 'soon' }
     ],
@@ -283,7 +306,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Trophy,
     features: [
       'Perfil do bar no Onside',
-      'Jogos ilimitados na agenda',
+      UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin exclusivo Elite no mapa',
       'Suporte prioritário',
@@ -295,12 +318,24 @@ export const PLAN_CATALOG: Plan[] = [
       'Comparação avançada'
     ],
     profilePerks: [
-      { label: 'Tudo do Pro', status: 'live' },
-      { label: 'Selo Elite no topo do perfil', status: 'live' },
-      { label: 'Link do cardápio e preço médio no perfil', status: 'live' },
-      { label: 'Reserva de mesa pela plataforma', status: 'live' },
+      { label: 'Tudo do Pro', status: 'live', includes: 'pro' },
+      { label: 'Selo Elite no topo do perfil', status: 'live', key: 'badge' },
+      {
+        label: 'Link do cardápio e preço médio no perfil',
+        status: 'live',
+        key: 'menu'
+      },
+      {
+        label: 'Reserva de mesa pela plataforma',
+        status: 'live',
+        key: 'reservations'
+      },
       // Sem exemplo de oferta: a Onside não sugere o conteúdo (WEB-120).
-      { label: 'Oferta da casa para quem chega pela Onside', status: 'live' },
+      {
+        label: 'Oferta da casa para quem chega pela Onside',
+        status: 'live',
+        key: 'house_offer'
+      },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
       { label: 'Promoções no perfil', status: 'soon' }
     ],
@@ -347,6 +382,129 @@ export function isDowngrade(
   target: SubscriptionPlan
 ): boolean {
   return PLAN_TIER_ORDER[target] < PLAN_TIER_ORDER[current]
+}
+
+/**
+ * Itens do perfil em vigor no plano, com os herdados por `includes`. O do
+ * próprio plano vence o herdado de mesma `key`: o Elite não tem o selo Pro.
+ */
+function livePerks(id: SubscriptionPlan): PlanProfilePerk[] {
+  const perks = new Map<string, PlanProfilePerk>()
+  for (const perk of getPlan(id).profilePerks) {
+    const items = perk.includes
+      ? livePerks(perk.includes)
+      : perk.status === 'live'
+        ? [perk]
+        : []
+    for (const item of items) perks.set(item.key ?? item.label, item)
+  }
+  return [...perks.values()]
+}
+
+export interface PlanLoss {
+  label: string
+  key?: PlanPerkKey
+}
+
+/**
+ * O que o bar deixa de ter ao trocar `current` por `target` (WEB-351): o que o
+ * catálogo lista no plano atual e não no de destino. Vazio quando a troca não
+ * é para um plano menor.
+ */
+export function getPlanLosses(
+  current: SubscriptionPlan,
+  target: SubscriptionPlan
+): PlanLoss[] {
+  if (!isDowngrade(current, target)) return []
+  const kept = new Set([
+    ...getPlan(target).features,
+    ...livePerks(target).map((perk) => perk.label)
+  ])
+  return [
+    ...getPlan(current).features.map(
+      (label): PlanLoss =>
+        label === UNLIMITED_EVENTS_FEATURE
+          ? { label, key: 'events' }
+          : { label }
+    ),
+    ...livePerks(current).map(({ label, key }): PlanLoss => ({ label, key }))
+  ].filter((loss) => !kept.has(loss.label))
+}
+
+/** Os números do próprio bar que o aviso de troca cita (WEB-351). */
+export interface PlanLossBar {
+  /** Jogos que ainda não acabaram. */
+  upcomingEvents: number
+  houseOffer: string | null
+  menuUrl: string | null
+  averageSpendCents: number | null
+  acceptsReservations: boolean
+}
+
+/**
+ * O que a perda significa para este bar, com o que ele tem hoje; `null`
+ * quando não há o que dizer além do item do catálogo. Só o Starter limita
+ * jogos, e o limite vale para criar: os já cadastrados continuam no ar
+ * (WEB-352). Cardápio, gasto médio e oferta ficam gravados e voltam com o
+ * plano.
+ */
+export function getPlanLossNote(
+  key: PlanLoss['key'],
+  bar: PlanLossBar
+): string | null {
+  switch (key) {
+    case 'events':
+      return `${
+        bar.upcomingEvents > 0
+          ? `Você tem ${countLabel(bar.upcomingEvents, 'jogo futuro', 'jogos futuros')}. `
+          : ''
+      }Os jogos já cadastrados continuam no ar, mas no ${PLAN_NAMES.starter} só dá para criar ${STARTER_EVENT_LIMIT} por ciclo de cobrança.`
+    case 'menu': {
+      const items = [
+        ...(bar.menuUrl ? ['seu link do cardápio'] : []),
+        ...(bar.averageSpendCents !== null ? ['seu gasto médio'] : [])
+      ]
+      if (items.length === 0) return null
+      const text = items.join(' e ')
+      return `${text[0]?.toUpperCase()}${text.slice(1)} ${plural(items.length, 'sai do perfil e fica guardado', 'saem do perfil e ficam guardados')}.`
+    }
+    case 'house_offer':
+      return bar.houseOffer
+        ? 'Sua oferta da casa sai do perfil e fica guardada.'
+        : null
+    case 'reservations':
+      return bar.acceptsReservations
+        ? 'Seu bar para de receber novos pedidos de reserva.'
+        : null
+    default:
+      return null
+  }
+}
+
+function parsePlanId(value: unknown): SubscriptionPlan | undefined {
+  return PLAN_CATALOG.find((plan) => plan.id === value)?.id
+}
+
+/**
+ * A troca pedida em `/plan`, lida da busca de `/admin/billing` (WEB-351). É só
+ * o pedido: o dono pode voltar do portal sem confirmar, e quem diz que a troca
+ * aconteceu é a assinatura.
+ */
+export function parsePlanChange(search: Record<string, unknown>): {
+  planFrom?: SubscriptionPlan
+  planTo?: SubscriptionPlan
+} {
+  const planFrom = parsePlanId(search.planFrom)
+  const planTo = parsePlanId(search.planTo)
+  return planFrom && planTo && planFrom !== planTo ? { planFrom, planTo } : {}
+}
+
+/** Para onde o portal devolve depois da troca de `from` para `to`. */
+export function planChangeReturnUrl(
+  from: SubscriptionPlan,
+  to: SubscriptionPlan
+): string {
+  return `/admin/billing?planFrom=${from}&planTo=${to}`
 }
 
 export function getPlanSelectionState(
