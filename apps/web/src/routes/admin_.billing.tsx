@@ -134,7 +134,11 @@ function BillingPage() {
   // Teste grátis do cadastro: ainda não há o que gerenciar no Stripe, e o
   // caminho para contratar antes do fim é `/plan` (WEB-31).
   const onLocalTrial = mode === 'trial'
-  const shownPlan = plan ?? (lapsed ? subscription?.plan : null)
+  // Assinatura encerrada também mostra o plano contratado, com o selo dizendo
+  // se foi cancelada ou pausada (WEB-60): antes a página dizia "nenhuma
+  // assinatura" para quem cancelou.
+  const ended = standing === 'ended'
+  const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
   const planCharge =
     planInfo && subscription
@@ -271,6 +275,11 @@ function BillingPage() {
                       ? 'o plano ser contratado.'
                       : 'a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
                   </p>
+                ) : ended ? (
+                  <p className="mt-4 text-sm text-[var(--onside-live-text)]">
+                    Assinatura encerrada: o bar fica fora das buscas e do mapa
+                    até um plano ser contratado.
+                  </p>
                 ) : subscription?.currentPeriodEnd ? (
                   <p className="mt-4 text-xs text-[var(--onside-muted)]">
                     {getTrialNotice(subscription) ??
@@ -299,7 +308,7 @@ function BillingPage() {
                   Continuar no {planInfo.name}
                 </Link>
               ) : null}
-              {onLocalTrial && planInfo ? (
+              {(onLocalTrial || ended) && planInfo ? (
                 <Link
                   to="/plan"
                   search={{ origin: 'billing' }}

@@ -231,9 +231,7 @@ export function createAuth() {
           if (block) {
             throw new APIError('BAD_REQUEST', {
               message:
-                block === 'period-active'
-                  ? 'A assinatura foi cancelada, mas o período contratado ainda está vigente.'
-                  : 'Encerre a assinatura vigente antes de excluir a conta do bar.'
+                'Encerre a assinatura vigente antes de excluir a conta do bar.'
             })
           }
         }
