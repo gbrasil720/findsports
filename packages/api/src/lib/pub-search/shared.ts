@@ -2,7 +2,7 @@ import { type SQL, sql } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
-import { RESERVATIONS_AMENITY_ID } from '../amenities'
+import { declaredAmenityIds, RESERVATIONS_AMENITY_ID } from '../amenities'
 import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
@@ -232,10 +232,10 @@ export type FiltrosBusca = {
    * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
    * uma tabela de junção — ver migration 0021.
    *
-   * "Aceita reserva" é marcada à mão, e o perfil só a mostra de quem recebe
-   * reservas de fato (`publicAmenityIds`). Aqui vale o mesmo: pedir essa
-   * característica exige também `recebeReservas`, ou o filtro traria bar que,
-   * aberto, não aceita.
+   * "Aceita reserva" é a exceção: não é marcada, é derivada do recebimento
+   * de fato, como no perfil (`publicAmenityIds`). Pedir essa característica
+   * é pedir `recebeReservas`, sem olhar o id em `amenities`; as demais
+   * continuam pelo `@>`, e as duas condições somam com E.
    *
    * O alias da tabela do bar muda entre os dois caminhos, então entra como
    * fragmento montado pelo chamador, igual ao filtro de campeonato.
@@ -271,9 +271,10 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   // Cada id vai como parâmetro ligado, nunca interpolado no texto do SQL —
   // mesma regra do campeonato, ainda que aqui a entrada já esteja reduzida a
   // números conhecidos pela normalização no roteador.
-  const listaAmenidades = amenities?.length
+  const declaradas = declaredAmenityIds(amenities ?? [])
+  const listaAmenidades = declaradas.length
     ? sql.join(
-        amenities.map((id) => sql`${id}`),
+        declaradas.map((id) => sql`${id}`),
         sql`, `
       )
     : null
@@ -325,14 +326,15 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       ORDER BY e.starts_at ASC, e.id ASC
       LIMIT 1`,
     amenityFilter: (barAlias) =>
-      listaAmenidades
-        ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]
-            ${
-              amenities?.includes(RESERVATIONS_AMENITY_ID)
-                ? sql`AND ${recebeReservas(barAlias)}`
-                : sql``
-            }`
-        : sql``
+      sql`${
+        listaAmenidades
+          ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
+          : sql``
+      } ${
+        amenities?.includes(RESERVATIONS_AMENITY_ID)
+          ? sql`AND ${recebeReservas(barAlias)}`
+          : sql``
+      }`
   }
 }
 

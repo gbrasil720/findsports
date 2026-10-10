@@ -38,8 +38,6 @@ export function PubAmenitiesStep({
         onToggle={onToggleAmenity}
         screenCount={screenCount}
         onScreenCountChange={onScreenCountChange}
-        // O bar ainda não existe, e o recebimento nasce desligado.
-        receivesReservations={false}
       />
 
       <div>

@@ -13,13 +13,13 @@ type Props = {
   screenCount: number | null
   onScreenCountChange: (value: number | null) => void
   idPrefix: string
-  /**
-   * O bar recebe reservas pela Onside agora (interruptor ligado e Elite
-   * vigente). Sem isso o perfil não mostra "Aceita reserva", e o item diz por
-   * quê em vez de sumir: o que o dono marca continua gravado.
-   */
-  receivesReservations: boolean
 }
+
+/**
+ * "Aceita reserva" não está entre os itens: não é escolha do bar, aparece no
+ * perfil quando ele recebe reservas pela Onside (`publicAmenityIds`).
+ */
+const ITENS = AMENITIES.filter(({ id }) => id !== RESERVATIONS_AMENITY_ID)
 
 /**
  * O checklist de características, usado no onboarding e no `/admin`.
@@ -37,12 +37,9 @@ export function AmenityChecklist({
   onToggle,
   screenCount,
   onScreenCountChange,
-  idPrefix,
-  receivesReservations
+  idPrefix
 }: Props) {
   const isOn = (id: number) => selected.includes(id)
-  const reservationsLabelId = `${idPrefix}-reservations-label`
-  const reservationsHintId = `${idPrefix}-reservations-hint`
   const screenCountError = motivoTelasInvalido(screenCount)
 
   return (
@@ -54,22 +51,15 @@ export function AmenityChecklist({
           </legend>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {AMENITIES.filter((amenity) => amenity.group === group.key).map(
+            {ITENS.filter((amenity) => amenity.group === group.key).map(
               (amenity) => {
                 const on = isOn(amenity.id)
-                const hidden =
-                  amenity.id === RESERVATIONS_AMENITY_ID &&
-                  !receivesReservations
 
                 return (
                   <button
                     key={amenity.id}
                     type="button"
                     aria-pressed={on}
-                    // O aviso fica dentro do botão, mas é descrição: o nome
-                    // do item continua sendo só o rótulo.
-                    aria-labelledby={hidden ? reservationsLabelId : undefined}
-                    aria-describedby={hidden ? reservationsHintId : undefined}
                     onClick={() => onToggle(amenity.id)}
                     className={`flex min-h-11 items-center gap-2.5 border px-3 py-2 text-left text-sm transition-colors ${
                       on
@@ -89,25 +79,20 @@ export function AmenityChecklist({
                         <Check size={13} color="var(--onside-ink)" />
                       ) : null}
                     </span>
-                    {hidden ? (
-                      <span className="min-w-0">
-                        <span id={reservationsLabelId}>{amenity.label}</span>
-                        <span
-                          id={reservationsHintId}
-                          className="mt-0.5 block text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] text-xs leading-snug"
-                        >
-                          Aparece no perfil quando o bar recebe reservas pela
-                          Onside (plano Elite).
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="min-w-0">{amenity.label}</span>
-                    )}
+                    <span className="min-w-0">{amenity.label}</span>
                   </button>
                 )
               }
             )}
           </div>
+
+          {group.key === 'practical' ? (
+            <p className="mt-2 text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] text-xs leading-snug">
+              “Aceita reserva” aparece sozinha no perfil quando o bar recebe
+              reservas pela Onside, o que se liga em “Reservas pela Onside”, em
+              Meu espaço.
+            </p>
+          ) : null}
 
           {group.key === 'watch' ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-3">

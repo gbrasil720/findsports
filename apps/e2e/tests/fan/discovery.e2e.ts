@@ -163,13 +163,14 @@ test('filtro "Aceita reserva" traz só o bar que recebe reservas pela Onside', a
   page
 }) => {
   const spot = uniqueSpot()
-  // Os dois marcaram a característica (10) e ligaram o interruptor; só o
-  // Elite recebe.
-  const marked = { amenities: [10], accepts_reservations: true }
-  const receiving = await pubAt(north(spot, 0.5), { bar: marked })
+  // Os dois ligaram o interruptor; só o Elite recebe, e ele nunca teve a
+  // característica (10) gravada. O Pro a tem, de quando se marcava à mão.
+  const receiving = await pubAt(north(spot, 0.5), {
+    bar: { accepts_reservations: true }
+  })
   const pro = await pubAt(north(spot, 0.8), {
     subscription: { plan: 'pro' },
-    bar: marked
+    bar: { amenities: [10], accepts_reservations: true }
   })
   await createEvent({ barId: receiving.barId, startsAt: days(2) })
   await createEvent({ barId: pro.barId, startsAt: days(2) })

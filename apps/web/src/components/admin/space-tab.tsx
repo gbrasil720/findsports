@@ -215,10 +215,6 @@ export function SpaceTab({
 
       <PubHeroSection
         bar={bar}
-        // A mesma conta do servidor (`receivesReservations`): quer e pode.
-        receivesReservations={
-          bar.acceptsReservations && subscription?.currentPlan === 'elite'
-        }
         liveEvent={liveEvent}
         totalCount={eventList.length}
         isSaving={updateMeMutation.isPending}
