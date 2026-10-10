@@ -124,6 +124,12 @@ export function EventFormComponent({
     }))
   }
 
+  // A ordem em que os chips foram marcados é a do confronto: o primeiro é o
+  // mandante. Vazio enquanto os times carregam.
+  const matchup = form.participantIds.flatMap(
+    (id) => teams.find((t) => t.id === id)?.name ?? []
+  )
+
   const handleSportChange = (sportId: string) => {
     setForm((prev) => ({
       ...prev,
@@ -275,6 +281,28 @@ export function EventFormComponent({
                   {form.participantIds.length !== 1 ? 's' : ''}
                   {hasLimit ? ' — máximo 2' : ''}
                 </p>
+              )}
+              {matchup.length >= 2 && (
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-sm" aria-live="polite">
+                    Confronto: {matchup.join(' × ')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        participantIds: [...prev.participantIds].reverse()
+                      }))
+                    }
+                    className="onside-btn onside-btn-ghost min-h-11 px-3 text-xs"
+                  >
+                    Inverter
+                  </button>
+                  <p className="w-full text-[10px] text-[var(--onside-muted)]">
+                    O primeiro time marcado é o mandante.
+                  </p>
+                </div>
               )}
             </>
           ) : null}

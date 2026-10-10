@@ -365,6 +365,13 @@
       "when": 1791641468406,
       "tag": "0052_subscription_cancel_at",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1791644200061,
+      "tag": "0053_event_participants_position",
+      "breakpoints": true
     }
   ]
 }
