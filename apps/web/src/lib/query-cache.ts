@@ -20,17 +20,6 @@ export const CATALOG_QUERY = {
 } as const
 
 /**
- * Destaques da landing. Depende de `starts_at >= NOW()`, então envelhece
- * sozinho: a janela é curta de propósito para não anunciar jogo já começado.
- * Casada com o TTL do cache de servidor, para as duas camadas expirarem
- * juntas em vez de uma servir o que a outra já descartou.
- */
-export const HIGHLIGHTS_QUERY = {
-  staleTime: 60_000,
-  gcTime: 5 * 60_000
-} as const
-
-/**
  * Fila e teto de reservas do bar (WEB-158). O pedido chega de outro usuário,
  * sem nenhum clique aqui: o painel aberto no balcão consulta sozinho. O React
  * Query pausa o intervalo com a aba do navegador em segundo plano.

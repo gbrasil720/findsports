@@ -6,7 +6,12 @@ import { defineConfig } from 'vite'
 
 export default defineConfig(({ mode }) => ({
   optimizeDeps: {
-    include: ['input-otp'],
+    /**
+     * `three` só é pedido por `import()`, no desktop, depois da hidratação
+     * (WEB-333). Sem ele aqui o `vite dev` o descobre no meio da visita,
+     * reempacota as dependências e recarrega a página.
+     */
+    include: ['input-otp', 'three'],
     /**
      * WEB-73: o worker do MapLibre e a thread principal trocam mensagens
      * tipadas registradas em `maplibre-gl-shared.mjs`. Pré-empacotado, o lado

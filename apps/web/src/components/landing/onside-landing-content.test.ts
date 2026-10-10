@@ -1,23 +1,25 @@
 import { expect, test } from 'bun:test'
 
-import { LANDING_COPY } from './onside-landing-content'
+import { FAQ_ITEMS, LANDING_COPY } from './onside-landing-content'
 
-test('a landing promete apenas capacidades confirmadas', () => {
-  const copy = JSON.stringify(LANDING_COPY)
+test('a landing fala do produto no ar e não promete lista de espera', () => {
+  const copy = JSON.stringify([LANDING_COPY, FAQ_ITEMS])
 
-  expect(LANDING_COPY.hero.title).toBe(
+  expect(LANDING_COPY.hero.title.join(' ')).toBe(
     '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
   )
-  expect(LANDING_COPY.primaryCta).toBe('Criar conta')
-  expect(copy).not.toMatch(/download|app store|playstore|3 mil|lotação/i)
+  expect(LANDING_COPY.primaryCta).toBe('Entrar / Criar conta')
+  expect(copy).not.toMatch(
+    /download|app store|playstore|3 mil|lotação|lista de espera|waitlist|no lançamento|ainda não/i
+  )
 })
 
-test('as chamadas levam ao cadastro, e o bar chega com o papel escolhido', async () => {
+test('o bar vai para o cadastro, sem formulário na landing', async () => {
   const landing = await Bun.file(
     new URL('./onside-landing.tsx', import.meta.url)
   ).text()
 
   expect(landing).toContain("href: '/signup'")
   expect(landing).toContain("BAR_SIGNUP_HREF = '/signup?role=pub'")
-  expect(landing).not.toMatch(/#lista|#bar-form/)
+  expect(landing).not.toMatch(/id="(lista|bar-form)"|Waitlist/)
 })
