@@ -53,3 +53,27 @@ export function getSubscriptionStanding(
   if (subscription.status === 'trialing') return 'trial_ended'
   return 'ended'
 }
+
+/**
+ * Assinatura que o portal abre direto no cancelamento (WEB-339): viva no
+ * Stripe e sem fim agendado. Teste do cadastro não tem o que cancelar lá;
+ * plano parado e assinatura encerrada o servidor recusa
+ * (`pub.openSubscriptionCancel`); com o fim agendado, a ação é reativar. A
+ * tela e o servidor decidem por aqui.
+ */
+export function canCancelSubscription(
+  subscription:
+    | {
+        standing: SubscriptionStanding | null
+        externalSubscriptionId: string | null
+        cancelAt: string | Date | null
+      }
+    | null
+    | undefined
+): boolean {
+  return (
+    subscription?.standing === 'current' &&
+    subscription.externalSubscriptionId !== null &&
+    !subscription.cancelAt
+  )
+}

@@ -23,7 +23,7 @@ mock.module('@tanstack/react-router', () => ({
 
 const render = async (props: {
   isPublished?: boolean
-  subscriptionEnded?: boolean
+  offAirReason?: 'subscription' | 'trial' | null
 }) => {
   const { OwnerPreviewBanner } = await import('./owner-notice')
   return renderToStaticMarkup(<OwnerPreviewBanner {...props} />)
@@ -32,10 +32,23 @@ const render = async (props: {
 // WEB-345: bar fora do ar por assinatura encerrada lia "ainda fora do ar",
 // texto de quem nunca foi publicado.
 test('assinatura encerrada tem aviso próprio, com caminho para o plano', async () => {
-  const markup = await render({ isPublished: false, subscriptionEnded: true })
+  const markup = await render({
+    isPublished: false,
+    offAirReason: 'subscription'
+  })
   expect(markup).toContain('Seu bar está fora do ar: a assinatura terminou')
   expect(markup).toContain('Contrate um plano para voltar às buscas')
   expect(markup).toContain('href="/plan"')
+  expect(markup).not.toContain('ainda fora do ar')
+})
+
+// WEB-357: quem só teve o teste do cadastro nunca contratou assinatura.
+test('teste grátis vencido fala do teste, não de assinatura', async () => {
+  const markup = await render({ isPublished: false, offAirReason: 'trial' })
+  expect(markup).toContain('Seu bar está fora do ar: o teste grátis terminou')
+  expect(markup).toContain('Contrate um plano para voltar às buscas')
+  expect(markup).toContain('href="/plan"')
+  expect(markup).not.toContain('a assinatura terminou')
   expect(markup).not.toContain('ainda fora do ar')
 })
 
@@ -46,7 +59,10 @@ test('bar nunca publicado continua com o aviso de prévia', async () => {
 })
 
 test('bar no ar não fala de assinatura', async () => {
-  const markup = await render({ isPublished: true, subscriptionEnded: true })
+  const markup = await render({
+    isPublished: true,
+    offAirReason: 'subscription'
+  })
   expect(markup).toContain('Você está vendo seu perfil como o torcedor vê')
   expect(markup).not.toContain('a assinatura terminou')
 })

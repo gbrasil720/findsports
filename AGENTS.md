@@ -154,6 +154,15 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Teste grátis nasce no cadastro, sem cartão** (`billing.onboarding_trial`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
+- **Teste do cadastro vencido tira o bar do ar** (WEB-357): sem assinatura no Stripe e
+  com o período encerrado, a reconciliação diária (`reconcileBarPlans`, em
+  `packages/api/src/lib/bar-plan-sync.ts`) desliga `bar.is_active` junto com o
+  rebaixamento de plano — então há até um dia entre o vencimento e a saída do ar.
+  Contratar um plano religa o bar pelo `applyStripeSubscription`. `past_due` não entra
+  nessa regra: continua no ar com os recursos do Starter.
+- **Excluir a conta encerra a assinatura no Stripe** (WEB-336): assinatura viva não
+  bloqueia mais a exclusão; o servidor cancela no Stripe e só então apaga a conta, e se
+  o Stripe falhar nada é excluído (`packages/auth/src/account-deletion.ts`).
 - **Nome e empresa da assinatura vêm do cadastro, não do checkout** (WEB-328): o
   checkout não pede nenhum dos dois. Antes de a sessão abrir, o cliente do Stripe
   recebe `user.name`, `bar.name` e, se ainda não tiver endereço, o do bar

@@ -15,6 +15,7 @@ import { admin, captcha } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { z } from 'zod'
 import {
+  deleteStripeSubscriptionOf,
   deleteWaitlistEntryOf,
   endLiveSubscriptionOf
 } from './account-deletion'
@@ -225,7 +226,12 @@ export function createAuth() {
         enabled: true,
         beforeDelete: (accountUser) =>
           endLiveSubscriptionOf(accountUser.id, stripeClient),
-        afterDelete: (accountUser) => deleteWaitlistEntryOf(accountUser.email)
+        afterDelete: async (accountUser) => {
+          await Promise.all([
+            deleteWaitlistEntryOf(accountUser.email),
+            deleteStripeSubscriptionOf(accountUser.id)
+          ])
+        }
       },
       additionalFields: {
         role: {

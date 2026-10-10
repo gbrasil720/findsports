@@ -413,7 +413,7 @@ function PubPage() {
               {isOwner && (
                 <OwnerPreviewBanner
                   isPublished={normalizedPub?.isActive !== false}
-                  subscriptionEnded={normalizedPub.subscriptionEnded}
+                  offAirReason={normalizedPub.offAirReason}
                 />
               )}
 

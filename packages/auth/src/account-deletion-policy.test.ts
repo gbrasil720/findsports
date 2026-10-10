@@ -15,7 +15,9 @@ describe('assinatura a encerrar na exclusão da conta', () => {
   test.each([
     'active',
     'trialing',
-    'past_due'
+    'past_due',
+    // Pausada no Stripe: não cobra, mas ficaria lá sem dono.
+    'inactive'
   ] as const)('assinatura %s no Stripe é encerrada', (status) => {
     expect(
       liveStripeSubscriptionId({
@@ -27,14 +29,11 @@ describe('assinatura a encerrar na exclusão da conta', () => {
 
   // WEB-60: `cancelled` é assinatura que já acabou no Stripe, inclusive no
   // cancelamento imediato, que chega com o período ainda no futuro.
-  test.each([
-    'cancelled',
-    'inactive'
-  ] as const)('assinatura %s já não cobra', (status) => {
+  test('assinatura cancelled já acabou no Stripe', () => {
     expect(
       liveStripeSubscriptionId({
         externalSubscriptionId: 'sub_123',
-        status
+        status: 'cancelled'
       })
     ).toBeNull()
   })

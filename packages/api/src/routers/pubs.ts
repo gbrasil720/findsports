@@ -31,7 +31,10 @@ import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
-import { getSubscriptionStanding } from '../lib/current-plan'
+import {
+  getSubscriptionStanding,
+  type SubscriptionStanding
+} from '../lib/current-plan'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import {
   favoriteTeamIdsSchema,
@@ -76,6 +79,18 @@ const BUSCA_TTL_MS = 60_000
  */
 const porNome = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, 'pt-BR')
+
+/**
+ * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
+ * só teve o teste do cadastro nunca contratou nada, então "a assinatura
+ * terminou" seria falso. `null` cobre bar no ar e quem não é o dono.
+ */
+const ownerOffAirReason = (standing: SubscriptionStanding | null) =>
+  standing === 'trial_ended'
+    ? ('trial' as const)
+    : standing === 'ended'
+      ? ('subscription' as const)
+      : null
 
 const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
   prefix: 'pubs.sports',
@@ -484,12 +499,14 @@ export const pubsRouter = router({
         isOwner: userId === ctx.session.user.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
         // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
-        // cadastro vencido também tira o bar do ar (WEB-357).
-        subscriptionEnded:
-          userId === ctx.session.user.id &&
-          ['ended', 'trial_ended'].includes(
-            getSubscriptionStanding(subscription ?? null, now) ?? ''
-          )
+        // cadastro vencido também tira o bar do ar (WEB-357), e quem só teve
+        // o teste não tinha assinatura para terminar: o aviso diz qual dos
+        // dois foi.
+        offAirReason: ownerOffAirReason(
+          userId === ctx.session.user.id
+            ? getSubscriptionStanding(subscription ?? null, now)
+            : null
+        )
       }
     }),
 

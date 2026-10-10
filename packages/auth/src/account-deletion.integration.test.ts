@@ -9,7 +9,7 @@ const password = 'Senha-de-teste-336!'
 async function setup() {
   const [
     { db, eq, inArray, sql },
-    { account, rateLimit, user },
+    { account, rateLimit, stripeSubscription, user },
     { bar, subscription },
     { waitlistEntries },
     { auth },
@@ -36,7 +36,7 @@ async function setup() {
 
   /** Dono de bar com senha; `stripeStatus` cria a assinatura do provedor. */
   async function createOwner(
-    stripeStatus?: 'active' | 'cancelled'
+    stripeStatus?: 'active' | 'inactive' | 'cancelled'
   ): Promise<{ id: string; email: string; subscriptionId: string | null }> {
     const id = crypto.randomUUID()
     const email = `${id}@integration.invalid`
@@ -80,8 +80,27 @@ async function setup() {
           }
         : {})
     })
+    if (subscriptionId) {
+      // A linha do plugin, como o checkout a deixa: sem FK para o dono.
+      await db.insert(stripeSubscription).values({
+        id: subscriptionId,
+        plan: 'starter',
+        referenceId: id,
+        stripeCustomerId: `cus_${id}`,
+        stripeSubscriptionId: subscriptionId,
+        status: 'active'
+      })
+    }
     return { id, email, subscriptionId }
   }
+
+  const pluginRowExists = async (userId: string) =>
+    (
+      await db
+        .select({ id: stripeSubscription.id })
+        .from(stripeSubscription)
+        .where(eq(stripeSubscription.referenceId, userId))
+    ).length === 1
 
   async function createWaitlistEntry(email: string) {
     const id = crypto.randomUUID()
@@ -183,6 +202,9 @@ async function setup() {
     // `account`, `bar` e `subscription` caem em cascata com o dono.
     if (userIds.length > 0) {
       await db.delete(user).where(inArray(user.id, userIds))
+      await db
+        .delete(stripeSubscription)
+        .where(inArray(stripeSubscription.referenceId, userIds))
     }
     if (waitlistIds.length > 0) {
       await db
@@ -202,6 +224,7 @@ async function setup() {
     createWaitlistEntry,
     waitlistExists,
     userExists,
+    pluginRowExists,
     subscriptionStatusOf,
     deleteAccount,
     stubStripe,
@@ -227,7 +250,7 @@ integrationTest(
   async () => {
     const t = ready()
     const owner = await t.createOwner('active')
-    const other = await t.createOwner()
+    const other = await t.createOwner('active')
     // A waitlist guarda o e-mail como foi digitado lá: a ligação não pode
     // depender de maiúsculas.
     const ownEntry = await t.createWaitlistEntry(owner.email.toUpperCase())
@@ -248,6 +271,10 @@ integrationTest(
     expect(await t.waitlistExists(ownEntry)).toBe(false)
     expect(await t.waitlistExists(otherEntry)).toBe(true)
     expect(await t.userExists(other.id)).toBe(true)
+    // A linha do plugin não tem FK: sai pelo `afterDelete`, e só a de quem
+    // foi apagado.
+    expect(await t.pluginRowExists(owner.id)).toBe(false)
+    expect(await t.pluginRowExists(other.id)).toBe(true)
 
     // O `customer.subscription.deleted` chega depois, sem bar para achar: só
     // registra, sem lançar (lançar faria o Stripe reenviar à toa).
@@ -300,6 +327,7 @@ integrationTest(
     expect(await t.userExists(owner.id)).toBe(true)
     expect(await t.subscriptionStatusOf(owner.id)).toBe('active')
     expect(await t.waitlistExists(entry)).toBe(true)
+    expect(await t.pluginRowExists(owner.id)).toBe(true)
   }
 )
 
@@ -316,6 +344,26 @@ integrationTest(
     expect(response.status).toBe(200)
     expect(stripe.cancel).not.toHaveBeenCalled()
     expect(await t.userExists(owner.id)).toBe(false)
+  }
+)
+
+integrationTest(
+  'assinatura pausada no Stripe: é encerrada lá antes de a conta sair',
+  async () => {
+    const t = ready()
+    // `inactive` é a `paused` do Stripe: não cobra, mas continua existindo.
+    const owner = await t.createOwner('inactive')
+    const stripe = t.stubStripe('paused')
+    spies.push(stripe.retrieve, stripe.cancel)
+
+    const response = await t.deleteAccount(owner.email)
+
+    expect(response.status).toBe(200)
+    expect(stripe.cancel.mock.calls as unknown[]).toEqual([
+      [owner.subscriptionId, {}, { timeout: 5000, maxNetworkRetries: 0 }]
+    ])
+    expect(await t.userExists(owner.id)).toBe(false)
+    expect(await t.pluginRowExists(owner.id)).toBe(false)
   }
 )
 

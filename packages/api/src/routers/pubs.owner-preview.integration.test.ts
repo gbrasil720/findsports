@@ -64,7 +64,7 @@ integrationTest(
       // "ninguém vê isto" de "assim é o que o torcedor vê".
       expect(preview.isActive).toBe(false)
       // Nunca publicado não é assinatura encerrada (WEB-345).
-      expect(preview.subscriptionEnded).toBe(false)
+      expect(preview.offAirReason).toBeNull()
 
       const asFan = appRouter.createCaller(contextFor(fanId, 'fan'))
       await expect(asFan.pubs.getById({ id: barId })).rejects.toThrow(
@@ -85,16 +85,17 @@ integrationTest(
         .values({ barId, plan: 'pro', status: 'cancelled' })
       const encerrado = await asOwner.pubs.getById({ id: barId })
       expect(encerrado.isActive).toBe(false)
-      expect(encerrado.subscriptionEnded).toBe(true)
+      expect(encerrado.offAirReason).toBe('subscription')
 
       // Teste do cadastro vencido, fora do ar pela reconciliação (WEB-357):
-      // também já esteve no ar, e a volta é contratar.
+      // também já esteve no ar, e a volta é contratar. Nunca houve assinatura
+      // contratada, então o aviso fala do teste.
       await db
         .update(subscription)
         .set({ status: 'trialing', currentPeriodEnd: new Date(0) })
         .where(eq(subscription.barId, barId))
       const testeVencido = await asOwner.pubs.getById({ id: barId })
-      expect(testeVencido.subscriptionEnded).toBe(true)
+      expect(testeVencido.offAirReason).toBe('trial')
     } finally {
       await db.delete(user).where(eq(user.id, ownerId))
       await db.delete(user).where(eq(user.id, fanId))

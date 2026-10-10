@@ -22,15 +22,19 @@ import Eye from 'reicon-react/icons/Eye'
  */
 export function OwnerPreviewBanner({
   isPublished = true,
-  subscriptionEnded = false
+  offAirReason = null
 }: {
   isPublished?: boolean
-  /** Fora do ar porque a assinatura acabou, e não por nunca ter ido ao ar. */
-  subscriptionEnded?: boolean
+  /**
+   * Fora do ar porque acabou o que mantinha o bar lá, e não por nunca ter ido
+   * ao ar: `subscription` é plano contratado que terminou, `trial` é o teste
+   * do cadastro vencido sem contratação. `null` enquanto o bar está no ar.
+   */
+  offAirReason?: 'subscription' | 'trial' | null
 }) {
   // Bar que já esteve no ar não está "ainda" fora dele: o caminho de volta é
   // contratar um plano, não terminar o cadastro (WEB-345).
-  if (!isPublished && subscriptionEnded) {
+  if (!isPublished && offAirReason) {
     return (
       <div className="onside-callout onside-callout-warn" role="status">
         <Eye
@@ -41,7 +45,9 @@ export function OwnerPreviewBanner({
         />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm">
-            Seu bar está fora do ar: a assinatura terminou
+            {offAirReason === 'trial'
+              ? 'Seu bar está fora do ar: o teste grátis terminou'
+              : 'Seu bar está fora do ar: a assinatura terminou'}
           </p>
           <p className="text-sm opacity-90">
             Contrate um plano para voltar às buscas. Enquanto isso, só você abre

@@ -104,8 +104,9 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   expect(navigations).toHaveLength(1)
 })
 
-// WEB-339: o atalho abre o portal já no cancelamento, pela rota do plugin
-// (`/subscription/cancel`), que antes confere a assinatura no Stripe.
+// WEB-339: o atalho abre o portal já no cancelamento, em português, pela
+// rota do app (`pub.openSubscriptionCancel`), que antes confere a assinatura
+// no Stripe.
 test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelamento (WEB-339)', async ({
   page,
   request
@@ -159,6 +160,7 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   expect(sessions[0]?.body).toMatchObject({
     'flow_data[type]': 'subscription_cancel',
     'flow_data[subscription_cancel][subscription]': subscriptionId,
+    locale: 'pt-BR',
     return_url: `${BASE_URL}/admin/billing`
   })
 })

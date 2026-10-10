@@ -49,17 +49,22 @@ de segurança sem perder o desenho e o contexto próprios de cada experiência.
   sem oferecer bypass por e-mail.
 - Permitir que o torcedor exclua a conta após reautenticação e confirmação
   destrutiva explícita.
-- Impedir a exclusão de um bar enquanto existir assinatura externa em período
-  vigente. Solicitar cancelamento não libera a exclusão: ela só fica disponível
-  depois que o encerramento for efetivado e o período contratado terminar.
 - Exigir senha atual e a frase `EXCLUIR MINHA CONTA` para qualquer exclusão.
   A exclusão é permanente e não cria estado de soft delete.
-- Para assinatura externa, bloquear nos estados `active`, `trialing` e
-  `past_due`. Liberar em `cancelled` ou `inactive`. No Stripe, cancelamento
-  marcado para o fim do período segue `active` até lá; `cancelled` só é gravado
-  quando a assinatura já acabou, então não há período a esperar (WEB-60).
-- Permitir excluir um bar cujo trial ainda não virou assinatura externa (sem
-  `externalSubscriptionId`), pois não existe cobrança externa a deixar órfã.
+- Assinatura viva não impede mais a exclusão (WEB-336). O bloqueio original
+  deixava o dono preso: cancelar não liberava nada até o período contratado
+  acabar. Em vez disso, ao confirmar a exclusão o servidor encerra a assinatura
+  no Stripe na hora e só então apaga a conta. Se o Stripe recusar ou demorar,
+  nada é excluído e o dono lê o erro.
+- Encerrar no Stripe as assinaturas em `active`, `trialing`, `past_due` e
+  `inactive` (pausada); pular as que já acabaram. Assinatura pausada precisa
+  entrar: sem conta, ninguém mais conseguiria retomá-la ou encerrá-la.
+- A confirmação avisa que a assinatura acaba agora, que o período pago não é
+  devolvido, e que quem contratou há até 7 dias pede o reembolso integral ao
+  suporte. Não há reembolso automático; cada exclusão com assinatura encerrada
+  fica no log com os ids do cliente e da assinatura no Stripe.
+- Bar cujo trial do cadastro nunca virou assinatura externa (sem
+  `externalSubscriptionId`) não tem nada a encerrar no Stripe.
 - Informar que os dados locais serão apagados, mas o provedor de pagamento pode
   reter registros fiscais próprios.
 

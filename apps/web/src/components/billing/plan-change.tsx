@@ -5,10 +5,9 @@ import {
   DialogDescription,
   DialogTitle
 } from '@findsports_oficial/ui/components/dialog'
-import { PortalProvider } from '@findsports_oficial/ui/components/portal'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
 import { getEventTemporalState } from '@/domain/events'
 import { getPlan, getPlanLosses, getPlanLossNote } from '@/lib/plan-catalog'
@@ -79,68 +78,55 @@ export function DowngradeConfirmDialog({
 }: DialogProps) {
   // O foco começa em quem não troca nada.
   const cancelRef = useRef<HTMLButtonElement>(null)
-  // `/plan` não tem o ProductFrame (WEB-66), e fora de `.onside-app` os botões
-  // ficam sem o estilo do app: o diálogo monta na raiz dela. Não aqui dentro,
-  // porque o conteúdo da página é animado com `transform` e prenderia o
-  // `position: fixed`.
-  const [appRoot, setAppRoot] = useState<HTMLElement | null>(null)
-  const findAppRoot = useCallback(
-    (node: HTMLElement | null) =>
-      setAppRoot(node?.closest<HTMLElement>('.onside-app') ?? null),
-    []
-  )
 
   return (
-    <PortalProvider container={appRoot}>
-      <span hidden ref={findAppRoot} />
-      <Dialog
-        open
-        onOpenChange={(next) => {
-          if (!next) onCancel()
-        }}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next) onCancel()
+      }}
+    >
+      <DialogContent
+        initialFocus={cancelRef}
+        className="onside-dialog flex max-w-[calc(100vw-2rem)] flex-col p-6 sm:max-w-lg"
       >
-        <DialogContent
-          initialFocus={cancelRef}
-          className="onside-dialog flex max-w-[calc(100vw-2rem)] flex-col p-6 sm:max-w-lg"
-        >
-          <DialogTitle className="onside-display text-2xl">
-            Trocar para o {getPlan(to).name}?
-          </DialogTitle>
-          <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
-            Seu bar sai do {getPlan(from).name} e deixa de ter:
-          </DialogDescription>
-          {/* Só a lista rola: título, crédito e botões ficam à vista. */}
-          <PlanLossList
-            from={from}
-            to={to}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-          />
-          {earnsCredit ? (
-            <p className="mt-4 text-[var(--onside-ink)] text-sm">
-              A diferença vira crédito na sua conta e abate as próximas
-              mensalidades (não é reembolsada no cartão).
-            </p>
-          ) : null}
-          <div className="mt-6 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="onside-btn onside-btn-ink min-h-12 px-5 text-sm"
-            >
-              {confirmLabel}
-            </button>
-            <button
-              ref={cancelRef}
-              type="button"
-              onClick={onCancel}
-              className="onside-btn onside-btn-outline min-h-12 px-4 text-xs"
-            >
-              Manter o {getPlan(from).name}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </PortalProvider>
+        <DialogTitle className="onside-display text-2xl">
+          Trocar para o {getPlan(to).name}?
+        </DialogTitle>
+        <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
+          Seu bar sai do {getPlan(from).name} e deixa de ter:
+        </DialogDescription>
+        {/* Só a lista rola: título, crédito e botões ficam à vista. */}
+        <PlanLossList
+          from={from}
+          to={to}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        />
+        {earnsCredit ? (
+          <p className="mt-4 text-[var(--onside-ink)] text-sm">
+            A diferença vira crédito na sua conta e abate as próximas
+            mensalidades (não é reembolsada no cartão).
+          </p>
+        ) : null}
+        <div className="mt-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="onside-btn onside-btn-ink min-h-12 px-5 text-sm"
+          >
+            {confirmLabel}
+          </button>
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            className="onside-btn onside-btn-outline min-h-12 px-4 text-xs"
+          >
+            Manter o {getPlan(from).name}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
