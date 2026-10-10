@@ -57,9 +57,11 @@ integrationTest(
       await caller.pubs.favorite({ barId })
       const visible = await caller.pubs.getFavorites()
       expect(visible).toHaveLength(1)
+      // `plan` não é interno: a busca e o perfil público já o devolvem, e é
+      // ele que decide o pino do bar no mapa de favoritos.
+      expect(visible[0]?.bar.plan).toBe('starter')
       for (const internal of [
         'userId',
-        'plan',
         'isActive',
         'ratingCount',
         'ratingPositive',

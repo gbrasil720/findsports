@@ -386,11 +386,13 @@ function BillingPage() {
                 aria-hidden="true"
               />
               <span>
-                {hasProviderCustomer
-                  ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
-                  : onLocalTrial
-                    ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
-                    : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
+                {ended && hasProviderCustomer
+                  ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento acima.'
+                  : hasProviderCustomer
+                    ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento acima.'
+                    : onLocalTrial
+                      ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
+                      : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
               </span>
             </div>
           </section>

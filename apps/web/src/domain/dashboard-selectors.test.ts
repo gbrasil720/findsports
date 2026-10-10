@@ -32,6 +32,7 @@ function makeBar(id: string, startsAt?: string): SearchBar {
           id: `event-${id}`,
           championship: 'Liga',
           startsAt,
+          endsAt: null,
           sport: { name: 'Futebol', slug: 'futebol' },
           participants: [],
           participantFreeText: null,

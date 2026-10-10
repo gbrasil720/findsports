@@ -140,6 +140,25 @@ jobs:
             apps/e2e/test-results
           retention-days: 14
 
+  e2e-worker:
+    # Bundle real do Worker em workerd (docs/e2e.md, "Suíte do Worker"). A
+    # suíte `e2e` roda em `vite dev`, que serve `public/` de outro jeito: foi
+    # essa diferença que escondeu a WEB-269. Sem banco: só arquivo estático.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-monorepo
+      - uses: ./.github/actions/setup-playwright
+      - name: Build do Worker
+        working-directory: apps/web
+        run: bun run build:cf
+      - run: bunx playwright test -c playwright.worker.config.ts
+        working-directory: apps/e2e
+
   # WEB-204: deploy no Cloudflare Workers (produção = Worker `onside-web`, preview =
   # `onside-web-preview`). Não há deploy Vercel neste repositório — só Workers.
   deploy:

@@ -11,6 +11,15 @@ export type SubscriptionStatus =
   | 'past_due'
   | 'cancelled'
 
+/** Nossa situação, no vocabulário do Stripe que o plugin grava. */
+const STRIPE_STATUS: Record<SubscriptionStatus, string> = {
+  trialing: 'trialing',
+  active: 'active',
+  past_due: 'past_due',
+  inactive: 'paused',
+  cancelled: 'canceled'
+}
+
 export type PubOptions = {
   user?: Omit<UserOptions, 'role'>
   /** `null` cria o bar sem assinatura. Padrão: Elite ativa por 30 dias. */
@@ -66,6 +75,18 @@ export async function createPub(options: PubOptions = {}): Promise<TestPub> {
       monthly_discount_reais:
         sub.monthlyDiscountReais === undefined ? null : sub.monthlyDiscountReais
     })
+    // Assinatura do provedor também existe na tabela do plugin do Stripe, como
+    // em produção (ele a grava no checkout). Sem ela o webhook de mudança
+    // estoura dentro do plugin e só o nosso `onEvent` roda.
+    if (sub.externalSubscriptionId) {
+      await insert('stripe_subscription', {
+        id: randomUUID(),
+        plan: sub.plan ?? 'elite',
+        reference_id: user.id,
+        stripe_subscription_id: sub.externalSubscriptionId,
+        status: STRIPE_STATUS[sub.status ?? 'active']
+      })
+    }
   }
 
   return { user, barId }

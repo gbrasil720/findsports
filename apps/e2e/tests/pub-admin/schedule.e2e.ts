@@ -246,7 +246,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   await expect(overview).toContainText(
     `Pagamento pendente — 1 de ${STARTER_LIMIT} jogos restantes`
   )
-  await expect(overview).toContainText('Pagamento pendente · 1 restantes')
+  await expect(overview).toContainText('Pagamento pendente · 1 restante')
   await expect(
     overview.getByRole('link', { name: 'Regularizar assinatura' })
   ).toHaveAttribute('href', '/admin/billing')

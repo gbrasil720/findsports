@@ -55,6 +55,7 @@ function eventoEm(startsAt: Date): NonNullable<DiscoveryCardBar['nextEvent']> {
     id: 'evento-1',
     championship: 'Brasileirão',
     startsAt: startsAt.toISOString(),
+    endsAt: null,
     sport: { name: 'Futebol', slug: 'futebol' },
     participants: [],
     participantFreeText: null,

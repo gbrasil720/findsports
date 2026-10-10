@@ -19,13 +19,19 @@ type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive' | 'cancelled'
  * | `past_due`           | `past_due`  | cobrança recusada, Stripe ainda retenta  |
  * | `unpaid`             | `past_due`  | retentativas esgotadas, sem cancelar     |
  * | `canceled`           | `cancelled` | acabou: o bar sai do ar (WEB-60)         |
- * | `paused`             | `inactive`  | cobrança pausada: o bar sai do ar, mas a |
- * |                      |             | assinatura não foi cancelada             |
+ * | `paused`             | `inactive`  | teste que acabou sem meio de pagamento:  |
+ * |                      |             | o bar sai do ar; a assinatura existe,    |
+ * |                      |             | mas não gera fatura até ser retomada     |
  * | `incomplete`         | —           | primeiro pagamento ainda não concluído   |
  * | `incomplete_expired` | —           | checkout que nunca virou assinatura      |
  *
  * As duas últimas não escrevem nada: tirar o bar do ar ali derrubaria o trial
  * de cadastro de um bar que só tentou pagar e não conseguiu.
+ *
+ * `paused` não é o "pausar cobrança" do painel: esse mantém a assinatura
+ * `active`. O Stripe só entra em `paused` quando o teste acaba sem meio de
+ * pagamento, e o nosso checkout sempre guarda o cartão. A linha existe para a
+ * assinatura criada por fora do app.
  */
 export function localStatusFor(
   status: Stripe.Subscription.Status

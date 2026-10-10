@@ -245,6 +245,27 @@ não exercitar o cache em si — isso fica com os testes unitários
   URL de `/login` tem `?callbackUrl=`: compare com `/\/login\?callbackUrl=/`,
   não com `/\/login$/`.
 
+## Suíte do Worker
+
+A suíte principal roda em `vite dev`, que serve `public/` diferente do Worker:
+o Workers assets responde `/offline.html` com 307 para `/offline`, o `vite dev`
+com 200. Foi essa diferença que escondeu a WEB-269. O que depende de como o
+Worker serve arquivo estático tem suíte própria, contra o bundle real em
+workerd:
+
+```bash
+cd apps/web && bun run build:cf
+cd ../e2e && bunx playwright test -c playwright.worker.config.ts
+```
+
+Os specs ficam em `apps/e2e/worker/`. Não usam banco, stub nem `.dev.vars`: só
+tocam arquivo estático, que o Workers assets entrega sem chamar o código do
+Worker. O servidor (`vite preview --mode cloudflare`, porta `E2E_WORKER_PORT`,
+padrão `3203`) é do próprio spec, e não um `webServer`, porque o teste do
+service worker precisa derrubá-lo: `setOffline` não vale para o `fetch` de
+dentro do service worker. Teste que precisa de banco ou de sessão continua na
+suíte principal.
+
 ## CI
 
 Job `e2e` em `.github/workflows/ci.yml`, em todo PR, com
@@ -253,6 +274,8 @@ publicado por `.github/workflows/publish-ci-postgis.yml` — sem Docker Hub).
 Instala só o Chromium. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
+
+O job `e2e-worker` roda a suíte do Worker, também em todo PR, sem banco.
 
 O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
 projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os

@@ -3,7 +3,7 @@
  *
  * Coordenadas exatas: distância, ordenação e cursor também dependem da origem
  * exata, então aproximá-la faria páginas incompatíveis compartilharem cache.
- * TTL curto fica no caller: a busca depende de `starts_at >= NOW()`.
+ * TTL curto fica no caller: a busca depende do relógio (`jogoNaoAcabou`).
  *
  * Só entra dado global. Nada derivado de sessão.
  */

@@ -169,7 +169,8 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
         pin: pinDoPlano(
           bar.plan,
           nextEvent !== undefined &&
-            getEventTemporalState(nextEvent.startsAt, null) === 'live'
+            getEventTemporalState(nextEvent.startsAt, nextEvent.endsAt) ===
+              'live'
         )
       }
     ]

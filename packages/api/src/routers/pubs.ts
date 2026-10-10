@@ -569,6 +569,8 @@ export const pubsRouter = router({
 
   getFavorites: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
+    const now = new Date()
+    const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
     const favorites = await db.query.userFavoriteBars.findMany({
       where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
@@ -578,10 +580,16 @@ export const pubsRouter = router({
       )`,
       with: {
         bar: {
-          columns: PUBLIC_BAR_COLUMNS,
+          // `plan` é a projeção do plano vigente: decide o pino no mapa.
+          columns: { ...PUBLIC_BAR_COLUMNS, plan: true },
           with: {
             events: {
-              where: (event, { gte }) => gte(event.startsAt, new Date()),
+              // Jogo em andamento continua na lista, como no perfil do bar.
+              where: (event, { and, gte, isNotNull, isNull, or }) =>
+                or(
+                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                ),
               // O teto do dono não vai para o torcedor (WEB-152).
               columns: { reservationCap: false },
               with: {

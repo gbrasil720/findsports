@@ -1,4 +1,5 @@
 import { type SQL, sql } from '@findsports_oficial/db'
+import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
 import { classicRuleLateral } from '../classics'
@@ -17,6 +18,30 @@ import { utcIso } from '../utc-timestamp'
  * na primeira mudança, e o lado que divergisse seria o de emergência — o que
  * ninguém exercita até o dia em que precisa dele.
  */
+
+/**
+ * Quanto um jogo pode durar e ainda aparecer na busca depois de começar.
+ *
+ * Existe só para o filtro abaixo continuar usando o índice
+ * `event_barId_startsAt_idx`: sem um piso em `starts_at`, cada bar candidato
+ * varreria o histórico inteiro de jogos. Um dia cobre qualquer transmissão.
+ * Teto conhecido: jogo com `ends_at` mais de 24 horas depois do início some da
+ * busca na 25ª hora, ainda em andamento. Se isso passar a existir, o caminho é
+ * um índice sobre o fim derivado.
+ */
+const MAX_LIVE_SPAN_INTERVAL = '24 hours'
+
+/**
+ * Jogo que ainda não acabou: o próximo ou o que está rolando agora.
+ *
+ * A busca filtrava `starts_at >= NOW()`. Um bar cujo único jogo tinha começado
+ * cinco minutos antes sumia do resultado, e o pino de "ao vivo" só aparecia
+ * para quem já estava com a tela aberta. É a mesma regra de fim derivado do
+ * perfil público (`@findsports_oficial/db/event-window`).
+ */
+export const jogoNaoAcabou = (e: SQL) => sql`
+  ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
+  AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
 
 export type SearchInput = {
   lat: number
@@ -64,6 +89,8 @@ export type SearchBar = {
         id: string
         championship: string
         startsAt: string
+        /** Fim informado pelo bar, ou `null`: o cliente deriva o padrão. */
+        endsAt: string | null
         sport: { name: string; slug: string }
         participants: { team: { name: string; logoUrl: string | null } }[]
         participantFreeText: string | null
@@ -148,6 +175,7 @@ export type LinhaBusca = {
   next_event_id: string | null
   next_championship: string | null
   next_event_starts_at: string | null
+  next_event_ends_at: string | null
   next_sport_name: string | null
   next_sport_slug: string | null
   next_participant_free_text: string | null
@@ -256,6 +284,7 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       e.championship AS next_championship,
       e.starts_at AS next_event_at,
       e.starts_at AS next_event_starts_at,
+      e.ends_at AS next_event_ends_at,
       s.name AS next_sport_name,
       s.slug AS next_sport_slug,
       e.participant_free_text AS next_participant_free_text,
@@ -266,7 +295,7 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       JOIN sport s ON s.id = e.sport_id
       ${classicRuleLateral(sql`e`)}
       WHERE e.bar_id = ${barAlias}.id
-        AND e.starts_at >= NOW()
+        AND ${jogoNaoAcabou(sql`e`)}
         ${eventFilter}
         ${champBarFilter(sql`${barAlias}.name`)}
       ORDER BY e.starts_at ASC, e.id ASC
@@ -313,6 +342,9 @@ export function montarPaginaBusca(
             id: row.next_event_id,
             championship: row.next_championship ?? '',
             startsAt: utcIso(row.next_event_starts_at),
+            endsAt: row.next_event_ends_at
+              ? utcIso(row.next_event_ends_at)
+              : null,
             sport: {
               name: row.next_sport_name ?? '',
               slug: row.next_sport_slug ?? ''
