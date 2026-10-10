@@ -10,7 +10,7 @@ const base: MarkerVisualState = {
   lat: -23.5505,
   lng: -46.6333,
   name: 'Bar do Zé',
-  accent: 'acid',
+  pin: 'pro',
   large: false
 }
 
@@ -54,9 +54,15 @@ describe('atualização de pinos do mapa (ESC-16)', () => {
   })
 
   it('mudança de cor troca o ícone, mas não a ordem', () => {
-    const u = diffMarkerState(base, { ...base, accent: 'live' })
+    const u = diffMarkerState(base, { ...base, pin: 'live' })
     expect(u.icon).toBe(true)
     expect(u.zIndex).toBe(false)
+  })
+
+  it('virar Elite troca o ícone e sobe o pino na pilha (WEB-332)', () => {
+    const u = diffMarkerState(base, { ...base, pin: 'elite' })
+    expect(u.icon).toBe(true)
+    expect(u.zIndex).toBe(true)
   })
 
   it('o caso que mais se repete — mouse passando pela lista — não toca nos outros pinos', () => {

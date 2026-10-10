@@ -1,5 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
+import { pinDoPlano } from '@/components/app/map-icons'
 import type { MapBar } from '@/components/app/onside-map'
 import type { LocationState, RadiusKm } from './discovery'
 import { getEventTemporalState } from './events'
@@ -158,7 +159,6 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
     const lng = Number.parseFloat(bar.longitude)
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return []
     const nextEvent = getNextEvent(bar)
-    const plan = bar.plan
 
     return [
       {
@@ -166,13 +166,11 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
         name: bar.name,
         lat,
         lng,
-        accent:
-          nextEvent &&
-          getEventTemporalState(nextEvent.startsAt, null) === 'live'
-            ? 'live'
-            : plan === 'pro' || plan === 'elite'
-              ? 'acid'
-              : 'ink'
+        pin: pinDoPlano(
+          bar.plan,
+          nextEvent !== undefined &&
+            getEventTemporalState(nextEvent.startsAt, null) === 'live'
+        )
       }
     ]
   })

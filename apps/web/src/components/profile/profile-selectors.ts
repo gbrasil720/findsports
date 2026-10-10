@@ -101,7 +101,7 @@ export function createFavoriteMapBars(favorites: Favorite[]): MapBar[] {
         name: favorite.bar.name,
         lat,
         lng,
-        accent: 'ink' as const
+        pin: 'starter' as const
       }
     ]
   })

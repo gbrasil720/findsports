@@ -314,6 +314,73 @@ test('o mapa marca os bares e o marcador abre a página do bar', async ({
   )
 })
 
+// WEB-332: cada plano tem o seu pino. A cor é lida do SVG já pintado, e não da
+// variável: é o que prova que o navegador resolveu `var()` no `fill`.
+test('o pino muda com o plano vigente e com o jogo ao vivo, e o Elite fica por cima', async ({
+  page
+}) => {
+  const INK = 'rgb(18, 18, 15)'
+  const ACID = 'rgb(201, 241, 53)'
+  const LIVE = 'rgb(232, 50, 12)'
+  const CREME = 'rgb(241, 238, 230)'
+  const spot = uniqueSpot()
+  const plano = (plan: 'starter' | 'pro' | 'elite') => ({
+    subscription: { plan }
+  })
+  const starter = await pubAt(north(spot, 1.6), plano('starter'))
+  const pro = await pubAt(north(spot, 0.8), plano('pro'))
+  const elite = await pubAt(spot, plano('elite'))
+  // No mesmo endereço do Elite. A busca devolve o Elite antes, então o
+  // marcador do Starter entra depois no DOM e ficaria por cima sem a ordem.
+  const vizinho = await pubAt(spot, plano('starter'))
+  const eliteComJogo = await pubAt(north(spot, -0.8), plano('elite'))
+  // Plano parado (WEB-129): Elite com pagamento atrasado é Starter no mapa.
+  const parado = await pubAt(north(spot, -1.6), {
+    subscription: { plan: 'elite', status: 'past_due' }
+  })
+  for (const pub of [starter, elite, vizinho, parado]) {
+    await createEvent({ barId: pub.barId, startsAt: days(2) })
+  }
+  // A busca só devolve jogo que ainda não começou: o pino fica vermelho
+  // quando o jogo começa com a tela aberta.
+  for (const pub of [pro, eliteComJogo]) {
+    await createEvent({ barId: pub.barId, startsAt: hours(0.5) })
+  }
+  await signInFanAt(page, spot)
+
+  await page.goto('/dashboard')
+  const pin = (pub: { name: string }) =>
+    page
+      .locator('.maplibregl-marker')
+      .and(page.getByRole('button', { name: pub.name, exact: true }))
+  const temCores = async (
+    pub: { name: string },
+    [corpo, miolo, estrela]: [string, string, string]
+  ) => {
+    await expect(pin(pub).locator('path').first()).toHaveCSS('fill', corpo)
+    await expect(pin(pub).locator('circle')).toHaveCSS('fill', miolo)
+    await expect(pin(pub).locator('path').last()).toHaveCSS('fill', estrela)
+  }
+
+  // Corpo, miolo, estrela.
+  await temCores(starter, [INK, CREME, 'none'])
+  await temCores(pro, [INK, ACID, 'none'])
+  await temCores(elite, [ACID, 'none', INK])
+  await temCores(parado, [INK, CREME, 'none'])
+
+  // `trial` só passa se o clique no meio do pino chegar nele: com o Starter
+  // por cima, quem receberia o clique seria o vizinho.
+  await expect(pin(vizinho)).toBeVisible()
+  await pin(elite).click({ trial: true })
+
+  // O jogo começa: o relógio do navegador passa da hora, e o foco no pino
+  // redesenha o mapa.
+  await page.clock.setFixedTime(hours(1))
+  await pin(starter).focus()
+  await temCores(pro, [LIVE, CREME, 'none'])
+  await temCores(eliteComJogo, [LIVE, 'none', INK])
+})
+
 // WEB-258: "Aberturas" por jogo só conta quem chegou pelo jogo. O card leva o
 // `eventId`, e a volta devolve os filtros que estavam no hash (WEB-293).
 test('o card abre o perfil pelo jogo e voltar restaura os filtros', async ({
