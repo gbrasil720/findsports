@@ -9,7 +9,7 @@ import Plus from 'reicon-react/icons/Plus'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
-import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
+import { getLapsedPaidPlan, isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getPlan, getTrialNotice } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -204,6 +204,9 @@ export function OverviewTab({
   const trialNotice = planKnown ? getTrialNotice(subscription) : null
   const isStarter = plan === 'starter'
   const standing = planKnown ? subscription?.standing : null
+  // Pro ou Elite parado vale o limite do Starter (WEB-129): mostra a mesma
+  // contagem, e a saída é regularizar, não fazer upgrade (WEB-331).
+  const lapsedPlan = planKnown ? getLapsedPaidPlan(subscription) : null
   const limitedPolicy =
     creationPolicy?.status === 'limited' ? creationPolicy : null
   const eventsUsed = limitedPolicy?.used ?? 0
@@ -328,17 +331,17 @@ export function OverviewTab({
         }}
       />
 
-      {isStarter && !isInactive && eventsRemaining !== null && (
+      {(isStarter || lapsedPlan) && !isInactive && eventsRemaining !== null && (
         <div
           className={`onside-callout ${
             isAtLimit
               ? 'onside-callout-danger'
-              : isNearLimit
+              : isNearLimit || lapsedPlan
                 ? 'onside-callout-warn'
                 : 'onside-callout-acid'
           }`}
         >
-          {isAtLimit || isNearLimit ? (
+          {isAtLimit || isNearLimit || lapsedPlan ? (
             <AlertCircle
               size={20}
               color="currentColor"
@@ -357,27 +360,41 @@ export function OverviewTab({
             <p className="mb-0.5 font-semibold text-sm">
               {isAtLimit
                 ? 'Limite de jogos atingido este mês'
-                : isNearLimit
-                  ? 'Último jogo disponível no plano Starter'
-                  : `Plano Starter — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`}
+                : lapsedPlan
+                  ? `${lapsedPlan.label} — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`
+                  : isNearLimit
+                    ? 'Último jogo disponível no plano Starter'
+                    : `Plano Starter — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`}
             </p>
             <p className="text-sm opacity-90">
-              {isAtLimit
-                ? 'Faça upgrade para o plano Pro e cadastre jogos ilimitados.'
-                : isNearLimit
-                  ? 'Considere fazer upgrade para o Pro antes de atingir o limite.'
-                  : `Você usou ${eventsUsed} jogo${eventsUsed !== 1 ? 's' : ''} neste período de cobrança.`}
+              {lapsedPlan
+                ? `${lapsedPlan.cause} Os jogos ilimitados voltam assim que a assinatura for regularizada.`
+                : isAtLimit
+                  ? 'Faça upgrade para o plano Pro e cadastre jogos ilimitados.'
+                  : isNearLimit
+                    ? 'Considere fazer upgrade para o Pro antes de atingir o limite.'
+                    : `Você usou ${eventsUsed} jogo${eventsUsed !== 1 ? 's' : ''} neste período de cobrança.`}
             </p>
           </div>
-          {(isAtLimit || isNearLimit) && (
+          {lapsedPlan ? (
             <Link
-              to="/plan"
-              search={{ origin: 'admin' }}
+              to="/admin/billing"
               className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
             >
-              Fazer upgrade
+              Regularizar assinatura
               <ArrowRight size={13} color="currentColor" aria-hidden="true" />
             </Link>
+          ) : (
+            (isAtLimit || isNearLimit) && (
+              <Link
+                to="/plan"
+                search={{ origin: 'admin' }}
+                className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+              >
+                Fazer upgrade
+                <ArrowRight size={13} color="currentColor" aria-hidden="true" />
+              </Link>
+            )
           )}
         </div>
       )}
@@ -424,7 +441,9 @@ export function OverviewTab({
             {isStarter && eventsRemaining !== null
               ? `${eventsRemaining} restantes`
               : isLapsed(standing)
-                ? LAPSED_COPY[standing].label
+                ? lapsedPlan && eventsRemaining !== null
+                  ? `${lapsedPlan.label} · ${eventsRemaining} restantes`
+                  : LAPSED_COPY[standing].label
                 : 'Plano atual'}
           </div>
         </div>
