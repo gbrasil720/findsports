@@ -86,7 +86,17 @@ async function readOwnReservations(userId: string, reservationId?: string) {
           endsAt: true
         },
         with: {
-          bar: { columns: { id: true, name: true, neighborhood: true } },
+          // `isActive` vai junto (WEB-360): bar fora do ar segue na lista, com
+          // a reserva valendo, mas sem perfil para abrir. É só pela própria
+          // reserva que alguém de fora fica sabendo que o bar saiu.
+          bar: {
+            columns: {
+              id: true,
+              name: true,
+              neighborhood: true,
+              isActive: true
+            }
+          },
           participants: {
             with: { team: { columns: { name: true } } },
             orderBy: byMatchOrder

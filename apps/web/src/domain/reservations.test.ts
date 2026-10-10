@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  BAR_OFF_AIR_MESSAGE,
   DUPLICATE_REQUEST_MESSAGE,
   type FanReservation,
   findActiveRequest,
@@ -8,6 +9,8 @@ import {
   getCreateErrorMessage,
   getDecisionNotice,
   getLatestDecision,
+  getOffAirBar,
+  getOffAirNotice,
   getPresenceNote,
   getStatusDetail,
   getUnseenDecisions,
@@ -65,6 +68,60 @@ describe('findActiveRequest', () => {
 
   test('sem a lista carregada não há o que avisar', () => {
     expect(findActiveRequest(undefined, 'jogo-b')).toBeUndefined()
+  })
+})
+
+describe('bar fora do ar', () => {
+  const at = (
+    barId: string,
+    isActive: boolean,
+    status: string,
+    code: string | null
+  ) =>
+    ({
+      status,
+      code,
+      bar: { id: barId, name: `Bar ${barId}`, isActive }
+    }) as FanReservation
+  const valid = `${BAR_OFF_AIR_MESSAGE} Sua reserva continua valendo: apresente o código no bar.`
+
+  test('bar no ar não tem aviso', () => {
+    expect(getOffAirNotice(at('a', true, 'confirmed', 'ABC123'))).toBeNull()
+  })
+
+  test('reserva aceita com código diz que continua valendo', () => {
+    expect(getOffAirNotice(at('a', false, 'confirmed', 'ABC123'))).toBe(valid)
+    expect(getOffAirNotice(at('a', false, 'ended', 'ABC123'))).toBe(valid)
+  })
+
+  test('pedido pendente ou sem código só diz que o bar saiu', () => {
+    for (const reservation of [
+      at('a', false, 'pending', 'ABC123'),
+      at('a', false, 'cancelled', null),
+      at('a', false, 'ended', null)
+    ]) {
+      expect(getOffAirNotice(reservation)).toBe(BAR_OFF_AIR_MESSAGE)
+    }
+  })
+
+  test('o perfil só reconhece o bar fora do ar em que há reserva', () => {
+    const mine = [
+      at('fora', false, 'cancelled', null),
+      at('fora', false, 'confirmed', 'ABC123'),
+      at('no-ar', true, 'confirmed', 'DEF456'),
+      at('antigo', false, 'declined', null)
+    ]
+    expect(getOffAirBar(mine, 'fora')).toEqual({
+      name: 'Bar fora',
+      notice: valid
+    })
+    expect(getOffAirBar(mine, 'antigo')).toEqual({
+      name: 'Bar antigo',
+      notice: BAR_OFF_AIR_MESSAGE
+    })
+    expect(getOffAirBar(mine, 'no-ar')).toBeNull()
+    expect(getOffAirBar(mine, 'sem-reserva')).toBeNull()
+    expect(getOffAirBar(undefined, 'fora')).toBeNull()
   })
 })
 

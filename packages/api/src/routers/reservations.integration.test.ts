@@ -106,6 +106,7 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
   return {
     db,
     barId,
+    ownerId,
     fanId,
     otherFanId,
     futureId: future.id,
@@ -951,6 +952,81 @@ integrationTest(
         .where(eq(event.id, ctx.futureId))
       const [after] = await ctx.otherFan.mine()
       expect(after).toMatchObject({ status: 'declined', decidedAt: null })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+/* Bar fora do ar (WEB-360) */
+
+integrationTest(
+  'bar fora do ar: a reserva segue valendo e só quem tem reserva lá fica sabendo que ele saiu',
+  async () => {
+    const ctx = await seed()
+    try {
+      const { appRouter } = await import('./index')
+      const profile = (context: Parameters<typeof appRouter.createCaller>[0]) =>
+        appRouter.createCaller(context).pubs.getById({ id: ctx.barId })
+      const notFound = {
+        code: 'NOT_FOUND',
+        message: 'Bar não encontrado.'
+      } as const
+
+      const created = await ctx.fan.create(ctx.request())
+      await ctx.queue.respond({
+        reservationId: created.id,
+        status: 'confirmed'
+      })
+      expect((await ctx.fan.mine())[0]?.bar.isActive).toBe(true)
+
+      // É o que a reconciliação diária faz com teste vencido (WEB-357).
+      await ctx.db
+        .update(bar)
+        .set({ isActive: false })
+        .where(eq(bar.id, ctx.barId))
+
+      // A reserva não muda: confirmada, com código, e o dono ainda o valida.
+      const [mine] = await ctx.fan.mine()
+      expect(mine).toMatchObject({
+        status: 'confirmed',
+        code: created.code,
+        bar: { id: ctx.barId, name: 'Bar da reserva', isActive: false }
+      })
+      await ctx.openWindow()
+      expect(
+        (await ctx.validation.lookup({ code: created.code ?? '' }))
+          ?.reservationStatus
+      ).toBe('confirmed')
+
+      // O perfil segue fechado para todos menos o dono, e a recusa do
+      // torcedor com reserva é a mesma de quem não tem nada lá e a mesma de
+      // um id que não existe: quem não tem reserva não distingue os casos.
+      expect(await refusal(profile(contextFor(ctx.fanId, 'fan')))).toEqual(
+        notFound
+      )
+      expect(await refusal(profile(contextFor(ctx.otherFanId, 'fan')))).toEqual(
+        notFound
+      )
+      expect(
+        await refusal(
+          appRouter
+            .createCaller(contextFor(ctx.otherFanId, 'fan'))
+            .pubs.getById({ id: crypto.randomUUID() })
+        )
+      ).toEqual(notFound)
+      expect(await ctx.otherFan.mine()).toEqual([])
+      expect((await profile(contextFor(ctx.ownerId, 'pub'))).isActive).toBe(
+        false
+      )
+
+      // Sem sessão, nem o perfil nem a lista respondem.
+      const anonymous = { auth: null, session: null, clientIp: '127.0.0.1' }
+      expect((await refusal(profile(anonymous))).code).toBe('UNAUTHORIZED')
+      expect(
+        (await refusal(appRouter.createCaller(anonymous).reservations.mine()))
+          .code
+      ).toBe('UNAUTHORIZED')
     } finally {
       await ctx.cleanup()
     }

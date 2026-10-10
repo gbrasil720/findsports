@@ -67,6 +67,60 @@ export function getStatusDetail({
   return RESERVATION_STATUS_DETAIL[status]
 }
 
+/* Bar fora do ar (WEB-360) */
+
+export const BAR_OFF_AIR_MESSAGE = 'Este bar não está mais na Onside.'
+
+const BAR_OFF_AIR_RESERVATION_VALID = `${BAR_OFF_AIR_MESSAGE} Sua reserva continua valendo: apresente o código no bar.`
+
+/** Reserva aceita com código à mostra; pedido pendente ainda não é reserva. */
+const hasValidCode = ({
+  status,
+  code
+}: Pick<FanReservation, 'status' | 'code'>) =>
+  Boolean(code) && status !== 'pending'
+
+/**
+ * Aviso de bar fora do ar; `null` com o bar no ar. A reserva não é cancelada
+ * (o dono ainda valida o código no painel), então, enquanto o código vale, o
+ * aviso diz as duas coisas. No pedido pendente fica só a saída do bar: o
+ * texto do estado já diz que ele depende da resposta.
+ */
+export function getOffAirNotice(
+  reservation: Pick<FanReservation, 'status' | 'code'> & {
+    bar: Pick<FanReservation['bar'], 'isActive'>
+  }
+): string | null {
+  if (reservation.bar.isActive) return null
+  return hasValidCode(reservation)
+    ? BAR_OFF_AIR_RESERVATION_VALID
+    : BAR_OFF_AIR_MESSAGE
+}
+
+/**
+ * O que `/pub/<id>` mostra de um bar fora do ar a quem tem reserva lá; `null`
+ * com o bar no ar ou sem reserva nele. Qualquer estado conta: é a lista de
+ * "Minhas reservas", e quem lê o aviso num cartão dela não pode ler "Bar não
+ * encontrado." no perfil do mesmo bar. Com mais de uma reserva, vale o aviso
+ * da que ainda tem código.
+ */
+export function getOffAirBar(
+  reservations: FanReservation[] | undefined,
+  barId: string
+): { name: string; notice: string } | null {
+  const own = (reservations ?? []).filter(
+    ({ bar }) => bar.id === barId && !bar.isActive
+  )
+  const [first] = own
+  if (!first) return null
+  return {
+    name: first.bar.name,
+    notice: own.some(hasValidCode)
+      ? BAR_OFF_AIR_RESERVATION_VALID
+      : BAR_OFF_AIR_MESSAGE
+  }
+}
+
 export const PENDING_NOTICE =
   'Isto é um pedido: ele só vira reserva quando o bar aceitar.'
 

@@ -9,6 +9,7 @@ import {
   type FanReservation,
   findActiveRequest,
   getCancelErrorMessage,
+  getOffAirNotice,
   getPresenceNote,
   getStatusDetail,
   PRESENCE_KEPT_MESSAGE,
@@ -141,6 +142,7 @@ function ReservationCard({
   const [error, setError] = useState<string | null>(null)
   const startsAt = new Date(reservation.event.startsAt)
   const titleId = `reservation-${reservation.id}`
+  const offAirNotice = getOffAirNotice(reservation)
 
   const cancelMutation = useMutation(
     trpc.reservations.cancel.mutationOptions({
@@ -197,13 +199,18 @@ function ReservationCard({
             {getGameTitle(reservation.event)}
           </h2>
           <p className="text-[var(--onside-muted)] text-sm">
-            <Link
-              to="/pub/$pubId"
-              params={{ pubId: reservation.bar.id }}
-              className="underline"
-            >
-              {reservation.bar.name}
-            </Link>{' '}
+            {/* Bar fora do ar não tem perfil para abrir (WEB-360). */}
+            {offAirNotice ? (
+              reservation.bar.name
+            ) : (
+              <Link
+                to="/pub/$pubId"
+                params={{ pubId: reservation.bar.id }}
+                className="underline"
+              >
+                {reservation.bar.name}
+              </Link>
+            )}{' '}
             · {formatDayLabel(startsAt)} às {formatEventTime(startsAt)} ·{' '}
             {reservation.partySize}{' '}
             {reservation.partySize === 1 ? 'pessoa' : 'pessoas'}
@@ -213,6 +220,12 @@ function ReservationCard({
           {RESERVATION_STATUS_LABEL[reservation.status]}
         </span>
       </div>
+
+      {offAirNotice ? (
+        <p className="onside-callout onside-callout-warn mt-3 text-sm">
+          {offAirNotice}
+        </p>
+      ) : null}
 
       <p className="mt-2 text-sm">{getStatusDetail(reservation)}</p>
 

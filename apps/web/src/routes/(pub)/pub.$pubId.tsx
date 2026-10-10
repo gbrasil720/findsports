@@ -30,6 +30,7 @@ import {
   resolveHeroEvent,
   resolveProfileActions
 } from '@/domain/pub-profile'
+import { getOffAirBar } from '@/domain/reservations'
 import {
   canFavoriteBars,
   canRecordCommercialEvents,
@@ -178,6 +179,9 @@ function PubPage() {
   } = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: pubId }),
     enabled: Boolean(session),
+    // Bar que não existe não passa a existir na segunda tentativa: insistir
+    // só segurava o esqueleto por 7 s antes de a tela dizer o que houve.
+    retry: (failures, error) => failures < 3 && isRetryableError(error),
     // A tela já avisa e redireciona quando o bar não existe. Com o toast
     // global ligado, o mesmo "Bar não encontrado." aparecia duas vezes.
     meta: { errorToast: false }
@@ -218,6 +222,30 @@ function PubPage() {
     }
   }, [pubLoaded, pubId, eventId, canTrack])
 
+  const pubMissing =
+    !isLoadingPub && !normalizedPub && isError && !pubErrorRetryable
+
+  /*
+   * Bar fora do ar responde como inexistente, e continua respondendo assim a
+   * quem não tem nada lá. Quem tem reserva nele já recebe o nome e a situação
+   * do bar em `reservations.mine`, e lê aqui que o bar saiu da Onside em vez
+   * de "Bar não encontrado." (WEB-360). O servidor decide: só as reservas da
+   * própria sessão vêm nessa lista.
+   *
+   * `staleTime: 0` porque a lista em cache pode ser de antes de o bar sair.
+   */
+  const ownReservations = useQuery({
+    ...trpc.reservations.mine.queryOptions(),
+    enabled: pubMissing && viewerRole === 'fan',
+    staleTime: 0,
+    meta: { errorToast: false }
+  })
+  const offAirBar = pubMissing
+    ? getOffAirBar(ownReservations.data, pubId)
+    : null
+  // Refetch com o aviso já na tela (volta do foco) não o troca por esqueleto.
+  const checkingReservations = ownReservations.isFetching && !offAirBar
+
   /*
    * Bar inexistente devolve quem estava olhando à casa do próprio papel. O
    * destino era `/dashboard` fixo, e dono de bar não entra lá: a guarda de
@@ -225,18 +253,11 @@ function PubPage() {
    * duplo terminando numa tela que não explica nada.
    */
   useEffect(() => {
-    if (!isLoadingPub && !normalizedPub && isError && !pubErrorRetryable) {
+    if (pubMissing && !checkingReservations && !offAirBar) {
       toast.error('Bar não encontrado.')
       navigate({ to: viewerRole === 'pub' ? '/admin' : '/dashboard' })
     }
-  }, [
-    isLoadingPub,
-    normalizedPub,
-    isError,
-    navigate,
-    pubErrorRetryable,
-    viewerRole
-  ])
+  }, [pubMissing, checkingReservations, offAirBar, navigate, viewerRole])
 
   const canFavorite = canFavoriteBars(session?.user?.role)
 
@@ -406,8 +427,30 @@ function PubPage() {
           inert={!isAuthed}
           aria-hidden={!isAuthed}
         >
-          {isLoadingPub ? (
+          {isLoadingPub || (pubMissing && checkingReservations) ? (
             <PubPageSkeleton />
+          ) : offAirBar ? (
+            <div className="onside-panel mx-auto max-w-xl p-6 text-center sm:p-8">
+              <p className="onside-kicker">Fora da Onside</p>
+              <h1 className="onside-display mt-3 text-3xl">{offAirBar.name}</h1>
+              <p className="mt-3 text-sm text-[var(--onside-muted)]">
+                {offAirBar.notice}
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <Link
+                  to="/dashboard/reservations"
+                  className="onside-btn onside-btn-acid min-h-11"
+                >
+                  Ver minhas reservas
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="onside-btn onside-btn-outline min-h-11"
+                >
+                  Procurar bares
+                </Link>
+              </div>
+            </div>
           ) : normalizedPub ? (
             <div className="onside-pub-page space-y-4 md:space-y-5">
               {isOwner && (
