@@ -3,24 +3,21 @@ import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
+import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
 import {
-  admittedAt,
-  approveOnWaitlist,
   loginWithForm,
   submitSignup,
   uniqueEmail,
   VERIFICATION_SUBJECT
 } from './forms'
 
-// WEB-175 — cadastro e login. O portão da waitlist fica no padrão de produção
-// (fechado) nestes testes; o caso "portão aberto" está em `gate.serial.e2e.ts`.
+// WEB-175 — cadastro e login. O cadastro é aberto: e-mail novo cria conta sem
+// lista nem convite (WEB-232).
 
 test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   page
 }) => {
   const email = uniqueEmail('signup-fan')
-  await approveOnWaitlist(email)
   await page.goto('/signup')
 
   // Alterna o papel e volta: só um fica marcado.
@@ -43,7 +40,15 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await expect(page.getByText('As senhas não coincidem.')).toBeVisible()
   await expect(page).toHaveURL(/\/signup$/)
 
-  await submitSignup(page, { name: 'Torcedor E2E', email })
+  // Nome e e-mail já estão preenchidos. O campo perde o foco antes do clique:
+  // no celular o erro de "Confirmar senha" só some no blur, e o botão sobe
+  // 30px no meio do clique, que cai fora dele e não envia nada. É defeito do
+  // formulário (erro de campo sem espaço reservado), anterior a este teste.
+  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
+  const confirm = page.getByLabel('Confirmar senha', { exact: true })
+  await confirm.fill(DEFAULT_PASSWORD)
+  await confirm.blur()
+  await page.getByRole('button', { name: 'Entrar no time' }).click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
   await expect(page.getByText(email)).toBeVisible()
@@ -52,7 +57,6 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
 
 test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   const email = uniqueEmail('signup-pub')
-  await approveOnWaitlist(email, 'pub')
   await page.goto('/signup')
 
   await page.getByRole('button', { name: 'Dono de Bar' }).click()
@@ -69,41 +73,22 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   expect(user?.role).toBe('pub')
 })
 
-test.describe('portão da waitlist fechado', () => {
-  test('cadastro sem waitlist aprovada é recusado e o aviso aparece', async ({
-    page
-  }) => {
-    const email = uniqueEmail('signup-barrado')
-    await page.goto('/signup')
-    await expect(
-      page.getByText('A Onside está abrindo por convite.')
-    ).toBeVisible()
+// WEB-232: é para onde a landing manda o bar.
+test('/signup?role=pub abre com "Dono de Bar" marcado', async ({ page }) => {
+  await page.goto('/signup?role=pub')
 
-    const response = page.waitForResponse('**/api/auth/sign-up/email')
-    await submitSignup(page, { name: 'Sem convite', email })
-
-    const refused = await response
-    expect(refused.status()).toBe(403)
-    expect(await refused.json()).toMatchObject({
-      code: 'WAITLIST_NOT_APPROVED'
-    })
-    await expect(page).toHaveURL(/\/signup$/)
-    expect(
-      await query('SELECT 1 FROM "user" WHERE email = $1', [email])
-    ).toHaveLength(0)
+  await expect(
+    page.getByRole('button', { name: 'Dono de Bar' })
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  )
+  await submitSignup(page, {
+    name: 'Dono pela Landing',
+    email: uniqueEmail('signup-role')
   })
-
-  test('cadastro com waitlist aprovada passa e grava admittedAt', async ({
-    page
-  }) => {
-    const email = uniqueEmail('signup-aprovado')
-    await approveOnWaitlist(email)
-    await page.goto('/signup')
-
-    await submitSignup(page, { name: 'Convidado', email })
-    await expect(page).toHaveURL(/\/verify-email$/)
-    expect(await admittedAt(email)).not.toBeNull()
-  })
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
 })
 
 // WEB-211: o destino vai no link do e-mail, que abre noutra aba — sem o
@@ -114,7 +99,6 @@ test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', a
 }) => {
   const { barId } = await createPub()
   const email = uniqueEmail('signup-bar')
-  await approveOnWaitlist(email)
 
   await page.goto(`/pub/${barId}`)
   await page.getByRole('link', { name: 'Criar conta grátis' }).click()

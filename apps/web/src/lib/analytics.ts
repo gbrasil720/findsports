@@ -1,4 +1,3 @@
-import type { WaitlistConfirmFailure } from '@/domain/waitlist-confirmation'
 import { getPageSurface } from './page-surface'
 import { withPosthog } from './posthog'
 
@@ -9,13 +8,6 @@ export type BarIntentAction = 'directions' | 'whatsapp' | 'phone' | 'favorite'
 /** Onde o convite de instalação apareceu, e em que plataforma. */
 export type InstallSurface = 'dashboard' | 'admin'
 export type InstallPlatform = 'android' | 'ios'
-/** Motivos pelos quais um convite não serve — espelha o status do servidor. */
-export type WaitlistInviteStatus =
-  | 'expired'
-  | 'activated'
-  | 'not_approved'
-  | 'cancelled'
-  | 'not_found'
 export type { PageSurface } from './page-surface'
 
 /**
@@ -23,75 +15,6 @@ export type { PageSurface } from './page-surface'
  * Pageviews stay on `$pageview` (with `surface`). Autocapture is off.
  */
 export const analytics = {
-  identifyWaitlist: (waitlistId: string) => {
-    void withPosthog((posthog) => posthog.identify(`waitlist:${waitlistId}`))
-  },
-
-  waitlistSubmitted: (role: UserRole) => {
-    void withPosthog((posthog) =>
-      posthog.capture('waitlist_submitted', { role })
-    )
-  },
-
-  waitlistConfirmed: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_confirmed'))
-  },
-
-  /**
-   * Por que a tela de confirmação não confirmou. Sem isto não dá para
-   * dimensionar o caso mais provável (link expirado) contra o mais barulhento
-   * (queda de rede).
-   */
-  waitlistConfirmFailed: (reason: WaitlistConfirmFailure) => {
-    void withPosthog((posthog) =>
-      posthog.capture('waitlist_confirm_failed', { reason })
-    )
-  },
-
-  waitlistCancelled: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_cancelled'))
-  },
-
-  waitlistInviteSent: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_invite_sent'))
-  },
-
-  waitlistInviteOpened: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_invite_opened'))
-  },
-
-  /**
-   * Convite aberto e inutilizável (ONS-25). `waitlist_invite_opened` só
-   * dispara para convite válido, então até aqui a frequência de cada beco sem
-   * saída era invisível. O `status` é o que responde "quantos expiraram?"
-   * contra "quantos já tinham conta?".
-   */
-  waitlistInviteUnusable: (status: WaitlistInviteStatus) => {
-    void withPosthog((posthog) =>
-      posthog.capture('waitlist_invite_unusable', { status })
-    )
-  },
-
-  waitlistActivated: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_activated'))
-  },
-
-  launchNoticeSent: (sent: number, failed: number) => {
-    void withPosthog((posthog) =>
-      posthog.capture('waitlist_launch_notice_sent', { sent, failed })
-    )
-  },
-
-  launchSignupCompleted: () => {
-    void withPosthog((posthog) =>
-      posthog.capture('waitlist_launch_signup_completed')
-    )
-  },
-
-  launchNoticeOpened: () => {
-    void withPosthog((posthog) => posthog.capture('waitlist_launch_opened'))
-  },
-
   signupCompleted: (role: UserRole) => {
     void withPosthog((posthog) => {
       posthog.capture('signup_completed', { role })
@@ -225,13 +148,7 @@ export function capturePageview(pathname: string) {
  * PostHog (specs/landing-copy-conversion.md §9.1).
  */
 export function identifyUser(user: { id: string; role?: string | null }) {
-  void withPosthog((posthog) => {
-    const previousId = posthog.get_distinct_id()
-    if (previousId.startsWith('waitlist:') && previousId !== user.id) {
-      posthog.alias(user.id, previousId)
-    }
-    posthog.identify(user.id, { role: user.role })
-  })
+  void withPosthog((posthog) => posthog.identify(user.id, { role: user.role }))
 }
 
 export function resetAnalytics() {

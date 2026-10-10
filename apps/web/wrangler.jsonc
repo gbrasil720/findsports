@@ -40,7 +40,6 @@
     "CORS_ORIGIN": "https://www.onside.sh",
     "PUBLIC_APP_URL": "https://www.onside.sh",
     "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
-    "LAUNCH_ADMISSION_MODE": "invite-only",
     "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
   },
@@ -80,7 +79,6 @@
         "CORS_ORIGIN": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
-        "LAUNCH_ADMISSION_MODE": "invite-only",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env
         // recusa isto com PUBLIC_APP_URL em onside.sh.

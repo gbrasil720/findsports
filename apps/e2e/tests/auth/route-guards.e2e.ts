@@ -5,7 +5,7 @@ import { createUser, type Role } from '../../fixtures/users'
 import { loginWithForm } from './forms'
 
 // WEB-175 — guarda central de navegação (`apps/web/src/utils/auth-guards.ts`).
-// Matriz: deslogado, fan, pub, admin, não admitido, onboarding pendente.
+// Matriz: deslogado, fan, pub, admin, onboarding pendente.
 
 /** Abre `from` e espera terminar em `to` (caminho + query, sem o hash). */
 function expectRedirect(from: string, to: string) {
@@ -31,13 +31,12 @@ test.describe('deslogado', () => {
     '/plan',
     '/plan/confirmed',
     '/internal',
-    '/internal/waitlist',
+    '/internal/flags',
     '/app',
     '/onboarding/fan',
     // Pública só para quem acabou de se cadastrar na aba (WEB-349); esse
     // caminho está em `signup-login.e2e.ts` e `onboarding/pub.e2e.ts`.
-    '/onboarding/pub',
-    '/access-pending'
+    '/onboarding/pub'
   ]) {
     // WEB-210: o destino original vai junto como callbackUrl.
     test(`${path} → /login com callbackUrl`, async ({ page }) => {
@@ -94,8 +93,6 @@ for (const role of ['fan', 'pub', 'admin'] as const) {
     // passa por /dashboard e de lá vai para /internal.
     expectRedirect('/onboarding/fan', role === 'pub' ? '/plan' : HOME[role])
     expectRedirect('/onboarding/pub', role === 'pub' ? '/plan' : HOME[role])
-    // Admitido em /access-pending sai.
-    expectRedirect('/access-pending', HOME[role])
   })
 }
 
@@ -139,37 +136,13 @@ test.describe('papel errado cai na casa certa', () => {
   })
 })
 
-test.describe('não admitido vai para /access-pending', () => {
-  for (const role of ['fan', 'pub'] as const) {
-    test(role, async ({ page }) => {
-      const user =
-        role === 'pub'
-          ? (await createPub({ user: { admitted: false } })).user
-          : await createUser({ admitted: false })
-      await signIn(page, user)
-
-      for (const path of [HOME[role], '/', '/app', `/onboarding/${role}`]) {
-        await page.goto(path)
-        await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
-      }
-    })
-  }
-
-  test('admin não admitido entra mesmo assim', async ({ page }) => {
-    const admin = await createUser({ role: 'admin', admitted: false })
-    await signIn(page, admin)
-    await page.goto('/internal')
-    await expect(page).toHaveURL(/\/internal$/)
-  })
-})
-
 test.describe('onboarding pendente força /onboarding/{papel}', () => {
   for (const role of ['fan', 'pub'] as const) {
     test(role, async ({ page }) => {
       const user = await createUser({ role, onboardingCompleted: false })
       await signIn(page, user)
 
-      for (const path of [HOME[role], '/', '/app', '/access-pending']) {
+      for (const path of [HOME[role], '/', '/app']) {
         await page.goto(path)
         await expect(page).toHaveURL(new RegExp(`/onboarding/${role}$`))
       }

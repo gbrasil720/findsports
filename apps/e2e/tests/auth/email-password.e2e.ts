@@ -5,22 +5,16 @@ import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
-import {
-  approveOnWaitlist,
-  submitSignup,
-  uniqueEmail,
-  VERIFICATION_SUBJECT
-} from './forms'
+import { submitSignup, uniqueEmail, VERIFICATION_SUBJECT } from './forms'
 
 // WEB-175 — verificação de e-mail, esqueci a senha e redefinição.
 
 const RESET_SUBJECT = 'Redefina a senha da sua conta Onside'
 const NEW_PASSWORD = 'senha-nova-e2e-456'
 
-/** Cadastro de torcedor pelo formulário, com convite aprovado (portão fechado). */
+/** Cadastro de torcedor pelo formulário. */
 async function signupFan(page: Page) {
   const email = uniqueEmail('verify')
-  await approveOnWaitlist(email)
   await page.goto('/signup')
   await submitSignup(page, { name: 'Verificação E2E', email })
   await expect(page).toHaveURL(/\/verify-email$/)

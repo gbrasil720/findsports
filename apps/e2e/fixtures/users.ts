@@ -13,8 +13,6 @@ export type UserOptions = {
   password?: string
   /** Padrão true. Falso: login recusado até verificar pelo outbox. */
   emailVerified?: boolean
-  /** Padrão true (grava `admittedAt`). Falso: guarda manda para /access-pending. */
-  admitted?: boolean
   /** Padrão true. Falso: guarda força /onboarding/{papel}. */
   onboardingCompleted?: boolean
 }
@@ -28,8 +26,8 @@ export type TestUser = {
 }
 
 /**
- * Usuário com conta de senha, como `waitlist-activation.ts` cria. Admin só
- * existe assim: o cadastro não aceita esse papel. E-mail único por chamada,
+ * Usuário com conta de senha, direto no banco. Admin só existe assim: o
+ * cadastro não aceita esse papel. E-mail único por chamada,
  * então testes paralelos não colidem.
  */
 export async function createUser(options: UserOptions = {}): Promise<TestUser> {
@@ -49,8 +47,7 @@ export async function createUser(options: UserOptions = {}): Promise<TestUser> {
     email: user.email,
     email_verified: options.emailVerified ?? true,
     role,
-    onboarding_completed: options.onboardingCompleted ?? true,
-    admitted_at: (options.admitted ?? true) ? new Date() : null
+    onboarding_completed: options.onboardingCompleted ?? true
   })
   await insert('account', {
     id: randomUUID(),

@@ -15,7 +15,7 @@ html:has(.onside-legal) body {
 }
 
 /*
- * Aviso de aceite nos formulários (cadastro, convite, lista de espera). Fica
+ * Aviso de aceite no formulário de cadastro. Fica
  * fora de `.onside-legal` porque aparece em telas com outras cascas; herda a
  * cor do formulário para servir em fundo claro e escuro.
  */

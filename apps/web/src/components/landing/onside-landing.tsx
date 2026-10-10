@@ -27,7 +27,6 @@ import {
   TICKER_BENEFITS,
   type TickerLiveItem
 } from './onside-landing-content'
-import { OnsideBarInterestForm, OnsideFanWaitlistForm } from './onside-waitlist'
 
 type OnsideChromeProps = {
   /**
@@ -46,23 +45,29 @@ type OnsideHeaderProps = OnsideChromeProps & {
 }
 
 /**
- * WEB-278: com sessão, as chamadas levam ao app em vez da lista de espera.
+ * WEB-232: para onde vai o bar que chega pela landing. O cadastro abre com o
+ * papel de bar já escolhido.
+ */
+const BAR_SIGNUP_HREF = '/signup?role=pub'
+
+/**
+ * WEB-278: com sessão, as chamadas levam ao app em vez do cadastro.
  * Lê a sessão que o `beforeLoad` da raiz já põe no contexto da rota: igual no
  * SSR e na hidratação, sem requisição a mais na página pública. `/app`
  * escolhe o destino pelo papel.
  */
-function usePrimaryCta(home: '' | '/' = '') {
+function usePrimaryCta() {
   const hasSession = useRouteContext({
     from: '__root__',
     select: (ctx) => Boolean(ctx.session)
   })
   return hasSession
     ? { hasSession, href: '/app', label: 'Ir para o app' }
-    : { hasSession, href: `${home}#lista`, label: LANDING_COPY.primaryCta }
+    : { hasSession, href: '/signup', label: LANDING_COPY.primaryCta }
 }
 
 export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
-  const cta = usePrimaryCta(home)
+  const cta = usePrimaryCta()
   const [scrolled, setScrolled] = useState(false)
   // Começa sobre a tinta no servidor e no primeiro render: a página abre no
   // topo, e um valor diferente aqui piscaria o cabeçalho na hidratação.
@@ -142,11 +147,7 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
           ))}
         </nav>
 
-        <a
-          className="onside-nav-cta"
-          href={cta.href}
-          data-cta="nav_city_waitlist"
-        >
+        <a className="onside-nav-cta" href={cta.href} data-cta="nav_signup">
           {cta.label}{' '}
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
@@ -202,7 +203,7 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
         <a
           className="onside-button onside-button-acid"
           href={cta.href}
-          data-cta="nav_city_waitlist"
+          data-cta="nav_signup"
         >
           {cta.label}
         </a>
@@ -433,9 +434,7 @@ function JourneyVisual({ variant }: { variant: JourneyStep['variant'] }) {
 function FanDashboardMock() {
   return (
     <div className="onside-dashboard-mock" aria-hidden="true">
-      <p className="onside-dashboard-preview-label">
-        Prévia do dashboard · ainda não disponível
-      </p>
+      <p className="onside-dashboard-preview-label">Prévia do dashboard</p>
       <div className="onside-dash-header">
         <div className="onside-dash-brand">
           <OnsideMark className="onside-dash-symbol" size={17} />
@@ -482,7 +481,7 @@ function FanDashboardMock() {
             <div>
               <small>PREÇO MÉDIO</small>
               <strong>$$</strong>
-              <span>No lançamento</span>
+              <span>Faixa de preço</span>
             </div>
           </div>
           <div className="onside-dash-list">
@@ -588,7 +587,7 @@ function useMagnet<T extends HTMLElement>() {
 
 /** Rodapé da landing v2 (Claude Design), usado também nas páginas legais. */
 export function OnsideFooter({ home = '' }: OnsideChromeProps) {
-  const cta = usePrimaryCta(home)
+  const cta = usePrimaryCta()
   const ctaRef = useMagnet<HTMLAnchorElement>()
   const bigmarkRef = useRef<HTMLDivElement>(null)
 
@@ -629,7 +628,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
             ref={ctaRef}
             className="onside-footer-cta"
             href={cta.href}
-            data-cta="footer_city_waitlist"
+            data-cta="footer_signup"
           >
             {cta.label}
             <span className="onside-inline-icon" aria-hidden="true">
@@ -660,7 +659,9 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
           </div>
           <div className="onside-footer-column">
             <p>Para bares</p>
-            <a href={`${home}#bar-form`}>Cadastre seu bar</a>
+            <a href={BAR_SIGNUP_HREF} data-cta="footer_pub_signup">
+              Cadastre seu bar
+            </a>
             <a href="mailto:contato@onside.sh">Fale com a gente</a>
           </div>
           <div className="onside-footer-column">
@@ -717,7 +718,7 @@ export function OnsideLanding() {
                 <a
                   className="onside-button onside-button-acid"
                   href={primaryHref}
-                  data-cta="hero_city_waitlist"
+                  data-cta="hero_signup"
                 >
                   {primaryLabel}{' '}
                   <span className="onside-inline-icon" aria-hidden="true">
@@ -731,11 +732,7 @@ export function OnsideLanding() {
               </div>
               <ProofList
                 className="onside-hero-proof"
-                items={[
-                  'Grátis para torcedores',
-                  'Sem e-mails promocionais',
-                  'Aviso no lançamento'
-                ]}
+                items={['Grátis para torcedores', 'Sem e-mails promocionais']}
               />
               <p className="onside-hero-note">{LANDING_COPY.hero.note}</p>
             </div>
@@ -857,34 +854,13 @@ export function OnsideLanding() {
             <a
               className="onside-button onside-button-acid"
               href={primaryHref}
-              data-cta="community_city_waitlist"
+              data-cta="community_signup"
             >
               {primaryLabel}{' '}
               <span className="onside-inline-icon" aria-hidden="true">
                 <ArrowRight size={16} aria-hidden="true" focusable="false" />
               </span>
             </a>
-          </div>
-        </section>
-
-        <section className="onside-waitlist onside-section-pad" id="lista">
-          <div className="onside-shell onside-waitlist-grid">
-            <div className="onside-waitlist-copy">
-              <p className="onside-section-kicker onside-acid-text">
-                {LANDING_COPY.waitlist.kicker}
-              </p>
-              <h2>{LANDING_COPY.waitlist.title}</h2>
-              <p>{LANDING_COPY.waitlist.body}</p>
-              <ProofList
-                className="onside-waitlist-facts"
-                items={[
-                  'Grátis para torcedores',
-                  'Sem e-mails promocionais',
-                  'Aviso no lançamento'
-                ]}
-              />
-            </div>
-            <OnsideFanWaitlistForm />
           </div>
         </section>
 
@@ -900,7 +876,7 @@ export function OnsideLanding() {
               <a
                 className="onside-button onside-button-ink"
                 href={primaryHref}
-                data-cta="story_city_waitlist"
+                data-cta="story_signup"
               >
                 {primaryLabel}{' '}
                 <span className="onside-inline-icon" aria-hidden="true">
@@ -909,16 +885,6 @@ export function OnsideLanding() {
               </a>
             </div>
             <FanDashboardMock />
-          </div>
-        </section>
-
-        <section className="onside-bar-mini-form" id="bar-form">
-          <div className="onside-shell onside-bar-form-inner">
-            <div>
-              <p className="onside-section-kicker">VOCÊ TEM UM BAR?</p>
-              <h2>ENTRE NA WAITLIST.</h2>
-            </div>
-            <OnsideBarInterestForm />
           </div>
         </section>
 
@@ -956,7 +922,7 @@ export function OnsideLanding() {
             <a
               className="onside-button onside-button-ink"
               href={primaryHref}
-              data-cta="final_city_waitlist"
+              data-cta="final_signup"
             >
               {primaryLabel}{' '}
               <span className="onside-inline-icon" aria-hidden="true">
@@ -965,11 +931,7 @@ export function OnsideLanding() {
             </a>
             <ProofList
               className="onside-final-proof"
-              items={[
-                'Grátis',
-                'Sem e-mails promocionais',
-                'Aviso no lançamento'
-              ]}
+              items={['Grátis', 'Sem e-mails promocionais']}
             />
           </div>
         </section>

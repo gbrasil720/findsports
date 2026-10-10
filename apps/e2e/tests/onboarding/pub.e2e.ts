@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { insert, query } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
 import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
@@ -62,16 +62,7 @@ async function reachReview(page: Page, data: Establishment) {
  * sessão, só com o e-mail pendente no `sessionStorage` da aba.
  */
 async function signUpPub(page: Page) {
-  // Gate da waitlist fechado (padrão): o signup só passa com convite aprovado.
   const email = `pub-draft-${randomUUID()}@e2e.test`
-  await insert('waitlist_entries', {
-    id: randomUUID(),
-    email,
-    role: 'pub',
-    city: 'São Paulo',
-    approved_at: new Date(),
-    confirmed_at: new Date()
-  })
 
   await page.goto('/signup')
   await button(page, /Dono de Bar/).click()
@@ -615,30 +606,11 @@ const pathOf = (page: Page) => {
   return url.pathname + url.search
 }
 
-/** Bar sem acesso abre `from`, espera em /access-pending e é liberado. */
-async function admitWhileWaiting(page: Page, from: string) {
-  const owner = await createUser({
-    role: 'pub',
-    admitted: false,
-    onboardingCompleted: false
-  })
-  await signIn(page, owner)
-  await page.goto(from)
-  await expect(page).toHaveURL(/\/access-pending\?callbackUrl=/)
-  await query('UPDATE "user" SET admitted_at = now() WHERE id = $1', [owner.id])
-  // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação, e o
-  // clique em "Começar" antes dela se perde.
-  await page.goto(page.url())
-}
-
-test('link direto que esperou a liberação sobrevive ao onboarding do bar', async ({
-  page
-}) => {
+test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
   const deepLink = '/admin/billing?ref=email'
-  await admitWhileWaiting(page, deepLink)
-  await expect
-    .poll(() => pathOf(page))
-    .toBe(`/onboarding/pub?callbackUrl=${encodeURIComponent(deepLink)}`)
+  const owner = await createUser({ role: 'pub', onboardingCompleted: false })
+  await signIn(page, owner)
+  await page.goto(`/onboarding/pub?callbackUrl=${encodeURIComponent(deepLink)}`)
 
   await reachReview(page, {
     name: 'Bar do Link',
@@ -647,20 +619,4 @@ test('link direto que esperou a liberação sobrevive ao onboarding do bar', asy
   })
   await button(page, /Escolher meu plano/).click()
   await expect.poll(() => pathOf(page)).toBe(deepLink)
-})
-
-test('bar que esperou a liberação no próprio onboarding volta a ele sem laço', async ({
-  page
-}) => {
-  await admitWhileWaiting(page, '/onboarding/pub')
-  // O onboarding não carrega a si mesmo como destino.
-  await expect.poll(() => pathOf(page)).toBe('/onboarding/pub')
-
-  await reachReview(page, {
-    name: 'Bar Sem Laço',
-    address: street(),
-    neighborhood: 'Pinheiros'
-  })
-  await button(page, /Escolher meu plano/).click()
-  await expect(page).toHaveURL(/\/plan$/)
 })

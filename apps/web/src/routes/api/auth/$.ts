@@ -3,22 +3,12 @@ import {
   ehAberturaDeCheckout,
   respostaCheckoutIndisponivel
 } from '@findsports_oficial/api/lib/billing-gate'
-import {
-  acaoDeEntrada,
-  admitirConta,
-  consultarEntrada,
-  decidirEntrada,
-  ehLoginEmail,
-  emailDaRequisicao,
-  respostaAdmissaoIndisponivel,
-  respostaPortaoFechado
-} from '@findsports_oficial/api/lib/waitlist-gate'
 import { auth } from '@findsports_oficial/auth'
 import { setFounderCouponSource } from '@findsports_oficial/auth/stripe-checkout'
 import { createFileRoute } from '@tanstack/react-router'
 
 /**
- * ESC-19: dois portões antes do `better-auth`.
+ * ESC-19: o portão da cobrança antes do `better-auth`.
  *
  * Os plugins do better-auth montam as rotas deles na carga do módulo, com
  * configuração estática — não há como consultar uma flag lá dentro por
@@ -33,39 +23,11 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Cupom de fundador do checkout (WEB-31). A chave mora em `packages/api` e o
 // checkout em `packages/auth`, que não enxerga a configuração: é a mesma
-// razão de este handler existir. Lida a cada checkout, como os portões.
+// razão de este handler existir. Lida a cada checkout, como o portão.
 setFounderCouponSource(async () => {
   const cupom = await getAppConfig('billing.founder_coupon')
   return cupom.enabled ? cupom.couponId : null
 })
-
-async function portaoDaWaitlist(request: Request): Promise<Response | null> {
-  const acao = acaoDeEntrada(request.url)
-  if (!acao) return null
-
-  const portao = await getAppConfig('launch.waitlist_gate')
-  const fechado = portao.signup
-  if (!fechado) return null
-
-  // O corpo só pode ser lido uma vez, e a requisição original ainda vai para
-  // o `better-auth`. Por isso o clone.
-  const email = await emailDaRequisicao(request.clone())
-  // Sem e-mail legível não há o que decidir; o `better-auth` recusa sozinho
-  // logo em seguida, com a mensagem de validação dele.
-  if (!email) return null
-
-  try {
-    const { aprovado } = await consultarEntrada(email)
-    const decisao = decidirEntrada({
-      fechadoEmRuntime: portao.signup,
-      aprovado
-    })
-    return decisao.permitido ? null : respostaPortaoFechado(decisao.motivo)
-  } catch {
-    console.error(JSON.stringify({ event: 'admission_check_failed_closed' }))
-    return respostaAdmissaoIndisponivel()
-  }
-}
 
 async function despachar(request: Request): Promise<Response> {
   if (ehAberturaDeCheckout(request.url)) {
@@ -73,22 +35,7 @@ async function despachar(request: Request): Promise<Response> {
     if (!liberado) return respostaCheckoutIndisponivel()
   }
 
-  const acao = acaoDeEntrada(request.url)
-  const loginEmail = ehLoginEmail(request.url)
-  const email =
-    acao || loginEmail ? await emailDaRequisicao(request.clone()) : null
-  const barrado = await portaoDaWaitlist(request)
-  if (barrado) return barrado
-
-  const response = await auth.handler(request)
-  if (acao === 'signup' && email && response.ok) {
-    await admitirConta(email)
-  }
-  if (loginEmail && email && response.ok) {
-    const portao = await getAppConfig('launch.waitlist_gate')
-    if (!portao.signup) await admitirConta(email)
-  }
-  return response
+  return auth.handler(request)
 }
 
 export const Route = createFileRoute('/api/auth/$')({

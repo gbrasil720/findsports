@@ -96,7 +96,7 @@ O erro exato, como aparece na tela ou no log. Entre crases. Não a sua interpret
 Passos ou comandos copiáveis. Termine com Observado / Esperado.
 
 ## Causa
-Arquivo e símbolo — `packages/api/src/routers/waitlist.ts` — `approveAndInvite`.
+Arquivo e símbolo — `packages/auth/src/account-deletion.ts` — `endLiveSubscriptionOf`.
 Cite a linha se ajudar, mas nunca só a linha: número desloca, nome de função não.
 
 ## Impacto

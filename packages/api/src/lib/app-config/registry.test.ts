@@ -46,31 +46,6 @@ describe('registro de configuração (ESC-19)', () => {
    * O usuário deste registro é um administrador com pressa. Valor absurdo não
    * pode ser representável — em especial os que trancam gente do lado de fora.
    */
-  it('recusa limite que trancaria todo mundo ou nunca expiraria', () => {
-    const base = appConfigDefault('waitlist.rate_limit')
-
-    expect(
-      validateAppConfigValue('waitlist.rate_limit', {
-        ...base,
-        ip: { max: 0, windowMs: 60_000 }
-      }).ok
-    ).toBe(false)
-
-    expect(
-      validateAppConfigValue('waitlist.rate_limit', {
-        ...base,
-        ip: { max: 10, windowMs: 365 * 24 * 60 * 60 * 1_000 }
-      }).ok
-    ).toBe(false)
-
-    expect(
-      validateAppConfigValue('waitlist.rate_limit', {
-        ...base,
-        ip: { max: 200, windowMs: 60_000 }
-      }).ok
-    ).toBe(true)
-  })
-
   it('recusa trial sem prazo, longo demais ou de plano que não existe', () => {
     const base = appConfigDefault('billing.onboarding_trial')
     const aceita = (valor: unknown) =>
@@ -95,16 +70,6 @@ describe('registro de configuração (ESC-19)', () => {
     expect(aceita({ ...base, couponId: '' })).toBe(false)
     expect(aceita({ ...base, couponId: 'com espaço' })).toBe(false)
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('billing.founder_coupon')
-  })
-
-  it('erro de validação aponta o campo', () => {
-    const resultado = validateAppConfigValue('waitlist.rate_limit', {
-      enabled: true,
-      ip: { max: 0, windowMs: 60_000 },
-      email: { max: 3, windowMs: 60_000 }
-    })
-    expect(resultado.ok).toBe(false)
-    if (!resultado.ok) expect(resultado.erro).toContain('ip.max')
   })
 
   // Quem lê a recusa é o administrador no painel: português, campo e limite.
@@ -157,7 +122,6 @@ describe('registro de configuração (ESC-19)', () => {
     // WEB-238: a revisão do cadastro do bar anuncia o plano e os dias.
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('billing.onboarding_trial')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
-    expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('waitlist.rate_limit')
   })
 
   /**
@@ -170,10 +134,5 @@ describe('registro de configuração (ESC-19)', () => {
     expect(appConfigDefault('billing.checkout_enabled')).toBe(false)
     expect(appConfigDefault('launch.pub_cities')).toEqual([])
     expect(appConfigDefault('billing.onboarding_trial').enabled).toBe(false)
-    expect(appConfigDefault('waitlist.rate_limit')).toEqual({
-      enabled: true,
-      ip: { max: 8, windowMs: 600_000 },
-      email: { max: 3, windowMs: 600_000 }
-    })
   })
 })
