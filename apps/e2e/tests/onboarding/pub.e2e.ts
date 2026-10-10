@@ -57,6 +57,41 @@ async function reachReview(page: Page, data: Establishment) {
   ).toBeVisible()
 }
 
+/**
+ * Cadastro de bar pela tela. Com `autoSignIn: false` o onboarding abre sem
+ * sessão, só com o e-mail pendente no `sessionStorage` da aba.
+ */
+async function signUpPub(page: Page) {
+  // Gate da waitlist fechado (padrão): o signup só passa com convite aprovado.
+  const email = `pub-draft-${randomUUID()}@e2e.test`
+  await insert('waitlist_entries', {
+    id: randomUUID(),
+    email,
+    role: 'pub',
+    city: 'São Paulo',
+    approved_at: new Date(),
+    confirmed_at: new Date()
+  })
+
+  await page.goto('/signup')
+  await button(page, /Dono de Bar/).click()
+  await page.getByLabel('Nome completo').fill('Dona do Rascunho')
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
+  await page
+    .getByLabel('Confirmar senha', { exact: true })
+    .fill(DEFAULT_PASSWORD)
+  await button(page, 'Entrar no time').click()
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
+  return email
+}
+
+const storedDraft = async (page: Page) =>
+  JSON.parse(
+    (await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)) ??
+      'null'
+  ) as { email: string; draft: Record<string, unknown> } | null
+
 async function barOf(userId: string) {
   return query(
     `SELECT name, address, neighborhood, city, uf, phone, description, amenities,
@@ -321,29 +356,7 @@ test('rascunho de antes da UF não é enviado: abre no formulário pedindo o est
 test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem em /plan', async ({
   page
 }) => {
-  // Gate da waitlist fechado (padrão): o signup só passa com convite aprovado.
-  const email = `pub-draft-${randomUUID()}@e2e.test`
-  await insert('waitlist_entries', {
-    id: randomUUID(),
-    email,
-    role: 'pub',
-    city: 'São Paulo',
-    approved_at: new Date(),
-    confirmed_at: new Date()
-  })
-
-  await page.goto('/signup')
-  await button(page, /Dono de Bar/).click()
-  await page.getByLabel('Nome completo').fill('Dona do Rascunho')
-  await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
-  await button(page, 'Entrar no time').click()
-
-  // `autoSignIn: false`: o onboarding de bar abre sem sessão.
-  await expect(page).toHaveURL(/\/onboarding\/pub$/)
+  const email = await signUpPub(page)
   const session = await page.request.get('/api/auth/get-session')
   expect(await session.json()).toBeNull()
 
@@ -358,10 +371,7 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
 
   await expect(page).toHaveURL(/\/verify-email$/)
   await expect(page.getByText(email)).toBeVisible()
-  const draft = JSON.parse(
-    (await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)) ??
-      'null'
-  )
+  const draft = await storedDraft(page)
   expect(draft?.draft).toMatchObject({
     name: 'Bar do Rascunho',
     address,
@@ -413,6 +423,160 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
   await button(page, /Escolher meu plano/).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await barOf(owner.id)).toHaveLength(1)
+})
+
+test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga o rascunho', async ({
+  page
+}) => {
+  const owner = await signInPendingPub(page)
+  const address = street()
+  await button(page, 'Começar').click()
+  await fillEstablishment(page, {
+    name: 'Bar Recarregado',
+    address,
+    neighborhood: 'Lapa',
+    phone: '11987654321'
+  })
+  await button(page, 'Continuar').click()
+  const telao = button(page, 'Telão / projetor')
+  await telao.click()
+  await page.getByLabel('Quantas telas?').fill('3')
+  await page.getByLabel('Mais alguma coisa? (opcional)').fill('Chope gelado')
+  await expect
+    .poll(async () => (await storedDraft(page))?.draft)
+    .toMatchObject({ description: 'Chope gelado', step: 2 })
+
+  // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
+  await page.goto(page.url())
+  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  await expect(telao).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
+  await expect(page.getByLabel('Mais alguma coisa? (opcional)')).toHaveValue(
+    'Chope gelado'
+  )
+  await button(page, 'Voltar').click()
+  await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue(
+    'Bar Recarregado'
+  )
+  await expect(page.getByLabel('Endereço')).toHaveValue(address)
+  await expect(page.getByLabel('Bairro')).toHaveValue('Lapa')
+
+  await button(page, 'Continuar').click()
+  await button(page, 'Continuar').click()
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+  expect(await storedDraft(page)).toBeNull()
+  const [bar] = await barOf(owner.id)
+  expect(bar).toMatchObject({
+    name: 'Bar Recarregado',
+    address,
+    phone: '+5511987654321',
+    description: 'Chope gelado',
+    amenities: [1],
+    screen_count: 3
+  })
+})
+
+test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)', async ({
+  page
+}) => {
+  await signInPendingPub(page)
+  await page.evaluate(
+    ([key, value]) => localStorage.setItem(key as string, value as string),
+    [
+      DRAFT_KEY,
+      JSON.stringify({
+        draft: {
+          name: 'Bar Alheio',
+          address: street(),
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          uf: 'SP',
+          step: 2
+        },
+        email: 'outra-conta@e2e.test',
+        expiresAt: Date.now() + 3_600_000
+      })
+    ]
+  )
+
+  await page.goto('/onboarding/pub')
+  await expect.poll(() => storedDraft(page)).toBeNull()
+  await expect(progress(page)).toHaveText('Passo 1 de 4')
+  await button(page, 'Começar').click()
+  await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
+})
+
+test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', async ({
+  page
+}) => {
+  const pendente = await signUpPub(page)
+  // B entra "em outra aba": o cookie cai no navegador, e esta aba segue com o
+  // e-mail pendente de A e o contexto de rota sem sessão.
+  const b = await createUser({ role: 'pub', onboardingCompleted: false })
+  await signIn(page, b)
+  // É na volta à aba que o better-auth relê a sessão. No headless a aba nunca
+  // fica oculta, então o `visibilitychange` é disparado à mão.
+  const sessaoRelida = page.waitForResponse((response) =>
+    response.url().includes('/api/auth/get-session')
+  )
+  await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+  await sessaoRelida
+
+  await button(page, 'Começar').click()
+  await fillEstablishment(page, {
+    name: 'Bar de B',
+    address: street(),
+    neighborhood: 'Centro'
+  })
+  await button(page, 'Continuar').click()
+  await expect
+    .poll(() => storedDraft(page))
+    .toMatchObject({ email: b.email, draft: { name: 'Bar de B', step: 2 } })
+
+  await button(page, 'Pular').click()
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+  expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
+  expect(
+    await query(
+      'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
+      [pendente]
+    )
+  ).toHaveLength(0)
+})
+
+test('rascunho parado no meio do wizard não é enviado pela confirmação do e-mail: volta ao passo', async ({
+  page
+}) => {
+  const email = await signUpPub(page)
+  await button(page, 'Começar').click()
+  await fillEstablishment(page, {
+    name: 'Bar Pela Metade',
+    address: street(),
+    neighborhood: 'Moema'
+  })
+  await button(page, 'Continuar').click()
+  await expect
+    .poll(async () => (await storedDraft(page))?.draft)
+    .toMatchObject({ step: 2 })
+
+  const verification = await lastEmailTo(email)
+  await page.goto(verification.link)
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
+  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  expect(
+    await query(
+      'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
+      [email]
+    )
+  ).toHaveLength(0)
+
+  await button(page, 'Pular').click()
+  await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+  expect(await storedDraft(page)).toBeNull()
 })
 
 const pathOf = (page: Page) => {
