@@ -91,7 +91,6 @@ apps/e2e/
 | Diretório | Ticket |
 |---|---|
 | `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
-| `tests/waitlist` | WEB-176 — waitlist, confirmação, convite |
 | `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
 | `tests/fan` | WEB-178 — busca, mapa, página do bar, reservas, perfil |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
@@ -107,8 +106,8 @@ Arquivo `*.e2e.ts`, importando `test` e `expect` de `fixtures/test.ts` — nunca
 direto de `@playwright/test`. Esse `test` faz duas coisas sozinho:
 
 - **IP próprio por teste** (`x-forwarded-for` aleatório). O rate limit do
-  better-auth (3 logins por 10s) e o da waitlist contam por IP no banco; sem
-  isso os workers paralelos esgotariam o mesmo balde.
+  better-auth (3 logins por 10s) conta por IP no banco; sem isso os workers
+  paralelos esgotariam o mesmo balde.
 - **`page.goto` espera a hidratação** (`html[data-hydrated]`, gravado pelo
   `__root.tsx`). Antes dela o formulário é HTML puro, e preencher + clicar faz
   submit nativo (um POST para a própria rota, WEB-189) em vez do envio do app.
@@ -137,9 +136,9 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
 
 ### Dados
 
-- `createUser({ role, emailVerified, admitted, onboardingCompleted, … })`
+- `createUser({ role, emailVerified, onboardingCompleted, … })`
   (`fixtures/users.ts`): usuário com conta de senha, e-mail único. Padrão: fan,
-  verificado, admitido, onboarding feito. Admin só nasce por aqui.
+  verificado, onboarding feito. Admin só nasce por aqui.
 - `createPub({ subscription, bar, user })` (`fixtures/pubs.ts`): dono + bar
   ativo no centro de São Paulo + assinatura (padrão Elite ativa por 30 dias;
   `subscription: null` cria sem). `bar` aceita colunas em snake_case.
@@ -163,10 +162,10 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
 ### Estado global: arquivos `*.serial.e2e.ts`
 
 `app_config` é uma tabela global, e os testes paralelos contam com os padrões
-de produção (gate da waitlist fechado, nota pública desligada, todas as
-cidades liberadas). Teste que muda uma chave vai num arquivo
-`*.serial.e2e.ts`, com `setAppConfig(chave, valor)` e `resetAppConfig()` no
-`afterEach` (`fixtures/db.ts`).
+de produção (nota pública desligada, todas as cidades liberadas). Teste que
+muda uma chave vai num arquivo `*.serial.e2e.ts`, com
+`setAppConfig(chave, valor)` e `resetAppConfig()` no `afterEach`
+(`fixtures/db.ts`).
 
 Cobrança não tem chave (WEB-233): checkout aberto, teste grátis de 120 dias no
 cadastro do bar e cupom de fundador valem em todo teste. O que é global ali é o
@@ -245,8 +244,8 @@ não exercitar o cache em si — isso fica com os testes unitários
 - **Rate limit.** Já isolado por IP. `clearRateLimits()` existe para um teste
   que esgota o limite de propósito e quer recomeçar.
 - **Callback do login.** O destino viaja como `callbackUrl` (só mesma origem,
-  via `getCallbackUrl`) pelo guard, login, cadastro, verificação de e-mail,
-  `/access-pending` e os dois onboardings. Depois de um redirect do guard, a
+  via `getCallbackUrl`) pelo guard, login, cadastro, verificação de e-mail
+  e os dois onboardings. Depois de um redirect do guard, a
   URL de `/login` tem `?callbackUrl=`: compare com `/\/login\?callbackUrl=/`,
   não com `/\/login$/`.
 
@@ -286,7 +285,7 @@ O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
 projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os
 serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
 Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
-servidor e o seu Postgres. Num job só, com auth, waitlist e onboarding, a
+servidor e o seu Postgres. Num job só, com auth e onboarding, a
 suíte já levava 12 min com 2 workers. O artifact de falha sai por parte
 (`playwright-report-N`). Se um shard passar de ~10 min, aumente a matriz — e
 atualize os checks obrigatórios da branch protection de `master`, que lista

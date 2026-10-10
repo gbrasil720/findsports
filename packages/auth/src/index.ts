@@ -16,7 +16,6 @@ import { twoFactor } from 'better-auth/plugins/two-factor'
 import { z } from 'zod'
 import {
   deleteStripeSubscriptionOf,
-  deleteWaitlistEntryOf,
   endLiveSubscriptionOf
 } from './account-deletion'
 import { runInBackground } from './background'
@@ -55,8 +54,7 @@ function cookieDomainFor(baseUrl: string): string | undefined {
  * `auth.api` não passa por ele (`captcha-scope.test.ts`).
  *
  * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
- * do segredo. A rota tRPC da waitlist segue a mesma regra
- * (`packages/api/src/lib/turnstile.ts`), então o aviso daqui vale pelas duas.
+ * do segredo.
  */
 function turnstilePlugin() {
   if (env.TURNSTILE_SECRET_KEY) {
@@ -226,12 +224,7 @@ export function createAuth() {
         enabled: true,
         beforeDelete: (accountUser) =>
           endLiveSubscriptionOf(accountUser.id, stripeClient),
-        afterDelete: async (accountUser) => {
-          await Promise.all([
-            deleteWaitlistEntryOf(accountUser.email),
-            deleteStripeSubscriptionOf(accountUser.id)
-          ])
-        }
+        afterDelete: (accountUser) => deleteStripeSubscriptionOf(accountUser.id)
       },
       additionalFields: {
         role: {
@@ -244,11 +237,6 @@ export function createAuth() {
           type: 'boolean',
           required: false,
           defaultValue: false,
-          input: false
-        },
-        admittedAt: {
-          type: 'date',
-          required: false,
           input: false
         },
         searchRadiusKm: {

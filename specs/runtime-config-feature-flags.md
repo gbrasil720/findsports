@@ -10,7 +10,8 @@ O painel fica em `/internal/flags`, restrito a `role = 'admin'`.
 ## O que é e o que não é
 
 **É** para decisão operacional reversível: desligar um caminho de código que
-regrediu, afrouxar um limite durante um pico.
+regrediu, abrir uma cidade nova, liberar uma funcionalidade quando a base
+chegar lá.
 
 **Não é** para direito por plano. Isso já existe, é server-side e é testado —
 `lib/commercial-analytics/entitlements.ts` e `lib/event-creation-policy.ts`.
@@ -35,8 +36,6 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 | Chave | Padrão | Público | O que faz |
 |---|---|---|---|
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
-| `waitlist.rate_limit` | 8/IP e 3/e-mail por 10 min | não | Freio da waitlist pública. `enabled: false` desliga o contador inteiro. |
-| `launch.waitlist_gate` | `{ signup: true }` com `LAUNCH_ADMISSION_MODE=invite-only` (produção); `{ signup: false }` com `open` | sim | Fecha o cadastro por aprovação: e-mail não aprovado na waitlist não cria conta. |
 | `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |
 | `launch.pub_cities` | `[]` | sim | Cidades em que um bar conclui o onboarding. Vazio = todas. |
 
@@ -51,13 +50,15 @@ vale o custo no primeiro rollout por usuário.
 Cobrança não mora aqui (WEB-233). Contratação aberta, teste grátis do cadastro
 e cupom de fundador viraram regra fixa do produto, em código: `ONBOARDING_TRIAL`
 (`packages/api/src/lib/plan-limits.ts`) e `FOUNDER_COUPON_ID`
-(`packages/auth/src/stripe-checkout.ts`). Linha antiga de `billing.*` em
+(`packages/auth/src/stripe-checkout.ts`). A entrada por lista de espera saiu do
+produto, com as duas chaves dela (WEB-232). Linha antiga dessas chaves em
 `app_config` é ignorada na leitura.
 
 `Público` significa que a chave é servida por `appConfig.getPublic`, aberta a
 qualquer visitante. Serve para a tela avisar antes de o usuário bater numa
-porta fechada — **nunca** como decisão de segurança. O servidor recusa de novo,
-sozinho, em `api/auth/$` e em `onboarding.completePub`.
+porta fechada — **nunca** como decisão de segurança. O servidor decide de novo,
+sozinho: `onboarding.completePub` para a cidade, `pubs.search` e
+`pubs.getById` para a nota.
 
 ---
 
@@ -108,64 +109,6 @@ página. Provável causa: `bar.plan` dessincronizou de `subscription.plan`.
 O cursor de paginação é idêntico nos dois caminhos, então a troca pode
 acontecer com gente no meio da navegação. A chave do cache inclui o modo, então
 desligar não continua servindo páginas do caminho suspeito.
-
-### Cadastros legítimos estão sendo barrados na waitlist
-
-Sintoma: `TOO_MANY_REQUESTS` em volume, tipicamente de faculdade, empresa ou
-operadora atrás de NAT — todos compartilham um IP.
-
-Afrouxe só a dimensão que está estourando. Exemplo, dobrando o teto por IP:
-
-```json
-{
-  "enabled": true,
-  "ip": { "max": 40, "windowMs": 600000 },
-  "email": { "max": 3, "windowMs": 600000 }
-}
-```
-
-Mantenha o limite por e-mail: ele é o que segura cadastro repetido, e não sofre
-com NAT. Só use `enabled: false` se o problema for a escrita do contador em si
-(contenção na tabela `rate_limit`), não a carga.
-
-### Abrir a plataforma por convite
-
-Tudo numa tela só: **`/internal/waitlist`**. O interruptor fica no painel
-*Acesso à plataforma*, no topo, ao lado das contagens de liberados e
-pendentes — de propósito. Numa tela separada dava para fechar o cadastro sem
-enxergar que ninguém foi liberado ainda.
-
-A mesma chave também aparece em `/internal/flags`, junto das outras.
-
-**Estado de hoje: fechado.** O padrão de `launch.waitlist_gate` vem de
-`LAUNCH_ADMISSION_MODE`, que em produção é `invite-only` — então
-`{ "signup": true }` sem linha no banco. Gravar no painel sobrepõe o ambiente.
-
-#### Liberar alguém
-
-- **Já está na lista:** botão *Liberar* na coluna Acesso da tabela. Vale para
-  a pessoa, não para a linha: marca todas as inscrições daquele e-mail, porque
-  o portão consulta por e-mail.
-- **Não está na lista:** campo *Liberar quem não está na lista*, no painel de
-  acesso. Cria a inscrição já liberada, marcada com a cidade
-  `Convite direto`. É o caminho para o bar que a equipe abordou na rua — sem
-  isso, a resposta seria "peça para ela se cadastrar primeiro", que é mandar
-  o convidado bater na porta antes de você abrir.
-
-O portão vive em `launch.waitlist_gate` e tem um lado só, `signup`:
-
-- `{ "signup": true }` — fechado. Cadastro por e-mail só passa se o e-mail
-  estiver aprovado e confirmado na waitlist.
-- `{ "signup": false }` — aberto. Cadastro e login admitem a conta de forma
-  persistente (`user.admitted_at`).
-
-O login não passa por esta chave. Quem barra conta não admitida é o guarda de
-rota e o `protectedProcedure`, pelo `admitted_at` — e administrador é isento
-nos dois, para o painel que abre o portão nunca ficar do outro lado da porta.
-
-Para tirar acesso de alguém que já entrou, o caminho é banir em
-`/internal/manage-users`, não revogar aqui: revogar só impede logins novos, e
-a sessão em curso vale até o cookie expirar.
 
 ### Abrir uma cidade nova
 

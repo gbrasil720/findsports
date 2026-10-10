@@ -31,11 +31,10 @@ describe('getCallbackUrl', () => {
     expect(getCallbackUrl('/login?callbackUrl=%2Fpub%2Fabc')).toBe('/pub/abc')
   })
 
-  // A tela de espera é destino válido do login: o guard dela encaminha
-  // levando o destino, inclusive pelo onboarding.
-  it('keeps access-pending with the destination it carries', () => {
-    expect(login('/access-pending?callbackUrl=%2Fapp')).toBe(
-      '/access-pending?callbackUrl=%2Fapp'
+  // O onboarding é destino válido do login e leva o próprio destino junto.
+  it('keeps a destination that carries its own callbackUrl', () => {
+    expect(login('/onboarding/fan?callbackUrl=%2Fapp')).toBe(
+      '/onboarding/fan?callbackUrl=%2Fapp'
     )
   })
 

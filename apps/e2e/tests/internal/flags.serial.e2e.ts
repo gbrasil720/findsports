@@ -56,20 +56,6 @@ test('interruptor booleano grava, vale na hora e volta ao padrão', async ({
   expect(await storedValue(key)).toBeUndefined()
 })
 
-test('campo booleano de flag em objeto liga sem digitar JSON', async ({
-  page
-}) => {
-  const key = 'launch.waitlist_gate'
-  await page.goto('/internal/flags')
-  const toggle = card(page, key).getByRole('switch', { name: 'signup' })
-
-  await expect(toggle).toHaveAttribute('aria-checked', 'true')
-  await toggle.click()
-  await expect(page.getByText(`${key} salvo.`)).toBeVisible()
-  await expect(toggle).toHaveAttribute('aria-checked', 'false')
-  expect(await storedValue(key)).toEqual({ signup: false })
-})
-
 test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
   const key = 'rating.public_display'
   await page.goto('/internal/flags')
@@ -188,19 +174,12 @@ test('cidades liberadas: adicionar pela lista e remover', async ({ page }) => {
 })
 
 /**
- * Um valor válido e diferente do atual, do mesmo formato: booleano invertido,
- * primeiro campo booleano do objeto invertido, lista com uma cidade.
+ * Um valor válido e diferente do atual, do mesmo formato: booleano invertido
+ * ou lista com uma cidade.
  */
 function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
   if (Array.isArray(value)) return ['Campinas']
-  if (value && typeof value === 'object') {
-    const object = value as Record<string, unknown>
-    const field = Object.keys(object).find(
-      (k) => typeof object[k] === 'boolean'
-    )
-    if (field) return { ...object, [field]: !object[field] }
-  }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
@@ -233,10 +212,8 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
     'launch.pub_cities',
-    'launch.waitlist_gate',
     'rating.public_display',
-    'search.tiered_plan_query',
-    'waitlist.rate_limit'
+    'search.tiered_plan_query'
   ])
 
   for (const key of keys) {

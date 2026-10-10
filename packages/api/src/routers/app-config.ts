@@ -68,14 +68,8 @@ export const appConfigRouter = router({
    * listar as cidades abertas antes de o dono digitar o endereço.
    *
    * Nada aqui é decisão de segurança — o servidor recusa de novo, sozinho,
-   * em `api/auth/$` e em `onboarding.completePub`. Isto é só cortesia com
-   * quem está do outro lado da tela.
+   * em `onboarding.completePub`. Isto é só cortesia com quem está do outro
+   * lado da tela.
    */
-  getPublic: publicProcedure.query(async () => {
-    const config = await appConfigStore.getPublic()
-    return {
-      ...config,
-      'launch.waitlist_gate': config['launch.waitlist_gate']
-    }
-  })
+  getPublic: publicProcedure.query(() => appConfigStore.getPublic())
 })

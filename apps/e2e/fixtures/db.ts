@@ -57,7 +57,7 @@ export async function resetAppConfig() {
 }
 
 /**
- * Esvazia o `rate_limit` do better-auth e da waitlist. Cada teste já sai com
+ * Esvazia o `rate_limit` do better-auth. Cada teste já sai com
  * um IP próprio (`fixtures/test.ts`), então isto só é preciso para limpar
  * sobra de rodada anterior — o setup chama — ou num teste que esgota o limite
  * de propósito e quer recomeçar.

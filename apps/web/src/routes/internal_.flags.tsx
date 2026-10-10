@@ -49,26 +49,6 @@ function formatarValor(valor: unknown) {
 }
 
 /**
- * Campos booleanos de primeiro nível de um valor em objeto.
- *
- * Existe porque ligar um portão não pode exigir digitar JSON. `Ligar`/
- * `Desligar` já cobria a flag booleana solta; flag em objeto —
- * `{signup, signin}` — caía no textarea, que é onde um erro de vírgula às
- * três da manhã vira um portão no estado errado.
- *
- * Só o primeiro nível, e só booleano: número e objeto aninhado continuam no
- * JSON, onde um controle adivinhado erraria mais do que ajudaria.
- */
-function camposBooleanos(valor: unknown): [string, boolean][] {
-  if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) {
-    return []
-  }
-  return Object.entries(valor).filter(
-    (entrada): entrada is [string, boolean] => typeof entrada[1] === 'boolean'
-  )
-}
-
-/**
  * Chave cujo valor é uma lista de cidades.
  *
  * É uma exceção nomeada, não uma regra por formato: `launch.pub_cities` não é
@@ -180,7 +160,6 @@ function CartaoFlag({
 
   const alterado = rascunho !== valorServidor
   const ehBooleano = typeof entrada.valor === 'boolean'
-  const booleanos = camposBooleanos(entrada.valor)
 
   function salvarRascunho() {
     let analisado: unknown
@@ -237,25 +216,6 @@ function CartaoFlag({
           desabilitado={salvando}
           onAlterar={onSalvar}
         />
-      ) : null}
-
-      {booleanos.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {booleanos.map(([campo, ligado]) => (
-            <Interruptor
-              key={campo}
-              rotulo={campo}
-              ligado={ligado}
-              desabilitado={salvando}
-              onToggle={(proximo) =>
-                onSalvar({
-                  ...(entrada.valor as Record<string, unknown>),
-                  [campo]: proximo
-                })
-              }
-            />
-          ))}
-        </div>
       ) : null}
 
       <details>
@@ -479,13 +439,9 @@ function FlagsPage() {
               salvar.mutate({ key: entrada.key, value: valor })
             }
             onResetar={() => {
-              // Com o efeito descrito no registro, a pergunta diz o que muda
-              // para quem usa; sem ele, sobra o valor que passa a valer.
               if (
                 window.confirm(
-                  entrada.efeitoPadrao
-                    ? `Voltar ${entrada.key} ao padrão? ${entrada.efeitoPadrao} Continuar?`
-                    : `Voltar ${entrada.key} ao padrão? O valor gravado é apagado e passa a valer ${JSON.stringify(entrada.padrao)}.`
+                  `Voltar ${entrada.key} ao padrão? O valor gravado é apagado e passa a valer ${JSON.stringify(entrada.padrao)}.`
                 )
               ) {
                 resetar.mutate({ key: entrada.key })

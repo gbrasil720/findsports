@@ -11,13 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
-import { Route as AccessPendingRouteImport } from './routes/access-pending'
-import { Route as ActivateInviteRouteImport } from './routes/activate-invite'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/app'
-import { Route as ConfirmWaitlistRouteImport } from './routes/confirm-waitlist'
 import { Route as InternalRouteImport } from './routes/internal'
-import { Route as LeaveWaitlistRouteImport } from './routes/leave-waitlist'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
@@ -35,7 +31,6 @@ import { Route as InternalAttendanceRouteImport } from './routes/internal_.atten
 import { Route as InternalBarsRouteImport } from './routes/internal_.bars'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
 import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
-import { Route as InternalWaitlistRouteImport } from './routes/internal_.waitlist'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
 import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
@@ -47,7 +42,6 @@ import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/comm
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
-import { Route as ApiWaitlistActivateRouteImport } from './routes/api/waitlist/activate'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,16 +51,6 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccessPendingRoute = AccessPendingRouteImport.update({
-  id: '/access-pending',
-  path: '/access-pending',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ActivateInviteRoute = ActivateInviteRouteImport.update({
-  id: '/activate-invite',
-  path: '/activate-invite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -79,19 +63,9 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfirmWaitlistRoute = ConfirmWaitlistRouteImport.update({
-  id: '/confirm-waitlist',
-  path: '/confirm-waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const InternalRoute = InternalRouteImport.update({
   id: '/internal',
   path: '/internal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeaveWaitlistRoute = LeaveWaitlistRouteImport.update({
-  id: '/leave-waitlist',
-  path: '/leave-waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanRoute = PlanRouteImport.update({
@@ -179,11 +153,6 @@ const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
   path: '/internal/manage-users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InternalWaitlistRoute = InternalWaitlistRouteImport.update({
-  id: '/internal_/waitlist',
-  path: '/internal/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
   id: '/plan_/confirmed',
   path: '/plan/confirmed',
@@ -241,22 +210,13 @@ const ApiUserAvatarRoute = ApiUserAvatarRouteImport.update({
   path: '/api/user/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWaitlistActivateRoute = ApiWaitlistActivateRouteImport.update({
-  id: '/api/waitlist/activate',
-  path: '/api/waitlist/activate',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/access-pending': typeof AccessPendingRoute
-  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
-  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
-  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -274,7 +234,6 @@ export interface FileRoutesByFullPath {
   '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
-  '/internal/waitlist': typeof InternalWaitlistRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
@@ -286,18 +245,13 @@ export interface FileRoutesByFullPath {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
-  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/access-pending': typeof AccessPendingRoute
-  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
-  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
-  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -315,7 +269,6 @@ export interface FileRoutesByTo {
   '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
   '/internal/manage-users': typeof InternalManageUsersRoute
-  '/internal/waitlist': typeof InternalWaitlistRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
@@ -327,19 +280,14 @@ export interface FileRoutesByTo {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
-  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/access-pending': typeof AccessPendingRoute
-  '/activate-invite': typeof ActivateInviteRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
-  '/confirm-waitlist': typeof ConfirmWaitlistRoute
   '/internal': typeof InternalRoute
-  '/leave-waitlist': typeof LeaveWaitlistRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -357,7 +305,6 @@ export interface FileRoutesById {
   '/internal_/bars': typeof InternalBarsRoute
   '/internal_/flags': typeof InternalFlagsRoute
   '/internal_/manage-users': typeof InternalManageUsersRoute
-  '/internal_/waitlist': typeof InternalWaitlistRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(dashboard)/dashboard_/reservations': typeof dashboardDashboardReservationsRoute
@@ -369,20 +316,15 @@ export interface FileRoutesById {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
-  '/api/waitlist/activate': typeof ApiWaitlistActivateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/$'
-    | '/access-pending'
-    | '/activate-invite'
     | '/admin'
     | '/app'
-    | '/confirm-waitlist'
     | '/internal'
-    | '/leave-waitlist'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -400,7 +342,6 @@ export interface FileRouteTypes {
     | '/internal/bars'
     | '/internal/flags'
     | '/internal/manage-users'
-    | '/internal/waitlist'
     | '/plan/confirmed'
     | '/dashboard/profile'
     | '/dashboard/reservations'
@@ -412,18 +353,13 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
-    | '/api/waitlist/activate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
-    | '/access-pending'
-    | '/activate-invite'
     | '/admin'
     | '/app'
-    | '/confirm-waitlist'
     | '/internal'
-    | '/leave-waitlist'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -441,7 +377,6 @@ export interface FileRouteTypes {
     | '/internal/bars'
     | '/internal/flags'
     | '/internal/manage-users'
-    | '/internal/waitlist'
     | '/plan/confirmed'
     | '/dashboard/profile'
     | '/dashboard/reservations'
@@ -453,18 +388,13 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
-    | '/api/waitlist/activate'
   id:
     | '__root__'
     | '/'
     | '/$'
-    | '/access-pending'
-    | '/activate-invite'
     | '/admin'
     | '/app'
-    | '/confirm-waitlist'
     | '/internal'
-    | '/leave-waitlist'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -482,7 +412,6 @@ export interface FileRouteTypes {
     | '/internal_/bars'
     | '/internal_/flags'
     | '/internal_/manage-users'
-    | '/internal_/waitlist'
     | '/plan_/confirmed'
     | '/(dashboard)/dashboard_/profile'
     | '/(dashboard)/dashboard_/reservations'
@@ -494,19 +423,14 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
-    | '/api/waitlist/activate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
-  AccessPendingRoute: typeof AccessPendingRoute
-  ActivateInviteRoute: typeof ActivateInviteRoute
   AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
-  ConfirmWaitlistRoute: typeof ConfirmWaitlistRoute
   InternalRoute: typeof InternalRoute
-  LeaveWaitlistRoute: typeof LeaveWaitlistRoute
   PlanRoute: typeof PlanRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -524,7 +448,6 @@ export interface RootRouteChildren {
   InternalBarsRoute: typeof InternalBarsRoute
   InternalFlagsRoute: typeof InternalFlagsRoute
   InternalManageUsersRoute: typeof InternalManageUsersRoute
-  InternalWaitlistRoute: typeof InternalWaitlistRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   dashboardDashboardReservationsRoute: typeof dashboardDashboardReservationsRoute
@@ -536,7 +459,6 @@ export interface RootRouteChildren {
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
-  ApiWaitlistActivateRoute: typeof ApiWaitlistActivateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -555,20 +477,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/access-pending': {
-      id: '/access-pending'
-      path: '/access-pending'
-      fullPath: '/access-pending'
-      preLoaderRoute: typeof AccessPendingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/activate-invite': {
-      id: '/activate-invite'
-      path: '/activate-invite'
-      fullPath: '/activate-invite'
-      preLoaderRoute: typeof ActivateInviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -583,25 +491,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/confirm-waitlist': {
-      id: '/confirm-waitlist'
-      path: '/confirm-waitlist'
-      fullPath: '/confirm-waitlist'
-      preLoaderRoute: typeof ConfirmWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/internal': {
       id: '/internal'
       path: '/internal'
       fullPath: '/internal'
       preLoaderRoute: typeof InternalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leave-waitlist': {
-      id: '/leave-waitlist'
-      path: '/leave-waitlist'
-      fullPath: '/leave-waitlist'
-      preLoaderRoute: typeof LeaveWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plan': {
@@ -723,13 +617,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalManageUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/internal_/waitlist': {
-      id: '/internal_/waitlist'
-      path: '/internal/waitlist'
-      fullPath: '/internal/waitlist'
-      preLoaderRoute: typeof InternalWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/plan_/confirmed': {
       id: '/plan_/confirmed'
       path: '/plan/confirmed'
@@ -807,26 +694,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUserAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/waitlist/activate': {
-      id: '/api/waitlist/activate'
-      path: '/api/waitlist/activate'
-      fullPath: '/api/waitlist/activate'
-      preLoaderRoute: typeof ApiWaitlistActivateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
-  AccessPendingRoute: AccessPendingRoute,
-  ActivateInviteRoute: ActivateInviteRoute,
   AdminRoute: AdminRoute,
   AppRoute: AppRoute,
-  ConfirmWaitlistRoute: ConfirmWaitlistRoute,
   InternalRoute: InternalRoute,
-  LeaveWaitlistRoute: LeaveWaitlistRoute,
   PlanRoute: PlanRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -844,7 +720,6 @@ const rootRouteChildren: RootRouteChildren = {
   InternalBarsRoute: InternalBarsRoute,
   InternalFlagsRoute: InternalFlagsRoute,
   InternalManageUsersRoute: InternalManageUsersRoute,
-  InternalWaitlistRoute: InternalWaitlistRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   dashboardDashboardReservationsRoute: dashboardDashboardReservationsRoute,
@@ -856,7 +731,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
-  ApiWaitlistActivateRoute: ApiWaitlistActivateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

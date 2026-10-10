@@ -6,7 +6,7 @@ import { createPub } from '../../fixtures/pubs'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
-import { approveOnWaitlist, openAccountSettings } from './forms'
+import { openAccountSettings } from './forms'
 
 // WEB-175 — configurações da conta: senha, sessões e exclusão.
 
@@ -127,8 +127,6 @@ test('bar com assinatura em curso: a confirmação avisa do encerramento e do re
   const { user } = await createPub({
     subscription: { status: 'active', externalSubscriptionId: subscriptionId }
   })
-  // WEB-342: a inscrição da waitlist com o e-mail da conta sai junto.
-  await approveOnWaitlist(user.email, 'pub')
   const subscription = stripeSubscription({
     id: subscriptionId,
     status: 'active',
@@ -166,9 +164,6 @@ test('bar com assinatura em curso: a confirmação avisa do encerramento e do re
   await expect(page.getByText('Sua conta foi excluída.')).toBeVisible()
   expect(
     await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
-  ).toHaveLength(0)
-  expect(
-    await query('SELECT 1 FROM waitlist_entries WHERE email = $1', [user.email])
   ).toHaveLength(0)
   const calls = (await (
     await request.get(`${STUB_URL}/stripe/calls`)

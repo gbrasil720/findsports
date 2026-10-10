@@ -11,7 +11,6 @@ async function setup() {
     { db, eq, inArray, sql },
     { account, rateLimit, stripeSubscription, user },
     { bar, subscription },
-    { waitlistEntries },
     { auth },
     { stripeClient },
     { syncStripeEvent }
@@ -19,7 +18,6 @@ async function setup() {
     import('@findsports_oficial/db'),
     import('@findsports_oficial/db/schema/auth'),
     import('@findsports_oficial/db/schema/platform'),
-    import('@findsports_oficial/db/schema/waitlist'),
     import('./index'),
     import('./stripe-client'),
     import('./stripe-sync')
@@ -27,7 +25,6 @@ async function setup() {
   const baseUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3001'
   const passwordHash = await (await auth.$context).password.hash(password)
   const userIds: string[] = []
-  const waitlistIds: string[] = []
 
   // IP próprio por login: o rate limit do sign-in (3 por 10s, no banco) é
   // por IP, e o arquivo entra mais vezes do que isso.
@@ -100,23 +97,6 @@ async function setup() {
         .select({ id: stripeSubscription.id })
         .from(stripeSubscription)
         .where(eq(stripeSubscription.referenceId, userId))
-    ).length === 1
-
-  async function createWaitlistEntry(email: string) {
-    const id = crypto.randomUUID()
-    await db
-      .insert(waitlistEntries)
-      .values({ id, email, role: 'pub', city: 'Teste' })
-    waitlistIds.push(id)
-    return id
-  }
-
-  const waitlistExists = async (id: string) =>
-    (
-      await db
-        .select({ id: waitlistEntries.id })
-        .from(waitlistEntries)
-        .where(eq(waitlistEntries.id, id))
     ).length === 1
 
   const userExists = async (id: string) =>
@@ -206,11 +186,6 @@ async function setup() {
         .delete(stripeSubscription)
         .where(inArray(stripeSubscription.referenceId, userIds))
     }
-    if (waitlistIds.length > 0) {
-      await db
-        .delete(waitlistEntries)
-        .where(inArray(waitlistEntries.id, waitlistIds))
-    }
     for (const clientIp of clientIps) {
       await db
         .delete(rateLimit)
@@ -221,8 +196,6 @@ async function setup() {
   return {
     syncStripeEvent,
     createOwner,
-    createWaitlistEntry,
-    waitlistExists,
     userExists,
     pluginRowExists,
     subscriptionStatusOf,
@@ -246,15 +219,11 @@ afterAll(async () => {
 })
 
 integrationTest(
-  'conta com assinatura ativa: encerra no Stripe, exclui e leva a inscrição da waitlist (WEB-336, WEB-342)',
+  'conta com assinatura ativa: encerra no Stripe e exclui (WEB-336)',
   async () => {
     const t = ready()
     const owner = await t.createOwner('active')
     const other = await t.createOwner('active')
-    // A waitlist guarda o e-mail como foi digitado lá: a ligação não pode
-    // depender de maiúsculas.
-    const ownEntry = await t.createWaitlistEntry(owner.email.toUpperCase())
-    const otherEntry = await t.createWaitlistEntry(other.email)
     const stripe = t.stubStripe('active')
     spies.push(stripe.retrieve, stripe.cancel)
 
@@ -268,8 +237,6 @@ integrationTest(
       { timeout: 5000, maxNetworkRetries: 0 }
     ])
     expect(await t.userExists(owner.id)).toBe(false)
-    expect(await t.waitlistExists(ownEntry)).toBe(false)
-    expect(await t.waitlistExists(otherEntry)).toBe(true)
     expect(await t.userExists(other.id)).toBe(true)
     // A linha do plugin não tem FK: sai pelo `afterDelete`, e só a de quem
     // foi apagado.
@@ -307,11 +274,10 @@ integrationTest(
 )
 
 integrationTest(
-  'Stripe recusando o cancelamento: a conta, a assinatura e a waitlist ficam',
+  'Stripe recusando o cancelamento: a conta e a assinatura ficam',
   async () => {
     const t = ready()
     const owner = await t.createOwner('active')
-    const entry = await t.createWaitlistEntry(owner.email)
     const stripe = t.stubStripe('active', () =>
       Promise.reject(new Error('Request timed out'))
     )
@@ -326,7 +292,6 @@ integrationTest(
     expect(stripe.cancel).toHaveBeenCalledTimes(1)
     expect(await t.userExists(owner.id)).toBe(true)
     expect(await t.subscriptionStatusOf(owner.id)).toBe('active')
-    expect(await t.waitlistExists(entry)).toBe(true)
     expect(await t.pluginRowExists(owner.id)).toBe(true)
   }
 )

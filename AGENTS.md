@@ -62,7 +62,7 @@ Add new routers in `packages/api/src/routers/`, export from `routers/index.ts`.
 
 ### Database schema
 
-Schema files live in `packages/db/src/schema/`. Each domain gets its own file; all are re-exported from `schema/index.ts`. Currently: `auth.ts` (better-auth tables) and `waitlist.ts`.
+Schema files live in `packages/db/src/schema/`. Each domain gets its own file; all are re-exported from `schema/index.ts`. `auth.ts` holds the better-auth tables. `waitlist.ts` and `user.admitted_at` are leftovers of the invite-only phase: no code reads or writes them, and they stay in the schema only until the migration that drops them (WEB-232, Fase 2).
 
 IDs use `crypto.randomUUID()` as default.
 
@@ -234,4 +234,4 @@ ticket sem resposta do usuário.
 
 ## Product context
 
-Brazilian app connecting football fans to bars/pubs showing specific matches. Currently in waitlist phase — two roles: `fan` and `pub`.
+Brazilian app connecting football fans to bars/pubs showing specific matches. Signup is open to everyone — two roles: `fan` and `pub`.
