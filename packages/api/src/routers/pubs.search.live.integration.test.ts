@@ -22,8 +22,8 @@ import { contextFor, load } from './integration-seed'
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 /** Origem isolada das outras suítes de busca. */
-const ORIGIN_LAT = -31.5
-const ORIGIN_LNG = -41.5
+const ORIGIN_LAT = -28.5
+const ORIGIN_LNG = -48.25
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 
