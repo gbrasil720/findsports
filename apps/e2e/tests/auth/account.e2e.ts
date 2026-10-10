@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import { BASE_URL } from '../../env'
+import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
+import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
-import { openAccountSettings } from './forms'
+import { approveOnWaitlist, openAccountSettings } from './forms'
 
 // WEB-175 — configurações da conta: senha, sessões e exclusão.
 
@@ -118,7 +119,81 @@ test('excluir conta exige senha e a confirmação digitada', async ({ page }) =>
   await expect(page.getByText('Sua conta foi excluída.')).toHaveCount(0)
 })
 
-test('bar com assinatura em curso não exclui a conta', async ({ page }) => {
+test('bar com assinatura em curso: a confirmação avisa do encerramento e do reembolso, e excluir encerra a assinatura no Stripe (WEB-336)', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const { user } = await createPub({
+    subscription: { status: 'active', externalSubscriptionId: subscriptionId }
+  })
+  // WEB-342: a inscrição da waitlist com o e-mail da conta sai junto.
+  await approveOnWaitlist(user.email, 'pub')
+  const subscription = stripeSubscription({
+    id: subscriptionId,
+    status: 'active',
+    plan: 'elite',
+    userId: user.id
+  })
+  const seeded = await request.post(`${STUB_URL}/stripe/subscriptions`, {
+    data: subscription
+  })
+  expect(seeded.ok()).toBe(true)
+  await signIn(page, user)
+  await page.goto('/admin#admin-configuracoes')
+
+  await page.getByRole('button', { name: 'Excluir minha conta' }).click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Excluir conta permanentemente'
+  })
+  await expect(
+    dialog.getByText(
+      'Sua assinatura será encerrada agora. O valor já pago do período em curso não é devolvido, e o crédito em conta, se houver, se perde.'
+    )
+  ).toBeVisible()
+  await expect(
+    dialog.getByText(
+      'Se a sua primeira contratação foi feita há até 7 dias, você tem direito ao reembolso integral: peça ao suporte em contato@onside.sh.'
+    )
+  ).toBeVisible()
+
+  await dialog.getByLabel('Senha atual').fill(user.password)
+  await dialog
+    .getByLabel('Digite EXCLUIR MINHA CONTA')
+    .fill('EXCLUIR MINHA CONTA')
+  await dialog.getByRole('button', { name: 'Excluir permanentemente' }).click()
+
+  await expect(page.getByText('Sua conta foi excluída.')).toBeVisible()
+  expect(
+    await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
+  ).toHaveLength(0)
+  expect(
+    await query('SELECT 1 FROM waitlist_entries WHERE email = $1', [user.email])
+  ).toHaveLength(0)
+  const calls = (await (
+    await request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { method: string; path: string }[]
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === 'DELETE' &&
+        call.path === `/subscriptions/${subscriptionId}`
+    )
+  ).toHaveLength(1)
+
+  // O aviso de encerramento chega depois, sem bar para achar: 200, sem reenvio.
+  const webhook = await deliverSubscription(
+    request,
+    'customer.subscription.deleted',
+    { ...subscription, status: 'canceled' }
+  )
+  expect(webhook.status(), await webhook.text()).toBe(200)
+})
+
+test('Stripe recusa encerrar a assinatura: a conta fica e o dono lê que pode tentar de novo', async ({
+  page
+}) => {
+  // Assinatura que o stub não conhece: o "Stripe" responde 404.
   const { user } = await createPub({
     subscription: {
       status: 'active',
@@ -128,24 +203,21 @@ test('bar com assinatura em curso não exclui a conta', async ({ page }) => {
   await signIn(page, user)
   await page.goto('/admin#admin-configuracoes')
 
+  await page.getByRole('button', { name: 'Excluir minha conta' }).click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Excluir conta permanentemente'
+  })
+  await dialog.getByLabel('Senha atual').fill(user.password)
+  await dialog
+    .getByLabel('Digite EXCLUIR MINHA CONTA')
+    .fill('EXCLUIR MINHA CONTA')
+  await dialog.getByRole('button', { name: 'Excluir permanentemente' }).click()
+
   await expect(
-    page.getByText(
-      'Encerre a assinatura vigente antes de excluir a conta do bar.'
+    dialog.getByText(
+      'Não foi possível encerrar a assinatura agora, e a conta não foi excluída. Tente de novo em instantes.'
     )
   ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Assinatura e pagamentos' }).last()
-  ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Excluir minha conta' })
-  ).toHaveCount(0)
-
-  // O servidor recusa mesmo sem passar pela tela.
-  const response = await page.request.post('/api/auth/delete-user', {
-    data: { password: user.password },
-    headers: { origin: BASE_URL }
-  })
-  expect(response.status()).toBe(400)
   expect(
     await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
   ).toHaveLength(1)

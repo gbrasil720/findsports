@@ -14,7 +14,10 @@ import {
 import { admin, captcha } from 'better-auth/plugins'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { z } from 'zod'
-import { getBarAccountDeletionBlock } from './account-deletion-policy'
+import {
+  deleteWaitlistEntryOf,
+  endLiveSubscriptionOf
+} from './account-deletion'
 import { runInBackground } from './background'
 import {
   blocksNewCheckout,
@@ -220,21 +223,9 @@ export function createAuth() {
     user: {
       deleteUser: {
         enabled: true,
-        beforeDelete: async (accountUser) => {
-          const accountBar = await db.query.bar.findFirst({
-            where: eq(bar.userId, accountUser.id),
-            with: { subscription: true }
-          })
-          const block = getBarAccountDeletionBlock(
-            accountBar?.subscription ?? null
-          )
-          if (block) {
-            throw new APIError('BAD_REQUEST', {
-              message:
-                'Encerre a assinatura vigente antes de excluir a conta do bar.'
-            })
-          }
-        }
+        beforeDelete: (accountUser) =>
+          endLiveSubscriptionOf(accountUser.id, stripeClient),
+        afterDelete: (accountUser) => deleteWaitlistEntryOf(accountUser.email)
       },
       additionalFields: {
         role: {

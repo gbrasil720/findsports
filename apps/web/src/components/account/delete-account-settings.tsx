@@ -8,7 +8,7 @@ import {
 import { Input } from '@findsports_oficial/ui/components/input'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import Trash from 'reicon-react/icons/Trash'
 import { toast } from 'sonner'
@@ -21,6 +21,7 @@ import {
 import { useTRPC } from '@/utils/trpc'
 
 const CONFIRMATION = 'EXCLUIR MINHA CONTA'
+const SUPPORT_EMAIL = 'contato@onside.sh'
 
 export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   const trpc = useTRPC()
@@ -38,7 +39,8 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
     enabled: surface === 'pub',
     meta: { errorToast: false }
   })
-  const blocked = surface === 'pub' && eligibility.data?.allowed === false
+  const endsSubscription =
+    surface === 'pub' && eligibility.data?.endsSubscription === true
   const eligibilityErrorFeedback = eligibility.error
     ? getUserFacingError(
         eligibility.error,
@@ -69,8 +71,16 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
     const result = await authClient.deleteUser({ password, callbackURL: '/' })
     setDeleting(false)
     if (result.error) {
+      // Stripe não encerrou a assinatura (WEB-336): a recusa do servidor já
+      // diz que a conta ficou e que dá para tentar de novo.
       setError(
-        getUserFacingMessage(result.error, 'Não foi possível excluir a conta.')
+        result.error.code === 'SUBSCRIPTION_CANCEL_FAILED' &&
+          result.error.message
+          ? result.error.message
+          : getUserFacingMessage(
+              result.error,
+              'Não foi possível excluir a conta.'
+            )
       )
       if (surface === 'pub') void eligibility.refetch()
       return
@@ -109,26 +119,16 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
             </p>
           </div>
         </div>
-        {blocked ? (
-          <Link
-            to="/admin/billing"
-            className="onside-btn onside-btn-outline min-h-11 shrink-0"
-          >
-            Assinatura e pagamentos
-          </Link>
-        ) : (
-          <Button
-            variant="destructive"
-            size="lg"
-            disabled={
-              surface === 'pub' &&
-              (eligibility.isLoading || eligibility.isError)
-            }
-            onClick={() => setOpen(true)}
-          >
-            Excluir minha conta
-          </Button>
-        )}
+        <Button
+          variant="destructive"
+          size="lg"
+          disabled={
+            surface === 'pub' && (eligibility.isLoading || eligibility.isError)
+          }
+          onClick={() => setOpen(true)}
+        >
+          Excluir minha conta
+        </Button>
       </div>
 
       {surface === 'pub' && eligibility.isLoading ? (
@@ -137,11 +137,6 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         </p>
       ) : null}
 
-      {blocked ? (
-        <div className="onside-callout onside-callout-warn mt-4" role="status">
-          Encerre a assinatura vigente antes de excluir a conta do bar.
-        </div>
-      ) : null}
       {surface === 'pub' && eligibility.isError ? (
         <div className="onside-callout onside-callout-danger mt-4" role="alert">
           <p>{eligibilityErrorFeedback?.message}</p>
@@ -166,6 +161,25 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
           <div className="onside-callout onside-callout-danger" role="alert">
             Esta ação não pode ser desfeita. Seus dados locais serão apagados.
           </div>
+          {endsSubscription ? (
+            <div className="onside-callout onside-callout-warn">
+              <div className="flex flex-col gap-2">
+                <p>
+                  Sua assinatura será encerrada agora. O valor já pago do
+                  período em curso não é devolvido, e o crédito em conta, se
+                  houver, se perde.
+                </p>
+                <p>
+                  Se a sua primeira contratação foi feita há até 7 dias, você
+                  tem direito ao reembolso integral: peça ao suporte em{' '}
+                  <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>
+                    {SUPPORT_EMAIL}
+                  </a>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : null}
           <FieldGroup>
             <Field data-invalid={Boolean(passwordError)}>
               <FieldLabel htmlFor="delete-account-password">
