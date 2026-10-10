@@ -86,6 +86,15 @@ integrationTest(
       const encerrado = await asOwner.pubs.getById({ id: barId })
       expect(encerrado.isActive).toBe(false)
       expect(encerrado.subscriptionEnded).toBe(true)
+
+      // Teste do cadastro vencido, fora do ar pela reconciliação (WEB-357):
+      // também já esteve no ar, e a volta é contratar.
+      await db
+        .update(subscription)
+        .set({ status: 'trialing', currentPeriodEnd: new Date(0) })
+        .where(eq(subscription.barId, barId))
+      const testeVencido = await asOwner.pubs.getById({ id: barId })
+      expect(testeVencido.subscriptionEnded).toBe(true)
     } finally {
       await db.delete(user).where(eq(user.id, ownerId))
       await db.delete(user).where(eq(user.id, fanId))

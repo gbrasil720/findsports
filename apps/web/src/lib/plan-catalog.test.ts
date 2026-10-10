@@ -580,6 +580,8 @@ describe('getPlanHeader', () => {
       title: 'Continue no plano Elite.'
     })
     expect(header.text).toContain('Contrate o plano')
+    // Sem contratar, esse bar sai do ar (WEB-357): o que volta é o bar.
+    expect(header.text).toContain('voltar às buscas e ao mapa')
     expect(header.text).not.toContain('sem contratar de novo')
   })
 

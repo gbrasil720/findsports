@@ -113,6 +113,50 @@ test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', as
   )
 })
 
+// WEB-357: o teste do cadastro que vence sem contratação tira o bar do ar
+// (cron diário). O dono lê que o bar não está visível, não o limite de jogos
+// do Starter, e o caminho é contratar.
+test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho para contratar', async ({
+  page
+}) => {
+  const pub = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: new Date(Date.now() - 86_400_000)
+    },
+    bar: { is_active: false }
+  })
+  await signIn(page, pub.user)
+  // O aviso de limite depende da política: só vale conferir depois dela.
+  const policy = page.waitForResponse((response) =>
+    response.url().includes('pub.getMyEventCreationPolicy')
+  )
+  await page.goto('/admin')
+  await policy
+
+  const panel = page.locator('#admin-visao')
+  await expect(panel).toContainText('Seu bar não está visível na plataforma')
+  await expect(panel).toContainText('Trial encerrado')
+  await expect(panel).not.toContainText(/restantes?/)
+  await expect(
+    panel.getByRole('link', { name: 'Regularizar assinatura' })
+  ).toHaveCount(0)
+
+  const plans = panel.getByRole('link', { name: 'Ver planos' })
+  await expect(plans).toHaveAttribute('href', '/plan?origin=admin')
+  await plans.click()
+  await expect(
+    page.getByRole('heading', { name: 'Continue no plano Elite.' })
+  ).toBeVisible()
+  await expect(
+    page.getByText('Contrate o plano para o bar voltar às buscas e ao mapa')
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Continuar com Elite' })
+  ).toBeVisible()
+})
+
 test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   page
 }) => {

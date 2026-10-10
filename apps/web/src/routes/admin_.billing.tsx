@@ -285,11 +285,10 @@ function BillingPage() {
 
                 {lapsed ? (
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">
-                    {LAPSED_COPY[lapsed].cause} Recursos do plano, como o
-                    cardápio no perfil, ficam suspensos até{' '}
+                    {LAPSED_COPY[lapsed].cause}{' '}
                     {contractInPlan
-                      ? 'o plano ser contratado.'
-                      : 'a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
+                      ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
+                      : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
                   </p>
                 ) : ended ? (
                   <p className="mt-4 text-sm text-[var(--onside-live-text)]">

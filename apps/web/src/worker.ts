@@ -28,8 +28,9 @@ export default {
   // marque a invocação como falha no painel.
   //
   // WEB-129: o mesmo cron reaplica o plano vigente em `bar.plan`, que é como
-  // um trial vencido sai da camada do plano na busca. O `finally` garante que
-  // uma falha ali não pule a retenção, e a falha ainda marca a invocação.
+  // um trial vencido sai da camada do plano na busca, e o bar de teste do
+  // cadastro vencido sem contratação sai do ar (WEB-357). O `finally` garante
+  // que uma falha ali não pule a retenção, e a falha ainda marca a invocação.
   async scheduled(_controller, env) {
     await runWithDb(env.HYPERDRIVE.connectionString, async () => {
       try {

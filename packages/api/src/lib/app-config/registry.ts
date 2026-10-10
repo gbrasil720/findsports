@@ -118,7 +118,7 @@ export const APP_CONFIG_DEFINITIONS = {
    * Ligada, o `completePub` publica o bar e cria a assinatura `trialing` no
    * plano daqui, com `current_period_end` em `days` dias. O benefício vence
    * sozinho: `getCurrentPlan` deixa de reconhecer o plano na data, sem job.
-   * O bar continua publicado depois disso.
+   * Vencido sem contratação, o bar sai do ar no cron diário (WEB-357).
    *
    * Desligada — o padrão — nada muda: o bar nasce fora do ar, sem assinatura.
    * O teto de `days` existe para um erro de digitação não virar plano grátis

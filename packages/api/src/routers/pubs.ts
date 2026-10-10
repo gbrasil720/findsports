@@ -483,10 +483,13 @@ export const pubsRouter = router({
         ),
         isOwner: userId === ctx.session.user.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
-        // encerrada não é bar que nunca foi publicado (WEB-345).
+        // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
+        // cadastro vencido também tira o bar do ar (WEB-357).
         subscriptionEnded:
           userId === ctx.session.user.id &&
-          getSubscriptionStanding(subscription ?? null, now) === 'ended'
+          ['ended', 'trial_ended'].includes(
+            getSubscriptionStanding(subscription ?? null, now) ?? ''
+          )
       }
     }),
 
