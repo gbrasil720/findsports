@@ -353,39 +353,32 @@ test('o pino muda com o plano vigente e com o jogo ao vivo, e o Elite fica por c
     page
       .locator('.maplibregl-marker')
       .and(page.getByRole('button', { name: pub.name, exact: true }))
+  const temCores = async (
+    pub: { name: string },
+    [corpo, miolo, estrela]: [string, string, string]
+  ) => {
+    await expect(pin(pub).locator('path').first()).toHaveCSS('fill', corpo)
+    await expect(pin(pub).locator('circle')).toHaveCSS('fill', miolo)
+    await expect(pin(pub).locator('path').last()).toHaveCSS('fill', estrela)
+  }
+
   // Corpo, miolo, estrela.
-  const cores = (pub: { name: string }) =>
-    pin(pub).evaluate((raiz) =>
-      ['path:first-of-type', 'circle', 'path:last-of-type'].map(
-        (peca) => getComputedStyle(raiz.querySelector(peca) as Element).fill
-      )
-    )
+  await temCores(starter, [INK, CREME, 'none'])
+  await temCores(pro, [INK, ACID, 'none'])
+  await temCores(elite, [ACID, 'none', INK])
+  await temCores(parado, [INK, CREME, 'none'])
 
-  await expect(pin(parado)).toBeVisible()
-  expect(await cores(starter)).toEqual([INK, CREME, 'none'])
-  expect(await cores(pro)).toEqual([INK, ACID, 'none'])
-  expect(await cores(elite)).toEqual([ACID, 'none', INK])
-  expect(await cores(parado)).toEqual([INK, CREME, 'none'])
-
-  // `elementFromPoint` só enxerga o que está na janela.
-  await pin(elite).scrollIntoViewIfNeeded()
-  expect(
-    await pin(elite).evaluate((raiz) => {
-      const caixa = raiz.getBoundingClientRect()
-      const noPonto = document.elementFromPoint(
-        caixa.x + caixa.width / 2,
-        caixa.y + caixa.height / 3
-      )
-      return noPonto?.closest('.maplibregl-marker')?.getAttribute('aria-label')
-    })
-  ).toBe(elite.name)
+  // `trial` só passa se o clique no meio do pino chegar nele: com o Starter
+  // por cima, quem receberia o clique seria o vizinho.
+  await expect(pin(vizinho)).toBeVisible()
+  await pin(elite).click({ trial: true })
 
   // O jogo começa: o relógio do navegador passa da hora, e o foco no pino
   // redesenha o mapa.
   await page.clock.setFixedTime(hours(1))
   await pin(starter).focus()
-  await expect.poll(() => cores(pro)).toEqual([LIVE, CREME, 'none'])
-  expect(await cores(eliteComJogo)).toEqual([LIVE, 'none', INK])
+  await temCores(pro, [LIVE, CREME, 'none'])
+  await temCores(eliteComJogo, [LIVE, 'none', INK])
 })
 
 // WEB-258: "Aberturas" por jogo só conta quem chegou pelo jogo. O card leva o
