@@ -164,6 +164,13 @@ integrationTest(
       await editar([palmeiras.id, corinthians.id])
       await owner.pub.updateEvent({ eventId: jogo.id, championship: 'Copa' })
       expect(await leituras()).toEqual(emTodas(['Palmeiras', 'Corinthians']))
+
+      // Só os times, sem nenhum outro campo: a API aceita e não pode estourar.
+      await owner.pub.updateEvent({
+        eventId: jogo.id,
+        participantIds: [corinthians.id, palmeiras.id]
+      })
+      expect(await leituras()).toEqual(emTodas(['Corinthians', 'Palmeiras']))
     } finally {
       await resetAppConfig('search.tiered_plan_query')
       await db.delete(user).where(inArray(user.id, [fanId, ownerId]))

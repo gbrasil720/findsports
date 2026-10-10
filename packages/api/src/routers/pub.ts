@@ -733,18 +733,19 @@ export const pubRouter = router({
       await db.transaction(async (tx) => {
         await assertTeamsMatchSport(tx, effectiveSportId, participantIds ?? [])
 
-        await tx
-          .update(event)
-          .set({
-            ...(input.sportId && { sportId: input.sportId }),
-            ...(input.championship && { championship: input.championship }),
-            ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
-            ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
-            ...(input.participantFreeText !== undefined && {
-              participantFreeText: input.participantFreeText || null
-            })
+        const changes = {
+          ...(input.sportId && { sportId: input.sportId }),
+          ...(input.championship && { championship: input.championship }),
+          ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
+          ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
+          ...(input.participantFreeText !== undefined && {
+            participantFreeText: input.participantFreeText || null
           })
-          .where(eq(event.id, input.eventId))
+        }
+        // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
+        if (Object.keys(changes).length > 0) {
+          await tx.update(event).set(changes).where(eq(event.id, input.eventId))
+        }
 
         if (participantIds !== undefined) {
           await tx
