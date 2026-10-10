@@ -419,7 +419,7 @@ function BillingPage() {
 
         <aside className="space-y-4">
           <h3 className="onside-display text-2xl">Outros planos</h3>
-          {PLAN_CATALOG.filter((p) => p.id !== plan).map((info) => {
+          {PLAN_CATALOG.filter((p) => p.id !== shownPlan).map((info) => {
             const Icon = info.icon
             return (
               <div key={info.id} className="onside-panel p-5">

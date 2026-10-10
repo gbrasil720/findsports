@@ -91,3 +91,39 @@ test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
   await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
   await expect(overview(page)).toContainText('Atividade diária')
 })
+
+// WEB-344: card de plano e Desempenho contam a mesma história quando o plano
+// gravado não vale.
+test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', async ({
+  page
+}) => {
+  const pub = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: new Date(Date.now() - 86_400_000)
+    }
+  })
+  await signIn(page, pub.user)
+  await page.goto('/admin')
+
+  await expect(page.locator('#admin-visao')).toContainText('Trial encerrado')
+  await expect(overview(page)).toContainText(
+    'Plano: Starter • Trial do plano Elite encerrado'
+  )
+})
+
+test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
+  page
+}) => {
+  const pub = await createPub({ subscription: null })
+  await signIn(page, pub.user)
+  await page.goto('/admin')
+
+  const panel = page.locator('#admin-visao')
+  await expect(panel).toContainText('Sem plano')
+  await expect(
+    panel.getByRole('link', { name: 'Escolher um plano' })
+  ).toHaveAttribute('href', '/plan?origin=admin')
+  await expect(panel).not.toContainText('Plano atual')
+})
