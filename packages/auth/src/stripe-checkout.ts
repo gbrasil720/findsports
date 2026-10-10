@@ -50,9 +50,22 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
   founderCouponSource = source
 }
 
-// O checkout e a `/plan` não esperam o Stripe pelo cupom: sem resposta em 5s,
-// e sem nova tentativa, seguem sem ele (o padrão do SDK são 80s e 2 tentativas).
-const COUPON_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
+// O checkout e a `/plan` não esperam o Stripe: sem resposta em 5s, e sem nova
+// tentativa, seguem sem o que pediram (o padrão do SDK são 80s e 2 tentativas).
+const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
+
+/** `error` preenchido quando o Stripe não respondeu; `valid` é o que ele disse. */
+async function readFounderCoupon(client: Stripe, couponId: string) {
+  try {
+    const coupon = await client.coupons.retrieve(couponId, {}, QUICK_REQUEST)
+    return { valid: Boolean(coupon.valid), error: null }
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : String(error)
+    }
+  }
+}
 
 /**
  * O cupom existe e ainda aceita resgate no Stripe. Erro ou demora do Stripe
@@ -63,10 +76,7 @@ export async function founderCouponUsable(
   couponId: string | null | undefined
 ): Promise<boolean> {
   if (!couponId) return false
-  const coupon = await client.coupons
-    .retrieve(couponId, {}, COUPON_REQUEST)
-    .catch(() => null)
-  return Boolean(coupon?.valid)
+  return (await readFounderCoupon(client, couponId)).valid
 }
 
 /**
@@ -78,10 +88,16 @@ export async function usableFounderCoupon(
   client: Stripe
 ): Promise<string | null> {
   const couponId = await founderCouponSource()
-  if (!(await founderCouponUsable(client, couponId))) {
-    if (couponId) {
-      logBillingError('stripe_founder_coupon_unavailable', { couponId })
-    }
+  if (!couponId) return null
+  const coupon = await readFounderCoupon(client, couponId)
+  if (!coupon.valid) {
+    // O bar contrata a preço de tabela: o motivo fica no log para o suporte
+    // saber se o cupom acabou ou se foi o Stripe que não respondeu.
+    logBillingError('stripe_founder_coupon_unavailable', {
+      couponId,
+      reason: coupon.error ? 'stripe_unreachable' : 'coupon_invalid',
+      ...(coupon.error ? { message: coupon.error } : {})
+    })
     return null
   }
   return couponId
@@ -126,18 +142,23 @@ export function customerPrefillFor(
 
 // Nunca impede a venda: se o Stripe recusar, o checkout abre com o cliente
 // como estava.
-async function prefillCustomer(
+export async function prefillCustomer(
   client: Stripe,
   customerId: string,
   ownerName: string,
   ownerBar: BarForCustomer
 ) {
   try {
-    const customer = await client.customers.retrieve(customerId)
+    const customer = await client.customers.retrieve(
+      customerId,
+      {},
+      QUICK_REQUEST
+    )
     if (customer.deleted) return
     await client.customers.update(
       customerId,
-      customerPrefillFor(customer, ownerName, ownerBar)
+      customerPrefillFor(customer, ownerName, ownerBar),
+      QUICK_REQUEST
     )
   } catch (error) {
     logBillingError('stripe_customer_prefill_failed', {
