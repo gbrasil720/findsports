@@ -9,6 +9,13 @@ export const VERIFICATION_SUBJECT = 'Confirme seu e-mail para entrar em campo'
 export const uniqueEmail = (prefix: string) =>
   `${prefix}-${randomUUID()}@e2e.test`
 
+/** Marca o aceite dos Termos e da Política, sem o qual o cadastro não envia. */
+export async function acceptTerms(page: Page) {
+  await page
+    .getByRole('checkbox', { name: /Declaro que li e concordo/ })
+    .check()
+}
+
 /** Preenche e envia o /signup já aberto, com o papel que estiver marcado. */
 export async function submitSignup(
   page: Page,
@@ -20,6 +27,7 @@ export async function submitSignup(
   await page
     .getByLabel('Confirmar senha', { exact: true })
     .fill(DEFAULT_PASSWORD)
+  await acceptTerms(page)
   await page.getByRole('button', { name: 'Entrar no time' }).click()
 }
 

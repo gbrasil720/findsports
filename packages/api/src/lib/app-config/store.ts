@@ -70,8 +70,6 @@ export type AppConfigEntrada<K extends AppConfigKey = AppConfigKey> = {
   sobrescrito: boolean
   publico: boolean
   descricao: string
-  /** Efeito de voltar ao padrão, quando o registro o descreve. */
-  efeitoPadrao: string | null
 }
 
 export type AppConfigStore = {
@@ -103,8 +101,7 @@ export function montarEntradasAppConfig(
       padrao: appConfigDefault(key),
       sobrescrito,
       publico: definicao.publico,
-      descricao: definicao.descricao,
-      efeitoPadrao: definicao.efeitoPadrao ?? null
+      descricao: definicao.descricao
     }
   })
 }

@@ -20,11 +20,10 @@ html:has(.onside-legal) body {
  * cor do formulário para servir em fundo claro e escuro.
  */
 .onside-legal-consent {
+  align-items: flex-start;
   margin: 12px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  text-align: center;
-  opacity: 0.85;
 }
 
 .onside-legal-consent a {

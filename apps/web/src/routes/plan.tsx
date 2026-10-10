@@ -15,7 +15,6 @@ import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
-  CHECKOUT_ENABLED_DEFAULT,
   earnsDowngradeCredit,
   founderCouponFromQuery,
   getDefaultPlanSelection,
@@ -72,18 +71,9 @@ function PlanSelection() {
     ...trpc.pub.getMySubscription.queryOptions(),
     meta: { errorToast: false }
   })
-  // ESC-19: a contratação pode estar fechada. Quem decide é o servidor — ver
-  // `api/auth/$` — mas descobrir isso só depois do clique, num erro genérico,
-  // seria trabalhar contra o dono do bar. Aqui a tela avisa antes.
-  //
-  // Enquanto carrega, vale o mesmo padrão do servidor: a tela não promete
-  // uma contratação que o servidor, sem linha no banco, recusaria.
-  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
   const founderCouponQuery = useQuery(
     trpc.pub.getFounderCouponAvailable.queryOptions()
   )
-  const checkoutLiberado =
-    configQuery.data?.['billing.checkout_enabled'] ?? CHECKOUT_ENABLED_DEFAULT
   const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
@@ -117,13 +107,6 @@ function PlanSelection() {
   const selected = picked ?? getDefaultPlanSelection(subscription)
 
   const handleCheckout = async () => {
-    if (!checkoutLiberado) {
-      setError(
-        'A contratação de planos está temporariamente indisponível. Tente novamente em instantes.'
-      )
-      return
-    }
-
     analytics.checkoutStarted(selected)
     // WEB-59: marca nossa, não do provedor. É o que permite a `/plan/confirmed`
     // distinguir quem está voltando do checkout — e merece esperar o webhook —
@@ -299,21 +282,6 @@ function PlanSelection() {
         ))}
       </fieldset>
 
-      {!checkoutLiberado && !configQuery.isLoading ? (
-        <div
-          className="onside-callout onside-callout-warn mx-auto mb-4 max-w-2xl"
-          role="status"
-        >
-          <p className="text-sm font-semibold">
-            A contratação de planos está temporariamente indisponível.
-          </p>
-          <p className="text-sm">
-            Estamos liberando os pagamentos aos poucos. Sua conta continua ativa
-            e você não perde nada esperando.
-          </p>
-        </div>
-      ) : null}
-
       {isDowngrade ? (
         <div
           className="onside-callout onside-callout-warn mx-auto mb-4 max-w-2xl"
@@ -364,15 +332,7 @@ function PlanSelection() {
         </p>
       ) : null}
 
-      <div
-        className="flex flex-wrap items-center justify-between gap-3"
-        aria-busy={configQuery.isLoading || undefined}
-      >
-        {configQuery.isLoading ? (
-          <span className="sr-only">
-            Verificando disponibilidade da contratação…
-          </span>
-        ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to={exitLink.to}
           className="onside-btn onside-btn-outline min-h-11"
@@ -386,8 +346,7 @@ function PlanSelection() {
             cobra no fim do teste (WEB-31). */}
         {regularize ? null : (
           <div className="flex flex-wrap items-center gap-3">
-            {/* Testar é sem cartão e não passa pelo checkout: não depende de a
-                contratação estar aberta (WEB-358). */}
+            {/* Testar é sem cartão e não passa pelo checkout (WEB-358). */}
             {onTrial ? (
               <button
                 type="button"
@@ -422,16 +381,9 @@ function PlanSelection() {
                 loading ||
                 trialPlan.isPending ||
                 isSamePlan ||
-                subscriptionQuery.isLoading ||
-                !checkoutLiberado
+                subscriptionQuery.isLoading
               }
-              title={
-                !checkoutLiberado
-                  ? 'Contratação temporariamente indisponível'
-                  : isSamePlan
-                    ? 'Este já é seu plano atual'
-                    : undefined
-              }
+              title={isSamePlan ? 'Este já é seu plano atual' : undefined}
               className="onside-btn onside-btn-acid min-h-11"
             >
               {loading ? (

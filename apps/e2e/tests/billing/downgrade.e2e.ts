@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { query, resetAppConfig, setAppConfig } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { createEvent } from '../../fixtures/reservations'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
@@ -9,10 +9,8 @@ import { expect, test } from '../../fixtures/test'
 
 // WEB-351: trocar para um plano menor confirma no app o que o bar perde antes
 // de abrir o Stripe, e o retorno do portal avisa a troca quando ela aconteceu.
-// Serial porque liga `billing.checkout_enabled`, global. Upgrade e contratação
-// seguem sem confirmação: é o que `checkout.serial.e2e.ts` exercita.
-
-test.afterEach(resetAppConfig)
+// Upgrade e contratação seguem sem confirmação: é o que
+// `checkout.serial.e2e.ts` exercita.
 
 const CREDIT_NOTICE =
   'A diferença vira crédito na sua conta e abate as próximas mensalidades (não é reembolsada no cartão).'
@@ -23,7 +21,6 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   page,
   request
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const subscriptionId = `sub_e2e_${randomUUID()}`
   const customerId = `cus_e2e_${randomUUID()}`
   const { user, barId } = await createPub({
@@ -146,7 +143,6 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
 test('teste grátis: plano menor também confirma, sem prometer crédito, e segue para o checkout', async ({
   page
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const { user } = await createPub({
     subscription: {
       plan: 'elite',

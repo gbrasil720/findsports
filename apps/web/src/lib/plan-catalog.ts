@@ -351,13 +351,6 @@ export const PLAN_TIER_ORDER: Record<SubscriptionPlan, number> = {
   elite: 2
 }
 
-/**
- * Padrão de `billing.checkout_enabled` enquanto a configuração não chega.
- * Espelha o do servidor: o registro não roda no navegador (lê `process.env`),
- * então o teste amarra os dois.
- */
-export const CHECKOUT_ENABLED_DEFAULT = false
-
 export type PlanOrigin = 'admin' | 'billing'
 
 export function getPlan(id: SubscriptionPlan): Plan {

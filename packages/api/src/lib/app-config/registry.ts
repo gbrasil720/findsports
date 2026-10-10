@@ -38,9 +38,6 @@ function definir<S extends z.ZodType, P extends boolean>(definicao: {
    *  permite derivar o formato do subconjunto público em tempo de tipo. */
   publico: P
   descricao: string
-  /** O que muda para quem usa quando a chave volta ao padrão. O painel põe
-   *  isto na confirmação de "Voltar ao padrão", no lugar do JSON. */
-  efeitoPadrao?: string
 }) {
   return definicao
 }
@@ -71,112 +68,6 @@ export const APP_CONFIG_DEFINITIONS = {
   }),
 
   /**
-   * Libera o checkout de assinatura (Stripe).
-   *
-   * O MVP subiu com cobrança desligada e plano definido à mão. Ligar era
-   * editar `packages/auth` e fazer deploy — decisão comercial presa a uma
-   * janela de engenharia.
-   *
-   * Desligado bloqueia apenas a ABERTURA de checkout. O webhook continua
-   * recebendo (assinatura que ativa é dinheiro real, e ignorá-la deixaria o
-   * banco mentindo) e o portal do cliente continua aberto (quem quer cancelar
-   * precisa conseguir cancelar, sempre).
-   */
-  'billing.checkout_enabled': definir({
-    schema: z.boolean(),
-    padrao: false,
-    publico: true,
-    descricao:
-      'Permite abrir checkout de assinatura. Desligado, /plan avisa que a ' +
-      'cobrança está indisponível. Webhook e portal do cliente seguem ativos.',
-    efeitoPadrao:
-      'A contratação de planos será fechada: /plan passa a avisar que a ' +
-      'cobrança está indisponível.'
-  }),
-
-  /**
-   * Trial criado no cadastro do bar (WEB-113).
-   *
-   * `bar.is_active` nasce `false` e só o webhook de assinatura paga o vira
-   * `true`. Com a cobrança fechada isso deixa todo bar novo invisível para o
-   * torcedor, sem caminho de publicação.
-   *
-   * Ligada, o `completePub` publica o bar e cria a assinatura `trialing` no
-   * plano daqui, com `current_period_end` em `days` dias. O benefício vence
-   * sozinho: `getCurrentPlan` deixa de reconhecer o plano na data, sem job.
-   * Vencido sem contratação, o bar sai do ar no cron diário (WEB-357).
-   *
-   * Desligada — o padrão — nada muda: o bar nasce fora do ar, sem assinatura.
-   * O teto de `days` existe para um erro de digitação não virar plano grátis
-   * por anos. Cabe o teste de 120 dias do lançamento (WEB-31), com folga.
-   *
-   * Pública (WEB-238): plano e dias são a oferta, não um segredo, e a revisão
-   * do cadastro precisa deles para dizer ao dono o que acontece ao continuar.
-   * Quem decide o trial continua sendo o `completePub`.
-   */
-  'billing.onboarding_trial': definir({
-    schema: z.object({
-      enabled: z.boolean(),
-      plan: z.enum(['starter', 'pro', 'elite']),
-      days: z.number().int().min(1).max(180)
-    }),
-    padrao: { enabled: false, plan: 'elite', days: 14 },
-    publico: true,
-    descricao:
-      'Bar novo nasce publicado e com trial do plano escolhido por `days` ' +
-      'dias. Desligado, o bar nasce fora do ar e só a assinatura paga o ' +
-      'publica. Não altera bares já cadastrados.',
-    efeitoPadrao: 'O trial do cadastro será desligado para bares novos.'
-  }),
-
-  /**
-   * Desconto de fundador no checkout (WEB-31).
-   *
-   * Os termos de uso prometem R$ 28,00 a menos por mês, em qualquer plano e
-   * enquanto a assinatura durar, ao bar que aderir durante o lançamento. No
-   * Stripe isso é um cupom (`Early Bird`, id `eM7dQpMF`, com teto de 100 usos);
-   * esta chave diz se o checkout o aplica.
-   *
-   * Ligada, todo checkout NOVO sai com o cupom. Quem já assinou com ele não
-   * perde nada quando a chave desliga: o desconto fica preso à assinatura.
-   * Cupom esgotado ou apagado no Stripe não trava a venda — o checkout segue
-   * a preço de tabela e o servidor registra `stripe_founder_coupon_unavailable`.
-   *
-   * `couponId` é o ID do cupom no painel do Stripe, o mesmo no sandbox e em
-   * produção. Só letras, números, `_` e `-`: é o que o Stripe aceita.
-   */
-  'billing.founder_coupon': definir({
-    schema: z.object({
-      enabled: z.boolean(),
-      couponId: z
-        .string()
-        .regex(/^[A-Za-z0-9_-]{1,64}$/, 'ID de cupom do Stripe inválido')
-    }),
-    padrao: { enabled: false, couponId: 'eM7dQpMF' },
-    publico: false,
-    descricao:
-      'Desconto de fundador. Ligado: todo bar que contratar um plano ganha ' +
-      'R$ 28 de desconto por mês, para sempre, em qualquer plano. Desligado: ' +
-      'quem contratar paga o preço cheio. Quem já ganhou o desconto continua ' +
-      'com ele nos dois casos. O Stripe só deixa 100 bares usarem; depois ' +
-      'disso a venda continua, sem desconto. Não mexa em `couponId`: é o ' +
-      'código do cupom no Stripe.',
-    efeitoPadrao:
-      'O desconto de fundador deixará de ser aplicado em contratações novas.'
-  }),
-
-  /**
-   * Cidades em que um bar pode concluir o onboarding.
-   *
-   * Lista vazia — o padrão — significa SEM restrição, que é o comportamento
-   * de hoje. Preenchida, vira o mecanismo de lançamento cidade a cidade: só
-   * bar em cidade da lista completa o cadastro.
-   *
-   * Vale apenas para bares. Torcedor não informa cidade em lugar nenhum do
-   * fluxo — a busca dele é por GPS e raio — então não há o que comparar, e
-   * inventar uma comparação daria um bloqueio que erra.
-   */
-  /**
    * Libera a exibição PÚBLICA da nota do bar.
    *
    * A coleta de avaliações não depende desta chave — ela roda desde o
@@ -201,6 +92,17 @@ export const APP_CONFIG_DEFINITIONS = {
       'avaliados" na busca. A coleta de avaliações independe desta chave.'
   }),
 
+  /**
+   * Cidades em que um bar pode concluir o onboarding.
+   *
+   * Lista vazia — o padrão — significa SEM restrição, que é o comportamento
+   * de hoje. Preenchida, vira o mecanismo de lançamento cidade a cidade: só
+   * bar em cidade da lista completa o cadastro.
+   *
+   * Vale apenas para bares. Torcedor não informa cidade em lugar nenhum do
+   * fluxo — a busca dele é por GPS e raio — então não há o que comparar, e
+   * inventar uma comparação daria um bloqueio que erra.
+   */
   'launch.pub_cities': definir({
     schema: z.array(z.string().trim().min(2).max(100)).max(500),
     padrao: [] as string[],
