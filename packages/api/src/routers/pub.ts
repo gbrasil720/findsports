@@ -1,4 +1,4 @@
-import { getBarAccountDeletionBlock } from '@findsports_oficial/auth/account-deletion-policy'
+import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
@@ -867,11 +867,11 @@ export const pubRouter = router({
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
-    const block = getBarAccountDeletionBlock(existingBar.subscription ?? null)
-
+    // Assinatura viva não segura a exclusão: é encerrada junto (WEB-336), e
+    // a tela avisa antes de o dono confirmar.
     return {
-      allowed: block === null,
-      block
+      endsSubscription:
+        liveStripeSubscriptionId(existingBar.subscription ?? null) !== null
     }
   })
 })
