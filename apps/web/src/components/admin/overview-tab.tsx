@@ -10,7 +10,11 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { eventLimitReachedTitle } from '@/lib/event-limit'
-import { getLapsedPaidPlan, getShownPlan } from '@/lib/lapsed-plan'
+import {
+  getLapsedPaidPlan,
+  getShownPlan,
+  isStarterSubscription
+} from '@/lib/lapsed-plan'
 import {
   CONTRACTED_TRIAL_LABEL,
   getTrialNotice,
@@ -206,10 +210,10 @@ export function OverviewTab({
   const isInactive = bar ? !bar.isActive : false
 
   const planKnown = subFetched && !loadingSub && !subError
-  const plan = planKnown ? (subscription?.plan ?? 'starter') : null
   const shownPlan = planKnown ? getShownPlan(subscription) : null
   const trialNotice = planKnown ? getTrialNotice(subscription) : null
-  const isStarter = plan === 'starter'
+  // Sem assinatura o card ao lado diz "Sem plano": nada de aviso do Starter.
+  const isStarter = planKnown && isStarterSubscription(subscription)
   const standing = planKnown ? subscription?.standing : null
   // Pro ou Elite parado vale o limite do Starter (WEB-129): mostra a mesma
   // contagem, e a saída é regularizar, não fazer upgrade (WEB-331).
@@ -503,6 +507,7 @@ export function OverviewTab({
         overviewState={analyticsOverviewState}
         showComparison={analyticsPreset !== 'all'}
         planNote={shownPlan?.note}
+        noPlan={planKnown && !subscription}
         onCreateEvent={onCreateEvent}
       />
     </AdminTabPanel>

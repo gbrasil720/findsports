@@ -11,6 +11,11 @@ export type BillingBalance = {
   creditReais: number | null
   /** Valor da próxima fatura em reais, com o crédito já abatido. */
   nextChargeReais: number | null
+  /**
+   * Cartão que a assinatura cobra. Só bandeira e últimos 4 dígitos saem
+   * daqui. `null`: sem cartão ou sem resposta.
+   */
+  card: { brand: string; last4: string } | null
 }
 
 function failed(step: 'customer' | 'preview', subscriptionId: string) {
@@ -33,6 +38,9 @@ function failed(step: 'customer' | 'preview', subscriptionId: string) {
  * crédito proporcional de um downgrade fica no saldo do cliente e abate as
  * faturas seguintes; sem isto o app mostrava só a data da cobrança.
  *
+ * Na mesma leitura vem o cartão: o da assinatura (é onde o checkout o grava)
+ * e, sem ele, o padrão do cliente — a ordem em que o Stripe cobra.
+ *
  * Só leitura. No Stripe crédito é saldo negativo, em centavos. Sem assinatura
  * no Stripe não há chamada, e as duas leituras falham sozinhas: erro em uma
  * não esconde a outra, e nenhum erro sai daqui.
@@ -45,7 +53,16 @@ export async function readBillingBalance(
 
   const [subscription, preview] = await Promise.all([
     client.subscriptions
-      .retrieve(subscriptionId, { expand: ['customer'] }, REQUEST)
+      .retrieve(
+        subscriptionId,
+        {
+          expand: [
+            'default_payment_method',
+            'customer.invoice_settings.default_payment_method'
+          ]
+        },
+        REQUEST
+      )
       .catch(failed('customer', subscriptionId)),
     client.invoices
       .createPreview({ subscription: subscriptionId }, REQUEST)
@@ -53,13 +70,19 @@ export async function readBillingBalance(
   ])
 
   const customer = subscription?.customer
-  const balance =
+  const account =
     customer && typeof customer === 'object' && 'balance' in customer
-      ? customer.balance
-      : 0
+      ? customer
+      : null
+  const balance = account?.balance ?? 0
+  const method =
+    subscription?.default_payment_method ??
+    account?.invoice_settings?.default_payment_method
+  const card = method && typeof method === 'object' ? method.card : null
 
   return {
     creditReais: balance < 0 ? -balance / 100 : null,
-    nextChargeReais: preview ? preview.amount_due / 100 : null
+    nextChargeReais: preview ? preview.amount_due / 100 : null,
+    card: card ? { brand: card.brand, last4: card.last4 } : null
   }
 }

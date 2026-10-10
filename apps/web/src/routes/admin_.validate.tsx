@@ -29,9 +29,10 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
 
-  // Reserva em aberto mantém a validação de quem perdeu o Elite (WEB-341).
+  // Reserva em aberto mantém a validação de quem perdeu o Elite (WEB-341),
+  // até a janela de validação fechar.
   const openQuery = useQuery({
-    ...trpc.barReservations.hasOpen.queryOptions(),
+    ...trpc.barReservations.hasValidatable.queryOptions(),
     meta: { errorToast: false }
   })
   const elite = subscriptionQuery.data?.currentPlan === 'elite'

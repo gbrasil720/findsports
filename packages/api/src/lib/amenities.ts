@@ -111,21 +111,51 @@ export function normalizeAmenityIds(ids: readonly number[]): number[] {
   return [...new Set(ids.filter((id) => BY_ID.has(id)))].sort((a, b) => a - b)
 }
 
-const RESERVATIONS_AMENITY_ID = 10
+export const RESERVATIONS_AMENITY_ID = 10
 
 /**
- * O que o perfil público mostra. "Aceita reserva" é marcada à mão, e o perfil
- * só tem um caminho de reserva: o da Onside. Sem recebimento de fato (Elite
- * vigente e interruptor ligado), a característica prometeria um botão que não
- * existe (WEB-341). O que o dono marcou continua gravado.
+ * O que o bar declara no checklist: tudo menos "Aceita reserva". Aceitar
+ * reserva e receber reservas pela Onside são a mesma coisa (decisão de
+ * 10/10/2026), então essa característica não se marca: é derivada do
+ * recebimento de fato (Elite vigente e interruptor ligado), no perfil
+ * (`publicAmenityIds`) e no filtro da busca (`amenityFilter`).
+ *
+ * O id segue no vocabulário, porque o filtro do torcedor o usa, e segue
+ * gravado em `bar.amenities` de quem o marcou antes. Nenhuma leitura pública
+ * olha para ele.
+ */
+export function declaredAmenityIds(ids: readonly number[]): number[] {
+  return ids.filter((id) => id !== RESERVATIONS_AMENITY_ID)
+}
+
+/**
+ * O que o perfil público mostra: o que o bar declarou, mais "Aceita reserva"
+ * se, e só se, ele recebe reservas — tenha ou não o id gravado. Sem
+ * recebimento a característica prometeria um botão que não existe (WEB-341).
  */
 export function publicAmenityIds(
   ids: readonly number[],
   receivesReservations: boolean
 ): number[] {
-  return ids.filter(
-    (id) => receivesReservations || id !== RESERVATIONS_AMENITY_ID
-  )
+  const declared = declaredAmenityIds(ids)
+  return receivesReservations
+    ? [...declared, RESERVATIONS_AMENITY_ID]
+    : declared
+}
+
+/**
+ * O que a escrita grava. "Aceita reserva" que vier do cliente (aba antiga,
+ * rascunho antigo) é ignorada, não recusada; a que já estava gravada
+ * (`stored`) fica onde está, sem apagar nem regravar.
+ */
+export function writableAmenityIds(
+  ids: readonly number[],
+  stored: readonly number[] = []
+): number[] {
+  return normalizeAmenityIds([
+    ...declaredAmenityIds(ids),
+    ...stored.filter((id) => id === RESERVATIONS_AMENITY_ID)
+  ])
 }
 
 export function amenitiesByGroup(ids: readonly number[]) {

@@ -18,6 +18,7 @@ import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
   CONTRACTED_TRIAL_LABEL,
   formatPlanChargeLine,
+  founderCouponFromQuery,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
@@ -150,7 +151,7 @@ function BillingPage() {
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
-  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
+  const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
   const planCharge =
     planInfo && subscription
       ? planChargeForCurrentPlan(planInfo, subscription, founderCouponAvailable)
@@ -246,7 +247,7 @@ function BillingPage() {
                       <div className="onside-display text-xl">
                         {planInfo.name}
                       </div>
-                      {planCharge ? (
+                      {subscription ? (
                         <PlanMonthlyCharge
                           display={planCharge}
                           period={planInfo.period}
@@ -435,6 +436,7 @@ function BillingPage() {
           <h3 className="onside-display text-2xl">Outros planos</h3>
           {PLAN_CATALOG.filter((p) => p.id !== shownPlan).map((info) => {
             const Icon = info.icon
+            const charge = planChargeForShowcase(info, founderCouponAvailable)
             return (
               <div key={info.id} className="onside-panel p-5">
                 <div className="mb-3 flex items-center gap-3">
@@ -443,10 +445,17 @@ function BillingPage() {
                   </div>
                   <div>
                     <div className="text-sm font-bold">{info.name}</div>
-                    <div className="text-xs text-[var(--onside-muted)]">
-                      {formatPlanChargeLine(
-                        planChargeForShowcase(info, founderCouponAvailable),
-                        info.period
+                    <div
+                      className="text-xs text-[var(--onside-muted)]"
+                      aria-busy={charge ? undefined : true}
+                    >
+                      {charge ? (
+                        formatPlanChargeLine(charge, info.period)
+                      ) : (
+                        <>
+                          <span className="sr-only">Carregando preço…</span>
+                          <Skeleton className="h-4 w-24" />
+                        </>
                       )}
                     </div>
                   </div>
@@ -472,7 +481,12 @@ function BillingPage() {
                   search={{ origin: 'billing' }}
                   className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
                 >
-                  Mudar para {info.name}
+                  {/* Sem assinatura em vigor no Stripe não há o que mudar:
+                      o caminho é contratar. */}
+                  {plan && subscription?.externalSubscriptionId
+                    ? 'Mudar para'
+                    : 'Contratar'}{' '}
+                  {info.name}
                   <ArrowRight
                     size={12}
                     color="currentColor"

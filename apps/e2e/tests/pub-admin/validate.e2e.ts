@@ -57,6 +57,33 @@ test('Starter recebe FORBIDDEN ao chamar a validação direto', async ({
   expect(response.status()).toBe(403)
 })
 
+test('Pro com reserva confirmada ainda valida na margem depois do fim do jogo', async ({
+  page
+}) => {
+  const { user, barId } = await createPub({ subscription: { plan: 'pro' } })
+  // Sem fim informado o jogo dura 3h: acabou há 1h, e a janela de validação
+  // fecha 3h depois do fim.
+  const { eventId } = await createEvent(barId, {
+    startsAt: new Date(Date.now() - 4 * 3_600_000)
+  })
+  const reservation = await createReservation(eventId)
+  await signIn(page, user)
+  await page.goto('/admin/validate')
+
+  await lookup(page, reservation.code)
+  await expect(
+    page.getByRole('heading', { name: `Reserva de ${reservation.guestName}` })
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await page
+    .getByRole('dialog', { name: 'Registrar chegada?' })
+    .getByRole('button', { name: 'Confirmar chegada' })
+    .click()
+  await expect(
+    page.getByText('Chegada registrada. 1 de 2 validados.')
+  ).toBeVisible()
+})
+
 test('Elite registra chegada com confirmação, desfaz e completa a reserva', async ({
   page
 }) => {

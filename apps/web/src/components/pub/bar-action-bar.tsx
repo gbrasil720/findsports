@@ -146,8 +146,13 @@ export function BarActions({
     />
   ))
 
-  // "Garanta seu lugar" só quando dá para reservar agora (WEB-353).
-  const title = onReserve ? 'Garanta seu lugar' : 'Fale com o bar'
+  // "Garanta seu lugar" só quando dá para reservar agora (WEB-353), e "Fale
+  // com o bar" só com WhatsApp ou telefone: sobrando a rota, o título é ela.
+  const title = onReserve
+    ? 'Garanta seu lugar'
+    : !whatsappUrl && !phone && directionsUrl
+      ? 'Como chegar'
+      : 'Fale com o bar'
 
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.

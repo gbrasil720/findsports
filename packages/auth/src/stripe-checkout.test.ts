@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'bun:test'
-import { customerPrefillFor, trialEndForCheckout } from './stripe-checkout'
+import { afterEach, describe, expect, it, spyOn } from 'bun:test'
+import type Stripe from 'stripe'
+import {
+  customerPrefillFor,
+  founderCouponUsable,
+  prefillCustomer,
+  setFounderCouponSource,
+  trialEndForCheckout,
+  usableFounderCoupon
+} from './stripe-checkout'
 
 const now = new Date('2026-10-09T12:00:00Z')
 const HOUR = 60 * 60 * 1000
@@ -100,5 +108,125 @@ describe('cliente do Stripe com os dados do cadastro (WEB-328)', () => {
     })
     expect(prefill.individual_name).toHaveLength(150)
     expect(prefill.business_name).toHaveLength(150)
+  })
+})
+
+describe('consulta do cupom de fundador com teto de tempo', () => {
+  /** Stripe dublado: guarda as opções de cada consulta de cupom. */
+  function stripeWith(answer: () => Promise<{ valid: boolean }>) {
+    const requests: unknown[] = []
+    const client = {
+      coupons: {
+        retrieve: (_id: string, _params: unknown, request: unknown) => {
+          requests.push(request)
+          return answer()
+        }
+      }
+    } as unknown as Stripe
+    return { client, requests }
+  }
+  // O que o SDK devolve quando o teto estoura.
+  const slow = () => Promise.reject(new Error('Request aborted due to timeout'))
+
+  afterEach(() => setFounderCouponSource(async () => null))
+
+  it('consulta com teto de 5s e sem nova tentativa', async () => {
+    const { client, requests } = stripeWith(async () => ({ valid: true }))
+    expect(await founderCouponUsable(client, 'eM7dQpMF')).toBe(true)
+    expect(requests).toEqual([{ timeout: 5000, maxNetworkRetries: 0 }])
+  })
+
+  /** O cupom que `usableFounderCoupon` devolveu e o que ele registrou no log. */
+  async function checkoutWith(answer: () => Promise<{ valid: boolean }>) {
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      setFounderCouponSource(async () => 'eM7dQpMF')
+      const coupon = await usableFounderCoupon(stripeWith(answer).client)
+      const logs = error.mock.calls.map(([line]) => JSON.parse(String(line)))
+      return { coupon, logs }
+    } finally {
+      error.mockRestore()
+    }
+  }
+
+  // Lentidão do Stripe não pode tirar o desconto prometido ao bar fundador.
+  it('Stripe lento: o checkout mantém o cupom e registra que não conferiu', async () => {
+    expect(await checkoutWith(slow)).toEqual({
+      coupon: 'eM7dQpMF',
+      logs: [
+        {
+          level: 'error',
+          event: 'stripe_founder_coupon_unverified',
+          couponId: 'eM7dQpMF',
+          message: 'Request aborted due to timeout'
+        }
+      ]
+    })
+    expect(await founderCouponUsable(stripeWith(slow).client, 'eM7dQpMF')).toBe(
+      true
+    )
+  })
+
+  const unavailable = {
+    coupon: null,
+    logs: [
+      {
+        level: 'error',
+        event: 'stripe_founder_coupon_unavailable',
+        couponId: 'eM7dQpMF',
+        reason: 'coupon_invalid'
+      }
+    ]
+  }
+
+  it('cupom esgotado: segue sem ele, e o log diz que foi o cupom', async () => {
+    expect(await checkoutWith(async () => ({ valid: false }))).toEqual(
+      unavailable
+    )
+  })
+
+  it('cupom apagado ou com o id errado: o Stripe respondeu que não existe', async () => {
+    const missing = () =>
+      Promise.reject(
+        Object.assign(new Error('No such coupon'), {
+          type: 'StripeInvalidRequestError'
+        })
+      )
+    expect(await checkoutWith(missing)).toEqual(unavailable)
+    expect(
+      await founderCouponUsable(stripeWith(missing).client, 'eM7dQpMF')
+    ).toBe(false)
+  })
+
+  it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
+    setFounderCouponSource(async () => 'eM7dQpMF')
+    const { client } = stripeWith(async () => ({ valid: true }))
+    expect(await usableFounderCoupon(client)).toBe('eM7dQpMF')
+  })
+})
+
+describe('dados do cadastro no cliente com teto de tempo', () => {
+  it('leitura e gravação do cliente não seguram o checkout além de 5s', async () => {
+    const requests: unknown[] = []
+    const client = {
+      customers: {
+        retrieve: async (_id: string, _params: unknown, request: unknown) => {
+          requests.push(request)
+          return { id: 'cus_1', address: null }
+        },
+        update: async (_id: string, _params: unknown, request: unknown) => {
+          requests.push(request)
+        }
+      }
+    } as unknown as Stripe
+    await prefillCustomer(client, 'cus_1', 'Dona do Bar', {
+      name: 'Bar da Dona',
+      address: 'Rua A, 1',
+      neighborhood: 'Centro',
+      city: 'São Paulo',
+      uf: 'SP'
+    })
+    const quick = { timeout: 5000, maxNetworkRetries: 0 }
+    expect(requests).toEqual([quick, quick])
   })
 })

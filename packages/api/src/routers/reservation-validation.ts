@@ -21,8 +21,9 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import { byMatchOrder } from '../lib/game-participants'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
-import { canManageReservations } from '../lib/reservation-intake'
+import { canValidateReservations } from '../lib/reservation-intake'
 import {
   ARRIVAL_UNDO_GRACE_MS,
   assertCanValidateReservations,
@@ -48,7 +49,8 @@ type Reader = Pick<typeof db, 'select'>
 
 /**
  * Passa o bar com Elite vigente, ou com reserva em aberto para honrar
- * (WEB-341). Não depende do código digitado.
+ * (WEB-341), até a janela de validação do jogo fechar. Não depende do código
+ * digitado.
  *
  * É o nível "capacidade" da ADR 0003. O interruptor de recebimento de
  * reservas (WEB-131) é "disposição" e NÃO entra aqui: desligar impede pedidos
@@ -68,10 +70,7 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
     })
   }
   const subscription = ownBar.subscription ?? null
-  // ponytail: "em aberto" acaba no fim do jogo, e a janela de validação fecha
-  // uma margem depois. Sem Elite, a chegada registrada nessa margem é
-  // recusada; se fizer falta, `hasOpenReservations` passa a somar a margem.
-  if (!(await canManageReservations(ownBar.id, subscription))) {
+  if (!(await canValidateReservations(ownBar.id, subscription))) {
     assertCanValidateReservations(subscription)
   }
 
@@ -188,7 +187,7 @@ export const reservationValidationRouter = router({
         .from(eventParticipants)
         .innerJoin(team, eq(team.id, eventParticipants.teamId))
         .where(eq(eventParticipants.eventId, found.eventId))
-        .orderBy(team.name)
+        .orderBy(...byMatchOrder(eventParticipants))
 
       return {
         codeId: found.codeId,

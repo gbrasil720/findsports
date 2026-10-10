@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { afterAll, expect, test } from 'bun:test'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import type { Context } from '../../context'
 
@@ -70,6 +70,19 @@ function fanContext(userId: string, now = new Date()): Context {
  * que são as ações de alta intenção do cenário. O bar não precisa de plano
  * ativo: o gravador não consulta a assinatura, só `is_active` e telefone.
  */
+// Usuários semeados por `seedFanBarPair`. Sem a limpeza, cada rodada deixava
+// bares ativos no centro de São Paulo, e com o acúmulo eles empurravam para
+// fora da página o bar de outros testes de busca (falha intermitente local).
+const seededUserIds: string[] = []
+
+afterAll(async () => {
+  if (seededUserIds.length === 0) return
+  const { db, inArray } = await import('@findsports_oficial/db')
+  const { user } = await import('@findsports_oficial/db/schema/auth')
+  // O bar, os eventos comerciais e os rollups caem em cascata com o dono.
+  await db.delete(user).where(inArray(user.id, seededUserIds))
+})
+
 async function seedFanBarPair(now = new Date()) {
   const { db } = await import('@findsports_oficial/db')
   const { user } = await import('@findsports_oficial/db/schema/auth')
@@ -78,6 +91,7 @@ async function seedFanBarPair(now = new Date()) {
   const fanId = crypto.randomUUID()
   const pubUserId = crypto.randomUUID()
   const barId = crypto.randomUUID()
+  seededUserIds.push(fanId, pubUserId)
 
   await db.insert(user).values([
     {

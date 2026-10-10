@@ -231,4 +231,15 @@ describe('montagem das entradas para o painel (ESC-19)', () => {
     )
     expect(entradas.every((entrada) => !entrada.sobrescrito)).toBe(true)
   })
+
+  // A confirmação de "Voltar ao padrão" diz o efeito nas flags de cobrança.
+  it('leva o efeito de voltar ao padrão das flags de `billing.*`', () => {
+    for (const entrada of montarEntradasAppConfig({})) {
+      if (entrada.key.startsWith('billing.')) {
+        expect(entrada.efeitoPadrao).toEqual(expect.any(String))
+      } else {
+        expect(entrada.efeitoPadrao).toBeNull()
+      }
+    }
+  })
 })

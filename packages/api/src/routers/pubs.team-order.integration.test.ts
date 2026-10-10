@@ -14,9 +14,10 @@ import { contextFor, load } from './integration-seed'
 
 /**
  * WEB-345: o card da busca dizia "Palmeiras × Corinthians" e o perfil do
- * mesmo bar "Corinthians × Palmeiras". `event_participants` não guarda ordem,
- * e as duas leituras não pediam nenhuma: cada plano devolvia a sua. As duas
- * passam a ordenar pelo nome do time, como as demais (`game-participants`).
+ * mesmo bar "Corinthians × Palmeiras": `event_participants` não guardava
+ * ordem e cada plano devolvia a sua. Hoje a ordem é a que o bar informou
+ * (`position`, mandante primeiro); jogo anterior à coluna sai por nome do
+ * time. Todas as leituras decidem em `game-participants`.
  */
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -25,7 +26,7 @@ const ORIGIN_LAT = -30.25
 const ORIGIN_LNG = -44.25
 
 integrationTest(
-  'card da busca e perfil mostram os times do jogo na mesma ordem',
+  'busca, perfil e grade mostram os times na ordem que o bar informou',
   async () => {
     const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
       await Promise.all([load(), import('../lib/app-config')])
@@ -34,13 +35,10 @@ integrationTest(
     const ownerId = crypto.randomUUID()
     const sportId = crypto.randomUUID()
     const barId = crypto.randomUUID()
-    const eventId = crypto.randomUUID()
     const now = new Date()
-    // Gravados fora da ordem alfabética, como o bar marcou no formulário.
-    const times = [
-      { id: crypto.randomUUID(), name: 'Palmeiras' },
-      { id: crypto.randomUUID(), name: 'Corinthians' }
-    ]
+    // Fora da ordem alfabética: o Palmeiras joga em casa.
+    const palmeiras = { id: crypto.randomUUID(), name: 'Palmeiras' }
+    const corinthians = { id: crypto.randomUUID(), name: 'Corinthians' }
 
     await db.insert(user).values(
       [
@@ -62,7 +60,7 @@ integrationTest(
         slug: `team-order-integration-${sportId}`
       })
       await db.insert(team).values(
-        times.map((time) => ({
+        [palmeiras, corinthians].map((time) => ({
           ...time,
           sportId,
           slug: `team-${time.id}`
@@ -82,24 +80,9 @@ integrationTest(
       await db
         .insert(subscription)
         .values({ barId, plan: 'starter', status: 'active' })
-      await db.insert(event).values({
-        id: eventId,
-        barId,
-        sportId,
-        championship: 'Brasileirão',
-        startsAt: new Date(now.getTime() + 60 * 60_000)
-      })
-      for (const time of times) {
-        await db.insert(eventParticipants).values({ eventId, teamId: time.id })
-      }
 
-      const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
-      const esperado = ['Corinthians', 'Palmeiras']
-
-      const perfil = await caller.pubs.getById({ id: barId })
-      expect(
-        perfil.events[0]?.participants.map(({ team }) => team.name)
-      ).toEqual(esperado)
+      const fan = appRouter.createCaller(contextFor(fanId, 'fan', now))
+      const owner = appRouter.createCaller(contextFor(ownerId, 'pub', now))
 
       const caminhos = [
         { nome: 'camadas', sort: 'relevance', tiered: true },
@@ -109,22 +92,85 @@ integrationTest(
 
       // Coordenada nova a cada busca: o cache de 60 s usa a origem exata.
       let passo = 0
-      for (const caminho of caminhos) {
-        await setAppConfig('search.tiered_plan_query', caminho.tiered, null)
-        passo += 1
-        const page = await caller.pubs.search({
-          lat: ORIGIN_LAT,
-          lng: ORIGIN_LNG + passo * 0.0001,
-          radiusKm: 3,
-          sort: caminho.sort,
-          limit: 20
-        })
-        const card = page.bars.find((encontrado) => encontrado.id === barId)
-        expect({
-          caminho: caminho.nome,
-          times: card?.nextEvent?.participants.map(({ team }) => team.name)
-        }).toEqual({ caminho: caminho.nome, times: esperado })
+      const leituras = async () => {
+        const perfil = await fan.pubs.getById({ id: barId })
+        const grade = await owner.pub.getMyEvents()
+        const lidas: Record<string, string[] | undefined> = {
+          perfil: perfil.events[0]?.participants.map(({ team }) => team.name),
+          grade: grade[0]?.participants.map(({ team }) => team.name)
+        }
+        for (const caminho of caminhos) {
+          await setAppConfig('search.tiered_plan_query', caminho.tiered, null)
+          passo += 1
+          const page = await fan.pubs.search({
+            lat: ORIGIN_LAT,
+            lng: ORIGIN_LNG + passo * 0.0001,
+            radiusKm: 3,
+            sort: caminho.sort,
+            limit: 20
+          })
+          const card = page.bars.find((encontrado) => encontrado.id === barId)
+          lidas[caminho.nome] = card?.nextEvent?.participants.map(
+            ({ team }) => team.name
+          )
+        }
+        return lidas
       }
+      const emTodas = (times: string[]) => ({
+        perfil: times,
+        grade: times,
+        camadas: times,
+        linear: times,
+        nota: times
+      })
+
+      await owner.pub.createEvent({
+        sportId,
+        championship: 'Brasileirão',
+        startsAt: new Date(now.getTime() + 60 * 60_000).toISOString(),
+        participantIds: [palmeiras.id, corinthians.id]
+      })
+      expect(await leituras()).toEqual(emTodas(['Palmeiras', 'Corinthians']))
+
+      const [jogo] = await db
+        .select({ id: event.id })
+        .from(event)
+        .where(eq(event.barId, barId))
+      if (!jogo) throw new Error('jogo não foi criado')
+
+      // Jogo anterior à coluna: sem `position`, sai por nome do time.
+      await db
+        .update(eventParticipants)
+        .set({ position: null })
+        .where(eq(eventParticipants.eventId, jogo.id))
+      expect(await leituras()).toEqual(emTodas(['Corinthians', 'Palmeiras']))
+
+      // Editar grava a ordem enviada, também no jogo antigo. O formulário
+      // manda os demais campos junto.
+      const editar = (participantIds: string[]) =>
+        owner.pub.updateEvent({
+          eventId: jogo.id,
+          championship: 'Brasileirão',
+          participantIds
+        })
+      await editar([palmeiras.id, corinthians.id])
+      expect(await leituras()).toEqual(emTodas(['Palmeiras', 'Corinthians']))
+
+      // Inverter no formulário é mandar o array invertido.
+      await editar([corinthians.id, palmeiras.id])
+      expect(await leituras()).toEqual(emTodas(['Corinthians', 'Palmeiras']))
+
+      // Editar outro campo não mexe nos times.
+      await editar([palmeiras.id, corinthians.id])
+      await owner.pub.updateEvent({ eventId: jogo.id, championship: 'Copa' })
+      expect(await leituras()).toEqual(emTodas(['Palmeiras', 'Corinthians']))
+
+      // Só os times, sem nenhum outro campo: a API aceita e não pode estourar.
+      await owner.pub.updateEvent({
+        eventId: jogo.id,
+        participantIds: [corinthians.id, palmeiras.id]
+      })
+      expect(await leituras()).toEqual(emTodas(['Corinthians', 'Palmeiras']))
     } finally {
       await resetAppConfig('search.tiered_plan_query')
       await db.delete(user).where(inArray(user.id, [fanId, ownerId]))

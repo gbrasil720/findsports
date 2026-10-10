@@ -1,3 +1,4 @@
+import { auth } from '@findsports_oficial/auth'
 import { db, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -13,7 +14,7 @@ import { fanProcedure, pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
-  normalizeAmenityIds
+  writableAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import {
@@ -47,6 +48,29 @@ async function assertOnboardingPending(userId: string) {
       code: 'CONFLICT',
       message: 'Onboarding já concluído.'
     })
+  }
+}
+
+/**
+ * `onboardingCompleted` muda aqui por fora do better-auth, e o cookie cache da
+ * sessão segue com o valor antigo por até 60s. Expirá-lo era só do cliente, num
+ * segundo pedido (`refreshSessionCache`): quando esse pedido falhava, o guard
+ * devolvia ao onboarding quem tinha acabado de concluir, com o bar já criado.
+ * Agora o cookie expira na resposta da própria mutação — o `startCookies`
+ * repassa o `Set-Cookie` ao Start.
+ *
+ * Falha aqui não desfaz o cadastro, que já está gravado: vai para o log, e o
+ * pedido do cliente continua como segunda tentativa.
+ */
+async function expireSessionCache(headers: Headers | undefined) {
+  if (!headers) return
+  try {
+    await auth.api.expireSessionCache({ headers })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    console.error(
+      JSON.stringify({ event: 'session_cache_expire_failed', message })
+    )
   }
 }
 
@@ -138,7 +162,7 @@ export const onboardingRouter = router({
             address: input.address,
             phone: input.phone ?? null,
             description: input.description ?? null,
-            amenities: normalizeAmenityIds(input.amenities ?? []),
+            amenities: writableAmenityIds(input.amenities ?? []),
             screenCount: input.screenCount ?? null,
             latitude,
             longitude,
@@ -171,6 +195,7 @@ export const onboardingRouter = router({
           .where(eq(user.id, userId))
       })
 
+      await expireSessionCache(ctx.headers)
       return { success: true }
     }),
 
@@ -219,6 +244,7 @@ export const onboardingRouter = router({
           .where(eq(user.id, userId))
       })
 
+      await expireSessionCache(ctx.headers)
       return { success: true }
     })
 })

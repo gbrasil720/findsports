@@ -269,7 +269,11 @@ export const eventParticipants = pgTable(
       .references(() => event.id, { onDelete: 'cascade' }),
     teamId: text('team_id')
       .notNull()
-      .references(() => team.id, { onDelete: 'cascade' })
+      .references(() => team.id, { onDelete: 'cascade' }),
+    // Ordem do confronto, como o bar informou: 0 = mandante, 1 = visitante.
+    // Nula nos jogos anteriores à coluna, que saem por nome do time
+    // (`game-participants`).
+    position: smallint('position')
   },
   (table) => [
     primaryKey({ columns: [table.eventId, table.teamId] }),

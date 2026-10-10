@@ -485,6 +485,17 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
 
   await page.goto('/plan')
   await expect(page.getByText(notice)).toBeVisible()
+  // O cabeçalho acompanha o aviso em vez de convidar a trocar de plano.
+  await expect(page.getByText('Cancelamento agendado')).toBeVisible()
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: /^Seu plano Starter cancela em \d{2}\/\d{2}\.$/
+    })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Escolha seu novo plano.' })
+  ).toHaveCount(0)
   await page.getByRole('button', { name: 'Reativar assinatura' }).click()
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
 

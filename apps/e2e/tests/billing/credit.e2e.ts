@@ -74,6 +74,43 @@ test('sem crédito: só o valor da próxima cobrança', async ({
     /Valor da próxima cobrança:\sR\$\s69,00/
   )
   await expect(currentPlan(page).getByText(/de crédito/)).toHaveCount(0)
+  // Assinatura sem forma de pagamento no Stripe: nenhuma linha de cartão.
+  await expect(currentPlan(page).getByText(/Cartão/)).toHaveCount(0)
+})
+
+// Quem contrata durante o teste só é cobrado no fim dele: o que confirma que
+// o cartão ficou salvo é esta linha, lida da assinatura no Stripe.
+test('contratou no teste grátis: o card confirma o cartão salvo', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const pub = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: inDays(100),
+      externalSubscriptionId: subscriptionId
+    }
+  })
+  await seedStripeBalance(
+    request,
+    stripeSubscription({
+      id: subscriptionId,
+      status: 'trialing',
+      plan: 'elite',
+      userId: pub.user.id,
+      cardLast4: '4242'
+    }),
+    { balance: 0, nextAmountDue: 0 }
+  )
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+
+  await expect(currentPlan(page)).toContainText('Contratado · em teste')
+  await expect(
+    currentPlan(page).getByText('Cartão •••• 4242 salvo', { exact: true })
+  ).toBeVisible()
 })
 
 // O cliente tRPC agrupa em lote o que é pedido na mesma renderização, e o lote
@@ -122,6 +159,48 @@ test('consulta do saldo pendente não segura o card do plano', async ({
   await expect(currentPlan(page)).toContainText(
     /Você tem R\$\s198,70 de crédito/
   )
+})
+
+// Na volta à janela, com os dados vencidos (60s), assinatura e saldo refazem
+// no mesmo instante. O saldo vai ao Stripe: no lote, seguraria a assinatura.
+test('refetch ao voltar à janela: o saldo não viaja no lote da assinatura', async ({
+  page,
+  request
+}) => {
+  await page.clock.install()
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const pub = await createPub({
+    subscription: { plan: 'starter', externalSubscriptionId: subscriptionId }
+  })
+  await seedStripeBalance(
+    request,
+    stripeSubscription({
+      id: subscriptionId,
+      status: 'active',
+      plan: 'starter',
+      userId: pub.user.id
+    }),
+    { balance: 0, nextAmountDue: 6900 }
+  )
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+  await expect(currentPlan(page)).toContainText(/Valor da próxima cobrança/)
+
+  const paths: string[] = []
+  page.on('request', (sent) => {
+    const { pathname } = new URL(sent.url())
+    if (pathname.startsWith('/api/trpc/')) paths.push(pathname)
+  })
+  await page.clock.fastForward(61_000)
+  // Em string: o tsconfig da suíte não carrega os tipos do DOM.
+  await page.evaluate(`window.dispatchEvent(new Event('visibilitychange'))`)
+
+  await expect
+    .poll(() => paths.filter((path) => path.includes('getMySubscription')))
+    .toHaveLength(1)
+  await expect
+    .poll(() => paths.filter((path) => path.includes('getMyBillingBalance')))
+    .toEqual(['/api/trpc/pub.getMyBillingBalance'])
 })
 
 test('Stripe sem resposta para a assinatura: o card aparece como antes, sem o saldo', async ({

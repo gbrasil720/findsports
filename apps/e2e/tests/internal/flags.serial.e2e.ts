@@ -118,7 +118,9 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
   await save.click()
   await expect(
     page.locator('[data-sonner-toast][data-type="error"]')
-  ).toContainText('days: Too big: expected number to be <=180')
+  ).toContainText(
+    'Valor recusado — days: Grande demais: esperava que o número fosse <= 180'
+  )
   expect(await storedValue(key)).toBeUndefined()
 
   await field.fill(JSON.stringify(value))
@@ -135,8 +137,10 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
     void dialog.dismiss()
   })
   await reset.click()
-  expect(question).toContain(key)
-  expect(question).toContain('"enabled":false')
+  // Flag de cobrança: a pergunta diz o efeito, não o JSON do padrão.
+  expect(question).toBe(
+    `Voltar ${key} ao padrão? O trial do cadastro será desligado para bares novos. Continuar?`
+  )
   await expect(flag).toContainText('Sobrescrito')
   expect(resets).toBe(0)
   expect(await storedValue(key)).toEqual(value)

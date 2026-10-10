@@ -15,6 +15,8 @@ import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
   CHECKOUT_ENABLED_DEFAULT,
+  earnsDowngradeCredit,
+  founderCouponFromQuery,
   getDefaultPlanSelection,
   getPlanExitLink,
   getPlanHeader,
@@ -74,7 +76,7 @@ function PlanSelection() {
   )
   const checkoutLiberado =
     configQuery.data?.['billing.checkout_enabled'] ?? CHECKOUT_ENABLED_DEFAULT
-  const founderCouponAvailable = founderCouponQuery.data?.available ?? false
+  const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   const hasActivePlan = currentPlan !== null
@@ -274,8 +276,7 @@ function PlanSelection() {
           </p>
           {/* WEB-350: só assinatura paga no Stripe gera crédito proporcional;
               em teste grátis não há o que creditar. */}
-          {subscription?.status === 'active' &&
-          subscription.externalSubscriptionId ? (
+          {earnsDowngradeCredit(subscription) ? (
             <p className="text-sm">
               A diferença vira crédito na sua conta e abate as próximas
               mensalidades (não é reembolsada no cartão).

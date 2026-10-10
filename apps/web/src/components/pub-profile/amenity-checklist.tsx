@@ -2,7 +2,8 @@ import {
   AMENITIES,
   AMENITY_GROUPS,
   MAX_SCREEN_COUNT,
-  motivoTelasInvalido
+  motivoTelasInvalido,
+  RESERVATIONS_AMENITY_ID
 } from '@findsports_oficial/api/lib/amenities'
 import Check from 'reicon-react/icons/Check'
 
@@ -13,6 +14,12 @@ type Props = {
   onScreenCountChange: (value: number | null) => void
   idPrefix: string
 }
+
+/**
+ * "Aceita reserva" não está entre os itens: não é escolha do bar, aparece no
+ * perfil quando ele recebe reservas pela Onside (`publicAmenityIds`).
+ */
+const ITENS = AMENITIES.filter(({ id }) => id !== RESERVATIONS_AMENITY_ID)
 
 /**
  * O checklist de características, usado no onboarding e no `/admin`.
@@ -44,7 +51,7 @@ export function AmenityChecklist({
           </legend>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {AMENITIES.filter((amenity) => amenity.group === group.key).map(
+            {ITENS.filter((amenity) => amenity.group === group.key).map(
               (amenity) => {
                 const on = isOn(amenity.id)
 
@@ -78,6 +85,14 @@ export function AmenityChecklist({
               }
             )}
           </div>
+
+          {group.key === 'practical' ? (
+            <p className="mt-2 text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] text-xs leading-snug">
+              “Aceita reserva” aparece sozinha no perfil quando o bar recebe
+              reservas pela Onside, o que se liga em “Reservas pela Onside”, em
+              Meu espaço.
+            </p>
+          ) : null}
 
           {group.key === 'watch' ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-3">

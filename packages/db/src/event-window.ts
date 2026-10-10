@@ -39,6 +39,9 @@ export const VALIDATION_WINDOW_MARGIN_HOURS = 3
 export const VALIDATION_WINDOW_MARGIN_MS =
   VALIDATION_WINDOW_MARGIN_HOURS * 60 * 60 * 1000
 
+/** Mesma margem, como literal de `interval` do Postgres. */
+export const VALIDATION_WINDOW_MARGIN_INTERVAL = `${VALIDATION_WINDOW_MARGIN_HOURS} hours`
+
 type EventTimes = {
   startsAt: Date | string
   endsAt: Date | string | null

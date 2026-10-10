@@ -12,7 +12,7 @@ import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
-import { getPlan } from '@/lib/plan-catalog'
+import { getPlan, isContractedTrial } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { roleAccountLabel } from '@/lib/roles'
 import { getScheduledCancelAt } from '@/lib/scheduled-cancel'
@@ -226,6 +226,7 @@ function SubscriptionConfirmed() {
         plan={plan}
         monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
         status={subscription?.status ?? ''}
+        contractedTrial={isContractedTrial(subscription)}
         currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
         cancelAt={scheduledCancelAt}
         subscriptionRef={subscription?.externalSubscriptionId ?? null}

@@ -23,7 +23,7 @@ import { pubProcedure, router } from '../index'
 import {
   AMENITIES,
   MAX_SCREEN_COUNT,
-  normalizeAmenityIds
+  writableAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { readInterestSignal } from '../lib/attendance'
@@ -48,7 +48,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { byTeamName, participantNames } from '../lib/game-participants'
+import { byMatchOrder, participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -155,20 +155,28 @@ export function assertEventIntervalValid(
  * Recusa de `createEvent` no limite de jogos. Pro ou Elite parado (`past_due`
  * ou trial vencido) cai no limite do Starter (WEB-129), mas não é Starter nem
  * resolve com upgrade: o caminho é regularizar a assinatura (WEB-331).
+ *
+ * `periodEnd` é o da política: sem ciclo vigente a janela é a dos últimos 30
+ * dias, dita com as palavras de `apps/web/src/lib/event-limit.ts`.
  */
 export function eventLimitMessage(
   subscription: SubscriptionForPlan | null,
+  periodEnd: string | null,
   now = new Date()
 ): string {
   const standing = getSubscriptionStanding(subscription, now)
+  const window = periodEnd ? 'por ciclo de cobrança' : 'nos últimos 30 dias'
   if (
     subscription &&
     subscription.plan !== 'starter' &&
     (standing === 'past_due' || standing === 'trial_ended')
   ) {
-    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Regularize a assinatura para voltar aos jogos ilimitados.`
+    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Regularize a assinatura para voltar aos jogos ilimitados.`
   }
-  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.`
+  if (!subscription) {
+    return `Sem plano ativo, o bar pode cadastrar até ${STARTER_EVENT_LIMIT} jogos ${window}. Escolha um plano para liberar jogos ilimitados.`
+  }
+  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
 /**
@@ -329,7 +337,10 @@ export const pubRouter = router({
           ...(input.uf && { uf: input.uf }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
-            amenities: normalizeAmenityIds(input.amenities)
+            amenities: writableAmenityIds(
+              input.amenities,
+              existingBar.amenities
+            )
           }),
           ...(input.screenCount !== undefined && {
             screenCount: input.screenCount
@@ -544,7 +555,7 @@ export const pubRouter = router({
           sport: true,
           participants: {
             with: { team: true },
-            orderBy: byTeamName
+            orderBy: byMatchOrder
           }
         },
         orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -632,7 +643,10 @@ export const pubRouter = router({
         if (policy.status === 'limited' && !policy.canCreate) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: eventLimitMessage(existingSubscription ?? null)
+            message: eventLimitMessage(
+              existingSubscription ?? null,
+              policy.periodEnd
+            )
           })
         }
 
@@ -667,9 +681,11 @@ export const pubRouter = router({
           await tx
             .insert(eventParticipants)
             .values(
-              input.participantIds.map((teamId) => ({
+              input.participantIds.map((teamId, position) => ({
                 eventId: newEvent.id,
-                teamId
+                teamId,
+                // A ordem do array é a do confronto: mandante primeiro.
+                position
               }))
             )
             .onConflictDoNothing()
@@ -731,18 +747,19 @@ export const pubRouter = router({
       await db.transaction(async (tx) => {
         await assertTeamsMatchSport(tx, effectiveSportId, participantIds ?? [])
 
-        await tx
-          .update(event)
-          .set({
-            ...(input.sportId && { sportId: input.sportId }),
-            ...(input.championship && { championship: input.championship }),
-            ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
-            ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
-            ...(input.participantFreeText !== undefined && {
-              participantFreeText: input.participantFreeText || null
-            })
+        const changes = {
+          ...(input.sportId && { sportId: input.sportId }),
+          ...(input.championship && { championship: input.championship }),
+          ...(input.startsAt && { startsAt: new Date(input.startsAt) }),
+          ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
+          ...(input.participantFreeText !== undefined && {
+            participantFreeText: input.participantFreeText || null
           })
-          .where(eq(event.id, input.eventId))
+        }
+        // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
+        if (Object.keys(changes).length > 0) {
+          await tx.update(event).set(changes).where(eq(event.id, input.eventId))
+        }
 
         if (participantIds !== undefined) {
           await tx
@@ -753,9 +770,10 @@ export const pubRouter = router({
             await tx
               .insert(eventParticipants)
               .values(
-                participantIds.map((teamId) => ({
+                participantIds.map((teamId, position) => ({
                   eventId: input.eventId,
-                  teamId
+                  teamId,
+                  position
                 }))
               )
               .onConflictDoNothing()

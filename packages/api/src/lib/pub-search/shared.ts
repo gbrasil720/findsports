@@ -2,6 +2,7 @@ import { type SQL, sql } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
+import { declaredAmenityIds, RESERVATIONS_AMENITY_ID } from '../amenities'
 import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
@@ -42,6 +43,24 @@ const MAX_LIVE_SPAN_INTERVAL = '24 hours'
 export const jogoNaoAcabou = (e: SQL) => sql`
   ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
   AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
+
+/**
+ * O bar recebe reservas agora: interruptor ligado e Elite vigente. É
+ * `receivesReservations` (`../reservation-intake`) em SQL, e o teste de
+ * integração do filtro compara as duas.
+ *
+ * Lê `subscription`, e não `bar.plan`: a projeção só acompanha o relógio uma
+ * vez por dia, e um trial vencido seguiria "recebendo" até a reconciliação.
+ */
+export const recebeReservas = (barAlias: SQL) => sql`(
+  ${barAlias}.accepts_reservations
+  AND EXISTS (
+    SELECT 1 FROM subscription assinatura
+    WHERE assinatura.bar_id = ${barAlias}.id
+      AND subscription_current_plan(
+        assinatura.plan, assinatura.status, assinatura.current_period_end
+      ) = 'elite'
+  ))`
 
 export type SearchInput = {
   lat: number
@@ -213,6 +232,11 @@ export type FiltrosBusca = {
    * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
    * uma tabela de junção — ver migration 0021.
    *
+   * "Aceita reserva" é a exceção: não é marcada, é derivada do recebimento
+   * de fato, como no perfil (`publicAmenityIds`). Pedir essa característica
+   * é pedir `recebeReservas`, sem olhar o id em `amenities`; as demais
+   * continuam pelo `@>`, e as duas condições somam com E.
+   *
    * O alias da tabela do bar muda entre os dois caminhos, então entra como
    * fragmento montado pelo chamador, igual ao filtro de campeonato.
    */
@@ -247,9 +271,10 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   // Cada id vai como parâmetro ligado, nunca interpolado no texto do SQL —
   // mesma regra do campeonato, ainda que aqui a entrada já esteja reduzida a
   // números conhecidos pela normalização no roteador.
-  const listaAmenidades = amenities?.length
+  const declaradas = declaredAmenityIds(amenities ?? [])
+  const listaAmenidades = declaradas.length
     ? sql.join(
-        amenities.map((id) => sql`${id}`),
+        declaradas.map((id) => sql`${id}`),
         sql`, `
       )
     : null
@@ -301,9 +326,15 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       ORDER BY e.starts_at ASC, e.id ASC
       LIMIT 1`,
     amenityFilter: (barAlias) =>
-      listaAmenidades
-        ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
-        : sql``
+      sql`${
+        listaAmenidades
+          ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
+          : sql``
+      } ${
+        amenities?.includes(RESERVATIONS_AMENITY_ID)
+          ? sql`AND ${recebeReservas(barAlias)}`
+          : sql``
+      }`
   }
 }
 

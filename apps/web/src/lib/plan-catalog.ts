@@ -15,6 +15,7 @@ import Fire from 'reicon-react/icons/Fire'
 import Star from 'reicon-react/icons/Star'
 import Trophy from 'reicon-react/icons/Trophy'
 import { LAPSED_COPY } from './lapsed-plan'
+import { getCancelDay } from './scheduled-cancel'
 
 export type PlanFeature = string
 
@@ -72,12 +73,38 @@ export type PlanChargeDisplay = {
   hint: string | null
 }
 
+/**
+ * Cupom de fundador para o preço de vitrine, a partir da consulta. `null`
+ * enquanto ela não responde: o valor ainda pode trocar de tabela cheia para
+ * fundador, e quem desenha o preço mostra carregamento no lugar dele.
+ * Consulta que falhou vale tabela cheia, como sempre valeu.
+ */
+export function founderCouponFromQuery(query: {
+  isPending: boolean
+  data?: { available: boolean }
+}): boolean | null {
+  if (query.isPending) return null
+  return query.data?.available ?? false
+}
+
 export function planChargeForShowcase(
   plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
   founderCouponAvailable: boolean,
+  hasSubscription?: boolean
+): PlanChargeDisplay
+export function planChargeForShowcase(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  founderCouponAvailable: boolean | null,
+  hasSubscription?: boolean
+): PlanChargeDisplay | null
+export function planChargeForShowcase(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  // `null`: cupom ainda carregando, sem preço a mostrar (`founderCouponFromQuery`).
+  founderCouponAvailable: boolean | null,
   // Quem já assina troca de plano pelo portal, sem checkout (WEB-353).
   hasSubscription = false
-): PlanChargeDisplay {
+): PlanChargeDisplay | null {
+  if (founderCouponAvailable === null) return null
   if (founderCouponAvailable) {
     return {
       chargeReais: plan.founderPrice,
@@ -135,7 +162,23 @@ export function planChargeForCurrentPlan(
     monthlyDiscountReais: number | null
   },
   founderCouponAvailable: boolean
-): PlanChargeDisplay {
+): PlanChargeDisplay
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean | null
+): PlanChargeDisplay | null
+export function planChargeForCurrentPlan(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  subscription: {
+    externalSubscriptionId: string | null
+    monthlyDiscountReais: number | null
+  },
+  founderCouponAvailable: boolean | null
+): PlanChargeDisplay | null {
   return subscription.externalSubscriptionId
     ? planChargeFromSubscription(plan, subscription.monthlyDiscountReais)
     : planChargeForShowcase(plan, founderCouponAvailable)
@@ -340,9 +383,26 @@ type PlanSubscription =
       standing: SubscriptionStanding | null
       currentPeriodEnd: string | Date | null
       externalSubscriptionId: string | null
+      cancelAt?: string | Date | null
     }
   | null
   | undefined
+
+/**
+ * Só assinatura paga no Stripe gera crédito proporcional na troca para um
+ * plano menor (WEB-350); em teste grátis não há o que creditar.
+ */
+export function earnsDowngradeCredit(
+  subscription:
+    | { status: string; externalSubscriptionId?: string | null }
+    | null
+    | undefined
+): boolean {
+  return (
+    subscription?.status === 'active' &&
+    Boolean(subscription.externalSubscriptionId)
+  )
+}
 
 /**
  * O teste grátis nasce no cadastro, sem cartão (WEB-31). Dito com as mesmas
@@ -397,7 +457,9 @@ export function getDefaultPlanSelection(
  * regulariza em vez de contratar: checkout do provedor sempre abre assinatura
  * nova, e a parada seguiria cobrando quando o cartão voltasse. Quem já teve
  * assinatura não está no "último passo" do cadastro, e quem está em trial
- * ainda não paga: nada de "próximo ciclo de cobrança" (WEB-261).
+ * ainda não paga: nada de "próximo ciclo de cobrança" (WEB-261). Com
+ * cancelamento agendado o cabeçalho diz a data, como o aviso da página, em vez
+ * de convidar a trocar de plano.
  */
 export function getPlanHeader(subscription: PlanSubscription): {
   kicker: string
@@ -433,10 +495,26 @@ export function getPlanHeader(subscription: PlanSubscription): {
           text: `${TRIAL_NO_CARD_NOTE} Se quiser garantir o plano desde já, contrate abaixo: o cartão fica guardado e a primeira cobrança só sai em ${until}.`
         }
       }
+      {
+        const cancelDay = getCancelDay({
+          standing: subscription.standing,
+          cancelAt: subscription.cancelAt ?? null
+        })
+        if (cancelDay) {
+          return {
+            kicker: 'Cancelamento agendado',
+            title: `Seu plano ${name} cancela em ${cancelDay}.`,
+            text: 'O plano segue até lá. Para continuar depois dessa data, reative a assinatura.'
+          }
+        }
+      }
       return {
         kicker: 'Alterar plano',
         title: 'Escolha seu novo plano.',
-        text: 'A troca vale na hora, e a diferença de preço do mês é acertada de forma proporcional.'
+        // O mesmo crédito que o aviso de plano inferior de `/plan` anuncia.
+        text: earnsDowngradeCredit(subscription)
+          ? 'A troca vale na hora. Para um plano maior, a diferença do mês é cobrada de forma proporcional; para um menor, vira crédito na sua conta e abate as próximas mensalidades.'
+          : 'A troca vale na hora, e a diferença de preço do mês é acertada de forma proporcional.'
       }
     case 'ended':
       return {

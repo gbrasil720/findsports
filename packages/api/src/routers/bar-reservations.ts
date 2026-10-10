@@ -18,12 +18,13 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
-import { byTeamName } from '../lib/game-participants'
+import { byMatchOrder } from '../lib/game-participants'
 import {
   assertCanEnableReservations,
   canManageReservations,
   hasOpenReservations,
   notEnded,
+  validationOpen,
   withSeatAvailability
 } from '../lib/reservation-intake'
 
@@ -136,6 +137,14 @@ export const barReservationsRouter = router({
   hasOpen: barProcedure.query(({ ctx }) => hasOpenReservations(ctx.barId)),
 
   /**
+   * O mesmo, até a janela de validação fechar: é o que `/admin/validate`
+   * desenha para quem não tem Elite. Quem decide é `reservationValidation`.
+   */
+  hasValidatable: barProcedure.query(({ ctx }) =>
+    hasOpenReservations(ctx.barId, validationOpen)
+  ),
+
+  /**
    * Pedidos dos jogos que ainda não acabaram, pendentes primeiro e, dentro de
    * cada estado, por ordem de chegada. Do torcedor, só o nome: telefone e
    * e-mail não saem daqui.
@@ -164,7 +173,7 @@ export const barReservationsRouter = router({
           with: {
             participants: {
               with: { team: { columns: { name: true } } },
-              orderBy: byTeamName
+              orderBy: byMatchOrder
             }
           }
         }
@@ -209,7 +218,7 @@ export const barReservationsRouter = router({
           with: {
             participants: {
               with: { team: { columns: { name: true } } },
-              orderBy: byTeamName
+              orderBy: byMatchOrder
             }
           },
           orderBy: (row, { asc }) => [asc(row.startsAt)]

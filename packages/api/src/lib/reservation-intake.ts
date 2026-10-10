@@ -1,5 +1,8 @@
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import {
+  DEFAULT_EVENT_DURATION_INTERVAL,
+  VALIDATION_WINDOW_MARGIN_INTERVAL
+} from '@findsports_oficial/db/event-window'
 import { event } from '@findsports_oficial/db/schema/platform'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
@@ -47,6 +50,12 @@ export function assertCanEnableReservations(
 export const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
 
 /**
+ * Janela de validação ainda aberta: o fim derivado mais a margem de
+ * `getValidationWindow`, inclusivo como `assertWindowOpen`.
+ */
+export const validationOpen = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) + ${VALIDATION_WINDOW_MARGIN_INTERVAL}::interval >= now()`
+
+/**
  * Gerir o que já existe (WEB-341): ver a fila, responder e validar código.
  * Passa o Elite vigente e também o bar que perdeu o plano com reserva pendente
  * ou confirmada de jogo que ainda não acabou: o torcedor segue com o código na
@@ -64,7 +73,26 @@ export async function canManageReservations(
   )
 }
 
-export async function hasOpenReservations(barId: string): Promise<boolean> {
+/**
+ * Validar código: como `canManageReservations`, mas "em aberto" vai até o fim
+ * da janela de validação. O bar que perdeu o Elite registra quem ficou para o
+ * pós-jogo, e a fila continua fechando no fim do jogo.
+ */
+export async function canValidateReservations(
+  barId: string,
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+): Promise<boolean> {
+  return (
+    canEnableReservations(subscription, now) ||
+    (await hasOpenReservations(barId, validationOpen))
+  )
+}
+
+export async function hasOpenReservations(
+  barId: string,
+  stillOpen = notEnded
+): Promise<boolean> {
   const [open] = await db
     .select({ id: reservation.id })
     .from(reservation)
@@ -73,7 +101,7 @@ export async function hasOpenReservations(barId: string): Promise<boolean> {
       and(
         eq(event.barId, barId),
         inArray(reservation.status, ['pending', 'confirmed']),
-        notEnded
+        stillOpen
       )
     )
     .limit(1)

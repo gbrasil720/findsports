@@ -73,6 +73,24 @@ export function getShownPlan(
 }
 
 /**
+ * Quem lê o aviso de limite com o nome do Starter: só a assinatura no Starter.
+ * Bar sem linha em `subscription` cai no mesmo limite, mas para ele o Starter
+ * é o default da coluna — a mesma leitura de `getShownPlan`, que ali diz "Sem
+ * plano".
+ */
+export function isStarterSubscription(
+  subscription:
+    | {
+        plan: keyof typeof PLAN_NAMES
+        standing: SubscriptionStanding | null
+      }
+    | null
+    | undefined
+): boolean {
+  return Boolean(subscription?.standing) && subscription?.plan === 'starter'
+}
+
+/**
  * Pro ou Elite parado cai no limite de jogos do Starter (WEB-129), e o que
  * destrava é regularizar a assinatura, não fazer upgrade (WEB-331). Devolve os
  * textos já com o nome do plano, ou `null` para quem segue lendo o aviso do

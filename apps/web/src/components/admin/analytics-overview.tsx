@@ -597,6 +597,7 @@ export function AnalyticsOverview({
   overviewState,
   showComparison = true,
   planNote,
+  noPlan = false,
   onCreateEvent
 }: {
   overviewState: AnalyticsOverviewState
@@ -604,6 +605,8 @@ export function AnalyticsOverview({
   showComparison?: boolean
   /** Por que o plano em vigor não é o contratado (`getShownPlan`, WEB-344). */
   planNote?: string | null
+  /** Bar sem assinatura: o Starter de `data.plan` é só o padrão dos limites. */
+  noPlan?: boolean
   onCreateEvent?: () => void
 }) {
   if (overviewState.status === 'loading') return <OverviewSkeleton />
@@ -662,8 +665,8 @@ export function AnalyticsOverview({
         <div>
           <h2 className="onside-display text-2xl">Desempenho do bar</h2>
           <p className="mt-1 text-sm text-[var(--onside-ink)] opacity-60">
-            {formatAnalyticsPeriod(data.from, data.to)} • Plano:{' '}
-            {getPlan(data.plan).name}
+            {formatAnalyticsPeriod(data.from, data.to)} •{' '}
+            {noPlan ? 'Sem plano' : `Plano: ${getPlan(data.plan).name}`}
             {planNote ? ` • ${planNote}` : null}
           </p>
         </div>

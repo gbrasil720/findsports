@@ -67,6 +67,38 @@ describe('rascunho do onboarding de bar', () => {
     })
     expect(parsePubOnboardingDraft(adulterado, 'dona', 2_000)).toEqual(DRAFT)
   })
+
+  it('guarda o passo em que o dono parou, e o formato antigo vem sem ele', () => {
+    const ler = (draft: object) =>
+      parsePubOnboardingDraft(
+        JSON.stringify({ draft, email: 'dona', expiresAt: 9_000 }),
+        'dona',
+        2_000
+      )
+    expect(
+      parsePubOnboardingDraft(
+        serializePubOnboardingDraft({ ...DRAFT, step: 2 }, 'dona', 1_000),
+        'dona',
+        2_000
+      )
+    ).toEqual({ ...DRAFT, step: 2 })
+
+    // Gravado ao concluir a revisão, para o `/verify-email`: sem passo.
+    expect(ler(DRAFT)?.step).toBeUndefined()
+
+    // Passo que não é número de passo sai, e o resto fica.
+    for (const step of [0, -1, 1.5, '2', null]) {
+      expect(ler({ ...DRAFT, step })).toEqual(DRAFT)
+    }
+    // De outra conta, o passo não muda nada.
+    expect(
+      parsePubOnboardingDraft(
+        serializePubOnboardingDraft({ ...DRAFT, step: 2 }, 'dona', 1_000),
+        'outra',
+        2_000
+      )
+    ).toBeNull()
+  })
 })
 
 describe('recusa do cadastro do bar', () => {
