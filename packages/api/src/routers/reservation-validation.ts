@@ -21,6 +21,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import { byMatchOrder } from '../lib/game-participants'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
 import { canManageReservations } from '../lib/reservation-intake'
 import {
@@ -188,7 +189,7 @@ export const reservationValidationRouter = router({
         .from(eventParticipants)
         .innerJoin(team, eq(team.id, eventParticipants.teamId))
         .where(eq(eventParticipants.eventId, found.eventId))
-        .orderBy(team.name)
+        .orderBy(...byMatchOrder(eventParticipants))
 
       return {
         codeId: found.codeId,

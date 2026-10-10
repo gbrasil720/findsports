@@ -37,7 +37,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
-import { byTeamName } from '../lib/game-participants'
+import { byMatchOrder } from '../lib/game-participants'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -392,7 +392,7 @@ export const pubsRouter = router({
               sport: true,
               participants: {
                 with: { team: true },
-                orderBy: byTeamName
+                orderBy: byMatchOrder
               }
             },
             orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -607,7 +607,7 @@ export const pubsRouter = router({
               columns: { reservationCap: false },
               with: {
                 sport: true,
-                participants: { with: { team: true }, orderBy: byTeamName }
+                participants: { with: { team: true }, orderBy: byMatchOrder }
               },
               orderBy: (event, { asc }) => [asc(event.startsAt)],
               limit: 3

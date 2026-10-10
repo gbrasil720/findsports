@@ -1,0 +1,1 @@
+ALTER TABLE "event_participants" ADD COLUMN "position" smallint;

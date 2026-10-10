@@ -18,7 +18,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
-import { byTeamName } from '../lib/game-participants'
+import { byMatchOrder } from '../lib/game-participants'
 import {
   assertCanEnableReservations,
   canManageReservations,
@@ -164,7 +164,7 @@ export const barReservationsRouter = router({
           with: {
             participants: {
               with: { team: { columns: { name: true } } },
-              orderBy: byTeamName
+              orderBy: byMatchOrder
             }
           }
         }
@@ -209,7 +209,7 @@ export const barReservationsRouter = router({
           with: {
             participants: {
               with: { team: { columns: { name: true } } },
-              orderBy: byTeamName
+              orderBy: byMatchOrder
             }
           },
           orderBy: (row, { asc }) => [asc(row.startsAt)]

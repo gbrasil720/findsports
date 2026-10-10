@@ -123,6 +123,47 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
     .toBe(0)
 })
 
+// A ordem em que o dono marca os times é a do confronto (mandante primeiro),
+// e não a alfabética: o banco guarda `event_participants.position`.
+test('a ordem em que os times são marcados é a do confronto, e dá para inverter', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page)
+  const [first = '', second = ''] = await soccerTeams()
+  await gotoSchedule(page)
+
+  // Marcados fora da ordem alfabética: `second` joga em casa.
+  await page.getByRole('button', { name: 'Novo evento' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
+  await dialog.getByLabel('Esporte *').selectOption({ label: 'Futebol' })
+  await dialog.getByLabel('Campeonato *').fill('Ordem E2E')
+  await dialog.getByLabel('Data e horário *').fill(tomorrowAt(21))
+  await dialog.getByRole('button', { name: second, exact: true }).click()
+  await dialog.getByRole('button', { name: first, exact: true }).click()
+  await expect(dialog).toContainText(`Confronto: ${second} × ${first}`)
+  await dialog.getByRole('button', { name: 'Salvar' }).click()
+  await expect(dialog).toBeHidden()
+
+  const row = page.getByRole('listitem').filter({ hasText: 'Ordem E2E' })
+  await expect(row).toContainText(`${second} × ${first}`)
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText(`${second} × ${first}`).first()).toBeVisible()
+
+  // Editar abre na ordem gravada; inverter troca mandante e visitante.
+  await gotoSchedule(page)
+  await row.getByRole('button', { name: 'Editar evento' }).click()
+  const edit = page.getByRole('dialog', { name: 'Editar evento' })
+  await expect(edit).toContainText(`Confronto: ${second} × ${first}`)
+  await edit.getByRole('button', { name: 'Inverter' }).click()
+  await expect(edit).toContainText(`Confronto: ${first} × ${second}`)
+  await edit.getByRole('button', { name: 'Salvar' }).click()
+  await expect(edit).toBeHidden()
+
+  await expect(row).toContainText(`${first} × ${second}`)
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText(`${first} × ${second}`).first()).toBeVisible()
+})
+
 test('jogo com reserva ativa não é excluído, e o que foi recusado vai junto', async ({
   page
 }) => {

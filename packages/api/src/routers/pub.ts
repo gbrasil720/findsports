@@ -48,7 +48,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { byTeamName, participantNames } from '../lib/game-participants'
+import { byMatchOrder, participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -544,7 +544,7 @@ export const pubRouter = router({
           sport: true,
           participants: {
             with: { team: true },
-            orderBy: byTeamName
+            orderBy: byMatchOrder
           }
         },
         orderBy: (event, { asc }) => [asc(event.startsAt)]
@@ -667,9 +667,11 @@ export const pubRouter = router({
           await tx
             .insert(eventParticipants)
             .values(
-              input.participantIds.map((teamId) => ({
+              input.participantIds.map((teamId, position) => ({
                 eventId: newEvent.id,
-                teamId
+                teamId,
+                // A ordem do array é a do confronto: mandante primeiro.
+                position
               }))
             )
             .onConflictDoNothing()
@@ -753,9 +755,10 @@ export const pubRouter = router({
             await tx
               .insert(eventParticipants)
               .values(
-                participantIds.map((teamId) => ({
+                participantIds.map((teamId, position) => ({
                   eventId: input.eventId,
-                  teamId
+                  teamId,
+                  position
                 }))
               )
               .onConflictDoNothing()
