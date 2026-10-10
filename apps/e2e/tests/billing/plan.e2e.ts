@@ -183,6 +183,44 @@ test('trial que já é do Stripe: troca de plano, com o plano contratado como at
   await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
 })
 
+// WEB-347: depois de contratar no teste, o painel confirma que "pegou" — selo
+// próprio e a primeira cobrança, em vez do "Trial gratuito" de quem não pagou.
+test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e quando sai a primeira cobrança', async ({
+  page
+}) => {
+  const { user } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: inDays(100),
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`,
+      monthlyDiscountReais: 28
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/admin/billing')
+
+  const currentPlan = page.locator('section').filter({
+    has: page.getByRole('heading', { name: 'Plano atual' })
+  })
+  await expect(currentPlan).toContainText('Contratado · em teste')
+  await expect(currentPlan).toContainText(
+    /Primeira cobrança de R\$ 269 em \d{2}\/\d{2}\/\d{4}/
+  )
+  await expect(currentPlan).not.toContainText('Trial gratuito')
+  await expect(
+    page.getByRole('button', { name: 'Gerenciar assinatura' })
+  ).toBeVisible()
+
+  await page.goto('/admin')
+  await expect(
+    page.getByText(
+      /Contratado · em teste · Primeira cobrança de R\$ 269 em \d{2}\/\d{2}\/\d{4}/
+    )
+  ).toBeVisible()
+  await expect(page.getByText(/Trial gratuito até/)).toHaveCount(0)
+})
+
 test('assinatura paga abre no próprio plano, sem checkout de outro por padrão', async ({
   page
 }) => {

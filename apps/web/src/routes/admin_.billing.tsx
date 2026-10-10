@@ -14,10 +14,12 @@ import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
+  CONTRACTED_TRIAL_LABEL,
   formatPlanChargeLine,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
+  isContractedTrial,
   PLAN_CATALOG,
   planChargeForShowcase,
   planChargeFromSubscription,
@@ -60,6 +62,11 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   trialing: {
     label: 'Trial gratuito',
     className: 'onside-badge onside-badge-ink'
+  },
+  // Trial que já é do Stripe: contratou antes do fim (WEB-347).
+  contracted_trial: {
+    label: CONTRACTED_TRIAL_LABEL,
+    className: 'onside-badge onside-badge-acid'
   },
   past_due: { label: LAPSED_COPY.past_due.label, className: PENDING_BADGE },
   trial_ended: {
@@ -147,7 +154,11 @@ function BillingPage() {
   const founderCouponAvailable = founderCouponQuery.data?.available ?? false
   const statusInfo =
     STATUS_LABEL[
-      standing === 'trial_ended' ? standing : (subscription?.status ?? '')
+      isContractedTrial(subscription)
+        ? 'contracted_trial'
+        : standing === 'trial_ended'
+          ? standing
+          : (subscription?.status ?? '')
     ]
 
   return (

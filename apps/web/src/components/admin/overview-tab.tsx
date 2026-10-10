@@ -10,7 +10,12 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
 import { getLapsedPaidPlan, isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
-import { getPlan, getTrialNotice } from '@/lib/plan-catalog'
+import {
+  CONTRACTED_TRIAL_LABEL,
+  getPlan,
+  getTrialNotice,
+  isContractedTrial
+} from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { AnalyticsOverviewState } from './admin-model'
@@ -319,7 +324,11 @@ export function OverviewTab({
             className="mt-0.5 shrink-0"
             aria-hidden="true"
           />
-          <p className="font-semibold text-sm">{trialNotice}</p>
+          <p className="font-semibold text-sm">
+            {isContractedTrial(subscription)
+              ? `${CONTRACTED_TRIAL_LABEL} · ${trialNotice}`
+              : trialNotice}
+          </p>
         </div>
       )}
 

@@ -433,10 +433,37 @@ export function getPlanHeader(subscription: PlanSubscription): {
   }
 }
 
+/** Selo de quem contratou antes do fim do teste (WEB-347). */
+export const CONTRACTED_TRIAL_LABEL = 'Contratado · em teste'
+
+/**
+ * Trial em vigor que já é do Stripe: o dono contratou antes do fim, o cartão
+ * está guardado e o plano segue depois do teste (WEB-347). O avesso do modo
+ * `trial` de `getPlanPageMode`.
+ */
+export function isContractedTrial(
+  subscription:
+    | {
+        status: string
+        standing: SubscriptionStanding | null
+        externalSubscriptionId?: string | null
+      }
+    | null
+    | undefined
+): boolean {
+  return (
+    subscription?.status === 'trialing' &&
+    subscription.standing === 'current' &&
+    Boolean(subscription.externalSubscriptionId)
+  )
+}
+
 /**
  * Status do trial em vigor, com a data final e os dias que faltam — o mesmo
  * texto no painel, na assinatura e em `/plan` (WEB-260). `null` fora dele:
- * trial vencido é plano parado e fala por `LAPSED_COPY`.
+ * trial vencido é plano parado e fala por `LAPSED_COPY`. Quem já contratou
+ * lê quando e quanto sai a primeira cobrança, pelo mesmo cálculo do card do
+ * plano (WEB-347).
  */
 export function getTrialNotice(
   subscription:
@@ -444,6 +471,9 @@ export function getTrialNotice(
         status: string
         standing: SubscriptionStanding | null
         currentPeriodEnd: string | Date | null
+        plan?: SubscriptionPlan
+        externalSubscriptionId?: string | null
+        monthlyDiscountReais?: number | null
       }
     | null
     | undefined,
@@ -457,6 +487,13 @@ export function getTrialNotice(
     return null
   }
   const end = new Date(subscription.currentPeriodEnd)
+  if (isContractedTrial(subscription) && subscription.plan) {
+    const { chargeReais } = planChargeFromSubscription(
+      getPlan(subscription.plan),
+      subscription.monthlyDiscountReais
+    )
+    return `Primeira cobrança de ${formatPlanPrice(chargeReais)} em ${end.toLocaleDateString('pt-BR')}`
+  }
   // `standing` vem do relógio do servidor; o piso cobre o do navegador adiantado.
   const days = Math.max(
     1,

@@ -19,6 +19,7 @@ import {
   getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
+  isContractedTrial,
   isDowngrade,
   PLAN_CATALOG,
   PLAN_TIER_ORDER,
@@ -526,6 +527,38 @@ describe('getTrialNotice (WEB-260)', () => {
         now
       )
     ).toBe('Trial gratuito até 8 de outubro de 2026 · falta 1 dia')
+  })
+
+  test('quem já contratou no Stripe lê a primeira cobrança, não o trial (WEB-347)', () => {
+    const contracted = {
+      ...trial,
+      plan: 'elite' as const,
+      externalSubscriptionId: 'sub_1',
+      monthlyDiscountReais: 28
+    }
+    expect(isContractedTrial(contracted)).toBe(true)
+    expect(getTrialNotice(contracted, now)).toBe(
+      'Primeira cobrança de R$ 269 em 22/10/2026'
+    )
+    // Sem desconto gravado vale a tabela cheia, como no card do plano.
+    expect(
+      getTrialNotice({ ...contracted, monthlyDiscountReais: null }, now)
+    ).toBe('Primeira cobrança de R$ 297 em 22/10/2026')
+
+    // Sem assinatura no Stripe é o teste do cadastro: o texto de sempre.
+    const local = { ...contracted, externalSubscriptionId: null }
+    expect(isContractedTrial(local)).toBe(false)
+    expect(getTrialNotice(local, now)).toBe(
+      'Trial gratuito até 22 de outubro de 2026 · faltam 14 dias'
+    )
+
+    // Paga em dia ou trial vencido não são trial contratado.
+    const active = { ...contracted, status: 'active' }
+    expect(isContractedTrial(active)).toBe(false)
+    expect(getTrialNotice(active, now)).toBeNull()
+    expect(isContractedTrial({ ...contracted, standing: 'trial_ended' })).toBe(
+      false
+    )
   })
 
   test('fica calado fora de um trial em vigor', () => {
