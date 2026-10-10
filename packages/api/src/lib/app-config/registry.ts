@@ -123,6 +123,10 @@ export const APP_CONFIG_DEFINITIONS = {
    * Desligada — o padrão — nada muda: o bar nasce fora do ar, sem assinatura.
    * O teto de `days` existe para um erro de digitação não virar plano grátis
    * por anos. Cabe o teste de 120 dias do lançamento (WEB-31), com folga.
+   *
+   * Pública (WEB-238): plano e dias são a oferta, não um segredo, e a revisão
+   * do cadastro precisa deles para dizer ao dono o que acontece ao continuar.
+   * Quem decide o trial continua sendo o `completePub`.
    */
   'billing.onboarding_trial': definir({
     schema: z.object({
@@ -131,7 +135,7 @@ export const APP_CONFIG_DEFINITIONS = {
       days: z.number().int().min(1).max(180)
     }),
     padrao: { enabled: false, plan: 'elite', days: 14 },
-    publico: false,
+    publico: true,
     descricao:
       'Bar novo nasce publicado e com trial do plano escolhido por `days` ' +
       'dias. Desligado, o bar nasce fora do ar e só a assinatura paga o ' +
