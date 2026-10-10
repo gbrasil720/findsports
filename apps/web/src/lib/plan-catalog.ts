@@ -482,7 +482,7 @@ export function getPlanHeader(subscription: PlanSubscription): {
         text:
           mode === 'regularize'
             ? `${LAPSED_COPY.trial_ended.cause} Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
-            : `${LAPSED_COPY.trial_ended.cause} Contrate o plano para os recursos voltarem, ou escolha outro abaixo.`
+            : `${LAPSED_COPY.trial_ended.cause} Contrate o plano para o bar voltar às buscas e ao mapa, ou escolha outro abaixo.`
       }
     case 'current':
       if (mode === 'trial' && subscription.currentPeriodEnd) {

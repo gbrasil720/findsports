@@ -176,6 +176,10 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
   await expect(currentPlan(page)).toContainText(
     'O trial gratuito terminou sem pagamento confirmado.'
   )
+  // WEB-357: sem contratar, esse bar sai do ar; não são só os recursos.
+  await expect(currentPlan(page)).toContainText(
+    'O bar sai das buscas e do mapa até um plano ser contratado.'
+  )
   // WEB-249: sem assinatura no provedor não há o que regularizar no portal;
   // o caminho para pagar é o checkout em `/plan`.
   await expect(
