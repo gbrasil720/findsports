@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
@@ -38,6 +39,14 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   page
 }) => {
   const fan = await startOnboarding(page)
+  // Cookie cache da sessão posto à mão (a suíte roda sem ele), e o pedido do
+  // cliente para expirá-lo falhando: quem expira é a resposta do cadastro.
+  await page
+    .context()
+    .addCookies([
+      { name: 'better-auth.session_data', value: 'antigo', url: BASE_URL }
+    ])
+  await page.route('**/api/auth/expire-session-cache', (route) => route.abort())
 
   // Boas-vindas
   await expect(progress(page)).toHaveText('Passo 1 de 5')
@@ -104,6 +113,9 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   await button(page, /Salvar e encontrar bares/).click()
   await expect(page).toHaveURL(/\/dashboard$/)
   await search
+  expect(
+    (await page.context().cookies()).map((cookie) => cookie.name)
+  ).not.toContain('better-auth.session_data')
 
   const [user] = await query(
     `SELECT onboarding_completed, search_radius_km, search_city_name, search_city_uf,

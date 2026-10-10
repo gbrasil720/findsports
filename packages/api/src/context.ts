@@ -19,8 +19,13 @@ export async function createContext({ req }: { req: Request }) {
   return {
     auth: null,
     session: session as Session | null,
-    clientIp: extrairIp(req.headers)
+    clientIp: extrairIp(req.headers),
+    headers: req.headers
   }
 }
 
-export type Context = Awaited<ReturnType<typeof createContext>>
+/** `headers` é opcional só por causa do contexto montado à mão nos testes. */
+export type Context = Omit<
+  Awaited<ReturnType<typeof createContext>>,
+  'headers'
+> & { headers?: Headers }

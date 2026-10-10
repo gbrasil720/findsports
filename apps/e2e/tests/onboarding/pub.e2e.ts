@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { STUB_URL } from '../../env'
+import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
@@ -577,6 +577,35 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   await button(page, /Escolher meu plano/).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await storedDraft(page)).toBeNull()
+})
+
+test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cliente falha', async ({
+  page
+}) => {
+  // O servidor da suíte roda sem cookie cache, então o cookie é posto à mão:
+  // é o que o navegador teria em produção, com `onboardingCompleted: false`.
+  // Com ele de pé o guard devolvia ao onboarding quem acabou de concluir.
+  const cache = async () =>
+    (await page.context().cookies()).filter(
+      (cookie) => cookie.name === 'better-auth.session_data'
+    )
+  await signInPendingPub(page)
+  await page
+    .context()
+    .addCookies([
+      { name: 'better-auth.session_data', value: 'antigo', url: BASE_URL }
+    ])
+  await page.route('**/api/auth/expire-session-cache', (route) => route.abort())
+
+  await reachReview(page, {
+    name: 'Bar do Cache',
+    address: street(),
+    neighborhood: 'Centro'
+  })
+  expect(await cache()).toHaveLength(1)
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+  expect(await cache()).toHaveLength(0)
 })
 
 const pathOf = (page: Page) => {
