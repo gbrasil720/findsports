@@ -41,6 +41,32 @@ describe('BarActions', () => {
     }
   })
 
+  // Sem WhatsApp e sem telefone não há como falar: o título descreve a rota.
+  test('sem contato, o título é "Como chegar" em vez de "Fale com o bar"', () => {
+    const markup = renderToStaticMarkup(
+      <BarActions
+        {...base}
+        whatsappUrl={null}
+        phone={null}
+        onReserve={null}
+        variant="panel"
+      />
+    )
+    expect(markup).toContain('<p class="onside-kicker mb-3">Como chegar</p>')
+    expect(markup).not.toContain('Fale com o bar')
+  })
+
+  test('com WhatsApp ou só telefone, o título segue "Fale com o bar"', () => {
+    for (const contact of [{ phone: null }, { whatsappUrl: null }]) {
+      const markup = renderToStaticMarkup(
+        <BarActions {...base} {...contact} onReserve={null} variant="panel" />
+      )
+      expect(markup).toContain(
+        '<p class="onside-kicker mb-3">Fale com o bar</p>'
+      )
+    }
+  })
+
   test('sem reserva, volta ao WhatsApp e à rota, sem botão de reserva', () => {
     const markup = renderToStaticMarkup(
       <BarActions {...base} onReserve={null} variant="panel" />

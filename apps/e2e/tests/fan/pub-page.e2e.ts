@@ -20,10 +20,15 @@ import { createUser } from '../../fixtures/users'
 
 /**
  * O painel de ações (no celular há também a barra fixa): "Garanta seu lugar"
- * com reserva disponível, "Fale com o bar" sem (WEB-353).
+ * com reserva disponível, "Fale com o bar" sem (WEB-353), e "Como chegar"
+ * quando o bar não deixou WhatsApp nem telefone.
  */
 const actionsPanel = (page: Page) =>
-  page.locator('section', { hasText: /Garanta seu lugar|Fale com o bar/ })
+  page.locator('section', {
+    has: page.locator('p.onside-kicker', {
+      hasText: /Garanta seu lugar|Fale com o bar|Como chegar/
+    })
+  })
 
 const intents = (fanId: string, barId: string) =>
   query<{ type: string }>(
@@ -242,9 +247,13 @@ test('reserva não aparece fora do Elite ou com reservas desligadas', async ({
   for (const { barId, name } of [pro, off]) {
     await page.goto(`/pub/${barId}`)
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
-    // Sem reserva, o título não promete lugar (WEB-353).
-    await expect(actionsPanel(page)).toContainText('Fale com o bar')
+    // Sem reserva, o título não promete lugar (WEB-353); e estes bares não
+    // têm WhatsApp nem telefone, então também não promete conversa.
+    await expect(actionsPanel(page).locator('p.onside-kicker')).toHaveText(
+      'Como chegar'
+    )
     await expect(actionsPanel(page)).not.toContainText('Garanta seu lugar')
+    await expect(actionsPanel(page)).not.toContainText('Fale com o bar')
     await expect(
       page.getByRole('button', { name: 'Reservar mesa' })
     ).toHaveCount(0)
