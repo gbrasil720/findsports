@@ -231,11 +231,9 @@ test('assinatura encerrada: "Outros planos" e a Visão geral seguem o card', asy
     has: page.getByRole('heading', { name: 'Outros planos' })
   })
   await expect(
-    others.getByRole('link', { name: 'Mudar para Pro' })
+    others.getByRole('link', { name: 'Contratar Pro' })
   ).toBeVisible()
-  await expect(
-    others.getByRole('link', { name: 'Mudar para Starter' })
-  ).toHaveCount(0)
+  await expect(others.getByRole('link', { name: /Starter/ })).toHaveCount(0)
 
   await page.goto('/admin')
   const overview = page.locator('#admin-visao')

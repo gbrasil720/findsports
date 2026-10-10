@@ -135,4 +135,7 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   // Starter nem a contagem dele: o Starter é só o default da coluna.
   await expect(panel).not.toContainText(/Plano Starter —|no plano Starter/)
   await expect(panel).not.toContainText(/restantes?/)
+  // O Desempenho segue o card: não chama de Starter quem não tem plano.
+  await expect(panel).toContainText('Sem plano • Nenhuma assinatura ativa')
+  await expect(panel).not.toContainText('Plano: Starter')
 })

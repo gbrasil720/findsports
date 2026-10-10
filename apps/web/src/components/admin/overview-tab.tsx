@@ -507,6 +507,7 @@ export function OverviewTab({
         overviewState={analyticsOverviewState}
         showComparison={analyticsPreset !== 'all'}
         planNote={shownPlan?.note}
+        noPlan={planKnown && !subscription}
         onCreateEvent={onCreateEvent}
       />
     </AdminTabPanel>

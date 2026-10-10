@@ -481,7 +481,12 @@ function BillingPage() {
                   search={{ origin: 'billing' }}
                   className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
                 >
-                  Mudar para {info.name}
+                  {/* Sem assinatura em vigor no Stripe não há o que mudar:
+                      o caminho é contratar. */}
+                  {plan && subscription?.externalSubscriptionId
+                    ? 'Mudar para'
+                    : 'Contratar'}{' '}
+                  {info.name}
                   <ArrowRight
                     size={12}
                     color="currentColor"

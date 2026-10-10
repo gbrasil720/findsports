@@ -382,7 +382,7 @@ describe('eventLimitMessage', () => {
     )
   })
 
-  test('Starter, mesmo parado, e bar sem assinatura seguem com o texto do Starter', () => {
+  test('Starter, mesmo parado, segue com o texto do Starter', () => {
     expect(
       eventLimitMessage(
         { plan: 'starter', status: 'active', currentPeriodEnd: null },
@@ -397,12 +397,23 @@ describe('eventLimitMessage', () => {
         now
       )
     ).toBe(STARTER)
-    expect(eventLimitMessage(null, cycleEnd, now)).toBe(STARTER)
+  })
+
+  test('bar sem assinatura não é chamado de Starter', () => {
+    expect(eventLimitMessage(null, cycleEnd, now)).toBe(
+      'Sem plano ativo, o bar pode cadastrar até 5 jogos por ciclo de cobrança. Escolha um plano para liberar jogos ilimitados.'
+    )
   })
 
   // Sem ciclo vigente a política conta os últimos 30 dias, e a recusa também.
   test('sem ciclo de cobrança vigente, a janela dita é a dos últimos 30 dias', () => {
-    expect(eventLimitMessage(null, null, now)).toBe(
+    expect(
+      eventLimitMessage(
+        { plan: 'starter', status: 'active', currentPeriodEnd: null },
+        null,
+        now
+      )
+    ).toBe(
       'Plano Starter permite até 5 jogos nos últimos 30 dias. Faça upgrade para o plano Pro para jogos ilimitados.'
     )
     const lapsed = eventLimitMessage(

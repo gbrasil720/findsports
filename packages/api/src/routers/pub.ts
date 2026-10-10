@@ -173,6 +173,9 @@ export function eventLimitMessage(
   ) {
     return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Regularize a assinatura para voltar aos jogos ilimitados.`
   }
+  if (!subscription) {
+    return `Sem plano ativo, o bar pode cadastrar até ${STARTER_EVENT_LIMIT} jogos ${window}. Escolha um plano para liberar jogos ilimitados.`
+  }
   return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos ${window}. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
