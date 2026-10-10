@@ -2,14 +2,19 @@ import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { query, resetAppConfig, setAppConfig } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
-import { sendStripeWebhook, stripeSubscription } from '../../fixtures/stripe'
+import {
+  sendStripeWebhook,
+  setFounderCoupon,
+  stripeSubscription
+} from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
-// Serial porque liga `billing.checkout_enabled`, global.
+// Serial porque troca o que o stub do Stripe diz do cupom de fundador, que é
+// global: os testes paralelos contam com o cupom valendo.
 
-test.afterEach(resetAppConfig)
+test.afterEach(({ request }) => setFounderCoupon(request, 'valid'))
 
 /**
  * Corpo da sessão de checkout que o app pediu ao Stripe para este dono. O
@@ -42,7 +47,6 @@ async function customerUpdatesOf(page: Page, customerId: string | undefined) {
 test('trial vencido sem assinatura no provedor: o botão padrão contrata o plano do trial e cobra na hora (WEB-249)', async ({
   page
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const { user } = await createPub({
     subscription: {
       plan: 'elite',
@@ -65,10 +69,9 @@ test('trial vencido sem assinatura no provedor: o botão padrão contrata o plan
   expect(session).not.toHaveProperty('subscription_data[trial_end]')
 })
 
-test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', async ({
+test('o clique abre a sessão e redireciona para o Stripe, com o cupom de fundador', async ({
   page
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const { user } = await createPub({ subscription: null })
   await signIn(page, user)
   await page.goto('/plan')
@@ -101,11 +104,11 @@ test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', asy
     // O retorno do provedor cai no recibo, que espera o webhook (WEB-59).
     success_url: expect.stringMatching(/callbackURL=%2Fplan%2Fconfirmed/)
   })
-  // Sem a chave do cupom de fundador ligada, o checkout sai a preço de tabela
-  // e aceita código promocional.
-  expect(session).not.toHaveProperty('discounts[0][coupon]')
+  // WEB-31: todo checkout novo sai com o cupom de fundador. O Stripe recusa
+  // cupom e código promocional na mesma sessão.
+  expect(session).not.toHaveProperty('allow_promotion_codes')
   expect(session).toMatchObject({
-    allow_promotion_codes: 'true',
+    'discounts[0][coupon]': 'eM7dQpMF',
     // O checkout pede endereço e, opcional, o CNPJ. Sempre em BRL.
     billing_address_collection: 'required',
     'tax_id_collection[enabled]': 'true',
@@ -138,7 +141,6 @@ test('checkout ligado: o clique abre a sessão e redireciona para o Stripe', asy
 test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o fim do teste (WEB-31)', async ({
   page
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const trialEnd = inDays(100)
   const { user } = await createPub({
     subscription: {
@@ -163,60 +165,43 @@ test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o f
   })
 })
 
-test('cupom de fundador: ligado entra no checkout, esgotado não trava a venda (WEB-31)', async ({
-  browser
-}) => {
-  await setAppConfig('billing.checkout_enabled', true)
-
-  async function contractPro(couponId: string) {
-    await setAppConfig('billing.founder_coupon', { enabled: true, couponId })
+// O id do cupom é constante do código (WEB-233): numa conta do Stripe em que
+// ele não existe, ou depois de esgotado, a venda segue a preço de tabela. O
+// stub recusa a sessão que mandar cupom nesses dois estados, como o Stripe.
+for (const [state, caso] of [
+  ['exhausted', 'esgotado'],
+  ['missing', 'que não existe nesta conta do Stripe']
+] as const) {
+  test(`cupom de fundador ${caso}: não trava a venda nem promete desconto em /plan (WEB-31)`, async ({
+    page,
+    request
+  }) => {
+    await setFounderCoupon(request, state)
     const { user } = await createPub({ subscription: null })
-    const context = await browser.newContext()
-    const page = await context.newPage()
     await signIn(page, user)
     await page.goto('/plan')
+
+    await expect(
+      page.getByRole('radio', { name: /^Elite, R\$ 297\/mês\./ })
+    ).toBeVisible()
+    await expect(page.getByRole('radio', { name: /R\$ 269/ })).toHaveCount(0)
+
     await page.getByRole('button', { name: 'Continuar com Pro' }).click()
     await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
     const session = await checkoutSessionOf(page, user.id)
-    await context.close()
-    return session
-  }
-
-  const comCupom = await contractPro('eM7dQpMF')
-  expect(comCupom).toMatchObject({ 'discounts[0][coupon]': 'eM7dQpMF' })
-  // O Stripe recusa cupom e código promocional na mesma sessão.
-  expect(comCupom).not.toHaveProperty('allow_promotion_codes')
-  // O stub responde `valid: false` para este id, como um cupom que bateu o
-  // teto de usos no Stripe.
-  const semCupom = await contractPro('esgotado')
-  expect(semCupom).toBeDefined()
-  expect(semCupom).not.toHaveProperty('discounts[0][coupon]')
-})
-
-test('/plan: cupom esgotado mostra tabela cheia, não o preço com desconto', async ({
-  page
-}) => {
-  await setAppConfig('billing.founder_coupon', {
-    enabled: true,
-    couponId: 'esgotado'
+    expect(session).toMatchObject({
+      'line_items[0][price]': 'price_e2e_pro_monthly',
+      allow_promotion_codes: 'true'
+    })
+    expect(session).not.toHaveProperty('discounts[0][coupon]')
   })
-  const { user } = await createPub({ subscription: null })
-  await signIn(page, user)
-  await page.goto('/plan')
+}
 
-  await expect(
-    page.getByRole('radio', { name: /^Elite, R\$ 297\/mês\./ })
-  ).toBeVisible()
-  await expect(page.getByRole('radio', { name: /R\$ 269/ })).toHaveCount(0)
-})
-
-test('/admin/billing: trial do cadastro mostra no card Plano atual o preço de fundador que /plan promete (WEB-343)', async ({
-  page
+test('/admin/billing: com o cupom esgotado, o card Plano atual do trial mostra a tabela cheia (WEB-343)', async ({
+  page,
+  request
 }) => {
-  await setAppConfig('billing.founder_coupon', {
-    enabled: true,
-    couponId: 'eM7dQpMF'
-  })
+  await setFounderCoupon(request, 'exhausted')
   const { user } = await createPub({
     subscription: { plan: 'elite', status: 'trialing' }
   })
@@ -226,17 +211,14 @@ test('/admin/billing: trial do cadastro mostra no card Plano atual o preço de f
   const currentPlan = page.locator('section').filter({
     has: page.getByRole('heading', { name: 'Plano atual' })
   })
-  await expect(currentPlan).toContainText('R$ 269')
-  await expect(currentPlan).toContainText(
-    'Com desconto de fundador no checkout'
-  )
+  await expect(currentPlan).toContainText('R$ 297')
+  await expect(currentPlan).not.toContainText('R$ 269')
 })
 
 test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo vira troca no portal, não segunda assinatura (WEB-172)', async ({
   page,
   request
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const { user, barId } = await createPub({
     subscription: null,
     bar: { is_active: false }
@@ -340,7 +322,6 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
 test('assinatura parada no Stripe: o servidor recusa checkout novo e manda regularizar (WEB-172)', async ({
   page
 }) => {
-  await setAppConfig('billing.checkout_enabled', true)
   const { user } = await createPub({
     subscription: {
       plan: 'pro',

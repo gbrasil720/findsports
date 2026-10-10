@@ -11,9 +11,8 @@ import {
 } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
-// Transições de assinatura pelo webhook assinado do Stripe (WEB-31). Webhook
-// não passa pelo portão de `billing.checkout_enabled`, então nada aqui é
-// serial. O `request` dos testes vai sem cookie, como o Stripe: com sessão, o
+// Transições de assinatura pelo webhook assinado do Stripe (WEB-31). O
+// `request` dos testes vai sem cookie, como o Stripe: com sessão, o
 // better-auth exigiria `Origin`.
 
 /**

@@ -39,16 +39,17 @@ export function trialEndForCheckout(
 }
 
 /**
- * De onde vem o cupom de fundador. A chave `billing.founder_coupon` mora em
- * `packages/api`, que este pacote não pode importar (a dependência corre no
- * sentido oposto); quem enxerga os dois lados registra a leitura aqui —
- * `apps/web/src/routes/api/auth/$.ts`. Sem registro, nenhum cupom.
+ * Cupom de fundador (WEB-31): R$ 28,00 a menos por mês, em qualquer plano e
+ * enquanto a assinatura durar, para o bar que contratar durante o lançamento.
+ * No Stripe é o cupom `Early Bird`, com este id no sandbox e em produção e
+ * teto de 100 usos.
+ *
+ * Não há interruptor no app: a oferta acaba quando o cupom esgota ou expira
+ * no Stripe, e daí em diante o checkout segue a preço de tabela
+ * (`usableFounderCoupon`). Numa conta em que o cupom não existe é a mesma
+ * coisa.
  */
-let founderCouponSource: () => Promise<string | null> = async () => null
-
-export function setFounderCouponSource(source: () => Promise<string | null>) {
-  founderCouponSource = source
-}
+export const FOUNDER_COUPON_ID = 'eM7dQpMF'
 
 // O checkout e a `/plan` não esperam o Stripe: sem resposta em 5s, e sem nova
 // tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
@@ -63,12 +64,13 @@ type FounderCouponState =
   | { state: 'invalid' }
   | { state: 'unknown'; message: string }
 
-async function readFounderCoupon(
-  client: Stripe,
-  couponId: string
-): Promise<FounderCouponState> {
+async function readFounderCoupon(client: Stripe): Promise<FounderCouponState> {
   try {
-    const coupon = await client.coupons.retrieve(couponId, {}, QUICK_REQUEST)
+    const coupon = await client.coupons.retrieve(
+      FOUNDER_COUPON_ID,
+      {},
+      QUICK_REQUEST
+    )
     return { state: coupon.valid ? 'valid' : 'invalid' }
   } catch (error) {
     // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
@@ -83,19 +85,15 @@ async function readFounderCoupon(
 }
 
 /**
- * O cupom está configurado e o Stripe não disse que ele deixou de valer.
+ * O Stripe não disse que o cupom deixou de valer.
  *
  * Stripe sem responder conta como "vale": o desconto de fundador é promessa
  * feita ao bar, e uma lentidão de 5s não pode fazê-lo contratar a preço de
  * tabela. Se o cupom tiver mesmo acabado, é a criação da sessão que recusa, e
  * o bar tenta de novo.
  */
-export async function founderCouponUsable(
-  client: Stripe,
-  couponId: string | null | undefined
-): Promise<boolean> {
-  if (!couponId) return false
-  return (await readFounderCoupon(client, couponId)).state !== 'invalid'
+export async function founderCouponUsable(client: Stripe): Promise<boolean> {
+  return (await readFounderCoupon(client)).state !== 'invalid'
 }
 
 /**
@@ -106,12 +104,10 @@ export async function founderCouponUsable(
 export async function usableFounderCoupon(
   client: Stripe
 ): Promise<string | null> {
-  const couponId = await founderCouponSource()
-  if (!couponId) return null
-  const coupon = await readFounderCoupon(client, couponId)
+  const coupon = await readFounderCoupon(client)
   if (coupon.state === 'invalid') {
     logBillingError('stripe_founder_coupon_unavailable', {
-      couponId,
+      couponId: FOUNDER_COUPON_ID,
       reason: 'coupon_invalid'
     })
     return null
@@ -120,11 +116,11 @@ export async function usableFounderCoupon(
     // Segue com o cupom sem a conferência; o log deixa o rastro para o caso
     // de a sessão ser recusada logo depois.
     logBillingError('stripe_founder_coupon_unverified', {
-      couponId,
+      couponId: FOUNDER_COUPON_ID,
       message: coupon.message
     })
   }
-  return couponId
+  return FOUNDER_COUPON_ID
 }
 
 type BarForCustomer = {

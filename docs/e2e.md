@@ -15,12 +15,12 @@ bun run test:e2e -- --project=desktop --project=mobile tests/auth
 
 # Só os seriais de um recorte, como o CI: setup, depois os seriais sem deps
 bun run test:e2e -- --project=setup
-bun run test:e2e -- --project=desktop-serial --no-deps tests/smoke
+bun run test:e2e -- --project=desktop-serial --no-deps tests/billing
 ```
 
 **Recorte por caminho puxa a suíte inteira se pegar um `*.serial.e2e.ts`.**
-`bun run test:e2e -- tests/smoke` roda quase a suíte toda, não só
-`tests/smoke`: `doubles.serial.e2e.ts` cai em `desktop-serial`, que depende de
+`bun run test:e2e -- tests/billing` roda quase a suíte toda, não só
+`tests/billing`: `checkout.serial.e2e.ts` cai em `desktop-serial`, que depende de
 `desktop` e `mobile`, e projeto de dependência roda inteiro, sem o filtro de
 caminho. A maioria das áreas tem um serial (`ls apps/e2e/tests/*/*.serial.e2e.ts`).
 `--project=desktop --project=mobile` deixa os seriais de fora e roda só o
@@ -162,11 +162,16 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
 ### Estado global: arquivos `*.serial.e2e.ts`
 
 `app_config` é uma tabela global, e os testes paralelos contam com os padrões
-de produção (checkout desligado, nota pública desligada, todas as cidades
-liberadas, trial de cadastro desligado). Teste
-que muda uma chave vai num arquivo `*.serial.e2e.ts`, com
+de produção (nota pública desligada, todas as cidades liberadas). Teste que
+muda uma chave vai num arquivo `*.serial.e2e.ts`, com
 `setAppConfig(chave, valor)` e `resetAppConfig()` no `afterEach`
 (`fixtures/db.ts`).
+
+Cobrança não tem chave (WEB-233): checkout aberto, teste grátis de 120 dias no
+cadastro do bar e cupom de fundador valem em todo teste. O que é global ali é o
+estado do cupom no stub do Stripe: `setFounderCoupon(request, estado)`
+(`fixtures/stripe.ts`) também só em arquivo serial, com `'valid'` de volta no
+`afterEach`.
 
 Esses arquivos rodam nos projetos `desktop-serial` e `mobile-serial`, com um
 worker só, **depois** que `desktop` e `mobile` terminam. Consequência: se um
@@ -193,7 +198,7 @@ com o de `/privacidade` (WEB-240).
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
 | R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
 | Stripe (webhook) | `STRIPE_WEBHOOK_SECRET` de teste no servidor; o helper assina como o Stripe (`stripe-signature: t=…,v1=HMAC-SHA256`). O app não confia no corpo do evento: busca no Stripe (o stub) o estado atual da assinatura, então ela precisa estar semeada | `deliverSubscription(request, tipo, stripeSubscription({ id, status, plan, userId }))` em `fixtures/stripe.ts` semeia e entrega; `sendStripeWebhook(request, evento)` só entrega. Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
-| Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`) e lido/atualizado em `/v1/customers/<id>` (sempre sem endereço, para o app mandar o do cadastro), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido menos o id `esgotado`. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`, e `DELETE /v1/subscriptions/<id>` a encerra (passa a `canceled`; 404 sem semear), que é o que a exclusão da conta chama (WEB-336). Saldo do cliente e prévia da próxima fatura (`expand[]=customer` e `POST /v1/invoices/create_preview`, WEB-350) saem de `seedStripeBalance(request, assinatura, { balance, nextAmountDue })`, em centavos; sem semear, saldo zero, e assinatura que não está no stub responde 404 (o app segue sem o saldo). Cartão salvo: `stripeSubscription({ cardLast4 })` põe a forma de pagamento na assinatura, e o stub só a devolve como objeto com `expand[]=default_payment_method`. Abrir checkout exige `setAppConfig('billing.checkout_enabled', true)`, então é teste serial | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
+| Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`) e lido/atualizado em `/v1/customers/<id>` (sempre sem endereço, para o app mandar o do cadastro), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido, até `setFounderCoupon(request, estado)` trocar a resposta: `'exhausted'` é o cupom esgotado, `'missing'` o 404 de cupom que não existe na conta — daí a sessão que mandar cupom é recusada, como no Stripe. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`, e `DELETE /v1/subscriptions/<id>` a encerra (passa a `canceled`; 404 sem semear), que é o que a exclusão da conta chama (WEB-336). Saldo do cliente e prévia da próxima fatura (`expand[]=customer` e `POST /v1/invoices/create_preview`, WEB-350) saem de `seedStripeBalance(request, assinatura, { balance, nextAmountDue })`, em centavos; sem semear, saldo zero, e assinatura que não está no stub responde 404 (o app segue sem o saldo). Cartão salvo: `stripeSubscription({ cardLast4 })` põe a forma de pagamento na assinatura, e o stub só a devolve como objeto com `expand[]=default_payment_method`. | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
 | Mapa | `VITE_MAP_TILES_URL` aponta para o TileJSON do stub (`/tiles.json`); tiles MVT respondem 204: o mapa monta, marcadores aparecem | — |
 | Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
 

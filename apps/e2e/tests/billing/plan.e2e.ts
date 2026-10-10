@@ -1,13 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
-// `/plan` e `/plan/confirmed` com `billing.checkout_enabled` no padrão
-// (desligado). O checkout ligado está em `checkout.serial.e2e.ts`.
+// `/plan` e `/plan/confirmed`. O checkout em si está em
+// `checkout.serial.e2e.ts`.
 
 /** A marca que `/plan` grava antes de mandar para o Stripe (WEB-59). */
 const CHECKOUT_INTENT_KEY = 'onside:checkout-intent'
@@ -371,29 +370,6 @@ test('assinatura paga abre no próprio plano, sem checkout de outro por padrão'
 
   await expect(page.getByRole('radio', { name: /^Starter,/ })).toBeChecked()
   await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
-})
-
-test('checkout desligado: aviso na tela e o servidor recusa com CHECKOUT_DISABLED', async ({
-  page
-}) => {
-  const { user } = await createPub({ subscription: null })
-  await signIn(page, user)
-  await page.goto('/plan')
-
-  await expect(
-    page.getByText('A contratação de planos está temporariamente indisponível.')
-  ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Continuar com Pro' })
-  ).toBeDisabled()
-
-  // A tela é só sugestão: quem chama o endpoint direto também é barrado.
-  const response = await page.request.post('/api/auth/subscription/upgrade', {
-    data: { plan: 'pro', successUrl: '/plan/confirmed', cancelUrl: '/plan' },
-    headers: { origin: BASE_URL }
-  })
-  expect(response.status()).toBe(503)
-  expect(await response.json()).toMatchObject({ code: 'CHECKOUT_DISABLED' })
 })
 
 test('/plan/confirmed sem a marca do checkout volta para /plan', async ({

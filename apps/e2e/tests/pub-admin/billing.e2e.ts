@@ -207,9 +207,12 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   await expect(currentPlan(page)).toContainText('Pro')
   await expect(currentPlan(page)).toContainText('Trial gratuito até')
   await expect(currentPlan(page)).toContainText(/faltam \d+ dias/)
-  // WEB-343: sem cupom de fundador (o padrão), o card mostra a tabela cheia.
-  await expect(currentPlan(page)).toContainText('R$ 147')
-  await expect(currentPlan(page)).not.toContainText('R$ 119')
+  // WEB-343: o card mostra o preço de fundador que /plan promete. O cupom
+  // esgotado, com a tabela cheia, está em `checkout.serial.e2e.ts`.
+  await expect(currentPlan(page)).toContainText('R$ 119')
+  await expect(currentPlan(page)).toContainText(
+    'Com desconto de fundador no checkout'
+  )
   // WEB-264: trial do cadastro não tem cliente no Stripe — sem portal para
   // abrir e sem pagamento; o caminho é contratar em `/plan` (WEB-31).
   await expect(

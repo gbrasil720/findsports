@@ -46,6 +46,12 @@ async function fillEstablishment(page: Page, data: Establishment) {
   }
 }
 
+/**
+ * O botão que conclui a revisão: com o e-mail confirmado o bar entra no ar
+ * ali; sem ele, o cadastro só é enviado depois da confirmação (WEB-238).
+ */
+const CONCLUIR = /Colocar meu bar no ar|Confirmar meu e-mail/
+
 /** Do passo 1 até a revisão, pulando as comodidades. */
 async function reachReview(page: Page, data: Establishment) {
   await button(page, 'Começar').click()
@@ -53,7 +59,9 @@ async function reachReview(page: Page, data: Establishment) {
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
   await expect(
-    page.getByRole('heading', { name: 'Pronto para escolher o plano' })
+    page.getByRole('heading', {
+      name: /Pronto para colocar seu bar no ar|Falta só confirmar seu e-mail/
+    })
   ).toBeVisible()
 }
 
@@ -92,7 +100,7 @@ async function barOf(userId: string) {
   )
 }
 
-test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', async ({
+test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', async ({
   page
 }) => {
   const owner = await signInPendingPub(page)
@@ -145,7 +153,7 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
   ]) {
     await expect(page.getByText(dado, { exact: true })).toBeVisible()
   }
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
 
   const [bar] = await barOf(owner.id)
@@ -160,7 +168,7 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce inativo', a
     // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
     amenities: [1],
     screen_count: 4,
-    is_active: false
+    is_active: true
   })
   const [user] = await query(
     'SELECT onboarding_completed FROM "user" WHERE id = $1',
@@ -235,12 +243,12 @@ test('geocoding fora do ar pede para tentar em instantes e não cria o bar', asy
     neighborhood: 'Centro'
   })
 
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page.getByRole('alert')).toHaveText(
     'Não foi possível validar o endereço agora. Tente novamente em instantes.'
   )
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(button(page, /Escolher meu plano/)).toBeEnabled()
+  await expect(button(page, CONCLUIR)).toBeEnabled()
 
   // O servidor chegou a consultar o geocoding — a falha é do provedor.
   const calls = (await (
@@ -260,7 +268,7 @@ test('endereço que o geocoding não acha pede para conferir a rua', async ({
     neighborhood: 'Centro'
   })
 
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page.getByRole('alert')).toHaveText(
     'Não encontramos esse endereço em São Paulo, SP. Confira a rua, o número, a cidade e o estado.'
   )
@@ -299,7 +307,7 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await continuar.click()
   await button(page, 'Pular').click()
   await expect(page.getByText('Bom Jesus, RN', { exact: true })).toBeVisible()
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
 
   const [bar] = await barOf(owner.id)
@@ -360,7 +368,7 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     neighborhood: 'Moema',
     phone: '11987654321'
   })
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
   await expect(page.getByText(email)).toBeVisible()
@@ -387,7 +395,7 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     name: 'Bar do Rascunho',
     address,
     phone: '+5511987654321',
-    is_active: false
+    is_active: true
   })
   expect(
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)
@@ -413,7 +421,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
     address: street(),
     neighborhood: 'Centro'
   })
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await barOf(owner.id)).toHaveLength(1)
 })
@@ -456,7 +464,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await storedDraft(page)).toBeNull()
   const [bar] = await barOf(owner.id)
@@ -528,7 +536,7 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
     .toMatchObject({ email: b.email, draft: { name: 'Bar de B', step: 2 } })
 
   await button(page, 'Pular').click()
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
   expect(
@@ -567,7 +575,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
 
   await button(page, 'Pular').click()
   await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await storedDraft(page)).toBeNull()
 })
@@ -596,7 +604,7 @@ test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cl
     neighborhood: 'Centro'
   })
   expect(await cache()).toHaveLength(1)
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(/\/plan$/)
   expect(await cache()).toHaveLength(0)
 })
@@ -617,6 +625,6 @@ test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
     address: street(),
     neighborhood: 'Pinheiros'
   })
-  await button(page, /Escolher meu plano/).click()
+  await button(page, CONCLUIR).click()
   await expect.poll(() => pathOf(page)).toBe(deepLink)
 })

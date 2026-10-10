@@ -147,7 +147,6 @@ function PubOnboarding() {
   // WEB-238: a revisão diz o que acontece de fato ao continuar. Quem decide o
   // teste é o `completePub`.
   const revisao = getPubOnboardingReview({
-    trial: configQuery.data?.['billing.onboarding_trial'],
     emailVerified: conta?.emailVerified === true,
     goesToPlan: callbackUrl === '/dashboard'
   })

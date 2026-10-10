@@ -10,7 +10,8 @@ O painel fica em `/internal/flags`, restrito a `role = 'admin'`.
 ## O que é e o que não é
 
 **É** para decisão operacional reversível: desligar um caminho de código que
-regrediu, afrouxar um limite durante um pico, liberar cobrança.
+regrediu, abrir uma cidade nova, liberar uma funcionalidade quando a base
+chegar lá.
 
 **Não é** para direito por plano. Isso já existe, é server-side e é testado —
 `lib/commercial-analytics/entitlements.ts` e `lib/event-creation-policy.ts`.
@@ -35,8 +36,6 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 | Chave | Padrão | Público | O que faz |
 |---|---|---|---|
 | `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
-| `billing.checkout_enabled` | `false` | sim | Libera a abertura de checkout do Stripe. Webhook e portal do cliente **não** passam por este portão. |
-| `billing.onboarding_trial` | `{ enabled: false, plan: 'elite', days: 14 }` | não | Ligada, o bar novo nasce publicado e com assinatura `trialing` do plano por `days` dias (1 a 90). Desligada, nasce fora do ar e só a assinatura paga o publica. Não altera bares já cadastrados. |
 | `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |
 | `launch.pub_cities` | `[]` | sim | Cidades em que um bar conclui o onboarding. Vazio = todas. |
 
@@ -44,14 +43,22 @@ A fonte da verdade é `APP_CONFIG_DEFINITIONS`, em
 `packages/api/src/lib/app-config/registry.ts`; esta tabela só a resume. Se as
 duas divergirem, vale o código.
 
-As chaves de lançamento de funcionalidade (`rating.public_display` e afins)
-devem migrar para feature flags do PostHog — plano no WEB-233. Aqui ficam as
-alavancas operacionais.
+A migração das chaves de lançamento de funcionalidade (`rating.public_display`
+e afins) para feature flags do PostHog foi adiada (WEB-233, 10/10/2026): só
+vale o custo no primeiro rollout por usuário.
+
+Cobrança não mora aqui (WEB-233). Contratação aberta, teste grátis do cadastro
+e cupom de fundador viraram regra fixa do produto, em código: `ONBOARDING_TRIAL`
+(`packages/api/src/lib/plan-limits.ts`) e `FOUNDER_COUPON_ID`
+(`packages/auth/src/stripe-checkout.ts`). A entrada por lista de espera saiu do
+produto, com as duas chaves dela (WEB-232). Linha antiga dessas chaves em
+`app_config` é ignorada na leitura.
 
 `Público` significa que a chave é servida por `appConfig.getPublic`, aberta a
 qualquer visitante. Serve para a tela avisar antes de o usuário bater numa
-porta fechada — **nunca** como decisão de segurança. O servidor recusa de novo,
-sozinho, em `api/auth/$` e em `onboarding.completePub`.
+porta fechada — **nunca** como decisão de segurança. O servidor decide de novo,
+sozinho: `onboarding.completePub` para a cidade, `pubs.search` e
+`pubs.getById` para a nota.
 
 ---
 
@@ -102,14 +109,6 @@ página. Provável causa: `bar.plan` dessincronizou de `subscription.plan`.
 O cursor de paginação é idêntico nos dois caminhos, então a troca pode
 acontecer com gente no meio da navegação. A chave do cache inclui o modo, então
 desligar não continua servindo páginas do caminho suspeito.
-
-### Abrir cobrança
-
-Ligue `billing.checkout_enabled`. Confirme antes que a chave e o ambiente do
-Stripe estão corretos — o portão libera a rota, não valida a credencial.
-
-Para fechar de novo: desligue. Assinaturas já ativas continuam valendo, o
-webhook continua sendo processado e o portal do cliente continua aberto.
 
 ### Abrir uma cidade nova
 
