@@ -210,6 +210,28 @@ test('/plan: cupom esgotado mostra tabela cheia, não o preço com desconto', as
   await expect(page.getByRole('radio', { name: /R\$ 269/ })).toHaveCount(0)
 })
 
+test('/admin/billing: trial do cadastro mostra no card Plano atual o preço de fundador que /plan promete (WEB-343)', async ({
+  page
+}) => {
+  await setAppConfig('billing.founder_coupon', {
+    enabled: true,
+    couponId: 'eM7dQpMF'
+  })
+  const { user } = await createPub({
+    subscription: { plan: 'elite', status: 'trialing' }
+  })
+  await signIn(page, user)
+  await page.goto('/admin/billing')
+
+  const currentPlan = page.locator('section').filter({
+    has: page.getByRole('heading', { name: 'Plano atual' })
+  })
+  await expect(currentPlan).toContainText('R$ 269')
+  await expect(currentPlan).toContainText(
+    'Com desconto de fundador no checkout'
+  )
+})
+
 test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo vira troca no portal, não segunda assinatura (WEB-172)', async ({
   page,
   request
