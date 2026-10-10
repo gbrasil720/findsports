@@ -32,8 +32,7 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
 
   // Sem o aceite dos Termos e da Política o botão não envia. O aceite vem
   // antes dos campos: marcado depois de um campo inválido, o blur mostra o
-  // erro, o formulário desce no meio do clique e o clique se perde (o mesmo
-  // defeito de layout descrito mais abaixo).
+  // erro, o formulário desce no meio do clique e o clique se perde.
   const enviar = page.getByRole('button', { name: 'Entrar no time' })
   await expect(enviar).toBeDisabled()
   await acceptTerms(page)
@@ -50,15 +49,15 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await expect(page.getByText('As senhas não coincidem.')).toBeVisible()
   await expect(page).toHaveURL(/\/signup$/)
 
-  // Nome e e-mail já estão preenchidos. O campo perde o foco antes do clique:
-  // no celular o erro de "Confirmar senha" só some no blur, e o botão sobe
-  // 30px no meio do clique, que cai fora dele e não envia nada. É defeito do
-  // formulário (erro de campo sem espaço reservado), anterior a este teste.
+  // Nome e e-mail já estão preenchidos. O clique vem direto do campo
+  // corrigido, sem blur: o erro some enquanto a pessoa digita, então o botão
+  // não sobe no meio do clique.
   await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  const confirm = page.getByLabel('Confirmar senha', { exact: true })
-  await confirm.fill(DEFAULT_PASSWORD)
-  await confirm.blur()
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await page
+    .getByLabel('Confirmar senha', { exact: true })
+    .fill(DEFAULT_PASSWORD)
+  await expect(page.getByText('As senhas não coincidem.')).toBeHidden()
+  await enviar.click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
   await expect(page.getByText(email)).toBeVisible()

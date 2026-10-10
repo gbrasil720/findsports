@@ -6,6 +6,7 @@ import {
 import type { AnyFieldApi } from '@tanstack/form-core'
 import type { ComponentType, SVGAttributes } from 'react'
 
+import { changeAuthField } from '@/components/auth-field-change'
 import { AUTH_INPUT_CLASS, AUTH_INPUT_GROUP_CLASS } from '@/lib/auth-styles'
 
 type IconProps = SVGAttributes<SVGSVGElement> & {
@@ -70,7 +71,7 @@ export function AuthInputField({
           spellCheck={spellCheck}
           value={field.state.value}
           onBlur={field.handleBlur}
-          onChange={(e) => field.handleChange(e.target.value)}
+          onChange={(e) => changeAuthField(field, e.target.value)}
           className={AUTH_INPUT_CLASS}
           aria-invalid={hasErrors || undefined}
           aria-describedby={hasErrors ? errorId : undefined}

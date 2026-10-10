@@ -9,6 +9,7 @@ import Eye from 'reicon-react/icons/Eye'
 import EyeSlash from 'reicon-react/icons/EyeSlash'
 import Lock from 'reicon-react/icons/Lock'
 
+import { changeAuthField } from '@/components/auth-field-change'
 import { AUTH_INPUT_CLASS, AUTH_INPUT_GROUP_CLASS } from '@/lib/auth-styles'
 
 interface AuthPasswordFieldProps {
@@ -64,7 +65,7 @@ export function AuthPasswordField({
           required={required}
           value={field.state.value}
           onBlur={field.handleBlur}
-          onChange={(e) => field.handleChange(e.target.value)}
+          onChange={(e) => changeAuthField(field, e.target.value)}
           className={AUTH_INPUT_CLASS}
           aria-invalid={hasErrors || undefined}
           aria-describedby={hasErrors ? errorId : undefined}
