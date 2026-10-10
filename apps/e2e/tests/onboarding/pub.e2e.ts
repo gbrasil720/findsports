@@ -391,6 +391,30 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
   ).toBeNull()
 })
 
+test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preenchido depois é salvo (WEB-349)', async ({
+  page
+}) => {
+  // Aba nova, sem o `sessionStorage` do cadastro: antes o wizard abria, e ao
+  // concluir a revisão o rascunho não tinha dono — nada era salvo.
+  const owner = await createUser({ role: 'pub', onboardingCompleted: false })
+  await page.goto('/onboarding/pub')
+  await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fonboarding%2Fpub$/)
+
+  await page.getByLabel('E-mail').fill(owner.email)
+  await page.getByLabel('Senha', { exact: true }).fill(owner.password)
+  await button(page, 'Acessar minha conta').click()
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
+
+  await reachReview(page, {
+    name: 'Bar da Aba Nova',
+    address: street(),
+    neighborhood: 'Centro'
+  })
+  await button(page, /Escolher meu plano/).click()
+  await expect(page).toHaveURL(/\/plan$/)
+  expect(await barOf(owner.id)).toHaveLength(1)
+})
+
 const pathOf = (page: Page) => {
   const url = new URL(page.url())
   return url.pathname + url.search

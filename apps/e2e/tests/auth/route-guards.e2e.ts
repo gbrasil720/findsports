@@ -34,6 +34,9 @@ test.describe('deslogado', () => {
     '/internal/waitlist',
     '/app',
     '/onboarding/fan',
+    // Pública só para quem acabou de se cadastrar na aba (WEB-349); esse
+    // caminho está em `signup-login.e2e.ts` e `onboarding/pub.e2e.ts`.
+    '/onboarding/pub',
     '/access-pending'
   ]) {
     // WEB-210: o destino original vai junto como callbackUrl.
@@ -58,11 +61,6 @@ test.describe('deslogado', () => {
       '/dashboard/profile?ref=email'
     )
     await expect(page).toHaveURL(/\/dashboard\/profile\?ref=email$/)
-  })
-
-  test('/onboarding/pub abre sem sessão', async ({ page }) => {
-    await page.goto('/onboarding/pub')
-    await expect(page).toHaveURL(/\/onboarding\/pub$/)
   })
 
   test('/pub/$pubId abre sem sessão', async ({ page }) => {
