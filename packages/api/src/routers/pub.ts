@@ -37,7 +37,11 @@ import {
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
-import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
+import {
+  getCurrentPlan,
+  getSubscriptionStanding,
+  type SubscriptionForPlan
+} from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
 import {
   getEventDeletionBlock,
@@ -49,7 +53,7 @@ import {
   assertCanConfigureHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
-import { STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -144,6 +148,26 @@ export function assertEventIntervalValid(
       message: 'O horário de término deve ser posterior ao horário de início.'
     })
   }
+}
+
+/**
+ * Recusa de `createEvent` no limite de jogos. Pro ou Elite parado (`past_due`
+ * ou trial vencido) cai no limite do Starter (WEB-129), mas não é Starter nem
+ * resolve com upgrade: o caminho é regularizar a assinatura (WEB-331).
+ */
+export function eventLimitMessage(
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+): string {
+  const standing = getSubscriptionStanding(subscription, now)
+  if (
+    subscription &&
+    subscription.plan !== 'starter' &&
+    (standing === 'past_due' || standing === 'trial_ended')
+  ) {
+    return `Seu plano ${PLAN_NAMES[subscription.plan]} está parado e permite até ${STARTER_EVENT_LIMIT} jogos por mês. Regularize a assinatura para voltar aos jogos ilimitados.`
+  }
+  return `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
 }
 
 /**
@@ -606,7 +630,7 @@ export const pubRouter = router({
         if (policy.status === 'limited' && !policy.canCreate) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: `Plano Starter permite até ${STARTER_EVENT_LIMIT} jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.`
+            message: eventLimitMessage(existingSubscription ?? null)
           })
         }
 

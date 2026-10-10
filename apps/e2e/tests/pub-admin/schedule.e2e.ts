@@ -230,6 +230,64 @@ test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
   ).toBe(STARTER_LIMIT)
 })
 
+// WEB-331: Elite parado cai no limite do Starter (WEB-129), mas o que resolve
+// é regularizar a assinatura que ele já tem, não fazer upgrade.
+test('Elite com pagamento pendente vê o limite em vigor e é mandado regularizar', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page, {
+    subscription: { plan: 'elite', status: 'past_due' }
+  })
+  for (let i = 0; i < STARTER_LIMIT - 1; i++) await createEvent(barId)
+
+  // Antes do limite: a Visão geral já diz quantos jogos restam.
+  await page.goto('/admin')
+  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  await expect(overview).toContainText(
+    `Pagamento pendente — 1 de ${STARTER_LIMIT} jogos restantes`
+  )
+  await expect(overview).toContainText('Pagamento pendente · 1 restantes')
+  await expect(
+    overview.getByRole('link', { name: 'Regularizar assinatura' })
+  ).toHaveAttribute('href', '/admin/billing')
+
+  // No limite: a grade explica por que parou e leva à assinatura. O jogo
+  // entrou direto no banco, e trocar só o hash não recarrega a política.
+  await createEvent(barId)
+  await page.reload()
+  await gotoSchedule(page)
+  await expect(page.getByRole('button', { name: 'Novo evento' })).toBeDisabled()
+  await expect(
+    page.getByText(
+      'Plano Elite com pagamento pendente: limite de jogos atingido.'
+    )
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Regularizar assinatura' })
+  ).toHaveAttribute('href', '/admin/billing')
+  await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
+
+  await page.getByRole('tab', { name: 'Visão geral' }).click()
+  await expect(overview).toContainText('Limite de jogos atingido este mês')
+  await expect(overview).toContainText('Pagamento pendente · 0 restantes')
+  await expect(
+    overview.getByRole('link', { name: 'Fazer upgrade' })
+  ).toHaveCount(0)
+
+  // E a recusa do servidor não o chama de Starter.
+  const response = await page.request.post('/api/trpc/pub.createEvent', {
+    data: {
+      sportId: await soccerSportId(),
+      championship: 'Sexto jogo',
+      startsAt: new Date(Date.now() + 86_400_000).toISOString()
+    }
+  })
+  expect(response.status()).toBe(403)
+  const refusal = await response.text()
+  expect(refusal).toContain('Regularize a assinatura')
+  expect(refusal).not.toContain('Starter')
+})
+
 for (const plan of ['pro', 'elite'] as const) {
   test(`${plan} não tem limite de jogos`, async ({ page }) => {
     const { barId } = await openSchedule(page, { subscription: { plan } })
