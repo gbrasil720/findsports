@@ -40,6 +40,10 @@ export const authClient = createAuthClient({
  * Nunca rejeita: quem chama já gravou a mutação, e uma falha aqui (rede) não
  * pode virar erro dela. O guard revalida no servidor; o pior caso é ver o
  * onboarding de novo.
+ *
+ * É a segunda tentativa: `onboarding.completePub` e `completeFan` já expiram
+ * o cookie na própria resposta. Sozinho, este pedido deixava na revisão, com
+ * o bar criado, quem o tivesse perdido.
  */
 export async function refreshSessionCache() {
   await authClient.expireSessionCache().catch(() => {})

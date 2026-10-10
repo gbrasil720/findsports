@@ -13,7 +13,7 @@ import {
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Location from 'reicon-react/icons/Location'
 import Search from 'reicon-react/icons/Search'
@@ -28,6 +28,7 @@ import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { StepProgress } from '@/components/onboarding/step-progress'
 import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import { conciliarUfComCidade } from '@/components/uf-select'
+import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -80,6 +81,13 @@ function PubOnboarding() {
   const user = Route.useRouteContext({
     select: (context) => context.session?.user
   })
+  // Conta do rascunho e do envio: a sessão viva do better-auth, que se
+  // atualiza quando o dono volta a esta aba. O contexto da rota é de quando a
+  // aba carregou: quem se cadastrou aqui como A e entrou como B em outra aba
+  // seguia "sem sessão", e o rascunho de B saía no nome de A — na volta era
+  // descartado. Havendo sessão o dono é o e-mail dela; o e-mail pendente do
+  // cadastro só vale sem sessão.
+  const conta = useSession()?.user ?? user
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
@@ -96,6 +104,31 @@ function PubOnboarding() {
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
+
+  const draft = useMemo<PubOnboardingDraft>(
+    () => ({
+      name: name.trim(),
+      address: address.trim(),
+      neighborhood: neighborhood.trim(),
+      city: city.trim() || undefined,
+      uf: ehUf(uf) ? uf : undefined,
+      phone: phone.trim() || undefined,
+      description: description.trim() || undefined,
+      amenities: amenities.length > 0 ? amenities : undefined,
+      screenCount: screenCount ?? undefined
+    }),
+    [
+      name,
+      address,
+      neighborhood,
+      city,
+      uf,
+      phone,
+      description,
+      amenities,
+      screenCount
+    ]
+  )
 
   // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
   // `onboarding.completePub`; aqui a tela só evita que o dono do bar preencha
@@ -147,34 +180,59 @@ function PubOnboarding() {
   // uma descrição antiga sem ter visto. O que não serve (outra conta, vencido)
   // sai do navegador aqui. A conta é a da sessão ou, vindo do cadastro ainda
   // sem sessão, o e-mail que a aba acabou de cadastrar.
+  //
+  // O rascunho gravado no meio do wizard volta no passo em que o dono parou;
+  // o que passou pela revisão não tem passo e abre no formulário.
   const sessionEmail = user?.email
+  const contaEmail = conta?.email
   useEffect(() => {
-    const email = sessionEmail ?? readPendingEmail()
+    const email = contaEmail ?? readPendingEmail()
     if (!email) return
-    const draft = parsePubOnboardingDraft(
+    const salvo = parsePubOnboardingDraft(
       localStorage.getItem(PUB_ONBOARDING_DRAFT_KEY),
       email
     )
-    if (!draft) {
+    if (!salvo) {
       localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
       return
     }
-    setName(draft.name)
-    setAddress(draft.address)
-    setNeighborhood(draft.neighborhood)
-    setCity(draft.city ?? 'São Paulo')
+    setName(salvo.name)
+    setAddress(salvo.address)
+    setNeighborhood(salvo.neighborhood)
+    setCity(salvo.city ?? 'São Paulo')
     // Rascunho de antes do campo vem sem UF (WEB-270): a cidade preenche
     // quando só existe em um estado; senão o dono escolhe.
-    setUf(draft.uf ?? '')
-    conciliarUfComCidade(draft.city ?? 'São Paulo', setUf)
-    setPhone(draft.phone ?? '')
-    setDescription(draft.description ?? '')
-    setAmenities(draft.amenities ?? [])
-    setScreenCount(draft.screenCount ?? null)
-    setPhoneError(motivoTelefoneInvalido(draft.phone))
+    setUf(salvo.uf ?? '')
+    conciliarUfComCidade(salvo.city ?? 'São Paulo', setUf)
+    setPhone(salvo.phone ?? '')
+    setDescription(salvo.description ?? '')
+    setAmenities(salvo.amenities ?? [])
+    setScreenCount(salvo.screenCount ?? null)
+    setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)
-    setStep(1)
-  }, [sessionEmail])
+    setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
+  }, [contaEmail])
+
+  // Recarregar a página no meio do wizard zerava os quatro passos: o rascunho
+  // só era gravado ao concluir a revisão. Agora ele acompanha o preenchimento,
+  // com o passo, pela mesma regra da WEB-262 (só com dono); `seguirParaPlano`
+  // o apaga quando o bar é criado. Vem depois do efeito acima de propósito: se
+  // a conta mudou, aquele tira o rascunho da anterior e este grava o da atual.
+  //
+  // Nas boas-vindas não há o que guardar. Formulário em branco apaga em vez de
+  // gravar, para o "Descartar" não voltar como rascunho vazio.
+  useEffect(() => {
+    const email = contaEmail ?? readPendingEmail()
+    if (step === 0 || !email) return
+    if (!draft.name && !draft.address && !draft.neighborhood && !draft.phone) {
+      localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+      return
+    }
+    localStorage.setItem(
+      PUB_ONBOARDING_DRAFT_KEY,
+      serializePubOnboardingDraft({ ...draft, step }, email)
+    )
+  }, [contaEmail, step, draft])
 
   // WEB-349: a rota é pública por causa de quem acabou de se cadastrar nesta
   // aba. Em aba sem sessão e sem esse cadastro (aba nova, link direto) não há
@@ -289,25 +347,14 @@ function PubOnboarding() {
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1)
     } else {
-      const draft: PubOnboardingDraft = {
-        name: name.trim(),
-        address: address.trim(),
-        neighborhood: neighborhood.trim(),
-        city: city.trim() || undefined,
-        uf: ehUf(uf) ? uf : undefined,
-        phone: phone.trim() || undefined,
-        description: description.trim() || undefined,
-        amenities: amenities.length > 0 ? amenities : undefined,
-        screenCount: screenCount ?? undefined
-      }
-      if (user?.emailVerified) {
+      if (conta?.emailVerified) {
         completeMutation.mutate(draft)
         return
       }
       // Sem e-mail confirmado o cadastro só é enviado de `/verify-email`. Sem
       // sessão e sem cadastro nesta aba não há de quem guardar o rascunho;
       // `/verify-email` oferece o login.
-      const email = user?.email ?? readPendingEmail()
+      const email = conta?.email ?? readPendingEmail()
       if (email) {
         localStorage.setItem(
           PUB_ONBOARDING_DRAFT_KEY,

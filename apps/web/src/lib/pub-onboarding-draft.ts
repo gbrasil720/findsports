@@ -25,6 +25,12 @@ export type PubOnboardingDraft = {
   description?: string
   amenities?: number[]
   screenCount?: number
+  /**
+   * Passo do wizard em que o dono parou, gravado enquanto ele preenche. Ausente
+   * no rascunho que passou pela revisão — o formato de antes, e o único que
+   * `/verify-email` envia sozinho. Não vai ao servidor.
+   */
+  step?: number
 }
 
 const mesmoEmail = (a: string, b: string) =>
@@ -73,10 +79,13 @@ export function parsePubOnboardingDraft(
     ) {
       return null
     }
-    // UF que não é sigla sai sozinha, sem derrubar o resto do rascunho.
+    // UF que não é sigla e passo que não é número saem sozinhos, sem derrubar
+    // o resto do rascunho.
+    const { step } = parsed.draft
     return {
       ...parsed.draft,
-      uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined
+      uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
+      step: Number.isInteger(step) && Number(step) > 0 ? step : undefined
     }
   } catch {
     return null

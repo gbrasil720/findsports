@@ -86,8 +86,9 @@ function VerifyEmailPage() {
           data.user.email
         )
         // Rascunho de antes da UF (WEB-270) não é enviado nem descartado: o
-        // formulário o abre e pede o que falta.
-        if (!draft?.uf) {
+        // formulário o abre e pede o que falta. O que ainda tem passo também
+        // não: o dono parou no meio do wizard, sem passar pela revisão.
+        if (!draft?.uf || draft.step) {
           navigate({ to: '/onboarding/pub' })
           return
         }
