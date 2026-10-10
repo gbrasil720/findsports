@@ -24,6 +24,7 @@ import {
   canManageReservations,
   hasOpenReservations,
   notEnded,
+  validationOpen,
   withSeatAvailability
 } from '../lib/reservation-intake'
 
@@ -134,6 +135,14 @@ export const barReservationsRouter = router({
    * pedido novo (WEB-341). Sem guarda de plano: só diz o que desenhar.
    */
   hasOpen: barProcedure.query(({ ctx }) => hasOpenReservations(ctx.barId)),
+
+  /**
+   * O mesmo, até a janela de validação fechar: é o que `/admin/validate`
+   * desenha para quem não tem Elite. Quem decide é `reservationValidation`.
+   */
+  hasValidatable: barProcedure.query(({ ctx }) =>
+    hasOpenReservations(ctx.barId, validationOpen)
+  ),
 
   /**
    * Pedidos dos jogos que ainda não acabaram, pendentes primeiro e, dentro de
