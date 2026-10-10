@@ -181,3 +181,30 @@ jobs:
       - name: Deploy
         working-directory: apps/web
         run: bunx wrangler deploy --message "${{ github.event_name }} ${{ github.sha }}"
+
+  # WEB-218: Worker de tiles ZXY. Só produção (push em master); PR não publica
+  # em tiles.onside.sh. A rota custom domain exige deploy com token Cloudflare.
+  deploy-tiles:
+    needs: [check, unit-test]
+    if: >-
+      ${{ github.event_name == 'push'
+      && github.ref == 'refs/heads/master'
+      && needs.check.result == 'success'
+      && needs.unit-test.result == 'success'
+      && needs.check.outputs.target != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    concurrency:
+      group: deploy-tiles-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-monorepo
+      - name: Deploy onside-tiles
+        working-directory: apps/tiles
+        run: bunx wrangler deploy --message "${{ github.event_name }} ${{ github.sha }}"

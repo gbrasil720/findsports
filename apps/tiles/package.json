@@ -1,0 +1,21 @@
+{
+  "name": "onside-tiles",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "pmtiles": "^4.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250317.0",
+    "@findsports_oficial/config": "workspace:*",
+    "@types/bun": "^1.3.14",
+    "typescript": "catalog:",
+    "wrangler": "4.147.0"
+  }
+}

@@ -8,9 +8,9 @@ import {
 
 import { criarEstiloDoMapa } from './map-style'
 
-const TILES = 'https://tiles.onside.sh/onside.pmtiles'
+const TILEJSON = 'https://tiles.onside.sh/onside-br-20260906.json'
 const ORIGEM = 'https://www.onside.sh'
-const estilo = criarEstiloDoMapa(TILES, ORIGEM)
+const estilo = criarEstiloDoMapa(TILEJSON, ORIGEM)
 
 /** `apps/web/public`, onde os glyphs e o sprite são servidos. */
 const PUBLIC_DIR = path.join(import.meta.dir, '..', '..', 'public')
@@ -25,9 +25,9 @@ describe('estilo do mapa (WEB-73)', () => {
     expect(validateStyleMin(estilo).map((erro) => erro.message)).toEqual([])
   })
 
-  it('aponta para o arquivo PMTiles pelo protocolo do pmtiles', () => {
+  it('aponta para o TileJSON do Worker de tiles', () => {
     const fonte = estilo.sources.protomaps
-    expect(fonte).toMatchObject({ type: 'vector', url: `pmtiles://${TILES}` })
+    expect(fonte).toMatchObject({ type: 'vector', url: TILEJSON })
   })
 
   /**

@@ -66,7 +66,7 @@ export const SERVER_ENV: Record<string, string> = {
   LAUNCH_ADMISSION_MODE: 'invite-only',
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
-  VITE_MAP_TILES_URL: `${STUB_URL}/tiles.pmtiles`,
+  VITE_MAP_TILES_URL: `${STUB_URL}/tiles.json`,
   VITE_POSTHOG_KEY: '',
   // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. A
   // verificação no servidor é coberta por `packages/api/src/lib/turnstile.test.ts`.

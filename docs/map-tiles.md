@@ -1,12 +1,15 @@
-# Basemap próprio — MapLibre + Protomaps (WEB-73)
+# Basemap próprio — MapLibre + Protomaps (WEB-73, WEB-218)
 
 O mapa não depende mais de fornecedor com faturamento. O basemap inteiro é **um
-arquivo** num bucket, e o navegador lê faixas de bytes dele por HTTP Range.
+arquivo** `.pmtiles` no R2; o navegador **não** lê esse arquivo direto — um
+Worker Cloudflare (`onside-tiles`) fatia o archive em tiles ZXY e cacheia cada
+resposta na borda.
 
 | Peça | Onde | Quem paga |
 |---|---|---|
 | Biblioteca | `maplibre-gl` (BSD), npm | — |
-| Tiles | `.pmtiles` no Cloudflare R2 | armazenamento (egress grátis) |
+| Archive | `.pmtiles` no bucket R2 `onside-maps` | armazenamento (egress grátis) |
+| API de tiles | Worker `onside-tiles` em `tiles.onside.sh` | Workers Paid (WEB-218) |
 | Glyphs e sprite | `apps/web/public/map/`, mesma origem | — |
 | Estilo | `apps/web/src/lib/map-style.ts` | — |
 | Geocoding | LocationIQ (`LOCATIONIQ_API_KEY`) | tier grátis, 5.000/dia |
@@ -18,11 +21,16 @@ Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
 | Campo | Valor |
 |---|---|
 | Build do Protomaps | `20260906` |
-| URL pública | `tiles.onside.sh` (domínio próprio do bucket `onside-maps`) |
+| Tileset (nome na URL) | `onside-br-20260906` |
+| TileJSON | `https://tiles.onside.sh/onside-br-20260906.json` |
+| Objeto no R2 | `maps/onside-br-20260906.pmtiles` (~6,1 GB) |
 | bbox | `-74.1,-33.9,-34.7,5.4` (Brasil) |
 | maxzoom | 15 |
-| Tamanho | 6,1 GB |
 | Esquema | Protomaps v4 (`version 4.15.2`) |
+
+`VITE_MAP_TILES_URL` aponta para o **TileJSON** (`.json`), não para o
+`.pmtiles`. Preview e produção podem usar builds diferentes trocando só essa
+variável nas `vars` do GitHub Actions.
 
 ## Por que Brasil inteiro, e não a região de operação
 
@@ -45,49 +53,100 @@ Medições feitas antes de escolher, contra `20260906.pmtiles`:
 | Brasil, z0–11 | 313 MB |
 
 A diferença entre 1,9 GB e 6,1 GB é de centavos por mês em armazenamento, e
-**não muda a transferência**: o que trafega é o que o viewport pede, não o
-tamanho do arquivo. Não havia motivo para pagar em cobertura o que não se
+**não muda a transferência** na API ZXY: o que trafega é o que o viewport pede,
+não o tamanho do arquivo. Não havia motivo para pagar em cobertura o que não se
 economizava em conta.
 
 **Abrir cidade nova não exige rebuild.**
 
-## Por que R2, e não Vercel Blob
+## Por que R2 + Worker, e não Vercel Blob
 
 O arquivo morou no Vercel Blob por um dia e estourou o plano: **o tier grátis
-Hobby dá 1 GB de armazenamento**, e o arquivo tem 6,1 GB. Não era volume de uso
-— transferência estava em 176 MB de 10 GB e operações em 278 de 10 mil —, era o
-tamanho do arquivo. Passar para o Pro resolveria por US$ 20/mês, que é
-exatamente o custo recorrente de que este ticket existe para sair.
+Hobby dá 1 GB de armazenamento**, e o archive tem 6,1 GB. O R2 dá 10 GB de
+armazenamento e **egress zero** no tier grátis.
 
-O R2 dá 10 GB de armazenamento e **egress zero** no tier grátis. O arquivo cabe
-inteiro e a conta fica em US$ 0 sem teto de tráfego — não "US$ 0 até estourar".
+**Cache de borda no domínio do bucket (WEB-218, opção A descartada):** servir o
+`.pmtiles` direto em `tiles.onside.sh` (custom domain do R2) devolve
+`cf-cache-status: DYNAMIC` em todo Range request, porque o objeto inteiro passa
+de **512 MB** — limite de cache da Cloudflare para um único recurso. O ganho do
+R2 era custo e egress; não havia HIT na borda.
 
-Havia um segundo motivo, de desempenho: o Vercel Blob não guarda em cache
-objeto acima de 512 MB, então toda requisição de faixa ia à origem. Isso **não**
-mudou no R2: o limite de 512 MB por objeto vale também para o cache da
-Cloudflare no plano Free, e o arquivo tem 6,1 GB, então as faixas saem com
-`cf-cache-status: DYNAMIC` e vão ao bucket (WEB-218). O ganho do R2 é custo e
-egress zero; o `Cache-Control` do upload serve ao cache do navegador.
+**Solução atual:** o Worker `apps/tiles` lê faixas do `.pmtiles` no R2 (Range
+interno, sem expor 206 ao navegador) e responde cada tile ou TileJSON como HTTP
+**200** completo. O **Cache API** do Workers grava por URL (`/nome/z/x/y.mvt`,
+`/nome.json`). Repetição do mesmo tile → `cf-cache-status: HIT`. O domínio tem
+de ser **custom domain do Worker** (`tiles.onside.sh`), não `workers.dev` — ver
+[deploy Cloudflare do Protomaps](https://docs.protomaps.com/deploy/cloudflare).
+
+O `Cache-Control` no objeto R2 (`build-map-tiles.ts` usa `aws s3 cp` com
+`max-age=31536000, immutable`) afeta leituras diretas ao bucket; **não** substitui
+o cache por tile do Worker.
+
+## Worker `onside-tiles`
+
+Código em `apps/tiles/`, config em `apps/tiles/wrangler.jsonc`.
+
+| Rota | Função |
+|---|---|
+| `GET /{nome}.json` | TileJSON para o MapLibre |
+| `GET /{nome}/{z}/{x}/{y}.mvt` | tile vetorial |
+
+Variáveis (`vars` no wrangler):
+
+| Var | Valor | Uso |
+|---|---|---|
+| `PMTILES_PATH` | `maps/{name}.pmtiles` | chave no bucket |
+| `PUBLIC_HOSTNAME` | `tiles.onside.sh` | URLs absolutas no TileJSON |
+| `ALLOWED_ORIGINS` | origens do app + preview + localhost | CORS |
+| `CACHE_CONTROL` | `public, max-age=31536000, immutable` | cabeçalho nas respostas cacheáveis |
+
+Binding R2: `BUCKET` → `onside-maps`.
+
+### Deploy (Infra — manual na primeira vez)
+
+O CI publica o Worker **só no push em `master`** (job `deploy-tiles` em
+`.github/workflows/ci.yml`). PR não toca produção.
+
+Passos que Infra ainda precisa conferir no painel Cloudflare (não automatizados
+neste repositório):
+
+1. **Rota / domínio:** Worker `onside-tiles` → Settings → Domains & Routes →
+   Custom Domain `tiles.onside.sh` (o `wrangler.jsonc` já declara a rota; o
+   primeiro deploy com token certo costuma criar o registro DNS na zona
+   `onside.sh`).
+2. **Desligar custom domain público do R2** em `onside-maps` quando o Worker
+   estiver servindo tudo — evita bypass do cache indo direto ao `.pmtiles`.
+3. **CORS no bucket:** ainda necessário se alguém ler o objeto direto; o Worker
+   responde CORS pelas origens em `ALLOWED_ORIGINS`.
+4. **Verificação:**
+
+```bash
+curl -sI 'https://tiles.onside.sh/onside-br-20260906/0/0/0.mvt' | grep -i cf-cache-status
+# primeira vez: MISS ou DYNAMIC; repetir até HIT
+
+curl -sI 'https://tiles.onside.sh/onside-br-20260906.json' | grep -i cf-cache-status
+```
+
+5. **Variável do app:** `VITE_MAP_TILES_URL` nas GitHub Actions `vars` =
+   `https://tiles.onside.sh/onside-br-20260906.json` (ou build novo após
+   rebuild). Deploy do `onside-web` embute no build.
+
+Deploy local (emergência):
+
+```bash
+cd apps/tiles && bunx wrangler deploy
+```
 
 ## Configuração do bucket
 
 Duas coisas que só existem no painel da Cloudflare, porque o token de escrita de
 objeto não alcança configuração de bucket:
 
-1. **Acesso público.** R2 → o bucket → Settings → Public access.
+1. **Acesso público** (opcional após WEB-218): R2 → Settings → Public access /
+   Custom Domains. Com Worker na frente, o app não depende mais do domínio
+   público do bucket.
 
-   O app lê pelo domínio próprio `tiles.onside.sh`, ligado ao bucket (R2 →
-   Settings → Custom Domains) desde que o DNS de `onside.sh` passou para a
-   Cloudflare em 03/10/2026 (WEB-101). `VITE_MAP_TILES_URL` aponta para ele
-   desde 03/10/2026 (WEB-219). Cache de borda não veio com a troca (ver acima e
-   WEB-218).
-
-   O subdomínio `r2.dev` ainda está ligado, só como rollback: a Cloudflare o
-   limita por taxa e diz que serve só para desenvolvimento. Ele deve ser
-   desligado em ou depois de 06/10/2026, 48h depois do deploy — passo a passo
-   no WEB-219.
-
-2. **Política de CORS**, no mesmo Settings:
+2. **Política de CORS** (se o bucket continuar acessível):
 
 ```json
 [
@@ -101,9 +160,6 @@ objeto não alcança configuração de bucket:
 ]
 ```
 
-`range` em `AllowedHeaders` é o item que não pode faltar: sem ele o preflight
-recusa e o PMTiles não consegue ler faixa nenhuma.
-
 ## Rebuild
 
 Trimestral, manual.
@@ -114,23 +170,22 @@ bun apps/web/scripts/build-map-tiles.ts --dry-run     # mede sem baixar
 bun apps/web/scripts/build-map-tiles.ts               # extrai e publica
 ```
 
-O script imprime a `VITE_MAP_TILES_URL` nova. Trocar a variável **nas `vars` do
-GitHub Actions (lida pelo build do job `deploy`) e no `.env` local é passo
-manual**, de propósito: o nome do arquivo carrega a data do
-build porque ele sobe com `Cache-Control: public, max-age=31536000, immutable`,
-e build novo tem que virar URL nova em vez de tentar invalidar cache de CDN.
+O script sobe o `.pmtiles` para `maps/onside-br-{data}.pmtiles` com
+`Cache-Control: public, max-age=31536000, immutable` (via `aws s3 cp` — o
+`Bun.S3Client` descartava o cabeçalho) e imprime a `VITE_MAP_TILES_URL` nova
+(apontando para o TileJSON no Worker).
 
-O envio é pelo `aws` CLI porque o `Bun.S3Client` não tem opção de
-`Cache-Control` e descarta a chave em silêncio — o arquivo `20260906` subiu sem
-cabeçalho de cache por isso. O script lê o objeto de volta (`head-object`) e
-falha se o tamanho ou o `Cache-Control` guardados não forem os esperados.
+Trocar a variável **nas `vars` do GitHub Actions e no `.env` local** é passo
+manual: build novo = nome novo = URL nova; não há invalidação global de cache
+no Worker (cada tile é imutável por URL).
+
+Ordem para não derrubar produção: publicar no R2 → deploy do Worker (se
+precisar) → trocar `VITE_MAP_TILES_URL` → deploy `onside-web` → conferir mapa →
+apagar archive antigo do bucket.
 
 ### Corrigir o cabeçalho de um arquivo já publicado
 
-Opcional e uma vez só, para o `onside-br-20260906.pmtiles`, que subiu antes da
-correção. Cópia do objeto sobre ele mesmo trocando os metadados, sem baixar
-nada — o `s3 cp` faz a cópia em partes no servidor, o que um arquivo acima de
-5 GB exige:
+Opcional, para objetos que subiram sem `Cache-Control`:
 
 ```bash
 set -a; source apps/web/.env; set +a
@@ -143,13 +198,6 @@ aws s3 cp "s3://$R2_BUCKET/maps/onside-br-20260906.pmtiles" \
   --cache-control="public, max-age=31536000, immutable" \
   --endpoint-url="https://$CF_ACCOUNT_ID.r2.cloudflarestorage.com"
 ```
-
-`REPLACE` troca **todos** os metadados, então o `--content-type` precisa ir
-junto, senão o objeto volta como `binary/octet-stream`. A URL não muda, e
-nenhuma variável precisa ser trocada.
-
-Ordem para não derrubar produção: publicar → trocar a variável → deploy →
-conferir o mapa no ar → **só então** apagar o arquivo antigo do bucket.
 
 ## Glyphs e sprite
 
@@ -257,9 +305,6 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   os tiles e desenha num canvas de altura zero, sem erro nenhum. Use `h-full
   w-full`, como em `map-status.tsx`. O SDK do Google não escrevia classe no nosso
   `<div>`, então é uma armadilha exclusiva da troca.
-- **O bucket precisa de CORS.** O navegador busca o `.pmtiles` de outra origem
-  e com cabeçalho `Range`. Diferente do Vercel Blob, que mandava
-  `access-control-allow-origin: *` por padrão, o R2 não manda nada sem política
-  configurada — e a falha aparece como mapa vazio, não como erro de rede
-  legível. A política está abaixo, e ela precisa liberar `range` em
-  `AllowedHeaders` e expor `content-range` e `accept-ranges`.
+- **CORS no Worker de tiles.** O navegador busca TileJSON e MVT de
+  `tiles.onside.sh`. `ALLOWED_ORIGINS` no wrangler precisa incluir preview e
+  localhost; origem ausente na lista = preflight falha e mapa vazio.

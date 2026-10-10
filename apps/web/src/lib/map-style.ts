@@ -195,11 +195,12 @@ function semNomeLocal(expressao: unknown): unknown {
 }
 
 /**
- * Monta o estilo apontando para o arquivo PMTiles informado.
+ * Monta o estilo apontando para o TileJSON do basemap (WEB-218).
  *
- * `pmtiles://` é resolvido pelo protocolo registrado em `onside-map.tsx`: o
- * navegador lê faixas de bytes do arquivo único por HTTP Range, sem servidor
- * de tiles no meio.
+ * `tilesUrl` é a URL pública do `.json` servido pelo Worker em
+ * `tiles.onside.sh` — por exemplo
+ * `https://tiles.onside.sh/onside-br-20260906.json`. O MapLibre baixa o
+ * TileJSON e pede cada tile em `/{z}/{x}/{y}.mvt` na mesma origem.
  *
  * `lang: 'pt'` faz os rótulos preferirem `name:pt` — "Oceano Atlântico" em
  * vez de "Atlantic Ocean" —, caindo no nome local quando não existe tradução,
@@ -207,7 +208,7 @@ function semNomeLocal(expressao: unknown): unknown {
  * latino o nome local não entra: ver `semNomeLocal`.
  */
 export function criarEstiloDoMapa(
-  tilesUrl: string,
+  tileJsonUrl: string,
   /**
    * Origem que prefixa glyphs e sprite. Vem de `window.location.origin` no
    * componente; é parâmetro, e não leitura global, para o estilo continuar
@@ -223,7 +224,7 @@ export function criarEstiloDoMapa(
     sources: {
       [SOURCE]: {
         type: 'vector',
-        url: `pmtiles://${tilesUrl}`,
+        url: tileJsonUrl,
         attribution: ATRIBUICAO
       }
     },

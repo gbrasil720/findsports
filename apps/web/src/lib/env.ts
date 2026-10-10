@@ -39,17 +39,14 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
   client: {
     /**
-     * Arquivo PMTiles do basemap (WEB-73).
+     * TileJSON do basemap (WEB-73, WEB-218).
      *
-     * É a URL pública completa do `.pmtiles` no bucket — o mapa inteiro é um
-     * objeto só, e o navegador lê faixas de bytes dele por HTTP Range. O nome
-     * do arquivo carrega a data do build, então um rebuild trimestral troca
-     * esta variável em vez de invalidar cache.
+     * URL pública do `.json` no Worker de tiles — por exemplo
+     * `https://tiles.onside.sh/onside-br-20260906.json`. O nome carrega a
+     * data do build; rebuild trimestral troca esta variável em vez de
+     * invalidar cache de borda.
      *
-     * Não é segredo e não é credencial: é um arquivo público, sem chave, sem
-     * cota e sem faturamento. Substituiu o par
-     * `VITE_GOOGLE_MAPS_PUBLIC_KEY` + `VITE_GOOGLE_MAPS_MAP_ID`, que eram os
-     * dois pontos únicos de falha comercial do lado do cliente.
+     * Não é segredo: substituiu o par Google Maps (`VITE_GOOGLE_MAPS_*`).
      */
     VITE_MAP_TILES_URL: z.url().optional(),
 
