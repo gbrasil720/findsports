@@ -51,32 +51,51 @@ export function setFounderCouponSource(source: () => Promise<string | null>) {
 }
 
 // O checkout e a `/plan` não esperam o Stripe: sem resposta em 5s, e sem nova
-// tentativa, seguem sem o que pediram (o padrão do SDK são 80s e 2 tentativas).
+// tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
 const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
 
-/** `error` preenchido quando o Stripe não respondeu; `valid` é o que ele disse. */
-async function readFounderCoupon(client: Stripe, couponId: string) {
+/**
+ * O que o Stripe disse do cupom. `unknown` é o Stripe sem responder (demora,
+ * rede, erro 5xx): não é o mesmo que cupom que não vale.
+ */
+type FounderCouponState =
+  | { state: 'valid' }
+  | { state: 'invalid' }
+  | { state: 'unknown'; message: string }
+
+async function readFounderCoupon(
+  client: Stripe,
+  couponId: string
+): Promise<FounderCouponState> {
   try {
     const coupon = await client.coupons.retrieve(couponId, {}, QUICK_REQUEST)
-    return { valid: Boolean(coupon.valid), error: null }
+    return { state: coupon.valid ? 'valid' : 'invalid' }
   } catch (error) {
+    // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
+    if ((error as { type?: string }).type === 'StripeInvalidRequestError') {
+      return { state: 'invalid' }
+    }
     return {
-      valid: false,
-      error: error instanceof Error ? error.message : String(error)
+      state: 'unknown',
+      message: error instanceof Error ? error.message : String(error)
     }
   }
 }
 
 /**
- * O cupom existe e ainda aceita resgate no Stripe. Erro ou demora do Stripe
- * contam como "não": quem chama segue sem o desconto.
+ * O cupom está configurado e o Stripe não disse que ele deixou de valer.
+ *
+ * Stripe sem responder conta como "vale": o desconto de fundador é promessa
+ * feita ao bar, e uma lentidão de 5s não pode fazê-lo contratar a preço de
+ * tabela. Se o cupom tiver mesmo acabado, é a criação da sessão que recusa, e
+ * o bar tenta de novo.
  */
 export async function founderCouponUsable(
   client: Stripe,
   couponId: string | null | undefined
 ): Promise<boolean> {
   if (!couponId) return false
-  return (await readFounderCoupon(client, couponId)).valid
+  return (await readFounderCoupon(client, couponId)).state !== 'invalid'
 }
 
 /**
@@ -90,15 +109,20 @@ export async function usableFounderCoupon(
   const couponId = await founderCouponSource()
   if (!couponId) return null
   const coupon = await readFounderCoupon(client, couponId)
-  if (!coupon.valid) {
-    // O bar contrata a preço de tabela: o motivo fica no log para o suporte
-    // saber se o cupom acabou ou se foi o Stripe que não respondeu.
+  if (coupon.state === 'invalid') {
     logBillingError('stripe_founder_coupon_unavailable', {
       couponId,
-      reason: coupon.error ? 'stripe_unreachable' : 'coupon_invalid',
-      ...(coupon.error ? { message: coupon.error } : {})
+      reason: 'coupon_invalid'
     })
     return null
+  }
+  if (coupon.state === 'unknown') {
+    // Segue com o cupom sem a conferência; o log deixa o rastro para o caso
+    // de a sessão ser recusada logo depois.
+    logBillingError('stripe_founder_coupon_unverified', {
+      couponId,
+      message: coupon.message
+    })
   }
   return couponId
 }

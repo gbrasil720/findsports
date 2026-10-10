@@ -136,39 +136,66 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
     expect(requests).toEqual([{ timeout: 5000, maxNetworkRetries: 0 }])
   })
 
-  /** O que `usableFounderCoupon` registrou no log de cobrança. */
-  async function loggedBy(answer: () => Promise<{ valid: boolean }>) {
+  /** O cupom que `usableFounderCoupon` devolveu e o que ele registrou no log. */
+  async function checkoutWith(answer: () => Promise<{ valid: boolean }>) {
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
       setFounderCouponSource(async () => 'eM7dQpMF')
-      expect(await usableFounderCoupon(stripeWith(answer).client)).toBeNull()
-      return error.mock.calls.map(([line]) => JSON.parse(String(line)))
+      const coupon = await usableFounderCoupon(stripeWith(answer).client)
+      const logs = error.mock.calls.map(([line]) => JSON.parse(String(line)))
+      return { coupon, logs }
     } finally {
       error.mockRestore()
     }
   }
 
-  it('Stripe lento: o checkout segue sem o cupom, e o log diz que foi o Stripe', async () => {
-    expect(await loggedBy(slow)).toEqual([
-      {
-        level: 'error',
-        event: 'stripe_founder_coupon_unavailable',
-        couponId: 'eM7dQpMF',
-        reason: 'stripe_unreachable',
-        message: 'Request aborted due to timeout'
-      }
-    ])
+  // Lentidão do Stripe não pode tirar o desconto prometido ao bar fundador.
+  it('Stripe lento: o checkout mantém o cupom e registra que não conferiu', async () => {
+    expect(await checkoutWith(slow)).toEqual({
+      coupon: 'eM7dQpMF',
+      logs: [
+        {
+          level: 'error',
+          event: 'stripe_founder_coupon_unverified',
+          couponId: 'eM7dQpMF',
+          message: 'Request aborted due to timeout'
+        }
+      ]
+    })
+    expect(await founderCouponUsable(stripeWith(slow).client, 'eM7dQpMF')).toBe(
+      true
+    )
   })
 
-  it('cupom esgotado: segue sem ele, e o log diz que foi o cupom', async () => {
-    expect(await loggedBy(async () => ({ valid: false }))).toEqual([
+  const unavailable = {
+    coupon: null,
+    logs: [
       {
         level: 'error',
         event: 'stripe_founder_coupon_unavailable',
         couponId: 'eM7dQpMF',
         reason: 'coupon_invalid'
       }
-    ])
+    ]
+  }
+
+  it('cupom esgotado: segue sem ele, e o log diz que foi o cupom', async () => {
+    expect(await checkoutWith(async () => ({ valid: false }))).toEqual(
+      unavailable
+    )
+  })
+
+  it('cupom apagado ou com o id errado: o Stripe respondeu que não existe', async () => {
+    const missing = () =>
+      Promise.reject(
+        Object.assign(new Error('No such coupon'), {
+          type: 'StripeInvalidRequestError'
+        })
+      )
+    expect(await checkoutWith(missing)).toEqual(unavailable)
+    expect(
+      await founderCouponUsable(stripeWith(missing).client, 'eM7dQpMF')
+    ).toBe(false)
   })
 
   it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
