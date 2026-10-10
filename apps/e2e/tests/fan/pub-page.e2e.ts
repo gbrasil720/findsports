@@ -17,9 +17,12 @@ import { createUser } from '../../fixtures/users'
 
 // Página pública do bar, `/pub/$pubId` (WEB-178).
 
-/** "Garanta seu lugar": o painel de ações (no celular há também a barra fixa). */
+/**
+ * O painel de ações (no celular há também a barra fixa): "Garanta seu lugar"
+ * com reserva disponível, "Fale com o bar" sem (WEB-353).
+ */
 const actionsPanel = (page: Page) =>
-  page.locator('section', { hasText: 'Garanta seu lugar' })
+  page.locator('section', { hasText: /Garanta seu lugar|Fale com o bar/ })
 
 const intents = (fanId: string, barId: string) =>
   query<{ type: string }>(
@@ -187,6 +190,7 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
+  await expect(actionsPanel(page)).toContainText('Garanta seu lugar')
   await actionsPanel(page)
     .getByRole('button', { name: 'Reservar mesa' })
     .click()
@@ -237,7 +241,9 @@ test('reserva não aparece fora do Elite ou com reservas desligadas', async ({
   for (const { barId, name } of [pro, off]) {
     await page.goto(`/pub/${barId}`)
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
-    await expect(actionsPanel(page)).toBeVisible()
+    // Sem reserva, o título não promete lugar (WEB-353).
+    await expect(actionsPanel(page)).toContainText('Fale com o bar')
+    await expect(actionsPanel(page)).not.toContainText('Garanta seu lugar')
     await expect(
       page.getByRole('button', { name: 'Reservar mesa' })
     ).toHaveCount(0)

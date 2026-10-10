@@ -9,6 +9,7 @@ import Plus from 'reicon-react/icons/Plus'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { eventLimitReachedTitle } from '@/lib/event-limit'
 import { getLapsedPaidPlan, isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getPlan, getTrialNotice } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
@@ -215,6 +216,8 @@ export function OverviewTab({
   const eventsRemaining = limitedPolicy?.remaining ?? null
   const isNearLimit = isStarter && eventsRemaining === 1
   const isAtLimit = limitedPolicy ? !limitedPolicy.canCreate : false
+  // No limite ou sem plano ativo: a grade trava o "Novo evento" (WEB-353).
+  const cannotCreate = creationPolicy?.canCreate === false
 
   useEffect(() => {
     if (isAtLimit && !limitTracked.current) {
@@ -233,14 +236,21 @@ export function OverviewTab({
           </p>
         </div>
         {/* Leva à Minha grade, onde ficam o formulário e os avisos de limite
-            do plano (WEB-303). */}
+            do plano (WEB-303). Sem poder criar, deixa de ser a ação principal
+            e só mostra a grade (WEB-353). */}
         <button
           type="button"
           onClick={onCreateEvent}
-          className="onside-btn onside-btn-acid min-h-11"
+          className={`onside-btn ${cannotCreate ? 'onside-btn-outline' : 'onside-btn-acid'} min-h-11`}
         >
-          <Plus size={16} color="currentColor" aria-hidden="true" />
-          Criar evento
+          {cannotCreate ? (
+            'Ver grade'
+          ) : (
+            <>
+              <Plus size={16} color="currentColor" aria-hidden="true" />
+              Criar evento
+            </>
+          )}
         </button>
       </div>
 
@@ -361,7 +371,7 @@ export function OverviewTab({
           <div className="min-w-0 flex-1">
             <p className="mb-0.5 font-semibold text-sm">
               {isAtLimit
-                ? 'Limite de jogos atingido este mês'
+                ? eventLimitReachedTitle(limitedPolicy?.periodEnd ?? null)
                 : lapsedPlan
                   ? `${lapsedPlan.label} — ${eventsRemaining} de ${limitedPolicy?.limit ?? 0} jogos restantes`
                   : isNearLimit

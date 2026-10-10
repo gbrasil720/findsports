@@ -104,6 +104,24 @@ describe('preços (WEB-112)', () => {
     ).toBe('R$ 297/mês')
   })
 
+  // WEB-353: quem já assina troca de plano pelo portal, sem checkout.
+  test('dica do desconto fala de checkout só para quem ainda não assina', () => {
+    const pro = getPlan('pro')
+    expect(planChargeForShowcase(pro, true).hint).toBe(
+      'Com desconto de fundador no checkout'
+    )
+    expect(planChargeForShowcase(pro, true, true).hint).toBe(
+      'Com desconto de fundador na assinatura'
+    )
+    expect(planChargeForShowcase(pro, false, true).hint).toBeNull()
+  })
+
+  test('Starter anuncia o limite pelo ciclo de cobrança, não por mês', () => {
+    expect(getPlan('starter').features).toContain(
+      'Até 5 jogos por ciclo de cobrança na agenda'
+    )
+  })
+
   test('assinatura gravada reflete desconto do webhook', () => {
     const pro = getPlan('pro')
     expect(

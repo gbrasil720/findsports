@@ -15,6 +15,9 @@ import { createUser } from '../../fixtures/users'
 
 const STARTER_LIMIT = 5
 
+/** Título do aviso no limite, com o fim do ciclo de cobrança (WEB-353). */
+const LIMIT_REACHED_UNTIL = /Limite de jogos atingido até \d{1,2} de [a-zç]+/
+
 async function openSchedule(page: Page, options: PubOptions = {}) {
   const pub = await createPub(options)
   await signIn(page, pub.user)
@@ -209,6 +212,21 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
   await expect(
     page.getByRole('link', { name: 'Fazer upgrade' })
   ).toHaveAttribute('href', '/plan')
+
+  // WEB-353: a Visão geral diz até quando o limite vale (o fim do ciclo, não
+  // "este mês") e não oferece "Criar evento" como ação disponível.
+  await page.getByRole('tab', { name: 'Visão geral' }).click()
+  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
+  await expect(overview).not.toContainText('este mês')
+  await expect(
+    overview.getByRole('button', { name: 'Criar evento' })
+  ).toHaveCount(0)
+  await overview.getByRole('button', { name: 'Ver grade' }).click()
+  await expect(page.getByRole('tab', { name: 'Minha grade' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
 })
 
 test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
@@ -248,6 +266,9 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   )
   await expect(overview).toContainText('Pagamento pendente · 1 restante')
   await expect(
+    overview.getByRole('button', { name: 'Criar evento' })
+  ).toBeVisible()
+  await expect(
     overview.getByRole('link', { name: 'Regularizar assinatura' })
   ).toHaveAttribute('href', '/admin/billing')
 
@@ -268,7 +289,10 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
 
   await page.getByRole('tab', { name: 'Visão geral' }).click()
-  await expect(overview).toContainText('Limite de jogos atingido este mês')
+  await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
+  await expect(
+    overview.getByRole('button', { name: 'Ver grade' })
+  ).toBeVisible()
   await expect(overview).toContainText('Pagamento pendente · 0 restantes')
   await expect(
     overview.getByRole('link', { name: 'Fazer upgrade' })

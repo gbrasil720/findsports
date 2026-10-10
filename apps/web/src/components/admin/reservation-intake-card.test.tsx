@@ -81,6 +81,19 @@ describe('ReservationIntakeCard', () => {
     const chave = doc.querySelector('button[role="switch"]')
     expect(chave?.getAttribute('aria-checked')).toBe('true')
     expect(chave?.hasAttribute('disabled')).toBe(false)
+    // WEB-353: não recebe nada, então não aparece "Ligado" nem em verde.
+    expect(chave?.textContent).toBe('Pausado (sem Elite)')
+    expect(chave?.className).not.toContain('onside-acid')
+  })
+
+  test('com Elite e ligado o interruptor aparece ligado, em verde', () => {
+    const doc = renderizar(
+      { status: 'ready', plan: 'elite', standing: 'current' },
+      true
+    )
+    const chave = doc.querySelector('button[role="switch"]')
+    expect(chave?.textContent).toBe('✓Ligado')
+    expect(chave?.className).toContain('onside-acid')
   })
 
   test('erro do servidor é anunciado e ligado ao interruptor', () => {

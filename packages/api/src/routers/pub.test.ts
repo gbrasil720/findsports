@@ -368,7 +368,7 @@ describe('eventLimitMessage', () => {
   const now = new Date('2026-10-09T12:00:00.000Z')
   const past = new Date('2026-10-01T12:00:00.000Z')
   const STARTER =
-    'Plano Starter permite até 5 jogos por mês. Faça upgrade para o plano Pro para jogos ilimitados.'
+    'Plano Starter permite até 5 jogos por ciclo de cobrança. Faça upgrade para o plano Pro para jogos ilimitados.'
 
   test.each([
     ['elite', 'past_due', 'Elite'],
@@ -377,7 +377,7 @@ describe('eventLimitMessage', () => {
     expect(
       eventLimitMessage({ plan, status, currentPeriodEnd: past }, now)
     ).toBe(
-      `Seu plano ${name} está parado e permite até 5 jogos por mês. Regularize a assinatura para voltar aos jogos ilimitados.`
+      `Seu plano ${name} está parado e permite até 5 jogos por ciclo de cobrança. Regularize a assinatura para voltar aos jogos ilimitados.`
     )
   })
 

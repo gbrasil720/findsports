@@ -334,7 +334,13 @@ test('Elite salva cardápio, preço médio e oferta, e liga e desliga reservas',
   await menu
     .getByLabel(/Link do cardápio/)
     .fill('https://cardapio.e2e.test/menu')
-  await menu.getByLabel(/Preço médio por pessoa/).fill('85,50')
+  // WEB-353: com erro de validação na tela, Salvar não fica disponível.
+  const spend = menu.getByLabel(/Preço médio por pessoa/)
+  await spend.fill('1500')
+  await spend.blur()
+  await expect(menu.getByRole('alert')).toContainText('O valor aceita até')
+  await expect(menu.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+  await spend.fill('85,50')
   await menu.getByRole('button', { name: 'Salvar' }).click()
   await expect(menu.getByText('Cardápio e preço médio salvos.')).toBeVisible()
 

@@ -146,12 +146,15 @@ export function BarActions({
     />
   ))
 
+  // "Garanta seu lugar" só quando dá para reservar agora (WEB-353).
+  const title = onReserve ? 'Garanta seu lugar' : 'Fale com o bar'
+
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.
   if (!primary && !phone && !presence) {
     return isOwner && !isBar ? (
       <section className="onside-panel p-5 md:p-6">
-        <p className="onside-kicker mb-1">Garanta seu lugar</p>
+        <p className="onside-kicker mb-1">{title}</p>
         <OwnerNudge
           action={{ label: 'Completar', to: '/admin', hash: 'admin-espaco' }}
         >
@@ -175,7 +178,7 @@ export function BarActions({
 
   return (
     <section className="onside-panel p-5 md:p-6">
-      <p className="onside-kicker mb-3">Garanta seu lugar</p>
+      <p className="onside-kicker mb-3">{title}</p>
       <div className="flex flex-col gap-2 sm:flex-row">
         {primary}
         {secondaries}
