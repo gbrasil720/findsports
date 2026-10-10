@@ -1,5 +1,6 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import Calendar from 'reicon-react/icons/Calendar'
 import Plus from 'reicon-react/icons/Plus'
@@ -9,6 +10,7 @@ import {
   getEventTemporalState
 } from '@/domain/events'
 import { analytics } from '@/lib/analytics'
+import { getLapsedPaidPlan } from '@/lib/lapsed-plan'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import {
   getErrorCode,
@@ -17,6 +19,7 @@ import {
 } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { EventsState, PolicyState } from './admin-model'
+import { useMySubscription } from './admin-queries'
 import { EmptyEventsState } from './empty-events-state'
 import { EventDeleteDialog } from './event-delete-dialog'
 import { type EventForm, EventFormComponent } from './event-form'
@@ -47,7 +50,15 @@ type ManagerProps = {
   policyState: PolicyState
 }
 
-export function getCreateBlockReason(policyState: PolicyState): string | null {
+/**
+ * `lapsedPlan` é o título do plano parado (`getLapsedPaidPlan`): Pro ou Elite
+ * que caiu no limite do Starter lê por que parou, não "limite do plano"
+ * (WEB-331).
+ */
+export function getCreateBlockReason(
+  policyState: PolicyState,
+  lapsedPlan?: string | null
+): string | null {
   if (policyState.status === 'loading') return 'Verificando disponibilidade…'
   if (policyState.status === 'error') {
     return 'Não foi possível verificar a disponibilidade.'
@@ -55,7 +66,11 @@ export function getCreateBlockReason(policyState: PolicyState): string | null {
   if (policyState.policy.status === 'inactive') {
     return 'Ative um plano para adicionar eventos.'
   }
-  if (!policyState.policy.canCreate) return 'Limite do plano atingido.'
+  if (!policyState.policy.canCreate) {
+    return lapsedPlan
+      ? `${lapsedPlan}: limite de jogos atingido.`
+      : 'Limite do plano atingido.'
+  }
   return null
 }
 
@@ -99,7 +114,10 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
       : []
   )
   const events = eventsState.status === 'ready' ? eventsState.events : []
-  const policyBlockReason = getCreateBlockReason(policyState)
+  // Sem a assinatura lida, vale o texto do Starter: o limite é o mesmo.
+  const { data: subscription } = useMySubscription()
+  const lapsedPlan = getLapsedPaidPlan(subscription)
+  const policyBlockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const sportsErrorMessage = sportsError
     ? getUserFacingMessage(
         sportsError,
@@ -294,12 +312,21 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
               {blockReason}{' '}
               {policyState.status === 'ready' &&
               policyState.policy.status === 'limited' ? (
-                <a
-                  href="/plan"
-                  className="font-bold underline underline-offset-2"
-                >
-                  Fazer upgrade
-                </a>
+                lapsedPlan ? (
+                  <Link
+                    to="/admin/billing"
+                    className="font-bold underline underline-offset-2"
+                  >
+                    Regularizar assinatura
+                  </Link>
+                ) : (
+                  <a
+                    href="/plan"
+                    className="font-bold underline underline-offset-2"
+                  >
+                    Fazer upgrade
+                  </a>
+                )
               ) : null}
               {policyState.status === 'error' && policyState.retryable ? (
                 <button
