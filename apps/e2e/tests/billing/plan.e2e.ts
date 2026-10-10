@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
+import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
@@ -167,6 +168,131 @@ test('trial em vigor: sem cartão, e contratar qualquer plano já é possível (
     page.getByRole('button', { name: 'Contratar Pro' })
   ).toBeVisible()
   await expect(page.getByText(/plano inferior ao atual/)).toBeVisible()
+})
+
+// WEB-358: o teste do cadastro não é só do Elite. Sem cartão e com o checkout
+// desligado (o padrão daqui): testar não passa pela contratação.
+test('trial em vigor: testa outro plano sem cartão, confirma o que perde no menor, e a troca sobrevive ao recarregar', async ({
+  page
+}) => {
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'elite',
+      status: 'trialing',
+      currentPeriodEnd: inDays(100)
+    },
+    bar: { house_offer: 'Chopp em dobro' }
+  })
+  const stored = async () =>
+    (
+      await query<{
+        plan: string
+        bar_plan: string
+        status: string
+        external_subscription_id: string | null
+        fim: string
+      }>(
+        `SELECT s.plan, b.plan AS bar_plan, s.status, s.external_subscription_id,
+                s.current_period_end::text AS fim
+         FROM subscription s JOIN bar b ON b.id = s.bar_id
+         WHERE s.bar_id = $1`,
+        [barId]
+      )
+    )[0]
+  const before = await stored()
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+  ).toBeVisible()
+  await expect(
+    page.getByText('Até lá você pode testar qualquer plano abaixo')
+  ).toBeVisible()
+  // O plano em teste não tem para onde trocar.
+  await expect(
+    page.getByRole('button', { name: 'Testando o Elite' })
+  ).toBeDisabled()
+
+  // Plano menor: o mesmo aviso do que se perde da troca paga (WEB-351).
+  await page.getByRole('radio', { name: /^Starter,/ }).check({ force: true })
+  await page.getByRole('button', { name: 'Testar o Starter grátis' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(
+    dialog.getByRole('heading', { name: 'Trocar para o Starter?' })
+  ).toBeVisible()
+  await expect(dialog).toContainText('Jogos ilimitados na agenda')
+  await expect(dialog).toContainText(
+    'no Starter só dá para criar 5 por ciclo de cobrança.'
+  )
+  await expect(dialog).toContainText(
+    'Sua oferta da casa sai do perfil e fica guardada.'
+  )
+  await dialog.getByRole('button', { name: 'Manter o Elite' }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(await stored()).toEqual(before)
+
+  await page.getByRole('button', { name: 'Testar o Starter grátis' }).click()
+  await dialog.getByRole('button', { name: 'Testar o Starter grátis' }).click()
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Starter até / })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('status').filter({
+      hasText: 'Agora você está testando o Starter.'
+    })
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/plan$/)
+  // Só o plano muda: mesma data, ainda sem cartão e sem Stripe.
+  expect(await stored()).toEqual({
+    ...before,
+    plan: 'starter',
+    bar_plan: 'starter'
+  })
+
+  await page.reload()
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Starter até / })
+  ).toBeVisible()
+  await expect(page.getByRole('radio', { name: /^Starter,/ })).toBeChecked()
+  await expect(
+    page.getByRole('button', { name: 'Testando o Starter' })
+  ).toBeDisabled()
+  await expect(page.getByText(/Agora você está testando/)).toHaveCount(0)
+
+  // Plano maior troca direto, e dá para trocar de novo.
+  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
+  await page.getByRole('button', { name: 'Testar o Pro grátis' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(
+    page.getByRole('heading', { name: /^Você está no trial do Pro até / })
+  ).toBeVisible()
+  expect(await stored()).toEqual({ ...before, plan: 'pro', bar_plan: 'pro' })
+})
+
+// Teste vencido não troca de plano sem cartão: o caminho é contratar.
+test('trial encerrado e trial que já é do Stripe não oferecem testar outro plano', async ({
+  page
+}) => {
+  for (const subscription of [
+    { currentPeriodEnd: inDays(-1) },
+    {
+      currentPeriodEnd: inDays(14),
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`
+    }
+  ]) {
+    const { user } = await createPub({
+      subscription: { plan: 'elite', status: 'trialing', ...subscription }
+    })
+    await page.context().clearCookies()
+    await signIn(page, user)
+    await page.goto('/plan')
+    await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
+    await expect(
+      page.getByRole('button', { name: 'Continuar com Pro' })
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Test/ })).toHaveCount(0)
+  }
 })
 
 test('trial que já é do Stripe: troca de plano, com o plano contratado como atual', async ({

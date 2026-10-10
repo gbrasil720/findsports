@@ -387,6 +387,13 @@ describe('Feature text consistency', () => {
     }
   })
 
+  test('suporte é o mesmo e-mail em todo plano, sem prioridade (WEB-107)', () => {
+    for (const plan of PLAN_CATALOG) {
+      expect(plan.features).toContain('Suporte por e-mail')
+      expect(plan.features.find((f) => /priorit/i.test(f))).toBeUndefined()
+    }
+  })
+
   test('pro includes analytics features from spec', () => {
     const pro = getPlan('pro')
     expect(pro.features).toContain('12 meses de histórico')
@@ -756,6 +763,8 @@ describe('getPlanHeader', () => {
       title: 'Você está no trial do Elite até 22 de outubro.'
     })
     expect(header.text).toContain('O teste grátis não pede cartão.')
+    // WEB-358: o teste não é só do plano em que o bar nasceu.
+    expect(header.text).toContain('testar qualquer plano abaixo')
     expect(header.text).toContain('primeira cobrança só sai em 22 de outubro')
     expect(Object.values(header).join(' ')).not.toMatch(
       /alterar plano|novo plano|ciclo de cobrança/i

@@ -43,6 +43,26 @@ describe('event creation period', () => {
     expect(period.start.toISOString()).toBe('2026-07-14T15:30:00.000Z')
   })
 
+  test('a monthly cycle starts one month before its end', () => {
+    const period = getEventCreationPeriod(
+      new Date('2026-08-31T12:00:00.000Z'),
+      NOW
+    )
+    expect(period.start.toISOString()).toBe('2026-07-31T12:00:00.000Z')
+    expect(period.end?.toISOString()).toBe('2026-08-31T12:00:00.000Z')
+  })
+
+  // WEB-358: o teste grátis dura meses. A janela é o mês em curso, contado do
+  // fim do teste, e não o último mês dele, que ainda está no futuro.
+  test('a trial longer than a month counts the month that contains now', () => {
+    const period = getEventCreationPeriod(
+      new Date('2026-12-11T15:30:00.000Z'),
+      NOW
+    )
+    expect(period.start.toISOString()).toBe('2026-08-11T15:30:00.000Z')
+    expect(period.end?.toISOString()).toBe('2026-09-11T15:30:00.000Z')
+  })
+
   test('a period that already ended falls back to the rolling 30 days', () => {
     const period = getEventCreationPeriod(
       new Date('2026-05-01T12:00:00.000Z'),
