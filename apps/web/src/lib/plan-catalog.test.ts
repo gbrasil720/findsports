@@ -4,6 +4,7 @@ import { appConfigDefault } from '@findsports_oficial/api/lib/app-config/registr
 import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
 import {
   CHECKOUT_ENABLED_DEFAULT,
+  earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
   FOUNDER_DISCOUNT_NOTE,
   formatComparison,
@@ -563,6 +564,48 @@ describe('getPlanHeader', () => {
   test('paga em dia troca e encerrada reativa', () => {
     expect(getPlanHeader(paid).kicker).toBe('Alterar plano')
     expect(getPlanHeader(ended).kicker).toBe('Reativar plano')
+  })
+
+  // WEB-350: o cabeçalho diz o mesmo crédito do aviso de plano inferior.
+  test('assinatura paga no Stripe lê que a troca para plano menor vira crédito', () => {
+    expect(earnsDowngradeCredit(paid)).toBe(true)
+    expect(getPlanHeader(paid).text).toContain(
+      'para um menor, vira crédito na sua conta e abate as próximas mensalidades'
+    )
+  })
+
+  test('sem cobrança no Stripe não há crédito a prometer', () => {
+    const contractedTrial = { ...liveTrial, externalSubscriptionId: 'sub_1' }
+    const manual = { ...paid, externalSubscriptionId: null }
+    for (const subscription of [contractedTrial, manual]) {
+      expect(earnsDowngradeCredit(subscription)).toBe(false)
+      expect(getPlanHeader(subscription).kicker).toBe('Alterar plano')
+      expect(getPlanHeader(subscription).text).not.toContain('crédito')
+    }
+  })
+
+  // WEB-335: com data para acabar, o cabeçalho não convida a trocar de plano.
+  test('cancelamento agendado tem cabeçalho próprio, com a data do aviso', () => {
+    const header = getPlanHeader({
+      ...paid,
+      cancelAt: '2026-11-09T15:00:00.000Z'
+    })
+    expect(header).toEqual({
+      kicker: 'Cancelamento agendado',
+      title: 'Seu plano Pro cancela em 09/11.',
+      text: 'O plano segue até lá. Para continuar depois dessa data, reative a assinatura.'
+    })
+  })
+
+  test('data de cancelamento em plano parado ou encerrado não muda o cabeçalho', () => {
+    const cancelAt = '2026-11-09T15:00:00.000Z'
+    expect(getPlanHeader({ ...pastDue, cancelAt }).kicker).toBe(
+      'Pagamento pendente'
+    )
+    expect(getPlanHeader({ ...ended, cancelAt }).kicker).toBe('Reativar plano')
+    expect(getPlanHeader({ ...paid, cancelAt: null }).kicker).toBe(
+      'Alterar plano'
+    )
   })
 })
 
