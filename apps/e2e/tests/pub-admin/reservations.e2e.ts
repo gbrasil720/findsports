@@ -136,7 +136,10 @@ test('teto do jogo fecha pedidos novos, e o torcedor vê o esgotado', async ({
   const after = await fanSeesPub(browser, barId)
   await expect(
     after.fanPage
-      .getByRole('button', { name: /Reservas esgotadas para este jogo/ })
+      // Na barra fixa do celular o texto é o curto.
+      .getByRole('button', {
+        name: /Reservas esgotadas para este jogo|Esgotado/
+      })
       .first()
   ).toBeDisabled()
   await expect(

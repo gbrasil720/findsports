@@ -121,14 +121,21 @@ export function BarActions({
       ]
     : otherActions
 
-  // Na barra fixa do celular, quatro botões com texto não cabem: com reserva,
-  // os secundários ficam só com ícone (o nome segue para leitor de tela).
-  const compact = isBar && secondaryActions.length > 2
+  // Na barra fixa do celular, três botões com texto não cabem (em 390px o
+  // "Falar com o bar" estourava o terço dele e espremia os ícones, WEB-370):
+  // com dois secundários ou mais eles ficam só com ícone (o nome segue para
+  // leitor de tela). Pelo mesmo motivo o esgotado, que não tem clique, usa lá
+  // o texto curto: o longo quebrava em quatro linhas.
+  const compact = isBar && secondaryActions.length > 1
 
   const primary = primaryAction ? (
     <ActionButton
       action={primaryAction}
-      text={primaryAction.label}
+      text={
+        isBar && !primaryAction.onClick
+          ? primaryAction.shortLabel
+          : primaryAction.label
+      }
       className={`onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm${primaryAction.onClick ? ' whitespace-nowrap' : ''}`}
       iconOnly={false}
       hideIcon={compact}
@@ -181,14 +188,24 @@ export function BarActions({
     )
   }
 
+  // No celular estes botões já estão na barra presa ao pé da janela (a
+  // variante `bar`, abaixo de `md`), e os dois apareciam juntos na primeira
+  // tela (WEB-370). Lá o painel fica só com o que a barra não tem: a presença
+  // e o aviso do WhatsApp. Sem nenhum dos dois, some inteiro.
+  const onlyButtons = !presence && Boolean(whatsappUrl)
+
   return (
-    <section className="onside-panel p-5 md:p-6">
-      <p className="onside-kicker mb-3">{title}</p>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        {primary}
-        {secondaries}
+    <section
+      className={`onside-panel p-5 md:p-6${onlyButtons ? ' max-md:hidden' : ''}`}
+    >
+      <div className="max-md:hidden">
+        <p className="onside-kicker mb-3">{title}</p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {primary}
+          {secondaries}
+        </div>
       </div>
-      {presence && <div className="mt-4">{presence}</div>}
+      {presence && <div className="md:mt-4">{presence}</div>}
       {!whatsappUrl &&
         (isOwner ? (
           <OwnerNudge
@@ -198,7 +215,9 @@ export function BarActions({
             reservada.
           </OwnerNudge>
         ) : (
-          <p className="mt-3 text-[var(--onside-muted)] text-xs">
+          <p
+            className={`${presence ? 'mt-3' : 'md:mt-3'} text-[var(--onside-muted)] text-xs`}
+          >
             Esse bar ainda não liberou contato por WhatsApp.
           </p>
         ))}

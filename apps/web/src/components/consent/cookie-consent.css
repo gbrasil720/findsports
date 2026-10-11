@@ -52,6 +52,11 @@ html[data-consent] {
     env(safe-area-inset-bottom, 0px)
   );
 
+  /*
+   * Foco pelo teclado e âncora param acima do aviso: sem isto o navegador dá
+   * por visível o botão que está debaixo dele e não rola (WEB-370).
+   */
+  scroll-padding-bottom: var(--onside-consent-space);
   background: var(--background);
 }
 
@@ -62,6 +67,24 @@ html[data-consent] body {
 
 html[data-consent]:has(.onside-site-footer) body {
   background: #12120f; /* --onside-ink */
+}
+
+/*
+ * O que é fixo no pé da janela sobe para cima do aviso enquanto ele aparece,
+ * pelo mesmo espaço (WEB-370): a barra de ação da página do bar e os toasts.
+ * A chamada fixa da landing faz o mesmo em `onside.css`. Elemento novo preso
+ * ao pé da tela entra aqui.
+ *
+ * A barra de ação deixa de somar a área segura: o aviso, embaixo dela, já a
+ * ocupa.
+ */
+html[data-consent] .onside-app .onside-pub-actionbar {
+  bottom: var(--onside-consent-space);
+  padding-bottom: 10px;
+}
+
+html[data-consent] [data-sonner-toaster][data-y-position="bottom"] {
+  translate: 0 calc(var(--onside-consent-space) * -1);
 }
 
 /*

@@ -415,12 +415,21 @@
   border-top: 1.5px solid var(--onside-ink);
 }
 
+/*
+ * Respiro lateral menor que o do botão comum, e ícone que não encolhe: com
+ * dois botões lado a lado em 360px o texto tomava o lugar do ícone (WEB-370).
+ */
 .onside-app .onside-pub-actionbar > div > * {
   flex: 1 1 0;
   min-width: 0;
+  padding-inline: 12px;
 }
 
-/* Secundário só com ícone (com reserva, WEB-124): o texto fica no primário. */
+.onside-app .onside-pub-actionbar svg {
+  flex-shrink: 0;
+}
+
+/* Secundário só com ícone (dois ou mais, WEB-124): o texto fica no primário. */
 .onside-app .onside-pub-actionbar > div > .onside-pub-actionbar-icon {
   flex: 0 0 48px;
   padding-inline: 0;
