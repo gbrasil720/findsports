@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import type { Municipio } from '@/components/internal/controle-cidades'
+import type { Municipio } from '@/lib/municipios'
 import { ufParaCidade } from './uf-select'
 
 const MUNICIPIOS: Municipio[] = [

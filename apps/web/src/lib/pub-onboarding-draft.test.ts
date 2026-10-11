@@ -3,7 +3,6 @@ import {
   mensagemEnderecoIndisponivel,
   mensagemEnderecoNaoEncontrado
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import { mensagemCidadeNaoLiberada } from '@findsports_oficial/api/lib/city-match'
 import {
   mensagemFalhaCadastroBar,
   parsePubOnboardingDraft,
@@ -104,15 +103,6 @@ describe('rascunho do onboarding de bar', () => {
 describe('recusa do cadastro do bar', () => {
   const recusa = (code: string, message = 'texto do servidor') =>
     Object.assign(new Error(message), { data: { code } })
-
-  it('diz que a cidade não abriu, e não que falta permissão', () => {
-    expect(
-      mensagemFalhaCadastroBar(recusa('PRECONDITION_FAILED'), {
-        ...DRAFT,
-        city: 'Curitiba'
-      })
-    ).toBe(mensagemCidadeNaoLiberada('Curitiba'))
-  })
 
   it('aponta o telefone quando é ele que o servidor recusa', () => {
     expect(

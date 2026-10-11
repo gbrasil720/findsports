@@ -23,9 +23,7 @@
  *
  * ## O que NÃO muda junto
  *
- * Abrir cidade nova (`launch.pub_cities`) não exige rebuild: a bbox cobre o
- * Brasil inteiro, e ela governa onde o **torcedor** abre o app, não onde o
- * **bar** se cadastra. As duas coisas não têm relação.
+ * Bar em cidade nova não exige rebuild: a bbox cobre o Brasil inteiro.
  *
  * ## Requisitos
  *

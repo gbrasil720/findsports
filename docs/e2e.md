@@ -168,7 +168,7 @@ test('dono de bar Starter vê o limite', async ({ page }) => {
 ### Estado global: arquivos `*.serial.e2e.ts`
 
 `app_config` é uma tabela global, e os testes paralelos contam com os padrões
-de produção (nota pública desligada, todas as cidades liberadas). Teste que
+de produção (nota pública desligada, busca em camadas ligada). Teste que
 muda uma chave vai num arquivo `*.serial.e2e.ts`, com
 `setAppConfig(chave, valor)` e `resetAppConfig()` no `afterEach`
 (`fixtures/db.ts`).

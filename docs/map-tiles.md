@@ -41,10 +41,8 @@ entra no build.
 
 ## Por que Brasil inteiro, e não a região de operação
 
-A bbox cobre onde um **torcedor pode abrir o app**, não onde um **bar pode se
-cadastrar**. São coisas separadas: `launch.pub_cities` governa o cadastro de bar
-(`packages/api/src/routers/onboarding.ts`), e a busca do torcedor é GPS + raio —
-ele não informa cidade em nenhum ponto do fluxo.
+A bbox cobre onde um **torcedor pode abrir o app**, e bar de qualquer cidade
+do país se cadastra. A busca do torcedor é GPS + raio, de onde ele estiver.
 
 Um torcedor em Salvador abre o `/dashboard` e vê o mapa funcionando, só sem
 bares. Com recorte no Sudeste ele passaria a ver **tiles em branco**, que é uma

@@ -7,8 +7,7 @@ import {
   ehUf,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import { cidadeLiberada } from '@findsports_oficial/api/lib/city-match'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import {
   createFileRoute,
   useLocation,
@@ -131,18 +130,6 @@ function PubOnboarding() {
       screenCount
     ]
   )
-
-  // ESC-19: lançamento cidade a cidade. Quem recusa de verdade é
-  // `onboarding.completePub`; aqui a tela só evita que o dono do bar preencha
-  // o cadastro inteiro para descobrir no fim que a cidade dele não abriu.
-  //
-  // Lista vazia — inclusive enquanto carrega, ou se a leitura falhar —
-  // significa "todas liberadas", que é o padrão da flag. Errar para o lado de
-  // deixar passar devolve a mensagem do servidor; errar para o outro
-  // bloquearia cadastro válido.
-  const configQuery = useQuery(trpc.appConfig.getPublic.queryOptions())
-  const cidadesAbertas = configQuery.data?.['launch.pub_cities'] ?? []
-  const cidadePermitida = cidadeLiberada(city, cidadesAbertas)
 
   // WEB-238: a revisão diz o que acontece de fato ao continuar. Quem decide o
   // teste é o `completePub`.
@@ -327,8 +314,6 @@ function PubOnboarding() {
         curto(name, 2, 'nome do estabelecimento'),
         curto(address, 5, 'endereço'),
         curto(neighborhood, 2, 'bairro'),
-        // O aviso logo acima do botão já explica a cidade fora do lançamento.
-        !cidadePermitida && 'uma cidade em que a Onside já abriu',
         !ehUf(uf) && 'estado (UF)'
       ].filter(Boolean)
       return faltando.length > 0
@@ -401,13 +386,7 @@ function PubOnboarding() {
         )}
 
         {step === 1 && (
-          <div
-            aria-busy={configQuery.isLoading || undefined}
-            aria-live={configQuery.isLoading ? 'polite' : undefined}
-          >
-            {configQuery.isLoading ? (
-              <span className="sr-only">Verificando cidades disponíveis…</span>
-            ) : null}
+          <div>
             <h2
               ref={headingRef}
               tabIndex={-1}
@@ -448,21 +427,6 @@ function PubOnboarding() {
               onCityBlur={() => conciliarUfComCidade(city, setUf)}
               errors={phoneError ? { phone: phoneError } : undefined}
             />
-
-            {!cidadePermitida ? (
-              <div
-                className="onside-callout onside-callout-warn mt-6"
-                role="status"
-              >
-                <p className="text-sm font-semibold">
-                  A Onside ainda não abriu em {city.trim() || 'sua cidade'}.
-                </p>
-                <p className="text-sm">
-                  Por enquanto atendemos: {cidadesAbertas.join(', ')}. Estamos
-                  abrindo cidade a cidade — assim que chegarmos aí, avisamos.
-                </p>
-              </div>
-            ) : null}
           </div>
         )}
 

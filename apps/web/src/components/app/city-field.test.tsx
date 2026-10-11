@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom'
 import { act, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { carregarMunicipios } from '@/components/internal/controle-cidades'
+import { carregarMunicipios } from '@/lib/municipios'
 
 import {
   CityField,
@@ -14,7 +14,7 @@ import {
 
 /**
  * WEB-319. A busca sem acento é `filtrarMunicipios`, já coberta em
- * `controle-cidades.test.ts`; aqui fica o que é deste campo.
+ * `municipios.test.ts`; aqui fica o que é deste campo.
  */
 const CAMPINAS = { name: 'Campinas', uf: 'SP' }
 
