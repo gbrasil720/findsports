@@ -738,6 +738,20 @@ html:has(.onside-page) {
   text-wrap: pretty;
 }
 
+/* Chamada em negrito colada ao botão principal do hero. */
+.onside-page .onside-hero-copy > p:has(+ .onside-hero-cta-lead) {
+  margin-bottom: 18px;
+}
+
+.onside-page .onside-hero-copy > .onside-hero-cta-lead {
+  margin-bottom: 20px;
+  color: var(--onside-paper);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
 .onside-page .onside-hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -752,6 +766,25 @@ html:has(.onside-page) {
 
 .onside-page .onside-hero-proof {
   margin-top: 28px;
+}
+
+/*
+ * Janela de desktop baixa (notebook de 720px de altura): o hero passa da
+ * primeira tela e o botão principal ficava cortado. Só o respiro encolhe; a
+ * tipografia não muda.
+ */
+@media (min-width: 1101px) and (max-height: 800px) {
+  .onside-page .onside-hero-content {
+    padding: 100px 0 28px;
+  }
+
+  .onside-page .onside-hero h1 {
+    margin-bottom: 18px;
+  }
+
+  .onside-page .onside-hero-proof {
+    margin-top: 18px;
+  }
 }
 
 /* Só faz sentido com a cena viva: no pôster não há o que arrastar. */
