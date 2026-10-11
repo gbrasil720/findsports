@@ -183,6 +183,15 @@
   margin-bottom: 8px;
 }
 
+/*
+ * Rótulo sobre superfície ink. Classe utilitária de cor não serve aqui: as
+ * regras deste arquivo ficam fora de `@layer` e vencem as do Tailwind, então
+ * o rótulo seguia em ink sobre ink, invisível.
+ */
+.onside-app .onside-label-ink {
+  color: var(--onside-muted-on-ink);
+}
+
 .onside-app .onside-input,
 .onside-app .onside-textarea,
 .onside-app .onside-select {

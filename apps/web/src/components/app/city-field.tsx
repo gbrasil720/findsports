@@ -103,7 +103,7 @@ export function CityField({
     <div className="max-w-md">
       <label
         htmlFor={campoId}
-        className={`onside-label ${ink ? 'text-[color-mix(in_srgb,var(--onside-paper)_70%,transparent)]' : ''}`}
+        className={`onside-label ${ink ? 'onside-label-ink' : ''}`}
       >
         {label}
       </label>
