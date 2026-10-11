@@ -97,7 +97,9 @@ export function RatingsPanel({ state }: Props) {
         <>
           <div className="mt-4 flex flex-wrap items-end gap-6">
             <div>
-              <div className="onside-display text-4xl tabular-nums">
+              <div
+                className={`onside-display text-4xl ${ratings.percentage > 0 ? 'onside-mark' : 'tabular-nums'}`}
+              >
                 {ratings.percentage}%
               </div>
               <div className="mt-0.5 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-widest">
@@ -151,11 +153,9 @@ export function RatingsPanel({ state }: Props) {
                 className="flex min-w-0 items-center gap-3 border border-[var(--onside-line)] bg-[var(--onside-stone)]/55 px-3 py-2"
               >
                 <span
-                  className={`grid size-6 shrink-0 place-items-center border border-[var(--onside-ink)] ${
-                    item.wouldReturn
-                      ? 'bg-[var(--onside-acid)]'
-                      : 'bg-[var(--onside-paper)]'
-                  }`}
+                  // Sem verde por resposta: o destaque é o percentual lá em
+                  // cima. "Voltaria" e "Não voltaria" se separam pelo ícone.
+                  className="grid size-6 shrink-0 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]"
                   aria-hidden="true"
                 >
                   {item.wouldReturn ? (

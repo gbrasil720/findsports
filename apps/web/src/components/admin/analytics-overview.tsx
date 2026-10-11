@@ -44,12 +44,12 @@ function formatPpChange(curr: number | null, prev: number | null): string {
 }
 
 /**
- * Marca-texto atrás de número de resultado: é o destaque de "valor entregue"
- * do painel. Utilitária de fundo vale aqui porque `onside-display` não define
- * fundo nem cor.
+ * Número de resultado: Anton com o marca-texto do painel (`onside-mark`).
+ * Zero e "—" ficam sem marca: o destaque é para valor entregue, e um bar nos
+ * primeiros dias veria o verde apontando para nada.
  */
-const MARK =
-  'onside-display inline-block bg-[var(--onside-acid)] px-2 pt-1 pb-0.5 tabular-nums'
+const mark = (value: string | number) =>
+  `onside-display ${Number.parseFloat(String(value)) > 0 ? 'onside-mark' : 'tabular-nums'}`
 
 /** Variação contra o período anterior: a alta sai em selo acid com seta. */
 function Change({ text }: { text: string }) {
@@ -228,7 +228,7 @@ function KpiCard({
         <MetricHint metric={metric} />
       </p>
       <p>
-        <span className={`${MARK} text-4xl`}>{value}</span>
+        <span className={`${mark(value)} text-4xl`}>{value}</span>
       </p>
       {secondary !== undefined && (
         <p className="mt-2 text-[var(--onside-muted)] text-xs">{secondary}</p>
@@ -316,15 +316,19 @@ function ClassicPlacement({
           <p className="text-xs text-[var(--onside-ink)] opacity-60">
             Exposições
           </p>
-          <p className={`${MARK} mt-1 text-2xl`}>{data.classicExposures}</p>
+          <p className={`${mark(data.classicExposures)} mt-1 text-2xl`}>
+            {data.classicExposures}
+          </p>
         </div>
         <div>
           <p className="text-xs text-[var(--onside-ink)] opacity-60">Cliques</p>
-          <p className={`${MARK} mt-1 text-2xl`}>{data.classicClicks}</p>
+          <p className={`${mark(data.classicClicks)} mt-1 text-2xl`}>
+            {data.classicClicks}
+          </p>
         </div>
         <div>
           <p className="text-xs text-[var(--onside-ink)] opacity-60">CTR</p>
-          <p className={`${MARK} mt-1 text-2xl`}>{clickRate}</p>
+          <p className={`${mark(clickRate)} mt-1 text-2xl`}>{clickRate}</p>
         </div>
       </div>
       {comparisonLabel !== null && (
@@ -477,7 +481,9 @@ function DailyChart({
               {series.label}
             </dt>
             <dd className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[var(--onside-muted-on-ink)] text-xs">
-              <span className="onside-display text-4xl text-[var(--onside-acid)] tabular-nums">
+              <span
+                className={`onside-display text-4xl tabular-nums ${series.total > 0 ? 'text-[var(--onside-acid)]' : 'text-[var(--onside-paper)]'}`}
+              >
                 {series.total.toLocaleString('pt-BR')}
               </span>
               {comparisonLabel !== null && (

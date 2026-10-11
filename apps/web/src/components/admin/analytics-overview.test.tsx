@@ -71,6 +71,29 @@ describe('AnalyticsOverview', () => {
     expect(html).not.toContain('Comparado com')
   })
 
+  test('o marca-texto verde só entra em número com valor', () => {
+    // 1 pessoa viu, 1 se interessou, 100.0%, 3 exposições, 1 clique, 33.3%.
+    expect(render().split('onside-mark')).toHaveLength(7)
+
+    const semDados = renderToStaticMarkup(
+      <AnalyticsOverview
+        overviewState={{
+          status: 'ready',
+          data: {
+            ...data,
+            uniqueVisitors: 0,
+            interestedPeople: 0,
+            profileViews: 0,
+            classicExposures: 0,
+            classicClicks: 0
+          }
+        }}
+      />
+    )
+    // Zero e "—" não são resultado para destacar.
+    expect(semDados).not.toContain('onside-mark')
+  })
+
   test('WEB-302: o plano aparece pelo nome do catálogo', () => {
     expect(render()).toContain('Plano: Elite')
   })

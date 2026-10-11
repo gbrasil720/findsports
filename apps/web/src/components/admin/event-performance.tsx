@@ -570,9 +570,12 @@ function PerformanceColumns({
 
 function EventPerformanceRow({
   item,
+  best,
   showReservations
 }: {
   item: EventAnalyticsRow
+  /** O jogo com mais interessados: o número dele leva o marca-texto. */
+  best: boolean
   showReservations: boolean
 }) {
   const rate =
@@ -603,7 +606,15 @@ function EventPerformanceRow({
         </span>
         <span className="text-right font-medium text-[var(--onside-ink)] tabular-nums">
           <span className="sr-only">Interesse: </span>
-          {formatAnalyticsValue(item.interestedPeople)}
+          <span
+            className={
+              best && item.interestedPeople
+                ? 'onside-mark onside-mark-sm'
+                : undefined
+            }
+          >
+            {formatAnalyticsValue(item.interestedPeople)}
+          </span>
         </span>
         <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
           <span className="sr-only">Taxa: </span>
@@ -795,6 +806,7 @@ export function EventPerformance({
           <EventPerformanceRow
             key={item.eventId}
             item={item}
+            best={item.eventId === topEvent?.eventId}
             showReservations={showReservations}
           />
         ))}
