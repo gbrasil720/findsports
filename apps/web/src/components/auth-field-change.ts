@@ -15,3 +15,19 @@ export function changeAuthField(
   field.handleChange(value)
   if (showingError) field.validate('blur')
 }
+
+/**
+ * Para campo cuja regra olha outro campo (a confirmação olha a senha): quando
+ * o outro muda, o erro que já está na tela é conferido de novo. Vai no
+ * `listeners.onChange` do outro campo. Sem erro na tela não faz nada, pelo
+ * mesmo motivo de `changeAuthField`.
+ */
+export function revalidateShownError<TName extends string>(
+  form: {
+    getFieldMeta: (name: TName) => { errors: unknown[] } | undefined
+    validateField: (name: TName, cause: 'blur') => unknown
+  },
+  name: TName
+) {
+  if (form.getFieldMeta(name)?.errors.length) form.validateField(name, 'blur')
+}

@@ -6,6 +6,7 @@ import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
 import { AuthBrandPanel } from '@/components/auth-brand-panel'
+import { revalidateShownError } from '@/components/auth-field-change'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { authClient } from '@/lib/auth-client'
@@ -219,6 +220,8 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
         <form.Field
           name="password"
           validators={{ onBlur: validatePassword, onSubmit: validatePassword }}
+          // "As senhas não coincidem." também se corrige por aqui.
+          listeners={{ onChange: () => revalidateShownError(form, 'confirm') }}
         >
           {(field) => (
             <AuthPasswordField

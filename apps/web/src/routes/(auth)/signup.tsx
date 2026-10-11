@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 
 import { AuthBrandCopy } from '@/components/auth-brand-copy'
 import { AuthBrandPanel } from '@/components/auth-brand-panel'
+import { revalidateShownError } from '@/components/auth-field-change'
 import { AuthInputField } from '@/components/auth-input-field'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
@@ -276,6 +277,10 @@ function SignupPage() {
               validators={{
                 onBlur: validatePassword,
                 onSubmit: validatePassword
+              }}
+              // "As senhas não coincidem." também se corrige por aqui.
+              listeners={{
+                onChange: () => revalidateShownError(form, 'confirm')
               }}
             >
               {(field) => (
