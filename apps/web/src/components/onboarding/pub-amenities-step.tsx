@@ -62,7 +62,7 @@ export function PubAmenitiesStep({
         {error ? (
           <p
             id="pub-description-error"
-            className="onside-field-error"
+            className="onside-field-error onside-field-error-ink"
             role="alert"
           >
             {error}

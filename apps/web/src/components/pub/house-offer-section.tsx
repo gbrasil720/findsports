@@ -14,7 +14,7 @@ export function HouseOfferSection({ offer }: { offer: string | null }) {
 
   return (
     <section
-      className="onside-panel border-l-[6px] border-l-[var(--onside-acid)] p-5 md:p-6"
+      className="onside-panel onside-panel-rail-acid p-5 md:p-6"
       aria-labelledby="bar-house-offer-title"
     >
       <p className="onside-kicker mb-2">Para quem chega pela Onside</p>

@@ -127,8 +127,7 @@ export function SearchFilterBar({
         >
           <Search
             size={18}
-            color="currentColor"
-            className={`shrink-0 ${focused ? 'text-[var(--onside-live)]' : 'text-[var(--onside-muted)]'}`}
+            className="shrink-0 text-[var(--onside-muted)]"
             aria-hidden="true"
           />
           <label htmlFor="championship-search" className="sr-only">
@@ -157,7 +156,6 @@ export function SearchFilterBar({
             >
               <Xmark
                 size={14}
-                color="currentColor"
                 className="text-[var(--onside-muted)]"
                 aria-hidden="true"
               />
@@ -434,7 +432,7 @@ export function SearchFilterBar({
               key={filter.label}
               type="button"
               onClick={filter.clear}
-              className="onside-chip bg-[var(--onside-stone)]"
+              className="onside-chip onside-chip-stone"
               aria-label={`Remover filtro ${filter.label}`}
             >
               {filter.label}

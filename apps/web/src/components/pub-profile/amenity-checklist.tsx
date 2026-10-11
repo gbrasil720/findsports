@@ -125,13 +125,15 @@ export function AmenityChecklist({
                     : undefined
                 }
                 // `scheme-dark`: sem ele as setas nativas do campo numérico
-                // saem numa caixa clara no meio do campo escuro.
-                className="onside-input onside-input-ink scheme-dark w-24"
+                // saem numa caixa clara no meio do campo escuro. `max-w-24` e
+                // não `w-24`: o `width: 100%` do `onside-input` vence a
+                // utilitária, e o campo de dois dígitos tomava a linha toda.
+                className="onside-input onside-input-ink scheme-dark max-w-24"
               />
               {screenCountError ? (
                 <p
                   id={`${idPrefix}-screen-count-error`}
-                  className="onside-field-error w-full"
+                  className="onside-field-error onside-field-error-ink w-full"
                   role="alert"
                 >
                   {screenCountError}

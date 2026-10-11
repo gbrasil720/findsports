@@ -80,7 +80,7 @@ function Interruptor({
         {ligado ? '✓' : ''}
       </span>
       <span className="font-mono">{rotulo}</span>
-      <span className="onside-kicker text-[10px]">
+      <span className="onside-kicker onside-kicker-sm">
         {ligado ? 'ligado' : 'desligado'}
       </span>
     </button>
@@ -162,15 +162,15 @@ function CartaoFlag({
 
         <div className="flex shrink-0 flex-wrap gap-2">
           <span
-            className={`onside-kicker border px-2 py-1 text-[10px] ${
+            className={`onside-kicker onside-kicker-sm border border-[var(--onside-ink)] px-2 py-1 ${
               entrada.sobrescrito
-                ? 'border-[var(--onside-ink)] bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                : 'border-[var(--onside-ink)] text-[var(--onside-muted)]'
+                ? 'onside-kicker-ink bg-[var(--onside-acid)]'
+                : ''
             }`}
           >
             {entrada.sobrescrito ? 'Sobrescrito' : 'Padrão'}
           </span>
-          <span className="onside-kicker border border-[var(--onside-ink)] px-2 py-1 text-[10px] text-[var(--onside-muted)]">
+          <span className="onside-kicker onside-kicker-sm border border-[var(--onside-ink)] px-2 py-1">
             {entrada.publico ? 'Público' : 'Interno'}
           </span>
         </div>
@@ -192,7 +192,7 @@ function CartaoFlag({
         <div className="mt-3">
           <label
             htmlFor={campoId}
-            className="onside-kicker mb-2 block text-[var(--onside-ink)]"
+            className="onside-kicker onside-kicker-ink block"
           >
             Valor (JSON)
           </label>
@@ -202,7 +202,7 @@ function CartaoFlag({
             onChange={(event) => setRascunho(event.target.value)}
             spellCheck={false}
             rows={Math.min(12, rascunho.split('\n').length + 1)}
-            className="w-full resize-y border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3 font-mono text-xs text-[var(--onside-ink)]"
+            className="mt-2 w-full resize-y border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3 font-mono text-xs text-[var(--onside-ink)]"
           />
           <p className="mt-2 font-mono text-[11px] text-[var(--onside-muted)]">
             Padrão: {formatarValor(entrada.padrao)}

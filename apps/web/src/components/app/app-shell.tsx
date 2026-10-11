@@ -149,7 +149,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
             </div>
             <ChevronDown
               size={14}
-              color="currentColor"
               className="text-[var(--onside-muted)]"
               aria-hidden="true"
             />
@@ -181,7 +180,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 >
                   <User
                     size={16}
-                    color="currentColor"
                     className="text-[var(--onside-muted)]"
                     aria-hidden="true"
                   />
@@ -196,7 +194,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 >
                   <Ticket
                     size={16}
-                    color="currentColor"
                     className="text-[var(--onside-muted)]"
                     aria-hidden="true"
                   />
@@ -218,7 +215,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                   >
                     <Settings
                       size={16}
-                      color="currentColor"
                       className="text-[var(--onside-muted)]"
                       aria-hidden="true"
                     />
@@ -230,7 +226,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                   >
                     <Ticket
                       size={16}
-                      color="currentColor"
                       className="text-[var(--onside-muted)]"
                       aria-hidden="true"
                     />
@@ -242,7 +237,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                   >
                     <CreditCard
                       size={16}
-                      color="currentColor"
                       className="text-[var(--onside-muted)]"
                       aria-hidden="true"
                     />
@@ -258,7 +252,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 >
                   <User
                     size={16}
-                    color="currentColor"
                     className="text-[var(--onside-muted)]"
                     aria-hidden="true"
                   />
@@ -273,7 +266,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 >
                   <ArrowUpRight
                     size={16}
-                    color="currentColor"
                     className="text-[var(--onside-muted)]"
                     aria-hidden="true"
                   />
@@ -288,7 +280,6 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 >
                   <Chat
                     size={16}
-                    color="currentColor"
                     className="text-[var(--onside-muted)]"
                     aria-hidden="true"
                   />

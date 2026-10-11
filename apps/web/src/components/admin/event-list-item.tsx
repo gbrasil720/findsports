@@ -77,13 +77,11 @@ export function EventListItem({
   const deleteBlock = getDeleteBlock(e.deletion)
 
   return (
+    // Encerrado sem `opacity-80`: o stone já apaga a linha, e com a opacidade
+    // por cima o texto cinza caía para 3,77:1.
     <li
       className={`onside-event-row ${
-        live
-          ? 'border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_8%,var(--onside-paper))]'
-          : past
-            ? 'bg-[var(--onside-stone)] opacity-80'
-            : 'bg-[var(--onside-paper)]'
+        live ? 'onside-event-row-live' : past ? 'onside-event-row-past' : ''
       }`}
     >
       <div className="text-center">
@@ -100,7 +98,7 @@ export function EventListItem({
         {live && (
           <div className="mt-1.5 flex items-center justify-center gap-1">
             <span className="onside-live-dot is-pulse" aria-hidden="true" />
-            <span className="font-[family-name:var(--onside-mono)] text-[9px] font-black text-[var(--onside-live)] uppercase tracking-wider">
+            <span className="font-[family-name:var(--onside-mono)] text-[9px] font-black text-[var(--onside-live-text)] uppercase tracking-wider">
               Ao vivo
             </span>
           </div>

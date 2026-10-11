@@ -66,7 +66,6 @@ export function BarLocationBlock({
           <p className="flex items-start gap-2 text-[var(--onside-ink)] text-sm">
             <Location
               size={16}
-              color="currentColor"
               className="mt-0.5 shrink-0 text-[var(--onside-muted)]"
               aria-hidden="true"
             />

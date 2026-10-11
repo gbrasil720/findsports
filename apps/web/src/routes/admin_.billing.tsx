@@ -58,8 +58,7 @@ function formatDate(date: string | Date | null): string {
   })
 }
 
-const PENDING_BADGE =
-  'onside-badge border-[var(--onside-live)] bg-[color-mix(in_srgb,var(--onside-live)_12%,var(--onside-paper))] text-[var(--onside-live-text)]'
+const PENDING_BADGE = 'onside-badge onside-badge-danger'
 
 /** Por `status`, mais `trial_ended`, que o servidor distingue de `trialing`. */
 const STATUS_LABEL: Record<string, { label: string; className: string }> = {

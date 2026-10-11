@@ -161,7 +161,6 @@ function Suggestions({ onSuggestion }: Pick<Props, 'onSuggestion'>) {
             </span>
             <ChevronRight
               size={16}
-              color="currentColor"
               className="shrink-0 text-[var(--onside-muted)]"
               aria-hidden="true"
             />

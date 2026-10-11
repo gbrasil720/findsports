@@ -51,7 +51,6 @@ export function AuthPasswordField({
         <InputGroupAddon align="inline-start" className="pl-4">
           <Lock
             size={16}
-            color="currentColor"
             className="text-[var(--onside-muted)]"
             aria-hidden="true"
           />

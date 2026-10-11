@@ -228,6 +228,20 @@
   min-width: 0;
 }
 
+/*
+ * Jogo ao vivo e jogo encerrado. Eram utilitárias de borda e fundo na linha,
+ * que perdem para a regra acima (esta folha fica fora de `@layer`): os três
+ * estados saíam iguais.
+ */
+.onside-app .onside-event-row-live {
+  border-color: var(--onside-live);
+  background: color-mix(in srgb, var(--onside-live) 8%, var(--onside-paper));
+}
+
+.onside-app .onside-event-row-past {
+  background: var(--onside-stone);
+}
+
 @media (max-width: 640px) {
   .onside-app .onside-event-row {
     grid-template-columns: 1fr;

@@ -79,11 +79,7 @@ export function ProfileFavorites(props: Props) {
       {favorites.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-1">
-            <Sort
-              size={14}
-              color="currentColor"
-              className="ml-2 text-[var(--onside-muted)]"
-            />
+            <Sort size={14} className="ml-2 text-[var(--onside-muted)]" />
             {SORT_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -198,11 +194,7 @@ export function ProfileFavorites(props: Props) {
           Array.from(favoritesByCity.entries()).map(([city, cityFavorites]) => (
             <div key={city}>
               <div className="mb-2 flex items-center gap-2 px-1">
-                <Location
-                  size={13}
-                  color="currentColor"
-                  className="text-[var(--onside-muted)]"
-                />
+                <Location size={13} className="text-[var(--onside-muted)]" />
                 <span className="font-bold text-[var(--onside-muted)] text-xs uppercase tracking-widest">
                   {city}
                 </span>
@@ -252,11 +244,7 @@ function FavoriteGrid({
 function EmptyFavorites() {
   return (
     <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-8 text-center">
-      <Heart
-        size={36}
-        color="currentColor"
-        className="mx-auto mb-3 text-[var(--onside-muted)]"
-      />
+      <Heart size={36} className="mx-auto mb-3 text-[var(--onside-muted)]" />
       <p className="mb-1 font-bold text-[var(--onside-ink)] text-sm">
         Nenhum bar favoritado
       </p>
