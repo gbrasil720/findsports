@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { storageState } from '../../fixtures/auth'
 import { expect, test } from '../../fixtures/test'
 
 // WEB-333: a cena 3D da landing só existe no desktop. Fora dele — e no desktop
@@ -106,4 +107,57 @@ test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
     'aria-pressed',
     'false'
   )
+})
+
+// O nome da chamada diz para onde ela leva, e é ele que o `cta_clicked` manda:
+// `_signup` para quem vai criar conta, `_app` para quem já tem sessão (WEB-278).
+const ctaNames = (page: Page) =>
+  page
+    .locator('[data-cta]')
+    .evaluateAll((list) => [
+      ...new Set(list.map((el) => el.getAttribute('data-cta')))
+    ])
+
+test('sem sessão, as chamadas principais se chamam *_signup', async ({
+  page
+}) => {
+  await page.goto('/')
+  const hero = page.locator('.onside-hero [data-cta]')
+  await expect(hero).toHaveAttribute('data-cta', 'hero_signup')
+  await expect(hero).toHaveAttribute('href', '/signup')
+  expect((await ctaNames(page)).sort()).toEqual([
+    'community_signup',
+    'final_signup',
+    'footer_pub_signup',
+    'footer_signup',
+    'hero_signup',
+    'nav_signup',
+    'sticky_signup',
+    'story_signup'
+  ])
+})
+
+test.describe('com sessão', () => {
+  test.use({ storageState: storageState('fan') })
+
+  test('as chamadas principais se chamam *_app e levam a /app', async ({
+    page
+  }) => {
+    // `?public=1`: sem ele o guard manda o torcedor logado para o dashboard.
+    await page.goto('/?public=1')
+    const hero = page.locator('.onside-hero [data-cta]')
+    await expect(hero).toHaveAttribute('data-cta', 'hero_app')
+    await expect(hero).toHaveAttribute('href', '/app')
+    // A do bar continua sendo um cadastro.
+    expect((await ctaNames(page)).sort()).toEqual([
+      'community_app',
+      'final_app',
+      'footer_app',
+      'footer_pub_signup',
+      'hero_app',
+      'nav_app',
+      'sticky_app',
+      'story_app'
+    ])
+  })
 })
