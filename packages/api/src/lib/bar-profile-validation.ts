@@ -7,8 +7,7 @@
  *
  * Mora no pacote da API, e não no app, porque as mensagens são do app: o
  * padrão do WEB-118 nunca mostra o texto do servidor, então o formulário
- * confere o telefone e escreve a recusa de endereço com estas mesmas funções
- * (ver `city-match.ts`, que segue o mesmo desenho).
+ * confere o telefone e escreve a recusa de endereço com estas mesmas funções.
  */
 
 /**

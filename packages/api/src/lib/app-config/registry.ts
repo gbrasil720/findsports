@@ -62,9 +62,12 @@ export const APP_CONFIG_DEFINITIONS = {
     padrao: true,
     publico: false,
     descricao:
-      'Busca avalia planos em camadas usando a projeção bar.plan (0018). ' +
-      'Desligar volta ao caminho linear que lê o plano de subscription: ' +
-      'mais lento, imune a dessincronia da trigger.'
+      'Interruptor de emergência da busca. Ligado (o normal): a busca ordena ' +
+      'os bares por plano usando uma cópia do plano guardada no próprio bar, ' +
+      'que é o caminho rápido. Desligue só se um bar pagante sumir ou cair ' +
+      'de posição na busca: a busca passa a ler o plano direto da ' +
+      'assinatura, mais lenta (cerca de 24 ms contra 5 ms) e sempre correta. ' +
+      'Corrigida a cópia, ligue de novo.'
   }),
 
   /**
@@ -90,26 +93,6 @@ export const APP_CONFIG_DEFINITIONS = {
     descricao:
       'Exibe a nota do bar para o torcedor e libera o modo "melhor ' +
       'avaliados" na busca. A coleta de avaliações independe desta chave.'
-  }),
-
-  /**
-   * Cidades em que um bar pode concluir o onboarding.
-   *
-   * Lista vazia — o padrão — significa SEM restrição, que é o comportamento
-   * de hoje. Preenchida, vira o mecanismo de lançamento cidade a cidade: só
-   * bar em cidade da lista completa o cadastro.
-   *
-   * Vale apenas para bares. Torcedor não informa cidade em lugar nenhum do
-   * fluxo — a busca dele é por GPS e raio — então não há o que comparar, e
-   * inventar uma comparação daria um bloqueio que erra.
-   */
-  'launch.pub_cities': definir({
-    schema: z.array(z.string().trim().min(2).max(100)).max(500),
-    padrao: [] as string[],
-    publico: true,
-    descricao:
-      'Cidades liberadas para onboarding de bar. Vazio = todas liberadas. ' +
-      'Comparação ignora acento, caixa e espaço repetido.'
   })
 } as const
 
@@ -161,9 +144,9 @@ export function parseAppConfigValue<K extends AppConfigKey>(
 /**
  * Valida antes de gravar. Aqui SIM o erro sobe: quem está escrevendo precisa
  * saber que o valor foi recusado, em vez de descobrir depois que a flag não
- * mudou nada. O motivo sai em português, com o campo e o limite: quem lê é o
- * administrador no painel. O mapa de erro vale só nesta chamada — o que é
- * validado não muda, nem as mensagens do zod no resto da aplicação.
+ * mudou nada. O motivo sai em português: quem lê é o administrador no painel.
+ * O mapa de erro vale só nesta chamada — o que é validado não muda, nem as
+ * mensagens do zod no resto da aplicação.
  */
 export function validateAppConfigValue<K extends AppConfigKey>(
   key: K,
@@ -175,13 +158,9 @@ export function validateAppConfigValue<K extends AppConfigKey>(
   if (resultado.success) {
     return { ok: true, value: resultado.data as AppConfigValue<K> }
   }
-  const primeiro = resultado.error.issues[0]
-  const caminho = primeiro?.path.join('.')
   return {
     ok: false,
-    erro: caminho
-      ? `${caminho}: ${primeiro?.message}`
-      : (primeiro?.message ?? 'Valor inválido.')
+    erro: resultado.error.issues[0]?.message ?? 'Valor inválido.'
   }
 }
 

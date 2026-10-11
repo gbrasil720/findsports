@@ -3,14 +3,14 @@ import {
   carregarMunicipios,
   filtrarMunicipios,
   type Municipio
-} from '@/components/internal/controle-cidades'
+} from '@/lib/municipios'
 
 /**
  * Campo de cidade do torcedor (WEB-319), no onboarding e no perfil.
  *
- * A lista de municípios e a busca sem acento são as do autocomplete de
- * `/internal/flags`: ~5.500 nomes baixados na primeira interação com o campo,
- * e só as sugestões da busca viram elemento na tela.
+ * A lista de municípios e a busca sem acento vêm de `lib/municipios`: ~5.500
+ * nomes baixados na primeira interação com o campo, e só as sugestões da
+ * busca viram elemento na tela.
  */
 
 export type CityChoice = { name: string; uf: string }
@@ -36,9 +36,6 @@ export function cityFieldValue(
 export function isCityPending(value: CityFieldValue): boolean {
   return value.text.trim().length > 0 && !value.city
 }
-
-/** `filtrarMunicipios` esconde as já adicionadas; aqui não há o que esconder. */
-const NENHUMA_ADICIONADA = new Set<string>()
 
 type Props = {
   value: CityFieldValue
@@ -68,9 +65,7 @@ export function CityField({
 
   const pendente = isCityPending(value)
   const sugestoes =
-    municipios && pendente
-      ? filtrarMunicipios(municipios, value.text, NENHUMA_ADICIONADA)
-      : []
+    municipios && pendente ? filtrarMunicipios(municipios, value.text) : []
   const mostrandoLista = aberto && sugestoes.length > 0
 
   function escolher([name, uf]: Municipio) {

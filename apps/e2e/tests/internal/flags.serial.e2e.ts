@@ -85,11 +85,10 @@ test('JSON inválido e valor fora do formato não gravam', async ({ page }) => {
 })
 
 // WEB-346: o motivo da recusa, quem alterou e a confirmação do reset.
-test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrão pede confirmação', async ({
+test('recusa diz o motivo, rodapé diz quem alterou e voltar ao padrão pede confirmação', async ({
   page
 }) => {
-  const key = 'launch.pub_cities'
-  const value = ['Campinas']
+  const key = 'rating.public_display'
   let resets = 0
   page.on('request', (request) => {
     if (request.url().includes('appConfig.reset')) resets += 1
@@ -100,16 +99,16 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
   const field = flag.getByLabel('Valor (JSON)')
   const save = flag.getByRole('button', { name: 'Salvar' })
 
-  await field.fill(JSON.stringify(['x'.repeat(101)]))
+  await field.fill('"sim"')
   await save.click()
   await expect(
     page.locator('[data-sonner-toast][data-type="error"]')
   ).toContainText(
-    'Valor recusado — 0: Grande demais: esperava que o texto tivesse <= 100 caracteres'
+    'Valor recusado — Entrada inválida: esperava um valor booleano, recebeu um texto'
   )
   expect(await storedValue(key)).toBeUndefined()
 
-  await field.fill(JSON.stringify(value))
+  await field.fill('true')
   await save.click()
   await expect(page.getByText(`${key} salvo.`)).toBeVisible()
   // O nome da conta de admin do setup (`createUser`), não o id dela.
@@ -125,11 +124,11 @@ test('recusa diz o campo e o limite, rodapé diz quem alterou e voltar ao padrã
   await reset.click()
   // A pergunta diz o valor que passa a valer.
   expect(question).toBe(
-    `Voltar ${key} ao padrão? O valor gravado é apagado e passa a valer [].`
+    `Voltar ${key} ao padrão? O valor gravado é apagado e passa a valer false.`
   )
   await expect(flag).toContainText('Sobrescrito')
   expect(resets).toBe(0)
-  expect(await storedValue(key)).toEqual(value)
+  expect(await storedValue(key)).toBe(true)
 
   page.once('dialog', (dialog) => dialog.accept())
   await reset.click()
@@ -151,51 +150,27 @@ test('alteração de conta que não existe mais não mostra o id', async ({
   await expect(flag).not.toContainText('conta-apagada')
 })
 
-test('cidades liberadas: adicionar pela lista e remover', async ({ page }) => {
-  const key = 'launch.pub_cities'
-  await page.goto('/internal/flags')
-  const flag = card(page, key)
-  await expect(flag).toContainText('todas liberadas')
-
-  const city = flag.getByRole('combobox', { name: 'Adicionar cidade' })
-  await city.click()
-  await city.fill('Campinas')
-  await flag.getByRole('option', { name: 'Campinas SP', exact: true }).click()
-  await expect(page.getByText(`${key} salvo.`)).toBeVisible()
-  await expect(
-    flag.getByRole('button', { name: 'Remover Campinas' })
-  ).toBeVisible()
-  // Grava o nome puro, sem a UF que a lista mostra.
-  expect(await storedValue(key)).toEqual(['Campinas'])
-
-  await flag.getByRole('button', { name: 'Remover Campinas' }).click()
-  await expect(flag).toContainText('todas liberadas')
-  await expect.poll(() => storedValue(key)).toEqual([])
-})
-
-/**
- * Um valor válido e diferente do atual, do mesmo formato: booleano invertido
- * ou lista com uma cidade.
- */
+/** Um valor válido e diferente do atual, do mesmo formato. */
 function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
-  if (Array.isArray(value)) return ['Campinas']
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
 test('toda chave edita como JSON, salva e volta ao padrão', async ({
   page
 }) => {
-  // WEB-233: as linhas das chaves de cobrança seguem gravadas em produção até
-  // a migration de limpeza, e não viram cartão.
-  for (const name of [
-    'checkout_enabled',
-    'onboarding_trial',
-    'founder_coupon'
+  // WEB-233: linha de chave que saiu do registro (cobrança, cidades do
+  // cadastro de bar) pode seguir gravada até a migration de limpeza, e não
+  // vira cartão.
+  for (const retired of [
+    'billing.checkout_enabled',
+    'billing.onboarding_trial',
+    'billing.founder_coupon',
+    'launch.pub_cities'
   ]) {
     await query(
       `INSERT INTO app_config (key, value) VALUES ($1, 'true'::jsonb)`,
-      [`billing.${name}`]
+      [retired]
     )
   }
   await page.goto('/internal/flags')
@@ -207,11 +182,10 @@ test('toda chave edita como JSON, salva e volta ao padrão', async ({
       '[data-sonner-toaster], [data-sonner-toaster] * { pointer-events: none !important; }'
   })
   // `allTextContents` não espera: só lê depois que os cartões renderizaram.
-  await expect(card(page, 'launch.pub_cities')).toBeVisible()
+  await expect(card(page, 'rating.public_display')).toBeVisible()
   const keys = await page.locator('article h2').allTextContents()
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
-    'launch.pub_cities',
     'rating.public_display',
     'search.tiered_plan_query'
   ])

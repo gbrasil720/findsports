@@ -64,12 +64,12 @@ export const appConfigRouter = router({
     }),
 
   /**
-   * Subconjunto público. Aberto de propósito: o onboarding de bar precisa
-   * listar as cidades abertas antes de o dono digitar o endereço.
+   * Subconjunto público. Aberto de propósito: a busca do torcedor precisa
+   * saber se a nota do bar está no ar antes de oferecer "Melhor avaliados".
    *
-   * Nada aqui é decisão de segurança — o servidor recusa de novo, sozinho,
-   * em `onboarding.completePub`. Isto é só cortesia com quem está do outro
-   * lado da tela.
+   * Nada aqui é decisão de segurança — o servidor decide de novo, sozinho,
+   * em `pubs.search` e `pubs.getById`. Isto é só cortesia com quem está do
+   * outro lado da tela.
    */
   getPublic: publicProcedure.query(() => appConfigStore.getPublic())
 })

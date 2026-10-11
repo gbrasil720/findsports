@@ -1,15 +1,11 @@
 import { UFS } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { normalizarCidade } from '@findsports_oficial/api/lib/city-match'
-import {
-  carregarMunicipios,
-  type Municipio
-} from '@/components/internal/controle-cidades'
+import { carregarMunicipios, type Municipio } from '@/lib/municipios'
 
 /**
  * UF do endereço do bar (WEB-270), no onboarding e na edição do painel.
  *
- * Fica ao lado da cidade, e não dentro dela: `bar.city` continua nome puro,
- * que é o que `launch.pub_cities` compara (`cidadeLiberada`).
+ * Fica ao lado da cidade, e não dentro dela: `bar.city` continua nome puro.
  */
 
 type Props = {

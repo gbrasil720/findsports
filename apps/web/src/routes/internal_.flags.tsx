@@ -8,7 +8,6 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { InternalShell } from '@/components/app/internal-shell'
-import { ControleCidades } from '@/components/internal/controle-cidades'
 import { getUser } from '@/functions/get-user'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -46,27 +45,6 @@ type Entrada = inferRouterOutputs<AppRouter>['appConfig']['list'][number]
 
 function formatarValor(valor: unknown) {
   return JSON.stringify(valor, null, 2)
-}
-
-/**
- * Chave cujo valor é uma lista de cidades.
- *
- * É uma exceção nomeada, não uma regra por formato: `launch.pub_cities` não é
- * flag de engenheiro. Quem a opera toca o lançamento comercial, é a chave que
- * mais vai ser mexida daqui para frente — uma vez por cidade nova, provavelmente
- * com pressa — e o preço de errar é fechar o cadastro de bar de uma cidade
- * inteira. Toda outra chave sem controle próprio continua no textarea de JSON.
- */
-const CHAVE_LISTA_CIDADES = 'launch.pub_cities'
-
-function ehListaDeCidades(
-  entrada: Entrada
-): entrada is Entrada & { valor: string[] } {
-  return (
-    entrada.key === CHAVE_LISTA_CIDADES &&
-    Array.isArray(entrada.valor) &&
-    entrada.valor.every((item) => typeof item === 'string')
-  )
 }
 
 /** Interruptor de um campo. O rótulo diz o estado, não a ação. */
@@ -129,9 +107,6 @@ function formatarData(iso: string) {
  *
  * Chave booleana ganha dois botões por cima disso. É a forma mais comum e a
  * mais urgente: às três da manhã ninguém quer digitar `false` sem aspas.
- *
- * `launch.pub_cities` ganha o mesmo tratamento pelo mesmo motivo, e a exceção
- * é por chave — não por formato. Ver `ehListaDeCidades`.
  */
 function CartaoFlag({
   entrada,
@@ -166,7 +141,7 @@ function CartaoFlag({
     try {
       analisado = JSON.parse(rascunho)
     } catch {
-      setErro('JSON inválido. Exemplos: true, false, ["São Paulo"].')
+      setErro('JSON inválido. Exemplos: true, false.')
       return
     }
     setErro(null)
@@ -207,14 +182,6 @@ function CartaoFlag({
           ligado={entrada.valor === true}
           desabilitado={salvando}
           onToggle={onSalvar}
-        />
-      ) : null}
-
-      {ehListaDeCidades(entrada) ? (
-        <ControleCidades
-          cidades={entrada.valor}
-          desabilitado={salvando}
-          onAlterar={onSalvar}
         />
       ) : null}
 
@@ -318,7 +285,7 @@ function FlagsPage() {
       },
       onError: (erro) =>
         toast.error(
-          // Valor recusado: o servidor já diz o campo e o limite. Tratado só
+          // Valor recusado: o servidor já diz o motivo. Tratado só
           // aqui, e não em `getUserFacingMessage`, porque o 400 de outras
           // telas pode ser a recusa de entrada do tRPC, que é o JSON do zod.
           // Nesta a entrada é `{key, value}` com a chave vinda do `list`.
@@ -375,7 +342,7 @@ function FlagsPage() {
           aria-live="polite"
         >
           <span className="sr-only">Carregando configuração…</span>
-          {['flag-1', 'flag-2', 'flag-3'].map((key) => (
+          {['flag-1', 'flag-2'].map((key) => (
             <article
               key={key}
               className="onside-panel onside-shadow flex flex-col gap-4 p-5 sm:p-6"

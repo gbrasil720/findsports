@@ -1,11 +1,11 @@
 /**
- * Gera a lista de municípios brasileiros usada pelo autocomplete de
- * `launch.pub_cities` em `/internal/flags`.
+ * Gera a lista de municípios brasileiros usada pelo campo de cidade do
+ * torcedor e pela UF do cadastro de bar (`apps/web/src/lib/municipios.ts`).
  *
  * A fonte é a API de localidades do IBGE — pública, sem chave e oficial. Ela é
- * consultada aqui, na geração, e nunca em tempo de execução: uma tela de
- * administração que depende de rede externa falha exatamente quando a rede
- * está ruim, e é esse o problema que o WEB-73 registrou com o Google Maps.
+ * consultada aqui, na geração, e nunca em tempo de execução: uma tela que
+ * depende de rede externa falha exatamente quando a rede está ruim, e é esse
+ * o problema que o WEB-73 registrou com o Google Maps.
  *
  * O arquivo gerado guarda só nome e UF. O resto do payload do IBGE
  * (microrregião, mesorregião, região imediata) não é usado em lugar nenhum e
