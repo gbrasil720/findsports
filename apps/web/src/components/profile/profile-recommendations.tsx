@@ -23,11 +23,7 @@ export function ProfileRecommendations(props: Props) {
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 font-bold text-lg">
-            <Compass
-              size={18}
-              color="currentColor"
-              className="text-[var(--onside-live)]"
-            />
+            <Compass size={18} className="text-[var(--onside-live)]" />
             Sugestões para você
           </h2>
           <p className="mt-1 text-[var(--onside-muted)] text-xs">

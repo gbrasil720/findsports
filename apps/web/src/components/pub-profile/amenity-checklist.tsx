@@ -124,7 +124,9 @@ export function AmenityChecklist({
                     ? `${idPrefix}-screen-count-error`
                     : undefined
                 }
-                className="onside-input w-24 border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]"
+                // `scheme-dark`: sem ele as setas nativas do campo numérico
+                // saem numa caixa clara no meio do campo escuro.
+                className="onside-input onside-input-ink scheme-dark w-24"
               />
               {screenCountError ? (
                 <p

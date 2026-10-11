@@ -359,7 +359,7 @@ export function PubHeroSection({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="onside-btn onside-btn-outline min-h-11 border-[var(--onside-paper)] text-[var(--onside-paper)] text-xs"
+                  className="onside-btn onside-btn-outline-ink min-h-11 text-xs"
                 >
                   <Xmark size={14} color="currentColor" />
                   Cancelar
@@ -379,7 +379,7 @@ export function PubHeroSection({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="onside-btn onside-btn-outline min-h-11 border-[var(--onside-paper)] text-[var(--onside-paper)] text-xs"
+              className="onside-btn onside-btn-outline-ink min-h-11 text-xs"
             >
               <Edit size={14} color="currentColor" />
               Editar perfil

@@ -48,11 +48,7 @@ export function ProfileSettings(props: Props) {
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold text-lg">
-            <Medal
-              size={20}
-              color="currentColor"
-              className="text-[var(--onside-live)]"
-            />
+            <Medal size={20} className="text-[var(--onside-live)]" />
             Esportes favoritos
           </h3>
           {!props.editingSports ? (
@@ -125,11 +121,7 @@ export function ProfileSettings(props: Props) {
 
       <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
         <h3 className="mb-1 flex items-center gap-2 font-bold text-lg">
-          <Location
-            size={20}
-            color="currentColor"
-            className="text-[var(--onside-live)]"
-          />
+          <Location size={20} className="text-[var(--onside-live)]" />
           Raio de busca
         </h3>
         <p className="mb-4 text-[var(--onside-muted)] text-xs">
@@ -174,11 +166,7 @@ export function ProfileSettings(props: Props) {
 
       <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
         <h3 className="mb-1 flex items-center gap-2 font-bold text-lg">
-          <Compass
-            size={20}
-            color="currentColor"
-            className="text-[var(--onside-live)]"
-          />
+          <Compass size={20} className="text-[var(--onside-live)]" />
           Sugestões personalizadas
         </h3>
         <p className="mb-4 max-w-2xl text-[var(--onside-muted)] text-xs leading-relaxed">

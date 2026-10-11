@@ -107,7 +107,6 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         <div className="flex min-w-0 gap-3">
           <Trash
             size={20}
-            color="currentColor"
             className="mt-0.5 shrink-0 text-[var(--onside-live-text)]"
             aria-hidden="true"
           />

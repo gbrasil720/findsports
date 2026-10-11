@@ -185,7 +185,6 @@ export function ProfileOverview({
           >
             <Icon
               size={20}
-              color="currentColor"
               className="mb-3 text-[var(--onside-live-text)]"
               aria-hidden="true"
             />
@@ -202,7 +201,6 @@ export function ProfileOverview({
               {label}
               <ArrowRight
                 size={12}
-                color="currentColor"
                 className="text-[var(--onside-muted)] transition-colors group-hover:text-[var(--onside-live-text)]"
               />
             </div>
@@ -215,11 +213,7 @@ export function ProfileOverview({
       ) : favoritesError ? null : upcomingEvents.length > 0 ? (
         <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
           <h2 className="mb-4 flex items-center gap-2 font-bold text-lg">
-            <Fire
-              size={18}
-              color="currentColor"
-              className="text-[var(--onside-live)]"
-            />
+            <Fire size={18} className="text-[var(--onside-live)]" />
             Próximos jogos nos seus bares
           </h2>
           <ul className="divide-y divide-[var(--onside-line)]">
@@ -231,11 +225,7 @@ export function ProfileOverview({
                   className="group flex items-center gap-3 py-3"
                 >
                   <div className="grid size-9 shrink-0 place-items-center rounded-none bg-[var(--onside-acid)]/10">
-                    <Medal
-                      size={16}
-                      color="currentColor"
-                      className="text-[var(--onside-live)]"
-                    />
+                    <Medal size={16} className="text-[var(--onside-live)]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-bold text-sm transition-colors group-hover:text-[var(--onside-live-text)]">
@@ -305,7 +295,6 @@ function UpcomingEventsSkeleton() {
       <div className="mb-4 flex items-center gap-2">
         <Fire
           size={18}
-          color="currentColor"
           className="text-[var(--onside-live)]"
           aria-hidden="true"
         />

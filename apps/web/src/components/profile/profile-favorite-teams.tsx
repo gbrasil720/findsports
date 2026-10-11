@@ -49,11 +49,7 @@ export function ProfileFavoriteTeams({
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="flex items-center gap-2 font-bold text-lg">
-          <Flag
-            size={20}
-            color="currentColor"
-            className="text-[var(--onside-live)]"
-          />
+          <Flag size={20} className="text-[var(--onside-live)]" />
           Quem você acompanha
         </h3>
         {!editing ? (
