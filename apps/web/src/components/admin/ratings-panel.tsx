@@ -82,7 +82,7 @@ export function RatingsPanel({ state }: Props) {
       className="onside-panel p-5 md:p-6"
       aria-labelledby="admin-ratings-title"
     >
-      <p className="onside-kicker mb-1">Avaliações</p>
+      <p className="onside-kicker">Avaliações</p>
       <h2 id="admin-ratings-title" className="onside-display text-2xl">
         Voltariam pra ver jogo aqui?
       </h2>

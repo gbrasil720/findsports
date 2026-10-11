@@ -333,37 +333,33 @@ function ManageUsersPage() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+                <TableRow className="border-b">
+                  <TableHead>
                     <span className="flex items-center gap-1.5">
                       <User className="size-3.5" />
                       Usuário
                     </span>
                   </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+                  <TableHead>
                     <span className="flex items-center gap-1.5">
                       <Envelope className="size-3.5" />
                       E-mail
                     </span>
                   </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+                  <TableHead>
                     <span className="flex items-center gap-1.5">
                       <Trophy className="size-3.5" />
                       Role
                     </span>
                   </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
-                    Status
-                  </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider">
+                  <TableHead>Status</TableHead>
+                  <TableHead>
                     <span className="flex items-center gap-1.5">
                       <Calendar className="size-3.5" />
                       Criado em
                     </span>
                   </TableHead>
-                  <TableHead className="font-bold text-muted-foreground text-xs uppercase tracking-wider text-right">
-                    Ações
-                  </TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -375,11 +371,7 @@ function ManageUsersPage() {
                     'loading-4',
                     'loading-5'
                   ].map((key) => (
-                    <TableRow
-                      key={key}
-                      className="border-[var(--onside-line)] border-b"
-                      aria-hidden="true"
-                    >
+                    <TableRow key={key} className="border-b" aria-hidden="true">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Skeleton className="size-8 shrink-0" />
@@ -445,10 +437,7 @@ function ManageUsersPage() {
                   </TableRow>
                 ) : (
                   filtered.map((u) => (
-                    <TableRow
-                      key={u.id}
-                      className="border-[var(--onside-line)] border-b"
-                    >
+                    <TableRow key={u.id} className="border-b">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <div
@@ -481,7 +470,7 @@ function ManageUsersPage() {
                       <TableCell>
                         <Badge
                           variant="secondary"
-                          className={`rounded-none font-bold text-[10px] uppercase tracking-wider ${getRoleBadgeClass(u.role)}`}
+                          className={`rounded-none ${getRoleBadgeClass(u.role)}`}
                         >
                           {getRoleLabel(u.role)}
                         </Badge>
@@ -630,14 +619,14 @@ function ManageUsersPage() {
             />
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
-            <DialogClose className="onside-btn onside-btn-outline min-h-11 px-4 text-xs">
+            <DialogClose className="onside-btn onside-btn-outline">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleBan}
               disabled={banLoading}
-              className="onside-btn onside-btn-danger min-h-11 px-5 text-xs"
+              className="onside-btn onside-btn-danger"
             >
               {banLoading && (
                 <Loader className="size-4 animate-spin" aria-hidden="true" />
@@ -698,14 +687,14 @@ function ManageUsersPage() {
             )}
           </div>
           <div className="flex justify-end gap-2 border-t border-[var(--onside-line)] px-6 py-4">
-            <DialogClose className="onside-btn onside-btn-outline min-h-11 px-4 text-xs">
+            <DialogClose className="onside-btn onside-btn-outline">
               Cancelar
             </DialogClose>
             <button
               type="button"
               onClick={handleSetRole}
               disabled={roleLoading || !newRole}
-              className="onside-btn onside-btn-ink min-h-11 px-5 text-xs"
+              className="onside-btn onside-btn-ink"
             >
               {roleLoading && (
                 <Loader className="size-4 animate-spin" aria-hidden="true" />

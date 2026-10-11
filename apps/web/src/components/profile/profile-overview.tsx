@@ -109,7 +109,7 @@ export function ProfileOverview({
                 <button
                   type="button"
                   onClick={onRetryFavorites}
-                  className="onside-btn onside-btn-outline min-h-11 shrink-0"
+                  className="onside-btn onside-btn-outline shrink-0"
                 >
                   Tentar novamente
                 </button>
@@ -123,7 +123,7 @@ export function ProfileOverview({
                 <button
                   type="button"
                   onClick={onRetryPreferences}
-                  className="onside-btn onside-btn-outline min-h-11 shrink-0"
+                  className="onside-btn onside-btn-outline shrink-0"
                 >
                   Tentar novamente
                 </button>

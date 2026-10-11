@@ -166,7 +166,7 @@ export function EventFormComponent({
   return (
     <div className="max-h-[70dvh] space-y-4 overflow-y-auto overscroll-contain pr-1">
       <label className="block" aria-busy={loadingSports || undefined}>
-        <span className="onside-label mb-1.5 block">Esporte *</span>
+        <span className="onside-label">Esporte *</span>
         <select
           value={form.sportId}
           onChange={(e) => handleSportChange(e.target.value)}
@@ -187,7 +187,7 @@ export function EventFormComponent({
 
       <div>
         <label className="block">
-          <span className="onside-label mb-1.5 block">Campeonato *</span>
+          <span className="onside-label">Campeonato *</span>
           <input
             value={form.championship}
             onChange={(e) => setForm({ ...form, championship: e.target.value })}
@@ -295,7 +295,7 @@ export function EventFormComponent({
                         participantIds: [...prev.participantIds].reverse()
                       }))
                     }
-                    className="onside-btn onside-btn-ghost min-h-11 px-3 text-xs"
+                    className="onside-btn onside-btn-ghost"
                   >
                     Inverter
                   </button>
@@ -358,7 +358,7 @@ export function EventFormComponent({
         <button
           type="button"
           onClick={onCancel}
-          className="onside-btn onside-btn-ghost min-h-11 px-4 text-xs"
+          className="onside-btn onside-btn-ghost"
         >
           Cancelar
         </button>
@@ -373,7 +373,7 @@ export function EventFormComponent({
           }
           disabled={!canSave || isSaving}
           aria-describedby={missing.length > 0 ? missingId : undefined}
-          className="onside-btn onside-btn-acid min-h-11 px-5 text-xs"
+          className="onside-btn onside-btn-acid"
         >
           {isSaving ? 'Salvando…' : 'Salvar'}
         </button>

@@ -375,7 +375,22 @@
   box-shadow: inset 3px 0 0 var(--onside-ink);
 }
 
+/*
+ * Item destrutivo ("Sair"): vermelho de texto em repouso. A utilitária de cor
+ * no item perdia para a regra de cor acima, e a regra de hover daqui perdia
+ * para a do item comum, mais específica: "Sair" nunca saía em vermelho.
+ *
+ * No hover o texto volta para ink: o vermelho de texto sobre a superfície
+ * avermelhada dá 4,14:1. Quem diz "destrutivo" ali é a superfície e a barra.
+ */
+.onside-menu .onside-menu-destructive {
+  color: var(--onside-live-text);
+}
+
 .onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
+.onside-app
+  [data-slot="dropdown-menu-content"]
+  .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
 .onside-app
   [data-slot="dropdown-menu-content"]
   [data-slot="dropdown-menu-item"][data-variant="destructive"]:is(
@@ -384,7 +399,8 @@
     [data-highlighted]
   ) {
   background: color-mix(in srgb, var(--onside-live) 10%, var(--onside-paper));
-  color: var(--onside-live-text);
+  color: var(--onside-ink);
+  box-shadow: inset 3px 0 0 var(--onside-live);
 }
 
 .onside-app

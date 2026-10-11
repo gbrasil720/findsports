@@ -110,7 +110,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="onside-app flex min-h-dvh">
+    <div className="onside-app flex">
       <AuthBrandPanel variant="login">
         <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
           <span className="onside-live-dot" aria-hidden="true" />
@@ -144,7 +144,7 @@ function LoginPage() {
 
         <div className="w-full max-w-[420px]">
           <div className="mb-8">
-            <p className="onside-kicker mb-3">Entrar</p>
+            <p className="onside-kicker">Entrar</p>
             <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
               DE VOLTA AO{' '}
               <span className="text-[var(--onside-live-text)]">JOGO.</span>

@@ -197,7 +197,7 @@ function PlanSelection() {
         </div>
       ) : (
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="onside-kicker mb-3">{header.kicker}</p>
+          <p className="onside-kicker">{header.kicker}</p>
           <h1 className="onside-display mb-4 text-4xl md:text-5xl">
             {header.title}
           </h1>
@@ -205,7 +205,7 @@ function PlanSelection() {
           {regularize ? (
             <Link
               to="/admin/billing"
-              className="onside-btn onside-btn-ink mt-6 min-h-11"
+              className="onside-btn onside-btn-ink mt-6"
             >
               Regularizar assinatura
               <ArrowRight size={16} color="currentColor" aria-hidden="true" />
@@ -224,7 +224,7 @@ function PlanSelection() {
             <button
               type="button"
               onClick={() => subscriptionQuery.refetch()}
-              className="onside-btn onside-btn-outline min-h-11"
+              className="onside-btn onside-btn-outline"
             >
               Tentar novamente
             </button>
@@ -333,10 +333,7 @@ function PlanSelection() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to={exitLink.to}
-          className="onside-btn onside-btn-outline min-h-11"
-        >
+        <Link to={exitLink.to} className="onside-btn onside-btn-outline">
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
           {exitLink.label}
         </Link>
@@ -363,7 +360,7 @@ function PlanSelection() {
                     ? 'Você já está testando este plano'
                     : undefined
                 }
-                className="onside-btn onside-btn-outline min-h-11"
+                className="onside-btn onside-btn-outline"
               >
                 {trialPlan.isPending
                   ? 'Trocando…'
@@ -384,7 +381,7 @@ function PlanSelection() {
                 subscriptionQuery.isLoading
               }
               title={isSamePlan ? 'Este já é seu plano atual' : undefined}
-              className="onside-btn onside-btn-acid min-h-11"
+              className="onside-btn onside-btn-acid"
             >
               {loading ? (
                 <Loader

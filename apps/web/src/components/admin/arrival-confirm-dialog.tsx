@@ -52,14 +52,14 @@ export function ArrivalConfirmDialog({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
-            className="onside-btn onside-btn-acid min-h-12 px-5 text-sm"
+            className="onside-btn onside-btn-acid"
           >
             Confirmar chegada
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="onside-btn onside-btn-outline min-h-12 px-4 text-xs"
+            className="onside-btn onside-btn-outline"
           >
             Cancelar
           </button>

@@ -247,7 +247,7 @@ function BarMenuForm({
 
       {url.ok && spend.ok && (url.url || spend.cents) ? (
         <div>
-          <p className="onside-kicker mb-2">Como aparece no perfil</p>
+          <p className="onside-kicker">Como aparece no perfil</p>
           <BarMenuInfo menuUrl={url.url} averageSpendCents={spend.cents} />
         </div>
       ) : null}
@@ -266,7 +266,7 @@ function BarMenuForm({
           disabled={
             isSaving || Boolean(urlError || spendError) || (isValid && !isDirty)
           }
-          className="onside-btn onside-btn-acid min-h-11 text-xs disabled:opacity-50"
+          className="onside-btn onside-btn-acid"
         >
           {isSaving ? 'Salvando…' : 'Salvar'}
         </button>

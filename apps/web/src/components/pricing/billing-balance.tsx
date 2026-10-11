@@ -22,7 +22,7 @@ export function BillingBalance() {
   if (creditReais === null && nextChargeReais === null && !card) return null
 
   return (
-    <div className="onside-callout onside-callout-stone mb-4 flex-col gap-1 text-sm">
+    <div className="onside-callout onside-callout-stone mb-4 flex-col text-sm">
       {nextChargeReais !== null ? (
         <p>
           Valor da próxima cobrança:{' '}

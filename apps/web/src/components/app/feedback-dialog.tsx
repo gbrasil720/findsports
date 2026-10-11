@@ -116,7 +116,7 @@ export function FeedbackDialog({ open, onClose, returnFocus }: Props) {
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent
         finalFocus={returnFocus}
-        className="onside-dialog max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6"
+        className="onside-dialog max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6"
       >
         <FeedbackForm onClose={onClose} />
       </DialogContent>
@@ -291,7 +291,7 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
               disabled={full}
               onClick={() => fileInput.current?.click()}
               aria-describedby={`${ids}-images-hint`}
-              className="onside-btn onside-btn-outline min-h-11 px-3 text-xs"
+              className="onside-btn onside-btn-outline"
             >
               <ImagePlus size={16} color="currentColor" aria-hidden="true" />
               Adicionar imagem

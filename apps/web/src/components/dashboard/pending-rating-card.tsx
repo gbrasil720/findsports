@@ -93,7 +93,7 @@ export function PendingRatingCard({ pending }: Props) {
       className="onside-panel mb-6 p-4 md:p-5"
       aria-labelledby="pending-rating-title"
     >
-      <p className="onside-kicker mb-1">Como foi?</p>
+      <p className="onside-kicker">Como foi?</p>
       <h2
         id="pending-rating-title"
         className="onside-display text-xl md:text-2xl"
@@ -110,7 +110,7 @@ export function PendingRatingCard({ pending }: Props) {
           type="button"
           onClick={() => answer(true)}
           disabled={isPending}
-          className="onside-btn onside-btn-acid min-h-11 px-4 text-xs disabled:opacity-60"
+          className="onside-btn onside-btn-acid"
         >
           <Check size={15} color="currentColor" aria-hidden="true" />
           Voltaria
@@ -119,7 +119,7 @@ export function PendingRatingCard({ pending }: Props) {
           type="button"
           onClick={() => answer(false)}
           disabled={isPending}
-          className="onside-btn onside-btn-outline min-h-11 px-4 text-xs disabled:opacity-60"
+          className="onside-btn onside-btn-outline"
         >
           <Xmark size={15} color="currentColor" aria-hidden="true" />
           Não voltaria

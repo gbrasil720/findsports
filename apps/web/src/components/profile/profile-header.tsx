@@ -40,7 +40,7 @@ export function ProfileHeader({
   onRemoveImage
 }: Props) {
   return (
-    <section className="onside-panel-ink onside-shadow-acid relative mb-8 overflow-hidden p-8 text-[var(--onside-paper)] md:p-10">
+    <section className="onside-panel-ink onside-shadow-acid relative mb-8 overflow-hidden p-8 md:p-10">
       <div className="relative flex flex-col gap-6 md:flex-row md:items-center">
         <div className="relative shrink-0 self-start md:self-auto">
           <div className="grid size-24 place-items-center overflow-hidden border-2 border-[var(--onside-paper)] bg-[var(--onside-paper)] font-bold text-4xl text-[var(--onside-ink)]">

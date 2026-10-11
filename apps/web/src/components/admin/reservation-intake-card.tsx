@@ -116,7 +116,7 @@ function IntakeSwitch({
           >
             {receiving ? '✓' : ''}
           </span>
-          <span className="onside-kicker text-[10px]">
+          <span className="onside-kicker onside-kicker-sm">
             {isSaving
               ? 'Salvando…'
               : paused

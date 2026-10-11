@@ -97,9 +97,7 @@ export function PlanCard({
           <Icon size={20} color="currentColor" aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <div className="onside-display text-2xl leading-none">
-            {plan.name}
-          </div>
+          <div className="onside-display text-2xl">{plan.name}</div>
           <div className="mt-1 text-xs text-[var(--onside-muted)]">
             {plan.tagline}
           </div>

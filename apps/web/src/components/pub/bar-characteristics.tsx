@@ -190,7 +190,7 @@ export function BarMenuInfo({
           href={menuUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="onside-btn onside-btn-outline min-h-12 min-w-0 justify-between gap-3 px-4 text-left sm:self-center"
+          className="onside-btn onside-btn-outline min-w-0 text-left sm:self-center"
         >
           <span className="min-w-0">
             <span className="block text-sm">Ver cardápio</span>

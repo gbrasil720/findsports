@@ -89,7 +89,7 @@ export function EventListItem({
           {date}
         </div>
         <div
-          className={`onside-display text-xl tabular-nums leading-none ${
+          className={`onside-display text-xl tabular-nums ${
             past ? 'text-[var(--onside-muted)]' : 'text-[var(--onside-ink)]'
           }`}
         >
@@ -98,7 +98,7 @@ export function EventListItem({
         {live && (
           <div className="mt-1.5 flex items-center justify-center gap-1">
             <span className="onside-live-dot is-pulse" aria-hidden="true" />
-            <span className="font-[family-name:var(--onside-mono)] text-[9px] font-black text-[var(--onside-live-text)] uppercase tracking-wider">
+            <span className="font-[family-name:var(--onside-mono)] text-[9px] font-black text-[var(--onside-ink)] uppercase tracking-wider">
               Ao vivo
             </span>
           </div>

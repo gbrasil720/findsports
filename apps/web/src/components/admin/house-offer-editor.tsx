@@ -151,7 +151,7 @@ function HouseOfferForm({
         <button
           type="submit"
           disabled={isSaving || overLimit || !isDirty}
-          className="onside-btn onside-btn-acid min-h-11 text-xs disabled:opacity-50"
+          className="onside-btn onside-btn-acid"
         >
           {isSaving ? 'Salvando…' : 'Salvar oferta'}
         </button>
@@ -160,7 +160,7 @@ function HouseOfferForm({
             type="button"
             disabled={isSaving}
             onClick={() => void submit(null)}
-            className="onside-btn onside-btn-outline min-h-11 text-xs disabled:opacity-50"
+            className="onside-btn onside-btn-outline"
           >
             Remover oferta
           </button>

@@ -52,7 +52,7 @@ describe('BarActions', () => {
         variant="panel"
       />
     )
-    expect(markup).toContain('<p class="onside-kicker mb-3">Como chegar</p>')
+    expect(markup).toContain('<p class="onside-kicker">Como chegar</p>')
     expect(markup).not.toContain('Fale com o bar')
   })
 
@@ -61,9 +61,7 @@ describe('BarActions', () => {
       const markup = renderToStaticMarkup(
         <BarActions {...base} {...contact} onReserve={null} variant="panel" />
       )
-      expect(markup).toContain(
-        '<p class="onside-kicker mb-3">Fale com o bar</p>'
-      )
+      expect(markup).toContain('<p class="onside-kicker">Fale com o bar</p>')
     }
   })
 

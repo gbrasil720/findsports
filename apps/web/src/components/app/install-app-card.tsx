@@ -133,10 +133,7 @@ export function InstallAppCard({
         <Xmark size={14} color="currentColor" aria-hidden="true" />
       </button>
 
-      <h2
-        id="convite-instalacao"
-        className="onside-heading pr-11 text-base leading-tight"
-      >
+      <h2 id="convite-instalacao" className="onside-heading pr-11 text-base">
         Deixe o Onside a um toque
       </h2>
 
@@ -150,7 +147,7 @@ export function InstallAppCard({
         <button
           type="button"
           onClick={() => void instalar()}
-          className="onside-btn onside-btn-acid min-h-11 self-start text-xs"
+          className="onside-btn onside-btn-acid self-start"
         >
           <Download size={14} color="currentColor" aria-hidden="true" />
           Instalar o Onside

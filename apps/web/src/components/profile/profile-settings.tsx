@@ -82,7 +82,7 @@ export function ProfileSettings(props: Props) {
               <button
                 type="button"
                 onClick={props.onRetryPreferences}
-                className="onside-btn onside-btn-outline mt-3 min-h-11"
+                className="onside-btn onside-btn-outline mt-3"
               >
                 Tentar novamente
               </button>

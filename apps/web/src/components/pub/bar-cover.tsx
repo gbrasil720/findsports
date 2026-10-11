@@ -83,7 +83,7 @@ export function BarCover({
         {canFavorite && (
           <button
             type="button"
-            className={`onside-badge shrink-0 min-h-11 px-3 ${
+            className={`onside-badge shrink-0 min-h-11 ${
               isFavorited
                 ? 'bg-[var(--onside-ink)] text-[var(--onside-paper)]'
                 : 'bg-[var(--onside-paper)] text-[var(--onside-ink)]'

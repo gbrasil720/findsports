@@ -204,7 +204,7 @@ function ComparisonControls({
           >
             <SelectTrigger
               aria-labelledby={targetLabelId}
-              className="onside-select h-12 min-h-12 w-full text-sm"
+              className="onside-select h-12"
             >
               <SelectValue placeholder="Selecione um jogo" />
             </SelectTrigger>
@@ -242,7 +242,7 @@ function ComparisonTable({ comparison }: { comparison: EventComparisonData }) {
   return (
     <Table className="min-w-[620px]">
       <TableHeader>
-        <TableRow className="hover:bg-transparent">
+        <TableRow>
           <TableHead className="pl-0">Jogo</TableHead>
           {COMPARISON_METRICS.map((metric) => (
             <TableHead key={metric} className="text-right">
@@ -255,10 +255,7 @@ function ComparisonTable({ comparison }: { comparison: EventComparisonData }) {
       <TableBody>
         {rows.map((row) => (
           <TableRow key={row.eventId}>
-            <TableHead
-              scope="row"
-              className="max-w-44 truncate py-2 pr-2 pl-0 font-medium"
-            >
+            <TableHead scope="row" className="max-w-44 truncate pr-2 pl-0">
               {row.eventName}
             </TableHead>
             {COMPARISON_METRICS.map((metric) => (

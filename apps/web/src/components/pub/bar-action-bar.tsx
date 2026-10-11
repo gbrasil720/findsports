@@ -136,7 +136,7 @@ export function BarActions({
           ? primaryAction.shortLabel
           : primaryAction.label
       }
-      className={`onside-btn onside-btn-acid min-h-12 flex-1 justify-center text-sm${primaryAction.onClick ? ' whitespace-nowrap' : ''}`}
+      className={`onside-btn onside-btn-acid flex-1${primaryAction.onClick ? ' whitespace-nowrap' : ''}`}
       iconOnly={false}
       hideIcon={compact}
     />
@@ -147,7 +147,7 @@ export function BarActions({
       key={action.key}
       action={action}
       text={action.shortLabel}
-      className={`onside-btn onside-btn-outline min-h-12 justify-center text-sm${compact ? ' onside-pub-actionbar-icon' : ''}`}
+      className={`onside-btn onside-btn-outline${compact ? ' onside-pub-actionbar-icon' : ''}`}
       iconOnly={compact}
       hideIcon={false}
     />
@@ -166,7 +166,7 @@ export function BarActions({
   if (!primary && !phone && !presence) {
     return isOwner && !isBar ? (
       <section className="onside-panel p-5 md:p-6">
-        <p className="onside-kicker mb-1">{title}</p>
+        <p className="onside-kicker">{title}</p>
         <OwnerNudge
           action={{ label: 'Completar', to: '/admin', hash: 'admin-espaco' }}
         >
@@ -199,7 +199,7 @@ export function BarActions({
       className={`onside-panel p-5 md:p-6${onlyButtons ? ' max-md:hidden' : ''}`}
     >
       <div className="max-md:hidden">
-        <p className="onside-kicker mb-3">{title}</p>
+        <p className="onside-kicker">{title}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           {primary}
           {secondaries}
@@ -253,7 +253,7 @@ function ActionButton({
         type="button"
         onClick={action.onClick}
         disabled={!action.onClick}
-        className={`${className} disabled:opacity-50`}
+        className={className}
       >
         {content}
       </button>

@@ -186,7 +186,7 @@ function CartaoFlag({
       ) : null}
 
       <details>
-        <summary className="onside-kicker cursor-pointer text-[var(--onside-muted)]">
+        <summary className="onside-kicker cursor-pointer">
           Editar como JSON
         </summary>
         <div className="mt-3">
@@ -236,7 +236,7 @@ function CartaoFlag({
             type="button"
             disabled={!entrada.sobrescrito || resetando}
             onClick={onResetar}
-            className="onside-btn onside-btn-outline min-h-11 text-xs disabled:opacity-40"
+            className="onside-btn onside-btn-outline"
           >
             Voltar ao padrão
           </button>
@@ -244,7 +244,7 @@ function CartaoFlag({
             type="button"
             disabled={!alterado || salvando}
             onClick={salvarRascunho}
-            className="onside-btn onside-btn-ink min-h-11 text-xs disabled:opacity-40"
+            className="onside-btn onside-btn-ink"
           >
             {salvando ? (
               <Loader
@@ -382,7 +382,7 @@ function FlagsPage() {
             <button
               type="button"
               onClick={() => listaQuery.refetch()}
-              className="onside-btn onside-btn-outline min-h-11"
+              className="onside-btn onside-btn-outline"
             >
               Tentar novamente
             </button>

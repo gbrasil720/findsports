@@ -220,7 +220,7 @@ function PubDashboard() {
   return (
     <AppShell variant="pub" userMeta={bar.name}>
       <div className="mb-6 border-[var(--onside-ink)] border-b pb-4">
-        <p className="onside-kicker mb-2">Onside para bares</p>
+        <p className="onside-kicker">Onside para bares</p>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h1 className="onside-display text-4xl md:text-5xl">Sua grade</h1>

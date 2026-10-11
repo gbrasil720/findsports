@@ -79,7 +79,7 @@ function MyReservationsPage() {
             <button
               type="button"
               onClick={() => void query.refetch()}
-              className="onside-btn onside-btn-outline mt-3 min-h-11 text-sm"
+              className="onside-btn onside-btn-outline mt-3"
             >
               Tentar novamente
             </button>
@@ -109,10 +109,7 @@ function MyReservationsPage() {
             <p className="mt-1 text-[var(--onside-muted)] text-sm">
               No perfil de um bar que recebe reservas, use “Reservar mesa”.
             </p>
-            <Link
-              to="/dashboard"
-              className="onside-btn onside-btn-acid mt-4 min-h-11 text-sm"
-            >
+            <Link to="/dashboard" className="onside-btn onside-btn-acid mt-4">
               Procurar bares
             </Link>
           </div>
@@ -272,7 +269,7 @@ function ReservationCard({
                 })
               }}
               disabled={unmarkMutation.isPending}
-              className="onside-btn onside-btn-ghost min-h-11 text-sm disabled:opacity-50"
+              className="onside-btn onside-btn-ghost"
             >
               {unmarkMutation.isPending ? 'Desmarcando…' : 'Desmarcar'}
             </button>
@@ -295,7 +292,7 @@ function ReservationCard({
                 type="button"
                 onClick={cancel}
                 disabled={cancelMutation.isPending}
-                className="onside-btn onside-btn-ink min-h-11 text-sm disabled:opacity-50"
+                className="onside-btn onside-btn-ink"
               >
                 {cancelMutation.isPending
                   ? 'Cancelando…'
@@ -305,7 +302,7 @@ function ReservationCard({
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={cancelMutation.isPending}
-                className="onside-btn onside-btn-outline min-h-11 text-sm"
+                className="onside-btn onside-btn-outline"
               >
                 Manter pedido
               </button>
@@ -314,7 +311,7 @@ function ReservationCard({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="onside-btn onside-btn-outline min-h-11 text-sm"
+              className="onside-btn onside-btn-outline"
             >
               Cancelar pedido
             </button>

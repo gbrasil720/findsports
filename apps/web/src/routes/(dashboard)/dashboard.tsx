@@ -636,7 +636,7 @@ function FanDashboard() {
       />
 
       {locationState === 'denied' ? (
-        <div className="onside-callout onside-callout-stone mb-4 w-full flex-col gap-1 text-xs">
+        <div className="onside-callout onside-callout-stone mb-4 w-full flex-col text-xs">
           <p className="font-bold text-[var(--onside-ink)]">
             Localização bloqueada
           </p>

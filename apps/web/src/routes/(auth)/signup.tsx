@@ -163,7 +163,7 @@ function SignupPage() {
   }
 
   return (
-    <div className="onside-app flex min-h-dvh">
+    <div className="onside-app flex">
       <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
         <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
           <Link to="/" aria-label="Onside — página inicial">
@@ -176,7 +176,7 @@ function SignupPage() {
 
         <div className="w-full max-w-[420px]">
           <div className="mb-8">
-            <p className="onside-kicker mb-3">Criar conta</p>
+            <p className="onside-kicker">Criar conta</p>
             <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
               ENTRE NO{' '}
               <span className="text-[var(--onside-live-text)]">
@@ -205,7 +205,7 @@ function SignupPage() {
             }}
           >
             <fieldset className="flex flex-col gap-1.5 border-0 p-0">
-              <legend className="onside-label mb-0">Sou um</legend>
+              <legend className="onside-label">Sou um</legend>
               <ToggleGroup
                 value={[role]}
                 onValueChange={(values) => {
@@ -217,14 +217,14 @@ function SignupPage() {
               >
                 <ToggleGroupItem
                   value="fan"
-                  className="onside-choice onside-choice-inline min-h-12 gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
+                  className="onside-choice onside-choice-inline font-bold text-sm uppercase tracking-wider"
                 >
                   <Fire size={15} color="currentColor" aria-hidden="true" />
                   Torcedor
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="pub"
-                  className="onside-choice onside-choice-inline min-h-12 gap-2 rounded-none border-[1.5px] border-[var(--onside-ink)] px-3 py-3 font-bold text-sm uppercase tracking-wider aria-pressed:bg-[var(--onside-acid)] aria-pressed:text-[var(--onside-ink)] aria-pressed:shadow-[3px_3px_0_var(--onside-ink)] data-[state=on]:bg-[var(--onside-acid)]"
+                  className="onside-choice onside-choice-inline font-bold text-sm uppercase tracking-wider"
                 >
                   <Store size={15} color="currentColor" aria-hidden="true" />
                   Dono de Bar

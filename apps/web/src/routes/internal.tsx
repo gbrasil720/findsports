@@ -56,9 +56,7 @@ function InternalHallPage() {
             />
           </div>
           <div>
-            <h2 className="onside-display text-2xl tracking-tight">
-              Gerenciar Usuários
-            </h2>
+            <h2 className="onside-display text-2xl">Gerenciar Usuários</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Impersone, bana, desbane e altere roles de usuários da plataforma.
             </p>
@@ -74,9 +72,7 @@ function InternalHallPage() {
             <SliderH size={28} color="var(--onside-ink)" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="onside-display text-2xl tracking-tight">
-              Configuração
-            </h2>
+            <h2 className="onside-display text-2xl">Configuração</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Desligue caminhos de código, ajuste limites e libere cobrança sem
               deploy.
@@ -97,9 +93,7 @@ function InternalHallPage() {
             />
           </div>
           <div>
-            <h2 className="onside-display text-2xl tracking-tight">
-              Comparecimento
-            </h2>
+            <h2 className="onside-display text-2xl">Comparecimento</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Bares em que o torcedor diz que foi e o bar repetidamente não
               registra o código.
@@ -116,9 +110,7 @@ function InternalHallPage() {
             <Store size={28} color="var(--onside-ink)" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="onside-display text-2xl tracking-tight">
-              Bares e Assinaturas
-            </h2>
+            <h2 className="onside-display text-2xl">Bares e Assinaturas</h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--onside-muted)]">
               Veja plano, situação da assinatura e publicação de cada bar, sem
               ir ao banco.

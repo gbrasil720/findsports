@@ -122,7 +122,7 @@ export function PubHeroSection({
   return (
     <section
       id="admin-profile-editor"
-      className="onside-panel-ink relative mb-8 scroll-mt-6 overflow-hidden text-[var(--onside-paper)]"
+      className="onside-panel-ink relative mb-8 overflow-hidden"
     >
       <div className="hidden" />
       <div className="relative grid items-start gap-6 p-6 md:grid-cols-[1fr_auto] md:p-10">
@@ -274,7 +274,7 @@ export function PubHeroSection({
                       }
                       placeholder="Ex: mesa de sinuca no fundo e happy hour até as 20h nos dias de jogo"
                       rows={2}
-                      className="onside-textarea onside-textarea-ink resize-none"
+                      className="onside-textarea onside-textarea-ink"
                     />
                   </div>
 
@@ -359,7 +359,7 @@ export function PubHeroSection({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="onside-btn onside-btn-outline-ink min-h-11 text-xs"
+                  className="onside-btn onside-btn-outline-ink"
                 >
                   <Xmark size={14} color="currentColor" />
                   Cancelar
@@ -368,7 +368,7 @@ export function PubHeroSection({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving || !form.name.trim() || !isDirty}
-                  className="onside-btn onside-btn-acid min-h-11 text-xs disabled:opacity-50"
+                  className="onside-btn onside-btn-acid"
                 >
                   <Check size={14} color="currentColor" />
                   {isSaving ? 'Salvando…' : 'Salvar'}
@@ -379,7 +379,7 @@ export function PubHeroSection({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="onside-btn onside-btn-outline-ink min-h-11 text-xs"
+              className="onside-btn onside-btn-outline-ink"
             >
               <Edit size={14} color="currentColor" />
               Editar perfil

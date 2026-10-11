@@ -20,7 +20,7 @@ type Props = {
 export function WelcomeStep({ eyebrow, title, subtitle, features }: Props) {
   return (
     <div>
-      <p className="onside-kicker onside-kicker-acid mb-3">{eyebrow}</p>
+      <p className="onside-kicker onside-kicker-acid">{eyebrow}</p>
       <h1
         tabIndex={-1}
         className="onside-display mb-5 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"

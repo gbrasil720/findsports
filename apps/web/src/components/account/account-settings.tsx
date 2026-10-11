@@ -46,7 +46,7 @@ export function AccountSettings({ surface }: Props) {
         <div className="flex flex-col gap-4">
           <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
             <div className="mb-2">
-              <p className="onside-kicker mb-2">Conta</p>
+              <p className="onside-kicker">Conta</p>
               <h2 className="onside-display text-2xl">Conta e acesso</h2>
               <p className="mt-1 text-[var(--onside-muted)] text-sm">
                 {surface === 'fan'

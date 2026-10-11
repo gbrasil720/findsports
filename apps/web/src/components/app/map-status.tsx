@@ -27,7 +27,7 @@ export function MapLoadError({
         {onRetry ? (
           <button
             type="button"
-            className="onside-btn onside-btn-outline mt-4 min-h-11"
+            className="onside-btn onside-btn-outline mt-4"
             onClick={onRetry}
           >
             Tentar novamente

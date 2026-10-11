@@ -54,10 +54,7 @@ export function OwnerPreviewBanner({
             esta página.
           </p>
         </div>
-        <Link
-          to="/plan"
-          className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
-        >
+        <Link to="/plan" className="onside-btn onside-btn-ink shrink-0">
           Contratar um plano
         </Link>
       </div>
@@ -90,7 +87,7 @@ export function OwnerPreviewBanner({
       <Link
         to="/admin"
         hash="admin-espaco"
-        className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+        className="onside-btn onside-btn-ink shrink-0"
       >
         <Edit size={14} color="currentColor" aria-hidden="true" />
         <span className="ml-1.5">Editar</span>
@@ -123,7 +120,7 @@ export function OwnerNudge({ children, action }: NudgeProps) {
         <Link
           to={action.to}
           hash={action.hash}
-          className="onside-btn onside-btn-outline min-h-9 shrink-0 px-3 text-[11px]"
+          className="onside-btn onside-btn-outline onside-btn-sm shrink-0"
         >
           {action.label}
         </Link>

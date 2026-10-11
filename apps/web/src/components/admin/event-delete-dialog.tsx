@@ -150,7 +150,7 @@ export function EventDeleteDialog({
               type="button"
               onClick={onConfirm}
               disabled={isDeleting}
-              className="onside-btn onside-btn-danger min-h-12 px-5 text-sm disabled:opacity-50"
+              className="onside-btn onside-btn-danger"
             >
               {isDeleting ? 'Excluindo…' : 'Excluir jogo'}
             </button>
@@ -159,7 +159,7 @@ export function EventDeleteDialog({
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="onside-btn onside-btn-outline min-h-12 px-4 text-xs"
+            className="onside-btn onside-btn-outline"
           >
             {block ? 'Entendi' : 'Cancelar'}
           </button>

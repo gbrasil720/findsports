@@ -474,7 +474,7 @@ function PubOnboarding() {
               <span className="onside-badge onside-badge-on-ink">
                 {name.trim() || '…'}
               </span>
-              <span className="onside-badge onside-badge-on-ink inline-flex items-center gap-1">
+              <span className="onside-badge onside-badge-on-ink">
                 <Location size={12} color="currentColor" aria-hidden="true" />
                 {neighborhood.trim() || '…'}
               </span>

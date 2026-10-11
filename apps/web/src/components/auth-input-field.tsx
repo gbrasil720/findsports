@@ -47,7 +47,7 @@ export function AuthInputField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={resolvedId} className="onside-label mb-0">
+      <label htmlFor={resolvedId} className="onside-label">
         {label}
       </label>
       <InputGroup className={AUTH_INPUT_GROUP_CLASS}>

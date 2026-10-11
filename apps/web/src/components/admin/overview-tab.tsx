@@ -249,7 +249,7 @@ export function OverviewTab({
         <button
           type="button"
           onClick={onCreateEvent}
-          className={`onside-btn ${cannotCreate ? 'onside-btn-outline' : 'onside-btn-acid'} min-h-11`}
+          className={`onside-btn ${cannotCreate ? 'onside-btn-outline' : 'onside-btn-acid'}`}
         >
           {cannotCreate ? (
             'Ver grade'
@@ -321,7 +321,7 @@ export function OverviewTab({
           <Link
             to="/plan"
             search={{ origin: 'admin' }}
-            className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+            className="onside-btn onside-btn-ink shrink-0"
           >
             Ver planos
             <ArrowRight size={13} color="currentColor" aria-hidden="true" />
@@ -403,7 +403,7 @@ export function OverviewTab({
           {lapsedPlan ? (
             <Link
               to="/admin/billing"
-              className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+              className="onside-btn onside-btn-ink shrink-0"
             >
               Regularizar assinatura
               <ArrowRight size={13} color="currentColor" aria-hidden="true" />
@@ -413,7 +413,7 @@ export function OverviewTab({
               <Link
                 to="/plan"
                 search={{ origin: 'admin' }}
-                className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+                className="onside-btn onside-btn-ink shrink-0"
               >
                 Fazer upgrade
                 <ArrowRight size={13} color="currentColor" aria-hidden="true" />
@@ -454,7 +454,7 @@ export function OverviewTab({
           <div className="onside-stat-label">Ao vivo</div>
         </div>
         <div className="onside-stat">
-          <div className="onside-stat-value uppercase">
+          <div className="onside-stat-value">
             {loadingSub ? (
               <Skeleton className="h-7 w-24" />
             ) : (

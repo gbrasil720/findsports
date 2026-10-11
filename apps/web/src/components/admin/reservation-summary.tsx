@@ -38,7 +38,7 @@ export function ReservationSummary({
       aria-labelledby={titleId}
       className="border-[var(--onside-ink)] border-t-[1.5px] pt-5"
     >
-      <p className="onside-kicker mb-1">
+      <p className="onside-kicker">
         Código{' '}
         <span className="font-[family-name:var(--onside-mono)] tracking-[0.18em]">
           {reservation.code}

@@ -223,7 +223,7 @@ function KpiCard({
 
   return (
     <div className="onside-panel p-4">
-      <p className="onside-label mb-2 text-[var(--onside-ink)] opacity-70">
+      <p className="onside-label opacity-70">
         {label}
         <MetricHint metric={metric} />
       </p>

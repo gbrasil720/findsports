@@ -9,7 +9,7 @@ export function StepProgress({ step, steps }: Props) {
       <p className="sr-only" aria-live="polite">
         Progresso: passo {step + 1} de {steps.length} — {steps[step]}
       </p>
-      <ol className="onside-progress m-0 list-none p-0" aria-hidden="true">
+      <ol className="onside-progress list-none p-0" aria-hidden="true">
         {steps.map((name, i) => (
           <li
             key={name}

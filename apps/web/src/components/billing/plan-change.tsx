@@ -119,7 +119,7 @@ export function DowngradeConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="onside-btn onside-btn-ink min-h-12 px-5 text-sm"
+            className="onside-btn onside-btn-ink"
           >
             {confirmLabel}
           </button>
@@ -127,7 +127,7 @@ export function DowngradeConfirmDialog({
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="onside-btn onside-btn-outline min-h-12 px-4 text-xs"
+            className="onside-btn onside-btn-outline"
           >
             Manter o {getPlan(from).name}
           </button>

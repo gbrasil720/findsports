@@ -99,7 +99,7 @@ export function HeroEventCard({ event, fromSearch }: Props) {
         )}
 
         <div className="min-w-0">
-          <p className="onside-display text-2xl leading-tight md:text-3xl">
+          <p className="onside-display text-2xl md:text-3xl">
             {formatMatchup(event)}
           </p>
           <p className="mt-1 font-[family-name:var(--onside-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">

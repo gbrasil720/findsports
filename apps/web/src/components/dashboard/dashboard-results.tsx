@@ -91,7 +91,7 @@ function EmptyResults({
           <button
             type="button"
             onClick={onRequestLocation}
-            className="onside-btn onside-btn-acid mt-5 min-h-11 px-5 text-xs"
+            className="onside-btn onside-btn-acid mt-5"
           >
             <Location size={14} color="currentColor" aria-hidden="true" />
             Usar minha localização
@@ -101,7 +101,7 @@ function EmptyResults({
         <button
           type="button"
           onClick={() => onRadiusChange(10)}
-          className="onside-btn onside-btn-acid mt-5 min-h-11 px-5 text-xs"
+          className="onside-btn onside-btn-acid mt-5"
         >
           Buscar em 10 km →
         </button>
@@ -141,7 +141,7 @@ function Suggestions({ onSuggestion }: Pick<Props, 'onSuggestion'>) {
 
   return (
     <div className="min-w-0">
-      <p className="onside-kicker mb-2.5">Talvez você queira experimentar</p>
+      <p className="onside-kicker">Talvez você queira experimentar</p>
       <div className="flex flex-col gap-2">
         {suggestions.map(({ kind, label, Icon }) => (
           <button
@@ -303,7 +303,7 @@ export function DashboardResults(props: Props) {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-col lg:col-start-2 lg:row-start-2">
-        <section className="onside-map-frame relative h-[280px] sm:h-[320px] lg:h-auto lg:min-h-[360px] lg:flex-1">
+        <section className="onside-map-frame h-[280px] sm:h-[320px] lg:h-auto lg:min-h-[360px] lg:flex-1">
           <OnsideMap
             bars={mapBars}
             // Sem localização o mapa enquadra o raio em volta da cidade do

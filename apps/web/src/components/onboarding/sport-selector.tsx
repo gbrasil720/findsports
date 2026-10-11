@@ -39,7 +39,7 @@ export function SportSelector({
         {['a', 'b', 'c', 'd', 'e', 'f'].map((id) => (
           <div
             key={id}
-            className="onside-choice onside-choice-ink flex min-h-[108px] flex-col items-center justify-center"
+            className="onside-choice onside-choice-ink justify-center"
             aria-hidden="true"
           >
             <Skeleton className="mb-2 size-6 bg-[rgb(241_238_230_/_18%)]" />
@@ -58,7 +58,7 @@ export function SportSelector({
           <button
             type="button"
             onClick={onRetry}
-            className="onside-btn onside-btn-outline min-h-11"
+            className="onside-btn onside-btn-outline"
           >
             Tentar novamente
           </button>
@@ -88,7 +88,7 @@ export function SportSelector({
               onClick={() => onToggle(s.id)}
               aria-pressed={on}
               aria-label={s.name}
-              className={`onside-choice onside-choice-ink relative min-h-11 ${on ? 'is-selected' : ''}`}
+              className={`onside-choice onside-choice-ink relative ${on ? 'is-selected' : ''}`}
             >
               <SportIcon
                 slug={s.slug}

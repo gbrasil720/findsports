@@ -94,10 +94,10 @@ export function PaidFeatureCard({
   return (
     <section
       id={id}
-      className="onside-panel scroll-mt-6 p-5 md:p-6"
+      className="onside-panel p-5 md:p-6"
       aria-labelledby={titleId}
     >
-      <p className="onside-kicker mb-2">{copy.kicker}</p>
+      <p className="onside-kicker">{copy.kicker}</p>
       <h2 id={titleId} className="onside-display text-2xl">
         {title}
       </h2>
@@ -134,7 +134,7 @@ export function PaidFeatureCard({
                 <Link
                   to={notice.link.to}
                   search={notice.link.search}
-                  className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+                  className="onside-btn onside-btn-ink shrink-0"
                 >
                   {notice.link.label}
                   <ArrowRight

@@ -220,14 +220,14 @@ function ReservationRequest({
                 type="button"
                 onClick={() => answer('declined')}
                 disabled={respond.isPending}
-                className="onside-btn onside-btn-ink min-h-11 text-sm disabled:opacity-50"
+                className="onside-btn onside-btn-ink"
               >
                 Confirmar recusa
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDecline(false)}
-                className="onside-btn onside-btn-outline min-h-11 text-sm"
+                className="onside-btn onside-btn-outline"
               >
                 Voltar
               </button>
@@ -238,7 +238,7 @@ function ReservationRequest({
                 type="button"
                 onClick={() => answer('confirmed')}
                 disabled={respond.isPending}
-                className="onside-btn onside-btn-acid min-h-11 text-sm disabled:opacity-50"
+                className="onside-btn onside-btn-acid"
               >
                 {respond.isPending ? 'Enviando…' : 'Confirmar reserva'}
               </button>
@@ -246,7 +246,7 @@ function ReservationRequest({
                 type="button"
                 onClick={() => setConfirmingDecline(true)}
                 disabled={respond.isPending}
-                className="onside-btn onside-btn-outline min-h-11 text-sm"
+                className="onside-btn onside-btn-outline"
               >
                 Recusar
               </button>
