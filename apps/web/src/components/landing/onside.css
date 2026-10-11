@@ -1607,13 +1607,13 @@ html:has(.onside-page) {
 
 .onside-page .onside-footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.6fr) repeat(5, minmax(0, 1fr));
   gap: 40px;
   align-items: start;
   padding: 64px 0 48px;
 }
 
-/* Os quatro blocos de links entram direto na grade do rodapé. */
+/* Os cinco blocos de links entram direto na grade do rodapé. */
 .onside-page .onside-footer-nav {
   display: contents;
 }

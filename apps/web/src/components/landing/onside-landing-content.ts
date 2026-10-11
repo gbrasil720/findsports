@@ -173,6 +173,16 @@ export const PROBLEM_ITEMS: ProblemItem[] = [
   }
 ]
 
+/** Perfis da Onside, na coluna "Redes sociais" do rodapé. */
+export const SOCIAL_LINKS = [
+  {
+    id: 'instagram',
+    label: 'Instagram',
+    href: 'https://www.instagram.com/onside.sh/'
+  },
+  { id: 'x', label: 'X', href: 'https://x.com/onside_sh' }
+] as const
+
 export const DEFINITION_POINTS: DefinitionPoint[] = [
   {
     id: 'd1',
