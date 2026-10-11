@@ -24,9 +24,15 @@ async function walk(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true })
   const files: string[] = []
   for (const entry of entries) {
+    // Dependencies are not ours to check, and a workspace package's
+    // `node_modules` holds symlinks to directories, which are not files.
+    if (entry.name === 'node_modules') continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) files.push(...(await walk(path)))
-    else if (!EXCLUDED_FILES.some((pattern) => pattern.test(path))) {
+    else if (
+      entry.isFile() &&
+      !EXCLUDED_FILES.some((pattern) => pattern.test(path))
+    ) {
       files.push(path)
     }
   }
