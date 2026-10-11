@@ -295,7 +295,7 @@ export function ConversionReadiness({
                 </p>
               </div>
               <div className="text-right">
-                <strong className="onside-display text-5xl text-[var(--onside-paper)] tabular-nums sm:text-6xl">
+                <strong className="onside-display text-5xl text-[var(--onside-acid)] tabular-nums sm:text-6xl">
                   {percentage}%
                 </strong>
                 <p className="mt-1 font-[family-name:var(--onside-mono)] text-[9px] text-[color-mix(in_srgb,var(--onside-paper)_52%,transparent)] uppercase tracking-[0.14em]">
