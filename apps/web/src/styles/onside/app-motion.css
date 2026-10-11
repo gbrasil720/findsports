@@ -28,12 +28,21 @@
   }
 }
 
-/* Route changes bridge the old and new page without delaying interaction. */
+/*
+ * Route changes bridge the old and new page without delaying interaction.
+ *
+ * `backwards`, e não `both`: com `both` o `transform` do último quadro ficava
+ * no `main` para sempre, e elemento com `transform` vira a referência de todo
+ * `position: fixed` dentro dele. A barra de ação da página do bar ia parar no
+ * fim da página em vez de ficar presa ao pé da janela (WEB-370). O
+ * `isolation` mantém o contexto de empilhamento que o `transform` criava.
+ */
 @media (prefers-reduced-motion: no-preference) {
   .onside-app > main,
   #onboarding-main {
     animation: onside-route-enter var(--onside-motion-slow)
-      var(--onside-ease-out) both;
+      var(--onside-ease-out) backwards;
+    isolation: isolate;
   }
 
   .onside-onboarding-step-content {

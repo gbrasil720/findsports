@@ -1,5 +1,8 @@
 import type { Locator } from '@playwright/test'
+import { signIn } from '../../fixtures/auth'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
 
 // Aviso de cookies (WEB-243). Em `vite dev` não há análise; a suíte liga só o
 // aviso (`VITE_E2E_CONSENT_BANNER` em `env.ts`), e todo teste nasce com ele
@@ -86,6 +89,71 @@ test.describe('sem escolha feita', () => {
     await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
     await expect(banner(page)).toBeHidden()
     await expect(page.locator('html')).not.toHaveAttribute('data-consent')
+  })
+
+  // WEB-370. O que é fixo no pé da janela sobe para cima do aviso. A barra de
+  // ação do bar, além disso, nem ficava presa à janela: o `transform` que a
+  // animação de entrada deixava no `main` a mandava para o fim da página.
+  test('celular: a barra de ação e o toast ficam acima do aviso, e a barra desce quando ele some', async ({
+    page,
+    isMobile
+  }) => {
+    test.skip(!isMobile, 'só no projeto mobile')
+    const { barId } = await createPub()
+    // Torcedor próprio: o teste favorita o bar.
+    await signIn(page, await createUser())
+    const actions = page.locator('.onside-pub-actionbar')
+    // Quanto o elemento passa do topo do aviso: até 0 ele está livre.
+    const under = (locator: Locator) => async () => {
+      const bar = await box(banner(page))
+      const found = await box(locator)
+      return Math.round(found.y + found.height - bar.y)
+    }
+
+    await page.goto(`/pub/${barId}`)
+    await expect(banner(page)).toBeVisible()
+    await expect(actions).toBeInViewport({ ratio: 1 })
+    await expect.poll(under(actions), 'barra de ação').toBeLessThanOrEqual(0)
+
+    await page.getByRole('button', { name: 'Adicionar aos favoritos' }).click()
+    const toast = page.locator('[data-sonner-toast]')
+    await expect(toast).toBeVisible()
+    await expect.poll(under(toast), 'toast').toBeLessThanOrEqual(0)
+
+    await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
+    await expect(banner(page)).toBeHidden()
+    // Sem o aviso ela volta para o pé da janela, e continua presa a ele.
+    const viewport = page.viewportSize()
+    if (!viewport) throw new Error('sem viewport')
+    const atBottom = async () => {
+      const found = await box(actions)
+      return Math.round(found.y + found.height)
+    }
+    await expect.poll(atBottom).toBe(viewport.height)
+    await page.evaluate('scrollTo(0, 600)')
+    await expect.poll(() => page.evaluate('scrollY')).toBeGreaterThan(0)
+    await expect.poll(atBottom).toBe(viewport.height)
+  })
+
+  // Em 320x568 o "Acessar minha conta" do login cai na faixa do aviso. O
+  // navegador o dava por visível e não rolava ao receber o foco.
+  test('celular: botão que recebe o foco debaixo do aviso rola para cima dele', async ({
+    page,
+    isMobile
+  }) => {
+    test.skip(!isMobile, 'só no projeto mobile')
+    await page.setViewportSize({ width: 320, height: 568 })
+    await page.goto('/login')
+    await expect(banner(page)).toBeVisible()
+    const submit = page.getByRole('button', { name: 'Acessar minha conta' })
+    await submit.focus()
+    await expect
+      .poll(async () => {
+        const bar = await box(banner(page))
+        const button = await box(submit)
+        return Math.round(button.y + button.height - bar.y)
+      })
+      .toBeLessThanOrEqual(0)
   })
 })
 
