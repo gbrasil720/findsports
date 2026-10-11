@@ -163,7 +163,7 @@ function VerifyEmailPage() {
           <Envelope size={42} color="currentColor" aria-hidden="true" />
         </div>
         <div>
-          <p className="onside-kicker mb-3 text-[var(--onside-live-text)]">
+          <p className="onside-kicker onside-kicker-live mb-3">
             Última checagem
           </p>
           <h1 className="onside-display mb-4 text-4xl sm:text-5xl">

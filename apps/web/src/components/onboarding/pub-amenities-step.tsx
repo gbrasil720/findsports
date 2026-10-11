@@ -57,7 +57,7 @@ export function PubAmenitiesStep({
           maxLength={500}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? 'pub-description-error' : undefined}
-          className="onside-textarea border-[rgb(241_238_230_/_28%)] bg-[rgb(241_238_230_/_6%)] text-[var(--onside-paper)] placeholder:text-[rgb(241_238_230_/_40%)]"
+          className="onside-textarea onside-textarea-ink"
         />
         {error ? (
           <p

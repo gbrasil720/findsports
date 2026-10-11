@@ -41,11 +41,7 @@ export function ProfileCity() {
   return (
     <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6">
       <h3 className="mb-1 flex items-center gap-2 font-bold text-lg">
-        <Building
-          size={20}
-          color="currentColor"
-          className="text-[var(--onside-live)]"
-        />
+        <Building size={20} className="text-[var(--onside-live)]" />
         Sua cidade
       </h3>
       <p className="mb-4 text-[var(--onside-muted)] text-xs">

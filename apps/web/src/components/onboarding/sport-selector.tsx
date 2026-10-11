@@ -52,16 +52,13 @@ export function SportSelector({
 
   if (isError) {
     return (
-      <div
-        className="onside-callout onside-callout-danger text-[var(--onside-paper)]"
-        role="alert"
-      >
+      <div className="onside-callout onside-callout-danger" role="alert">
         <p className="text-sm">Não foi possível carregar os esportes.</p>
         {onRetry && retryable ? (
           <button
             type="button"
             onClick={onRetry}
-            className="onside-btn onside-btn-outline min-h-11 border-[var(--onside-paper)] text-[var(--onside-paper)]"
+            className="onside-btn onside-btn-outline min-h-11"
           >
             Tentar novamente
           </button>

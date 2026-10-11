@@ -38,7 +38,6 @@ export function WelcomeStep({ eyebrow, title, subtitle, features }: Props) {
           >
             <Icon
               size={16}
-              color="currentColor"
               className="mt-0.5 shrink-0 text-[var(--onside-acid)]"
               aria-hidden="true"
             />

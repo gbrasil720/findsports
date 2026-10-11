@@ -39,6 +39,19 @@
   color: var(--onside-acid);
 }
 
+/*
+ * Kicker em ink ou no vermelho de texto. A cor do kicker só muda por
+ * modificador: classe utilitária de cor perde para esta folha, que fica fora
+ * de `@layer` (ver `onside-label-ink`).
+ */
+.onside-app .onside-kicker-ink {
+  color: var(--onside-ink);
+}
+
+.onside-app .onside-kicker-live {
+  color: var(--onside-live-text);
+}
+
 .onside-app .onside-text-muted-on-ink {
   color: var(--onside-muted-on-ink);
 }
@@ -111,6 +124,17 @@
   background: var(--onside-paper);
   color: var(--onside-ink);
   border-color: var(--onside-ink);
+}
+
+/*
+ * Contorno sobre superfície ink. O cabeçalho de `/admin` pedia isto com
+ * `onside-btn-outline` mais utilitárias de borda e texto em papel, que perdem
+ * para esta folha (fora de `@layer`): saía o botão de papel cheio.
+ */
+.onside-app .onside-btn-outline-ink {
+  background: transparent;
+  color: var(--onside-paper);
+  border-color: var(--onside-paper);
 }
 
 .onside-app .onside-btn-ghost {
@@ -253,9 +277,13 @@
   color: var(--onside-paper);
 }
 
+/*
+ * Texto de apoio sobre ink, como o placeholder claro usa `--onside-muted`.
+ * Papel a 40% dava 3,37:1 sobre o fundo do campo, abaixo dos 4,5:1.
+ */
 .onside-app .onside-input-ink::placeholder,
 .onside-app .onside-textarea-ink::placeholder {
-  color: rgb(241 238 230 / 40%);
+  color: var(--onside-muted-on-ink);
 }
 
 /* Depois do tom ink, para a borda de erro valer nas duas superfícies. */
@@ -341,7 +369,7 @@
 }
 
 .onside-app .onside-field-composite-ink .onside-field-part::placeholder {
-  color: rgb(241 238 230 / 40%);
+  color: var(--onside-muted-on-ink);
 }
 
 /* Input group do shadcn usado nos campos de autenticação: mesma política. */
