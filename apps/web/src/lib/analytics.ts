@@ -130,7 +130,27 @@ export const analytics = {
     void withPosthog((posthog) =>
       posthog.capture('install_dismissed', { platform, surface })
     )
+  },
+
+  /**
+   * Clique numa chamada marcada com `data-cta` (landing e páginas legais).
+   * Leva só o nome da chamada; a página de onde saiu o PostHog já anota em
+   * todo evento. O clique costuma trocar de página em seguida: o SDK despacha
+   * a fila no `pagehide`, por `sendBeacon`.
+   */
+  ctaClicked: (cta: string) => {
+    void withPosthog((posthog) => posthog.capture('cta_clicked', { cta }))
   }
+}
+
+/**
+ * O que o clique mede: o `data-cta` do elemento clicado ou do ancestral mais
+ * próximo que tenha um (o clique cai no ícone de dentro do botão). Sem
+ * `data-cta` no caminho, ou com ele vazio, não há evento.
+ */
+export function ctaFromClickTarget(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null
+  return target.closest('[data-cta]')?.getAttribute('data-cta') || null
 }
 
 export function capturePageview(pathname: string) {
