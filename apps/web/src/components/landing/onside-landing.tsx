@@ -774,7 +774,7 @@ export function OnsideLanding() {
 
         <OnsideTicker />
 
-        <section className="onside-problem onside-section-pad" id="produto">
+        <section className="onside-section-pad" id="produto">
           <div className="onside-shell">
             <div className="onside-split-intro" data-motion="reveal">
               <SectionKicker>{LANDING_COPY.problem.kicker}</SectionKicker>
@@ -828,10 +828,7 @@ export function OnsideLanding() {
           </div>
         </section>
 
-        <section
-          className="onside-journey-section onside-section-pad"
-          id="como-funciona"
-        >
+        <section className="onside-section-pad" id="como-funciona">
           <div className="onside-shell">
             <div className="onside-centered-intro" data-motion="reveal">
               <SectionKicker>{LANDING_COPY.journey.kicker}</SectionKicker>
