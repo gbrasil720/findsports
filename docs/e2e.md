@@ -103,11 +103,17 @@ de crescer um arquivo central.
 ## Escrevendo teste
 
 Arquivo `*.e2e.ts`, importando `test` e `expect` de `fixtures/test.ts` — nunca
-direto de `@playwright/test`. Esse `test` faz duas coisas sozinho:
+direto de `@playwright/test`. Esse `test` faz três coisas sozinho:
 
 - **IP próprio por teste** (`x-forwarded-for` aleatório). O rate limit do
   better-auth (3 logins por 10s) conta por IP no banco; sem isso os workers
   paralelos esgotariam o mesmo balde.
+- **Aviso de cookies respondido.** Em `vite dev` não há análise, então
+  `VITE_E2E_CONSENT_BANNER` (`env.ts`) liga só o aviso, e o contexto de todo
+  teste nasce com a recusa gravada: no celular o aviso é uma barra no pé da
+  tela, por cima de botão. Teste sobre o aviso usa
+  `test.use({ cookieConsent: 'pending' })`; contexto criado à mão
+  (`browser.newContext`) chama `answerCookieConsent(context)`.
 - **`page.goto` espera a hidratação** (`html[data-hydrated]`, gravado pelo
   `__root.tsx`). Antes dela o formulário é HTML puro, e preencher + clicar faz
   submit nativo (um POST para a própria rota, WEB-189) em vez do envio do app.

@@ -4,7 +4,7 @@ import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
-import { expect, test } from '../../fixtures/test'
+import { answerCookieConsent, expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 import { openAccountSettings } from './forms'
 
@@ -56,6 +56,7 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
     baseURL: BASE_URL,
     extraHTTPHeaders
   })
+  await answerCookieConsent(other)
   try {
     const otherPage = await other.newPage()
     await signIn(otherPage, user)

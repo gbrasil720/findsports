@@ -28,7 +28,11 @@ import {
   identifyUser,
   resetAnalytics
 } from '../lib/analytics'
-import { useAnalyticsConsent } from '../lib/analytics-consent'
+import {
+  CONSENT_HEAD_SCRIPT,
+  consentBannerEnabled,
+  useAnalyticsConsent
+} from '../lib/analytics-consent'
 import { initPostHog, stopPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
@@ -310,8 +314,16 @@ function RootDocument() {
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // `suppressHydrationWarning`: o script abaixo põe `data-consent` no
+    // `<html>` antes da hidratação, e o React não conhece esse atributo.
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {consentBannerEnabled() ? (
+          <script
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
+            dangerouslySetInnerHTML={{ __html: CONSENT_HEAD_SCRIPT }}
+          />
+        ) : null}
         <HeadContent />
       </head>
       <body>

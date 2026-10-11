@@ -1,7 +1,7 @@
 import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { expect, test } from '../../fixtures/test'
+import { answerCookieConsent, expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
 // WEB-113: o teste grátis do cadastro, regra fixa desde o WEB-233.
@@ -56,6 +56,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     baseURL: BASE_URL,
     storageState: storageState('fan')
   })
+  await answerCookieConsent(fanContext)
   try {
     const fanPage = await fanContext.newPage()
     await fanPage.goto(`/pub/${bar?.id}`)

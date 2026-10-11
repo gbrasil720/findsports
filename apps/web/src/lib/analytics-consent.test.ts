@@ -70,6 +70,45 @@ describe('escolha de cookies de análise', () => {
   })
 })
 
+// O script do `<head>` decide, antes do primeiro paint, se o aviso aparece. Tem
+// de concordar com `readAnalyticsConsent`, que decide o mesmo depois.
+describe('script do <head> marca a escolha pendente', () => {
+  async function rodar() {
+    const { CONSENT_HEAD_SCRIPT } = await import('./analytics-consent')
+    // O script fala com `localStorage` solto, como no navegador.
+    Object.defineProperty(globalThis, 'localStorage', {
+      get: () => window.localStorage,
+      configurable: true
+    })
+    new Function(CONSENT_HEAD_SCRIPT)()
+    return document.documentElement.getAttribute('data-consent')
+  }
+
+  test('sem nada gravado: pendente', async () => {
+    expect(await rodar()).toBe('pending')
+  })
+
+  test('aceite ou recusa gravados: não marca nada', async () => {
+    const { ANALYTICS_CONSENT_KEY } = await import('./analytics-consent')
+    for (const escolha of ['granted', 'denied']) {
+      window.localStorage.setItem(ANALYTICS_CONSENT_KEY, escolha)
+      expect(await rodar()).toBeNull()
+    }
+  })
+
+  test('valor estranho ou armazenamento bloqueado: pendente', async () => {
+    const { ANALYTICS_CONSENT_KEY } = await import('./analytics-consent')
+    window.localStorage.setItem(ANALYTICS_CONSENT_KEY, 'true')
+    expect(await rodar()).toBe('pending')
+
+    document.documentElement.removeAttribute('data-consent')
+    dom.window.Storage.prototype.getItem = () => {
+      throw new Error('SecurityError')
+    }
+    expect(await rodar()).toBe('pending')
+  })
+})
+
 describe('recusa apaga o que a análise gravou', () => {
   test('some com as chaves ph_ do localStorage e dos cookies, e só com elas', async () => {
     const { clearPosthogStorage } = await import('./posthog')

@@ -1,10 +1,37 @@
 import { randomInt } from 'node:crypto'
-import { test as base, expect } from '@playwright/test'
+import { type BrowserContext, test as base, expect } from '@playwright/test'
+
+/**
+ * O aviso de cookies aparece para quem ainda não escolheu, e no celular é uma
+ * barra no pé da tela, por cima de botão. Isto grava a recusa antes de
+ * qualquer script da página, que é o estado de quem já respondeu. Contexto
+ * criado à mão (`browser.newContext`) precisa chamar; o do teste já vem assim.
+ */
+export async function answerCookieConsent(context: BrowserContext) {
+  // Texto, e não função: a suíte compila sem os tipos do DOM. O `try` é para
+  // o `about:blank`, que não tem armazenamento.
+  await context.addInitScript({
+    content:
+      "try{localStorage.setItem('onside:analytics-consent','denied')}catch{}"
+  })
+}
+
+type Options = {
+  /** `pending`: o teste é sobre o aviso e quer vê-lo. */
+  cookieConsent: 'answered' | 'pending'
+}
 
 /**
  * `test` da suíte: importe daqui, não de `@playwright/test`.
  */
-export const test = base.extend({
+export const test = base.extend<Options>({
+  cookieConsent: ['answered', { option: true }],
+
+  context: async ({ context, cookieConsent }, use) => {
+    if (cookieConsent === 'answered') await answerCookieConsent(context)
+    await use(context)
+  },
+
   /**
    * Cada teste sai com um `x-forwarded-for` próprio. O rate limit do
    * better-auth (3 logins por 10s) conta por IP no banco; com todos os testes

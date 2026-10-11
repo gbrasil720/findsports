@@ -12,7 +12,7 @@ import {
   trpc,
   uniqueSpot
 } from '../../fixtures/fan'
-import { expect, test } from '../../fixtures/test'
+import { answerCookieConsent, expect, test } from '../../fixtures/test'
 
 // `/dashboard/reservations` (WEB-178): os quatro estados de um pedido e o
 // cancelamento do pendente. Os pedidos saem pela API do torcedor e a
@@ -289,6 +289,7 @@ test('bar fora do ar: quem tem reserva lê que ele saiu e que a reserva vale; os
     baseURL: BASE_URL,
     storageState: storageState('fan')
   })
+  await answerCookieConsent(stranger)
   const strangerPage = await stranger.newPage()
   await strangerPage.goto(`/pub/${pub.barId}`)
   await expect(strangerPage.getByText('Bar não encontrado.')).toBeVisible()
@@ -298,6 +299,7 @@ test('bar fora do ar: quem tem reserva lê que ele saiu e que a reserva vale; os
 
   // Sem sessão: o portão de login, sem nome de bar nem no título.
   const anonymous = await browser.newContext({ baseURL: BASE_URL })
+  await answerCookieConsent(anonymous)
   const anonymousPage = await anonymous.newPage()
   await anonymousPage.goto(`/pub/${pub.barId}`)
   await expect(
