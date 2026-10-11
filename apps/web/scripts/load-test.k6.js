@@ -44,7 +44,6 @@ const locationDuration = new Trend('location_search_duration_ms', true)
 const profileDuration = new Trend('bar_profile_duration_ms', true)
 const recommendationDuration = new Trend('recommendation_duration_ms', true)
 const catalogDuration = new Trend('catalog_duration_ms', true)
-const featuredDuration = new Trend('featured_duration_ms', true)
 const homeDuration = new Trend('home_duration_ms', true)
 const commercialWriteDuration = new Trend('commercial_write_duration_ms', true)
 
@@ -199,20 +198,12 @@ export default function (data) {
       (response) =>
         responseOk(response) && response.body.includes('"recommendations"')
     )
-  } else if (roll < 0.88) {
+  } else if (roll < 0.96) {
     getTrpc(
       'pubs.getSports',
       undefined,
       catalogDuration,
       'GET /api/trpc/pubs.getSports',
-      data.cookieHeader
-    )
-  } else if (roll < 0.96) {
-    getTrpc(
-      'pubs.getEliteEvents',
-      undefined,
-      featuredDuration,
-      'GET /api/trpc/pubs.getEliteEvents',
       data.cookieHeader
     )
   } else {

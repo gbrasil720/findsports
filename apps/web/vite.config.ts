@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
      * (WEB-333). Sem ele aqui o `vite dev` o descobre no meio da visita,
      * reempacota as dependências e recarrega a página.
      */
-    include: ['input-otp', 'three'],
+    include: ['three'],
     /**
      * WEB-73: o worker do MapLibre e a thread principal trocam mensagens
      * tipadas registradas em `maplibre-gl-shared.mjs`. Pré-empacotado, o lado

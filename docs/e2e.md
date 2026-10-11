@@ -213,8 +213,8 @@ que o `packages/env` recusa em produção.
 ## Caches de 60s
 
 Decisão: **o servidor de E2E roda sem cache** (`E2E_DISABLE_CACHES=1`). Zera o
-TTL de todo `createTtlCache` (`app_config`, busca, destaques, catálogo de
-esportes e times, geocoding) e desliga o `cookieCache` da sessão do
+TTL de todo `createTtlCache` (`app_config`, busca, catálogo de esportes e
+times, geocoding) e desliga o `cookieCache` da sessão do
 better-auth. Assim um dado gravado direto no banco — papel, ban, flag, bar
 novo — vale na requisição seguinte.
 
