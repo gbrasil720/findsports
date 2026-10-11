@@ -873,7 +873,8 @@
  *   2. ação principal da tela ou do formulário (`onside-btn-acid`);
  *   3. estado ligado/confirmado, sempre pequeno (check, chip, interruptor).
  * Moldura, aviso, configuração e contagem neutra ficam em papel e pedra;
- * selecionado é ink; queda fica neutra, com seta. Vermelho é só ao vivo e erro.
+ * selecionado é ink; queda fica neutra, com seta; zero e "—" não levam marca.
+ * Vermelho é só ao vivo e erro.
  */
 .onside-app .onside-mark {
   display: inline-block;
@@ -883,7 +884,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Marca-texto em número de corpo de texto (linha de tabela, ranking). */
+/* Marca-texto em número de corpo de texto (linha de tabela). */
 .onside-app .onside-mark-sm {
   padding: 1px 6px;
 }
