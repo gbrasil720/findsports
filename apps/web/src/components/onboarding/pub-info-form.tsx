@@ -19,8 +19,7 @@ type Props = {
 // Mesmo campo sobre ink que a edição do bar em `/admin` usa. Eram duas
 // receitas de cores com valores levemente diferentes para o mesmo desenho.
 const fieldClass = 'onside-input onside-input-ink'
-const labelClass =
-  'onside-label text-[color-mix(in_srgb,var(--onside-paper)_70%,transparent)]'
+const labelClass = 'onside-label onside-label-ink'
 
 export function PubInfoForm({
   name,

@@ -43,7 +43,7 @@ export function PubAmenitiesStep({
       <div>
         <label
           htmlFor="pub-description"
-          className="onside-label text-[color-mix(in_srgb,var(--onside-paper)_70%,transparent)]"
+          className="onside-label onside-label-ink"
         >
           Mais alguma coisa? (opcional)
         </label>
