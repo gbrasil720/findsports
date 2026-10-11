@@ -66,7 +66,9 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
     ['Cadastre seu bar', '/signup?role=pub'],
     ['Fale com a gente', 'mailto:contato@onside.sh'],
     ['Contato', 'mailto:contato@onside.sh'],
-    ['Privacidade', '/privacidade']
+    ['Privacidade', '/privacidade'],
+    ['Instagram', 'https://www.instagram.com/onside.sh/'],
+    ['X', 'https://x.com/onside_sh']
   ] as const) {
     await expect(
       nav.getByRole('link', { name: label, exact: true })
