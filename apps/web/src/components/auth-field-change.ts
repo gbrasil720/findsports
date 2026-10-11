@@ -7,7 +7,10 @@ import type { AnyFieldApi } from '@tanstack/form-core'
  * subiria ~30px no meio do clique seguinte e o clique cairia fora do botão.
  * Sem erro na tela nada muda: ninguém é avisado de erro enquanto ainda digita.
  */
-export function changeAuthField(field: AnyFieldApi, value: string) {
+export function changeAuthField(
+  field: Pick<AnyFieldApi, 'state' | 'handleChange' | 'validate'>,
+  value: string
+) {
   const showingError = field.state.meta.errors.length > 0
   field.handleChange(value)
   if (showingError) field.validate('blur')
