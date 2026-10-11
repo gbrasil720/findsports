@@ -54,18 +54,18 @@ describe('leitura da configuração (ESC-19)', () => {
     expect(await store.get('search.tiered_plan_query')).toBe(
       appConfigDefault('search.tiered_plan_query')
     )
-    expect(await store.get('launch.pub_cities')).toEqual([])
+    expect(await store.get('rating.public_display')).toBe(false)
   })
 
   it('linha válida sobrescreve o padrão', async () => {
     const { store } = montar([
       async () => ({
         'search.tiered_plan_query': false,
-        'launch.pub_cities': ['Recife', 'Olinda']
+        'rating.public_display': true
       })
     ])
     expect(await store.get('search.tiered_plan_query')).toBe(false)
-    expect(await store.get('launch.pub_cities')).toEqual(['Recife', 'Olinda'])
+    expect(await store.get('rating.public_display')).toBe(true)
   })
 
   /**
@@ -77,13 +77,11 @@ describe('leitura da configuração (ESC-19)', () => {
     const { store } = montar([
       async () => ({
         'search.tiered_plan_query': 'talvez',
-        'launch.pub_cities': { cidade: 'Recife' }
+        'rating.public_display': { ligado: true }
       })
     ])
     expect(await store.get('search.tiered_plan_query')).toBe(true)
-    expect(await store.get('launch.pub_cities')).toEqual(
-      appConfigDefault('launch.pub_cities')
-    )
+    expect(await store.get('rating.public_display')).toBe(false)
   })
 
   it('banco indisponível entrega o padrão', async () => {
@@ -93,7 +91,7 @@ describe('leitura da configuração (ESC-19)', () => {
       }
     ])
     expect(await store.get('rating.public_display')).toBe(false)
-    expect(await store.get('launch.pub_cities')).toEqual([])
+    expect(await store.get('search.tiered_plan_query')).toBe(true)
   })
 
   /**
@@ -123,7 +121,6 @@ describe('leitura da configuração (ESC-19)', () => {
 
     await store.get('search.tiered_plan_query')
     await store.get('rating.public_display')
-    await store.get('launch.pub_cities')
     expect(chamadas()).toBe(1)
 
     relogio.avancar(60_001)
@@ -151,8 +148,7 @@ describe('leitura da configuração (ESC-19)', () => {
     const { store } = montar([
       async () => ({
         'search.tiered_plan_query': false,
-        'rating.public_display': true,
-        'launch.pub_cities': ['Recife']
+        'rating.public_display': true
       })
     ])
 
@@ -160,7 +156,6 @@ describe('leitura da configuração (ESC-19)', () => {
 
     // As públicas saem, com valor gravado ou com padrão.
     expect(publico['rating.public_display']).toBe(true)
-    expect(publico['launch.pub_cities']).toEqual(['Recife'])
 
     // As internas não saem — nem as que têm valor gravado.
     expect(Object.hasOwn(publico, 'search.tiered_plan_query')).toBe(false)
@@ -201,7 +196,7 @@ describe('montagem das entradas para o painel (ESC-19)', () => {
     const entradas = montarEntradasAppConfig({
       'rating.public_display': true,
       // Malformado: não conta como desvio, porque não é o que vai valer.
-      'launch.pub_cities': 'Recife'
+      'search.tiered_plan_query': 'sim'
     })
     const porChave = new Map(entradas.map((entrada) => [entrada.key, entrada]))
 
@@ -209,10 +204,6 @@ describe('montagem das entradas para o painel (ESC-19)', () => {
       valor: true,
       padrao: false,
       sobrescrito: true
-    })
-    expect(porChave.get('launch.pub_cities')).toMatchObject({
-      valor: [],
-      sobrescrito: false
     })
     expect(porChave.get('search.tiered_plan_query')).toMatchObject({
       valor: true,

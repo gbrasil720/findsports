@@ -1,15 +1,13 @@
 /**
- * Comparação de nome de cidade (ESC-19).
+ * Comparação de nome de cidade.
  *
- * A lista de cidades liberadas é digitada por uma pessoa no painel interno; o
- * nome da cidade do bar é digitado por outra pessoa no onboarding. Comparar
- * as duas string por igualdade exata reprovaria "sao paulo" contra
- * "São Paulo" e, pior, "São  Paulo" com dois espaços contra ele mesmo.
+ * O nome digitado por uma pessoa é comparado com o de uma lista (municípios do
+ * IBGE, estados, resposta do geocoding). Igualdade exata reprovaria
+ * "sao paulo" contra "São Paulo" e, pior, "São  Paulo" com dois espaços
+ * contra ele mesmo.
  *
  * A normalização é deliberadamente conservadora: caixa, acento e espaço
- * repetido. Nada de apelido, abreviação ou correção por proximidade — um
- * bloqueio de lançamento que erra por "quase igual" é pior do que um que
- * exige o nome certo, porque ninguém consegue explicar por que passou.
+ * repetido. Nada de apelido, abreviação ou correção por proximidade.
  */
 
 export function normalizarCidade(valor: string): string {
@@ -19,24 +17,4 @@ export function normalizarCidade(valor: string): string {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-/**
- * Lista vazia significa "todas liberadas" — é o padrão da flag e o
- * comportamento anterior a ela. Só uma lista preenchida restringe.
- */
-export function cidadeLiberada(cidade: string, liberadas: string[]): boolean {
-  if (liberadas.length === 0) return true
-  const alvo = normalizarCidade(cidade)
-  if (alvo.length === 0) return false
-  return liberadas.some((liberada) => normalizarCidade(liberada) === alvo)
-}
-
-/**
- * A recusa de cidade fora do lançamento. Mora aqui, com a regra, porque o app
- * escreve a mensagem a partir do código (padrão do WEB-118) e o servidor usa o
- * mesmo texto.
- */
-export function mensagemCidadeNaoLiberada(cidade: string): string {
-  return `A Onside ainda não abriu em ${cidade.trim()}. Avisamos assim que chegarmos aí.`
 }

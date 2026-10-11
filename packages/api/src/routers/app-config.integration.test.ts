@@ -6,13 +6,12 @@ import { contextFor, load, refusal } from './integration-seed'
 
 /**
  * Painel /internal/flags (WEB-346): o `list` diz quem alterou pelo nome, e o
- * `set` recusado devolve o campo e o limite, que é o que a tela mostra.
+ * `set` recusado devolve o motivo, que é o que a tela mostra.
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 const KEY = 'rating.public_display'
-const LISTA = 'launch.pub_cities'
 
 integrationTest(
   'list devolve o nome de quem alterou, o e-mail sem nome e nulo para conta apagada',
@@ -57,7 +56,7 @@ integrationTest(
 )
 
 integrationTest(
-  'set recusa valor fora do limite dizendo o campo, e não grava',
+  'set recusa valor fora do formato dizendo o motivo, e não grava',
   async () => {
     const { appRouter } = await load()
     const caller = appRouter.createCaller(
@@ -65,30 +64,23 @@ integrationTest(
     )
 
     expect(
-      await refusal(
-        caller.appConfig.set({ key: LISTA, value: ['x'.repeat(101)] })
-      )
+      await refusal(caller.appConfig.set({ key: KEY, value: 'sim' }))
     ).toEqual({
       code: 'BAD_REQUEST',
-      message:
-        '0: Grande demais: esperava que o texto tivesse <= 100 caracteres'
-    })
-    expect(
-      await refusal(caller.appConfig.set({ key: LISTA, value: 'Recife' }))
-    ).toEqual({
-      code: 'BAD_REQUEST',
-      message: 'Entrada inválida: esperava um vetor, recebeu um texto'
+      message: 'Entrada inválida: esperava um valor booleano, recebeu um texto'
     })
 
-    const entrada = (await caller.appConfig.list()).find((e) => e.key === LISTA)
+    const entrada = (await caller.appConfig.list()).find((e) => e.key === KEY)
     expect(entrada?.sobrescrito).toBe(false)
   }
 )
 
 /**
- * WEB-233: as três chaves de cobrança saíram do registro, mas as linhas delas
- * continuam gravadas em produção até a migration de limpeza. Não podem chegar
- * ao painel nem à leitura pública, e não derrubam nenhuma das duas.
+ * WEB-233: as três chaves de cobrança saíram do registro, e depois a lista de
+ * cidades do cadastro de bar (`launch.pub_cities`). As linhas delas podem
+ * continuar gravadas (produção, branch `preview` do Neon) até a migration de
+ * limpeza. Não podem chegar ao painel nem à leitura pública, e não derrubam
+ * nenhuma das duas.
  */
 integrationTest(
   'linha de chave aposentada fica no banco e some da leitura',
@@ -97,17 +89,18 @@ integrationTest(
     const { appConfigStore, PUBLIC_APP_CONFIG_KEYS } = await import(
       '../lib/app-config'
     )
-    // Os valores que produção tem gravados.
+    // O formato dos valores que essas chaves tinham.
     const orfas = {
-      checkout_enabled: true,
-      onboarding_trial: { enabled: true, plan: 'elite', days: 120 },
-      founder_coupon: { enabled: true, couponId: 'eM7dQpMF' }
+      'billing.checkout_enabled': true,
+      'billing.onboarding_trial': { enabled: true, plan: 'elite', days: 120 },
+      'billing.founder_coupon': { enabled: true, couponId: 'eM7dQpMF' },
+      'launch.pub_cities': ['Curitiba']
     }
-    const chaves = Object.keys(orfas).map((nome) => `billing.${nome}`)
-    for (const [nome, valor] of Object.entries(orfas)) {
+    const chaves = Object.keys(orfas)
+    for (const [chave, valor] of Object.entries(orfas)) {
       await db.execute(sql`
         INSERT INTO app_config (key, value)
-        VALUES (${`billing.${nome}`}, ${JSON.stringify(valor)}::jsonb)
+        VALUES (${chave}, ${JSON.stringify(valor)}::jsonb)
         ON CONFLICT (key) DO NOTHING
       `)
     }
@@ -118,17 +111,17 @@ integrationTest(
 
     try {
       const gravadas = await db.execute(
-        sql`SELECT key FROM app_config WHERE key LIKE 'billing.%' ORDER BY key`
+        sql`SELECT key FROM app_config WHERE key IN ${chaves} ORDER BY key`
       )
       expect(gravadas.rows.map((linha) => linha.key)).toEqual(chaves.sort())
 
       const listadas = (await caller.appConfig.list()).map((e) => e.key)
-      expect(listadas.filter((key) => key.startsWith('billing.'))).toEqual([])
+      expect(listadas.filter((key) => chaves.includes(key))).toEqual([])
       expect(Object.keys(await caller.appConfig.getPublic()).sort()).toEqual(
         [...PUBLIC_APP_CONFIG_KEYS].sort()
       )
     } finally {
-      await db.execute(sql`DELETE FROM app_config WHERE key LIKE 'billing.%'`)
+      await db.execute(sql`DELETE FROM app_config WHERE key IN ${chaves}`)
       await appConfigStore.invalidate()
     }
   }

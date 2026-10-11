@@ -10,8 +10,7 @@ O painel fica em `/internal/flags`, restrito a `role = 'admin'`.
 ## O que é e o que não é
 
 **É** para decisão operacional reversível: desligar um caminho de código que
-regrediu, abrir uma cidade nova, liberar uma funcionalidade quando a base
-chegar lá.
+regrediu, liberar uma funcionalidade quando a base chegar lá.
 
 **Não é** para direito por plano. Isso já existe, é server-side e é testado —
 `lib/commercial-analytics/entitlements.ts` e `lib/event-creation-policy.ts`.
@@ -35,9 +34,8 @@ Flag em cima daquilo só duplicaria a fonte da verdade.
 
 | Chave | Padrão | Público | O que faz |
 |---|---|---|---|
-| `search.tiered_plan_query` | `true` | não | Busca avalia planos em camadas usando a projeção `bar.plan` (0018). Desligar volta ao caminho linear, que lê o plano de `subscription`. |
+| `search.tiered_plan_query` | `true` | não | Interruptor de emergência da busca. Ligado, ordena os bares por plano pela cópia guardada no bar (`bar.plan`), o caminho rápido. Desligar faz a busca ler o plano direto da assinatura: mais lenta e sempre correta. |
 | `rating.public_display` | `false` | sim | Exibe a nota do bar para o torcedor e libera o modo "melhor avaliados" na busca. A coleta de avaliações independe desta chave. |
-| `launch.pub_cities` | `[]` | sim | Cidades em que um bar conclui o onboarding. Vazio = todas. |
 
 A fonte da verdade é `APP_CONFIG_DEFINITIONS`, em
 `packages/api/src/lib/app-config/registry.ts`; esta tabela só a resume. Se as
@@ -51,14 +49,14 @@ Cobrança não mora aqui (WEB-233). Contratação aberta, teste grátis do cadas
 e cupom de fundador viraram regra fixa do produto, em código: `ONBOARDING_TRIAL`
 (`packages/api/src/lib/plan-limits.ts`) e `FOUNDER_COUPON_ID`
 (`packages/auth/src/stripe-checkout.ts`). A entrada por lista de espera saiu do
-produto, com as duas chaves dela (WEB-232). Linha antiga dessas chaves em
-`app_config` é ignorada na leitura.
+produto, com as duas chaves dela (WEB-232). A lista de cidades em que um bar
+podia concluir o cadastro também saiu: bar de qualquer cidade se cadastra.
+Linha antiga dessas chaves em `app_config` é ignorada na leitura.
 
 `Público` significa que a chave é servida por `appConfig.getPublic`, aberta a
 qualquer visitante. Serve para a tela avisar antes de o usuário bater numa
 porta fechada — **nunca** como decisão de segurança. O servidor decide de novo,
-sozinho: `onboarding.completePub` para a cidade, `pubs.search` e
-`pubs.getById` para a nota.
+sozinho: `pubs.search` e `pubs.getById` para a nota.
 
 ---
 
@@ -109,20 +107,6 @@ página. Provável causa: `bar.plan` dessincronizou de `subscription.plan`.
 O cursor de paginação é idêntico nos dois caminhos, então a troca pode
 acontecer com gente no meio da navegação. A chave do cache inclui o modo, então
 desligar não continua servindo páginas do caminho suspeito.
-
-### Abrir uma cidade nova
-
-Acrescente o nome a `launch.pub_cities`:
-
-```json
-["São Paulo", "Recife"]
-```
-
-A comparação ignora acento, caixa e espaço repetido. Não casa por prefixo nem
-por proximidade: `São Paulo de Potengi` **não** entra por causa de `São Paulo`.
-
-Vale só para o onboarding de bar. Torcedor não informa cidade em lugar nenhum
-do fluxo — a busca dele é por GPS e raio.
 
 ---
 

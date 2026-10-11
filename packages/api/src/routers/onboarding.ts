@@ -16,12 +16,10 @@ import {
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
-import { getAppConfig } from '../lib/app-config'
 import {
   motivoTelefoneInvalido,
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
-import { cidadeLiberada, mensagemCidadeNaoLiberada } from '../lib/city-match'
 import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
@@ -107,21 +105,6 @@ export const onboardingRouter = router({
         throw new TRPCError({
           code: 'UNPROCESSABLE_CONTENT',
           message: motivoTelefone
-        })
-      }
-
-      // ESC-19: lançamento cidade a cidade. Lista vazia — o padrão — libera
-      // todas, que é o comportamento anterior a esta checagem.
-      //
-      // Vem ANTES do geocoding de propósito: geocodificar é chamada externa
-      // paga, e não faz sentido pagar por um endereço que vai ser recusado.
-      const cidadesLiberadas = await getAppConfig('launch.pub_cities')
-      // `PRECONDITION_FAILED`, e não `FORBIDDEN`: o app traduz `FORBIDDEN` em
-      // "sem permissão", e o que falta aqui é a cidade abrir.
-      if (!cidadeLiberada(input.city, cidadesLiberadas)) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: mensagemCidadeNaoLiberada(input.city)
         })
       }
 

@@ -36,69 +36,39 @@ describe('registro de configuração (ESC-19)', () => {
   it('parse devolve null em vez de lançar quando o valor não casa', () => {
     expect(parseAppConfigValue('search.tiered_plan_query', 'sim')).toBeNull()
     expect(parseAppConfigValue('search.tiered_plan_query', true)).toBe(true)
-    expect(parseAppConfigValue('launch.pub_cities', 'São Paulo')).toBeNull()
-    expect(parseAppConfigValue('launch.pub_cities', ['Recife'])).toEqual([
-      'Recife'
-    ])
   })
 
   /**
-   * WEB-232 e WEB-233: entrada por convite e cobrança saíram do registro. As
-   * três chaves de cobrança viraram regra fixa do produto, mas as linhas
-   * delas continuam gravadas em `app_config` até a migration de limpeza.
+   * WEB-232 e WEB-233: entrada por convite e cobrança saíram do registro, e
+   * depois a lista de cidades do cadastro de bar. As linhas dessas chaves
+   * podem continuar gravadas em `app_config` até a migration de limpeza.
    * Chave fora do registro não existe para a aplicação.
    */
-  it('o registro tem só as três chaves que ficam', () => {
+  it('o registro tem só as duas chaves que ficam', () => {
     expect([...APP_CONFIG_KEYS].sort()).toEqual([
-      'launch.pub_cities',
       'rating.public_display',
       'search.tiered_plan_query'
     ])
     for (const key of [
-      'checkout_enabled',
-      'onboarding_trial',
-      'founder_coupon'
+      'billing.checkout_enabled',
+      'billing.onboarding_trial',
+      'billing.founder_coupon',
+      'launch.pub_cities'
     ]) {
-      expect(isAppConfigKey(`billing.${key}`)).toBe(false)
+      expect(isAppConfigKey(key)).toBe(false)
     }
   })
 
-  // Quem lê a recusa é o administrador no painel: português, campo e limite.
-  it('motivo da recusa sai em português, com o campo e o limite', () => {
-    const motivo = (valor: unknown) => {
-      const resultado = validateAppConfigValue('launch.pub_cities', valor)
-      return resultado.ok ? null : resultado.erro
-    }
-
-    expect(motivo(['x'.repeat(101)])).toBe(
-      '0: Grande demais: esperava que o texto tivesse <= 100 caracteres'
-    )
-    expect(motivo(['Recife', 'a'])).toBe(
-      '1: Pequeno demais: esperava que o texto tivesse >= 2 caracteres'
-    )
-    expect(motivo('Recife')).toBe(
-      'Entrada inválida: esperava um vetor, recebeu um texto'
-    )
+  // Quem lê a recusa é o administrador no painel: em português.
+  it('motivo da recusa sai em português', () => {
     expect(validateAppConfigValue('rating.public_display', 'sim')).toEqual({
       ok: false,
       erro: 'Entrada inválida: esperava um valor booleano, recebeu um texto'
     })
   })
 
-  it('a tradução da recusa não muda o que é validado nem a leitura', () => {
-    const noLimite = ['x'.repeat(100)]
-    expect(validateAppConfigValue('launch.pub_cities', noLimite)).toEqual({
-      ok: true,
-      value: noLimite
-    })
-    expect(
-      parseAppConfigValue('launch.pub_cities', ['x'.repeat(101)])
-    ).toBeNull()
-  })
-
   it('subconjunto público não inclui chave interna', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('rating.public_display')
-    expect(PUBLIC_APP_CONFIG_KEYS).toContain('launch.pub_cities')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
   })
 
@@ -109,7 +79,6 @@ describe('registro de configuração (ESC-19)', () => {
    */
   it('padrões reproduzem o comportamento anterior às flags', () => {
     expect(appConfigDefault('search.tiered_plan_query')).toBe(true)
-    expect(appConfigDefault('launch.pub_cities')).toEqual([])
     expect(appConfigDefault('rating.public_display')).toBe(false)
   })
 })
