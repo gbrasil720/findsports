@@ -30,6 +30,7 @@ import {
   NAV_ITEMS,
   OCCASION_ITEMS,
   PROBLEM_ITEMS,
+  SOCIAL_LINKS,
   TICKER_BENEFITS
 } from './onside-landing-content'
 import { OnsideFinalStage, OnsideHeroStage } from './onside-scene-stage'
@@ -370,6 +371,19 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
             <Link to="/termos">Termos</Link>
             <Link to="/privacidade">Privacidade</Link>
             <CookiePreferencesButton />
+          </div>
+          <div className="onside-footer-column">
+            <p>Redes sociais</p>
+            {SOCIAL_LINKS.map((social) => (
+              <a
+                key={social.id}
+                href={social.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {social.label}
+              </a>
+            ))}
           </div>
         </nav>
       </div>
