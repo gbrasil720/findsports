@@ -29,6 +29,27 @@ export function analyticsConfigured(): boolean {
   return !import.meta.env.DEV && Boolean(env.VITE_POSTHOG_KEY)
 }
 
+/**
+ * O aviso aparece onde a análise roda. A suíte E2E roda em `vite dev`, sem
+ * análise, e liga só o aviso por `VITE_E2E_CONSENT_BANNER`; lá o PostHog
+ * continua desligado, porque `initPostHog` pergunta por `analyticsConfigured`.
+ */
+export function consentBannerEnabled(): boolean {
+  return analyticsConfigured() || env.VITE_E2E_CONSENT_BANNER === '1'
+}
+
+/**
+ * Vai inline no `<head>` e roda antes do primeiro paint: se ainda não há
+ * escolha gravada, marca `<html data-consent="pending">`. O aviso já vem no
+ * HTML do servidor, e é esse atributo que o mostra (`cookie-consent.css`) e
+ * que faz o hero da landing ceder espaço. Sem isto a decisão só existia
+ * depois da hidratação, e o aviso surgia com a página já na tela.
+ *
+ * Tem de concordar com `readAnalyticsConsent`: armazenamento bloqueado conta
+ * como sem escolha.
+ */
+export const CONSENT_HEAD_SCRIPT = `(function(){var c=null;try{c=localStorage.getItem(${JSON.stringify(ANALYTICS_CONSENT_KEY)})}catch(e){}if(c!=='granted'&&c!=='denied')document.documentElement.setAttribute('data-consent','pending')})()`
+
 export function readAnalyticsConsent(): AnalyticsConsent | null {
   if (typeof window === 'undefined') return null
   try {

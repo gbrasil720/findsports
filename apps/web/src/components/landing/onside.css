@@ -2195,6 +2195,16 @@ html:has(.onside-page) {
     aspect-ratio: var(--poster-portrait);
   }
 
+  /*
+   * Aviso de cookies pendente: a barra dele fica no pé da tela, onde a
+   * chamada principal termina. A arte cede a altura para a chamada subir
+   * inteira para cima da barra. O número vem de `hero-consent-fit.ts`, que
+   * mede antes do primeiro paint; sem ele o hero fica como é.
+   */
+  html[data-consent="pending"] .onside-page .onside-hero-stage {
+    max-height: var(--onside-hero-art, 56svh);
+  }
+
   /* Largura cheia; se o palco bater no teto de altura, corta em cima e embaixo. */
   .onside-page .onside-hero-frame {
     top: 50%;

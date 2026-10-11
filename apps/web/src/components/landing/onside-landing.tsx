@@ -6,6 +6,7 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState
 } from 'react'
@@ -21,6 +22,10 @@ import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
+import {
+  fitHeroToConsentBar,
+  HERO_CONSENT_FIT_SCRIPT
+} from './hero-consent-fit'
 import {
   DEFINITION_POINTS,
   FAQ_ITEMS,
@@ -677,6 +682,16 @@ export function OnsideLanding() {
   const sticky = useStickyCta()
   useLandingMotion(pageRef)
 
+  // Aviso de cookies pendente: o hero cede o espaço da barra. No primeiro
+  // paint quem mede é o script logo depois do hero; aqui, a chegada pela
+  // navegação do app, a troca de fonte e o resize.
+  useLayoutEffect(() => {
+    fitHeroToConsentBar()
+    window.addEventListener('resize', fitHeroToConsentBar)
+    void document.fonts?.ready.then(fitHeroToConsentBar)
+    return () => window.removeEventListener('resize', fitHeroToConsentBar)
+  }, [])
+
   const [heroLead, heroAccent, heroTail] = LANDING_COPY.hero.title
   const [solutionLead, solutionAccent, solutionTail] =
     LANDING_COPY.solution.title
@@ -731,6 +746,17 @@ export function OnsideLanding() {
             </p>
           </div>
         </section>
+        {/*
+         * Logo depois do hero, para rodar antes do primeiro paint dele: com o
+         * aviso de cookies pendente, a arte já nasce na altura certa. O
+         * cliente não a executa de novo (quem cuida é o efeito acima), então o
+         * texto pode diferir do do servidor sem problema.
+         */}
+        <script
+          suppressHydrationWarning
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
+          dangerouslySetInnerHTML={{ __html: HERO_CONSENT_FIT_SCRIPT }}
+        />
 
         <OnsideTicker />
 

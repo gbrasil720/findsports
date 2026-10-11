@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import {
   type AnalyticsConsent,
-  analyticsConfigured,
+  consentBannerEnabled,
   reviewAnalyticsConsent,
   setAnalyticsConsent,
   useAnalyticsConsent,
@@ -16,9 +17,8 @@ const CURRENT_CHOICE: Record<AnalyticsConsent, string> = {
 /**
  * O aviso é fixo no rodapé da janela e cobriria o fim de qualquer página até
  * a pessoa escolher. Publica a própria altura em `--onside-consent-h`; o CSS
- * reserva esse espaço no fim do documento enquanto o aviso existe. A altura é
- * medida porque muda com a largura: em tela estreita os botões vão para baixo
- * do texto.
+ * reserva esse espaço no fim do documento enquanto o aviso aparece. A altura
+ * é medida porque muda com a largura e com o texto. Escondido ele mede 0.
  */
 function reservarEspaco(aviso: HTMLElement) {
   if (typeof ResizeObserver === 'undefined') return
@@ -33,18 +33,41 @@ function reservarEspaco(aviso: HTMLElement) {
   }
 }
 
+const PRIVACY_LINK = (
+  <Link to="/privacidade" hash="s-8">
+    Política de Privacidade
+  </Link>
+)
+
 /**
  * Aviso de cookies (WEB-243). Aparece para quem ainda não escolheu, e de
  * novo quando a pessoa pede para rever a escolha. Não é modal: a página
  * continua usável, e nada de análise roda enquanto não houver aceite.
+ *
+ * O aviso sai sempre no HTML, igual no servidor e no cliente, e quem o mostra
+ * é o `data-consent` do `<html>`: `pending` (sem escolha) ou `review`
+ * (reaberto). No primeiro paint quem põe o `pending` é o script do `<head>`
+ * (`CONSENT_HEAD_SCRIPT`), que lê a escolha antes de o React existir; daí em
+ * diante é o efeito abaixo. Assim o aviso não surge depois da hidratação nem
+ * pisca para quem já respondeu.
+ *
+ * Os dois textos também saem sempre: o CSS mostra o curto na barra do celular
+ * e o completo no desktop, sem esperar JavaScript para saber a largura.
  */
 export function CookieConsent() {
   const consent = useAnalyticsConsent()
   const reviewing = useAnalyticsConsentReview()
 
-  if (!analyticsConfigured()) return null
-  if (consent === 'ssr') return null
-  if (consent !== 'unset' && !reviewing) return null
+  useEffect(() => {
+    // `ssr` é o render da hidratação: vale o que o script do `<head>` decidiu.
+    if (consent === 'ssr') return
+    const root = document.documentElement
+    if (consent === 'unset') root.setAttribute('data-consent', 'pending')
+    else if (reviewing) root.setAttribute('data-consent', 'review')
+    else root.removeAttribute('data-consent')
+  }, [consent, reviewing])
+
+  if (!consentBannerEnabled()) return null
 
   return (
     <section
@@ -55,16 +78,16 @@ export function CookieConsent() {
     >
       <div>
         <p className="onside-consent-kicker">Cookies</p>
-        <p>
+        <p className="onside-consent-long">
           Usamos cookies essenciais para a Onside funcionar. Com a sua
           permissão, usamos também cookies de análise para entender o uso e
-          melhorar o produto. Detalhes na{' '}
-          <Link to="/privacidade" hash="s-8">
-            Política de Privacidade
-          </Link>
-          .
+          melhorar o produto. Detalhes na {PRIVACY_LINK}.
         </p>
-        {consent !== 'unset' ? (
+        <p className="onside-consent-short">
+          Usamos cookies de análise com a sua permissão. Detalhes na{' '}
+          {PRIVACY_LINK}.
+        </p>
+        {consent === 'granted' || consent === 'denied' ? (
           <p className="onside-consent-current">{CURRENT_CHOICE[consent]}</p>
         ) : null}
       </div>
@@ -86,7 +109,7 @@ export function CookieConsent() {
 
 /** Reabre o aviso. Some onde a análise não existe: não há o que escolher. */
 export function CookiePreferencesButton({ className }: { className?: string }) {
-  if (!analyticsConfigured()) return null
+  if (!consentBannerEnabled()) return null
   return (
     <button
       type="button"

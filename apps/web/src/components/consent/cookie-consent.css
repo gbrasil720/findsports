@@ -1,6 +1,11 @@
 /*
  * Aviso de cookies (WEB-243). `.onside-banner` traz os tokens: o aviso fica
  * na raiz do documento, fora de qualquer casca de página.
+ *
+ * Ele está sempre no HTML e nasce escondido. Quem o mostra é o `data-consent`
+ * do `<html>`: `pending` para quem ainda não escolheu (posto por um script no
+ * `<head>`, antes do primeiro paint) e `review` para quem reabriu o aviso. Ver
+ * `cookie-consent.tsx`.
  */
 .onside-consent {
   position: fixed;
@@ -8,7 +13,7 @@
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   left: 16px;
   z-index: 200;
-  display: grid;
+  display: none;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px 32px;
   align-items: center;
@@ -22,9 +27,13 @@
   font-family: var(--onside-body);
 }
 
+html[data-consent] .onside-consent {
+  display: grid;
+}
+
 /*
  * O aviso não ocupa lugar no fluxo, então o fim da página ficava debaixo
- * dele. Enquanto ele existe, o documento ganha no fim a altura do aviso (que
+ * dele. Enquanto ele aparece, o documento ganha no fim a altura do aviso (que
  * o componente mede) mais o respiro de baixo e um de cima. Some junto com o
  * aviso; como é espaço depois do conteúdo, nada acima se desloca.
  *
@@ -36,7 +45,7 @@
  * do rodapé. O fundo no `:root` segura o do `body` dentro da caixa dele: sem
  * isso ele vaza para a tela inteira e muda a cor de fora da página também.
  */
-:root:has(.onside-consent) {
+html[data-consent] {
   --onside-consent-space: calc(
     var(--onside-consent-h, 0px) +
     32px +
@@ -46,12 +55,12 @@
   background: var(--background);
 }
 
-:root:has(.onside-consent) body {
+html[data-consent] body {
   padding-bottom: var(--onside-consent-space);
   background: #f1eee6; /* --onside-paper */
 }
 
-:root:has(.onside-consent):has(.onside-site-footer) body {
+html[data-consent]:has(.onside-site-footer) body {
   background: #12120f; /* --onside-ink */
 }
 
@@ -60,7 +69,7 @@
  * formulário. A sombra, sem desfoque, continua o painel pela faixa — só
  * pintura, sem mexer na altura de nada.
  */
-:root:has(.onside-consent) .onside-app > aside {
+html[data-consent] .onside-app > aside {
   box-shadow: 0 var(--onside-consent-space) 0 var(--onside-ink);
 }
 
@@ -68,6 +77,11 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
+}
+
+/* O texto curto é o da barra do celular, mais abaixo. */
+.onside-consent .onside-consent-short {
+  display: none;
 }
 
 .onside-consent .onside-consent-kicker {
@@ -134,31 +148,16 @@
   }
 }
 
-@media (max-width: 760px) {
-  .onside-consent {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 18px;
-  }
-
-  .onside-consent-actions button {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
 /*
  * Landing: a primeira tela é o hero, e o aviso largo no pé da janela ficava
- * por cima da chamada principal. Só aqui ele muda de lugar e de tamanho; no
- * resto do app continua como acima. As duas condições são as do hero
- * (`onside.css`, "Hero em retrato").
+ * por cima da chamada principal. Com o hero em paisagem (a condição é a de
+ * `onside.css`, "Hero em retrato", ao contrário) a chamada fica embaixo, à
+ * esquerda, e o aviso vira um cartão estreito no canto direito: com 420px a
+ * borda esquerda dele passa do botão em qualquer largura. A chamada fixa
+ * continua subindo para cima dele por `--onside-consent-space`.
  *
- * Hero em paisagem: a chamada fica embaixo, à esquerda. O aviso vira um cartão
- * estreito no canto direito; com 420px a borda esquerda dele passa do botão em
- * qualquer largura. A chamada fixa continua subindo para cima dele por
- * `--onside-consent-space`.
- *
- * Nas duas posições ele fica atrás do menu do cabeçalho (`z-index: 99`), que
- * em tela baixa abre por cima de onde o aviso está.
+ * Na landing ele fica atrás do menu do cabeçalho (`z-index: 99`), que em tela
+ * baixa abre por cima de onde o aviso está.
  */
 :root:has(.onside-landing) .onside-consent {
   z-index: 98;
@@ -178,38 +177,75 @@
 }
 
 /*
- * Hero em retrato (celular e tablet em pé): a arte vai para cima e o texto
- * enche o resto, com o botão no fim da tela. Embaixo o aviso sempre o cobre,
- * então vai para debaixo do cabeçalho (74px, 66px no celular), sobre a arte.
- * Com o aviso em cima não há espaço a reservar no fim da página nem motivo
- * para a chamada fixa subir.
+ * Celular e tablet em pé, em todas as telas: barra compacta colada ao pé da
+ * janela, na largura inteira, com o texto curto e os dois botões lado a lado.
+ * O cartão flutuante ocupava um quarto da tela do celular.
+ *
+ * A reserva no fim do documento passa a ser só a altura da barra, que já
+ * inclui a área segura. Na landing o hero cede esse espaço enquanto a escolha
+ * está pendente (`onside.css`, "Hero em retrato").
  */
 @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
-  :root:has(.onside-landing) .onside-consent {
-    top: 82px;
-    bottom: auto;
-  }
-
-  :root:has(.onside-consent):has(.onside-landing) {
-    --onside-consent-space: env(safe-area-inset-bottom, 0px);
-  }
-}
-
-/* No celular, mais enxuto: a arte é baixa e o título começa logo depois. */
-@media (max-width: 760px) {
-  :root:has(.onside-landing) .onside-consent {
-    top: 74px;
-    gap: 12px;
-    padding: 14px 16px;
-  }
-
-  :root:has(.onside-landing) .onside-consent p:not([class]) {
-    font-size: 13px;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
   .onside-consent {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    width: auto;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-width: 1.5px 0 0;
+    box-shadow: none;
+  }
+
+  html[data-consent] {
+    --onside-consent-space: var(--onside-consent-h, 0px);
+  }
+
+  .onside-consent .onside-consent-kicker,
+  .onside-consent .onside-consent-long {
+    display: none;
+  }
+
+  .onside-consent .onside-consent-short {
+    display: block;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .onside-consent .onside-consent-current {
+    margin-top: 2px;
+  }
+
+  .onside-consent-actions {
+    gap: 8px;
+  }
+
+  .onside-consent-actions button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+  }
+}
+
+/* Tablet em pé: cabe tudo numa linha, texto à esquerda e botões à direita. */
+@media (min-width: 600px) and (max-width: 760px),
+  (min-width: 600px) and (max-width: 1100px) and (orientation: portrait) {
+  .onside-consent {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    padding-inline: 24px;
+  }
+
+  .onside-consent-actions button {
+    flex: none;
+    min-width: 112px;
+  }
+}
+
+/* Só quando a pessoa reabre: no primeiro paint ele já está no lugar. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-consent="review"] .onside-consent {
     animation: onside-consent-in 0.26s var(--onside-ease-out) both;
   }
 }

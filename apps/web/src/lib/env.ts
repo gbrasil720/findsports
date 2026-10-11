@@ -62,13 +62,21 @@ export const env = createEnv({
      * o estado de dev e do E2E; o servidor só exige o token quando tem
      * `TURNSTILE_SECRET_KEY`.
      */
-    VITE_TURNSTILE_SITE_KEY: z.string().min(1).optional()
+    VITE_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+
+    /**
+     * Só da suíte E2E (`apps/e2e/env.ts`): mostra o aviso de cookies em
+     * `vite dev`, onde não há análise, para a suíte conseguir testá-lo. O
+     * PostHog continua desligado; ver `consentBannerEnabled`.
+     */
+    VITE_E2E_CONSENT_BANNER: z.string().optional()
   },
   runtimeEnv: {
     VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
-    VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY
+    VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
+    VITE_E2E_CONSENT_BANNER: import.meta.env.VITE_E2E_CONSENT_BANNER
   },
   emptyStringAsUndefined: true
 })
