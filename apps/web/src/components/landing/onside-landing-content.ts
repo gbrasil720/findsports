@@ -187,7 +187,7 @@ export const DEFINITION_POINTS: DefinitionPoint[] = [
   {
     id: 'd3',
     number: '03',
-    text: 'O nível de lotação do espaço.'
+    text: 'Como vai estar no dia do jogo.'
   }
 ]
 
