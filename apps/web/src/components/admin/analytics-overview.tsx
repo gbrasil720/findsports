@@ -67,6 +67,7 @@ function hasComparisonData(data: AnalyticsOverviewData): boolean {
 function OverviewSkeleton() {
   return (
     <section
+      className="[&_[data-slot=skeleton]]:bg-[var(--onside-stone)]"
       aria-label="Visão geral carregando"
       role="status"
       aria-busy="true"
@@ -80,7 +81,7 @@ function OverviewSkeleton() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="onside-panel-acid p-4">
+          <div key={i} className="onside-panel p-4">
             <Skeleton className="mb-2 h-4 w-20" />
             <Skeleton className="h-7 w-16" />
             <Skeleton className="mt-2 h-3 w-28" />
@@ -90,7 +91,7 @@ function OverviewSkeleton() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="onside-panel-acid p-4">
+        <div className="onside-panel p-4">
           <Skeleton className="mb-3 h-5 w-36" />
           <div className="relative h-[160px] space-y-7 pt-2">
             {[1, 2, 3, 4].map((i) => (
@@ -103,7 +104,7 @@ function OverviewSkeleton() {
             <Skeleton className="h-3 w-24" />
           </div>
         </div>
-        <div className="onside-panel-acid p-4">
+        <div className="onside-panel p-4">
           <Skeleton className="mb-3 h-5 w-40" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="mb-3">
@@ -117,7 +118,7 @@ function OverviewSkeleton() {
         </div>
       </div>
 
-      <div className="onside-panel-acid mt-6 p-4">
+      <div className="onside-panel mt-6 p-4">
         <Skeleton className="mb-3 h-5 w-44" />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -198,12 +199,7 @@ function KpiCard({
   const { label } = getMetric(metric)
 
   return (
-    <div
-      className={
-        'onside-panel-acid p-4' +
-        (accent ? ' ring-2 ring-[var(--onside-acid)]' : '')
-      }
-    >
+    <div className={`${accent ? 'onside-panel-acid' : 'onside-panel'} p-4`}>
       <p className="onside-label mb-1 text-[var(--onside-ink)] opacity-70">
         {label}
         <MetricHint metric={metric} />
@@ -289,7 +285,7 @@ function ClassicPlacement({
       : '—'
 
   return (
-    <div className="onside-panel-acid mt-6 p-4">
+    <div className="onside-panel mt-6 p-4">
       <h3 className="onside-heading mb-1">Entrega Elite nos clássicos</h3>
       <p className="mb-3 text-sm text-[var(--onside-ink)] opacity-70">
         Quantas vezes seu bar apareceu na posição garantida e quantas pessoas
@@ -359,7 +355,7 @@ function DailyChart({
   const chartHeight = 160
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <h3 className="onside-heading mb-3">Atividade diária</h3>
       <div className="relative h-[160px]">
         <svg
@@ -478,7 +474,7 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
   const mainAction = hasLockedMetric ? null : getMainAction(data)
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <SectionHeading metric="channels" />
 
       {mainAction && (
@@ -501,13 +497,13 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
                 <span className="font-medium text-[var(--onside-ink)]">
                   {formatAnalyticsValue(item.count)}
                   {item.count !== null && (
-                    <span className="ml-1 text-xs opacity-50">
+                    <span className="ml-1 text-xs opacity-70">
                       ({pct.toFixed(0)}%)
                     </span>
                   )}
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-sm bg-[var(--onside-paper)]">
+              <div className="h-2 w-full overflow-hidden rounded-sm bg-[var(--onside-stone)]">
                 <div
                   className="h-full bg-[var(--onside-ink)]"
                   style={{ width: `${pct}%` }}
@@ -534,7 +530,7 @@ function PeriodComparison({
 }) {
   if (!hasComparisonData(data)) {
     return (
-      <div className="onside-panel-acid p-4">
+      <div className="onside-panel p-4">
         <SectionHeading metric="periodComparison" />
         <p className="text-sm text-[var(--onside-ink)] opacity-70">
           Ainda não há dados de {comparisonLabel}. A comparação aparece assim
@@ -568,7 +564,7 @@ function PeriodComparison({
   ]
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <SectionHeading metric="periodComparison" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {rows.map((r) => (
@@ -623,7 +619,7 @@ export function AnalyticsOverview({
     return (
       <section aria-label="Visão geral">
         <h2 className="onside-display mb-4 text-2xl">Desempenho do bar</h2>
-        <div className="onside-panel-acid flex flex-col items-center gap-4 p-12 text-center">
+        <div className="onside-panel flex flex-col items-center gap-4 p-12 text-center">
           <p className="onside-display mb-1 text-xl text-[var(--onside-ink)]">
             Aguardando primeiros dados
           </p>

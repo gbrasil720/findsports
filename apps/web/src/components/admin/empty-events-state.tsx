@@ -17,7 +17,7 @@ export function EmptyEventsState({ onCreate, blockReason = null }: Props) {
   const blocked = blockReason !== null
 
   return (
-    <div className="onside-panel-acid flex flex-col items-center gap-4 p-12 text-center">
+    <div className="onside-panel flex flex-col items-center gap-4 p-12 text-center">
       <div className="grid size-16 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-paper)]">
         <Calendar size={28} color="currentColor" aria-hidden="true" />
       </div>

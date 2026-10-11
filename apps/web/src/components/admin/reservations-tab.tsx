@@ -19,8 +19,8 @@ import { QueryError } from './query-error'
 import { ReservationCapPanel } from './reservation-cap-panel'
 
 const STATUS_BADGE: Record<BarReservation['status'], string> = {
-  pending: 'onside-badge onside-badge-acid',
-  confirmed: 'onside-badge onside-badge-stone',
+  pending: 'onside-badge',
+  confirmed: 'onside-badge onside-badge-acid',
   declined: 'onside-badge onside-badge-ink',
   cancelled: 'onside-badge onside-badge-ink'
 }
