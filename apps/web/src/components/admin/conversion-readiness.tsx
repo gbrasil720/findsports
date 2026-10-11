@@ -162,7 +162,7 @@ function WhatsAppStatus({
 
   return (
     <article
-      className={`${isActive ? 'onside-panel-acid' : 'onside-panel'} flex h-full flex-col p-5 sm:p-6`}
+      className="onside-panel flex h-full flex-col p-5 sm:p-6"
       aria-labelledby="whatsapp-status-title"
     >
       <div className="mb-5 flex items-start justify-between gap-3">
@@ -177,7 +177,7 @@ function WhatsAppStatus({
           <PhoneChat size={22} color="currentColor" />
         </span>
         <span
-          className={`onside-badge ${isActive ? 'onside-badge-ink' : 'onside-badge-stone'}`}
+          className={`onside-badge ${isActive ? 'onside-badge-acid' : 'onside-badge-stone'}`}
         >
           {isActive ? 'Ativado' : hasPhone ? 'Pendente' : 'Não configurado'}
         </span>

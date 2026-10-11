@@ -1,4 +1,5 @@
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
+import { type KeyboardEvent, type PointerEvent, useState } from 'react'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Check from 'reicon-react/icons/Check'
@@ -15,6 +16,7 @@ import {
   formatAnalyticsPeriod,
   formatComparisonPeriod
 } from './analytics-period'
+import { buildSeries, niceMax, tickIndexes } from './daily-chart-model'
 import { getMetric, type MetricId } from './metric-glossary'
 import { MetricHint } from './metric-hint'
 
@@ -39,6 +41,30 @@ function formatPpChange(curr: number | null, prev: number | null): string {
   const diff = (curr - prev) * 100
   if (Math.abs(diff) < 0.05) return '0 p.p.'
   return `${diff > 0 ? '+' : ''}${diff.toFixed(1)} p.p.`
+}
+
+/**
+ * Número de resultado: Anton com o marca-texto do painel (`onside-mark`).
+ * Zero e "—" ficam sem marca: o destaque é para valor entregue, e um bar nos
+ * primeiros dias veria o verde apontando para nada.
+ */
+const mark = (value: string | number) =>
+  `onside-display ${Number.parseFloat(String(value)) > 0 ? 'onside-mark' : 'tabular-nums'}`
+
+/** Variação contra o período anterior: a alta sai em selo acid com seta. */
+function Change({ text }: { text: string }) {
+  if (text.startsWith('+')) {
+    return (
+      <span className="onside-badge onside-badge-acid tabular-nums">
+        ↑ {text}
+      </span>
+    )
+  }
+  return (
+    <span className="tabular-nums">
+      {text.startsWith('-') ? `↓ ${text}` : text}
+    </span>
+  )
 }
 
 /** Título de seção com o ⓘ do glossário ao lado. */
@@ -67,6 +93,7 @@ function hasComparisonData(data: AnalyticsOverviewData): boolean {
 function OverviewSkeleton() {
   return (
     <section
+      className="[&_[data-slot=skeleton]]:bg-[var(--onside-stone)]"
       aria-label="Visão geral carregando"
       role="status"
       aria-busy="true"
@@ -80,7 +107,7 @@ function OverviewSkeleton() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="onside-panel-acid p-4">
+          <div key={i} className="onside-panel p-4">
             <Skeleton className="mb-2 h-4 w-20" />
             <Skeleton className="h-7 w-16" />
             <Skeleton className="mt-2 h-3 w-28" />
@@ -89,21 +116,21 @@ function OverviewSkeleton() {
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="onside-panel-acid p-4">
-          <Skeleton className="mb-3 h-5 w-36" />
-          <div className="relative h-[160px] space-y-7 pt-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-px w-full" />
-            ))}
-            <Skeleton className="absolute right-0 bottom-6 left-0 h-1" />
-          </div>
-          <div className="mt-2 flex gap-4">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-3 w-24" />
-          </div>
+      <div className="onside-panel mt-6 p-4">
+        <Skeleton className="mb-3 h-5 w-36" />
+        <div className="mb-4 flex gap-4">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-28" />
         </div>
-        <div className="onside-panel-acid p-4">
+        <div className="relative h-[200px] space-y-16 pt-2 sm:h-[240px]">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-px w-full" />
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="onside-panel p-4">
           <Skeleton className="mb-3 h-5 w-40" />
           {[1, 2, 3].map((i) => (
             <div key={i} className="mb-3">
@@ -111,22 +138,21 @@ function OverviewSkeleton() {
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-10" />
               </div>
-              <Skeleton className="h-2 w-full" />
+              <Skeleton className="h-3 w-full" />
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="onside-panel-acid mt-6 p-4">
-        <Skeleton className="mb-3 h-5 w-44" />
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-6 w-12" />
-              <Skeleton className="h-3 w-14" />
-            </div>
-          ))}
+        <div className="onside-panel p-4">
+          <Skeleton className="mb-3 h-5 w-44" />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-6 w-12" />
+                <Skeleton className="h-3 w-14" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -182,7 +208,6 @@ function KpiCard({
   value,
   secondary,
   change,
-  accent,
   comparisonLabel
 }: {
   metric: MetricId
@@ -191,34 +216,26 @@ function KpiCard({
   secondary?: string
   /** Variação percentual contra o período anterior. */
   change?: string
-  accent?: 'acid'
   /** `null` quando a janela não tem período anterior ("Tudo"). */
   comparisonLabel: string | null
 }) {
   const { label } = getMetric(metric)
 
   return (
-    <div
-      className={
-        'onside-panel-acid p-4' +
-        (accent ? ' ring-2 ring-[var(--onside-acid)]' : '')
-      }
-    >
-      <p className="onside-label mb-1 text-[var(--onside-ink)] opacity-70">
+    <div className="onside-panel p-4">
+      <p className="onside-label mb-2 text-[var(--onside-ink)] opacity-70">
         {label}
         <MetricHint metric={metric} />
       </p>
-      <p className="onside-display text-2xl text-[var(--onside-ink)]">
-        {value}
+      <p>
+        <span className={`${mark(value)} text-4xl`}>{value}</span>
       </p>
       {secondary !== undefined && (
-        <p className="mt-1 text-xs text-[var(--onside-ink)] opacity-70">
-          {secondary}
-        </p>
+        <p className="mt-2 text-[var(--onside-muted)] text-xs">{secondary}</p>
       )}
       {change !== undefined && comparisonLabel !== null && (
-        <p className="mt-1 text-xs text-[var(--onside-ink)] opacity-60">
-          {change} vs {comparisonLabel}
+        <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[var(--onside-muted)] text-xs">
+          <Change text={change} /> vs {comparisonLabel}
         </p>
       )}
     </div>
@@ -258,7 +275,6 @@ function KpiCards({
         metric="interest"
         value={data.interestedPeople.toLocaleString('pt-BR')}
         change={formatPctChange(data.interestedPeopleChange)}
-        accent="acid"
         comparisonLabel={comparisonLabel}
       />
       <KpiCard
@@ -289,7 +305,7 @@ function ClassicPlacement({
       : '—'
 
   return (
-    <div className="onside-panel-acid mt-6 p-4">
+    <div className="onside-panel mt-6 p-4">
       <h3 className="onside-heading mb-1">Entrega Elite nos clássicos</h3>
       <p className="mb-3 text-sm text-[var(--onside-ink)] opacity-70">
         Quantas vezes seu bar apareceu na posição garantida e quantas pessoas
@@ -300,27 +316,27 @@ function ClassicPlacement({
           <p className="text-xs text-[var(--onside-ink)] opacity-60">
             Exposições
           </p>
-          <p className="onside-display text-lg text-[var(--onside-ink)]">
+          <p className={`${mark(data.classicExposures)} mt-1 text-2xl`}>
             {data.classicExposures}
           </p>
         </div>
         <div>
           <p className="text-xs text-[var(--onside-ink)] opacity-60">Cliques</p>
-          <p className="onside-display text-lg text-[var(--onside-ink)]">
+          <p className={`${mark(data.classicClicks)} mt-1 text-2xl`}>
             {data.classicClicks}
           </p>
         </div>
         <div>
           <p className="text-xs text-[var(--onside-ink)] opacity-60">CTR</p>
-          <p className="onside-display text-lg text-[var(--onside-ink)]">
-            {clickRate}
-          </p>
+          <p className={`${mark(clickRate)} mt-1 text-2xl`}>{clickRate}</p>
         </div>
       </div>
       {comparisonLabel !== null && (
-        <p className="mt-3 text-xs text-[var(--onside-ink)] opacity-60">
-          Exposições {formatPctChange(data.classicExposuresChange)} • Cliques{' '}
-          {formatPctChange(data.classicClicksChange)} vs {comparisonLabel}
+        <p className="mt-3 flex flex-wrap items-center gap-1.5 text-[var(--onside-muted)] text-xs">
+          Exposições{' '}
+          <Change text={formatPctChange(data.classicExposuresChange)} /> •
+          Cliques <Change text={formatPctChange(data.classicClicksChange)} /> vs{' '}
+          {comparisonLabel}
         </p>
       )}
     </div>
@@ -331,131 +347,323 @@ function ClassicPlacement({
 /* Daily Chart                                                         */
 /* ------------------------------------------------------------------ */
 
+type DailySeries = Array<{ date: string; value: number }> | null
+
+/** `2026-10-11` → `11/10`. */
+const shortDay = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`
+
+/** A data vem sem hora: lida e escrita em UTC, o dia não escorrega. */
+const longDay = (date: string) =>
+  new Date(date).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC'
+  })
+
+/**
+ * Atividade por dia, em painel ink: é onde o acid tem contraste para ser
+ * traço (14:1; sobre papel não chega a 1,2:1). Subida em acid, com a área
+ * embaixo; queda e empate ficam neutros. As duas séries se separam pelo
+ * desenho — contínua com área, tracejada sem — e não só pela cor.
+ *
+ * O SVG estica na largura (`preserveAspectRatio="none"`) e o traço não
+ * deforma. Rótulos, pontos e dica são HTML por cima, em porcentagem.
+ */
 function DailyChart({
   dailyViews,
   dailyWa,
   dailyDir,
-  dailyPh
+  dailyPh,
+  viewsChange,
+  actionsChange,
+  comparisonLabel
 }: {
-  dailyViews: Array<{ date: string; value: number }> | null
-  dailyWa: Array<{ date: string; value: number }> | null
-  dailyDir: Array<{ date: string; value: number }> | null
-  dailyPh: Array<{ date: string; value: number }> | null
+  dailyViews: DailySeries
+  dailyWa: DailySeries
+  dailyDir: DailySeries
+  dailyPh: DailySeries
+  viewsChange: number | null
+  actionsChange: number | null
+  comparisonLabel: string | null
 }) {
+  const [hovered, setHovered] = useState<number | null>(null)
   if (!dailyViews?.length) return null
 
-  const series = dailyViews.map((v) => {
-    const wa = dailyWa?.find((a) => a.date === v.date)?.value ?? 0
-    const dir = dailyDir?.find((a) => a.date === v.date)?.value ?? 0
-    const ph = dailyPh?.find((a) => a.date === v.date)?.value ?? 0
-    return {
-      date: v.date,
-      views: v.value,
-      actions: wa + dir + ph
-    }
-  })
+  const byDate = (list: DailySeries) =>
+    new Map(list?.map((point) => [point.date, point.value]))
+  const [wa, dir, ph] = [byDate(dailyWa), byDate(dailyDir), byDate(dailyPh)]
+  const days = dailyViews.map(({ date, value }) => ({
+    date,
+    views: value,
+    actions: (wa.get(date) ?? 0) + (dir.get(date) ?? 0) + (ph.get(date) ?? 0)
+  }))
 
-  const maxVal = Math.max(...series.flatMap((p) => [p.views, p.actions]))
-  const chartHeight = 160
+  const count = days.length
+  const top = niceMax(Math.max(...days.flatMap((d) => [d.views, d.actions])))
+  const views = buildSeries(
+    days.map((d) => d.views),
+    top
+  )
+  const actions = buildSeries(
+    days.map((d) => d.actions),
+    top
+  )
+  const path = (runs: typeof views.runs, part: 'line' | 'area', up?: boolean) =>
+    runs
+      .filter((run) => up === undefined || run.up === up)
+      .map((run) => run[part])
+      .join('')
+
+  const totals = [
+    {
+      label: 'Aberturas',
+      total: days.reduce((sum, d) => sum + d.views, 0),
+      change: viewsChange,
+      sample: 'border-solid'
+    },
+    {
+      label: 'WhatsApp, rota e telefone',
+      total: days.reduce((sum, d) => sum + d.actions, 0),
+      change: actionsChange,
+      sample: 'border-dashed'
+    }
+  ]
+
+  // Com um dia só não há linha: o ponto fica sempre à vista.
+  const active = hovered ?? (count === 1 ? 0 : null)
+  const day = active === null ? undefined : days[active]
+  const clamp = (index: number) => Math.min(count - 1, Math.max(0, index))
+  const pick = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    setHovered(
+      clamp(Math.round(((event.clientX - box.left) / box.width) * (count - 1)))
+    )
+  }
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') return setHovered(null)
+    const step =
+      event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
+    if (!step) return
+    event.preventDefault()
+    setHovered((current) => clamp((current ?? (step > 0 ? -1 : count)) + step))
+  }
+
+  // Traço mais fino no celular e em janela longa (12 meses, "Tudo").
+  // ponytail: a série longa segue diária; agrupar por semana se ficar densa demais.
+  const width =
+    count > 60
+      ? { thin: 'stroke-[1px]', base: 'stroke-[1.25px]', up: 'stroke-[1.5px]' }
+      : {
+          thin: 'stroke-[1.5px] sm:stroke-[2px]',
+          base: 'stroke-[2px] sm:stroke-[2.5px]',
+          up: 'stroke-[2.5px] sm:stroke-[3.5px]'
+        }
+  const stroke = {
+    fill: 'none',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    vectorEffect: 'non-scaling-stroke'
+  } as const
 
   return (
-    <div className="onside-panel-acid p-4">
-      <h3 className="onside-heading mb-3">Atividade diária</h3>
-      <div className="relative h-[160px]">
-        <svg
-          viewBox={`0 0 ${series.length * 28 + 16} ${chartHeight}`}
-          className="h-full w-full"
-          role="img"
-          aria-label="Gráfico de atividade diária"
+    <div className="onside-panel-ink p-4 sm:p-5" data-chart="daily">
+      <h3 className="onside-heading mb-4">Atividade diária</h3>
+
+      <dl className="flex flex-wrap gap-x-10 gap-y-4">
+        {totals.map((series) => (
+          <div key={series.label}>
+            <dt className="flex items-center gap-2 text-[var(--onside-muted-on-ink)] text-xs">
+              <span
+                className={`w-6 border-[var(--onside-paper)] border-t-2 ${series.sample}`}
+                aria-hidden="true"
+              />
+              {series.label}
+            </dt>
+            <dd className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[var(--onside-muted-on-ink)] text-xs">
+              <span
+                className={`onside-display text-4xl tabular-nums ${series.total > 0 ? 'text-[var(--onside-acid)]' : 'text-[var(--onside-paper)]'}`}
+              >
+                {series.total.toLocaleString('pt-BR')}
+              </span>
+              {comparisonLabel !== null && (
+                <span className="flex items-center gap-1.5">
+                  <Change text={formatPctChange(series.change)} /> vs{' '}
+                  {comparisonLabel}
+                </span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-6 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted-on-ink)] tabular-nums">
+        <div className="relative w-8" aria-hidden="true">
+          {[top, top / 2, 0].map((tick, index) => (
+            <span
+              key={tick}
+              className="-translate-y-1/2 absolute right-0 leading-none"
+              style={{ top: `${index * 50}%` }}
+            >
+              {tick.toLocaleString('pt-BR')}
+            </span>
+          ))}
+        </div>
+
+        {/* Controle deslizante de dia: as setas andam e o leitor de tela lê
+            os valores do dia em `aria-valuetext`. */}
+        <div
+          className="relative h-[200px] touch-pan-y sm:h-[240px]"
+          role="slider"
+          tabIndex={0}
+          aria-label={`Gráfico de atividade diária, de ${shortDay(days[0]?.date ?? '')} a ${shortDay(days[count - 1]?.date ?? '')}`}
+          aria-valuemin={0}
+          aria-valuemax={count - 1}
+          aria-valuenow={active ?? count - 1}
+          aria-valuetext={
+            day
+              ? `${longDay(day.date)}: ${day.views} aberturas, ${day.actions} em WhatsApp, rota e telefone`
+              : undefined
+          }
+          onPointerDown={pick}
+          onPointerMove={pick}
+          onPointerLeave={(event) => {
+            if (event.pointerType === 'mouse') setHovered(null)
+          }}
+          onBlur={() => setHovered(null)}
+          onKeyDown={onKeyDown}
         >
-          {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-            const y = chartHeight - frac * chartHeight + 4
-            return (
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 size-full overflow-visible"
+            aria-hidden="true"
+          >
+            {[0, 50, 100].map((y) => (
               <line
-                key={frac}
+                key={y}
                 x1={0}
+                x2={100}
                 y1={y}
-                x2={series.length * 28 + 16}
                 y2={y}
-                stroke="var(--onside-line)"
-                strokeWidth={0.5}
+                stroke="var(--onside-muted-on-ink)"
+                strokeOpacity={y === 100 ? 0.9 : 0.3}
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
               />
-            )
-          })}
+            ))}
+            <path
+              data-part="area"
+              d={path(views.runs, 'area')}
+              fill="var(--onside-paper)"
+              fillOpacity={0.07}
+            />
+            <path
+              data-part="area-up"
+              d={path(views.runs, 'area', true)}
+              fill="var(--onside-acid)"
+              fillOpacity={0.3}
+            />
+            <path
+              data-part="actions"
+              d={path(actions.runs, 'line', false)}
+              stroke="var(--onside-muted-on-ink)"
+              className={width.thin}
+              strokeDasharray="2 6"
+              {...stroke}
+            />
+            <path
+              data-part="actions-up"
+              d={path(actions.runs, 'line', true)}
+              stroke="var(--onside-acid)"
+              className={width.thin}
+              strokeDasharray="2 6"
+              {...stroke}
+            />
+            <path
+              data-part="views"
+              d={path(views.runs, 'line', false)}
+              stroke="var(--onside-muted-on-ink)"
+              className={width.base}
+              {...stroke}
+            />
+            <path
+              data-part="views-up"
+              d={path(views.runs, 'line', true)}
+              stroke="var(--onside-acid)"
+              className={width.up}
+              {...stroke}
+            />
+          </svg>
 
-          <polyline
-            fill="none"
-            stroke="var(--onside-ink)"
-            strokeWidth={2}
-            points={series
-              .map((p, i) => {
-                const x = i * 28 + 16
-                const y =
-                  chartHeight - (p.views / (maxVal || 1)) * (chartHeight - 8)
-                return `${x},${y}`
-              })
-              .join(' ')}
-          />
-
-          <polyline
-            fill="none"
-            stroke="var(--onside-live)"
-            strokeWidth={2}
-            strokeDasharray="4 2"
-            points={series
-              .map((p, i) => {
-                const x = i * 28 + 16
-                const y =
-                  chartHeight - (p.actions / (maxVal || 1)) * (chartHeight - 8)
-                return `${x},${y}`
-              })
-              .join(' ')}
-          />
-
-          {series.map((p) => {
-            const i = series.indexOf(p)
-            const x = i * 28 + 16
-            const y =
-              chartHeight - (p.views / (maxVal || 1)) * (chartHeight - 8)
-            return (
-              <circle
-                key={`v-${p.date}`}
-                cx={x}
-                cy={y}
-                r={3}
-                fill="var(--onside-ink)"
+          {day && active !== null && (
+            <>
+              <span
+                className="pointer-events-none absolute inset-y-0 w-px bg-[var(--onside-paper)] opacity-60"
+                style={{ left: `${views.xs[active]}%` }}
+                aria-hidden="true"
               />
-            )
-          })}
-
-          {series.map((p) => {
-            const i = series.indexOf(p)
-            const x = i * 28 + 16
-            const y =
-              chartHeight - (p.actions / (maxVal || 1)) * (chartHeight - 8)
-            return (
-              <circle
-                key={`a-${p.date}`}
-                cx={x}
-                cy={y}
-                r={3}
-                fill="var(--onside-live)"
+              <span
+                className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute size-3 rounded-full border-2 border-[var(--onside-ink)] bg-[var(--onside-paper)]"
+                style={{
+                  left: `${views.xs[active]}%`,
+                  top: `${views.ys[active]}%`
+                }}
+                aria-hidden="true"
               />
-            )
-          })}
-        </svg>
+              <span
+                className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute size-2.5 rotate-45 border-2 border-[var(--onside-ink)] bg-[var(--onside-paper)]"
+                style={{
+                  left: `${actions.xs[active]}%`,
+                  top: `${actions.ys[active]}%`
+                }}
+                aria-hidden="true"
+              />
+              <div
+                className={`pointer-events-none absolute top-1 z-10 w-max border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] px-2.5 py-2 font-[family-name:var(--onside-body)] text-[var(--onside-ink)] text-xs shadow-[4px_4px_0_var(--onside-acid)] ${
+                  (views.xs[active] ?? 0) > 50
+                    ? '-translate-x-full -ml-3'
+                    : 'ml-3'
+                }`}
+                style={{ left: `${views.xs[active]}%` }}
+              >
+                <p className="mb-1 font-semibold">{longDay(day.date)}</p>
+                <p>
+                  Aberturas: <strong>{day.views}</strong>
+                </p>
+                <p>
+                  WhatsApp, rota e telefone: <strong>{day.actions}</strong>
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div />
+        <div className="relative mt-2 h-3" aria-hidden="true">
+          {tickIndexes(count).map((index, position) => (
+            <span
+              key={index}
+              // No celular ficam só o primeiro, o do meio e o último dia.
+              className={`absolute leading-none ${position % 2 ? 'hidden sm:block' : ''} ${
+                count > 1 && index === 0
+                  ? ''
+                  : count > 1 && index === count - 1
+                    ? '-translate-x-full'
+                    : '-translate-x-1/2'
+              }`}
+              style={{ left: `${views.xs[index]}%` }}
+            >
+              {shortDay(days[index]?.date ?? '')}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div className="mt-2 flex items-center gap-4 text-xs text-[var(--onside-ink)] opacity-70">
-        <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-full bg-[var(--onside-ink)]" />
-          Aberturas
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block size-2 rounded-full bg-[var(--onside-live)]" />
-          WhatsApp, rota e telefone
-        </span>
-      </div>
+      <p className="mt-4 flex items-center gap-2 text-[var(--onside-muted-on-ink)] text-xs">
+        <span className="h-1 w-6 bg-[var(--onside-acid)]" aria-hidden="true" />
+        Em verde, os dias em que o número subiu.
+      </p>
     </div>
   )
 }
@@ -478,11 +686,11 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
   const mainAction = hasLockedMetric ? null : getMainAction(data)
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <SectionHeading metric="channels" />
 
       {mainAction && (
-        <div className="mb-3 flex items-center gap-2 border border-[var(--onside-ink)] bg-[var(--onside-ink)] px-3 py-2 text-sm text-[var(--onside-paper)]">
+        <div className="onside-panel-acid mb-3 flex items-center gap-2 px-3 py-2 font-semibold text-sm">
           <Check size={14} color="currentColor" aria-hidden="true" />
           Mais usado: {mainAction}
         </div>
@@ -501,15 +709,21 @@ function ActionDistributionView({ data }: { data: AnalyticsOverviewData }) {
                 <span className="font-medium text-[var(--onside-ink)]">
                   {formatAnalyticsValue(item.count)}
                   {item.count !== null && (
-                    <span className="ml-1 text-xs opacity-50">
+                    <span className="ml-1 text-xs opacity-70">
                       ({pct.toFixed(0)}%)
                     </span>
                   )}
                 </span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-sm bg-[var(--onside-paper)]">
+              <div className="h-3 w-full bg-[var(--onside-stone)]">
                 <div
-                  className="h-full bg-[var(--onside-ink)]"
+                  // O contorno é só do líder: acid sobre pedra não tem
+                  // contraste, e contorno em barra de 0% viraria um risco.
+                  className={`h-full ${
+                    item.label === mainAction
+                      ? 'border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-acid)]'
+                      : 'bg-[var(--onside-ink)]'
+                  }`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -534,7 +748,7 @@ function PeriodComparison({
 }) {
   if (!hasComparisonData(data)) {
     return (
-      <div className="onside-panel-acid p-4">
+      <div className="onside-panel p-4">
         <SectionHeading metric="periodComparison" />
         <p className="text-sm text-[var(--onside-ink)] opacity-70">
           Ainda não há dados de {comparisonLabel}. A comparação aparece assim
@@ -568,9 +782,11 @@ function PeriodComparison({
   ]
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <SectionHeading metric="periodComparison" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Dois por linha: o card divide a largura com "Como te procuraram", e
+          o texto de métrica travada pelo plano não cabe em quatro colunas. */}
+      <div className="grid grid-cols-2 gap-4">
         {rows.map((r) => (
           <div key={r.label}>
             <p className="text-xs text-[var(--onside-ink)] opacity-60">
@@ -579,8 +795,8 @@ function PeriodComparison({
             <p className="onside-display text-lg text-[var(--onside-ink)]">
               {formatAnalyticsValue(r.curr)}
             </p>
-            <p className="text-xs text-[var(--onside-ink)] opacity-60">
-              {r.change !== null ? formatPctChange(r.change) : '—'}
+            <p className="mt-1 text-[var(--onside-muted)] text-xs">
+              <Change text={formatPctChange(r.change)} />
             </p>
           </div>
         ))}
@@ -623,7 +839,7 @@ export function AnalyticsOverview({
     return (
       <section aria-label="Visão geral">
         <h2 className="onside-display mb-4 text-2xl">Desempenho do bar</h2>
-        <div className="onside-panel-acid flex flex-col items-center gap-4 p-12 text-center">
+        <div className="onside-panel flex flex-col items-center gap-4 p-12 text-center">
           <p className="onside-display mb-1 text-xl text-[var(--onside-ink)]">
             Aguardando primeiros dados
           </p>
@@ -687,21 +903,23 @@ export function AnalyticsOverview({
       <KpiCards data={data} comparisonLabel={comparisonLabel} />
       <ClassicPlacement data={data} comparisonLabel={comparisonLabel} />
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-6 space-y-6">
         <DailyChart
           dailyViews={data.dailyProfileViews}
           dailyWa={data.dailyWhatsappOpened}
           dailyDir={data.dailyDirectionsOpened}
           dailyPh={data.dailyPhoneClicked}
+          viewsChange={data.profileViewsChange}
+          actionsChange={data.highIntentActionsChange}
+          comparisonLabel={comparisonLabel}
         />
-        <ActionDistributionView data={data} />
-      </div>
-
-      {comparisonLabel !== null && (
-        <div className="mt-6">
-          <PeriodComparison data={data} comparisonLabel={comparisonLabel} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ActionDistributionView data={data} />
+          {comparisonLabel !== null && (
+            <PeriodComparison data={data} comparisonLabel={comparisonLabel} />
+          )}
         </div>
-      )}
+      </div>
     </section>
   )
 }

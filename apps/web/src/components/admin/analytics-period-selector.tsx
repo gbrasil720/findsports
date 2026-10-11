@@ -42,7 +42,7 @@ export function AnalyticsPeriodSelector({
 
   return (
     <section
-      className="onside-panel-acid mb-6 p-4"
+      className="onside-panel mb-6 p-4"
       aria-label="Período das analytics"
       aria-busy={loadingEntitlements || isFetching}
     >

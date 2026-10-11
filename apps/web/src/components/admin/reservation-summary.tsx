@@ -85,7 +85,10 @@ export function ReservationSummary({
       </dl>
 
       <p className="onside-display mt-5 text-4xl tabular-nums">
-        {getCounterLabel(reservation.usedCount, reservation.maxUses)}
+        {/* Chegada registrada é resultado; "0 de N" ainda não é. */}
+        <span className={reservation.usedCount > 0 ? 'onside-mark' : undefined}>
+          {getCounterLabel(reservation.usedCount, reservation.maxUses)}
+        </span>
       </p>
 
       {blocker ? (
