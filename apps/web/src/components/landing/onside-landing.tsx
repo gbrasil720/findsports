@@ -690,6 +690,9 @@ export function OnsideLanding() {
                 {heroLead} <em>{heroAccent}</em> {heroTail}
               </h1>
               <p>{LANDING_COPY.hero.body}</p>
+              <p className="onside-hero-cta-lead">
+                {LANDING_COPY.hero.ctaLead} <span aria-hidden="true">↓</span>
+              </p>
               <div className="onside-hero-actions">
                 <PrimaryCta
                   place="hero"

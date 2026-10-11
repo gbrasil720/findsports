@@ -43,7 +43,9 @@ export const LANDING_COPY = {
       '(ótima)',
       'resposta.'
     ],
-    body: 'Com a Onside, você vai encontrar bares com a infraestrutura certa para chamar seus amigos e assistir ao jogo, comparando localização e preço antes de sair de casa.',
+    body: 'Com a Onside, você vai encontrar bares com a melhor infraestrutura para chamar seus amigos e assistir ao jogo, comparando localização e preço antes de sair de casa.',
+    ctaLead:
+      'Acesse o app gratuitamente e encontre o bar perfeito para assistir ao seu próximo jogo',
     secondaryCta: 'Como funciona',
     hint: 'Arraste para girar · passe o mouse pelos bares'
   },
