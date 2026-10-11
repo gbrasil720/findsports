@@ -29,6 +29,22 @@ bun run db:studio    # open Drizzle Studio
 
 Turbo filter syntax: `turbo -F <package-name> <task>` — use the `name` field from that package's `package.json`.
 
+Testes de integração (`*.integration.test.ts`) são pulados sem banco descartável. Eles
+rodam com `RUN_DISPOSABLE_DB_TESTS=1` e `LOAD_TEST_DATABASE_URL` no container
+`findsports_load_test` (`docker compose --profile load-test up -d db-load-test`, porta
+5433). O resolver de `packages/db` só aceita essa URL em loopback e com banco
+`findsports_load_test` ou `findsports_load_test_<sufixo>`: um banco por worktree deixa
+várias rodarem ao mesmo tempo no mesmo container, como no E2E.
+
+```bash
+docker exec findsports_load_test createdb -U findsports_load_test findsports_load_test_minha
+export LOAD_TEST_DATABASE_URL=postgres://findsports_load_test:findsports_load_test_local@localhost:5433/findsports_load_test_minha
+(cd packages/db && NODE_ENV=test bun run db:migrate)
+RUN_DISPOSABLE_DB_TESTS=1 bun run test
+```
+
+`db:seed:load-test` (carga do k6) continua recusando tudo que não seja o banco sem sufixo.
+
 ## Architecture
 
 Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, single quotes).
