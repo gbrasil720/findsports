@@ -1,9 +1,13 @@
 import { expect, test } from 'bun:test'
 
-import { FAQ_ITEMS, LANDING_COPY } from './onside-landing-content'
+import {
+  DEFINITION_POINTS,
+  FAQ_ITEMS,
+  LANDING_COPY
+} from './onside-landing-content'
 
 test('a landing fala do produto no ar e não promete lista de espera', () => {
-  const copy = JSON.stringify([LANDING_COPY, FAQ_ITEMS])
+  const copy = JSON.stringify([LANDING_COPY, FAQ_ITEMS, DEFINITION_POINTS])
 
   expect(LANDING_COPY.hero.title.join(' ')).toBe(
     '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
