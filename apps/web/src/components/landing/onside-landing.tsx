@@ -70,9 +70,16 @@ function usePrimaryCta() {
     from: '__root__',
     select: (ctx) => Boolean(ctx.session)
   })
+  // `kind` é o destino no nome do `data-cta` (`hero_app`, `hero_signup`), para
+  // o `cta_clicked` separar quem foi para o app de quem foi criar conta.
   return hasSession
-    ? { hasSession, href: '/app', label: 'Ir para o app' }
-    : { hasSession, href: '/signup', label: LANDING_COPY.primaryCta }
+    ? { hasSession, href: '/app', label: 'Ir para o app', kind: 'app' }
+    : {
+        hasSession,
+        href: '/signup',
+        label: LANDING_COPY.primaryCta,
+        kind: 'signup'
+      }
 }
 
 export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
@@ -156,7 +163,11 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
           ))}
         </nav>
 
-        <a className="onside-nav-cta" href={cta.href} data-cta="nav_signup">
+        <a
+          className="onside-nav-cta"
+          href={cta.href}
+          data-cta={`nav_${cta.kind}`}
+        >
           {cta.label}{' '}
           <span className="onside-inline-icon" aria-hidden="true">
             <ArrowUpRight size={16} aria-hidden="true" focusable="false" />
@@ -212,7 +223,7 @@ export function OnsideHeader({ home = '', inkHeroId }: OnsideHeaderProps) {
         <a
           className="onside-button onside-button-acid"
           href={cta.href}
-          data-cta="nav_signup"
+          data-cta={`nav_${cta.kind}`}
         >
           {cta.label}
         </a>
@@ -259,7 +270,7 @@ function useMagnet<T extends HTMLElement>() {
 
 /**
  * Chamada principal: cadastro para quem chega, app para quem tem sessão.
- * `place` vira o `data-cta` (`hero_signup`, `final_signup`…).
+ * `place` e o destino viram o `data-cta` (`hero_signup`, `final_app`…).
  */
 function PrimaryCta({
   place,
@@ -275,7 +286,7 @@ function PrimaryCta({
       ref={ref}
       className={`onside-magnet ${className}`}
       href={cta.href}
-      data-cta={`${place}_signup`}
+      data-cta={`${place}_${cta.kind}`}
     >
       {cta.label}
       <span className="onside-inline-icon" aria-hidden="true">

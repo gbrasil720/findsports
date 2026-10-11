@@ -64,6 +64,29 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
 })
 
+// O erro fica embaixo da confirmação, mas quem digitou errado pode ter sido a
+// Senha: corrigi-la tem de apagar o aviso, sem esperar o blur da confirmação.
+test('corrigir a Senha apaga "As senhas não coincidem." da confirmação', async ({
+  page
+}) => {
+  await page.goto('/signup')
+  const senha = page.getByLabel('Senha', { exact: true })
+  const confirm = page.getByLabel('Confirmar senha', { exact: true })
+  const erro = page.getByText('As senhas não coincidem.')
+
+  await senha.fill('senha-com-erro')
+  await confirm.fill(DEFAULT_PASSWORD)
+  await confirm.blur()
+  await expect(erro).toBeVisible()
+
+  await senha.fill(DEFAULT_PASSWORD)
+  await expect(erro).toBeHidden()
+  // Senha diferente de novo, com a confirmação limpa: não acusa enquanto a
+  // pessoa digita.
+  await senha.fill('outra-senha-123')
+  await expect(erro).toBeHidden()
+})
+
 test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   const email = uniqueEmail('signup-pub')
   await page.goto('/signup')

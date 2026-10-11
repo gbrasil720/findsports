@@ -158,6 +158,25 @@ test.describe('redefinir senha', () => {
     await invalidLink(page)
   })
 
+  // Como no cadastro: o erro é da confirmação, e some quando a Nova senha
+  // passa a bater com ela.
+  test('corrigir a Nova senha apaga "As senhas não coincidem."', async ({
+    page
+  }) => {
+    await page.goto('/reset-password?token=token-que-nao-existe')
+    const senha = page.getByLabel('Nova senha', { exact: true })
+    const confirm = page.getByLabel('Confirmar nova senha', { exact: true })
+    const erro = page.getByText('As senhas não coincidem.')
+
+    await senha.fill('senha-com-erro')
+    await confirm.fill(NEW_PASSWORD)
+    await confirm.blur()
+    await expect(erro).toBeVisible()
+
+    await senha.fill(NEW_PASSWORD)
+    await expect(erro).toBeHidden()
+  })
+
   test('link expirado mostra a tela de link inválido', async ({ page }) => {
     const user = await createUser()
     const link = await requestReset(page, user.email)
