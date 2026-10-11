@@ -113,6 +113,11 @@ test.describe('sem escolha feita', () => {
     await page.goto(`/pub/${barId}`)
     await expect(banner(page)).toBeVisible()
     await expect(actions).toBeInViewport({ ratio: 1 })
+    // E é o único "Como chegar": o botão do painel some onde a barra existe.
+    await expect(page.getByRole('link', { name: 'Como chegar' })).toHaveCount(1)
+    await expect(
+      actions.getByRole('link', { name: 'Como chegar' })
+    ).toBeVisible()
     await expect.poll(under(actions), 'barra de ação').toBeLessThanOrEqual(0)
 
     await page.getByRole('button', { name: 'Adicionar aos favoritos' }).click()

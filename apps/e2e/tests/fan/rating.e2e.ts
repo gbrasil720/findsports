@@ -56,13 +56,9 @@ test('quem abriu a rota de um jogo que acabou responde "voltaria?"', async ({
   // A intenção nasce na página do bar, vinda do jogo pelo `eventId`.
   await page.goto(`/pub/${pub.barId}?eventId=${eventId}`)
   const popup = page.waitForEvent('popup')
-  await page
-    // Bar sem WhatsApp nem telefone: o painel de ações é só a rota.
-    .locator('section', {
-      has: page.locator('p.onside-kicker', { hasText: 'Como chegar' })
-    })
-    .locator('a[href*="google.com/maps"]')
-    .click()
+  // Bar sem WhatsApp nem telefone: a ação é só a rota, no painel ou, no
+  // celular, na barra fixa.
+  await page.getByRole('link', { name: 'Como chegar' }).click()
   await (await popup).close()
   await expect
     .poll(

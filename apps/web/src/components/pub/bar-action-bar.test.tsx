@@ -76,6 +76,25 @@ describe('BarActions', () => {
     expect(markup).toContain('Rota')
   })
 
+  // WEB-370: três botões com texto não cabem na barra do celular.
+  test('na barra, dois secundários ou mais ficam só com ícone e o esgotado usa o texto curto', () => {
+    const bar = (props: object) =>
+      renderToStaticMarkup(
+        <BarActions {...base} onReserve={null} {...props} variant="bar" />
+      )
+    const three = bar({})
+    expect(three).toContain('<span>Falar com o bar</span>')
+    expect(three).toContain('<span class="sr-only">Rota</span>')
+    expect(three).toContain('<span class="sr-only">Ligar</span>')
+    // Com um secundário só, o texto dele cabe.
+    expect(bar({ whatsappUrl: null })).toContain(
+      '<span class="ml-2">Ligar</span>'
+    )
+    const soldOut = bar({ reservationsSoldOut: true })
+    expect(soldOut).toContain('Esgotado')
+    expect(soldOut).not.toContain('Reservas esgotadas para este jogo')
+  })
+
   test('esgotado toma o lugar de "Reservar mesa", sem clique, e os contatos continuam', () => {
     const markup = renderToStaticMarkup(
       <BarActions

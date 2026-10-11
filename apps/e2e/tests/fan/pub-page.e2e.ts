@@ -19,9 +19,10 @@ import { createUser } from '../../fixtures/users'
 // Página pública do bar, `/pub/$pubId` (WEB-178).
 
 /**
- * O painel de ações (no celular há também a barra fixa): "Garanta seu lugar"
- * com reserva disponível, "Fale com o bar" sem (WEB-353), e "Como chegar"
- * quando o bar não deixou WhatsApp nem telefone.
+ * O painel de ações: "Garanta seu lugar" com reserva disponível, "Fale com o
+ * bar" sem (WEB-353), e "Como chegar" quando o bar não deixou WhatsApp nem
+ * telefone. No celular o título e os botões dele somem: os botões estão na
+ * barra presa ao pé da janela (WEB-370).
  */
 const actionsPanel = (page: Page) =>
   page.locator('section', {
@@ -29,6 +30,10 @@ const actionsPanel = (page: Page) =>
       hasText: /Garanta seu lugar|Fale com o bar|Como chegar/
     })
   })
+
+/** Onde os botões de ação estão à mostra: a barra no celular, o painel fora dele. */
+const actionButtons = (page: Page, isMobile: boolean) =>
+  isMobile ? page.locator('.onside-pub-actionbar') : actionsPanel(page)
 
 const intents = (fanId: string, barId: string) =>
   query<{ type: string }>(
@@ -82,7 +87,10 @@ test.describe('deslogado', () => {
   })
 })
 
-test('torcedor favorita e vê oferta, cardápio e contatos', async ({ page }) => {
+test('torcedor favorita e vê oferta, cardápio e contatos', async ({
+  page,
+  isMobile
+}) => {
   const spot = uniqueSpot()
   const menuUrl = `https://cardapio.example.com/${randomUUID()}`
   const pub = await pubAt(spot, {
@@ -115,7 +123,7 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({ page }) =>
   await expect(page.locator(`a[href="${menuUrl}"]`)).toBeVisible()
 
   // Contatos: WhatsApp, rota e telefone — cada clique registra a intenção
-  const panel = actionsPanel(page)
+  const panel = actionButtons(page, isMobile)
   const whatsapp = panel.locator('a[href^="https://wa.me/5511987654321"]')
   const directions = panel.locator('a[href*="google.com/maps"]')
   const phone = panel.locator('a[href="tel:11987654321"]')
@@ -123,9 +131,11 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({ page }) =>
   await expect(directions).toBeVisible()
   await expect(phone).toBeVisible()
 
+  // Pelo teclado: no celular os botões estão na barra presa ao pé da janela,
+  // e em `vite dev` as devtools ficam por cima dos cantos dela.
   for (const link of [whatsapp, directions]) {
     const popup = page.waitForEvent('popup')
-    await link.click()
+    await link.press('Enter')
     await (await popup).close()
   }
   // `tel:` abriria o discador; o handler do app roda antes do padrão. Em
@@ -135,7 +145,7 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({ page }) =>
       if (event.target.closest('a[href^="tel:"]')) event.preventDefault()
     }, true)`
   )
-  await phone.click()
+  await phone.press('Enter')
   await expect
     .poll(() => intents(fan.id, pub.barId))
     .toEqual(
@@ -188,7 +198,8 @@ test('"Vou assistir aqui" só em jogo futuro', async ({ page }) => {
 })
 
 test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
-  page
+  page,
+  isMobile
 }) => {
   const spot = uniqueSpot()
   const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
@@ -197,9 +208,10 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
 
   await page.goto(`/pub/${pub.barId}`)
   await expect(actionsPanel(page)).toContainText('Garanta seu lugar')
-  await actionsPanel(page)
+  // Pelo teclado, pelo mesmo motivo das devtools.
+  await actionButtons(page, isMobile)
     .getByRole('button', { name: 'Reservar mesa' })
-    .click()
+    .press('Enter')
 
   const dialog = page.getByRole('dialog', { name: 'Reservar mesa' })
   const people = dialog.getByLabel('Quantas pessoas')
@@ -232,7 +244,8 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
 })
 
 test('reserva não aparece fora do Elite ou com reservas desligadas', async ({
-  page
+  page,
+  isMobile
 }) => {
   const spot = uniqueSpot()
   const pro = await pubAt(spot, {
@@ -254,6 +267,12 @@ test('reserva não aparece fora do Elite ou com reservas desligadas', async ({
     )
     await expect(actionsPanel(page)).not.toContainText('Garanta seu lugar')
     await expect(actionsPanel(page)).not.toContainText('Fale com o bar')
+    // Um "Como chegar" só: o do painel some onde a barra fixa existe.
+    const directions = page.getByRole('link', { name: 'Como chegar' })
+    await expect(directions).toHaveCount(1)
+    await expect(
+      actionButtons(page, isMobile).getByRole('link', { name: 'Como chegar' })
+    ).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Reservar mesa' })
     ).toHaveCount(0)
