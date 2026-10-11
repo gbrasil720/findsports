@@ -78,7 +78,7 @@ function AdminDashboardSkeleton() {
               </div>
             ))}
           </div>
-          <div className="onside-panel-acid space-y-4 p-4" aria-hidden="true">
+          <div className="onside-panel space-y-4 p-4" aria-hidden="true">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
                 <Skeleton className="h-3 w-28 bg-[var(--onside-stone)]" />
@@ -94,18 +94,18 @@ function AdminDashboardSkeleton() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="onside-panel-acid p-4">
+            <div className="onside-panel p-4">
               <Skeleton className="mb-3 h-5 w-36 bg-[var(--onside-stone)]" />
               <Skeleton className="h-40 w-full bg-[var(--onside-stone)]" />
             </div>
-            <div className="onside-panel-acid p-4">
+            <div className="onside-panel p-4">
               <Skeleton className="mb-3 h-5 w-40 bg-[var(--onside-stone)]" />
               <Skeleton className="h-10 w-full bg-[var(--onside-stone)]" />
               <Skeleton className="mt-3 h-10 w-full bg-[var(--onside-stone)]" />
               <Skeleton className="mt-3 h-10 w-full bg-[var(--onside-stone)]" />
             </div>
           </div>
-          <div className="onside-panel-acid p-4" aria-hidden="true">
+          <div className="onside-panel p-4" aria-hidden="true">
             <Skeleton className="mb-3 h-5 w-44 bg-[var(--onside-stone)]" />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[1, 2, 3, 4].map((item) => (

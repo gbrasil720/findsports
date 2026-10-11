@@ -330,7 +330,7 @@ export function OverviewTab({
       )}
 
       {trialNotice && (
-        <div className="onside-callout onside-callout-acid">
+        <div className="onside-callout onside-callout-stone">
           <CircleInfo
             size={20}
             color="currentColor"
@@ -362,7 +362,7 @@ export function OverviewTab({
               ? 'onside-callout-danger'
               : isNearLimit || lapsedPlan
                 ? 'onside-callout-warn'
-                : 'onside-callout-acid'
+                : 'onside-callout-stone'
           }`}
         >
           {isAtLimit || isNearLimit || lapsedPlan ? (

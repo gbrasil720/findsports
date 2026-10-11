@@ -445,19 +445,19 @@ function ComparisonResult({
 function PerformanceSkeleton() {
   return (
     <div
-      className="onside-panel-acid p-4"
+      className="onside-panel p-4"
       role="status"
       aria-busy="true"
       aria-live="polite"
     >
       <span className="sr-only">Carregando desempenho por jogo…</span>
-      <Skeleton className="mb-2 h-6 w-48 bg-[var(--onside-paper)]" />
-      <Skeleton className="mb-4 h-3 w-56 bg-[var(--onside-paper)]" />
+      <Skeleton className="mb-2 h-6 w-48 bg-[var(--onside-stone)]" />
+      <Skeleton className="mb-4 h-3 w-56 bg-[var(--onside-stone)]" />
       <div className="grid grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 border-[var(--onside-line)] border-b pb-1.5 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]">
-        <Skeleton className="h-3 w-20 bg-[var(--onside-paper)]" />
-        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-paper)] sm:block" />
-        <Skeleton className="h-3 w-12 justify-self-end bg-[var(--onside-paper)]" />
-        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-paper)] sm:block" />
+        <Skeleton className="h-3 w-20 bg-[var(--onside-stone)]" />
+        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-stone)] sm:block" />
+        <Skeleton className="h-3 w-12 justify-self-end bg-[var(--onside-stone)]" />
+        <Skeleton className="hidden h-3 w-12 justify-self-end bg-[var(--onside-stone)] sm:block" />
         <span />
       </div>
       <div className="space-y-1">
@@ -466,11 +466,11 @@ function PerformanceSkeleton() {
             key={item}
             className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_4.25rem_1.25rem] items-center gap-x-3 px-2 sm:grid-cols-[minmax(0,1fr)_repeat(3,4.25rem)_1.25rem]"
           >
-            <Skeleton className="h-4 w-3/4 bg-[var(--onside-paper)]" />
-            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-paper)] sm:block" />
-            <Skeleton className="h-4 w-8 justify-self-end bg-[var(--onside-paper)]" />
-            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-paper)] sm:block" />
-            <Skeleton className="size-3 bg-[var(--onside-paper)]" />
+            <Skeleton className="h-4 w-3/4 bg-[var(--onside-stone)]" />
+            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-stone)] sm:block" />
+            <Skeleton className="h-4 w-8 justify-self-end bg-[var(--onside-stone)]" />
+            <Skeleton className="hidden h-4 w-8 justify-self-end bg-[var(--onside-stone)] sm:block" />
+            <Skeleton className="size-3 bg-[var(--onside-stone)]" />
           </div>
         ))}
       </div>
@@ -570,9 +570,12 @@ function PerformanceColumns({
 
 function EventPerformanceRow({
   item,
+  best,
   showReservations
 }: {
   item: EventAnalyticsRow
+  /** O jogo com mais interessados: o número dele leva o marca-texto. */
+  best: boolean
   showReservations: boolean
 }) {
   const rate =
@@ -603,7 +606,15 @@ function EventPerformanceRow({
         </span>
         <span className="text-right font-medium text-[var(--onside-ink)] tabular-nums">
           <span className="sr-only">Interesse: </span>
-          {formatAnalyticsValue(item.interestedPeople)}
+          <span
+            className={
+              best && item.interestedPeople
+                ? 'onside-mark onside-mark-sm'
+                : undefined
+            }
+          >
+            {formatAnalyticsValue(item.interestedPeople)}
+          </span>
         </span>
         <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums sm:block">
           <span className="sr-only">Taxa: </span>
@@ -718,7 +729,7 @@ export function EventPerformance({
   // estado vazio ("os números aparecem quando...") que esconderia o motivo.
   if (eventAnalyticsState.status === 'blocked') {
     return (
-      <div className="onside-panel-acid p-4">
+      <div className="onside-panel p-4">
         <PerformanceHeading />
         <p className="text-sm text-[var(--onside-ink)] opacity-60">
           Seu plano não inclui analytics por jogo. Confira os planos com esse
@@ -730,7 +741,7 @@ export function EventPerformance({
 
   if (eventAnalyticsState.status === 'empty') {
     return (
-      <div className="onside-panel-acid p-4">
+      <div className="onside-panel p-4">
         <PerformanceHeading />
         <p className="text-sm text-[var(--onside-ink)] opacity-60">
           Os números aparecem quando torcedores chegarem ao seu bar pelos jogos
@@ -757,7 +768,7 @@ export function EventPerformance({
   const showReservations = items.some((item) => item.reservedPeople !== null)
 
   return (
-    <div className="onside-panel-acid p-4">
+    <div className="onside-panel p-4">
       <PerformanceHeading />
       <p className="onside-hint mb-3">
         Janela consultada:{' '}
@@ -782,7 +793,7 @@ export function EventPerformance({
       />
 
       {topEvent && topEventIntent !== null && (
-        <div className="onside-panel-ink mb-3 flex items-center gap-2 px-3 py-2 text-sm">
+        <div className="onside-panel-acid mb-3 flex items-center gap-2 px-3 py-2 text-sm">
           <Check size={14} color="currentColor" aria-hidden="true" />
           Melhor jogo: {topEvent.eventName} ({topEventIntent}{' '}
           {topEventIntent === 1 ? 'interessado' : 'interessados'})
@@ -795,6 +806,7 @@ export function EventPerformance({
           <EventPerformanceRow
             key={item.eventId}
             item={item}
+            best={item.eventId === topEvent?.eventId}
             showReservations={showReservations}
           />
         ))}

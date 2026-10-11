@@ -79,9 +79,24 @@ export function ReservationCapPanel() {
                     {formatEventTime(startsAt)}
                   </p>
                   <p className="text-[var(--onside-muted)] text-sm">
-                    {game.effectiveCap === null
-                      ? `${countLabel(game.confirmedSeats, 'lugar confirmado', 'lugares confirmados')}, sem teto`
-                      : `${game.confirmedSeats} de ${countLabel(game.effectiveCap, 'lugar confirmado', 'lugares confirmados')}`}
+                    {/* Lugar confirmado é resultado: leva o marca-texto do
+                        painel. Jogo sem reserva confirmada fica sem. */}
+                    <span
+                      className={
+                        game.confirmedSeats > 0
+                          ? 'onside-mark onside-mark-sm'
+                          : undefined
+                      }
+                    >
+                      {game.effectiveCap === null
+                        ? countLabel(
+                            game.confirmedSeats,
+                            'lugar confirmado',
+                            'lugares confirmados'
+                          )
+                        : `${game.confirmedSeats} de ${countLabel(game.effectiveCap, 'lugar confirmado', 'lugares confirmados')}`}
+                    </span>
+                    {game.effectiveCap === null ? ', sem teto' : ''}
                     {game.soldOut ? ' · pedidos fechados' : ''}
                   </p>
                   <CapForm

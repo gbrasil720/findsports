@@ -82,7 +82,7 @@ export function RecommendationQualityStatus(props: Props) {
   }
 
   return (
-    <div className="onside-callout onside-callout-acid">
+    <div className="onside-callout onside-callout-stone">
       <Check size={20} color="currentColor" aria-hidden="true" />
       <div>
         <p className="font-semibold text-sm">

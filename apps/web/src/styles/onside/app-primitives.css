@@ -864,6 +864,34 @@
   background: var(--onside-acid);
 }
 
+/* ─── Verde no painel do bar (`/admin`) ───
+ *
+ * Verde marca valor entregue ao bar e o número que o dono precisa olhar para
+ * agir, e nunca é fundo de card inteiro:
+ *   1. número de resultado leva marca-texto (`onside-mark`); alta leva selo
+ *      acid com seta (`onside-badge-acid`); o que lidera leva acid (canal mais
+ *      usado, melhor jogo, subida do gráfico);
+ *   2. número de importância, o que pede ação do dono, também é acid: o
+ *      progresso do perfil em "Meu espaço";
+ *   3. ação principal da tela ou do formulário (`onside-btn-acid`);
+ *   4. estado ligado/confirmado, sempre pequeno (check, chip, interruptor).
+ * Moldura, aviso, configuração e contagem neutra ficam em papel e pedra;
+ * selecionado é ink; queda fica neutra, com seta; zero e "—" não levam marca.
+ * Vermelho é só ao vivo e erro.
+ */
+.onside-app .onside-mark {
+  display: inline-block;
+  padding: 4px 8px 2px;
+  background: var(--onside-acid);
+  color: var(--onside-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Marca-texto em número de corpo de texto (linha de tabela). */
+.onside-app .onside-mark-sm {
+  padding: 1px 6px;
+}
+
 /* ─── Callouts ─── */
 .onside-app .onside-callout {
   display: flex;
