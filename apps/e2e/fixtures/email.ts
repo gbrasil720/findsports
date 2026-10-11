@@ -4,9 +4,12 @@ import { OUTBOX_FILE } from '../env'
 
 export type OutboxEmail = {
   to: string
+  replyTo: string
   subject: string
   text: string
   html: string
+  /** Nome, tipo e bytes de cada anexo; o conteúdo não vai para o arquivo. */
+  attachments: { filename: string; contentType: string; size: number }[]
   sentAt: string
   /** Primeiro link do corpo em texto: o botão de ação de todos os templates. */
   link: string

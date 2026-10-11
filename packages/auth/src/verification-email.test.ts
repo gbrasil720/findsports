@@ -113,6 +113,66 @@ describe('e-mail de verificação Onside', () => {
     ).toEqual({ delivered: true })
   })
 
+  it('manda Reply-To próprio e anexos em base64 quando quem chama pede', async () => {
+    let body: Record<string, unknown> | undefined
+    await sendEmailWithResend({
+      apiKey: 're_test',
+      fromEmail: 'contato@onside.app',
+      to: 'contato@onside.sh',
+      replyTo: 'ana@example.com',
+      subject: 'ok',
+      html: '<p>ok</p>',
+      text: 'ok',
+      attachments: [
+        { filename: 'imagem-1.png', contentType: 'image/png', content: 'AAAA' }
+      ],
+      fetcher: async (_input, init) => {
+        body = JSON.parse(String(init?.body))
+        return new Response('{}', { status: 200 })
+      }
+    })
+    expect(body).toMatchObject({
+      to: ['contato@onside.sh'],
+      reply_to: 'ana@example.com',
+      attachments: [
+        { filename: 'imagem-1.png', content_type: 'image/png', content: 'AAAA' }
+      ]
+    })
+  })
+
+  it('com EMAIL_DELIVERY=console, o log lista os anexos sem o conteúdo', async () => {
+    process.env.EMAIL_DELIVERY = 'console'
+    const log = console.log
+    const lines: unknown[] = []
+    console.log = (...args: unknown[]) => {
+      lines.push(args)
+    }
+    const content = Buffer.from('conteúdo-que-não-vai-ao-log').toString(
+      'base64'
+    )
+    try {
+      await sendEmailWithResend({
+        apiKey: 're_real',
+        fromEmail: 'contato@onside.app',
+        to: 'contato@onside.sh',
+        replyTo: 'ana@example.com',
+        subject: 'ok',
+        html: '<p>ok</p>',
+        text: 'ok',
+        attachments: [
+          { filename: 'imagem-1.png', contentType: 'image/png', content }
+        ]
+      })
+      const logged = String(lines[0])
+      expect(logged).toContain('Reply-To: ana@example.com')
+      expect(logged).toContain('Anexos (1): imagem-1.png (image/png, 29 bytes)')
+      expect(logged).not.toContain(content)
+    } finally {
+      console.log = log
+      delete process.env.EMAIL_DELIVERY
+    }
+  })
+
   it('em desenvolvimento, ausência de Resend não quebra o envio', async () => {
     const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'development'

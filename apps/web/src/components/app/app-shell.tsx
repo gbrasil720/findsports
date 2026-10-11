@@ -12,8 +12,9 @@ import {
   DropdownMenuTrigger
 } from '@findsports_oficial/ui/components/dropdown-menu'
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
+import Chat from 'reicon-react/icons/Chat'
 import ChevronDown from 'reicon-react/icons/ChevronDown'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Logout from 'reicon-react/icons/Logout'
@@ -25,6 +26,7 @@ import type { ShellVariant } from '@/domain/viewer'
 import { useReservationNews } from '@/hooks/use-reservation-news'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
+import { FeedbackDialog } from './feedback-dialog'
 import { ProductFrame } from './product-frame'
 
 type Props = {
@@ -40,6 +42,8 @@ export function AppShell({ variant, userMeta, children }: Props) {
   const signOut = useSignOut()
   const session = useSession()
   const hasUser = Boolean(session?.user)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const accountMenuButton = useRef<HTMLButtonElement>(null)
   const accountLabel =
     variant === 'fan' ? 'Torcedor' : variant === 'pub' ? 'Bar' : 'Conta'
 
@@ -105,6 +109,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
           <DropdownMenuTrigger
             render={
               <button
+                ref={accountMenuButton}
                 type="button"
                 aria-label={menuLabel}
                 className="relative ml-auto flex min-h-11 items-center gap-2.5 border border-[var(--onside-ink)] bg-[var(--onside-paper)] py-1.5 pr-3 pl-2"
@@ -275,6 +280,21 @@ export function AppShell({ variant, userMeta, children }: Props) {
                   Ver a landing
                 </DropdownMenuItem>
               ) : null}
+
+              {hasUser ? (
+                <DropdownMenuItem
+                  onClick={() => setFeedbackOpen(true)}
+                  className={accountMenuItemClass}
+                >
+                  <Chat
+                    size={16}
+                    color="currentColor"
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
+                  />
+                  Enviar feedback
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuGroup>
 
             {hasUser ? (
@@ -297,5 +317,15 @@ export function AppShell({ variant, userMeta, children }: Props) {
     </>
   )
 
-  return <ProductFrame header={header}>{children}</ProductFrame>
+  return (
+    <ProductFrame header={header}>
+      {children}
+      {/* O item do menu some quando o menu fecha: o foco volta ao botão da conta. */}
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        returnFocus={accountMenuButton}
+      />
+    </ProductFrame>
+  )
 }

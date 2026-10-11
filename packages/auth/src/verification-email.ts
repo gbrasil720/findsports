@@ -36,7 +36,7 @@ export function publicEmailUrl(
   ).toString()
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
     const escaped: Record<string, string> = {
       '&': '&amp;',
@@ -186,6 +186,13 @@ export async function sendVerificationEmailWithResend(input: {
  */
 const REPLY_TO_EMAIL = 'contato@onside.sh'
 
+/** `content` em base64, como a Resend recebe. */
+export type EmailAttachment = {
+  filename: string
+  contentType: string
+  content: string
+}
+
 export async function sendEmailWithResend(input: {
   apiKey: string | undefined
   fromEmail: string | undefined
@@ -193,8 +200,33 @@ export async function sendEmailWithResend(input: {
   subject: string
   html: string
   text: string
+  /** Padrão: a caixa da Onside. O feedback responde para quem escreveu. */
+  replyTo?: string
+  attachments?: EmailAttachment[]
   fetcher?: EmailFetcher
 }): Promise<{ delivered: boolean }> {
+  const replyTo = input.replyTo ?? REPLY_TO_EMAIL
+  // Outbox e log dizem que anexo saiu (nome, tipo, bytes), sem o conteúdo.
+  const attachments = (input.attachments ?? []).map(
+    ({ filename, contentType, content }) => ({
+      filename,
+      contentType,
+      size: Buffer.byteLength(content, 'base64')
+    })
+  )
+  const summary = [
+    `To: ${input.to}`,
+    `Reply-To: ${replyTo}`,
+    `Subject: ${input.subject}`,
+    ...(attachments.length
+      ? [
+          `Anexos (${attachments.length}): ${attachments.map((a) => `${a.filename} (${a.contentType}, ${a.size} bytes)`).join(', ')}`
+        ]
+      : []),
+    '',
+    input.text
+  ].join('\n')
+
   // E2E (WEB-174): o e-mail vira uma linha JSON num arquivo, lida pelo
   // `lastEmailTo` da suíte. Conta como entregue para o fluxo seguir igual ao
   // de produção. Vem antes da Resend: nem uma chave real no .env sai daqui.
@@ -202,7 +234,7 @@ export async function sendEmailWithResend(input: {
     const { to, subject, text, html } = input
     await appendFile(
       env.E2E_EMAIL_OUTBOX,
-      `${JSON.stringify({ to, subject, text, html, sentAt: new Date().toISOString() })}\n`
+      `${JSON.stringify({ to, replyTo, subject, text, html, attachments, sentAt: new Date().toISOString() })}\n`
     )
     return { delivered: true }
   }
@@ -210,9 +242,7 @@ export async function sendEmailWithResend(input: {
   // Preview (EMAIL_DELIVERY=console, validada em packages/env): o link no
   // log é como se testa lá. Lida do process.env, como o NODE_ENV abaixo.
   if (process.env.EMAIL_DELIVERY === 'console') {
-    console.log(
-      `[email] EMAIL_DELIVERY=console, não enviado.\nTo: ${input.to}\nSubject: ${input.subject}\n\n${input.text}`
-    )
+    console.log(`[email] EMAIL_DELIVERY=console, não enviado.\n${summary}`)
     return { delivered: true }
   }
 
@@ -221,7 +251,7 @@ export async function sendEmailWithResend(input: {
       throw new Error('Resend não configurado para envio de e-mail.')
     }
     console.warn(
-      `[email] Resend não configurado. E-mail não enviado.\nTo: ${input.to}\nSubject: ${input.subject}\n\n${input.text}`
+      `[email] Resend não configurado. E-mail não enviado.\n${summary}`
     )
     return { delivered: false }
   }
@@ -237,10 +267,19 @@ export async function sendEmailWithResend(input: {
       body: JSON.stringify({
         from: `Onside <${input.fromEmail}>`,
         to: [input.to],
-        reply_to: REPLY_TO_EMAIL,
+        reply_to: replyTo,
         subject: input.subject,
         html: input.html,
-        text: input.text
+        text: input.text,
+        ...(input.attachments?.length
+          ? {
+              attachments: input.attachments.map((attachment) => ({
+                filename: attachment.filename,
+                content_type: attachment.contentType,
+                content: attachment.content
+              }))
+            }
+          : {})
       })
     }
   )

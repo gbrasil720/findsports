@@ -96,6 +96,7 @@ apps/e2e/
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
 | `tests/internal` | WEB-181 — painéis internos |
+| `tests/feedback` | "Enviar feedback" no menu da conta, com imagem em anexo |
 
 Fixture nova (eventos, reservas…) entra num arquivo novo em `fixtures/`, em vez
 de crescer um arquivo central.
@@ -200,7 +201,7 @@ com o de `/privacidade` (WEB-240).
 
 | Serviço | Como | Helper |
 |---|---|---|
-| E-mail (Resend) | `E2E_EMAIL_OUTBOX`: `sendEmailWithResend` grava uma linha JSON por e-mail em `apps/e2e/.outbox/emails.jsonl` e responde como entregue. Vem antes da Resend, então nem uma chave real sai | `lastEmailTo(email, { subject })` em `fixtures/email.ts`, com `.link` (o link de ação) |
+| E-mail (Resend) | `E2E_EMAIL_OUTBOX`: `sendEmailWithResend` grava uma linha JSON por e-mail em `apps/e2e/.outbox/emails.jsonl` (com `replyTo` e, dos anexos, só nome, tipo e tamanho) e responde como entregue. Vem antes da Resend, então nem uma chave real sai | `lastEmailTo(email, { subject })` em `fixtures/email.ts`, com `.link` (o link de ação) |
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
 | R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
 | Stripe (webhook) | `STRIPE_WEBHOOK_SECRET` de teste no servidor; o helper assina como o Stripe (`stripe-signature: t=…,v1=HMAC-SHA256`). O app não confia no corpo do evento: busca no Stripe (o stub) o estado atual da assinatura, então ela precisa estar semeada | `deliverSubscription(request, tipo, stripeSubscription({ id, status, plan, userId }))` em `fixtures/stripe.ts` semeia e entrega; `sendStripeWebhook(request, evento)` só entrega. Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
