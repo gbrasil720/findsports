@@ -281,6 +281,8 @@ mesmo ponto geográfico vira N consultas iguais ao Neon.
    própria. TTL 60 s — a busca depende de `starts_at >= NOW()`.
 4. Migrar também `getSports`, `getTeamsBySport` e `getEliteEvents` para o
    mesmo store, para o catálogo sobreviver a cold start.
+   (`getEliteEvents` foi removido em 10/10/2026, junto com a faixa de jogos
+   da landing; o cenário "eventos Elite em destaque" do k6 saiu com ele.)
 5. Mover o rate limit do Better Auth de tabela Postgres para
    `secondary-storage` no Redis: tira uma escrita por tentativa de
    autenticação.

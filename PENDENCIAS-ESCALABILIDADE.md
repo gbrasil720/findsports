@@ -43,6 +43,9 @@ Cache em memória por instância (`packages/api/src/lib/ttl-cache.ts`), usado em
 `getSports`, `getTeamsBySport` (5 min) e `getEliteEvents` (60 s). Medido: 10
 chamadas viram 1 consulta ao banco.
 
+> `getEliteEvents` foi removido em 10/10/2026, junto com a faixa de jogos da
+> landing. O que este documento diz dele fica como histórico.
+
 ### O que falta e por quê
 
 O cache é **por instância**. Cada função serverless nova começa vazia. E o
