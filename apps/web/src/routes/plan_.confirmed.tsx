@@ -300,19 +300,13 @@ function SubscriptionConfirmed() {
         }
         actions={
           stage === 'processing' ? (
-            <Link
-              to="/admin"
-              className="onside-btn onside-btn-outline min-h-11"
-            >
+            <Link to="/admin" className="onside-btn onside-btn-outline">
               Ir para o painel
               <ArrowRight size={16} color="currentColor" aria-hidden="true" />
             </Link>
           ) : stage === 'delayed' ? (
             <>
-              <Link
-                to="/admin/billing"
-                className="onside-btn onside-btn-ink min-h-11"
-              >
+              <Link to="/admin/billing" className="onside-btn onside-btn-ink">
                 Assinatura e pagamentos
                 <ArrowRight size={16} color="currentColor" aria-hidden="true" />
               </Link>
@@ -320,7 +314,7 @@ function SubscriptionConfirmed() {
                 type="button"
                 onClick={handleOpenPortal}
                 disabled={openingPortal}
-                className="onside-btn onside-btn-outline min-h-11"
+                className="onside-btn onside-btn-outline"
               >
                 {openingPortal ? 'Abrindo…' : 'Portal da operadora'}
                 <ExternalLink
@@ -329,27 +323,24 @@ function SubscriptionConfirmed() {
                   aria-hidden="true"
                 />
               </button>
-              <Link
-                to="/admin"
-                className="onside-btn onside-btn-ghost min-h-11"
-              >
+              <Link to="/admin" className="onside-btn onside-btn-ghost">
                 Ir para o painel
               </Link>
             </>
           ) : (
             <>
-              <Link to="/admin" className="onside-btn onside-btn-acid min-h-11">
+              <Link to="/admin" className="onside-btn onside-btn-acid">
                 Ir para o painel
                 <ArrowRight size={16} color="currentColor" aria-hidden="true" />
               </Link>
               <Link
                 to="/admin/billing"
-                className="onside-btn onside-btn-outline min-h-11"
+                className="onside-btn onside-btn-outline"
               >
                 Assinatura e pagamentos
               </Link>
               {scheduledCancelAt ? (
-                <ReactivateSubscriptionButton className="onside-btn onside-btn-outline min-h-11" />
+                <ReactivateSubscriptionButton className="onside-btn onside-btn-outline" />
               ) : null}
             </>
           )

@@ -214,6 +214,16 @@
   text-wrap: pretty;
 }
 
+/*
+ * As duas regras acima religam a quebra de linha e, por ficarem fora de
+ * `@layer`, vencem `truncate` e `whitespace-nowrap`: o texto que devia cortar
+ * com reticências quebrava em várias linhas.
+ */
+.onside-app .truncate,
+.onside-app .whitespace-nowrap {
+  text-wrap: nowrap;
+}
+
 .onside-app .tabular-nums {
   font-variant-numeric: tabular-nums;
 }

@@ -85,7 +85,7 @@ export function ProfileFavoriteTeams({
           <button
             type="button"
             onClick={() => void teamsQuery.refetch()}
-            className="onside-btn onside-btn-outline mt-3 min-h-11"
+            className="onside-btn onside-btn-outline mt-3"
           >
             Tentar novamente
           </button>

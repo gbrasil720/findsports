@@ -39,7 +39,7 @@ export function DashboardHero({
         Bares perto de você
       </div>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-        <h1 className="onside-display max-w-[14ch] text-[42px] leading-[0.92] md:text-[56px] lg:text-[64px]">
+        <h1 className="onside-display max-w-[14ch] text-[42px] md:text-[56px] lg:text-[64px]">
           Onde você assiste hoje?
         </h1>
         <p className="max-w-[22rem] text-[var(--onside-muted)] text-sm leading-snug lg:pb-1.5 lg:text-right">

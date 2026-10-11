@@ -70,7 +70,7 @@ export function AttendanceControl({
         onClick={toggle}
         aria-disabled={mutation.isPending}
         aria-busy={mutation.isPending}
-        className={`onside-btn ${attending ? 'onside-btn-ghost min-h-11' : compact ? 'onside-btn-outline min-h-11' : 'onside-btn-ink min-h-12'} justify-center text-sm aria-disabled:opacity-50`}
+        className={`onside-btn ${attending ? 'onside-btn-ghost' : compact ? 'onside-btn-outline' : 'onside-btn-ink'} aria-disabled:opacity-50`}
       >
         {attending ? 'Desfazer' : 'Vou assistir aqui'}
       </button>

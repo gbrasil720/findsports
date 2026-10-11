@@ -150,7 +150,7 @@ export function DateTimeInput({
   return (
     <div>
       <label className="block">
-        <span className="onside-label mb-1.5 block">{label}</span>
+        <span className="onside-label">{label}</span>
         <input
           type="text"
           inputMode="numeric"

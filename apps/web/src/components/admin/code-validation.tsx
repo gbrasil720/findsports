@@ -68,7 +68,7 @@ export function CodeValidation({ access, ...panel }: Props) {
       aria-labelledby={TITLE_ID}
       aria-busy={access.status === 'loading' || undefined}
     >
-      <p className="onside-kicker mb-2">
+      <p className="onside-kicker">
         {openOnly ? 'Reservas em aberto' : 'Plano Elite'}
       </p>
       <h2 id={TITLE_ID} className="onside-display text-2xl">
@@ -105,7 +105,7 @@ export function CodeValidation({ access, ...panel }: Props) {
             <button
               type="button"
               onClick={access.retry}
-              className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+              className="onside-btn onside-btn-ink shrink-0"
             >
               Tentar de novo
             </button>
@@ -141,7 +141,7 @@ function LockedValidation() {
       <Link
         to="/plan"
         search={{ origin: 'admin' }}
-        className="onside-btn onside-btn-ink min-h-11 shrink-0 px-4 text-xs"
+        className="onside-btn onside-btn-ink shrink-0"
       >
         Ver planos
         <ArrowRight size={13} color="currentColor" aria-hidden="true" />
@@ -373,7 +373,7 @@ function ValidationPanel({
           <button
             type="submit"
             disabled={pending === 'lookup'}
-            className="onside-btn onside-btn-ink min-h-12 px-5 text-xs disabled:opacity-50"
+            className="onside-btn onside-btn-ink"
           >
             {pending === 'lookup' ? 'Buscando…' : 'Buscar reserva'}
           </button>
@@ -416,7 +416,7 @@ function ValidationPanel({
                 setConfirming(true)
               }}
               disabled={pending !== null}
-              className="onside-btn onside-btn-acid min-h-12 px-5 text-sm disabled:opacity-50"
+              className="onside-btn onside-btn-acid"
             >
               {pending === 'arrival'
                 ? 'Registrando…'
@@ -430,7 +430,7 @@ function ValidationPanel({
               onClick={() => void handleUndo(lastArrival)}
               disabled={pending !== null}
               aria-label="Desfazer a última chegada"
-              className="onside-btn onside-btn-outline min-h-12 px-4 text-xs disabled:opacity-50"
+              className="onside-btn onside-btn-outline"
             >
               {pending === 'undo' ? 'Desfazendo…' : 'Desfazer'}
               <span className="tabular-nums opacity-70" aria-hidden="true">
@@ -442,7 +442,7 @@ function ValidationPanel({
             ref={resetRef}
             type="button"
             onClick={handleReset}
-            className="onside-btn onside-btn-ghost min-h-12 px-4 text-xs"
+            className="onside-btn onside-btn-ghost"
           >
             Validar outro código
           </button>

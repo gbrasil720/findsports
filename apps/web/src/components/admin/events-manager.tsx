@@ -294,7 +294,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
             onClick={openCreate}
             disabled={createBlocked}
             title={blockReason ?? undefined}
-            className="onside-btn onside-btn-acid min-h-11"
+            className="onside-btn onside-btn-acid"
           >
             <Plus size={16} color="currentColor" aria-hidden="true" />
             Novo evento
@@ -355,10 +355,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           <div className="space-y-2" aria-busy="true" aria-live="polite">
             <span className="sr-only">Carregando sua grade…</span>
             {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="onside-event-row min-h-[76px] border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3"
-              >
+              <div key={item} className="onside-event-row min-h-[76px]">
                 <div className="space-y-2 text-center">
                   <Skeleton className="mx-auto h-3 w-12 bg-[var(--onside-stone)]" />
                   <Skeleton className="mx-auto h-6 w-14 bg-[var(--onside-stone)]" />

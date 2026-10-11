@@ -209,7 +209,7 @@ function CapForm({
       <button
         type="submit"
         disabled={saving}
-        className="onside-btn onside-btn-outline min-h-11 text-sm disabled:opacity-50"
+        className="onside-btn onside-btn-outline"
       >
         {saving ? 'Salvando…' : 'Salvar'}
       </button>

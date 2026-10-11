@@ -69,7 +69,7 @@ function EmptyAgenda({
           target="_blank"
           rel="noopener noreferrer"
           onClick={onWhatsApp}
-          className="onside-btn onside-btn-ink mt-4 min-h-12 justify-center px-5 text-sm"
+          className="onside-btn onside-btn-ink mt-4"
         >
           <Chat size={16} color="currentColor" aria-hidden="true" />
           <span className="ml-2">Perguntar no WhatsApp</span>
@@ -119,7 +119,7 @@ export function EventsList<T extends ProfileEvent>({
         <div className="space-y-5">
           {groups.map((group) => (
             <div key={group.key}>
-              <p className="onside-kicker mb-2">{group.label}</p>
+              <p className="onside-kicker">{group.label}</p>
               <ul className="space-y-2">
                 {group.events.map((event) => {
                   const live =

@@ -48,9 +48,7 @@ export function AnalyticsPeriodSelector({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="onside-label mb-1 text-[var(--onside-ink)] opacity-70">
-            Janela consultada
-          </p>
+          <p className="onside-label opacity-70">Janela consultada</p>
           <p className="font-semibold text-[var(--onside-ink)] text-sm">
             {formatAnalyticsPeriod(range.from, range.to)}
           </p>
@@ -94,7 +92,7 @@ export function AnalyticsPeriodSelector({
             <button
               type="button"
               onClick={onRetryEntitlements}
-              className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+              className="onside-btn onside-btn-ink shrink-0"
             >
               Tentar de novo
             </button>
@@ -103,9 +101,7 @@ export function AnalyticsPeriodSelector({
       ) : (
         <>
           <fieldset className="mt-4 border-0 p-0">
-            <legend className="onside-label mb-2 text-[var(--onside-ink)] opacity-70">
-              Atalho
-            </legend>
+            <legend className="onside-label opacity-70">Atalho</legend>
             <div className="flex flex-wrap gap-2">
               {availablePeriods.map((option) => (
                 <button
@@ -113,7 +109,7 @@ export function AnalyticsPeriodSelector({
                   type="button"
                   aria-pressed={preset === option.id}
                   onClick={() => onPresetChange(option.id)}
-                  className={`onside-btn min-h-11 px-4 text-xs ${preset === option.id ? 'onside-btn-ink' : 'onside-btn-outline'}`}
+                  className={`onside-btn ${preset === option.id ? 'onside-btn-ink' : 'onside-btn-outline'}`}
                 >
                   {option.label}
                 </button>
@@ -122,7 +118,7 @@ export function AnalyticsPeriodSelector({
                 type="button"
                 aria-pressed={preset === 'custom'}
                 onClick={() => onPresetChange('custom')}
-                className={`onside-btn min-h-11 px-4 text-xs ${preset === 'custom' ? 'onside-btn-ink' : 'onside-btn-outline'}`}
+                className={`onside-btn ${preset === 'custom' ? 'onside-btn-ink' : 'onside-btn-outline'}`}
               >
                 Personalizado
               </button>
@@ -139,7 +135,7 @@ export function AnalyticsPeriodSelector({
               }}
             >
               <label className="block">
-                <span className="onside-label mb-1.5 block">De</span>
+                <span className="onside-label">De</span>
                 <input
                   type="date"
                   value={customRange.from}
@@ -151,7 +147,7 @@ export function AnalyticsPeriodSelector({
                 />
               </label>
               <label className="block">
-                <span className="onside-label mb-1.5 block">Até</span>
+                <span className="onside-label">Até</span>
                 <input
                   type="date"
                   value={customRange.to}
@@ -162,10 +158,7 @@ export function AnalyticsPeriodSelector({
                   aria-label="Data final"
                 />
               </label>
-              <button
-                type="submit"
-                className="onside-btn onside-btn-ink min-h-11"
-              >
+              <button type="submit" className="onside-btn onside-btn-ink">
                 Consultar período
               </button>
               {customError && (

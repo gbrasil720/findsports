@@ -44,10 +44,7 @@ function ValidatePage() {
   return (
     <AppShell variant="pub" userMeta="Validar código">
       <div className="mb-8">
-        <Link
-          to="/admin"
-          className="onside-btn onside-btn-ghost -ml-3 mb-3 min-h-11 px-3 text-xs"
-        >
+        <Link to="/admin" className="onside-btn onside-btn-ghost -ml-3 mb-3">
           <ArrowLeft size={13} color="currentColor" aria-hidden="true" />
           Painel do bar
         </Link>

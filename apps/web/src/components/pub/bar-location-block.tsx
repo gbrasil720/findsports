@@ -82,7 +82,7 @@ export function BarLocationBlock({
               target="_blank"
               rel="noopener noreferrer"
               onClick={onDirections}
-              className="onside-btn onside-btn-ink min-h-12 w-full justify-center text-sm sm:w-auto sm:self-start sm:px-6"
+              className="onside-btn onside-btn-ink w-full sm:w-auto sm:self-start"
             >
               <Route size={16} color="currentColor" aria-hidden="true" />
               <span className="ml-2">Traçar rota</span>

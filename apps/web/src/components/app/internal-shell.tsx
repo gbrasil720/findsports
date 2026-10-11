@@ -25,8 +25,8 @@ export function InternalShell({
 
   return (
     <ProductFrame
-      rootClassName="onside-app min-h-dvh"
-      headerInnerClassName="onside-app-shell onside-app-header-inner flex-wrap gap-3 py-2 md:flex-nowrap md:py-0"
+      rootClassName="onside-app"
+      headerInnerClassName="onside-app-shell onside-app-header-inner flex-wrap py-2 md:flex-nowrap md:py-0"
       header={
         <>
           <Link
@@ -47,18 +47,12 @@ export function InternalShell({
             aria-label="Navegação interna"
           >
             {backTo === '/internal' ? (
-              <Link
-                to="/internal"
-                className="onside-btn onside-btn-outline min-h-11 px-3 text-xs"
-              >
+              <Link to="/internal" className="onside-btn onside-btn-outline">
                 <ArrowLeft size={14} color="currentColor" aria-hidden="true" />
                 {backLabel}
               </Link>
             ) : (
-              <Link
-                to="/"
-                className="onside-btn onside-btn-outline min-h-11 px-3 text-xs"
-              >
+              <Link to="/" className="onside-btn onside-btn-outline">
                 <ArrowLeft size={14} color="currentColor" aria-hidden="true" />
                 {backLabel}
               </Link>
@@ -66,7 +60,7 @@ export function InternalShell({
             <button
               type="button"
               onClick={() => void signOut()}
-              className="onside-btn onside-btn-ghost min-h-11 px-3 text-xs"
+              className="onside-btn onside-btn-ghost"
             >
               <Logout size={14} color="currentColor" aria-hidden="true" />
               Sair
@@ -76,7 +70,7 @@ export function InternalShell({
       }
     >
       <div className="mb-6 md:hidden">
-        <p className="onside-kicker mb-1">{kicker}</p>
+        <p className="onside-kicker">{kicker}</p>
         <h1 className="onside-display text-3xl">{title}</h1>
       </div>
       {children}

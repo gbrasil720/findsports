@@ -100,7 +100,7 @@ function TwoFactorPage() {
   }
 
   return (
-    <div className="onside-app flex min-h-dvh">
+    <div className="onside-app flex">
       <AuthBrandPanel variant="login">
         <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
           <span className="onside-live-dot" aria-hidden="true" />
@@ -121,7 +121,7 @@ function TwoFactorPage() {
           </Link>
         </div>
         <div className="w-full max-w-[420px]">
-          <p className="onside-kicker mb-3">Confirmar acesso</p>
+          <p className="onside-kicker">Confirmar acesso</p>
           <h1 className="onside-display text-[42px] sm:text-5xl">
             FALTA UM{' '}
             <span className="text-[var(--onside-live-text)]">CÓDIGO.</span>

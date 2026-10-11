@@ -436,14 +436,11 @@ function PubPage() {
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
                   to="/dashboard/reservations"
-                  className="onside-btn onside-btn-acid min-h-11"
+                  className="onside-btn onside-btn-acid"
                 >
                   Ver minhas reservas
                 </Link>
-                <Link
-                  to="/dashboard"
-                  className="onside-btn onside-btn-outline min-h-11"
-                >
+                <Link to="/dashboard" className="onside-btn onside-btn-outline">
                   Procurar bares
                 </Link>
               </div>
@@ -566,14 +563,14 @@ function PubPage() {
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
-                  className="onside-btn onside-btn-acid min-h-11"
+                  className="onside-btn onside-btn-acid"
                   onClick={() => void refetchPub()}
                 >
                   Tentar novamente
                 </button>
                 <Link
                   to={viewerRole === 'pub' ? '/admin' : '/dashboard'}
-                  className="onside-btn onside-btn-outline min-h-11"
+                  className="onside-btn onside-btn-outline"
                 >
                   Voltar
                 </Link>

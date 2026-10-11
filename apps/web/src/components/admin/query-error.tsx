@@ -29,7 +29,7 @@ export function QueryError({
         <button
           type="button"
           onClick={onRetry}
-          className="onside-btn onside-btn-ink shrink-0 min-h-11 px-4 text-xs"
+          className="onside-btn onside-btn-ink shrink-0"
         >
           Tentar de novo
         </button>

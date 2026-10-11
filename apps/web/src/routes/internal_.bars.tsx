@@ -64,10 +64,7 @@ function formatDateTime(date: Date | string) {
   })
 }
 
-const HEAD_CLASS =
-  'font-bold text-muted-foreground text-xs uppercase tracking-wider'
-const BADGE_CLASS =
-  'rounded-none font-bold text-[10px] uppercase tracking-wider'
+const BADGE_CLASS = 'rounded-none'
 const COLUMNS = [
   'Bar',
   'Perfil',
@@ -135,22 +132,16 @@ function BarsPage() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-[var(--onside-line)] border-b hover:bg-transparent">
+                <TableRow className="border-b">
                   {COLUMNS.map((column) => (
-                    <TableHead key={column} className={HEAD_CLASS}>
-                      {column}
-                    </TableHead>
+                    <TableHead key={column}>{column}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   ['loading-1', 'loading-2', 'loading-3'].map((key) => (
-                    <TableRow
-                      key={key}
-                      className="border-[var(--onside-line)] border-b"
-                      aria-hidden="true"
-                    >
+                    <TableRow key={key} className="border-b" aria-hidden="true">
                       {COLUMNS.map((column) => (
                         <TableCell key={column}>
                           <Skeleton className="h-4 w-24" />
@@ -198,10 +189,7 @@ function BarsPage() {
                   </TableRow>
                 ) : (
                   bars.map((b) => (
-                    <TableRow
-                      key={b.id}
-                      className="border-[var(--onside-line)] border-b align-top"
-                    >
+                    <TableRow key={b.id} className="border-b align-top">
                       <TableCell>
                         <div className="font-medium">{b.name}</div>
                         <div className="text-muted-foreground text-sm">
@@ -311,7 +299,7 @@ function BarsPage() {
             type="button"
             onClick={() => setPage(page - 1)}
             disabled={page <= 1 || isFetching}
-            className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+            className="onside-btn onside-btn-outline"
           >
             Página anterior
           </button>
@@ -322,7 +310,7 @@ function BarsPage() {
             type="button"
             onClick={() => setPage(page + 1)}
             disabled={page >= lastPage || isFetching}
-            className="onside-btn onside-btn-outline min-h-11 px-3 text-xs disabled:opacity-40"
+            className="onside-btn onside-btn-outline"
           >
             Próxima página
           </button>

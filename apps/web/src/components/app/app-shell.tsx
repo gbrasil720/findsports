@@ -36,7 +36,7 @@ type Props = {
 }
 
 const accountMenuItemClass =
-  'w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-[var(--onside-ink)] text-sm'
+  'w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-sm'
 
 export function AppShell({ variant, userMeta, children }: Props) {
   const signOut = useSignOut()
@@ -91,16 +91,10 @@ export function AppShell({ variant, userMeta, children }: Props) {
 
       {variant === 'public' && !hasUser ? (
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            to="/login"
-            className="onside-btn onside-btn-ghost min-h-11 px-3 text-xs"
-          >
+          <Link to="/login" className="onside-btn onside-btn-ghost">
             Entrar
           </Link>
-          <Link
-            to="/signup"
-            className="onside-btn onside-btn-acid min-h-11 px-3 text-xs"
-          >
+          <Link to="/signup" className="onside-btn onside-btn-acid">
             Criar conta
           </Link>
         </div>
@@ -294,7 +288,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 <DropdownMenuGroup className="py-1">
                   <DropdownMenuItem
                     onClick={() => void signOut()}
-                    className="onside-menu-destructive w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-[var(--onside-live-text)] text-sm"
+                    className="onside-menu-destructive w-full gap-2.5 rounded-none px-4 py-2.5 font-medium text-sm"
                   >
                     <Logout size={16} color="currentColor" aria-hidden="true" />
                     Sair

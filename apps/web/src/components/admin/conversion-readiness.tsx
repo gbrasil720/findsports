@@ -134,7 +134,7 @@ function CheckRow({
         <button
           type="button"
           onClick={onAction}
-          className="onside-btn onside-btn-outline min-h-11 w-full shrink-0 justify-center text-xs sm:w-auto"
+          className="onside-btn onside-btn-outline w-full shrink-0 sm:w-auto"
         >
           {actionLabel}
           <ArrowRight size={13} color="currentColor" aria-hidden="true" />
@@ -184,7 +184,7 @@ function WhatsAppStatus({
       </div>
 
       <div className="flex-1">
-        <p className="onside-kicker mb-1">Canal de conversão</p>
+        <p className="onside-kicker">Canal de conversão</p>
         <h3 id="whatsapp-status-title" className="onside-heading text-xl">
           WhatsApp do bar
         </h3>
@@ -219,7 +219,7 @@ function WhatsAppStatus({
           type="button"
           onClick={hasPhone ? onConfirm : onEditProfile}
           disabled={isConfirming}
-          className="onside-btn onside-btn-ink mt-4 min-h-11 w-full justify-center text-xs disabled:opacity-60"
+          className="onside-btn onside-btn-ink mt-4 w-full"
         >
           {isConfirming
             ? 'Ativando…'
@@ -270,7 +270,7 @@ export function ConversionReadiness({
   return (
     <section aria-labelledby="profile-readiness-title" className="space-y-4">
       <div>
-        <p className="onside-kicker mb-1">Qualidade do perfil</p>
+        <p className="onside-kicker">Qualidade do perfil</p>
         <h2 id="profile-readiness-title" className="onside-display text-2xl">
           Pronto para receber clientes?
         </h2>
@@ -281,7 +281,7 @@ export function ConversionReadiness({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
-        <article className="onside-panel-ink flex flex-col justify-between p-5 text-[var(--onside-paper)] sm:p-6">
+        <article className="onside-panel-ink flex flex-col justify-between p-5 sm:p-6">
           <div>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -351,7 +351,7 @@ export function ConversionReadiness({
       <article className="onside-panel p-4 sm:p-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-[var(--onside-line)] border-b pb-4">
           <div>
-            <p className="onside-kicker mb-1">Checklist do bar</p>
+            <p className="onside-kicker">Checklist do bar</p>
             <h3 className="onside-heading text-xl">O que está pronto</h3>
           </div>
           <span

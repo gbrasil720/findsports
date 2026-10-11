@@ -27,11 +27,9 @@ export function RadiusSelector({ value, options, onChange }: Props) {
               type="button"
               aria-pressed={on}
               onClick={() => onChange(km)}
-              className={`onside-choice onside-choice-ink relative min-h-11 ${on ? 'is-selected' : ''}`}
+              className={`onside-choice onside-choice-ink relative ${on ? 'is-selected' : ''}`}
             >
-              <div className="onside-display text-3xl leading-none tabular-nums">
-                {km}
-              </div>
+              <div className="onside-display text-3xl tabular-nums">{km}</div>
               <div className="font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] opacity-80">
                 km · {RADIUS_LABELS[km] ?? ''}
               </div>

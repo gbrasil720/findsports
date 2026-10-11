@@ -61,7 +61,7 @@ function ResetPasswordPage() {
   const { token, error } = Route.useSearch()
 
   return (
-    <div className="onside-app flex min-h-dvh">
+    <div className="onside-app flex">
       <AuthBrandPanel variant="login">
         <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
           <span className="onside-live-dot" aria-hidden="true" />
@@ -110,7 +110,7 @@ function ResetPasswordPage() {
 function LinkInvalido() {
   return (
     <div>
-      <p className="onside-kicker mb-3">Link inválido</p>
+      <p className="onside-kicker">Link inválido</p>
       <h1 className="onside-display mb-3 text-[38px] sm:text-[44px]">
         ESSE LINK NÃO{' '}
         <span className="text-[var(--onside-live-text)]">VALE MAIS.</span>
@@ -124,13 +124,10 @@ function LinkInvalido() {
         até você definir a nova.
       </p>
       <div className="mt-7 flex flex-wrap gap-3">
-        <Link
-          to="/forgot-password"
-          className="onside-btn onside-btn-acid min-h-11"
-        >
+        <Link to="/forgot-password" className="onside-btn onside-btn-acid">
           Pedir novo link
         </Link>
-        <Link to="/login" className="onside-btn onside-btn-outline min-h-11">
+        <Link to="/login" className="onside-btn onside-btn-outline">
           Voltar ao login
         </Link>
       </div>
@@ -196,7 +193,7 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
         <div className="mb-6 grid size-16 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
           <Key size={30} color="currentColor" aria-hidden="true" />
         </div>
-        <p className="onside-kicker mb-3">Nova senha</p>
+        <p className="onside-kicker">Nova senha</p>
         <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
           DEFINA SUA{' '}
           <span className="text-[var(--onside-live-text)]">NOVA SENHA.</span>

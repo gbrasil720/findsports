@@ -261,7 +261,7 @@ export function BarCard({
               </span>
             ) : null}
             {extraEvents > 0 ? (
-              <span className="onside-badge shrink-0 border-[var(--onside-ink)] bg-[var(--onside-stone)] text-[var(--onside-ink)]">
+              <span className="onside-badge shrink-0 bg-[var(--onside-stone)] text-[var(--onside-ink)]">
                 +{extraEvents} {extraEvents === 1 ? 'jogo' : 'jogos'}
               </span>
             ) : null}
@@ -269,7 +269,7 @@ export function BarCard({
                 aplicou o piso, a tela não decide isso. */}
             {bar.rating ? (
               <span
-                className="onside-badge shrink-0 border-[var(--onside-ink)] bg-[var(--onside-acid)] text-[var(--onside-ink)] tabular-nums"
+                className="onside-badge shrink-0 bg-[var(--onside-acid)] text-[var(--onside-ink)] tabular-nums"
                 title={`${bar.rating.positive} de ${bar.rating.total} torcedores voltariam`}
               >
                 {bar.rating.percentage}% voltariam

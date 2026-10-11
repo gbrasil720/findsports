@@ -25,7 +25,7 @@ export function OnboardingLayout({ children, variant = 'fan' }: Props) {
     <PortalProvider container={portalContainer}>
       <div
         ref={portalContainer}
-        className="onside-app relative min-h-dvh overflow-x-clip px-4 py-8 md:px-6 md:py-12"
+        className="onside-app relative overflow-x-clip px-4 py-8 md:px-6 md:py-12"
       >
         <a className="onside-skip-link" href="#onboarding-main">
           Ir para o conteúdo

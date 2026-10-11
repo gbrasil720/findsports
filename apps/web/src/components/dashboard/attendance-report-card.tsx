@@ -101,7 +101,7 @@ export function AttendanceReportCard() {
           className="onside-panel mb-6 p-4 md:p-5"
           aria-labelledby="attendance-report-title"
         >
-          <p className="onside-kicker mb-1">Depois do jogo</p>
+          <p className="onside-kicker">Depois do jogo</p>
           <h2
             id="attendance-report-title"
             ref={titleRef}
@@ -128,7 +128,7 @@ export function AttendanceReportCard() {
                 type="button"
                 onClick={() => answer(value)}
                 disabled={mutation.isPending}
-                className={`onside-btn ${primary ? 'onside-btn-acid' : 'onside-btn-outline'} min-h-11 px-4 text-xs disabled:opacity-60`}
+                className={`onside-btn ${primary ? 'onside-btn-acid' : 'onside-btn-outline'}`}
               >
                 {label}
               </button>

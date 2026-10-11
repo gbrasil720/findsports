@@ -273,7 +273,7 @@ export function SearchFilterBar({
         {canSortByRating ? (
           <fieldset className="shrink-0">
             <div className="flex flex-wrap items-center gap-2">
-              <legend className="onside-kicker m-0 shrink-0 pr-1">Ordem</legend>
+              <legend className="onside-kicker shrink-0 pr-1">Ordem</legend>
               <div className="flex flex-wrap gap-2">
                 {(['relevance', 'rating'] as const).map((option) => (
                   <button
@@ -293,7 +293,7 @@ export function SearchFilterBar({
 
         <fieldset className="shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <legend className="onside-kicker m-0 shrink-0 pr-1">Raio</legend>
+            <legend className="onside-kicker shrink-0 pr-1">Raio</legend>
             <div className="flex flex-wrap gap-2">
               {SEARCH_RADII.map((km) => {
                 const selected = radiusKm === km
@@ -321,9 +321,7 @@ export function SearchFilterBar({
       {teams.length > 0 ? (
         <fieldset className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <legend className="onside-kicker m-0 shrink-0 pr-1">
-              Seus times
-            </legend>
+            <legend className="onside-kicker shrink-0 pr-1">Seus times</legend>
             {teams.map((team) => (
               <button
                 key={team.id}
@@ -389,7 +387,7 @@ export function SearchFilterBar({
           <div className="space-y-3">
             {AMENITY_GROUPS.map((group) => (
               <fieldset key={group.key} className="min-w-0">
-                <legend className="onside-kicker mb-1.5">{group.label}</legend>
+                <legend className="onside-kicker">{group.label}</legend>
                 <div className="flex flex-wrap gap-2">
                   {AMENITIES.filter(
                     (amenity) => amenity.group === group.key

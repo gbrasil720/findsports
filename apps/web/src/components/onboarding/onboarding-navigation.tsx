@@ -59,7 +59,7 @@ export function OnboardingNavigation({
           type="button"
           onClick={onBack}
           disabled={step === 0 || isPending}
-          className="onside-btn onside-btn-outline min-h-12 px-4"
+          className="onside-btn onside-btn-outline"
         >
           <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
           Voltar
@@ -70,7 +70,7 @@ export function OnboardingNavigation({
           onClick={onNext}
           disabled={!canAdvance || isPending}
           aria-describedby={blockedHint ? hintId : undefined}
-          className="onside-btn onside-btn-acid min-h-12 px-5"
+          className="onside-btn onside-btn-acid"
         >
           {isPending ? (
             <Loader

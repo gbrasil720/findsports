@@ -168,6 +168,17 @@
   width: 100%;
 }
 
+/*
+ * Botão de apoio, para dentro de um aviso: no celular o botão padrão tomava a
+ * linha e espremia o texto do aviso numa coluna de 96px. Os 44px são o piso
+ * de toque; menos que isso não.
+ */
+.onside-app .onside-btn-sm {
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+
 /* ─── Panels / cards ─── */
 .onside-app .onside-panel {
   background: var(--onside-paper);
@@ -452,8 +463,13 @@
   border-color: var(--onside-line);
 }
 
-.onside-app [data-slot="table-row"]:hover {
+/* O realce é da linha de dados. A de cabeçalho não é alvo e não muda. */
+.onside-app [data-slot="table-body"] [data-slot="table-row"]:hover {
   background: rgb(18 18 15 / 5%);
+}
+
+.onside-app [data-slot="table-header"] [data-slot="table-row"]:hover {
+  background: transparent;
 }
 
 /* ─── Checkbox e radio do shadcn ───
@@ -500,6 +516,11 @@
 .onside-app [data-slot="checkbox"][data-disabled],
 .onside-app [data-slot="radio-group-item"][data-disabled] {
   opacity: 0.45;
+}
+
+/* ✓ em acid sobre a caixa ink (aceite dos termos): 14,4:1. */
+.onside-app .onside-checkbox-acid {
+  color: var(--onside-acid);
 }
 
 /*
@@ -822,11 +843,15 @@
   color: var(--onside-muted);
 }
 
-/* Mesma receita do `onside-callout-danger`, com o vermelho de texto. */
+/*
+ * Mesma receita do `onside-callout-danger`, texto em ink inclusive: o
+ * vermelho de texto sobre esta superfície dá 4,00:1. Quem diz "pendente" é a
+ * borda e o fundo.
+ */
 .onside-app .onside-badge-danger {
   background: color-mix(in srgb, var(--onside-live) 12%, var(--onside-paper));
   border-color: var(--onside-live);
-  color: var(--onside-live-text);
+  color: var(--onside-ink);
 }
 
 /*

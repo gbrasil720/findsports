@@ -141,7 +141,7 @@ export function ReservationRequestDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="onside-dialog max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6">
+      <DialogContent className="onside-dialog max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6">
         <DialogTitle className="onside-display text-2xl">
           {created ? 'Pedido enviado' : 'Reservar mesa'}
         </DialogTitle>
@@ -168,7 +168,7 @@ export function ReservationRequestDialog({
             ) : null}
             <Link
               to="/dashboard/reservations"
-              className="onside-btn onside-btn-acid onside-btn-full min-h-11"
+              className="onside-btn onside-btn-acid onside-btn-full"
             >
               Ver minhas reservas
             </Link>
@@ -288,7 +288,7 @@ export function ReservationRequestDialog({
                 aria-labelledby={`${ids}-summary`}
                 className="bg-[var(--onside-stone)] p-4 text-sm"
               >
-                <h3 id={`${ids}-summary`} className="onside-kicker mb-2">
+                <h3 id={`${ids}-summary`} className="onside-kicker">
                   Resumo do pedido
                 </h3>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
@@ -326,7 +326,7 @@ export function ReservationRequestDialog({
                 noteTooLong ||
                 Boolean(activeRequest)
               }
-              className="onside-btn onside-btn-acid onside-btn-full min-h-12 disabled:opacity-50"
+              className="onside-btn onside-btn-acid onside-btn-full"
             >
               {createMutation.isPending ? 'Enviando…' : 'Enviar pedido'}
             </button>

@@ -82,8 +82,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
   },
   inactive: {
     label: 'Inativo',
-    className:
-      'onside-badge border-[var(--onside-live)] text-[var(--onside-live-text)]'
+    className: 'onside-badge text-[var(--onside-live-text)]'
   },
   cancelled: {
     label: 'Cancelado',
@@ -172,7 +171,7 @@ function BillingPage() {
   return (
     <AppShell variant="pub" userMeta="Assinatura">
       <div className="mb-8">
-        <p className="onside-kicker mb-2 inline-flex items-center gap-2">
+        <p className="onside-kicker inline-flex items-center gap-2">
           <CreditCard size={12} color="currentColor" aria-hidden="true" />
           Assinatura e pagamentos
         </p>
@@ -232,7 +231,7 @@ function BillingPage() {
                   <button
                     type="button"
                     onClick={() => subscriptionQuery.refetch()}
-                    className="onside-btn onside-btn-outline min-h-11"
+                    className="onside-btn onside-btn-outline"
                   >
                     Tentar novamente
                   </button>
@@ -327,7 +326,7 @@ function BillingPage() {
                 <Link
                   to="/plan"
                   search={{ origin: 'billing' }}
-                  className="onside-btn onside-btn-acid min-h-11"
+                  className="onside-btn onside-btn-acid"
                 >
                   <ArrowRight
                     size={14}
@@ -341,7 +340,7 @@ function BillingPage() {
                 <Link
                   to="/plan"
                   search={{ origin: 'billing' }}
-                  className="onside-btn onside-btn-ink min-h-11"
+                  className="onside-btn onside-btn-ink"
                 >
                   <ArrowRight
                     size={14}
@@ -356,7 +355,7 @@ function BillingPage() {
                   type="button"
                   onClick={handleOpenPortal}
                   disabled={openingPortal || loadingSub}
-                  className="onside-btn onside-btn-ink min-h-11"
+                  className="onside-btn onside-btn-ink"
                 >
                   {openingPortal ? (
                     <Loader
@@ -386,7 +385,7 @@ function BillingPage() {
                       plan === 'starter' ? 'pro' : 'elite'
                     )
                   }
-                  className="onside-btn onside-btn-acid min-h-11"
+                  className="onside-btn onside-btn-acid"
                 >
                   <ArrowRight
                     size={14}
@@ -494,7 +493,7 @@ function BillingPage() {
                 <Link
                   to="/plan"
                   search={{ origin: 'billing' }}
-                  className="onside-btn onside-btn-ink onside-btn-full min-h-11 text-xs"
+                  className="onside-btn onside-btn-ink onside-btn-full"
                 >
                   {/* Sem assinatura em vigor no Stripe não há o que mudar:
                       o caminho é contratar. */}

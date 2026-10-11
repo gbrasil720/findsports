@@ -42,7 +42,7 @@ export function AuthPasswordField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={resolvedId} className="onside-label mb-0">
+        <label htmlFor={resolvedId} className="onside-label">
           {label}
         </label>
         {extraLabel}

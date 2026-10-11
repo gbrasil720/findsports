@@ -49,7 +49,7 @@ export function RecommendationQualityStatus(props: Props) {
           <button
             type="button"
             onClick={props.onRetry}
-            className="onside-btn onside-btn-ink min-h-11 px-4 text-xs"
+            className="onside-btn onside-btn-ink"
           >
             Tentar novamente
           </button>

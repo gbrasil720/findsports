@@ -163,9 +163,7 @@ function VerifyEmailPage() {
           <Envelope size={42} color="currentColor" aria-hidden="true" />
         </div>
         <div>
-          <p className="onside-kicker onside-kicker-live mb-3">
-            Última checagem
-          </p>
+          <p className="onside-kicker onside-kicker-live">Última checagem</p>
           <h1 className="onside-display mb-4 text-4xl sm:text-5xl">
             CONFIRME O E-MAIL. DEPOIS, É BOLA ROLANDO.
           </h1>
@@ -193,7 +191,7 @@ function VerifyEmailPage() {
               type="button"
               onClick={continueVerified}
               disabled={checking}
-              className="onside-btn onside-btn-acid min-h-11"
+              className="onside-btn onside-btn-acid"
             >
               {checking ? (
                 <Loader
@@ -209,7 +207,7 @@ function VerifyEmailPage() {
               type="button"
               onClick={resend}
               disabled={resending}
-              className="onside-btn onside-btn-outline min-h-11"
+              className="onside-btn onside-btn-outline"
             >
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>

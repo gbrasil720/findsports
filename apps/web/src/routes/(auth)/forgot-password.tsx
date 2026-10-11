@@ -96,7 +96,7 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="onside-app flex min-h-dvh">
+    <div className="onside-app flex">
       <AuthBrandPanel variant="login">
         <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
           <span className="onside-live-dot" aria-hidden="true" />
@@ -135,7 +135,7 @@ function ForgotPasswordPage() {
           ) : (
             <>
               <div className="mb-8">
-                <p className="onside-kicker mb-3">Recuperar senha</p>
+                <p className="onside-kicker">Recuperar senha</p>
                 <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
                   VAMOS DE{' '}
                   <span className="text-[var(--onside-live-text)]">
@@ -239,7 +239,7 @@ function EmailEnviado({
       <div className="mb-6 grid size-16 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
         <EnvelopeCheck size={30} color="currentColor" aria-hidden="true" />
       </div>
-      <p className="onside-kicker mb-3">Link a caminho</p>
+      <p className="onside-kicker">Link a caminho</p>
       <h1 className="onside-display mb-3 text-[38px] sm:text-[44px]">
         CONFIRA SUA{' '}
         <span className="text-[var(--onside-live-text)]">
@@ -264,13 +264,13 @@ function EmailEnviado({
         </li>
       </ul>
       <div className="flex flex-wrap gap-3">
-        <Link to="/login" className="onside-btn onside-btn-acid min-h-11">
+        <Link to="/login" className="onside-btn onside-btn-acid">
           Voltar ao login
         </Link>
         <button
           type="button"
           onClick={onTentarOutro}
-          className="onside-btn onside-btn-outline min-h-11"
+          className="onside-btn onside-btn-outline"
         >
           Usar outro e-mail
         </button>

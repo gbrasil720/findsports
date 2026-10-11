@@ -93,7 +93,7 @@ export function SessionSettings() {
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="onside-kicker mb-2">Sessões</p>
+          <p className="onside-kicker">Sessões</p>
           <h2 className="onside-display text-2xl">Acessos ativos</h2>
           <p className="mt-1 text-[var(--onside-muted)] text-sm">
             Dispositivo confiável do 2FA não aparece nesta lista.

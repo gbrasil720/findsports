@@ -46,7 +46,7 @@ export function TwoFactorSettings() {
 
   return (
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
-      <p className="onside-kicker mb-2">Segurança</p>
+      <p className="onside-kicker">Segurança</p>
       <h2 className="onside-display text-2xl">Autenticação em dois fatores</h2>
       <p className="mt-1 text-[var(--onside-muted)] text-sm">
         Use um aplicativo autenticador mesmo se sua senha for descoberta.

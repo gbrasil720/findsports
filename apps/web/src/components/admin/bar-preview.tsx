@@ -165,7 +165,7 @@ export function BarPreview({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="onside-panel p-4">
-          <p className="onside-kicker mb-3">Card</p>
+          <p className="onside-kicker">Card</p>
           {previewBar ? (
             <BarCard
               bar={previewBar}
@@ -187,7 +187,7 @@ export function BarPreview({
                 <button
                   type="button"
                   onClick={eventsState.retry}
-                  className="onside-btn onside-btn-outline min-h-11 px-4 text-xs"
+                  className="onside-btn onside-btn-outline"
                 >
                   Tentar novamente
                 </button>
@@ -218,9 +218,9 @@ export function BarPreview({
         </div>
 
         <div className="onside-panel p-4">
-          <p className="onside-kicker mb-3">Mapa</p>
+          <p className="onside-kicker">Mapa</p>
           {plan ? (
-            <div className="onside-map-frame relative h-[180px]">
+            <div className="onside-map-frame h-[180px]">
               <OnsideMap
                 bars={[
                   {
@@ -235,12 +235,12 @@ export function BarPreview({
               />
             </div>
           ) : planState.status === 'error' ? (
-            <div className="onside-map-frame relative grid h-[180px] place-items-center text-[var(--onside-muted)] text-sm">
+            <div className="onside-map-frame grid h-[180px] place-items-center text-[var(--onside-muted)] text-sm">
               <p>Mapa indisponível.</p>
             </div>
           ) : (
             <div
-              className="onside-map-frame relative h-[180px]"
+              className="onside-map-frame h-[180px]"
               role="status"
               aria-busy="true"
               aria-live="polite"
@@ -269,7 +269,7 @@ export function BarPreview({
         </div>
 
         <div className="md:col-span-2">
-          <p className="onside-kicker mb-3">Perfil</p>
+          <p className="onside-kicker">Perfil</p>
           {profileState.status === 'ready' ? (
             <FanActionsPreview profile={profileState.profile} />
           ) : profileState.status === 'error' ? (

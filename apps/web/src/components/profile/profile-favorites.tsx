@@ -65,7 +65,7 @@ export function ProfileFavorites(props: Props) {
           <button
             type="button"
             onClick={onRetry}
-            className="onside-btn onside-btn-outline min-h-11"
+            className="onside-btn onside-btn-outline"
           >
             Tentar novamente
           </button>

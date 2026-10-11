@@ -56,7 +56,7 @@ export function PrivacySettingsSection({
 
   return (
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
-      <p className="onside-kicker mb-2">Privacidade</p>
+      <p className="onside-kicker">Privacidade</p>
       <h2 className="onside-display text-2xl">Cookies</h2>
       <p className="mt-1 text-[var(--onside-muted)] text-sm">
         Os essenciais mantêm você na conta e não dependem de escolha. Os de
