@@ -981,6 +981,11 @@ html:has(.onside-page) {
   font-size: clamp(64px, 6.8vw, 104px);
 }
 
+/* "Antes" é a palavra que o título quer destacar; sobre tinta, em ácido. */
+.onside-page .onside-definition h2 em {
+  color: var(--onside-acid);
+}
+
 .onside-page .onside-definition-copy {
   padding-top: 48px;
 }
@@ -1024,6 +1029,10 @@ html:has(.onside-page) {
   color: #c4c1b9;
   font-size: 15px;
   line-height: 1.55;
+}
+
+.onside-page .onside-definition-closing strong {
+  color: var(--onside-paper);
 }
 
 /* ─── Journey ─── */

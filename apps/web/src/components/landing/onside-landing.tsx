@@ -667,6 +667,8 @@ export function OnsideLanding() {
   useLandingMotion(pageRef)
 
   const [heroLead, heroAccent, heroTail] = LANDING_COPY.hero.title
+  const [solutionLead, solutionAccent, solutionTail] =
+    LANDING_COPY.solution.title
   const [finalLead, finalAccent] = LANDING_COPY.final.title
 
   return (
@@ -743,10 +745,22 @@ export function OnsideLanding() {
           <div className="onside-shell onside-definition-grid">
             <div data-motion="reveal">
               <SectionKicker>{LANDING_COPY.solution.kicker}</SectionKicker>
-              <h2 data-motion="split">{words(LANDING_COPY.solution.title)}</h2>
+              <h2 data-motion="split">
+                {words(solutionLead)}{' '}
+                <em>{words(solutionAccent, solutionLead.split(' ').length)}</em>{' '}
+                {words(
+                  solutionTail,
+                  solutionLead.split(' ').length +
+                    solutionAccent.split(' ').length
+                )}
+              </h2>
             </div>
             <div className="onside-definition-copy" data-motion="reveal">
-              <p className="onside-big-copy">{LANDING_COPY.solution.body}</p>
+              <p className="onside-big-copy">
+                {LANDING_COPY.solution.body[0]}{' '}
+                <strong>{LANDING_COPY.solution.body[1]}</strong>{' '}
+                {LANDING_COPY.solution.body[2]}
+              </p>
               <div className="onside-definition-points">
                 {DEFINITION_POINTS.map((point) => (
                   <div key={point.id}>
@@ -756,7 +770,8 @@ export function OnsideLanding() {
                 ))}
               </div>
               <p className="onside-definition-closing">
-                {LANDING_COPY.solution.closing}
+                {LANDING_COPY.solution.closing[0]}{' '}
+                <strong>{LANDING_COPY.solution.closing[1]}</strong>
               </p>
             </div>
           </div>
