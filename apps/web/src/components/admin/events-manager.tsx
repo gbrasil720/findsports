@@ -264,7 +264,6 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           <h2 className="onside-display flex items-center gap-2 text-2xl">
             <Calendar
               size={20}
-              color="currentColor"
               className="text-[var(--onside-live)]"
               aria-hidden="true"
             />

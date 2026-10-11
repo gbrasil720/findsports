@@ -63,9 +63,7 @@ function InternalHallPage() {
               Impersone, bana, desbane e altere roles de usuários da plataforma.
             </p>
           </div>
-          <span className="onside-kicker text-[var(--onside-ink)]">
-            Acessar →
-          </span>
+          <span className="onside-kicker onside-kicker-ink">Acessar →</span>
         </Link>
 
         <Link
@@ -84,9 +82,7 @@ function InternalHallPage() {
               deploy.
             </p>
           </div>
-          <span className="onside-kicker text-[var(--onside-ink)]">
-            Acessar →
-          </span>
+          <span className="onside-kicker onside-kicker-ink">Acessar →</span>
         </Link>
 
         <Link
@@ -109,9 +105,7 @@ function InternalHallPage() {
               registra o código.
             </p>
           </div>
-          <span className="onside-kicker text-[var(--onside-ink)]">
-            Acessar →
-          </span>
+          <span className="onside-kicker onside-kicker-ink">Acessar →</span>
         </Link>
 
         <Link
@@ -130,9 +124,7 @@ function InternalHallPage() {
               ir ao banco.
             </p>
           </div>
-          <span className="onside-kicker text-[var(--onside-ink)]">
-            Acessar →
-          </span>
+          <span className="onside-kicker onside-kicker-ink">Acessar →</span>
         </Link>
       </div>
     </InternalShell>
