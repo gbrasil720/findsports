@@ -4,7 +4,7 @@ import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { createEvent, createReservation } from '../../fixtures/reservations'
-import { expect, test } from '../../fixtures/test'
+import { answerCookieConsent, expect, test } from '../../fixtures/test'
 
 // Fila de pedidos de reserva (WEB-125): bar Elite com recebimento ligado
 // confirma ou recusa cada pedido.
@@ -91,6 +91,7 @@ async function fanSeesPub(browser: Browser, barId: string) {
     baseURL: BASE_URL,
     storageState: storageState('fan')
   })
+  await answerCookieConsent(context)
   const fanPage = await context.newPage()
   await fanPage.goto(`/pub/${barId}`)
   await fanPage.locator('html[data-hydrated]').waitFor({ state: 'attached' })
