@@ -140,6 +140,11 @@ export const analytics = {
    */
   ctaClicked: (cta: string) => {
     void withPosthog((posthog) => posthog.capture('cta_clicked', { cta }))
+  },
+
+  /** Feedback enviado pelo diálogo do app. O texto e as imagens não vêm para cá. */
+  feedbackSent: (images: number) => {
+    void withPosthog((posthog) => posthog.capture('feedback_sent', { images }))
   }
 }
 

@@ -5,6 +5,7 @@ import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
 import { commercialAnalyticsRouter } from './commercial-analytics'
+import { feedbackRouter } from './feedback'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
@@ -35,6 +36,7 @@ export const appRouter = router({
   reservationValidation: reservationValidationRouter,
   reservations: reservationsRouter,
   barReservations: barReservationsRouter,
-  attendance: attendanceRouter
+  attendance: attendanceRouter,
+  feedback: feedbackRouter
 })
 export type AppRouter = typeof appRouter
