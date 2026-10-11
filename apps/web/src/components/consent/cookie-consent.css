@@ -1,19 +1,21 @@
 /*
  * Aviso de cookies (WEB-243). `.onside-banner` traz os tokens: o aviso fica
  * na raiz do documento, fora de qualquer casca de página.
+ *
+ * No app ele entra no fluxo, no topo do documento: ocupa a própria altura e
+ * não cobre nada, em nenhuma janela. Flutuando no pé da janela ele ficava por
+ * cima do botão principal da primeira tela (enviar do login e do cadastro,
+ * "Continuar" do onboarding, a barra de ação do bar), no celular e em janela
+ * baixa de desktop, e não há posição flutuante que sirva para toda tela.
  */
 .onside-consent {
-  position: fixed;
-  right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  left: 16px;
-  z-index: 200;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px 32px;
   align-items: center;
   width: min(calc(100% - 32px), 920px);
-  margin-inline: auto;
+  /* Embaixo, os 6px da sombra a mais. */
+  margin: 16px auto 22px;
   padding: 20px 22px;
   border: 1.5px solid var(--onside-paper);
   background: var(--onside-ink);
@@ -23,31 +25,46 @@
 }
 
 /*
- * O aviso não ocupa lugar no fluxo, então o fim da página ficava debaixo
- * dele. Enquanto ele existe, o documento ganha no fim a altura do aviso (que
- * o componente mede) mais o respiro de baixo e um de cima. Some junto com o
- * aviso; como é espaço depois do conteúdo, nada acima se desloca.
- *
- * O espaço é do `body`, que é branco, e quem pinta o fundo é a casca de cada
- * tela (`.onside-app` e `.onside-page`, as duas em `--onside-paper`): sem cor
- * aqui ele aparecia como uma faixa branca depois da página. O `body` pinta a
- * faixa com a cor da página — literal, porque os tokens não chegam até ele —
- * e, onde a página termina no rodapé escuro (landing e páginas legais), com a
- * do rodapé. O fundo no `:root` segura o do `body` dentro da caixa dele: sem
- * isso ele vaza para a tela inteira e muda a cor de fora da página também.
+ * A tela do app tem no mínimo a altura da janela. Com o aviso em cima ela
+ * passaria a ter a janela mais o aviso, e o que fica centrado ou no fim dela
+ * (o botão do login) desceria para fora da primeira tela. Enquanto o aviso
+ * existe, o mínimo desconta a altura dele (medida pelo componente) e as duas
+ * margens: aviso e tela somam uma janela.
+ */
+:root:has(.onside-consent):not(:has(.onside-site-header))
+  :is(.onside-app, .min-h-dvh) {
+  min-height: calc(100dvh - var(--onside-consent-h, 0px) - 38px);
+}
+
+/*
+ * Landing e páginas legais têm o cabeçalho fixo no topo, que cairia em cima de
+ * um aviso no fluxo, e nenhum formulário. Nelas ele flutua no pé da janela; a
+ * landing o tira de cima do hero mais abaixo.
+ */
+:root:has(.onside-site-header) .onside-consent {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  z-index: 200;
+  margin-block: 0;
+}
+
+/*
+ * A faixa em volta do aviso (no topo, no app) e o espaço reservado no fim (onde
+ * ele flutua) são do `body`, que é branco; quem pinta o fundo é a casca de
+ * cada tela (`.onside-app` e `.onside-page`, as duas em `--onside-paper`). O
+ * `body` pinta a faixa com a cor da página — literal, porque os tokens não
+ * chegam até ele — e, onde a página termina no rodapé escuro (landing e
+ * páginas legais), com a do rodapé. O fundo no `:root` segura o do `body`
+ * dentro da caixa dele: sem isso ele vaza para a tela inteira e muda a cor de
+ * fora da página também.
  */
 :root:has(.onside-consent) {
-  --onside-consent-space: calc(
-    var(--onside-consent-h, 0px) +
-    32px +
-    env(safe-area-inset-bottom, 0px)
-  );
-
   background: var(--background);
 }
 
 :root:has(.onside-consent) body {
-  padding-bottom: var(--onside-consent-space);
   background: #f1eee6; /* --onside-paper */
 }
 
@@ -56,12 +73,21 @@
 }
 
 /*
- * Login, cadastro e senha no desktop: a página é o painel escuro ao lado do
- * formulário. A sombra, sem desfoque, continua o painel pela faixa — só
- * pintura, sem mexer na altura de nada.
+ * Flutuando, o aviso não ocupa lugar no fluxo, então o fim da página ficava
+ * debaixo dele. Enquanto ele existe, o documento ganha no fim a altura do
+ * aviso (que o componente mede) mais o respiro de baixo e um de cima. Some
+ * junto com o aviso; como é espaço depois do conteúdo, nada acima se desloca.
  */
-:root:has(.onside-consent) .onside-app > aside {
-  box-shadow: 0 var(--onside-consent-space) 0 var(--onside-ink);
+:root:has(.onside-consent):has(.onside-site-header) {
+  --onside-consent-space: calc(
+    var(--onside-consent-h, 0px) +
+    32px +
+    env(safe-area-inset-bottom, 0px)
+  );
+}
+
+:root:has(.onside-consent):has(.onside-site-header) body {
+  padding-bottom: var(--onside-consent-space);
 }
 
 .onside-consent p {

@@ -14,11 +14,11 @@ const CURRENT_CHOICE: Record<AnalyticsConsent, string> = {
 }
 
 /**
- * O aviso é fixo no rodapé da janela e cobriria o fim de qualquer página até
- * a pessoa escolher. Publica a própria altura em `--onside-consent-h`; o CSS
- * reserva esse espaço no fim do documento enquanto o aviso existe. A altura é
- * medida porque muda com a largura: em tela estreita os botões vão para baixo
- * do texto.
+ * Na landing e nas páginas legais o aviso flutua no pé da janela e cobriria o
+ * fim da página até a pessoa escolher (no app ele fica no fluxo, ver o CSS).
+ * Publica a própria altura em `--onside-consent-h`; onde ele flutua, o CSS
+ * reserva esse espaço no fim do documento. A altura é medida porque muda com
+ * a largura: em tela estreita os botões vão para baixo do texto.
  */
 function reservarEspaco(aviso: HTMLElement) {
   if (typeof ResizeObserver === 'undefined') return
