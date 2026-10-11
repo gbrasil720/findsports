@@ -21,7 +21,13 @@ import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
-import { capturePageview, identifyUser, resetAnalytics } from '../lib/analytics'
+import {
+  analytics,
+  capturePageview,
+  ctaFromClickTarget,
+  identifyUser,
+  resetAnalytics
+} from '../lib/analytics'
 import { useAnalyticsConsent } from '../lib/analytics-consent'
 import { initPostHog, stopPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
@@ -218,6 +224,18 @@ function PostHogProvider() {
     if (!ready) return
     capturePageview(pathname)
   }, [ready, pathname])
+
+  // Um listener só, delegado no documento: clique em qualquer `data-cta`
+  // (landing e páginas legais) vira `cta_clicked`. O consentimento é
+  // conferido em `withPosthog`, como em todo evento.
+  useEffect(() => {
+    const onClick = (event: MouseEvent) => {
+      const cta = ctaFromClickTarget(event.target)
+      if (cta) analytics.ctaClicked(cta)
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [])
 
   return null
 }

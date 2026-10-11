@@ -30,7 +30,6 @@ import {
 import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
-import { classicRuleLateral, currentClassicRulesCte } from '../lib/classics'
 import {
   getSubscriptionStanding,
   type SubscriptionStanding
@@ -100,10 +99,6 @@ const cacheTimes = createSharedCache<(typeof team.$inferSelect)[]>({
   prefix: 'pubs.teams',
   ttlMs: CATALOGO_TTL_MS,
   maxEntries: 50
-})
-const cacheDestaques = createSharedCache<Record<string, unknown>[]>({
-  prefix: 'pubs.elite',
-  ttlMs: BUSCA_TTL_MS
 })
 const cacheBusca = createSharedCache<SearchPage>({
   prefix: 'pubs.search',
@@ -772,40 +767,5 @@ export const pubsRouter = router({
           await db.select().from(team).where(eq(team.sportId, input.sportId))
         ).sort(porNome)
       )
-    }),
-  getEliteEvents: protectedProcedure.query(async () => {
-    return cacheDestaques.get('todos', async () => {
-      const results = await db.execute(sql`
-        WITH ${currentClassicRulesCte}
-        SELECT
-          e.id AS event_id,
-          b.name AS bar_name,
-          e.championship,
-          e.starts_at,
-          s.name AS sport_name,
-          b.neighborhood,
-          b.city,
-          classic.classic_rule_reason AS classic_reason,
-          classic.classic_rule_version AS classic_rule_version
-        FROM event e
-        JOIN bar b ON b.id = e.bar_id
-        JOIN sport s ON s.id = e.sport_id
-        ${classicRuleLateral(sql`e`)}
-        WHERE
-          b.is_active = true
-          AND b.plan = 'elite'
-          AND e.starts_at >= NOW()
-        ORDER BY
-          CASE WHEN classic.classic_rule_id IS NULL THEN 1 ELSE 0 END,
-          e.starts_at ASC,
-          e.id ASC,
-          b.id ASC
-        LIMIT 10
-      `)
-      return (results.rows as Record<string, unknown>[]).map((row) => ({
-        ...row,
-        starts_at: utcIso(row.starts_at as string)
-      }))
     })
-  })
 })

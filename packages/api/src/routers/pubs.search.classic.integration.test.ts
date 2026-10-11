@@ -236,20 +236,6 @@ integrationTest(
         expectedOrder
       )
 
-      const ticker = await caller.pubs.getEliteEvents()
-      const ourTicker = ticker.filter(
-        (item) =>
-          String(item.event_id) === eliteClassic.eventId ||
-          String(item.event_id) === eliteOther.eventId
-      )
-      expect(ourTicker.map((item) => item.event_id)).toEqual([
-        eliteClassic.eventId,
-        eliteOther.eventId
-      ])
-      expect(ourTicker[0]?.classic_reason).toBe(
-        'Flamengo x Palmeiras: rivalidade editorial'
-      )
-
       const location = await caller.pubs.searchByLocation({
         lat: ORIGIN_LAT + 0.006,
         lng: ORIGIN_LNG,

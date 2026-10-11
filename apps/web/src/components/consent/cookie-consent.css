@@ -146,6 +146,68 @@
   }
 }
 
+/*
+ * Landing: a primeira tela é o hero, e o aviso largo no pé da janela ficava
+ * por cima da chamada principal. Só aqui ele muda de lugar e de tamanho; no
+ * resto do app continua como acima. As duas condições são as do hero
+ * (`onside.css`, "Hero em retrato").
+ *
+ * Hero em paisagem: a chamada fica embaixo, à esquerda. O aviso vira um cartão
+ * estreito no canto direito; com 420px a borda esquerda dele passa do botão em
+ * qualquer largura. A chamada fixa continua subindo para cima dele por
+ * `--onside-consent-space`.
+ *
+ * Nas duas posições ele fica atrás do menu do cabeçalho (`z-index: 99`), que
+ * em tela baixa abre por cima de onde o aviso está.
+ */
+:root:has(.onside-landing) .onside-consent {
+  z-index: 98;
+}
+
+@media (min-width: 761px) and (orientation: landscape), (min-width: 1101px) {
+  :root:has(.onside-landing) .onside-consent {
+    left: auto;
+    grid-template-columns: minmax(0, 1fr);
+    width: min(calc(100% - 32px), 420px);
+  }
+
+  :root:has(.onside-landing) .onside-consent-actions button {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/*
+ * Hero em retrato (celular e tablet em pé): a arte vai para cima e o texto
+ * enche o resto, com o botão no fim da tela. Embaixo o aviso sempre o cobre,
+ * então vai para debaixo do cabeçalho (74px, 66px no celular), sobre a arte.
+ * Com o aviso em cima não há espaço a reservar no fim da página nem motivo
+ * para a chamada fixa subir.
+ */
+@media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+  :root:has(.onside-landing) .onside-consent {
+    top: 82px;
+    bottom: auto;
+  }
+
+  :root:has(.onside-consent):has(.onside-landing) {
+    --onside-consent-space: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* No celular, mais enxuto: a arte é baixa e o título começa logo depois. */
+@media (max-width: 760px) {
+  :root:has(.onside-landing) .onside-consent {
+    top: 74px;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  :root:has(.onside-landing) .onside-consent p:not([class]) {
+    font-size: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .onside-consent {
     animation: onside-consent-in 0.26s var(--onside-ease-out) both;

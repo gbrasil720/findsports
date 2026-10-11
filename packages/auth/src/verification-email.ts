@@ -193,7 +193,6 @@ export async function sendEmailWithResend(input: {
   subject: string
   html: string
   text: string
-  idempotencyKey?: string
   fetcher?: EmailFetcher
 }): Promise<{ delivered: boolean }> {
   // E2E (WEB-174): o e-mail vira uma linha JSON num arquivo, lida pelo
@@ -233,10 +232,7 @@ export async function sendEmailWithResend(input: {
       method: 'POST',
       headers: {
         authorization: `Bearer ${input.apiKey}`,
-        'content-type': 'application/json',
-        ...(input.idempotencyKey
-          ? { 'idempotency-key': input.idempotencyKey }
-          : {})
+        'content-type': 'application/json'
       },
       body: JSON.stringify({
         from: `Onside <${input.fromEmail}>`,

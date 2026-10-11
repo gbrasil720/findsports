@@ -96,6 +96,33 @@ describe('resolveDatabaseUrl', () => {
     )
   })
 
+  it('accepts a suffixed load-test database, one per worktree', () => {
+    process.env.NODE_ENV = 'test'
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://load:secret@127.0.0.1:5433/findsports_load_test_web_123'
+
+    expect(resolveDatabaseUrl()).toBe(process.env.LOAD_TEST_DATABASE_URL)
+    expect(resolveAndValidateDatabaseUrl().summary).toContain(
+      'findsports_load_test_web_123'
+    )
+  })
+
+  it('rejects a load-test URL that only resembles the prefix or is remote', () => {
+    process.env.NODE_ENV = 'test'
+    for (const url of [
+      'postgres://load:secret@example.com:5433/findsports_load_test_web',
+      'postgres://load:secret@localhost:5433/findsports_load_testing',
+      'postgres://load:secret@localhost:5433/findsports_load_test_',
+      'postgres://load:secret@localhost:5433/findsports_load_test-web',
+      'postgres://load:secret@localhost:5433/findsports_load_test_Web',
+      'postgres://load:secret@localhost:5433/prod_findsports_load_test_web',
+      'postgres://load:secret@localhost:5433/findsports_load_test_web/outro'
+    ]) {
+      process.env.LOAD_TEST_DATABASE_URL = url
+      expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+    }
+  })
+
   it('rejects a remote load-test database', () => {
     process.env.NODE_ENV = 'test'
     process.env.LOAD_TEST_DATABASE_URL =
@@ -213,10 +240,19 @@ describe('disposable integration target', () => {
     expect(isDisposableTestDatabase()).toBe(true)
   })
 
+  it('accepts a suffixed isolated target', () => {
+    process.env.LOAD_TEST_DATABASE_URL =
+      'postgres://test:test@localhost:55433/findsports_load_test_achados'
+    expect(isDisposableTestDatabase()).toBe(true)
+  })
+
   it.each([
     'postgres://test:test@example.com:5432/findsports_load_test',
     'postgres://test:test@localhost:5432/findsports_dev',
     'postgres://test:test@localhost:5432/ci',
+    'postgres://test:test@example.com:5432/findsports_load_test_achados',
+    'postgres://test:test@localhost:5432/findsports_load_testing',
+    'postgres://test:test@localhost:5432/findsports_e2e_achados',
     'https://localhost:5432/findsports_load_test',
     'invalid'
   ])('rejects an unsafe or malformed override: %s', (url) => {

@@ -12,11 +12,21 @@ const LocalhostSchema = z.union([
  */
 const E2eDatabaseName = z.string().regex(/^findsports_e2e(_[a-z0-9_]+)?$/)
 
+/**
+ * Banco de integração e de carga: `findsports_load_test` ou
+ * `findsports_load_test_<sufixo>`, pelo mesmo motivo do E2E — cada worktree
+ * roda a integração no seu banco, no mesmo container.
+ */
+const LoadTestDatabaseName = z
+  .string()
+  .regex(/^findsports_load_test(_[a-z0-9_]+)?$/)
+
 const DevDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
   database: z.union([
-    z.enum(['findsports_dev', 'findsports_load_test']),
+    z.literal('findsports_dev'),
+    LoadTestDatabaseName,
     E2eDatabaseName
   ])
 })
@@ -27,7 +37,7 @@ const DefaultDevUrl =
 const LoadTestDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
-  database: z.literal('findsports_load_test')
+  database: LoadTestDatabaseName
 })
 
 const E2eDatabaseConfig = z.object({
@@ -139,7 +149,7 @@ export function resolveDatabaseUrl(): string {
       loadTestUrl,
       'LOAD_TEST_DATABASE_URL',
       LoadTestDatabaseConfig,
-      'Load tests require a loopback host and database=findsports_load_test.'
+      'Load tests require a loopback host and database=findsports_load_test[_<suffix>].'
     )
   }
 
@@ -215,7 +225,7 @@ export function isDisposableTestDatabase(): boolean {
     const url = new URL(resolveDatabaseUrl())
     return (
       ['postgres:', 'postgresql:'].includes(url.protocol) &&
-      url.pathname === '/findsports_load_test'
+      LoadTestDatabaseName.safeParse(url.pathname.slice(1)).success
     )
   } catch {
     return false

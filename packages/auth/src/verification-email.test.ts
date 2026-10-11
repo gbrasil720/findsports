@@ -197,24 +197,6 @@ describe('e-mail de verificação Onside', () => {
     }
   })
 
-  it('repassa a chave idempotente para campanhas', async () => {
-    let request: Request | undefined
-    await sendEmailWithResend({
-      apiKey: 're_test',
-      fromEmail: 'contato@onside.app',
-      to: 'ana@example.com',
-      subject: 'Onside aberta',
-      html: '<p>Olá</p>',
-      text: 'Olá',
-      idempotencyKey: 'campanha-entrada-1',
-      fetcher: async (input, init) => {
-        request = new Request(input, init)
-        return new Response('{}', { status: 200 })
-      }
-    })
-    expect(request?.headers.get('idempotency-key')).toBe('campanha-entrada-1')
-  })
-
   it('usa assets de imagem públicos e estáveis nos e-mails', () => {
     for (const assetUrl of [EMAIL_LOGO_URL, EMAIL_HERO_IMAGE_URL]) {
       const url = new URL(assetUrl) // relativa lança TypeError
