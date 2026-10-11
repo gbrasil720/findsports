@@ -54,7 +54,6 @@ export function AuthInputField({
         <InputGroupAddon className="pl-4">
           <Icon
             size={16}
-            color="currentColor"
             className="text-[var(--onside-muted)]"
             aria-hidden="true"
           />

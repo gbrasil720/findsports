@@ -52,7 +52,11 @@ export function PubInfoForm({
           className={fieldClass}
         />
         {errors.name ? (
-          <p id="pub-name-error" className="onside-field-error" role="alert">
+          <p
+            id="pub-name-error"
+            className="onside-field-error onside-field-error-ink"
+            role="alert"
+          >
             {errors.name}
           </p>
         ) : null}
@@ -76,7 +80,11 @@ export function PubInfoForm({
           className={fieldClass}
         />
         {errors.address ? (
-          <p id="pub-address-error" className="onside-field-error" role="alert">
+          <p
+            id="pub-address-error"
+            className="onside-field-error onside-field-error-ink"
+            role="alert"
+          >
             {errors.address}
           </p>
         ) : null}
@@ -105,7 +113,7 @@ export function PubInfoForm({
           {errors.neighborhood ? (
             <p
               id="pub-neighborhood-error"
-              className="onside-field-error"
+              className="onside-field-error onside-field-error-ink"
               role="alert"
             >
               {errors.neighborhood}
@@ -130,7 +138,11 @@ export function PubInfoForm({
             className={fieldClass}
           />
           {errors.city ? (
-            <p id="pub-city-error" className="onside-field-error" role="alert">
+            <p
+              id="pub-city-error"
+              className="onside-field-error onside-field-error-ink"
+              role="alert"
+            >
               {errors.city}
             </p>
           ) : null}
@@ -163,7 +175,11 @@ export function PubInfoForm({
             describedBy={errors.phone ? 'pub-phone-error' : undefined}
           />
           {errors.phone ? (
-            <p id="pub-phone-error" className="onside-field-error" role="alert">
+            <p
+              id="pub-phone-error"
+              className="onside-field-error onside-field-error-ink"
+              role="alert"
+            >
               {errors.phone}
             </p>
           ) : null}

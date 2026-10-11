@@ -332,11 +332,7 @@ function OverviewEmpty({
 }) {
   return (
     <section className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6 text-center">
-      <Icon
-        size={28}
-        color="currentColor"
-        className="mx-auto mb-2 text-[var(--onside-muted)]"
-      />
+      <Icon size={28} className="mx-auto mb-2 text-[var(--onside-muted)]" />
       <p className="mb-1 font-bold text-[var(--onside-ink)] text-sm">{title}</p>
       <p className="mb-3 text-[var(--onside-muted)] text-xs">{description}</p>
       <Link

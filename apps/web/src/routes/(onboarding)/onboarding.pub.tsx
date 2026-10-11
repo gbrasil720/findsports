@@ -471,10 +471,10 @@ function PubOnboarding() {
               {revisao.texto}
             </p>
             <div className="inline-flex flex-wrap justify-center gap-2">
-              <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+              <span className="onside-badge onside-badge-on-ink">
                 {name.trim() || '…'}
               </span>
-              <span className="onside-badge inline-flex items-center gap-1 border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+              <span className="onside-badge onside-badge-on-ink inline-flex items-center gap-1">
                 <Location size={12} color="currentColor" aria-hidden="true" />
                 {neighborhood.trim() || '…'}
               </span>
@@ -485,7 +485,7 @@ function PubOnboarding() {
                 return (
                   <span
                     key={amenity.id}
-                    className="onside-badge border-[var(--onside-acid)] bg-[color-mix(in_srgb,var(--onside-acid)_18%,transparent)] text-[var(--onside-paper)]"
+                    className="onside-badge onside-badge-acid-on-ink"
                   >
                     {amenity.label}
                   </span>

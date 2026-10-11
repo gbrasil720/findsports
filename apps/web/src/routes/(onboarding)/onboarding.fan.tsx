@@ -283,18 +283,15 @@ function FanOnboarding() {
             </p>
             <div className="inline-flex flex-wrap justify-center gap-2">
               {[...selectedSports, ...selectedTeams].map((s) => (
-                <span
-                  key={s.id}
-                  className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]"
-                >
+                <span key={s.id} className="onside-badge onside-badge-on-ink">
                   {s.name}
                 </span>
               ))}
-              <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+              <span className="onside-badge onside-badge-on-ink">
                 {radius} km
               </span>
               {city.city ? (
-                <span className="onside-badge border-[rgb(241_238_230_/_30%)] bg-[rgb(241_238_230_/_10%)] text-[var(--onside-paper)]">
+                <span className="onside-badge onside-badge-on-ink">
                   {cityLabel(city.city)}
                 </span>
               ) : null}

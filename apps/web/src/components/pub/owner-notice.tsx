@@ -113,7 +113,6 @@ export function OwnerNudge({ children, action }: NudgeProps) {
     >
       <AlertCircle
         size={14}
-        color="currentColor"
         className="shrink-0 text-[var(--onside-muted)]"
         aria-hidden="true"
       />

@@ -52,6 +52,11 @@
   color: var(--onside-live-text);
 }
 
+/* Kicker usado como etiqueta com moldura: o tamanho do `onside-badge`. */
+.onside-app .onside-kicker-sm {
+  font-size: 10px;
+}
+
 .onside-app .onside-text-muted-on-ink {
   color: var(--onside-muted-on-ink);
 }
@@ -187,6 +192,14 @@
   color: var(--onside-ink);
 }
 
+/*
+ * Trilho acid por dentro da borda esquerda, como no `onside-bar-card-pro`:
+ * acid no lugar da borda ink some contra o papel da página.
+ */
+.onside-app .onside-panel-rail-acid {
+  box-shadow: inset 6px 0 0 var(--onside-acid);
+}
+
 .onside-app .onside-shadow {
   box-shadow: 6px 6px 0 var(--onside-ink);
 }
@@ -237,6 +250,11 @@
 .onside-app .onside-textarea {
   min-height: 96px;
   resize: vertical;
+}
+
+/* Campo que edita um título no lugar dele (nome do bar em `/admin`). */
+.onside-app .onside-input-title {
+  font-size: 24px;
 }
 
 .onside-app .onside-input::placeholder,
@@ -297,6 +315,11 @@
   margin-top: 6px;
   font-size: 12px;
   color: var(--onside-live-text);
+}
+
+/* Sobre ink o `--onside-live-text` dá 3,43:1; este token dá 5,01:1. */
+.onside-app .onside-field-error-ink {
+  color: var(--onside-live-on-ink);
 }
 
 /* ─── Campos compostos ───
@@ -692,6 +715,11 @@
   cursor: not-allowed;
 }
 
+/* Filtro já aplicado: nasce no stone que os outros chips só têm no hover. */
+.onside-app .onside-chip-stone {
+  background: var(--onside-stone);
+}
+
 .onside-app .onside-chip-stack {
   flex-direction: column;
   gap: 2px;
@@ -792,6 +820,29 @@
   background: var(--onside-stone);
   border-color: var(--onside-line);
   color: var(--onside-muted);
+}
+
+/* Mesma receita do `onside-callout-danger`, com o vermelho de texto. */
+.onside-app .onside-badge-danger {
+  background: color-mix(in srgb, var(--onside-live) 12%, var(--onside-paper));
+  border-color: var(--onside-live);
+  color: var(--onside-live-text);
+}
+
+/*
+ * Selos sobre superfície ink (resumo dos onboardings). A borda do
+ * `onside-badge` é ink e some no painel; utilitária de borda não a troca.
+ */
+.onside-app .onside-badge-on-ink {
+  background: rgb(241 238 230 / 10%);
+  border-color: rgb(241 238 230 / 30%);
+  color: var(--onside-paper);
+}
+
+.onside-app .onside-badge-acid-on-ink {
+  background: color-mix(in srgb, var(--onside-acid) 18%, transparent);
+  border-color: var(--onside-acid);
+  color: var(--onside-paper);
 }
 
 /* ─── Progress segments ─── */

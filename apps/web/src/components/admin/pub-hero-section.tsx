@@ -179,7 +179,7 @@ export function PubHeroSection({
                         setForm({ ...form, name: e.target.value })
                       }
                       placeholder="Nome do bar"
-                      className="onside-input onside-input-ink font-bold text-2xl"
+                      className="onside-input onside-input-ink onside-input-title font-bold"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -349,7 +349,7 @@ export function PubHeroSection({
             <div className="mt-2 flex flex-col items-stretch gap-2 sm:items-end">
               {saveError ? (
                 <p
-                  className="text-sm text-[var(--onside-live-text)]"
+                  className="text-[var(--onside-live-on-ink)] text-sm"
                   role="alert"
                 >
                   {saveError}
