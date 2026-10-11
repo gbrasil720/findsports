@@ -180,7 +180,8 @@ export const SOCIAL_LINKS = [
     label: 'Instagram',
     href: 'https://www.instagram.com/onside.sh/'
   },
-  { id: 'x', label: 'X', href: 'https://x.com/onside_sh' }
+  { id: 'x', label: 'X', href: 'https://x.com/onside_sh' },
+  { id: 'tiktok', label: 'TikTok', href: 'https://www.tiktok.com/@onside.sh' }
 ] as const
 
 export const DEFINITION_POINTS: DefinitionPoint[] = [
