@@ -56,10 +56,22 @@ export const LANDING_COPY = {
   },
   solution: {
     kicker: 'Escolha com confiança',
-    title: 'Garanta que a experiência vai ser boa antes de convidar a galera.',
-    body: 'Com a Onside, você não precisa arriscar. Escolha um bar conhecendo os detalhes que importam para o seu rolê.',
-    closing:
-      'Tudo pensado para você convidar a galera com mais confiança de que escolheu o lugar certo.'
+    // Texto do copywriter, palavra por palavra. O segundo trecho de cada
+    // lista é o destaque: "antes" no título, e o negrito no corpo e no fecho.
+    title: [
+      'Garanta que a experiência vai ser boa',
+      'antes',
+      'de convidar a galera.'
+    ],
+    body: [
+      'Com a Onside você',
+      'não precisa arriscar.',
+      'Aqui, você escolhe um bar já sabendo:'
+    ],
+    closing: [
+      'Tudo pensado para que, quando o convite seja feito, você tenha a certeza de que escolheu',
+      'o lugar perfeito.'
+    ]
   },
   journey: {
     kicker: 'Como funciona',
@@ -165,12 +177,17 @@ export const DEFINITION_POINTS: DefinitionPoint[] = [
   {
     id: 'd1',
     number: '01',
-    text: 'Se o bar tem a infraestrutura que você procura.'
+    text: 'Se tem infraestrutura.'
   },
   {
     id: 'd2',
     number: '02',
-    text: 'O preço médio para escolher sem surpresa.'
+    text: 'O preço médio do cardápio.'
+  },
+  {
+    id: 'd3',
+    number: '03',
+    text: 'Como vai estar no dia do jogo.'
   }
 ]
 
