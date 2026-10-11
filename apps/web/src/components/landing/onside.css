@@ -30,7 +30,8 @@ html:has(.onside-page) {
   scroll-padding-top: calc(74px + 16px);
 }
 
-@media (max-width: 1100px) {
+/* 760px, como `--onside-header-h`: é onde o cabeçalho encolhe para 66px. */
+@media (max-width: 760px) {
   html:has(.onside-page) {
     scroll-padding-top: calc(66px + 16px);
   }
