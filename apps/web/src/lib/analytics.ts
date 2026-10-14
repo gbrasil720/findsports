@@ -15,10 +15,16 @@ export type { PageSurface } from './page-surface'
  * Pageviews stay on `$pageview` (with `surface`). Autocapture is off.
  */
 export const analytics = {
-  signupCompleted: (role: UserRole) => {
+  /**
+   * Identifica antes de capturar: o cadastro termina sem sessão, e quem
+   * confirma o e-mail em outro navegador (o do app de e-mail) só seria
+   * identificado lá, com outro id anônimo — e o cadastro ficava numa pessoa
+   * e o onboarding em outra, partindo o funil de ativação.
+   */
+  signupCompleted: (role: UserRole, userId: string) => {
     void withPosthog((posthog) => {
+      posthog.identify(userId, { role })
       posthog.capture('signup_completed', { role })
-      posthog.setPersonProperties({ role })
     })
   },
 
