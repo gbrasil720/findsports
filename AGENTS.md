@@ -304,6 +304,19 @@ invente layout que o projeto não tem.
   do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
   imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
   da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
+- **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
+  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
+  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
+  redireciona para o app (`callbackURL: '/verified'`, que o cliente vira `onside://` ou
+  `exp://`) com a sessão em `?cookie=`, e `app/verified.tsx` a guarda (`adoptSessionCookie`):
+  o cliente do Expo só faz isso sozinho no login social. O reset usa `redirectTo` com
+  `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
+  com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
+  testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
+- **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
+  Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
+  `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
+  e mostra erro).
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).

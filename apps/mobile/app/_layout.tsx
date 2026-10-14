@@ -3,7 +3,6 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
-import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { Splash, SplashDone } from '@/components/splash'
@@ -76,7 +75,6 @@ export default function Layout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StatusBar style="auto" />
         <SplashDone value={splashDone}>
           <Stack screenOptions={{ headerShown: false }} />
         </SplashDone>

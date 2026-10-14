@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
 import {
   type ComponentType,
   useContext,
@@ -29,12 +28,13 @@ import {
 } from '@/components/intro-art'
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
 import { SplashDone } from '@/components/splash'
+import { useStatusBar } from '@/components/ui'
 
 /*
  * "03 Apresentação" do design: quatro telas, uma ideia de produto em cada,
  * iguais para torcedor e bar. Entra depois da splash para quem não tem
- * sessão. Arrastar ou "Continuar" passa de tela; "Pular", "Começar" e
- * "Entrar" levam ao login (o cadastro, "04 Conta", ainda não existe no app).
+ * sessão. Arrastar ou "Continuar" passa de tela; "Pular" e "Começar" levam
+ * ao perfil de uso (o cadastro), "Entrar" ao login.
  *
  * Cada tela anima a entrada uma vez, na primeira vez que é alcançada indo
  * para a frente (a primeira, quando a splash sai). Voltar mostra a tela
@@ -98,11 +98,15 @@ export default function Intro() {
     setReached((current) => Math.max(current, start))
   }, [start, width])
   const splashDone = useContext(SplashDone)
+  // Durante a splash, a barra segue o tema do sistema, como ela.
+  useStatusBar(splashDone ? (PAGES[page].dark ? 'light' : 'dark') : 'auto')
 
   // A ilustração ocupa a mesma fração da tela que no design (476 de 844).
   const artHeight = Math.round((height * 476) / 844)
   const last = page === PAGES.length - 1
-  const enter = () => router.push('/sign-in')
+  // "Começar" e "Pular" abrem o cadastro; "Entrar", o login.
+  const signUp = () => router.push('/profile')
+  const signIn = () => router.push('/sign-in')
 
   const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) =>
     setPage(Math.round(event.nativeEvent.contentOffset.x / width))
@@ -113,7 +117,7 @@ export default function Intro() {
     reach(Math.round(event.nativeEvent.contentOffset.x / width))
 
   const next = () => {
-    if (last) return enter()
+    if (last) return signUp()
     pager.current?.scrollTo({ x: (page + 1) * width })
     setPage(page + 1)
     reach(page + 1)
@@ -121,7 +125,6 @@ export default function Intro() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style={PAGES[page].dark ? 'light' : 'dark'} />
       <ScrollView
         ref={pager}
         horizontal
@@ -147,7 +150,7 @@ export default function Intro() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={enter}
+        onPress={signUp}
         style={[styles.skip, { top: insets.top + 4 }]}
       >
         <Glass tone="dark" interactive style={styles.skipGlass}>
@@ -180,7 +183,7 @@ export default function Intro() {
           Já tem conta?{' '}
           <Text
             style={styles.signInLink}
-            onPress={enter}
+            onPress={signIn}
             accessibilityRole="link"
           >
             Entrar
