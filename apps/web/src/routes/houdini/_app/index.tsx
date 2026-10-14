@@ -147,7 +147,11 @@ function InicioPage() {
   const o = overview.data
 
   const tiles: Array<{
-    to: '/houdini/pessoas' | '/houdini/bares' | '/houdini/fantasmas'
+    to:
+      | '/houdini/pessoas'
+      | '/houdini/bares'
+      | '/houdini/ampulheta'
+      | '/houdini/fantasmas'
     label: string
     icon: IconName
     value: number | undefined
@@ -169,8 +173,7 @@ function InicioPage() {
       sub: o ? `${o.bars.emTeste} em teste · ${o.bars.pagando} pagando` : ''
     },
     {
-      // A Ampulheta ainda não tem tela; até lá o cartão abre Bares.
-      to: '/houdini/bares',
+      to: '/houdini/ampulheta',
       label: 'Testes acabando',
       icon: 'hourglass',
       value: o?.testesAcabando,
