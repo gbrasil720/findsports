@@ -13,7 +13,10 @@ export const ADMIN_ACTION_KINDS = [
   'config.set',
   'config.reset',
   'config.expire',
-  'system.run_job'
+  'system.run_job',
+  'event.update',
+  'event.delete',
+  'event.fix'
 ] as const
 
 export type AdminActionKind = (typeof ADMIN_ACTION_KINDS)[number]

@@ -17,7 +17,8 @@ const FILTERS = [
   { label: 'Na pele', kinds: ['user.impersonate', 'user.stop_impersonating'] },
   { label: 'Sumiços', kinds: ['user.ban', 'user.unban'] },
   { label: 'Roles', kinds: ['user.set_role'] },
-  { label: 'Feitiços', kinds: ['config.set', 'config.reset'] }
+  { label: 'Feitiços', kinds: ['config.set', 'config.reset'] },
+  { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }
 ] as const
 
 function dayLabel(date: Date | string) {

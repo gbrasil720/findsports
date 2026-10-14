@@ -41,6 +41,37 @@ const JOB_LABELS: Record<string, string> = {
   analytics_retention: 'a limpeza dos analytics'
 }
 
+const EVENT_FIELDS: Record<string, string> = {
+  startsAt: 'início',
+  endsAt: 'fim',
+  championship: 'campeonato',
+  acceptsReservations: 'reservas',
+  reservationCap: 'limite'
+}
+
+function eventField(key: string, value: unknown) {
+  if (value === null || value === undefined) {
+    return key === 'reservationCap' ? 'do bar' : '—'
+  }
+  if (key === 'startsAt' || key === 'endsAt') {
+    return formatDateTime(String(value))
+  }
+  if (typeof value === 'boolean') return value ? 'sim' : 'não'
+  return String(value)
+}
+
+/** "início 14/10 21:30 → 14/10 22:00 · limite do bar → 30". */
+function eventChanges(before: unknown, after: unknown) {
+  const b = asRecord(before)
+  const a = asRecord(after)
+  return Object.keys(a)
+    .map(
+      (key) =>
+        `${EVENT_FIELDS[key] ?? key} ${eventField(key, b[key])} → ${eventField(key, a[key])}`
+    )
+    .join(' · ')
+}
+
 /** Como cada truque aparece no Grimório. */
 export function describe(entry: GrimorioEntry): {
   icon: IconName
@@ -137,6 +168,36 @@ export function describe(entry: GrimorioEntry): {
         text: `rodou ${JOB_LABELS[label] ?? label} na hora`,
         detail: detail.ok ? null : 'falhou: o erro está em Bastidores'
       }
+    case 'event.update':
+      return {
+        icon: 'cal',
+        tone: 'warn',
+        text: `corrigiu o jogo ${label}`,
+        detail: eventChanges(entry.before, entry.after)
+      }
+    case 'event.delete':
+      return {
+        icon: 'cal',
+        tone: 'bad',
+        text: `apagou o jogo ${label}`,
+        detail: eventField('startsAt', asRecord(entry.before).startsAt)
+      }
+    case 'event.fix':
+      return detail.warning === 'duplicate'
+        ? {
+            icon: 'cal',
+            tone: 'ok',
+            text: `apagou o duplicado ${label}`,
+            detail: eventField('startsAt', asRecord(entry.before).startsAt)
+          }
+        : {
+            icon: 'cal',
+            tone: 'ok',
+            text: `ligou ao catálogo o jogo ${label}`,
+            detail: `“${asRecord(entry.before).participantFreeText ?? '?'}” → ${(
+              (asRecord(entry.after).teams as string[] | undefined) ?? []
+            ).join(' × ')}`
+          }
     default:
       return {
         icon: 'book',

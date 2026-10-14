@@ -72,7 +72,7 @@ const eliteProcedure = barProcedure.use(({ ctx, next }) => {
 })
 
 /** Teto em pessoas; `null` tira o teto (ou, no jogo, volta ao padrão do bar). */
-const reservationCapInput = z
+export const reservationCapInput = z
   .number()
   .int()
   .min(1)
