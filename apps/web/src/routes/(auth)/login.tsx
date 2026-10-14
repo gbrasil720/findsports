@@ -16,12 +16,13 @@ import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import {
   createTwoFactorChallenge,
   TWO_FACTOR_CHALLENGE_KEY
 } from '@/lib/two-factor-challenge'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { getCallbackUrl } from '@/utils/callback-url'
+import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
   head: () => ({
@@ -62,7 +63,12 @@ function LoginPage() {
   const callbackUrl = getCallbackUrl(href)
 
   const form = useForm({
-    defaultValues: { email: '', password: '' },
+    // `/verify-email` manda o e-mail do cadastro: quem confirmou por outro
+    // caminho só precisa da senha.
+    defaultValues: {
+      email: new URL(href, 'http://local').searchParams.get('email') ?? '',
+      password: ''
+    },
     // Envio inválido leva o foco ao primeiro campo com erro; a mensagem já
     // está sob ele, e quem navega por teclado chega nela sem procurar.
     onSubmitInvalid: () => focusFirstInvalid(),
@@ -77,6 +83,18 @@ function LoginPage() {
       })
       setIsLoading(false)
       captcha.reset()
+      // Senha certa, e-mail sem confirmar: o better-auth responde 403 e já
+      // manda um link novo (`sendOnSignIn`). O "sem permissão" genérico
+      // deixava a pessoa sem saber que o link estava na caixa de entrada.
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        sessionStorage.setItem(
+          PENDING_VERIFICATION_KEY,
+          JSON.stringify({ email })
+        )
+        toast.info('Confirme seu e-mail: mandamos um link novo para ele.')
+        navigate({ to: withCallbackUrl('/verify-email', callbackUrl) })
+        return
+      }
       if (error) {
         toast.error(
           getUserFacingMessage(

@@ -106,7 +106,7 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        navigate({ to: '/plan' })
+        navigate({ to: '/plan', search: { trial: 'started' } })
         return
       }
 
@@ -218,16 +218,20 @@ function VerifyEmailPage() {
               className="onside-callout onside-callout-warn mt-6"
               role="alert"
             >
+              {/* Sem sessão nesta aba não dá para saber se o e-mail já foi
+                  confirmado: o link pode ter aberto em outro navegador (o do
+                  app de e-mail) ou a confirmação veio por outro caminho. O
+                  login resolve todos os casos e retoma o cadastro do bar. */}
               <p className="text-sm font-semibold">
-                Não encontramos sua conta aberta neste navegador. Se o e-mail já
-                foi confirmado, entre com e-mail e senha para continuar.
+                Para continuar, entre com seu e-mail e senha. Se o e-mail ainda
+                não estiver confirmado, mandamos um link novo de lá.
               </p>
               <Link
                 to="/login"
-                search={{ callbackUrl }}
-                className="text-sm underline"
+                search={{ callbackUrl, ...(email ? { email } : {}) }}
+                className="onside-btn onside-btn-ink"
               >
-                Entrar com e-mail e senha
+                Entrar para continuar
               </Link>
             </div>
           ) : null}

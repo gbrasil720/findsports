@@ -96,6 +96,15 @@ test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /
   ).toHaveCount(0)
   await page.getByRole('button', { name: 'Colocar meu bar no ar' }).click()
 
+  // O teste já começou no cadastro: o diálogo diz isso antes dos planos.
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  const confirmacao = page.getByRole('dialog')
+  await expect(
+    confirmacao.getByRole('heading', {
+      name: 'Seu bar está no ar com o Elite grátis.'
+    })
+  ).toBeVisible()
+  await confirmacao.getByRole('button', { name: 'Ver os planos' }).click()
   await expect(page).toHaveURL(/\/plan$/)
   await expect(
     page.getByRole('heading', { name: /^Você está no trial do Elite até / })
