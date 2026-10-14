@@ -30,8 +30,6 @@ test.describe('deslogado', () => {
     '/admin/validate',
     '/plan',
     '/plan/confirmed',
-    '/internal',
-    '/internal/flags',
     '/app',
     '/onboarding/fan',
     // Pública só para quem acabou de se cadastrar na aba (WEB-349); esse
@@ -77,7 +75,7 @@ test.describe('deslogado', () => {
 const HOME: Record<Role, string> = {
   fan: '/dashboard',
   pub: '/admin',
-  admin: '/internal'
+  admin: '/houdini'
 }
 
 for (const role of ['fan', 'pub', 'admin'] as const) {
@@ -90,7 +88,7 @@ for (const role of ['fan', 'pub', 'admin'] as const) {
     // Start page do PWA.
     expectRedirect('/app', HOME[role])
     // Concluído no onboarding volta para casa (pub vai escolher plano). Admin
-    // passa por /dashboard e de lá vai para /internal.
+    // passa por /dashboard e de lá vai para o Houdini.
     expectRedirect('/onboarding/fan', role === 'pub' ? '/plan' : HOME[role])
     expectRedirect('/onboarding/pub', role === 'pub' ? '/plan' : HOME[role])
   })
@@ -115,8 +113,6 @@ test.describe('papel errado cai na casa certa', () => {
     test.use({ storageState: storageState('fan') })
     expectRedirect('/admin', '/dashboard')
     expectRedirect('/admin/billing', '/dashboard')
-    expectRedirect('/internal', '/dashboard')
-    expectRedirect('/internal/flags', '/dashboard')
     expectRedirect('/plan', '/dashboard')
   })
 
@@ -124,15 +120,14 @@ test.describe('papel errado cai na casa certa', () => {
     test.use({ storageState: storageState('pub') })
     expectRedirect('/dashboard', '/admin')
     expectRedirect('/dashboard/profile', '/admin')
-    expectRedirect('/internal', '/admin')
   })
 
   test.describe('admin', () => {
     test.use({ storageState: storageState('admin') })
-    expectRedirect('/dashboard', '/internal')
-    expectRedirect('/dashboard/reservations', '/internal')
-    // /plan manda para /dashboard, que manda admin para /internal.
-    expectRedirect('/plan', '/internal')
+    expectRedirect('/dashboard', '/houdini')
+    expectRedirect('/dashboard/reservations', '/houdini')
+    // /plan manda para /dashboard, que manda admin para o Houdini.
+    expectRedirect('/plan', '/houdini')
   })
 })
 

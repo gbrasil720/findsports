@@ -14,7 +14,6 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as HoudiniRouteImport } from './routes/houdini'
-import { Route as InternalRouteImport } from './routes/internal'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
@@ -30,10 +29,6 @@ import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
-import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
-import { Route as InternalBarsRouteImport } from './routes/internal_.bars'
-import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
-import { Route as InternalManageUsersRouteImport } from './routes/internal_.manage-users'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
 import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
@@ -80,11 +75,6 @@ const AppRoute = AppRouteImport.update({
 const HoudiniRoute = HoudiniRouteImport.update({
   id: '/houdini',
   path: '/houdini',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InternalRoute = InternalRouteImport.update({
-  id: '/internal',
-  path: '/internal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanRoute = PlanRouteImport.update({
@@ -160,26 +150,6 @@ const HoudiniEntrarRoute = HoudiniEntrarRouteImport.update({
   id: '/entrar',
   path: '/entrar',
   getParentRoute: () => HoudiniRoute,
-} as any)
-const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
-  id: '/internal_/attendance',
-  path: '/internal/attendance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InternalBarsRoute = InternalBarsRouteImport.update({
-  id: '/internal_/bars',
-  path: '/internal/bars',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InternalFlagsRoute = InternalFlagsRouteImport.update({
-  id: '/internal_/flags',
-  path: '/internal/flags',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InternalManageUsersRoute = InternalManageUsersRouteImport.update({
-  id: '/internal_/manage-users',
-  path: '/internal/manage-users',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
   id: '/plan_/confirmed',
@@ -300,7 +270,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
-  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -315,10 +284,6 @@ export interface FileRoutesByFullPath {
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
-  '/internal/attendance': typeof InternalAttendanceRoute
-  '/internal/bars': typeof InternalBarsRoute
-  '/internal/flags': typeof InternalFlagsRoute
-  '/internal/manage-users': typeof InternalManageUsersRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
@@ -348,7 +313,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniAppIndexRoute
-  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -363,10 +327,6 @@ export interface FileRoutesByTo {
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
-  '/internal/attendance': typeof InternalAttendanceRoute
-  '/internal/bars': typeof InternalBarsRoute
-  '/internal/flags': typeof InternalFlagsRoute
-  '/internal/manage-users': typeof InternalManageUsersRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
@@ -396,7 +356,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
-  '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -412,10 +371,6 @@ export interface FileRoutesById {
   '/admin_/validate': typeof AdminValidateRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
-  '/internal_/attendance': typeof InternalAttendanceRoute
-  '/internal_/bars': typeof InternalBarsRoute
-  '/internal_/flags': typeof InternalFlagsRoute
-  '/internal_/manage-users': typeof InternalManageUsersRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(dashboard)/dashboard_/reservations': typeof dashboardDashboardReservationsRoute
@@ -447,7 +402,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/houdini'
-    | '/internal'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -462,10 +416,6 @@ export interface FileRouteTypes {
     | '/admin/billing'
     | '/admin/validate'
     | '/houdini/entrar'
-    | '/internal/attendance'
-    | '/internal/bars'
-    | '/internal/flags'
-    | '/internal/manage-users'
     | '/plan/confirmed'
     | '/dashboard/profile'
     | '/dashboard/reservations'
@@ -495,7 +445,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/houdini'
-    | '/internal'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -510,10 +459,6 @@ export interface FileRouteTypes {
     | '/admin/billing'
     | '/admin/validate'
     | '/houdini/entrar'
-    | '/internal/attendance'
-    | '/internal/bars'
-    | '/internal/flags'
-    | '/internal/manage-users'
     | '/plan/confirmed'
     | '/dashboard/profile'
     | '/dashboard/reservations'
@@ -542,7 +487,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/app'
     | '/houdini'
-    | '/internal'
     | '/plan'
     | '/privacidade'
     | '/sitemap.xml'
@@ -558,10 +502,6 @@ export interface FileRouteTypes {
     | '/admin_/validate'
     | '/houdini/_app'
     | '/houdini/entrar'
-    | '/internal_/attendance'
-    | '/internal_/bars'
-    | '/internal_/flags'
-    | '/internal_/manage-users'
     | '/plan_/confirmed'
     | '/(dashboard)/dashboard_/profile'
     | '/(dashboard)/dashboard_/reservations'
@@ -592,7 +532,6 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
   HoudiniRoute: typeof HoudiniRouteWithChildren
-  InternalRoute: typeof InternalRoute
   PlanRoute: typeof PlanRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -606,10 +545,6 @@ export interface RootRouteChildren {
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
-  InternalAttendanceRoute: typeof InternalAttendanceRoute
-  InternalBarsRoute: typeof InternalBarsRoute
-  InternalFlagsRoute: typeof InternalFlagsRoute
-  InternalManageUsersRoute: typeof InternalManageUsersRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   dashboardDashboardReservationsRoute: typeof dashboardDashboardReservationsRoute
@@ -658,13 +593,6 @@ declare module '@tanstack/react-router' {
       path: '/houdini'
       fullPath: '/houdini'
       preLoaderRoute: typeof HoudiniRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal': {
-      id: '/internal'
-      path: '/internal'
-      fullPath: '/internal'
-      preLoaderRoute: typeof InternalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plan': {
@@ -771,34 +699,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/houdini/entrar'
       preLoaderRoute: typeof HoudiniEntrarRouteImport
       parentRoute: typeof HoudiniRoute
-    }
-    '/internal_/attendance': {
-      id: '/internal_/attendance'
-      path: '/internal/attendance'
-      fullPath: '/internal/attendance'
-      preLoaderRoute: typeof InternalAttendanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal_/bars': {
-      id: '/internal_/bars'
-      path: '/internal/bars'
-      fullPath: '/internal/bars'
-      preLoaderRoute: typeof InternalBarsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal_/flags': {
-      id: '/internal_/flags'
-      path: '/internal/flags'
-      fullPath: '/internal/flags'
-      preLoaderRoute: typeof InternalFlagsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/internal_/manage-users': {
-      id: '/internal_/manage-users'
-      path: '/internal/manage-users'
-      fullPath: '/internal/manage-users'
-      preLoaderRoute: typeof InternalManageUsersRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/plan_/confirmed': {
       id: '/plan_/confirmed'
@@ -1008,7 +908,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AppRoute: AppRoute,
   HoudiniRoute: HoudiniRouteWithChildren,
-  InternalRoute: InternalRoute,
   PlanRoute: PlanRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -1022,10 +921,6 @@ const rootRouteChildren: RootRouteChildren = {
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
-  InternalAttendanceRoute: InternalAttendanceRoute,
-  InternalBarsRoute: InternalBarsRoute,
-  InternalFlagsRoute: InternalFlagsRoute,
-  InternalManageUsersRoute: InternalManageUsersRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   dashboardDashboardReservationsRoute: dashboardDashboardReservationsRoute,

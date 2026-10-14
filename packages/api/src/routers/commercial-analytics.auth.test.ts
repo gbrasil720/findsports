@@ -6,7 +6,7 @@ import { appRouter } from './index'
 
 /**
  * ESC-09/ESC-10: procedimento de bastidor exige admin no endpoint, e não só
- * no guard da página `/internal`.
+ * no portão do Houdini.
  *
  * Estes testes exercitam a autorização pelo router de verdade. Os casos de
  * recusa não chegam ao banco — o middleware corta antes —, então rodam sem

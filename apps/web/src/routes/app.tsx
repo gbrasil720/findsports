@@ -20,11 +20,7 @@ export const Route = createFileRoute('/app')({
 
     throw redirect({
       to:
-        role === 'pub'
-          ? '/admin'
-          : role === 'admin'
-            ? '/internal'
-            : '/dashboard'
+        role === 'pub' ? '/admin' : role === 'admin' ? '/houdini' : '/dashboard'
     })
   }
 })

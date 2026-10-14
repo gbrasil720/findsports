@@ -153,7 +153,7 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 | `onboarding` | Onboarding do torcedor e do bar, `/verify-email` |
 | `email` | Templates, envio, Resend, entregabilidade, DNS de e-mail |
 | `landing` | Página pública, copy, SEO, performance de first paint |
-| `admin` | Painéis `/internal/*`, gestão de usuários, flags |
+| `admin` | Houdini (`/houdini/*`, painel interno), gestão de usuários, flags |
 | `infra` | Banco, migrations, deploy, ambiente, variáveis |
 | `app` | App autenticado: `/dashboard`, perfil, página do bar, mapa |
 | `reservations` | Reserva de mesa, presença ("Vou assistir aqui"), validação de código, oferta da casa |

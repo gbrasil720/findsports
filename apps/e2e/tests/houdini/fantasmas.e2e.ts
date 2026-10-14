@@ -5,8 +5,9 @@ import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Painel /internal/attendance (WEB-181): bar em que o torcedor diz que foi e
-// o bar não registra o código, em jogos com a janela de validação fechada.
+// Fantasmas do Houdini (antes /internal/attendance, WEB-181): bar em que o
+// torcedor diz que foi e o bar não registra o código, em jogos com a janela
+// de validação fechada.
 
 test.use({ storageState: storageState('admin') })
 
@@ -54,12 +55,16 @@ test('bar que não registra os códigos aparece no alerta', async ({ page }) => 
   // Abaixo do piso de três jogos: um padrão isolado não entra.
   const below = await barWithUnregisteredGames(2)
 
-  await page.goto('/internal/attendance')
-  const alert = page.getByRole('listitem').filter({
+  await page.goto('/houdini/fantasmas')
+  const alert = page.getByRole('article').filter({
     has: page.getByRole('heading', { name: flagged, exact: true })
   })
   await expect(alert).toContainText('3 jogos com “foi, mas não registrou”')
-  await expect(alert).toContainText('Bar não registra')
+  // As quatro leituras do cruzamento: só a do bar que não registra conta.
+  await expect(alert.getByRole('img')).toHaveAttribute(
+    'aria-label',
+    'Presença confiável: 0, Bar não registra: 3, Código queimado: 0, No-show: 0'
+  )
   await expect(
     page.getByRole('heading', { name: below, exact: true })
   ).toHaveCount(0)

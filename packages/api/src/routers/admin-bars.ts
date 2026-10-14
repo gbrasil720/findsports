@@ -112,7 +112,7 @@ function actor(ctx: { session: { user: { id: string; name: string } } }) {
 }
 
 /**
- * WEB-354: `/internal/bars`. Plano, situação e assinatura de um bar só saíam
+ * WEB-354: a tela Bares do Houdini (`/houdini/bares`). Plano, situação e assinatura de um bar só saíam
  * por SQL no banco. WEB-385: os truques que antes só se faziam no banco
  * (busca atrasada, teste vencido, bar fora do ar), cada um escrito no
  * Grimório na mesma transação.

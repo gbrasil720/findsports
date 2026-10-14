@@ -232,8 +232,8 @@ variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
 ### Houdini (painel interno)
 
-O `/internal` está virando o Houdini (projeto Houdini no Linear, WEB-383 em diante),
-em `houdini.onside.sh`, servido pelo mesmo Worker. As rotas são `/houdini/*`; no host
+O painel interno é o Houdini (projeto Houdini no Linear, WEB-383 em diante), em
+`houdini.onside.sh`, servido pelo mesmo Worker; o antigo `/internal` saiu (WEB-393). As rotas são `/houdini/*`; no host
 próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts`). No
 `www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
 `vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por

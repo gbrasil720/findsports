@@ -5,7 +5,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { contextFor, load, refusal } from './integration-seed'
 
 /**
- * Painel /internal/flags (WEB-346): o `list` diz quem alterou pelo nome, e o
+ * Feitiços do Houdini, `/houdini/feiticos` (WEB-346): o `list` diz quem alterou pelo nome, e o
  * `set` recusado devolve o motivo, que é o que a tela mostra.
  */
 
