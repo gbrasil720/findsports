@@ -198,6 +198,11 @@ Decidido no WEB-318, opção 2: aviso dentro do app, sem e-mail e sem push.
 - O dono liga e desliga o recebimento de reservas no painel, independente do
   plano. Desligado é o padrão: assinar Elite não inscreve ninguém numa operação
   que ele não pediu.
+- Revisão (migration 0056): a disposição passou a ser **por jogo**, marcada no
+  formulário do jogo ("Aceitar reservas neste jogo"). Um interruptor do bar
+  inteiro abria pedido até em jogo em que o bar não segura mesa. O bar "recebe
+  reservas" — oferta da casa, "Aceita reserva" e a aba do painel — enquanto tem
+  Elite e algum jogo que ainda não acabou marcado. O que segue vale por jogo.
 - Com o recebimento desligado, o torcedor cai no mesmo caminho de quem vê um
   bar sem Elite — WhatsApp e rota, sem botão morto. Não há UX nova do lado do
   torcedor.

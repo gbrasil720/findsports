@@ -386,6 +386,13 @@
       "when": 1791676087654,
       "tag": "0055_drop_user_admitted_at",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792002219099,
+      "tag": "0056_event_accepts_reservations",
+      "breakpoints": true
     }
   ]
 }

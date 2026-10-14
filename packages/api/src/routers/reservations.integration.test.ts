@@ -59,8 +59,7 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
     latitude: '-23.55052000',
     longitude: '-46.63330800',
     isActive: true,
-    houseOffer: 'Chopp em dobro',
-    acceptsReservations: options.acceptsReservations ?? true
+    houseOffer: 'Chopp em dobro'
   })
   await db.insert(subscription).values({
     barId,
@@ -81,7 +80,8 @@ async function seed(options: { acceptsReservations?: boolean } = {}) {
         sportId,
         championship: 'Campeonato de integração',
         participantFreeText: 'Time A × Time B',
-        startsAt: new Date(Date.now() + offset)
+        startsAt: new Date(Date.now() + offset),
+        acceptsReservations: options.acceptsReservations ?? true
       }))
     )
     .returning({ id: event.id })
@@ -214,7 +214,7 @@ integrationTest(
 )
 
 integrationTest(
-  'jogo passado, papel errado e bar sem recebimento falham no servidor',
+  'jogo passado, papel errado e jogo sem recebimento falham no servidor',
   async () => {
     const ctx = await seed({ acceptsReservations: false })
     try {
@@ -229,10 +229,11 @@ integrationTest(
         message: 'Este bar não está recebendo reservas pela Onside no momento.'
       })
 
+      // Com o jogo marcado, falta o Elite.
       await ctx.db
-        .update(bar)
+        .update(event)
         .set({ acceptsReservations: true })
-        .where(eq(bar.id, ctx.barId))
+        .where(eq(event.id, ctx.futureId))
       await ctx.db
         .update(subscription)
         .set({ status: 'past_due' })
@@ -276,9 +277,9 @@ integrationTest(
         .set({ status: 'cancelled' })
         .where(eq(subscription.barId, ctx.barId))
       await ctx.db
-        .update(bar)
+        .update(event)
         .set({ acceptsReservations: false })
-        .where(eq(bar.id, ctx.barId))
+        .where(eq(event.id, ctx.futureId))
 
       expect(await ctx.fan.mine()).toHaveLength(1)
       const cancelled = await ctx.fan.cancel({ reservationId: created.id })
@@ -453,7 +454,7 @@ integrationTest(
         })
       ).toEqual({ status: 'declined', changed: true })
 
-      // Nada de recurso novo: pedido, interruptor e teto seguem do Elite.
+      // Nada de recurso novo: pedido, marcar jogo e teto seguem do Elite.
       expect(await refusal(ctx.otherFan.create(ctx.request()))).toEqual({
         code: 'PRECONDITION_FAILED',
         message: 'Este bar não está recebendo reservas pela Onside no momento.'
@@ -463,7 +464,11 @@ integrationTest(
         () => ctx.queue.setDefaultCap({ reservationCap: 10 }),
         () =>
           ctx.queue.setGameCap({ eventId: ctx.futureId, reservationCap: 10 }),
-        () => ctx.pub.updateAcceptsReservations({ acceptsReservations: true })
+        () =>
+          ctx.pub.updateEvent({
+            eventId: ctx.futureId,
+            acceptsReservations: true
+          })
       ]) {
         expect((await refusal(attempt())).code).toBe('FORBIDDEN')
       }

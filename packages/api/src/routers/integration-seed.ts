@@ -1,7 +1,12 @@
 import { expect } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  event,
+  sport,
+  subscription
+} from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import type { AppRouter } from './index'
 
@@ -77,12 +82,18 @@ export async function seedBar(
   owner: Caller
   fan: Caller
   fanId: string
+  /**
+   * Jogo do bar daqui a um mês, marcado para receber reservas salvo se
+   * `fields` disser outra coisa. O esporte sai no `cleanup`.
+   */
+  seedGame: (fields?: Partial<typeof event.$inferInsert>) => Promise<string>
   cleanup: () => Promise<void>
 }> {
   const { db, appRouter } = await load()
   const ownerId = crypto.randomUUID()
   const fanId = crypto.randomUUID()
   const barId = crypto.randomUUID()
+  const sportIds: string[] = []
 
   await db.insert(user).values([
     {
@@ -124,9 +135,35 @@ export async function seedBar(
     owner: appRouter.createCaller(contextFor(ownerId, 'pub')),
     fan: appRouter.createCaller(contextFor(fanId, 'fan')),
     fanId,
+    seedGame: async (fields = {}) => {
+      const sportId = crypto.randomUUID()
+      sportIds.push(sportId)
+      await db.insert(sport).values({
+        id: sportId,
+        name: `Esporte ${sportId}`,
+        slug: `integration-${sportId}`
+      })
+      const [game] = await db
+        .insert(event)
+        .values({
+          barId,
+          sportId,
+          championship: 'Campeonato de integração',
+          startsAt: inAMonth(),
+          acceptsReservations: true,
+          ...fields
+        })
+        .returning({ id: event.id })
+      if (!game) throw new Error('jogo não criado')
+      return game.id
+    },
     cleanup: async () => {
       await db.delete(user).where(eq(user.id, ownerId))
       await db.delete(user).where(eq(user.id, fanId))
+      // Depois do dono: o bar e os jogos saem em cascata, e o esporte fica livre.
+      if (sportIds.length) {
+        await db.delete(sport).where(inArray(sport.id, sportIds))
+      }
     }
   }
 }

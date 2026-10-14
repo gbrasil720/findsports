@@ -81,6 +81,7 @@ function perfil(overrides: Partial<Profile> = {}): ProfileState {
           startsAt: AMANHA,
           endsAt: null,
           participantFreeText: 'Time A × Time B',
+          acceptsReservations: true,
           reservationsSoldOut: false,
           // O dono nunca recebe presença; a prévia monta a do torcedor.
           attendance: null,
@@ -171,8 +172,18 @@ describe('prévia do perfil em /admin', () => {
   })
 
   test('sem recebimento efetivo, não há "Reservar mesa"', () => {
-    const texto = renderizar('pro', perfil({ acceptsReservations: false })).body
-      .textContent
+    const base = perfil()
+    if (base.status !== 'ready') throw new Error('perfil pronto')
+    const texto = renderizar(
+      'pro',
+      perfil({
+        acceptsReservations: false,
+        events: base.profile.events.map((jogo) => ({
+          ...jogo,
+          acceptsReservations: false
+        }))
+      })
+    ).body.textContent
     expect(texto).not.toContain('Reservar mesa')
     expect(texto).toContain('Falar com o bar')
     expect(texto).toContain('Vou assistir aqui')

@@ -597,14 +597,14 @@ describe('getPlanLossNote (WEB-351)', () => {
     houseOffer: 'Chopp em dobro',
     menuUrl: 'https://bar.example/cardapio',
     averageSpendCents: 6000,
-    acceptsReservations: true
+    reservableEvents: 2
   }
   const empty = {
     upcomingEvents: 0,
     houseOffer: null,
     menuUrl: null,
     averageSpendCents: null,
-    acceptsReservations: false
+    reservableEvents: 0
   }
 
   test('jogos: os do bar contra o limite do Starter, e os já cadastrados continuam (WEB-352)', () => {

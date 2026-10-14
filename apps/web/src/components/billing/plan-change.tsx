@@ -29,14 +29,16 @@ function PlanLossList({
 }: Change & { onTrial?: boolean; className?: string }) {
   const bar = useMyBar().data
   const events = useMyEvents().data
+  const upcoming = events?.filter(
+    (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
+  )
   const numbers =
-    bar && events
+    bar && upcoming
       ? {
           ...bar,
-          upcomingEvents: events.filter(
-            (item) =>
-              getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
-          ).length
+          upcomingEvents: upcoming.length,
+          reservableEvents: upcoming.filter((item) => item.acceptsReservations)
+            .length
         }
       : null
 

@@ -104,10 +104,12 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
     menuUrl: text('menu_url'),
     averageSpendCents: integer('average_spend_cents'),
-    // Disposição de receber reservas (WEB-131): o bar QUER, além de PODER
-    // (Elite vigente). Desligado por padrão — assinar Elite não inscreve
-    // ninguém em reserva. O recebimento efetivo exige as duas coisas; a
-    // regra vive em `packages/api/src/lib/reservation-intake.ts`.
+    // OBSOLETA: o recebimento de reservas passou a ser por jogo
+    // (`event.accepts_reservations`, migration 0056). Um interruptor do bar
+    // inteiro abria pedido até em jogo em que o bar não segura mesa. O código
+    // não lê nem grava mais esta coluna; ela fica até o drop (expand →
+    // contract), porque a migration sobe antes do código e a versão anterior
+    // ainda a lê.
     acceptsReservations: boolean('accepts_reservations')
       .default(false)
       .notNull(),
@@ -240,6 +242,12 @@ export const event = pgTable(
     // Override do teto padrão do bar para este jogo (WEB-152). Nulo herda o
     // padrão.
     reservationCap: smallint('reservation_cap'),
+    // O bar recebe pedido de reserva para ESTE jogo. Desligado por padrão: o
+    // dono marca jogo a jogo, e só com Elite vigente. A regra vive em
+    // `packages/api/src/lib/reservation-intake.ts`.
+    acceptsReservations: boolean('accepts_reservations')
+      .default(false)
+      .notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { readFileSync } from 'node:fs'
+import { eq, inArray, sql } from '@findsports_oficial/db'
 import {
-  bar,
   event,
   sport,
   subscription
@@ -15,58 +15,108 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { inAMonth, load, seedBar, storedOffer } from './integration-seed'
 
 /**
- * Recebimento de reservas (WEB-131) contra o banco de verdade: o interruptor
- * nasce desligado, só liga com Elite vigente, desligar esconde a oferta do
- * perfil sem apagar o texto, e reserva já feita sobrevive ao desligamento.
+ * Recebimento de reservas por jogo contra o banco de verdade: o jogo nasce
+ * desmarcado, só se marca com Elite vigente, o bar "recebe" enquanto tiver
+ * jogo marcado no perfil, desmarcar esconde a oferta sem apagar o texto, e
+ * reserva já feita sobrevive ao desmarque.
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-async function storedAcceptsReservations(barId: string) {
+const HOUR = 3_600_000
+
+async function storedGameFlag(eventId: string) {
   const { db } = await load()
   const [row] = await db
-    .select({ acceptsReservations: bar.acceptsReservations })
-    .from(bar)
-    .where(eq(bar.id, barId))
+    .select({ acceptsReservations: event.acceptsReservations })
+    .from(event)
+    .where(eq(event.id, eventId))
   return row?.acceptsReservations
 }
 
+async function createdGames(barId: string) {
+  const { db } = await load()
+  return db
+    .select({ acceptsReservations: event.acceptsReservations })
+    .from(event)
+    .where(eq(event.barId, barId))
+}
+
+/** Esporte só para `pub.createEvent`, que confere o id. */
+async function seedSport() {
+  const { db } = await load()
+  const id = crypto.randomUUID()
+  await db.insert(sport).values({
+    id,
+    name: `Esporte ${id}`,
+    slug: `integration-${id}`
+  })
+  return { id, drop: () => db.delete(sport).where(eq(sport.id, id)) }
+}
+
+const newGame = (sportId: string, acceptsReservations?: boolean) => ({
+  sportId,
+  championship: 'Campeonato de integração',
+  startsAt: inAMonth().toISOString(),
+  ...(acceptsReservations !== undefined && { acceptsReservations })
+})
+
 integrationTest(
-  'bar Elite novo começa com o recebimento desligado e sem oferta no perfil',
+  'jogo novo nasce desmarcado: bar Elite sem jogo marcado não recebe nem mostra a oferta',
   async () => {
     const ctx = await seedBar('elite', 'active', inAMonth())
+    const game = await seedSport()
     try {
-      expect((await ctx.owner.pub.getMe()).acceptsReservations).toBe(false)
+      await ctx.owner.pub.createEvent(newGame(game.id))
+      expect(await createdGames(ctx.barId)).toEqual([
+        { acceptsReservations: false }
+      ])
       await ctx.owner.pub.updateHouseOffer({ houseOffer: 'Chopp em dobro' })
 
+      expect((await ctx.owner.pub.getMe()).receivesReservations).toBe(false)
       const profile = await ctx.fan.pubs.getById({ id: ctx.barId })
       expect(profile.acceptsReservations).toBe(false)
       expect(profile.houseOffer).toBeNull()
+      expect(profile.events[0]?.acceptsReservations).toBe(false)
     } finally {
       await ctx.cleanup()
+      await game.drop()
     }
   }
 )
 
 integrationTest(
-  'ligar e desligar reflete no perfil e preserva o texto da oferta',
+  'marcar e desmarcar o jogo reflete no perfil e no painel, e preserva o texto da oferta',
   async () => {
     const ctx = await seedBar('elite', 'active', inAMonth())
+    const game = await seedSport()
     try {
       await ctx.owner.pub.updateHouseOffer({ houseOffer: 'Chopp em dobro' })
+      await ctx.owner.pub.createEvent(newGame(game.id, true))
+      const [created] = await ctx.db
+        .select({ id: event.id })
+        .from(event)
+        .where(eq(event.barId, ctx.barId))
+      if (!created) throw new Error('jogo não criado')
+      // Um segundo jogo, desmarcado: o perfil diz qual recebe.
+      const other = await ctx.seedGame({ acceptsReservations: false })
 
-      const on = await ctx.owner.pub.updateAcceptsReservations({
-        acceptsReservations: true
-      })
-      expect(on.acceptsReservations).toBe(true)
+      expect((await ctx.owner.pub.getMe()).receivesReservations).toBe(true)
       let profile = await ctx.fan.pubs.getById({ id: ctx.barId })
       expect(profile.acceptsReservations).toBe(true)
       expect(profile.houseOffer).toBe('Chopp em dobro')
+      expect(
+        Object.fromEntries(
+          profile.events.map((item) => [item.id, item.acceptsReservations])
+        )
+      ).toEqual({ [created.id]: true, [other]: false })
 
-      const off = await ctx.owner.pub.updateAcceptsReservations({
+      await ctx.owner.pub.updateEvent({
+        eventId: created.id,
         acceptsReservations: false
       })
-      expect(off.acceptsReservations).toBe(false)
+      expect(await storedGameFlag(created.id)).toBe(false)
+      expect((await ctx.owner.pub.getMe()).receivesReservations).toBe(false)
       profile = await ctx.fan.pubs.getById({ id: ctx.barId })
       expect(profile.acceptsReservations).toBe(false)
       expect(profile.houseOffer).toBeNull()
@@ -75,6 +125,37 @@ integrationTest(
       expect(
         (await ctx.owner.pubs.getById({ id: ctx.barId })).houseOffer
       ).toBeNull()
+
+      // Editar outro campo não mexe na marcação.
+      await ctx.owner.pub.updateEvent({
+        eventId: other,
+        acceptsReservations: true
+      })
+      await ctx.owner.pub.updateEvent({
+        eventId: other,
+        championship: 'Outro campeonato'
+      })
+      expect(await storedGameFlag(other)).toBe(true)
+    } finally {
+      await ctx.cleanup()
+      await game.drop()
+    }
+  }
+)
+
+integrationTest(
+  'só jogo que ainda não acabou faz o bar receber reservas',
+  async () => {
+    const ctx = await seedBar('elite', 'active', inAMonth())
+    try {
+      // Começou há 5h e não tem fim: já acabou pelo fim derivado.
+      await ctx.seedGame({ startsAt: new Date(Date.now() - 5 * HOUR) })
+      await ctx.seedGame({ acceptsReservations: false })
+
+      expect((await ctx.owner.pub.getMe()).receivesReservations).toBe(false)
+      const profile = await ctx.fan.pubs.getById({ id: ctx.barId })
+      expect(profile.acceptsReservations).toBe(false)
+      expect(profile.amenities).not.toContain(10)
     } finally {
       await ctx.cleanup()
     }
@@ -83,52 +164,61 @@ integrationTest(
 
 for (const plan of ['starter', 'pro'] as const) {
   integrationTest(
-    `bar ${plan} recebe recusa do servidor ao ligar o recebimento`,
+    `bar ${plan} recebe recusa do servidor ao marcar o jogo para reservas`,
     async () => {
       const ctx = await seedBar(plan, 'active', inAMonth())
+      const game = await seedSport()
       try {
         await expect(
-          ctx.owner.pub.updateAcceptsReservations({ acceptsReservations: true })
+          ctx.owner.pub.createEvent(newGame(game.id, true))
         ).rejects.toMatchObject({ code: 'FORBIDDEN' })
-        expect(await storedAcceptsReservations(ctx.barId)).toBe(false)
+        expect(await createdGames(ctx.barId)).toEqual([])
+
+        // Sem a marcação, o jogo é criado normalmente.
+        await ctx.owner.pub.createEvent(newGame(game.id, false))
+        const [created] = await ctx.db
+          .select({ id: event.id })
+          .from(event)
+          .where(eq(event.barId, ctx.barId))
+        if (!created) throw new Error('jogo não criado')
+        await expect(
+          ctx.owner.pub.updateEvent({
+            eventId: created.id,
+            acceptsReservations: true
+          })
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+        expect(await storedGameFlag(created.id)).toBe(false)
       } finally {
         await ctx.cleanup()
+        await game.drop()
       }
     }
   )
 }
 
-integrationTest('torcedor não mexe no recebimento', async () => {
-  const ctx = await seedBar('elite', 'active', inAMonth())
-  try {
-    await expect(
-      ctx.fan.pub.updateAcceptsReservations({ acceptsReservations: true })
-    ).rejects.toMatchObject({ code: 'FORBIDDEN' })
-  } finally {
-    await ctx.cleanup()
-  }
-})
-
 integrationTest(
-  'perder o Elite corta o recebimento no perfil, e desligar continua possível',
+  'perder o Elite corta o recebimento no perfil, e desmarcar continua possível',
   async () => {
     const ctx = await seedBar('elite', 'active', inAMonth())
     try {
-      await ctx.owner.pub.updateAcceptsReservations({
-        acceptsReservations: true
-      })
+      const gameId = await ctx.seedGame()
+      expect(
+        (await ctx.fan.pubs.getById({ id: ctx.barId })).acceptsReservations
+      ).toBe(true)
       await ctx.db
         .update(subscription)
         .set({ status: 'past_due' })
         .where(eq(subscription.barId, ctx.barId))
 
-      expect(
-        (await ctx.fan.pubs.getById({ id: ctx.barId })).acceptsReservations
-      ).toBe(false)
-      await ctx.owner.pub.updateAcceptsReservations({
+      const profile = await ctx.fan.pubs.getById({ id: ctx.barId })
+      expect(profile.acceptsReservations).toBe(false)
+      expect(profile.events[0]?.acceptsReservations).toBe(false)
+      expect((await ctx.owner.pub.getMe()).receivesReservations).toBe(false)
+      await ctx.owner.pub.updateEvent({
+        eventId: gameId,
         acceptsReservations: false
       })
-      expect(await storedAcceptsReservations(ctx.barId)).toBe(false)
+      expect(await storedGameFlag(gameId)).toBe(false)
     } finally {
       await ctx.cleanup()
     }
@@ -136,35 +226,16 @@ integrationTest(
 )
 
 integrationTest(
-  'desligar não mexe em reserva existente: código segue validável e a cópia da oferta fica',
+  'desmarcar não mexe em reserva existente: código segue validável e a cópia da oferta fica',
   async () => {
     const ctx = await seedBar('elite', 'active', inAMonth())
-    const sportId = crypto.randomUUID()
     try {
-      await ctx.owner.pub.updateAcceptsReservations({
-        acceptsReservations: true
-      })
       await ctx.owner.pub.updateHouseOffer({ houseOffer: 'Chopp em dobro' })
-
-      await ctx.db.insert(sport).values({
-        id: sportId,
-        name: `Esporte ${sportId}`,
-        slug: `integration-${sportId}`
-      })
-      const [createdEvent] = await ctx.db
-        .insert(event)
-        .values({
-          barId: ctx.barId,
-          sportId,
-          championship: 'Campeonato de integração',
-          startsAt: inAMonth()
-        })
-        .returning({ id: event.id })
-      if (!createdEvent) throw new Error('evento não criado')
+      const gameId = await ctx.seedGame()
       const [createdReservation] = await ctx.db
         .insert(reservation)
         .values({
-          eventId: createdEvent.id,
+          eventId: gameId,
           userId: ctx.fanId,
           partySize: 2,
           status: 'confirmed',
@@ -182,7 +253,8 @@ integrationTest(
         .returning({ id: reservationCode.id })
       if (!code) throw new Error('código não emitido')
 
-      await ctx.owner.pub.updateAcceptsReservations({
+      await ctx.owner.pub.updateEvent({
+        eventId: gameId,
         acceptsReservations: false
       })
 
@@ -206,7 +278,71 @@ integrationTest(
         .where(eq(reservation.id, createdReservation.id))
     } finally {
       await ctx.cleanup()
-      await ctx.db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
+
+/**
+ * O UPDATE da migration 0056, rodado de novo numa transação desfeita no fim:
+ * jogo de bar que tinha o interruptor ligado passa a receber, o resto fica
+ * como está.
+ */
+integrationTest(
+  'a migration 0056 marca os jogos dos bares que já recebiam',
+  async () => {
+    const on = await seedBar('elite', 'active', inAMonth(), {
+      acceptsReservations: true
+    })
+    const off = await seedBar('elite', 'active', inAMonth())
+    try {
+      const onGames = [
+        await on.seedGame({ acceptsReservations: false }),
+        await on.seedGame({
+          acceptsReservations: false,
+          startsAt: new Date(Date.now() - 48 * HOUR)
+        })
+      ]
+      const offGame = await off.seedGame({ acceptsReservations: false })
+
+      const migration = readFileSync(
+        new URL(
+          '../../../db/src/migrations/0056_event_accepts_reservations.sql',
+          import.meta.url
+        ),
+        'utf8'
+      )
+      const backfill = migration
+        .split('--> statement-breakpoint')
+        .find((statement) => statement.includes('UPDATE'))
+      if (!backfill) throw new Error('UPDATE não encontrado na migration')
+
+      const rollback = new Error('desfaz')
+      await expect(
+        on.db.transaction(async (tx) => {
+          await tx.execute(sql.raw(backfill)) // sql-raw-permitido: arquivo de migration
+          const rows = await tx
+            .select({
+              id: event.id,
+              acceptsReservations: event.acceptsReservations
+            })
+            .from(event)
+            .where(inArray(event.id, [...onGames, offGame]))
+          expect(
+            Object.fromEntries(
+              rows.map((row) => [row.id, row.acceptsReservations])
+            )
+          ).toEqual({
+            [onGames[0] as string]: true,
+            [onGames[1] as string]: true,
+            [offGame]: false
+          })
+          throw rollback
+        })
+      ).rejects.toBe(rollback)
+      expect(await storedGameFlag(offGame)).toBe(false)
+    } finally {
+      await on.cleanup()
+      await off.cleanup()
     }
   }
 )

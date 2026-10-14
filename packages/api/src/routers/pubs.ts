@@ -50,6 +50,7 @@ import {
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
 import {
+  barReceivesReservations,
   receivesReservations,
   withSeatAvailability
 } from '../lib/reservation-intake'
@@ -373,7 +374,6 @@ export const pubsRouter = router({
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
-          acceptsReservations: true,
           reservationCap: true
         },
         with: {
@@ -438,7 +438,6 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
-        acceptsReservations,
         reservationCap: defaultCap,
         subscription,
         events,
@@ -455,8 +454,9 @@ export const pubsRouter = router({
             }
           : null
 
-      const receiving = receivesReservations(
-        acceptsReservations,
+      // `events` já vem na janela do perfil: é a mesma regra da busca.
+      const receiving = barReceivesReservations(
+        events,
         subscription ?? null,
         now
       )
@@ -473,18 +473,29 @@ export const pubsRouter = router({
             confirmedSeats,
             effectiveCap,
             soldOut,
+            acceptsReservations,
             ...game
-          }) => ({
-            ...game,
-            reservationsSoldOut: receiving && soldOut,
-            // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
-            attendance: attendance.get(game.id) ?? null
-          })
+          }) => {
+            // Por jogo: o bar marca em quais recebe pedido.
+            const gameReceiving = receivesReservations(
+              acceptsReservations,
+              subscription ?? null,
+              now
+            )
+            return {
+              ...game,
+              acceptsReservations: gameReceiving,
+              reservationsSoldOut: gameReceiving && soldOut,
+              // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
+              attendance: attendance.get(game.id) ?? null
+            }
+          }
         ),
         rating,
         // O único resgate da oferta é o código de uma reserva: sem
         // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
         houseOffer: receiving ? houseOffer : null,
+        // Efetivo e derivado dos jogos: algum jogo no perfil recebe pedido.
         acceptsReservations: receiving,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
@@ -618,8 +629,9 @@ export const pubsRouter = router({
                   and(isNotNull(event.endsAt), gte(event.endsAt, now)),
                   and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
                 ),
-              // O teto do dono não vai para o torcedor (WEB-152).
-              columns: { reservationCap: false },
+              // O teto do dono não vai para o torcedor (WEB-152), nem a
+              // marcação crua de reservas: o efetivo sai só no perfil.
+              columns: { reservationCap: false, acceptsReservations: false },
               with: {
                 sport: true,
                 participants: { with: { team: true }, orderBy: byMatchOrder }

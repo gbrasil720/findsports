@@ -10,11 +10,13 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 
 /**
  * Recebimento de reservas (WEB-131). Três níveis decidem se o torcedor pode
- * pedir mesa num bar:
+ * pedir mesa para um jogo:
  *
  * - capacidade — o bar **pode**: Elite vigente, pela assinatura;
- * - disposição — o bar **quer**: `bar.accepts_reservations`, desligado por
- *   padrão;
+ * - disposição — o bar **quer**, jogo a jogo: `event.accepts_reservations`,
+ *   desligado por padrão. Era um interruptor do bar inteiro
+ *   (`bar.accepts_reservations`, obsoleto), que abria pedido até em jogo em
+ *   que o bar não segura mesa;
  * - disponibilidade — ainda **cabe** neste jogo: teto de pessoas confirmadas
  *   (WEB-152, ADR 0003 "Teto por jogo").
  *
@@ -31,8 +33,9 @@ function canEnableReservations(
 }
 
 /**
- * Chamado antes de gravar `true`. Desligar não passa por aqui: um bar que
- * perdeu o Elite com o recebimento ligado precisa conseguir desligar.
+ * Chamado antes de marcar um jogo para receber reservas. Desmarcar não passa
+ * por aqui: um bar que perdeu o Elite com jogos marcados precisa conseguir
+ * desmarcar.
  */
 export function assertCanEnableReservations(
   subscription: SubscriptionForPlan | null,
@@ -108,13 +111,35 @@ export async function hasOpenReservations(
   return open !== undefined
 }
 
-/** O bar recebe pedidos agora: quer e pode. */
+/**
+ * O jogo recebe pedidos agora: o bar o marcou (`event.accepts_reservations`)
+ * e pode.
+ */
 export function receivesReservations(
   acceptsReservations: boolean,
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): boolean {
   return acceptsReservations && canEnableReservations(subscription, now)
+}
+
+/**
+ * O bar "recebe reservas" — aba Reservas no painel, oferta da casa e "Aceita
+ * reserva" no perfil e no filtro da busca: pode, e tem ao menos um jogo ainda
+ * no perfil (`event-profile-window.ts`) marcado para receber. Quem chama já
+ * passa só os jogos dessa janela. Em SQL é `recebeReservas`
+ * (`./pub-search/shared`), e o teste de integração do filtro compara as duas.
+ */
+export function barReceivesReservations(
+  visibleEvents: { acceptsReservations: boolean }[],
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+): boolean {
+  return receivesReservations(
+    visibleEvents.some((game) => game.acceptsReservations),
+    subscription,
+    now
+  )
 }
 
 /**

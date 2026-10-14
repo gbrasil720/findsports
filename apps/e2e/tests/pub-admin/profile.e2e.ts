@@ -352,9 +352,7 @@ test('"Aceita reserva" não se marca no checklist, e a que já estava gravada so
   expect(bar?.amenities).toEqual([1, 10])
 })
 
-test('Elite salva cardápio, preço médio e oferta, e liga e desliga reservas', async ({
-  page
-}) => {
+test('Elite salva cardápio, preço médio e oferta', async ({ page }) => {
   const { barId } = await openProfile(page)
 
   const menu = page.getByRole('region', { name: 'Cardápio e preço médio' })
@@ -378,39 +376,15 @@ test('Elite salva cardápio, preço médio e oferta, e liga e desliga reservas',
   await offer.getByRole('button', { name: 'Salvar oferta' }).click()
   await expect(offer.getByText('Oferta salva.')).toBeVisible()
 
-  const intake = page.getByRole('switch', {
-    name: 'Receber pedidos de reserva'
-  })
-  await intake.click()
-  await expect(intake).toHaveAttribute('aria-checked', 'true')
-  await expect(
-    page.getByText('Recebimento ligado. O perfil já aceita pedidos de reserva.')
-  ).toBeVisible()
-
-  const [on] = await query(
-    `SELECT menu_url, average_spend_cents, house_offer, accepts_reservations
-     FROM bar WHERE id = $1`,
+  const [saved] = await query(
+    'SELECT menu_url, average_spend_cents, house_offer FROM bar WHERE id = $1',
     [barId]
   )
-  expect(on).toEqual({
+  expect(saved).toEqual({
     menu_url: 'https://cardapio.e2e.test/menu',
     average_spend_cents: 8550,
-    house_offer: 'Chope em dobro no intervalo',
-    accepts_reservations: true
+    house_offer: 'Chope em dobro no intervalo'
   })
-
-  await intake.click()
-  await expect(intake).toHaveAttribute('aria-checked', 'false')
-  await expect(
-    page.getByText(
-      'Recebimento desligado. Reservas já feitas continuam valendo.'
-    )
-  ).toBeVisible()
-  const [off] = await query(
-    'SELECT accepts_reservations FROM bar WHERE id = $1',
-    [barId]
-  )
-  expect(off?.accepts_reservations).toBe(false)
 })
 
 test('painel de avaliações e prévia de como o torcedor vê', async ({

@@ -41,7 +41,7 @@ type Props = {
   /** O pai monta o diálogo aberto e desmonta ao fechar: cada abertura começa do zero. */
   onClose: () => void
   barName: string
-  /** Só jogos que ainda não começaram. Esgotado aparece, sem escolha. */
+  /** Só jogos marcados para reserva que ainda não começaram. Esgotado aparece, sem escolha. */
   events: ReservableEvent[]
   initialEventId: string | null
   houseOffer: string | null

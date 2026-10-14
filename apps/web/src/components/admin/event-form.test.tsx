@@ -28,10 +28,11 @@ const FILLED: EventForm = {
   startsAt: '2026-10-10T21:00',
   endsAt: '',
   participantIds: [],
-  participantFreeText: ''
+  participantFreeText: '',
+  acceptsReservations: false
 }
 
-function render(form: Partial<EventForm>) {
+function render(form: Partial<EventForm>, canEnableReservations = true) {
   const markup = renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <EventFormComponent
@@ -41,6 +42,7 @@ function render(form: Partial<EventForm>) {
         onCancel={() => {}}
         isSaving={false}
         loadingSports={false}
+        canEnableReservations={canEnableReservations}
       />
     </QueryClientProvider>
   )
@@ -54,7 +56,8 @@ function render(form: Partial<EventForm>) {
     alerts: [...doc.querySelectorAll('[role="alert"]')].map(
       (alert) => alert.textContent
     ),
-    saveDisabled: save?.hasAttribute('disabled')
+    saveDisabled: save?.hasAttribute('disabled'),
+    reservations: doc.querySelector('[data-slot="checkbox"]')
   }
 }
 
@@ -138,4 +141,21 @@ test('término igual ou anterior ao início avisa e trava o salvar', () => {
   })
   expect(overnight.saveDisabled).toBe(false)
   expect(overnight.alerts).toEqual([])
+})
+
+test('"Aceitar reservas neste jogo": Elite marca; sem Elite, trava e diz por quê', () => {
+  const elite = render({ acceptsReservations: true })
+  expect(elite.text).toContain('Aceitar reservas neste jogo')
+  expect(elite.reservations?.hasAttribute('data-checked')).toBe(true)
+  expect(elite.reservations?.hasAttribute('data-disabled')).toBe(false)
+
+  const locked = render({}, false)
+  expect(locked.reservations?.hasAttribute('data-checked')).toBe(false)
+  expect(locked.reservations?.hasAttribute('data-disabled')).toBe(true)
+  expect(locked.text).toContain('Receber reservas é um recurso do plano Elite.')
+
+  // Perdeu o Elite com o jogo marcado: desmarcar continua possível.
+  const lapsed = render({ acceptsReservations: true }, false)
+  expect(lapsed.reservations?.hasAttribute('data-disabled')).toBe(false)
+  expect(lapsed.text).toContain('Desmarque')
 })

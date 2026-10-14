@@ -69,8 +69,7 @@ async function seed(
     city: 'Teste',
     latitude: '-23.55052000',
     longitude: '-46.63330800',
-    isActive: true,
-    acceptsReservations: options.elite ?? false
+    isActive: true
   })
   if (options.elite) {
     await db.insert(subscription).values({
@@ -93,7 +92,8 @@ async function seed(
         sportId,
         championship: 'Campeonato de integração',
         participantFreeText: 'Time A × Time B',
-        startsAt: new Date(Date.now() + offset)
+        startsAt: new Date(Date.now() + offset),
+        acceptsReservations: options.elite ?? false
       }))
     )
     .returning({ id: event.id })

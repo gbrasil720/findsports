@@ -60,6 +60,7 @@ import {
   parseHouseOfferInput
 } from '../lib/house-offer'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import { recebeReservas } from '../lib/pub-search/shared'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -243,7 +244,8 @@ async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
     // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
-    columns: { geo: false },
+    // `accepts_reservations` é obsoleta: o recebimento é por jogo.
+    columns: { geo: false, acceptsReservations: false },
     with: { subscription: true }
   })
 
@@ -258,7 +260,16 @@ async function getBarByUserId(userId: string) {
 }
 
 export const pubRouter = router({
-  getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
+  getMe: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    // Derivado dos jogos, pela mesma regra do perfil e da busca: decide se a
+    // aba Reservas existe no painel.
+    const [row] = await db
+      .select({ receives: recebeReservas(sql`${bar}`) })
+      .from(bar)
+      .where(eq(bar.id, existingBar.id))
+    return { ...existingBar, receivesReservations: row?.receives === true }
+  }),
 
   updateMe: pubProcedure
     .input(
@@ -480,32 +491,6 @@ export const pubRouter = router({
     }),
 
   /**
-   * Interruptor de recebimento de reservas (WEB-131).
-   *
-   * Ligar exige Elite vigente, conferido aqui a partir da assinatura. Desligar
-   * vale sempre — inclusive para quem perdeu o plano com o interruptor ligado.
-   *
-   * Só decide pedidos novos: não toca em reserva existente, código emitido nem
-   * `offer_snapshot`.
-   */
-  updateAcceptsReservations: pubProcedure
-    .input(z.object({ acceptsReservations: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
-      if (input.acceptsReservations) {
-        assertCanEnableReservations(existingBar.subscription ?? null)
-      }
-
-      const [updated] = await db
-        .update(bar)
-        .set({ acceptsReservations: input.acceptsReservations })
-        .where(eq(bar.id, existingBar.id))
-        .returning({ acceptsReservations: bar.acceptsReservations })
-
-      return { acceptsReservations: updated?.acceptsReservations ?? false }
-    }),
-
-  /**
    * As avaliações do próprio bar, cruas.
    *
    * O piso público (`RATING_PUBLIC_FLOOR`) e a flag de exibição NÃO se
@@ -620,7 +605,9 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // Marcar exige Elite vigente; ausente é desmarcado.
+        acceptsReservations: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -650,6 +637,9 @@ export const pubRouter = router({
         const existingSubscription = await tx.query.subscription.findFirst({
           where: eq(subscription.barId, lockedBar.id)
         })
+        if (input.acceptsReservations) {
+          assertCanEnableReservations(existingSubscription ?? null)
+        }
         const policy = await getEventCreationPolicy(tx, {
           id: lockedBar.id,
           isActive: lockedBar.isActive,
@@ -690,7 +680,8 @@ export const pubRouter = router({
             ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
             ...(input.participantFreeText && {
               participantFreeText: input.participantFreeText
-            })
+            }),
+            acceptsReservations: input.acceptsReservations ?? false
           })
           .returning({ id: event.id })
 
@@ -736,13 +727,19 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // Marcar exige Elite vigente. Desmarcar vale sempre, inclusive para
+        // quem perdeu o plano com o jogo marcado.
+        acceptsReservations: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       const existingBar = await getBarByUserId(userId)
+      if (input.acceptsReservations) {
+        assertCanEnableReservations(existingBar.subscription ?? null)
+      }
 
       const existingEvent = await db.query.event.findFirst({
         where: eq(event.id, input.eventId)
@@ -786,6 +783,9 @@ export const pubRouter = router({
           ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
           ...(input.participantFreeText !== undefined && {
             participantFreeText: input.participantFreeText || null
+          }),
+          ...(input.acceptsReservations !== undefined && {
+            acceptsReservations: input.acceptsReservations
           })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
