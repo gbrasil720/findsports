@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test'
-import { readFileSync } from 'node:fs'
-import { eq, inArray, sql } from '@findsports_oficial/db'
+import { eq } from '@findsports_oficial/db'
 import {
   event,
   sport,
@@ -278,71 +277,6 @@ integrationTest(
         .where(eq(reservation.id, createdReservation.id))
     } finally {
       await ctx.cleanup()
-    }
-  }
-)
-
-/**
- * O UPDATE da migration 0056, rodado de novo numa transação desfeita no fim:
- * jogo de bar que tinha o interruptor ligado passa a receber, o resto fica
- * como está.
- */
-integrationTest(
-  'a migration 0056 marca os jogos dos bares que já recebiam',
-  async () => {
-    const on = await seedBar('elite', 'active', inAMonth(), {
-      acceptsReservations: true
-    })
-    const off = await seedBar('elite', 'active', inAMonth())
-    try {
-      const onGames = [
-        await on.seedGame({ acceptsReservations: false }),
-        await on.seedGame({
-          acceptsReservations: false,
-          startsAt: new Date(Date.now() - 48 * HOUR)
-        })
-      ]
-      const offGame = await off.seedGame({ acceptsReservations: false })
-
-      const migration = readFileSync(
-        new URL(
-          '../../../db/src/migrations/0056_event_accepts_reservations.sql',
-          import.meta.url
-        ),
-        'utf8'
-      )
-      const backfill = migration
-        .split('--> statement-breakpoint')
-        .find((statement) => statement.includes('UPDATE'))
-      if (!backfill) throw new Error('UPDATE não encontrado na migration')
-
-      const rollback = new Error('desfaz')
-      await expect(
-        on.db.transaction(async (tx) => {
-          await tx.execute(sql.raw(backfill)) // sql-raw-permitido: arquivo de migration
-          const rows = await tx
-            .select({
-              id: event.id,
-              acceptsReservations: event.acceptsReservations
-            })
-            .from(event)
-            .where(inArray(event.id, [...onGames, offGame]))
-          expect(
-            Object.fromEntries(
-              rows.map((row) => [row.id, row.acceptsReservations])
-            )
-          ).toEqual({
-            [onGames[0] as string]: true,
-            [onGames[1] as string]: true,
-            [offGame]: false
-          })
-          throw rollback
-        })
-      ).rejects.toBe(rollback)
-      expect(await storedGameFlag(offGame)).toBe(false)
-    } finally {
-      await on.cleanup()
-      await off.cleanup()
     }
   }
 )

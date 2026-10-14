@@ -393,6 +393,13 @@
       "when": 1792002219099,
       "tag": "0056_event_accepts_reservations",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1792005610622,
+      "tag": "0057_drop_bar_accepts_reservations",
+      "breakpoints": true
     }
   ]
 }

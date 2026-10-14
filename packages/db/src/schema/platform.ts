@@ -104,15 +104,6 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
     menuUrl: text('menu_url'),
     averageSpendCents: integer('average_spend_cents'),
-    // OBSOLETA: o recebimento de reservas passou a ser por jogo
-    // (`event.accepts_reservations`, migration 0056). Um interruptor do bar
-    // inteiro abria pedido até em jogo em que o bar não segura mesa. O código
-    // não lê nem grava mais esta coluna; ela fica até o drop (expand →
-    // contract), porque a migration sobe antes do código e a versão anterior
-    // ainda a lê.
-    acceptsReservations: boolean('accepts_reservations')
-      .default(false)
-      .notNull(),
     // Teto padrão de pessoas confirmadas por jogo (WEB-152). Nulo é sem teto.
     // `event.reservation_cap` sobrescreve por jogo; a regra vive em
     // `packages/api/src/lib/reservation-intake.ts`.

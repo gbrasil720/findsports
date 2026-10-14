@@ -244,8 +244,7 @@ async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
     // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
-    // `accepts_reservations` é obsoleta: o recebimento é por jogo.
-    columns: { geo: false, acceptsReservations: false },
+    columns: { geo: false },
     with: { subscription: true }
   })
 
