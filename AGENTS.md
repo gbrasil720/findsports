@@ -324,6 +324,14 @@ invente layout que o projeto não tem.
 - Conferir sem aparelho: `cd apps/mobile && bunx expo export --platform ios --output-dir <pasta>`
   empacota com o Metro. Mapa e outros módulos nativos vão exigir build de desenvolvimento
   (`expo run:ios` / `expo run:android`), não Expo Go.
+- **Ver a tela no simulador** (Xcode 27, `xcode-select` já apontando para ele): o iPhone 16e
+  tem 390 x 844, a medida do design. `bunx expo start --ios --port 8082` instala o Expo Go e
+  abre o app; `xcrun simctl openurl booted "exp://<ip>:8082/--/intro?page=3"` leva a uma tela
+  e `xcrun simctl io booted screenshot <arquivo>.png` tira o print, para comparar lado a lado
+  com o design renderizado a 3x. O botão flutuante do Expo Go some com
+  `EXDevMenuShowFloatingActionButton = false` no plist de preferências do Expo Go no simulador.
+- `Image` com só `StyleSheet.absoluteFill` sai no tamanho original da imagem neste app: passe
+  `width` e `height` explícitos.
 
 ### Routing
 

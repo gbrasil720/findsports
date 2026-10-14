@@ -5,6 +5,7 @@ import Svg, {
   Circle,
   Defs,
   G,
+  Line,
   Path,
   RadialGradient,
   Rect,
@@ -27,6 +28,12 @@ const LIVE = '#e8320c'
 const MUTED = '#55554f'
 
 type ArtProps = { width: number; height: number }
+
+/** Corpo de texto do design: herda `line-height: 1.4` do quadro. */
+const size = (fontSize: number, lineHeight = 1.4) => ({
+  fontSize,
+  lineHeight: fontSize * lineHeight
+})
 
 const scale = ({ width, height }: ArtProps) => ({
   sx: width / 390,
@@ -59,7 +66,7 @@ function Pin({
         ]}
       >
         {live ? <View style={styles.pinDot} /> : null}
-        <Text style={[styles.pinText, live && { fontSize: 13 }]}>{label}</Text>
+        <Text style={[styles.pinText, live && size(13)]}>{label}</Text>
       </View>
       <View style={[styles.pinTip, { backgroundColor: color }]} />
     </View>
@@ -73,7 +80,9 @@ export function MapArt(props: ArtProps) {
     <View style={StyleSheet.absoluteFill}>
       <Image
         source={require('../assets/images/intro/map.jpg')}
-        style={StyleSheet.absoluteFill}
+        // Tamanho explícito: só com `absoluteFill` a imagem sai no tamanho
+        // original, sem o `cover` reduzir.
+        style={{ width: props.width, height: props.height }}
         resizeMode="cover"
       />
       <Pin x={110 * sx} y={250 * sy} label="Casa 92" />
@@ -95,10 +104,10 @@ export function MapArt(props: ArtProps) {
           </Svg>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.bold, { fontSize: 15.5, color: INK }]}>
+          <Text style={[styles.bold, { ...size(15.5), color: INK }]}>
             Corinthians × Palmeiras
           </Text>
-          <Text style={[styles.body, { fontSize: 13, color: MUTED }]}>
+          <Text style={[styles.body, { ...size(13), color: MUTED }]}>
             Hoje 21:30 · 4 bares perto de você
           </Text>
         </View>
@@ -151,12 +160,12 @@ function Avatar({
 }
 
 /** 4c, "Quem vai": a foto do bar e o "Vou assistir aqui". */
-export function CrowdArt(_: ArtProps) {
+export function CrowdArt({ width, height }: ArtProps) {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}>
       <Image
         source={require('../assets/images/intro/bar.jpg')}
-        style={StyleSheet.absoluteFill}
+        style={{ width, height }}
         resizeMode="cover"
       />
       <LinearGradient
@@ -177,13 +186,13 @@ export function CrowdArt(_: ArtProps) {
             <Text
               style={[
                 styles.semibold,
-                { marginLeft: 7, fontSize: 12.5, color: PAPER }
+                { marginLeft: 7, ...size(12.5), color: PAPER }
               ]}
             >
               34 vão
             </Text>
           </View>
-          <Text style={[styles.body, { fontSize: 13, color: '#d6d3cb' }]}>
+          <Text style={[styles.body, { ...size(13), color: '#d6d3cb' }]}>
             Bar do Zé · hoje
           </Text>
         </View>
@@ -196,7 +205,7 @@ export function CrowdArt(_: ArtProps) {
             <Circle cx={9} cy={8} r={4} fill={PAPER} />
             <Path d="M2 20.5a7 7 0 0 1 14 0z" fill={PAPER} />
           </Svg>
-          <Text style={[styles.bold, { fontSize: 15, color: PAPER }]}>
+          <Text style={[styles.bold, { ...size(15), color: PAPER }]}>
             Vou assistir aqui
           </Text>
         </View>
@@ -229,26 +238,37 @@ export function TicketArt(props: ArtProps) {
         <View style={styles.ticket}>
           <View style={styles.ticketHead}>
             <View>
-              <Text style={[styles.bold, { fontSize: 17, color: INK }]}>
+              <Text style={[styles.bold, { ...size(17), color: INK }]}>
                 Bar do Zé
               </Text>
-              <Text style={[styles.body, { fontSize: 12.5, color: MUTED }]}>
+              <Text style={[styles.body, { ...size(12.5), color: MUTED }]}>
                 Mesa para 4 · hoje 21:30
               </Text>
             </View>
             <View style={styles.badge}>
-              <Text style={[styles.bold, { fontSize: 10.5, color: INK }]}>
+              <Text style={[styles.bold, { ...size(10.5, 1.2), color: INK }]}>
                 Confirmada
               </Text>
             </View>
           </View>
           <View style={styles.tear}>
             <Notch side="left" />
-            <View style={styles.tearLine} />
+            {/* Borda tracejada de um lado só não sai no iOS: é SVG. */}
+            <Svg height={2} style={styles.tearLine}>
+              <Line
+                x1="0"
+                y1="1"
+                x2="100%"
+                y2="1"
+                stroke="rgba(18,18,15,.16)"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+              />
+            </Svg>
             <Notch side="right" />
           </View>
           <View style={styles.ticketCode}>
-            <Text style={[styles.semibold, { fontSize: 12, color: MUTED }]}>
+            <Text style={[styles.semibold, { ...size(12), color: MUTED }]}>
               Seu código
             </Text>
             <Text style={styles.code}>A7K·29</Text>
@@ -373,7 +393,7 @@ const styles = StyleSheet.create({
   },
   pinLabelLive: { paddingVertical: 8, paddingHorizontal: 12 },
   pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
-  pinText: { fontFamily: 'Archivo-Bold', fontSize: 12, color: PAPER },
+  pinText: { fontFamily: 'Archivo-Bold', ...size(12), color: PAPER },
   pinTip: {
     width: 9,
     height: 9,
@@ -493,13 +513,7 @@ const styles = StyleSheet.create({
     backgroundColor: ACID
   },
   tear: { height: 18, flexDirection: 'row', alignItems: 'center' },
-  tearLine: {
-    flex: 1,
-    marginHorizontal: 14,
-    borderTopWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(18,18,15,.16)'
-  },
+  tearLine: { flex: 1, marginHorizontal: 14 },
   notch: {
     position: 'absolute',
     width: 18,
@@ -526,7 +540,7 @@ const styles = StyleSheet.create({
   chat: { position: 'absolute', left: 18, right: 18, bottom: 22, gap: 8 },
   bubbleMine: {
     alignSelf: 'flex-end',
-    maxWidth: 270,
+    maxWidth: 298,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 18,

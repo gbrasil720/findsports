@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { type ComponentType, useRef, useState } from 'react'
+import { type ComponentType, useEffect, useRef, useState } from 'react'
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -29,8 +29,8 @@ const ACID = '#c9f135'
 
 type Page = {
   Art: ComponentType<{ width: number; height: number }>
-  /** O título quebra antes do destaque quando o design quebra. */
-  title: [string, string, 'break'?]
+  /** As linhas do título como o design quebra: texto e trecho em destaque. */
+  title: [string, string?][]
   body: string
   /** A ilustração é escura: barra de status clara. */
   dark?: boolean
@@ -39,24 +39,24 @@ type Page = {
 const PAGES: Page[] = [
   {
     Art: MapArt,
-    title: ['O jogo', 'é aqui.'],
+    title: [['O jogo ', 'é aqui.']],
     body: 'Veja quais bares perto de você vão passar a partida, com horário e distância.'
   },
   {
     Art: CrowdArt,
-    title: ['Saiba quem', 'vai estar lá.', 'break'],
+    title: [['Saiba quem'], ['', 'vai estar lá.']],
     body: 'Marque que vai assistir e chame a galera. Você vê se o bar vai encher antes de sair de casa.',
     dark: true
   },
   {
     Art: TicketArt,
-    title: ['Mesa garantida', 'antes do apito.', 'break'],
+    title: [['Mesa garantida'], ['', 'antes do apito.']],
     body: 'Peça a reserva pelo app. O bar confirma, e o código fica guardado no seu celular.',
     dark: true
   },
   {
     Art: AskArt,
-    title: ['Precisa de algo', 'específico?', 'break'],
+    title: [['Precisa de'], ['algo ', 'específico?']],
     body: 'Peça à busca com IA. Ela procura entre os bares e explica por que escolheu cada um.'
   }
 ]
@@ -66,7 +66,14 @@ export default function Intro() {
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const pager = useRef<ScrollView>(null)
-  const [page, setPage] = useState(0)
+  // `?page=N` abre direto na tela N (`onside://intro?page=3`).
+  const params = useLocalSearchParams<{ page?: string }>()
+  const start = Math.min(Math.max(Number(params.page) - 1 || 0, 0), 3)
+  const [page, setPage] = useState(start)
+  useEffect(() => {
+    pager.current?.scrollTo({ x: start * width, animated: false })
+    setPage(start)
+  }, [start, width])
 
   // A ilustração ocupa a mesma fração da tela que no design (476 de 844).
   const artHeight = Math.round((height * 476) / 844)
@@ -94,33 +101,30 @@ export default function Intro() {
         onMomentumScrollEnd={onScrollEnd}
       >
         {PAGES.map(({ Art, title, body }, index) => (
-          <View key={title[1]} style={{ width }}>
-            <View style={[styles.art, { height: artHeight }]}>
-              <Art width={width} height={artHeight} />
+          <View key={body} style={{ width }}>
+            <View style={[styles.artShadow, { height: artHeight }]}>
+              <View style={styles.art}>
+                <Art width={width} height={artHeight} />
+              </View>
             </View>
             <View style={styles.copy}>
               <View style={styles.dots}>
                 {PAGES.map((p, dot) => (
                   <View
-                    key={p.title[1]}
+                    key={p.body}
                     style={[styles.dot, dot === index && styles.dotActive]}
                   />
                 ))}
               </View>
               <View accessible accessibilityRole="header">
-                {title[2] ? (
-                  <>
-                    <Text style={styles.title}>{title[0]}</Text>
-                    <Text style={[styles.title, styles.titleAccent]}>
-                      {title[1]}
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={styles.title}>
-                    {title[0]}{' '}
-                    <Text style={styles.titleAccent}>{title[1]}</Text>
+                {title.map(([text, accent]) => (
+                  <Text key={text + accent} style={styles.title}>
+                    {text}
+                    {accent ? (
+                      <Text style={styles.titleAccent}>{accent}</Text>
+                    ) : null}
                   </Text>
-                )}
+                ))}
               </View>
               <Text style={styles.body}>{body}</Text>
             </View>
@@ -176,7 +180,19 @@ export default function Intro() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: PAPER },
+  // A sombra fica fora do recorte: no iOS, `overflow: hidden` a esconderia.
+  artShadow: {
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    backgroundColor: PAPER,
+    shadowColor: INK,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6
+  },
   art: {
+    flex: 1,
     overflow: 'hidden',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30
@@ -218,7 +234,18 @@ const styles = StyleSheet.create({
   skipText: { fontFamily: 'Archivo-Bold', fontSize: 13.5, color: PAPER },
   footer: { position: 'absolute', left: 16, right: 16, gap: 12 },
   // A sombra dura "0 3px 0" do botão: a tinta por baixo, 3 px mais alta.
-  ctaEdge: { height: 59, borderRadius: 28, backgroundColor: INK },
+  // A tinta não conta na altura, como sombra no CSS: margem -3.
+  ctaEdge: {
+    height: 59,
+    marginBottom: -3,
+    borderRadius: 28,
+    backgroundColor: INK,
+    // O brilho "0 12px 24px -10px rgba(110,140,0,.6)" do design.
+    shadowColor: 'rgb(110,140,0)',
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 10 }
+  },
   cta: {
     height: 56,
     borderRadius: 28,
@@ -226,13 +253,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: ACID
+    backgroundColor: ACID,
+    // O relevo interno do design: luz em cima, verde escuro embaixo.
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,.65)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(90,120,0,.25)'
   },
   ctaText: { fontFamily: 'Archivo-Bold', fontSize: 15, color: INK },
   signIn: {
     textAlign: 'center',
     fontFamily: 'Archivo-Regular',
     fontSize: 14,
+    lineHeight: 19.6,
     color: '#55554f'
   },
   signInLink: { fontFamily: 'Archivo-Bold', color: INK }
