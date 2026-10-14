@@ -79,3 +79,36 @@ export function isWithinValidationWindow(
   const nowMs = now.getTime()
   return nowMs >= opensAt.getTime() && nowMs <= closesAt.getTime()
 }
+
+/** Até quando, à frente, o bar pode marcar um jogo. */
+export const EVENT_START_MAX_AHEAD_DAYS = 365
+
+const EVENT_START_MAX_AHEAD_MS =
+  EVENT_START_MAX_AHEAD_DAYS * 24 * 60 * 60 * 1000
+
+export type EventStartProblem = 'ended' | 'too_far'
+
+/**
+ * Início que não faz sentido para um jogo novo. A data existir não basta: o
+ * formulário aceitava 2019 ou 2099 (um ano a mais ou a menos digitado errado),
+ * e o jogo sumia do perfil ou ia parar longe. Jogo que já começou e ainda
+ * está no ar vale — o bar que cadastra atrasado. Formulário e servidor usam a
+ * mesma regra.
+ */
+export function getEventStartProblem(
+  startsAt: Date,
+  now = new Date()
+): EventStartProblem | null {
+  if (startsAt.getTime() + DEFAULT_EVENT_DURATION_MS <= now.getTime()) {
+    return 'ended'
+  }
+  if (startsAt.getTime() > now.getTime() + EVENT_START_MAX_AHEAD_MS) {
+    return 'too_far'
+  }
+  return null
+}
+
+export const EVENT_START_PROBLEM_MESSAGE: Record<EventStartProblem, string> = {
+  ended: 'Esse horário já passou. Confira o dia e o ano.',
+  too_far: `O jogo precisa ser nos próximos ${EVENT_START_MAX_AHEAD_DAYS} dias. Confira o ano.`
+}

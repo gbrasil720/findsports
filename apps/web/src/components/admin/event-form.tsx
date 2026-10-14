@@ -3,6 +3,10 @@ import {
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
   EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
 } from '@findsports_oficial/db/event-limits'
+import {
+  EVENT_START_PROBLEM_MESSAGE,
+  getEventStartProblem
+} from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useId, useState } from 'react'
@@ -139,6 +143,13 @@ export function EventFormComponent({
     }))
   }
 
+  // Data que existe mas não serve para jogo (passado, ano errado). Na edição
+  // só conta se o início mudou, como no servidor.
+  const startProblem =
+    starts.value && startsText !== formatDateTime(initial.startsAt)
+      ? getEventStartProblem(new Date(starts.value))
+      : null
+
   const endsBeforeStart =
     !!ends.value && !!starts.value && ends.value <= starts.value
   const endsAtValid =
@@ -159,6 +170,7 @@ export function EventFormComponent({
   const canSave =
     missing.length === 0 &&
     !!starts.value &&
+    !startProblem &&
     endsAtValid &&
     !championshipTooLong &&
     !freeTextTooLong
@@ -213,6 +225,9 @@ export function EventFormComponent({
         value={startsText}
         onChange={setStartsText}
         required
+        error={
+          startProblem ? EVENT_START_PROBLEM_MESSAGE[startProblem] : undefined
+        }
       />
 
       <DateTimeInput

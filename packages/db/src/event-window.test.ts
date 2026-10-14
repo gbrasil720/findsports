@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import {
   DEFAULT_EVENT_DURATION_MS,
+  EVENT_START_MAX_AHEAD_DAYS,
   getEventEnd,
+  getEventStartProblem,
   getValidationWindow,
   isWithinValidationWindow,
   VALIDATION_WINDOW_MARGIN_MS
@@ -81,5 +83,33 @@ describe('isWithinValidationWindow', () => {
     expect(isWithinValidationWindow(curto, depoisDoFimInformado)).toBe(false)
     // O mesmo instante ainda está aberto para o jogo sem fim informado.
     expect(isWithinValidationWindow(semFim, depoisDoFimInformado)).toBe(true)
+  })
+})
+
+describe('getEventStartProblem', () => {
+  const NOW = START
+  const DAY = 24 * HOUR
+
+  it('aceita jogo futuro e jogo que começou e ainda está no ar', () => {
+    expect(getEventStartProblem(new Date(NOW.getTime() + HOUR), NOW)).toBeNull()
+    expect(getEventStartProblem(new Date(NOW.getTime() - HOUR), NOW)).toBeNull()
+  })
+
+  it('recusa jogo que já teria acabado', () => {
+    expect(
+      getEventStartProblem(
+        new Date(NOW.getTime() - DEFAULT_EVENT_DURATION_MS),
+        NOW
+      )
+    ).toBe('ended')
+    expect(getEventStartProblem(new Date('2019-09-20T19:00:00Z'), NOW)).toBe(
+      'ended'
+    )
+  })
+
+  it('recusa jogo além do limite à frente', () => {
+    const limit = NOW.getTime() + EVENT_START_MAX_AHEAD_DAYS * DAY
+    expect(getEventStartProblem(new Date(limit), NOW)).toBeNull()
+    expect(getEventStartProblem(new Date(limit + 1), NOW)).toBe('too_far')
   })
 })
