@@ -6,7 +6,7 @@ import { clampSearchRadiusKm } from '@findsports_oficial/db/search-radius'
 import { z } from 'zod'
 
 /** Atalhos do onboarding. O raio aceita qualquer km de 1 a 50. */
-export const SEARCH_RADII = [1, 3, 5, 10] as const
+export const SEARCH_RADII = [1, 3, 5, 10, 25, 50] as const
 /** Quilômetro inteiro de `SEARCH_RADIUS_MIN_KM` a `SEARCH_RADIUS_MAX_KM`. */
 export type RadiusKm = number
 
