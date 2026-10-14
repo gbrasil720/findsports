@@ -417,6 +417,20 @@ export const adminEventsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       return db.transaction(async (tx) => {
+        if (input.warning === 'duplicate') {
+          // Trava os irmãos (mesmo bar, mesmo início) em ordem de id antes de
+          // decidir: dois "apagar duplicado" ao mesmo tempo, um em cada
+          // cópia, apagariam as duas. O segundo espera e já não vê duplicado.
+          const [base] = await tx
+            .select({ barId: event.barId, startsAt: event.startsAt })
+            .from(event)
+            .where(eq(event.id, input.eventId))
+          if (base) {
+            await tx.execute(
+              sql`SELECT id FROM event WHERE bar_id = ${base.barId} AND starts_at = ${base.startsAt} ORDER BY id FOR UPDATE`
+            )
+          }
+        }
         const row = await lockEvent(tx, input.eventId)
         const actor = {
           kind: 'event.fix' as const,

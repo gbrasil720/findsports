@@ -438,7 +438,7 @@ function Emails({ account }: { account: Ficha['account'] }) {
 
   const onSuccess = (what: string) => async (res: { email: string }) => {
     setSent(
-      `${what} enviado para ${res.email} às ${formatDateTime(new Date())}.`
+      `${what} pedido para ${res.email} às ${formatDateTime(new Date())}. O e-mail sai em seguida.`
     )
     await queryClient.invalidateQueries({
       queryKey: trpc.grimorio.list.queryKey()

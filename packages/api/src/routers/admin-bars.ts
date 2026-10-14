@@ -1,4 +1,13 @@
-import { and, count, db, eq, isNull, or, sql } from '@findsports_oficial/db'
+import {
+  and,
+  count,
+  db,
+  eq,
+  inArray,
+  isNull,
+  or,
+  sql
+} from '@findsports_oficial/db'
 import { recordAdminAction } from '@findsports_oficial/db/admin-action'
 import { stripeSubscription, user } from '@findsports_oficial/db/schema/auth'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
@@ -50,6 +59,26 @@ const trialExpired = sql<boolean>`(${subscription.currentPeriodEnd} IS NULL OR $
 const barInput = z.object({ barId: z.string().min(1).max(255) })
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * A última decisão de admin sobre o bar estar no ar, pelo Grimório. Bar tirado
+ * do ar de propósito não volta ao ar por tabela (estender o teste).
+ */
+async function takenOffAirByAdmin(tx: Tx, barId: string) {
+  const [last] = await tx
+    .select({ kind: adminAction.kind })
+    .from(adminAction)
+    .where(
+      and(
+        eq(adminAction.targetType, 'bar'),
+        eq(adminAction.targetId, barId),
+        inArray(adminAction.kind, ['bar.take_off_air', 'bar.put_on_air'])
+      )
+    )
+    .orderBy(sql`${adminAction.createdAt} DESC`)
+    .limit(1)
+  return last?.kind === 'bar.take_off_air'
+}
 
 /** O bar e a assinatura, com o bar travado até o fim da transação. */
 async function lockBar(tx: Tx, barId: string) {
@@ -251,7 +280,11 @@ export const adminBarsRouter = router({
               'A assinatura mudou agora há pouco. Recarregue e tente de novo.'
           })
         }
-        const isActive = found.isActive || found.trialExpired
+        // Religa quem saiu do ar porque o teste venceu, não quem um admin
+        // tirou do ar de propósito.
+        const isActive =
+          found.isActive ||
+          (found.trialExpired && !(await takenOffAirByAdmin(tx, input.barId)))
         if (isActive !== found.isActive) {
           await tx
             .update(bar)
@@ -289,6 +322,15 @@ export const adminBarsRouter = router({
         const found = await lockBar(tx, input.barId)
         if (found.isActive === input.active) {
           return { isActive: input.active, changed: false }
+        }
+        // `applyStripeSubscription` religa o bar a cada evento do Stripe:
+        // tirar do ar por aqui duraria até a próxima renovação.
+        if (!input.active && found.externalSubscriptionId) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message:
+              'Este bar assina pelo Stripe e voltaria ao ar no próximo evento da assinatura. Para tirá-lo do ar, cancele a assinatura no Stripe.'
+          })
         }
         if (input.active && found.signupTrial && found.trialExpired) {
           throw new TRPCError({

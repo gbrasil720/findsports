@@ -1,7 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { OUTBOX_FILE } from '../env'
-import { ROLE_USERS, signIn, storageState } from '../fixtures/auth'
+import {
+  grantAdmin2fa,
+  ROLE_USERS,
+  signIn,
+  storageState
+} from '../fixtures/auth'
 import { clearRateLimits, query, resetAppConfig } from '../fixtures/db'
 import { createPub } from '../fixtures/pubs'
 import { test as setup } from '../fixtures/test'
@@ -26,6 +31,7 @@ for (const role of ['fan', 'pub', 'admin'] as const satisfies Role[]) {
     else await createUser({ role, email, password })
 
     await signIn(page, { email, password })
+    if (role === 'admin') await grantAdmin2fa(page, email)
     await page.context().storageState({ path: storageState(role) })
   })
 }

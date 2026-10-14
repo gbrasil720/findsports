@@ -8,6 +8,22 @@ import { adminProcedure, router } from '../index'
 const PAGE = 100
 
 /**
+ * O `Date` do JS tem milissegundo e a coluna tem microssegundo; ordenar e
+ * paginar pelo instante truncado ao milissegundo, com o id de desempate,
+ * não pula nem repete linha entre páginas. O instante vai como texto ISO:
+ * um `Date` passado ao driver viraria hora local com fuso e, comparado com
+ * `timestamp` sem fuso, deslocaria a página (dev em São Paulo).
+ */
+const createdAtMs = sql`date_trunc('milliseconds', ${adminAction.createdAt})`
+
+function cursorBefore(cursor: string | null | undefined) {
+  if (!cursor) return undefined
+  const [iso, id] = cursor.split('|')
+  if (!iso || !id || Number.isNaN(Date.parse(iso))) return undefined
+  return sql`(${createdAtMs}, ${adminAction.id}) < (${iso}::timestamp, ${id})`
+}
+
+/**
  * WEB-384: leitura do Grimório. Não existe escrita por aqui: quem grava é a
  * própria ação (hook do better-auth, mutações do Houdini).
  */
@@ -20,8 +36,8 @@ export const grimorioRouter = router({
           .enum(['user', 'bar', 'event', 'config', 'job'])
           .optional(),
         targetId: z.string().max(255).optional(),
-        /** Cursor: devolve o que é mais antigo que este instante. */
-        cursor: z.coerce.date().nullish(),
+        /** Cursor `nextCursor` da página anterior: `<instante ISO>|<id>`. */
+        cursor: z.string().max(120).nullish(),
         limit: z.number().int().min(1).max(PAGE).default(PAGE)
       })
     )
@@ -40,16 +56,19 @@ export const grimorioRouter = router({
             input.targetId
               ? eq(adminAction.targetId, input.targetId)
               : undefined,
-            input.cursor
-              ? sql`${adminAction.createdAt} < ${input.cursor}`
-              : undefined
+            cursorBefore(input.cursor)
           )
         )
-        .orderBy(sql`${adminAction.createdAt} DESC, ${adminAction.id} DESC`)
+        .orderBy(sql`${createdAtMs} DESC, ${adminAction.id} DESC`)
         .limit(input.limit + 1)
+      const entries = rows.slice(0, input.limit)
+      const last = entries.at(-1)
+      const hasMore = rows.length > input.limit
       return {
-        entries: rows.slice(0, input.limit),
-        hasMore: rows.length > input.limit
+        entries,
+        hasMore,
+        nextCursor:
+          hasMore && last ? `${last.createdAt.toISOString()}|${last.id}` : null
       }
     })
 })

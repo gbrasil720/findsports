@@ -74,8 +74,7 @@ function GrimorioPage() {
     ...trpc.grimorio.list.infiniteQueryOptions(
       { kinds: kinds ? [...kinds] : undefined },
       {
-        getNextPageParam: (last) =>
-          last.hasMore ? last.entries.at(-1)?.createdAt : undefined
+        getNextPageParam: (last) => last.nextCursor ?? undefined
       }
     ),
     meta: { errorToast: false }

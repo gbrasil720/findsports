@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { expect, type Page } from '@playwright/test'
 import { BASE_URL } from '../env'
+import { query } from './db'
 import { DEFAULT_PASSWORD, type Role } from './users'
 
 /**
@@ -35,4 +36,16 @@ export async function signIn(
     headers: { origin: BASE_URL }
   })
   expect(response.ok(), await response.text()).toBe(true)
+}
+
+/**
+ * WEB-383: ação de admin pede 2FA no servidor. Liga o 2FA de quem acabou de
+ * entrar (antes do login, ele pediria o código) e renova o cookie cache, que
+ * leva o usuário.
+ */
+export async function grantAdmin2fa(page: Page, email: string) {
+  await query('UPDATE "user" SET two_factor_enabled = true WHERE email = $1', [
+    email
+  ])
+  await page.request.get('/api/auth/get-session?disableCookieCache=true')
 }

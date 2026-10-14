@@ -142,14 +142,14 @@ export function describe(entry: GrimorioEntry): {
       return {
         icon: 'check',
         tone: 'neutral',
-        text: `reenviou a verificação de e-mail para ${label}`,
+        text: `pediu o reenvio da verificação de e-mail para ${label}`,
         detail: null
       }
     case 'user.send_password_reset':
       return {
         icon: 'back',
         tone: 'neutral',
-        text: `mandou o link de troca de senha para ${label}`,
+        text: `pediu o link de troca de senha para ${label}`,
         detail: null
       }
     case 'config.set':

@@ -1,6 +1,6 @@
+import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-
 import { adminProcedure, fanProcedure, pubProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
@@ -269,11 +269,26 @@ export const commercialAnalyticsRouter = router({
         apagarEventosBrutos: z.boolean().default(false)
       })
     )
-    .mutation(async ({ input }) => {
-      return runAndRecordAnalyticsRetention({
+    .mutation(async ({ ctx, input }) => {
+      const result = await runAndRecordAnalyticsRetention({
         trigger: 'admin',
         retentionDays: input.days,
         apagarEventosBrutos: input.apagarEventosBrutos
       })
+      // WEB-384: apagar eventos brutos é ação de admin como as do Houdini.
+      await recordAdminActionSafely({
+        kind: 'system.run_job',
+        actorId: ctx.session.user.id,
+        actorName: ctx.session.user.name,
+        targetType: 'job',
+        targetId: 'analytics_retention',
+        targetLabel: 'analytics_retention',
+        detail: {
+          ok: true,
+          days: input.days,
+          apagarEventosBrutos: input.apagarEventosBrutos
+        }
+      })
+      return result
     })
 })

@@ -1,5 +1,5 @@
 import { db, eq, sql } from '@findsports_oficial/db'
-import { recordAdminAction } from '@findsports_oficial/db/admin-action'
+import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 import journal from '@findsports_oficial/db/migrations/meta/_journal.json'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 import { z } from 'zod'
@@ -132,7 +132,7 @@ export const bastidoresRouter = router({
         ok = true
         return { job: input.job, result }
       } finally {
-        await recordAdminAction({
+        await recordAdminActionSafely({
           kind: 'system.run_job',
           actorId: ctx.session.user.id,
           actorName: ctx.session.user.name,

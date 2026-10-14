@@ -22,6 +22,7 @@ import {
   deleteStripeSubscriptionOf,
   endLiveSubscriptionOf
 } from './account-deletion'
+import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
 import { runInBackground } from './background'
 import {
@@ -141,6 +142,14 @@ export function createAuth() {
               message: READ_ONLY_IMPERSONATION_MESSAGE
             })
           }
+        }
+        // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
+        if (ctx.path?.startsWith('/admin/')) {
+          const refusal = adminRouteRefusal(
+            ctx.path,
+            await getSessionFromCtx(ctx)
+          )
+          if (refusal) throw new APIError('FORBIDDEN', { message: refusal })
         }
         // WEB-384: o Grimório registra a troca de papel com o valor de antes,
         // que o `after` já não consegue ler.

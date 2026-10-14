@@ -106,6 +106,14 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
       message: 'Acesso restrito a administradores.'
     })
   }
+  // WEB-383: o Houdini pede 2FA na tela, mas a regra vale no servidor: senha
+  // de admin vazada sem o segundo fator não age.
+  if (ctx.session.user.twoFactorEnabled !== true) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Ações de admin pedem autenticação em dois fatores ligada.'
+    })
+  }
   return next({ ctx })
 })
 

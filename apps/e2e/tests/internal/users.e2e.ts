@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
-import { signIn } from '../../fixtures/auth'
+import { grantAdmin2fa, signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
@@ -36,6 +36,7 @@ let admin: TestUser
 test.beforeEach(async ({ page }) => {
   admin = await createUser({ role: 'admin', name: uniqueName('Admin') })
   await signIn(page, admin)
+  await grantAdmin2fa(page, admin.email)
 })
 
 test('banir com motivo bloqueia o login; desbanir libera', async ({
