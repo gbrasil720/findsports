@@ -7,6 +7,7 @@ import { barReservationsRouter } from './bar-reservations'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
 import { grimorioRouter } from './grimorio'
+import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
@@ -39,6 +40,7 @@ export const appRouter = router({
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
   feedback: feedbackRouter,
-  grimorio: grimorioRouter
+  grimorio: grimorioRouter,
+  houdini: houdiniRouter
 })
 export type AppRouter = typeof appRouter

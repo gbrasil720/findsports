@@ -29,7 +29,9 @@ export const adminUsersRouter = router({
         pattern
           ? or(
               sql`${user.name} ILIKE ${pattern} ESCAPE '\\'`,
-              sql`${user.email} ILIKE ${pattern} ESCAPE '\\'`
+              sql`${user.email} ILIKE ${pattern} ESCAPE '\\'`,
+              // O ⌘K abre a ficha pelo id (`/houdini/pessoas?pessoa=…`).
+              eq(user.id, input.search ?? '')
             )
           : undefined
       )

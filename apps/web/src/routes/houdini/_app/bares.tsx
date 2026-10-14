@@ -15,6 +15,11 @@ import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/bares')({
   head: () => ({ meta: [{ title: 'Bares — Houdini' }] }),
+  // `?bar=<id>` vem do ⌘K: abre com a busca no id, e a ficha já aberta.
+  // Outro resultado do ⌘K, com a página aberta, remonta com o novo id.
+  validateSearch: (search: Record<string, unknown>): { bar?: string } =>
+    typeof search.bar === 'string' ? { bar: search.bar } : {},
+  remountDeps: ({ search }) => search.bar,
   component: BaresPage
 })
 
@@ -35,9 +40,10 @@ function searchDrift(bar: Bar) {
 function BaresPage() {
   const { env, admin } = Route.useRouteContext()
   const trpc = useTRPC()
-  const [search, setSearch] = useState('')
+  const { bar: fromPalette } = Route.useSearch()
+  const [search, setSearch] = useState(fromPalette ?? '')
   const [page, setPage] = useState(1)
-  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [pickedId, setPickedId] = useState<string | null>(fromPalette ?? null)
 
   const query = useQuery({
     ...trpc.adminBars.list.queryOptions({

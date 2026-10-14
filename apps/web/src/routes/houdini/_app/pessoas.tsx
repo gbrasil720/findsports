@@ -21,6 +21,11 @@ import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/pessoas')({
   head: () => ({ meta: [{ title: 'Pessoas — Houdini' }] }),
+  // `?pessoa=<id>` vem do ⌘K: abre com a busca no id, e a ficha já aberta.
+  // Outro resultado do ⌘K, com a página aberta, remonta com o novo id.
+  validateSearch: (search: Record<string, unknown>): { pessoa?: string } =>
+    typeof search.pessoa === 'string' ? { pessoa: search.pessoa } : {},
+  remountDeps: ({ search }) => search.pessoa,
   component: PessoasPage
 })
 
@@ -38,9 +43,10 @@ const ROLE_FILTERS = [
 function PessoasPage() {
   const { env, admin } = Route.useRouteContext()
   const trpc = useTRPC()
-  const [search, setSearch] = useState('')
+  const { pessoa: fromPalette } = Route.useSearch()
+  const [search, setSearch] = useState(fromPalette ?? '')
   const [role, setRole] = useState<Role | undefined>()
-  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [pickedId, setPickedId] = useState<string | null>(fromPalette ?? null)
 
   const query = useQuery({
     ...trpc.adminUsers.list.queryOptions({
