@@ -9,7 +9,11 @@ describe('origens confiáveis do auth', () => {
         nodeEnv: 'production',
         developmentOrigin: 'https://tunnel.ngrok-free.dev'
       })
-    ).toEqual(['https://onside.sh', 'https://www.onside.sh'])
+    ).toEqual([
+      'https://onside.sh',
+      'https://www.onside.sh',
+      'https://houdini.onside.sh'
+    ])
   })
 
   it('aceita um túnel HTTPS exato somente em desenvolvimento', () => {
@@ -19,7 +23,20 @@ describe('origens confiáveis do auth', () => {
         nodeEnv: 'development',
         developmentOrigin: 'https://tunnel.ngrok-free.dev'
       })
-    ).toEqual(['http://localhost:3001', 'https://tunnel.ngrok-free.dev'])
+    ).toEqual([
+      'http://localhost:3001',
+      'http://houdini.localhost:3001',
+      'https://tunnel.ngrok-free.dev'
+    ])
+  })
+
+  it('não confia no Houdini fora do domínio da Onside', () => {
+    expect(
+      buildTrustedOrigins({
+        baseUrl: 'https://onside-web-preview.x.workers.dev',
+        nodeEnv: 'production'
+      })
+    ).not.toContain('https://houdini.onside.sh')
   })
 
   it('recusa origem insegura ou wildcard', () => {

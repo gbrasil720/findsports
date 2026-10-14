@@ -248,6 +248,19 @@ describe('applyAuthGuards', () => {
   })
 })
 
+describe('Houdini (WEB-383)', () => {
+  test('não é público nem protegido pelo guard da raiz: o portão decide', () => {
+    expect(requiresAuthentication('/houdini')).toBe(false)
+    expect(() => applyAuthGuards(null, '/houdini/pessoas')).not.toThrow()
+    expect(() =>
+      applyAuthGuards(session('fan', false), '/houdini')
+    ).not.toThrow()
+    expect(() =>
+      applyAuthGuards(session('pub'), '/houdini/bares')
+    ).not.toThrow()
+  })
+})
+
 describe('isHashOnlyChange', () => {
   const admin = { pathname: '/admin', searchStr: '', hash: 'admin-grade' }
 

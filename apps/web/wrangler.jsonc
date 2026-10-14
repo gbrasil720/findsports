@@ -7,7 +7,11 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   // WEB-205: custom domain — a Cloudflare cria e mantém o registro de `www`.
-  "routes": [{ "pattern": "www.onside.sh", "custom_domain": true }],
+  // WEB-383: o Houdini responde no mesmo Worker, em host próprio.
+  "routes": [
+    { "pattern": "www.onside.sh", "custom_domain": true },
+    { "pattern": "houdini.onside.sh", "custom_domain": true }
+  ],
   // Fica para depuração, mas sem login: BETTER_AUTH_URL é o www.
   "workers_dev": true,
   // URL de versão usaria o banco e os segredos de produção (épico WEB-198,

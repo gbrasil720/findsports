@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-start'
 import { getSessionCookie } from 'better-auth/cookies'
 
+import { HOUDINI_PREFIX, isHoudiniHost } from './lib/houdini-host'
 import { requiresAuthentication } from './utils/auth-guards'
 
 /**
@@ -24,6 +25,23 @@ export function applyPrivateCache(request: Request, headers: Headers) {
   }
 }
 
+/**
+ * WEB-383: nada do Houdini vai para busca nem para cache — nem o 404 da
+ * Cortina, que é o que um robô vê.
+ */
+export function applyHoudiniHeaders(request: Request, headers: Headers) {
+  const url = new URL(request.url)
+  if (
+    !isHoudiniHost(url.hostname) &&
+    url.pathname !== HOUDINI_PREFIX &&
+    !url.pathname.startsWith(`${HOUDINI_PREFIX}/`)
+  ) {
+    return
+  }
+  headers.set('X-Robots-Tag', 'noindex, nofollow')
+  headers.set('Cache-Control', 'private, no-store')
+}
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     // O padrão do Start quando não há `start.ts`; declará-lo aqui o mantém.
@@ -32,6 +50,7 @@ export const startInstance = createStart(() => ({
     // h3 devolve sem mesclar os headers do evento.
     createMiddleware().server(async ({ next, request }) => {
       const result = await next()
+      applyHoudiniHeaders(request, result.response.headers)
       applyPrivateCache(request, result.response.headers)
       return result
     })

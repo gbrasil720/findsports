@@ -19,6 +19,28 @@ function wwwSiblingOrigin(origin: string): string | null {
   return sibling === origin ? null : sibling
 }
 
+/**
+ * WEB-383: o Houdini (`houdini.onside.sh`) chama o auth do próprio host
+ * (impersonar, banir, 2FA), com o cookie que já vale em `onside.sh`. Em
+ * desenvolvimento, `houdini.localhost` testa o modo host.
+ */
+function houdiniOrigin(
+  origin: string,
+  nodeEnv: TrustedOriginOptions['nodeEnv']
+): string | null {
+  const url = new URL(origin)
+  const host = url.hostname.replace(/^www\./, '')
+  if (host === 'onside.sh') {
+    url.hostname = 'houdini.onside.sh'
+    return url.origin
+  }
+  if (nodeEnv === 'development' && host === 'localhost') {
+    url.hostname = 'houdini.localhost'
+    return url.origin
+  }
+  return null
+}
+
 export function buildTrustedOrigins({
   baseUrl,
   nodeEnv,
@@ -28,6 +50,8 @@ export function buildTrustedOrigins({
   const origins = [canonical]
   const wwwSibling = wwwSiblingOrigin(canonical)
   if (wwwSibling) origins.push(wwwSibling)
+  const houdini = houdiniOrigin(canonical, nodeEnv)
+  if (houdini) origins.push(houdini)
 
   if (nodeEnv !== 'development' || !developmentOrigin) return origins
 
