@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
+import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,

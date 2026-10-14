@@ -67,7 +67,8 @@ import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
   searchCityColumns,
-  searchCitySchema
+  searchCitySchema,
+  suggestSearchCities
 } from '../lib/search-city'
 import { searchRadiusKmSchema } from '../lib/search-radius'
 import { createSharedCache } from '../lib/shared-cache'
@@ -826,6 +827,47 @@ export const pubsRouter = router({
         executarBuscaLocal(input)
       )
       return { ...pagina, bars: await comGastoMedio(pagina.bars) }
+    }),
+
+  /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
+  searchCities: protectedProcedure
+    .input(z.object({ query: z.string().trim().min(1).max(100) }))
+    .query(({ input }) => suggestSearchCities(input.query)),
+
+  /**
+   * Quantos bares no ar, dentro do raio, têm jogo hoje (dia de Brasília). É
+   * o "12 bares com jogo hoje" do passo de distância do onboarding do app:
+   * mostra o que a escolha do raio muda antes de salvar.
+   */
+  countTodayNear: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: z.union([
+          z.literal(1),
+          z.literal(3),
+          z.literal(5),
+          z.literal(10)
+        ])
+      })
+    )
+    .query(async ({ input }) => {
+      const origin = sql`ST_SetSRID(ST_MakePoint(${input.lng}, ${input.lat}), 4326)::geography`
+      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+      const result = await db.execute<{ bars: string }>(sql`
+        SELECT count(*) AS bars
+        FROM bar b
+        WHERE b.is_active
+          AND ST_DWithin(b.geo, ${origin}, ${input.radiusKm * 1000})
+          AND EXISTS (
+            SELECT 1 FROM event e
+            WHERE e.bar_id = b.id
+              AND e.starts_at >= ${dayStart}
+              AND e.starts_at < ${dayStart} + interval '1 day'
+          )
+      `)
+      return { bars: Number(result.rows[0]?.bars ?? 0) }
     }),
 
   getSports: protectedProcedure.query(async () => {

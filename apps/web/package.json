@@ -20,6 +20,7 @@
     "@findsports_oficial/auth": "workspace:*",
     "@findsports_oficial/config": "workspace:*",
     "@findsports_oficial/db": "workspace:*",
+    "@findsports_oficial/legal": "workspace:*",
     "@findsports_oficial/ui": "workspace:*",
     "@protomaps/basemaps": "^5.7.2",
     "@t3-oss/env-core": "^0.13.1",

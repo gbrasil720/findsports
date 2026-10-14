@@ -32,6 +32,7 @@
       "dependencies": {
         "@better-auth/expo": "catalog:",
         "@findsports_oficial/api": "workspace:*",
+        "@findsports_oficial/legal": "workspace:*",
         "@tanstack/react-query": "^5.104.1",
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
@@ -92,6 +93,7 @@
         "@findsports_oficial/auth": "workspace:*",
         "@findsports_oficial/config": "workspace:*",
         "@findsports_oficial/db": "workspace:*",
+        "@findsports_oficial/legal": "workspace:*",
         "@findsports_oficial/ui": "workspace:*",
         "@protomaps/basemaps": "^5.7.2",
         "@t3-oss/env-core": "^0.13.1",
@@ -203,6 +205,14 @@
       "devDependencies": {
         "@findsports_oficial/config": "workspace:*",
         "@types/node": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/legal": {
+      "name": "@findsports_oficial/legal",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@findsports_oficial/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
@@ -632,6 +642,8 @@
     "@findsports_oficial/db": ["@findsports_oficial/db@workspace:packages/db"],
 
     "@findsports_oficial/env": ["@findsports_oficial/env@workspace:packages/env"],
+
+    "@findsports_oficial/legal": ["@findsports_oficial/legal@workspace:packages/legal"],
 
     "@findsports_oficial/ui": ["@findsports_oficial/ui@workspace:packages/ui"],
 

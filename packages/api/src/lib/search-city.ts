@@ -43,6 +43,35 @@ export async function findSearchCity(
   return { name: linha[0], uf: linha[1], lat: linha[2], lng: linha[3] }
 }
 
+/** Teto de sugestões do campo de cidade, como no web (`lib/municipios`). */
+const MAX_SUGGESTIONS = 8
+
+/**
+ * Sugestões para o campo de cidade do app (`apps/mobile`), que não carrega a
+ * lista de ~5.500 municípios como o web: pede ao servidor só o que bate com
+ * o que foi digitado. Prefixo antes de "contém" (quem digita "sao p" quer
+ * São Paulo no topo, não "Cristais Paulista"); dentro de cada grupo, a ordem
+ * do arquivo, que é alfabética.
+ */
+export async function suggestSearchCities(
+  query: string
+): Promise<SearchCity[]> {
+  const alvo = normalizarCidade(query)
+  if (alvo.length === 0) return []
+  const { default: centros } = await import('../data/municipios-centros.json')
+  const prefixo: Linha[] = []
+  const contem: Linha[] = []
+  for (const linha of centros as Linha[]) {
+    const nome = normalizarCidade(linha[0])
+    if (nome.startsWith(alvo)) prefixo.push(linha)
+    else if (nome.includes(alvo)) contem.push(linha)
+    if (prefixo.length >= MAX_SUGGESTIONS) break
+  }
+  return [...prefixo, ...contem]
+    .slice(0, MAX_SUGGESTIONS)
+    .map(([name, uf, lat, lng]) => ({ name, uf, lat, lng }))
+}
+
 /** As quatro colunas de `user` andam juntas: ou todas, ou nenhuma. */
 export function searchCityColumns(city: SearchCity) {
   return {
