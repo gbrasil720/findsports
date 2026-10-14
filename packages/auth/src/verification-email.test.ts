@@ -35,6 +35,8 @@ describe('e-mail de verificação Onside', () => {
       'Confirmar meu e-mail:\nhttps://onside.app/api/auth/verify-email?token=abc'
     )
     expect(email.text).toContain('• Por segurança, este link expira em 1 hora.')
+    // Serve a quem se cadastrou pelo app e pelo site.
+    expect(email.text).toContain('pelo app, ele volta para o app')
   })
 
   it('escapa conteúdo controlável no HTML', () => {

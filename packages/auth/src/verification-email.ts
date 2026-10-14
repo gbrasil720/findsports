@@ -31,7 +31,9 @@ export function createVerificationEmail({
     heading: 'Confirme seu e-mail',
     intro: `Olá, ${name.trim() || 'torcedor'}. Falta um passo para entrar em campo: confirme que este endereço é seu para ativar sua conta na Onside.`,
     steps: [
-      'Abra o link no mesmo navegador em que você fez o cadastro.',
+      // Vale para os dois: pelo app o link volta para o app; pelo site, o
+      // rascunho do cadastro de bar fica no navegador em que foi começado.
+      'Abra o link no aparelho em que começou o cadastro: pelo app, ele volta para o app; pelo site, use o mesmo navegador.',
       'Depois da confirmação, você entra automaticamente e continua de onde parou.',
       'Por segurança, este link expira em 1 hora.'
     ],
