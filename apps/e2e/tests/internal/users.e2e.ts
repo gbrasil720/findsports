@@ -150,7 +150,8 @@ test('impersonar torcedor mostra o banner; encerrar volta ao painel', async ({
   expect((await session.json()).user.email).toBe(target.email)
 
   await banner.getByRole('button', { name: 'Encerrar sessão' }).click()
-  await expect(page).toHaveURL(/\/internal\/manage-users$/)
+  // WEB-383: encerrar a impersonação volta para o Houdini.
+  await expect(page).toHaveURL(/\/houdini\/pessoas$/)
   await expect(banner).toHaveCount(0)
   const back = await page.request.get('/api/auth/get-session')
   expect((await back.json()).user.role).toBe('admin')
@@ -173,7 +174,8 @@ test('impersonar dono de bar abre o painel do bar', async ({ page }) => {
   await expect(banner).toContainText(owner.name)
 
   await banner.getByRole('button', { name: 'Encerrar sessão' }).click()
-  await expect(page).toHaveURL(/\/internal\/manage-users$/)
+  // WEB-383: encerrar a impersonação volta para o Houdini.
+  await expect(page).toHaveURL(/\/houdini\/pessoas$/)
   await expect(banner).toHaveCount(0)
 })
 
