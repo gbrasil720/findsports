@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
 import { Text, View } from 'react-native'
+import { ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
@@ -52,6 +53,7 @@ export default function ForgotPassword() {
       )
       return
     }
+    haptic.success()
     await SecureStore.setItemAsync(RESET_EMAIL_KEY, email.trim())
     router.push({ pathname: '/reset-sent', params: { email: email.trim() } })
   }
@@ -78,9 +80,7 @@ export default function ForgotPassword() {
         onSubmitEditing={submit}
       />
       {error ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
         label={pending ? 'Enviando…' : 'Enviar link'}

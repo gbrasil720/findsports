@@ -317,6 +317,14 @@ invente layout que o projeto não tem.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
   e mostra erro).
+- **Movimento das telas de conta:** `components/motion.tsx` (entrada em sequência pelo
+  `Screen`, pressão dos botões, erro que treme, háptico do `expo-haptics`). Animação de
+  entrada (`entering`) é **constante de módulo** (`POP`, `SWAP`...): o Reanimated 4
+  recomeça a entrada quando o objeto muda, e um `ZoomIn.delay(...)` escrito no JSX é um
+  objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
+- **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
+  `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
+  `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).

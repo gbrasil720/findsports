@@ -1,9 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
+import { EASE, ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
@@ -41,6 +47,14 @@ export default function SignIn() {
   const [pending, setPending] = useState(false)
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
+  // A foto assenta de um zoom leve quando a tela abre.
+  const zoom = useSharedValue(1.08)
+  useEffect(() => {
+    zoom.value = withTiming(1, { duration: 1400, easing: EASE })
+  }, [zoom])
+  const settle = useAnimatedStyle(() => ({
+    transform: [{ scale: zoom.value }]
+  }))
 
   const submit = async () => {
     setError(null)
@@ -74,6 +88,7 @@ export default function SignIn() {
       router.push('/two-factor')
       return
     }
+    haptic.success()
     // A sessão mudou: o que estava em cache era de visitante.
     await queryClient.invalidateQueries()
     router.replace('/')
@@ -85,9 +100,9 @@ export default function SignIn() {
       lightStatus
       header={
         <View style={styles.hero}>
-          <Image
+          <Animated.Image
             source={require('../assets/images/intro/bar.jpg')}
-            style={{ width: '100%', height: '100%' }}
+            style={[{ width: '100%', height: '100%' }, settle]}
             resizeMode="cover"
           />
           <LinearGradient
@@ -167,9 +182,7 @@ export default function SignIn() {
           onSubmitEditing={submit}
         />
         {error ? (
-          <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-            {error}
-          </Text>
+          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
         ) : null}
         <BlockButton
           label={pending ? 'Entrando…' : 'Acessar minha conta'}

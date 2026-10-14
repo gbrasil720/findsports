@@ -1,6 +1,14 @@
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  Children,
+  isValidElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react'
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,9 +24,23 @@ import {
   View,
   type ViewStyle
 } from 'react-native'
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
 import { Glass } from '@/components/glass'
+import {
+  EASE,
+  enterAt,
+  haptic,
+  POP_FAST,
+  SWAP,
+  usePress
+} from '@/components/motion'
 
 /*
  * As peças das telas de conta ("04 Conta" do design): botão de voltar em
@@ -213,6 +235,21 @@ export function Screen({
 }) {
   const insets = useSafeAreaInsets()
   useStatusBar(dark || lightStatus ? 'light' : 'dark')
+  // A entrada em sequência vale só para o que nasce com a tela; o que aparece
+  // depois (erro, aviso) entra sozinho, na hora.
+  const born = useRef(Date.now())
+  // Uma entrada por elemento, guardada na primeira renderização (ver `POP`
+  // em `motion.tsx`).
+  const entries = useRef(new Map<string, ReturnType<typeof enterAt>>())
+  const entering = (key: string, index: number) => {
+    let entry = entries.current.get(key)
+    if (!entry) {
+      entry = enterAt(index, Date.now() - born.current > 700)
+      entries.current.set(key, entry)
+    }
+    return entry
+  }
+  const items = Children.toArray(children)
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -229,10 +266,27 @@ export function Screen({
         }}
       >
         {header}
-        {children}
+        {items.map((child, index) =>
+          // O voltar é vidro, e vidro com transparência animada sai errado no
+          // iOS 26; ele chega com a própria transição da tela.
+          isValidElement(child) && child.type === BackButton ? (
+            child
+          ) : (
+            <Animated.View
+              key={String(isValidElement(child) ? child.key : index)}
+              entering={entering(
+                String(isValidElement(child) ? child.key : index),
+                index
+              )}
+            >
+              {child}
+            </Animated.View>
+          )
+        )}
       </ScrollView>
       {footer ? (
-        <View
+        <Animated.View
+          entering={entering('footer', items.length)}
           style={{
             paddingHorizontal: 16,
             paddingTop: 12,
@@ -241,7 +295,7 @@ export function Screen({
           }}
         >
           {footer}
-        </View>
+        </Animated.View>
       ) : null}
     </KeyboardAvoidingView>
   )
@@ -358,29 +412,30 @@ export function BlockButton({
   shadow?: string
   style?: StyleProp<ViewStyle>
 }) {
+  const press = usePress(3, 3)
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        haptic.tap()
+        onPress()
+      }}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       style={style}
     >
-      {({ pressed }) => (
-        // Transparência no conjunto: só no botão, a sombra apareceria por trás.
-        <View style={disabled && { opacity: 0.45 }}>
-          <HardShadow color={shadow} x={3} y={3} radius={4} />
-          <View
-            style={[
-              styles.block,
-              pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] }
-            ]}
-          >
+      {/* Transparência no conjunto: só no botão, a sombra apareceria por trás. */}
+      <View style={disabled && { opacity: 0.45 }}>
+        <HardShadow color={shadow} x={3} y={3} radius={4} />
+        <Animated.View style={[styles.block, press.style]}>
+          <Animated.View key={label} entering={SWAP} style={styles.row}>
             <Text style={text(15, 'Bold')}>{label}</Text>
             {trailing ? <Icon name="next" size={16} /> : null}
-          </View>
-        </View>
-      )}
+          </Animated.View>
+        </Animated.View>
+      </View>
     </Pressable>
   )
 }
@@ -399,6 +454,7 @@ export function PillButton({
   edge?: string
   disabled?: boolean
 }) {
+  const press = usePress(0, 3)
   return (
     <View
       style={[
@@ -411,14 +467,20 @@ export function PillButton({
         accessibilityRole="button"
         accessibilityState={{ disabled }}
         disabled={disabled}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.pill,
-          pressed && { transform: [{ translateY: 2 }] }
-        ]}
+        onPress={() => {
+          haptic.tap()
+          onPress()
+        }}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
       >
-        <Text style={text(15, 'Bold')}>{label}</Text>
-        {trailing ? <Icon name="next" size={17} /> : null}
+        <Animated.View style={[styles.pill, press.style]}>
+          {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
+          <Animated.View key={label} entering={SWAP} style={styles.row}>
+            <Text style={text(15, 'Bold')}>{label}</Text>
+            {trailing ? <Icon name="next" size={17} /> : null}
+          </Animated.View>
+        </Animated.View>
       </Pressable>
     </View>
   )
@@ -475,6 +537,26 @@ export function Field({
   action?: { label: string; onPress: () => void }
 }) {
   const [focused, setFocused] = useState(false)
+  // O foco acende: a borda escurece e a sombra acid sai de trás da caixa.
+  const focus = useSharedValue(0)
+  useEffect(() => {
+    focus.value = withTiming(focused ? 1 : 0, { duration: 180, easing: EASE })
+  }, [focused, focus])
+  const box = useAnimatedStyle(() => ({
+    borderWidth: 1 + focus.value * 0.5,
+    borderColor: interpolateColor(
+      focus.value,
+      [0, 1],
+      ['rgba(18,18,15,.14)', INK]
+    )
+  }))
+  const glow = useAnimatedStyle(() => ({
+    opacity: focus.value,
+    transform: [
+      { translateX: focus.value * 3 },
+      { translateY: focus.value * 3 }
+    ]
+  }))
   return (
     <View style={{ gap: 7 }}>
       <View style={styles.labelRow}>
@@ -491,13 +573,12 @@ export function Field({
         ) : null}
       </View>
       <View>
-        <HardShadow
-          color={focused ? ACID : 'rgba(18,18,15,.05)'}
-          x={3}
-          y={3}
-          radius={5}
+        <HardShadow color="rgba(18,18,15,.05)" x={3} y={3} radius={5} />
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, styles.glow, glow]}
         />
-        <View style={[styles.input, focused && styles.inputFocused]}>
+        <Animated.View style={[styles.input, box]}>
           <Icon name={icon} color={focused ? INK : MUTED} />
           <TextInput
             accessibilityLabel={label}
@@ -515,7 +596,7 @@ export function Field({
               input.onBlur?.(event)
             }}
           />
-        </View>
+        </Animated.View>
       </View>
     </View>
   )
@@ -549,11 +630,24 @@ export function StrengthBars({
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
       {[1, 2, 3, 4].map((step) => (
-        <View
-          key={step}
-          style={[styles.bar, { backgroundColor: step <= score ? INK : empty }]}
-        />
+        <StrengthBar key={step} on={step <= score} empty={empty} />
       ))}
+    </View>
+  )
+}
+
+/** Uma barra: a tinta enche da esquerda para a direita. */
+function StrengthBar({ on, empty }: { on: boolean; empty: string }) {
+  const fill = useSharedValue(on ? 1 : 0)
+  useEffect(() => {
+    fill.value = withTiming(on ? 1 : 0, { duration: 260, easing: EASE })
+  }, [on, fill])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scaleX: fill.value }]
+  }))
+  return (
+    <View style={[styles.bar, { backgroundColor: empty }]}>
+      <Animated.View style={[styles.barFill, style]} />
     </View>
   )
 }
@@ -573,11 +667,18 @@ export function Checkbox({
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
-      onPress={() => onChange(!checked)}
+      onPress={() => {
+        haptic.select()
+        onChange(!checked)
+      }}
       style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}
     >
       <View style={[styles.box, checked && styles.boxChecked]}>
-        {checked ? <Icon name="check" size={14} color={ACID} /> : null}
+        {checked ? (
+          <Animated.View entering={POP_FAST}>
+            <Icon name="check" size={14} color={ACID} />
+          </Animated.View>
+        ) : null}
       </View>
       <View style={{ flex: 1 }}>{children}</View>
     </Pressable>
@@ -705,7 +806,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(18,18,15,.14)'
   },
-  inputFocused: { borderWidth: 1.5, borderColor: INK },
+  glow: { borderRadius: 5, backgroundColor: ACID },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
   inputText: {
     flex: 1,
     height: '100%',
@@ -713,7 +820,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: INK
   },
-  bar: { flex: 1, height: 4, borderRadius: 2 },
+  bar: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  barFill: {
+    flex: 1,
+    borderRadius: 2,
+    backgroundColor: INK,
+    transformOrigin: 'left'
+  },
   box: {
     width: 22,
     height: 22,

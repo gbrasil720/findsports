@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import Animated, { ZoomOut } from 'react-native-reanimated'
+import { ErrorText, haptic, POP } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
@@ -68,6 +70,7 @@ export default function ResetPassword() {
       )
       return
     }
+    haptic.success()
     const email = await SecureStore.getItemAsync(RESET_EMAIL_KEY)
     await SecureStore.deleteItemAsync(RESET_EMAIL_KEY)
     if (!email) {
@@ -122,8 +125,16 @@ export default function ResetPassword() {
           const met = rule.test(password)
           return (
             <View key={rule.label} style={styles.rule}>
-              <View style={[styles.dot, met ? styles.dotOn : styles.dotOff]}>
-                {met ? <Icon name="check" size={11} /> : null}
+              <View style={[styles.dot, styles.dotOff]}>
+                {met ? (
+                  <Animated.View
+                    entering={POP}
+                    exiting={ZoomOut.duration(140)}
+                    style={[styles.dot, styles.dotOn]}
+                  >
+                    <Icon name="check" size={11} />
+                  </Animated.View>
+                ) : null}
               </View>
               <Text style={[text(13.5), { color: met ? INK : MUTED }]}>
                 {rule.label}
@@ -143,9 +154,7 @@ export default function ResetPassword() {
         onSubmitEditing={submit}
       />
       {error ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
         label={pending ? 'Salvando…' : 'Salvar e entrar'}
@@ -180,6 +189,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  dotOn: { backgroundColor: ACID },
+  // A bolinha cheia cobre o anel por inteiro.
+  dotOn: {
+    position: 'absolute',
+    top: -1.5,
+    left: -1.5,
+    backgroundColor: ACID
+  },
   dotOff: { borderWidth: 1.5, borderColor: 'rgba(18,18,15,.25)' }
 })

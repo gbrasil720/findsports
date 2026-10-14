@@ -1,6 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
+import { ErrorText, Float, haptic, POP_LATE } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
@@ -44,6 +46,7 @@ export default function VerifyEmail() {
       setNotice('Não foi possível reenviar agora. Tente daqui a pouco.')
       return
     }
+    haptic.success()
     countdown.restart()
   }
 
@@ -74,12 +77,16 @@ export default function VerifyEmail() {
       <View style={styles.art}>
         <View>
           <View style={styles.orbShadow} />
-          <View style={styles.orb}>
-            <Icon name="mail" size={76} />
-          </View>
-          <View style={styles.badge}>
-            <Text style={[text(15, 'Bold', 1), { color: PAPER }]}>1</Text>
-          </View>
+          {/* Só a bola flutua: a sombra fica, e a distância entre as duas
+              respira. */}
+          <Float>
+            <View style={styles.orb}>
+              <Icon name="mail" size={76} />
+            </View>
+            <Animated.View entering={POP_LATE} style={styles.badge}>
+              <Text style={[text(15, 'Bold', 1), { color: PAPER }]}>1</Text>
+            </Animated.View>
+          </Float>
         </View>
       </View>
       <Title lines={[['Confirme seu e-mail']]} size={38} />
@@ -103,9 +110,7 @@ export default function VerifyEmail() {
         ))}
       </View>
       {notice ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {notice}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
       ) : null}
       {turnstile.widget}
     </Screen>

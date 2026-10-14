@@ -1,6 +1,19 @@
 import { useRouter } from 'expo-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
+} from 'react-native-reanimated'
+import {
+  ErrorText,
+  haptic,
+  POP_FAST,
+  useBlink,
+  useShake
+} from '@/components/motion'
 import {
   ACID,
   authErrorMessage,
@@ -25,6 +38,36 @@ import { queryClient } from '@/lib/trpc'
 const DIGITS = 6
 const BOX = '#1c1c18'
 
+/** O cursor da caixa ativa, piscando. */
+function Caret() {
+  const blink = useBlink()
+  return <Animated.View style={[styles.caret, blink.style]} />
+}
+
+/** "Confiar neste aparelho": a bolinha desliza com mola e o fundo acende. */
+function Toggle({ on }: { on: boolean }) {
+  const value = useSharedValue(on ? 1 : 0)
+  useEffect(() => {
+    value.value = withSpring(on ? 1 : 0, { damping: 15, stiffness: 260 })
+  }, [on, value])
+  const track = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      value.value,
+      [0, 1],
+      ['rgba(241,238,230,.2)', ACID]
+    )
+  }))
+  const knob = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(value.value, [0, 1], [PAPER, '#12120f']),
+    transform: [{ translateX: value.value * 20 }]
+  }))
+  return (
+    <Animated.View style={[styles.toggle, track]}>
+      <Animated.View style={[styles.knob, knob]} />
+    </Animated.View>
+  )
+}
+
 export default function TwoFactor() {
   const router = useRouter()
   const input = useRef<TextInput>(null)
@@ -34,6 +77,7 @@ export default function TwoFactor() {
   const [focused, setFocused] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const boxes = useShake()
 
   const verify = async (value = code) => {
     setError(null)
@@ -49,6 +93,9 @@ export default function TwoFactor() {
         })
     setPending(false)
     if (result.error) {
+      // As caixas tremem e esvaziam para o próximo código.
+      boxes.shake()
+      if (!backup) setCode('')
       setError(
         authErrorMessage(
           result.error,
@@ -57,12 +104,14 @@ export default function TwoFactor() {
       )
       return
     }
+    haptic.success()
     await queryClient.invalidateQueries()
     router.replace('/')
   }
 
   const onDigits = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, DIGITS)
+    if (digits.length > code.length) haptic.select()
     setCode(digits)
     if (digits.length === DIGITS && !pending) verify(digits)
   }
@@ -106,54 +155,65 @@ export default function TwoFactor() {
           onSubmitEditing={() => verify()}
         />
       ) : (
-        <Pressable
-          accessibilityLabel="Código de 6 dígitos"
-          onPress={() => input.current?.focus()}
-          style={styles.boxes}
-        >
-          {Array.from({ length: DIGITS }, (_, index) => {
-            const active =
-              focused && index === Math.min(code.length, DIGITS - 1)
-            return (
-              // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa
-              <View key={index} style={{ flex: 1 }}>
-                <View
-                  style={[
-                    styles.shadow,
-                    active && { backgroundColor: 'rgba(201,241,53,.3)' }
-                  ]}
-                />
-                <View style={[styles.box, active && styles.boxActive]}>
-                  {code[index] ? (
-                    <Text style={styles.digit}>{code[index]}</Text>
-                  ) : active ? (
-                    <View style={styles.caret} />
-                  ) : null}
+        <Animated.View style={boxes.style}>
+          <Pressable
+            accessibilityLabel="Código de 6 dígitos"
+            onPress={() => input.current?.focus()}
+            style={styles.boxes}
+          >
+            {Array.from({ length: DIGITS }, (_, index) => {
+              const active =
+                focused && index === Math.min(code.length, DIGITS - 1)
+              return (
+                // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa
+                <View key={index} style={{ flex: 1 }}>
+                  <View
+                    style={[
+                      styles.shadow,
+                      active && { backgroundColor: 'rgba(201,241,53,.3)' }
+                    ]}
+                  />
+                  <View style={[styles.box, active && styles.boxActive]}>
+                    {code[index] ? (
+                      <Animated.Text
+                        key={code[index]}
+                        entering={POP_FAST}
+                        style={styles.digit}
+                      >
+                        {code[index]}
+                      </Animated.Text>
+                    ) : active ? (
+                      <Caret />
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            )
-          })}
-          <TextInput
-            ref={input}
-            autoFocus
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={DIGITS}
-            value={code}
-            onChangeText={onDigits}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            caretHidden
-            style={styles.hidden}
-          />
-        </Pressable>
+              )
+            })}
+            <TextInput
+              ref={input}
+              autoFocus
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete="one-time-code"
+              maxLength={DIGITS}
+              value={code}
+              onChangeText={onDigits}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              caretHidden
+              style={styles.hidden}
+            />
+          </Pressable>
+        </Animated.View>
       )}
 
       <Pressable
         accessibilityRole="switch"
         accessibilityState={{ checked: trust }}
-        onPress={() => setTrust(!trust)}
+        onPress={() => {
+          haptic.select()
+          setTrust(!trust)
+        }}
         style={styles.trust}
       >
         <View style={{ flex: 1 }}>
@@ -164,22 +224,11 @@ export default function TwoFactor() {
             Não pede o código por 30 dias
           </Text>
         </View>
-        <View
-          style={[styles.toggle, trust ? styles.toggleOn : styles.toggleOff]}
-        >
-          <View
-            style={[
-              styles.knob,
-              { backgroundColor: trust ? '#12120f' : PAPER }
-            ]}
-          />
-        </View>
+        <Toggle on={trust} />
       </Pressable>
 
       {error ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
         label={pending ? 'Verificando…' : 'Verificar'}
@@ -250,11 +299,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 4, height: 4 }
   },
   toggle: { width: 50, height: 30, borderRadius: 15, padding: 3 },
-  toggleOn: { backgroundColor: ACID, alignItems: 'flex-end' },
-  toggleOff: {
-    backgroundColor: 'rgba(241,238,230,.2)',
-    alignItems: 'flex-start'
-  },
   knob: { width: 24, height: 24, borderRadius: 12 },
   switch: {
     color: PAPER,

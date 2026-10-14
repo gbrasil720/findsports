@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
@@ -71,6 +72,7 @@ export default function SignUp() {
       )
       return
     }
+    haptic.success()
     router.push({ pathname: '/verify-email', params: { email: email.trim() } })
   }
 
@@ -135,9 +137,7 @@ export default function SignUp() {
         </Text>
       </Checkbox>
       {error ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
         label={pending ? 'Criando…' : 'Criar conta grátis'}

@@ -1,7 +1,15 @@
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated'
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg'
+import { haptic, POP } from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -83,42 +91,84 @@ function Option({
   selected: boolean
   onPress: () => void
 }) {
+  // Escolher: a sombra acid sai de trás do cartão, o fundo clareia e a borda
+  // escurece; o outro cartão faz o caminho de volta. Tocar afunda um pouco.
+  const on = useSharedValue(selected ? 1 : 0)
+  const down = useSharedValue(0)
+  useEffect(() => {
+    on.value = withSpring(selected ? 1 : 0, { damping: 16, stiffness: 220 })
+  }, [selected, on])
+  const lift = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - down.value * 0.015 }]
+  }))
+  const acid = useAnimatedStyle(() => ({
+    opacity: on.value,
+    transform: [{ translateX: on.value * 5 }, { translateY: on.value * 5 }]
+  }))
+  const gray = useAnimatedStyle(() => ({ opacity: 1 - on.value }))
+  const card = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', '#ffffff']),
+    borderColor: interpolateColor(
+      on.value,
+      [0, 1],
+      ['rgba(18,18,15,.08)', INK]
+    ),
+    borderWidth: 1 + on.value * 0.5
+  }))
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={option.title}
       onPress={onPress}
+      onPressIn={() => {
+        down.value = withTiming(1, { duration: 90 })
+      }}
+      onPressOut={() => {
+        down.value = withSpring(0, { damping: 14, stiffness: 300 })
+      }}
     >
-      <View style={selected ? styles.selectedShadow : styles.idleShadow} />
-      <View style={[styles.card, selected ? styles.selected : styles.idle]}>
-        <View style={styles.cover}>
-          {option.role === 'fan' ? (
-            <Image
-              source={require('../assets/images/intro/bar.jpg')}
-              // Só `absoluteFill` deixa a imagem no tamanho original.
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-            />
-          ) : (
-            <BarPattern />
-          )}
-          <View
-            style={[styles.mark, selected ? styles.markOn : styles.markOff]}
-          >
-            {selected ? <Icon name="check" size={15} color={ACID} /> : null}
+      <Animated.View style={lift}>
+        <Animated.View style={[styles.idleShadow, gray]} />
+        <Animated.View style={[styles.selectedShadow, acid]} />
+        <Animated.View style={[styles.card, card]}>
+          <View style={styles.cover}>
+            {option.role === 'fan' ? (
+              <Image
+                source={require('../assets/images/intro/bar.jpg')}
+                // Só `absoluteFill` deixa a imagem no tamanho original.
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            ) : (
+              <BarPattern />
+            )}
+            <View
+              style={[
+                styles.mark,
+                selected ? styles.markOn : styles.markOff,
+                // No fundo tinta do bar, a bolinha tinta precisa de contorno.
+                selected && option.role === 'pub' && styles.markOnDark
+              ]}
+            >
+              {selected ? (
+                <Animated.View entering={POP}>
+                  <Icon name="check" size={15} color={ACID} />
+                </Animated.View>
+              ) : null}
+            </View>
           </View>
-        </View>
-        <View style={styles.cardBody}>
-          <Icon name={option.icon} size={28} />
-          <View style={{ flex: 1 }}>
-            <Text style={text(18, 'Bold')}>{option.title}</Text>
-            <Text style={[text(13.5), { color: MUTED, marginTop: 2 }]}>
-              {option.body}
-            </Text>
+          <View style={styles.cardBody}>
+            <Icon name={option.icon} size={28} />
+            <View style={{ flex: 1 }}>
+              <Text style={text(18, 'Bold')}>{option.title}</Text>
+              <Text style={[text(13.5), { color: MUTED, marginTop: 2 }]}>
+                {option.body}
+              </Text>
+            </View>
           </View>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -159,7 +209,10 @@ export default function Profile() {
             key={option.role}
             option={option}
             selected={role === option.role}
-            onPress={() => setRole(option.role)}
+            onPress={() => {
+              if (option.role !== role) haptic.select()
+              setRole(option.role)
+            }}
           />
         ))}
       </View>
@@ -174,14 +227,13 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   card: { borderRadius: 8, overflow: 'hidden' },
-  selected: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: INK },
   // A sombra dura acid do cartão escolhido, fora do recorte.
   selectedShadow: {
     position: 'absolute',
-    top: 5,
-    left: 5,
-    right: -5,
-    bottom: -5,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderRadius: 8,
     backgroundColor: ACID
   },
@@ -193,11 +245,6 @@ const styles = StyleSheet.create({
     bottom: -4,
     borderRadius: 8,
     backgroundColor: 'rgba(18,18,15,.09)'
-  },
-  idle: {
-    backgroundColor: '#faf8f3',
-    borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
   },
   cover: { height: 120, backgroundColor: '#2a2a25' },
   mark: {
@@ -211,6 +258,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   markOn: { backgroundColor: INK },
+  markOnDark: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.55)' },
   markOff: {
     backgroundColor: 'rgba(255,255,255,.7)',
     borderWidth: 1.5,

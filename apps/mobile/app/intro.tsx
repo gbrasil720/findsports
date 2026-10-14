@@ -17,7 +17,6 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import {
   type ArtProps,
@@ -28,7 +27,7 @@ import {
 } from '@/components/intro-art'
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
 import { SplashDone } from '@/components/splash'
-import { useStatusBar } from '@/components/ui'
+import { PillButton, useStatusBar } from '@/components/ui'
 
 /*
  * "03 Apresentação" do design: quatro telas, uma ideia de produto em cada,
@@ -43,7 +42,6 @@ import { useStatusBar } from '@/components/ui'
 
 const INK = '#12120f'
 const PAPER = '#f1eee6'
-const ACID = '#c9f135'
 
 type Page = {
   Art: ComponentType<ArtProps>
@@ -161,24 +159,11 @@ export default function Intro() {
       <View
         style={[styles.footer, { bottom: Math.max(insets.bottom - 4, 16) }]}
       >
-        <View style={styles.ctaEdge}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={next}
-            style={({ pressed }) => [
-              styles.cta,
-              pressed && { transform: [{ translateY: 2 }] }
-            ]}
-          >
-            <Text style={styles.ctaText}>{last ? 'Começar' : 'Continuar'}</Text>
-            <Svg width={17} height={17} viewBox="0 0 24 24">
-              <Path
-                d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z"
-                fill={INK}
-              />
-            </Svg>
-          </Pressable>
-        </View>
+        <PillButton
+          label={last ? 'Começar' : 'Continuar'}
+          trailing
+          onPress={next}
+        />
         <Text style={styles.signIn}>
           Já tem conta?{' '}
           <Text
@@ -317,33 +302,6 @@ const styles = StyleSheet.create({
   skipText: { fontFamily: 'Archivo-Bold', fontSize: 13.5, color: PAPER },
   footer: { position: 'absolute', left: 16, right: 16, gap: 12 },
   // A sombra dura "0 3px 0" do botão: a tinta por baixo, 3 px mais alta.
-  // A tinta não conta na altura, como sombra no CSS: margem -3.
-  ctaEdge: {
-    height: 59,
-    marginBottom: -3,
-    borderRadius: 28,
-    backgroundColor: INK,
-    // O brilho "0 12px 24px -10px rgba(110,140,0,.6)" do design.
-    shadowColor: 'rgb(110,140,0)',
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 10 }
-  },
-  cta: {
-    height: 56,
-    borderRadius: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: ACID,
-    // O relevo interno do design: luz em cima, verde escuro embaixo.
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,.65)',
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(90,120,0,.25)'
-  },
-  ctaText: { fontFamily: 'Archivo-Bold', fontSize: 15, color: INK },
   signIn: {
     textAlign: 'center',
     fontFamily: 'Archivo-Regular',

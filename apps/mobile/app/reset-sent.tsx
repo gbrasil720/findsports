@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ErrorText, Float, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
@@ -47,6 +48,7 @@ export default function ResetSent() {
       setNotice('Não foi possível reenviar agora. Tente daqui a pouco.')
       return
     }
+    haptic.success()
     countdown.restart()
   }
 
@@ -89,9 +91,11 @@ export default function ResetSent() {
       <BackButton tone="dark" />
       <View style={{ marginTop: 40 }}>
         <View style={styles.tileShadow} />
-        <View style={styles.tile}>
-          <Icon name="mail" size={52} />
-        </View>
+        <Float distance={5}>
+          <View style={styles.tile}>
+            <Icon name="mail" size={52} />
+          </View>
+        </Float>
       </View>
       <Title
         lines={[['Confira seu ', 'e-mail']]}
@@ -107,9 +111,7 @@ export default function ResetSent() {
         . Ele vale por 1 hora. Se não aparecer, olhe o spam.
       </Text>
       {notice ? (
-        <Text accessibilityRole="alert" style={[text(13.5), { color: LIVE }]}>
-          {notice}
-        </Text>
+        <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
       ) : null}
       {turnstile.widget}
     </Screen>
