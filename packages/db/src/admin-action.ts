@@ -8,6 +8,8 @@ export const ADMIN_ACTION_KINDS = [
   'user.ban',
   'user.unban',
   'user.set_role',
+  'user.resend_verification',
+  'user.send_password_reset',
   'config.set',
   'config.reset'
 ] as const
