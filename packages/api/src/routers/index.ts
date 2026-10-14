@@ -4,6 +4,7 @@ import { adminUsersRouter } from './admin-users'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
+import { bastidoresRouter } from './bastidores'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
 import { grimorioRouter } from './grimorio'
@@ -28,6 +29,7 @@ export const appRouter = router({
   adminBars: adminBarsRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
+  bastidores: bastidoresRouter,
   onboarding: onboardingRouter,
   pub: pubRouter,
   pubs: pubsRouter,

@@ -414,6 +414,13 @@
       "when": 1792013722153,
       "tag": "0059_app_config_expires_at",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792014070388,
+      "tag": "0060_job_run",
+      "breakpoints": true
     }
   ]
 }

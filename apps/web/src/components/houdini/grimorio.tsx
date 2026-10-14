@@ -36,6 +36,11 @@ function duration(seconds: unknown) {
   return minutes < 60 ? `${minutes} min` : `${Math.round(minutes / 60)} h`
 }
 
+const JOB_LABELS: Record<string, string> = {
+  bar_plans: 'a reconciliação dos planos',
+  analytics_retention: 'a limpeza dos analytics'
+}
+
 /** Como cada truque aparece no Grimório. */
 export function describe(entry: GrimorioEntry): {
   icon: IconName
@@ -110,6 +115,13 @@ export function describe(entry: GrimorioEntry): {
         tone: 'warn',
         text: `desfez ${label}`,
         detail: `${show(entry.before)} → padrão`
+      }
+    case 'system.run_job':
+      return {
+        icon: 'pulse',
+        tone: detail.ok ? 'neutral' : 'bad',
+        text: `rodou ${JOB_LABELS[label] ?? label} na hora`,
+        detail: detail.ok ? null : 'falhou: o erro está em Bastidores'
       }
     default:
       return {

@@ -47,6 +47,7 @@ import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
 import { Route as HoudiniAppIndexRouteImport } from './routes/houdini/_app/index'
 import { Route as HoudiniAppBaresRouteImport } from './routes/houdini/_app/bares'
+import { Route as HoudiniAppBastidoresRouteImport } from './routes/houdini/_app/bastidores'
 import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/fantasmas'
 import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/feiticos'
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
@@ -243,6 +244,11 @@ const HoudiniAppBaresRoute = HoudiniAppBaresRouteImport.update({
   path: '/bares',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppBastidoresRoute = HoudiniAppBastidoresRouteImport.update({
+  id: '/bastidores',
+  path: '/bastidores',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 const HoudiniAppFantasmasRoute = HoudiniAppFantasmasRouteImport.update({
   id: '/fantasmas',
   path: '/fantasmas',
@@ -301,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/houdini/bares': typeof HoudiniAppBaresRoute
+  '/houdini/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
@@ -344,6 +351,7 @@ export interface FileRoutesByTo {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/houdini/bares': typeof HoudiniAppBaresRoute
+  '/houdini/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
   '/houdini/_app/bares': typeof HoudiniAppBaresRoute
+  '/houdini/_app/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/_app/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/_app/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/houdini/bares'
+    | '/houdini/bastidores'
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
@@ -476,6 +486,7 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/houdini/bares'
+    | '/houdini/bastidores'
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
@@ -519,6 +530,7 @@ export interface FileRouteTypes {
     | '/api/trpc/$'
     | '/api/user/avatar'
     | '/houdini/_app/bares'
+    | '/houdini/_app/bastidores'
     | '/houdini/_app/fantasmas'
     | '/houdini/_app/feiticos'
     | '/houdini/_app/grimorio'
@@ -831,6 +843,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppBaresRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/bastidores': {
+      id: '/houdini/_app/bastidores'
+      path: '/bastidores'
+      fullPath: '/houdini/bastidores'
+      preLoaderRoute: typeof HoudiniAppBastidoresRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
     '/houdini/_app/fantasmas': {
       id: '/houdini/_app/fantasmas'
       path: '/fantasmas'
@@ -864,6 +883,7 @@ declare module '@tanstack/react-router' {
 
 interface HoudiniAppRouteChildren {
   HoudiniAppBaresRoute: typeof HoudiniAppBaresRoute
+  HoudiniAppBastidoresRoute: typeof HoudiniAppBastidoresRoute
   HoudiniAppFantasmasRoute: typeof HoudiniAppFantasmasRoute
   HoudiniAppFeiticosRoute: typeof HoudiniAppFeiticosRoute
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
@@ -873,6 +893,7 @@ interface HoudiniAppRouteChildren {
 
 const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppBaresRoute: HoudiniAppBaresRoute,
+  HoudiniAppBastidoresRoute: HoudiniAppBastidoresRoute,
   HoudiniAppFantasmasRoute: HoudiniAppFantasmasRoute,
   HoudiniAppFeiticosRoute: HoudiniAppFeiticosRoute,
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
