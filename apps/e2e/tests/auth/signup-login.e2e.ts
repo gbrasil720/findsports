@@ -165,7 +165,9 @@ test('login com e-mail não verificado é recusado e reenvia a verificação', a
   const refused = await response
   expect(refused.status()).toBe(403)
   expect(await refused.json()).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' })
-  await expect(page).toHaveURL(/\/login$/)
+  // A tela de confirmação, com o e-mail, em vez de "sem permissão".
+  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page.getByText(user.email)).toBeVisible()
 
   const email = await lastEmailTo(user.email, { subject: VERIFICATION_SUBJECT })
   expect(email.link).toContain('/api/auth/verify-email?token=')

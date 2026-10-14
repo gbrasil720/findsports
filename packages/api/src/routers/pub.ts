@@ -8,6 +8,10 @@ import {
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
   EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
 } from '@findsports_oficial/db/event-limits'
+import {
+  EVENT_START_PROBLEM_MESSAGE,
+  getEventStartProblem
+} from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import {
   bar,
@@ -141,6 +145,17 @@ export function addressFieldsChanged(
  * this with the values that will actually be persisted, so the check runs
  * even when only one of the two fields is sent in the mutation.
  */
+/** Mesma regra do formulário do painel (`getEventStartProblem`). */
+export function assertEventStartInRange(startsAt: Date, now = new Date()) {
+  const problem = getEventStartProblem(startsAt, now)
+  if (problem) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: EVENT_START_PROBLEM_MESSAGE[problem]
+    })
+  }
+}
+
 export function assertEventIntervalValid(
   effectiveStartsAt: Date,
   effectiveEndsAt: Date | null | undefined
@@ -611,6 +626,7 @@ export const pubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
+      assertEventStartInRange(new Date(input.startsAt))
       assertEventIntervalValid(
         new Date(input.startsAt),
         input.endsAt ? new Date(input.endsAt) : null
@@ -747,6 +763,14 @@ export const pubRouter = router({
       const participantIds =
         input.participantIds ?? (sportChanged ? [] : undefined)
 
+      // Só o início que mudou passa pela regra: editar o nome de um jogo que
+      // já acabou não pode ser recusado pela data que ninguém mexeu.
+      if (
+        input.startsAt &&
+        new Date(input.startsAt).getTime() !== existingEvent.startsAt.getTime()
+      ) {
+        assertEventStartInRange(new Date(input.startsAt))
+      }
       assertEventIntervalValid(
         input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
         resolvedEndsAt === undefined ? existingEvent.endsAt : resolvedEndsAt
