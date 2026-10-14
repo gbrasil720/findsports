@@ -321,9 +321,13 @@ export function BackButton({
       onPress={onPress ?? (() => router.back())}
       style={{ alignSelf: 'flex-start' }}
     >
-      <Glass tone={tone} interactive style={styles.round}>
-        <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
-      </Glass>
+      {/* Vidro só aparece com algo atrás; sobre o papel liso, a base branca
+          e a sombra do design (0 12px 30px -10px) fazem o círculo. */}
+      <View style={tone === 'light' && styles.roundBase}>
+        <Glass tone={tone} interactive style={styles.round}>
+          <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
+        </Glass>
+      </View>
     </Pressable>
   )
 }
@@ -742,6 +746,14 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  roundBase: {
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,.55)',
+    shadowColor: INK,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 }
+  },
   round: {
     width: 40,
     height: 40,

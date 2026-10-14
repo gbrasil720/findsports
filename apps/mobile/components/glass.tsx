@@ -25,7 +25,9 @@ export function Glass({ tone, interactive, style, ...props }: GlassProps) {
   if (LIQUID) {
     return (
       <GlassView
-        glassEffectStyle="clear"
+        // Claro em "regular": o "clear" some sobre o papel liso (o voltar
+        // ficava só a seta); o escuro fica "clear", sobre foto e mapa.
+        glassEffectStyle={tone === 'light' ? 'regular' : 'clear'}
         colorScheme={tone}
         tintColor={TINT[tone]}
         isInteractive={interactive}
