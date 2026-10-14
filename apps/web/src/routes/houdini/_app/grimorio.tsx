@@ -18,6 +18,15 @@ const FILTERS = [
   { label: 'Sumiços', kinds: ['user.ban', 'user.unban'] },
   { label: 'Roles', kinds: ['user.set_role'] },
   { label: 'Feitiços', kinds: ['config.set', 'config.reset'] },
+  {
+    label: 'Bares',
+    kinds: [
+      'bar.sync_search',
+      'bar.extend_trial',
+      'bar.take_off_air',
+      'bar.put_on_air'
+    ]
+  },
   { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }
 ] as const
 

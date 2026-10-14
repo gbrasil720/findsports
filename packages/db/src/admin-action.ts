@@ -16,7 +16,11 @@ export const ADMIN_ACTION_KINDS = [
   'system.run_job',
   'event.update',
   'event.delete',
-  'event.fix'
+  'event.fix',
+  'bar.sync_search',
+  'bar.extend_trial',
+  'bar.take_off_air',
+  'bar.put_on_air'
 ] as const
 
 export type AdminActionKind = (typeof ADMIN_ACTION_KINDS)[number]
