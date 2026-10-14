@@ -5,12 +5,12 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withSpring
+  withTiming
 } from 'react-native-reanimated'
 import {
+  EASE,
   ErrorText,
   haptic,
-  POP_FAST,
   useBlink,
   useShake
 } from '@/components/motion'
@@ -44,11 +44,11 @@ function Caret() {
   return <Animated.View style={[styles.caret, blink.style]} />
 }
 
-/** "Confiar neste aparelho": a bolinha desliza com mola e o fundo acende. */
+/** "Confiar neste aparelho": a bolinha desliza e o fundo acende. */
 function Toggle({ on }: { on: boolean }) {
   const value = useSharedValue(on ? 1 : 0)
   useEffect(() => {
-    value.value = withSpring(on ? 1 : 0, { damping: 15, stiffness: 260 })
+    value.value = withTiming(on ? 1 : 0, { duration: 180, easing: EASE })
   }, [on, value])
   const track = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
@@ -111,7 +111,6 @@ export default function TwoFactor() {
 
   const onDigits = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, DIGITS)
-    if (digits.length > code.length) haptic.select()
     setCode(digits)
     if (digits.length === DIGITS && !pending) verify(digits)
   }
@@ -175,13 +174,7 @@ export default function TwoFactor() {
                   />
                   <View style={[styles.box, active && styles.boxActive]}>
                     {code[index] ? (
-                      <Animated.Text
-                        key={code[index]}
-                        entering={POP_FAST}
-                        style={styles.digit}
-                      >
-                        {code[index]}
-                      </Animated.Text>
+                      <Text style={styles.digit}>{code[index]}</Text>
                     ) : active ? (
                       <Caret />
                     ) : null}

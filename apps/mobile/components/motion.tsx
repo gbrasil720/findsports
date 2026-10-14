@@ -3,16 +3,17 @@ import { type ReactNode, useEffect } from 'react'
 import { type StyleProp, Text, type TextStyle } from 'react-native'
 import Animated, {
   Easing,
+  type EntryExitAnimationFunction,
   FadeIn,
   FadeInDown,
   Keyframe,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withSpring,
-  withTiming,
-  ZoomIn
+  withTiming
 } from 'react-native-reanimated'
 
 /*
@@ -25,11 +26,13 @@ import Animated, {
 
 export const EASE = Easing.bezier(0.23, 1, 0.32, 1)
 
-/** Háptico de cada gesto. Sem motor de vibração, não faz nada. */
+/**
+ * Háptico: um por ação, no momento em que ela acontece (escolher, dar certo,
+ * dar errado). Toque em botão não vibra; o botão já afunda. Sem motor de
+ * vibração, não faz nada.
+ */
 const quiet = () => {}
 export const haptic = {
-  tap: () =>
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
   select: () => Haptics.selectionAsync().catch(quiet),
   success: () =>
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
@@ -45,21 +48,47 @@ export const haptic = {
 // entrada quando o objeto em `entering` muda, e um `ZoomIn.delay(...)` escrito
 // no JSX é um objeto novo a cada renderização (uma contagem de segundos
 // fazia o elemento aparecer de novo a cada segundo).
-export const POP = ZoomIn.springify().damping(15)
-export const POP_FAST = ZoomIn.duration(180).easing(EASE)
-export const POP_LATE = ZoomIn.delay(650).springify().damping(15)
-export const SWAP = FadeIn.duration(170)
+/**
+ * Estalo: nasce em `from` (nunca em zero: nada aparece do nada) e assenta
+ * numa mola curta, com um pouco de passo além.
+ */
+const popFrom = (from: number, delay = 0): EntryExitAnimationFunction => {
+  return () => {
+    'worklet'
+    return {
+      initialValues: { opacity: 0, transform: [{ scale: from }] },
+      animations: {
+        opacity: withDelay(delay, withTiming(1, { duration: 120 })),
+        transform: [
+          {
+            scale: withDelay(
+              delay,
+              withSpring(1, { duration: 300, dampingRatio: 0.7 })
+            )
+          }
+        ]
+      }
+    }
+  }
+}
+export const POP = popFrom(0.6)
+export const POP_FAST = popFrom(0.8)
+export const POP_LATE = popFrom(0.6, 650)
+export const SWAP = FadeIn.duration(150)
 
 /**
  * A entrada do elemento `index` de uma tela: sobe e aparece, um depois do
  * outro. Quem nasce depois (um erro, um aviso) entra na hora, sem fila.
  */
+// Curta e perto: a tela já chega deslizando pela pilha, e o conteúdo só
+// assenta (8 px, 260 ms, 35 ms entre os primeiros, nada depois do sexto).
 export const enterAt = (index: number, late: boolean) =>
-  late
-    ? FadeInDown.duration(260).easing(EASE)
-    : FadeInDown.delay(60 + index * 55)
-        .duration(480)
-        .easing(EASE)
+  (late
+    ? FadeInDown.duration(200)
+    : FadeInDown.delay(40 + Math.min(index, 5) * 35).duration(260)
+  )
+    .easing(EASE)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 
 /**
  * Afundar ao toque: o botão anda até cobrir a própria sombra dura (`x`, `y`)
@@ -72,11 +101,13 @@ export function usePress(x: number, y: number) {
   }))
   return {
     style,
+    // Afunda já no toque (a resposta que se sente) e solta um pouco mais
+    // devagar, sem mola: botão não quica.
     onPressIn: () => {
-      down.value = withTiming(1, { duration: 70 })
+      down.value = withTiming(1, { duration: 90, easing: EASE })
     },
     onPressOut: () => {
-      down.value = withSpring(0, { damping: 14, stiffness: 320 })
+      down.value = withTiming(0, { duration: 160, easing: EASE })
     }
   }
 }

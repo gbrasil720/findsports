@@ -251,7 +251,8 @@ export function Splash({
     )
     exit.value = withDelay(
       HOLD_UNTIL,
-      withTiming(1, { duration: EXIT, easing: Easing.in(Easing.cubic) })
+      // Saída em ease-out: em ease-in ela demoraria a começar.
+      withTiming(1, { duration: EXIT, easing: riseEase })
     )
     const done = setTimeout(onDone, HOLD_UNTIL + EXIT)
     return () => clearTimeout(done)

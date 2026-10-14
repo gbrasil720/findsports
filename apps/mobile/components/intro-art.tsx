@@ -45,8 +45,9 @@ const pin = (at: number): Frame[] => [
   { at: at + 0.12, y: 4 },
   { at: at + 0.18 }
 ]
+// Nunca de zero: nada aparece do nada.
 const pop = (at: number): Frame[] => [
-  { at, scale: 0, opacity: 0 },
+  { at, scale: 0.6, opacity: 0 },
   { at: at + 0.1, scale: 1.15 },
   { at: at + 0.16 }
 ]
@@ -85,7 +86,7 @@ const MOTION = {
     { at: 0.1, scale: 0.6 },
     { at: 0.4 }
   ],
-  star: [{ at: 0.14, scale: 0, rotate: -90, opacity: 0 }, { at: 0.5 }],
+  star: [{ at: 0.14, scale: 0.5, rotate: -45, opacity: 0 }, { at: 0.5 }],
   ask: [{ at: 0.36, y: 30, opacity: 0 }, { at: 0.56 }],
   reply: [{ at: 0.62, y: 120 }, { at: 0.86 }]
 } satisfies Record<string, Frame[] | Frame[][]>

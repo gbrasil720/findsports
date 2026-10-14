@@ -25,7 +25,6 @@ import {
   type ViewStyle
 } from 'react-native'
 import Animated, {
-  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming
@@ -418,10 +417,7 @@ export function BlockButton({
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={() => {
-        haptic.tap()
-        onPress()
-      }}
+      onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       style={style}
@@ -467,10 +463,7 @@ export function PillButton({
         accessibilityRole="button"
         accessibilityState={{ disabled }}
         disabled={disabled}
-        onPress={() => {
-          haptic.tap()
-          onPress()
-        }}
+        onPress={onPress}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
       >
@@ -542,14 +535,9 @@ export function Field({
   useEffect(() => {
     focus.value = withTiming(focused ? 1 : 0, { duration: 180, easing: EASE })
   }, [focused, focus])
-  const box = useAnimatedStyle(() => ({
-    borderWidth: 1 + focus.value * 0.5,
-    borderColor: interpolateColor(
-      focus.value,
-      [0, 1],
-      ['rgba(18,18,15,.14)', INK]
-    )
-  }))
+  // A borda de foco é uma camada por cima que só muda de opacidade: animar
+  // `borderWidth` refaria o layout do campo a cada quadro.
+  const ring = useAnimatedStyle(() => ({ opacity: focus.value }))
   const glow = useAnimatedStyle(() => ({
     opacity: focus.value,
     transform: [
@@ -578,7 +566,11 @@ export function Field({
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, styles.glow, glow]}
         />
-        <Animated.View style={[styles.input, box]}>
+        <View style={styles.input}>
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, styles.ring, ring]}
+          />
           <Icon name={icon} color={focused ? INK : MUTED} />
           <TextInput
             accessibilityLabel={label}
@@ -596,7 +588,7 @@ export function Field({
               input.onBlur?.(event)
             }}
           />
-        </Animated.View>
+        </View>
       </View>
     </View>
   )
@@ -807,6 +799,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(18,18,15,.14)'
   },
   glow: { borderRadius: 5, backgroundColor: ACID },
+  ring: {
+    top: -1,
+    left: -1,
+    right: -1,
+    bottom: -1,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: INK
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

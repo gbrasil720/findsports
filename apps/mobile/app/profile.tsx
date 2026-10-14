@@ -5,11 +5,10 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming
 } from 'react-native-reanimated'
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg'
-import { haptic, POP } from '@/components/motion'
+import { EASE, haptic, POP } from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -96,7 +95,8 @@ function Option({
   const on = useSharedValue(selected ? 1 : 0)
   const down = useSharedValue(0)
   useEffect(() => {
-    on.value = withSpring(selected ? 1 : 0, { damping: 16, stiffness: 220 })
+    // Troca de estado curta: tempo fixo, sem mola (escolher não quica).
+    on.value = withTiming(selected ? 1 : 0, { duration: 200, easing: EASE })
   }, [selected, on])
   const lift = useAnimatedStyle(() => ({
     transform: [{ scale: 1 - down.value * 0.015 }]
@@ -107,14 +107,11 @@ function Option({
   }))
   const gray = useAnimatedStyle(() => ({ opacity: 1 - on.value }))
   const card = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', '#ffffff']),
-    borderColor: interpolateColor(
-      on.value,
-      [0, 1],
-      ['rgba(18,18,15,.08)', INK]
-    ),
-    borderWidth: 1 + on.value * 0.5
+    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', '#ffffff'])
   }))
+  // A borda escura é uma camada por cima, só em opacidade (animar a largura
+  // da borda refaria o layout a cada quadro).
+  const ring = useAnimatedStyle(() => ({ opacity: on.value }))
   return (
     <Pressable
       accessibilityRole="radio"
@@ -122,10 +119,10 @@ function Option({
       accessibilityLabel={option.title}
       onPress={onPress}
       onPressIn={() => {
-        down.value = withTiming(1, { duration: 90 })
+        down.value = withTiming(1, { duration: 90, easing: EASE })
       }}
       onPressOut={() => {
-        down.value = withSpring(0, { damping: 14, stiffness: 300 })
+        down.value = withTiming(0, { duration: 160, easing: EASE })
       }}
     >
       <Animated.View style={lift}>
@@ -167,6 +164,10 @@ function Option({
               </Text>
             </View>
           </View>
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, styles.ring, ring]}
+          />
         </Animated.View>
       </Animated.View>
     </Pressable>
@@ -226,7 +227,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  card: { borderRadius: 8, overflow: 'hidden' },
+  card: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(18,18,15,.08)'
+  },
   // A sombra dura acid do cartão escolhido, fora do recorte.
   selectedShadow: {
     position: 'absolute',
@@ -246,6 +252,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(18,18,15,.09)'
   },
+  ring: { borderRadius: 8, borderWidth: 1.5, borderColor: INK },
   cover: { height: 120, backgroundColor: '#2a2a25' },
   mark: {
     position: 'absolute',

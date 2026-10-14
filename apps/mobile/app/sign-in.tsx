@@ -48,9 +48,9 @@ export default function SignIn() {
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
   // A foto assenta de um zoom leve quando a tela abre.
-  const zoom = useSharedValue(1.08)
+  const zoom = useSharedValue(1.04)
   useEffect(() => {
-    zoom.value = withTiming(1, { duration: 1400, easing: EASE })
+    zoom.value = withTiming(1, { duration: 900, easing: EASE })
   }, [zoom])
   const settle = useAnimatedStyle(() => ({
     transform: [{ scale: zoom.value }]

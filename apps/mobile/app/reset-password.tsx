@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import Animated, { ZoomOut } from 'react-native-reanimated'
+import Animated, { FadeOut } from 'react-native-reanimated'
 import { ErrorText, haptic, POP } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
@@ -129,7 +129,7 @@ export default function ResetPassword() {
                 {met ? (
                   <Animated.View
                     entering={POP}
-                    exiting={ZoomOut.duration(140)}
+                    exiting={FadeOut.duration(120)}
                     style={[styles.dot, styles.dotOn]}
                   >
                     <Icon name="check" size={11} />

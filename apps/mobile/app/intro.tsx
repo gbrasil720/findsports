@@ -109,10 +109,10 @@ export default function Intro() {
   const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) =>
     setPage(Math.round(event.nativeEvent.contentOffset.x / width))
 
-  // A entrada começa quando a tela passa da metade, não quando o arraste
-  // termina.
+  // A entrada começa quando 15% da tela seguinte aparecem: esperando a
+  // metade, ela entrava vazia durante o arraste.
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) =>
-    reach(Math.round(event.nativeEvent.contentOffset.x / width))
+    reach(Math.floor(event.nativeEvent.contentOffset.x / width + 0.85))
 
   const next = () => {
     if (last) return signUp()
@@ -179,15 +179,15 @@ export default function Intro() {
   )
 }
 
-// O texto entra depois da ilustração começar: pontos, linhas do título uma
-// a uma, corpo.
+// O texto é o que se lê: chega cedo e perto (assentado em ~0,5 s), enquanto
+// a ilustração continua. Pontos, linhas do título uma a uma, corpo.
 const COPY = {
-  dots: [{ at: 0.05, opacity: 0 }, { at: 0.25 }],
+  dots: [{ at: 0.02, opacity: 0 }, { at: 0.14 }],
   line: (n: number): Frame[] => [
-    { at: 0.1 + n * 0.06, y: 28, opacity: 0 }, // sp-up
-    { at: 0.4 + n * 0.06 }
+    { at: 0.04 + n * 0.04, y: 14, opacity: 0 }, // sp-up
+    { at: 0.24 + n * 0.04 }
   ],
-  body: [{ at: 0.24, y: 12, opacity: 0 }, { at: 0.52 }] // sp-fade
+  body: [{ at: 0.1, y: 8, opacity: 0 }, { at: 0.3 }] // sp-fade
 } satisfies Record<string, Frame[] | ((n: number) => Frame[])>
 
 function IntroPage({
