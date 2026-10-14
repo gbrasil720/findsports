@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import type { ReactNode } from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
+import type { SharedValue } from 'react-native-reanimated'
 import Svg, {
   Circle,
   Defs,
@@ -12,13 +13,16 @@ import Svg, {
   Stop
 } from 'react-native-svg'
 import { Glass } from '@/components/glass'
+import { Enter, type Frame } from '@/components/intro-motion'
 
 /*
  * As ilustrações das quatro telas de "03 Apresentação" (projeto "Onside
  * mobile app redesign"). O desenho é a 390 x 476: posições verticais escalam
  * com a altura real da ilustração (`sy`), as horizontais com a largura (`sx`).
  *
- * O vidro do design é o `Glass` (`components/glass.tsx`).
+ * O vidro do design é o `Glass` (`components/glass.tsx`). A entrada de cada
+ * tela é por quadros-chave (`intro-motion.ts`); no vidro só a posição anda,
+ * porque o liquid glass com transparência animada sai errado no iOS 26.
  */
 
 const INK = '#12120f'
@@ -27,7 +31,64 @@ const ACID = '#c9f135'
 const LIVE = '#e8320c'
 const MUTED = '#55554f'
 
-type ArtProps = { width: number; height: number }
+export type ArtProps = {
+  width: number
+  height: number
+  /** A entrada da tela, de 0 a 1. */
+  progress: SharedValue<number>
+}
+
+// Quadros-chave, em fração da entrada (`ENTER_MS`). Os nomes `sp-*` são os
+// `@keyframes` do design que cada movimento segue.
+const pin = (at: number): Frame[] => [
+  { at, y: -60, opacity: 0 }, // sp-pin
+  { at: at + 0.12, y: 4 },
+  { at: at + 0.18 }
+]
+const pop = (at: number): Frame[] => [
+  { at, scale: 0, opacity: 0 },
+  { at: at + 0.1, scale: 1.15 },
+  { at: at + 0.16 }
+]
+const MOTION = {
+  mapPan: [{ at: 0, scale: 1.08 }, { at: 0.75 }], // sp-pan, ao contrário
+  pins: [pin(0.16), pin(0.24)],
+  livePin: [
+    { at: 0.32, y: -140, opacity: 0 }, // sp-drop
+    { at: 0.46, y: 5 },
+    { at: 0.52 }
+  ],
+  you: pop(0.5),
+  youPulse: [
+    { at: 0.61, opacity: 0 }, // sp-pulse
+    { at: 0.62, opacity: 0.7 },
+    { at: 1, scale: 3.4, opacity: 0 }
+  ],
+  card: [{ at: 0.1, y: 160 }, { at: 0.42 }], // sp-wipe
+  photo: [{ at: 0, scale: 1.12 }, { at: 0.85 }],
+  avatars: [pop(0.4), pop(0.46), pop(0.52)],
+  ticket: [
+    { at: 0.08, y: -220, rotate: -6, opacity: 0 }, // sp-drop
+    { at: 0.32, y: 6, rotate: 0.5 },
+    { at: 0.4 }
+  ],
+  glow: [{ at: 0.25, opacity: 0 }, { at: 0.7 }],
+  stamp: [
+    { at: 0.46, scale: 1.8, opacity: 0 },
+    { at: 0.56, scale: 0.92 },
+    { at: 0.62 }
+  ],
+  code: [{ at: 0.38, y: 16, opacity: 0 }, { at: 0.6 }],
+  // sp-lens; opaca logo no começo, senão a sombra aparece através da bola.
+  orb: [
+    { at: 0.04, scale: 0.4, opacity: 0 },
+    { at: 0.1, scale: 0.6 },
+    { at: 0.4 }
+  ],
+  star: [{ at: 0.14, scale: 0, rotate: -90, opacity: 0 }, { at: 0.5 }],
+  ask: [{ at: 0.36, y: 30, opacity: 0 }, { at: 0.56 }],
+  reply: [{ at: 0.62, y: 120 }, { at: 0.86 }]
+} satisfies Record<string, Frame[] | Frame[][]>
 
 /** Corpo de texto do design: herda `line-height: 1.4` do quadro. */
 const size = (fontSize: number, lineHeight = 1.4) => ({
@@ -45,16 +106,22 @@ function Pin({
   x,
   y,
   label,
-  live
+  live,
+  progress,
+  frames
 }: {
   x: number
   y: number
   label: string
   live?: boolean
+  progress: SharedValue<number>
+  frames: Frame[]
 }) {
   const color = live ? LIVE : INK
   return (
-    <View
+    <Enter
+      progress={progress}
+      frames={frames}
       style={[styles.pin, { left: x - 100, top: y - 60 }]}
       pointerEvents="none"
     >
@@ -69,66 +136,97 @@ function Pin({
         <Text style={[styles.pinText, live && size(13)]}>{label}</Text>
       </View>
       <View style={[styles.pinTip, { backgroundColor: color }]} />
-    </View>
+    </Enter>
   )
 }
 
 /** 4b, "O jogo é aqui": o mapa com os bares que passam a partida. */
 export function MapArt(props: ArtProps) {
   const { sx, sy } = scale(props)
+  const { progress } = props
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Image
-        source={require('../assets/images/intro/map.jpg')}
-        // Tamanho explícito: só com `absoluteFill` a imagem sai no tamanho
-        // original, sem o `cover` reduzir.
-        style={{ width: props.width, height: props.height }}
-        resizeMode="cover"
+      <Enter progress={progress} frames={MOTION.mapPan}>
+        <Image
+          source={require('../assets/images/intro/map.jpg')}
+          // Tamanho explícito: só com `absoluteFill` a imagem sai no tamanho
+          // original, sem o `cover` reduzir.
+          style={{ width: props.width, height: props.height }}
+          resizeMode="cover"
+        />
+      </Enter>
+      <Pin
+        x={110 * sx}
+        y={250 * sy}
+        label="Casa 92"
+        progress={progress}
+        frames={MOTION.pins[0]}
       />
-      <Pin x={110 * sx} y={250 * sy} label="Casa 92" />
-      <Pin x={300 * sx} y={226 * sy} label="Boteco Sete" />
-      <Pin x={206 * sx} y={312 * sy} label="Bar do Zé" live />
-      <Glass tone="light" style={styles.matchCard}>
-        <View style={styles.matchIcon}>
-          <Svg width={22} height={22} viewBox="0 0 24 24">
-            <Path
-              d="M2.5 6.2 8.6 4l6.2 2.2L21 4v13.8L14.8 20l-6.2-2.2-6.1 2.2z"
-              fill={PAPER}
-              opacity={0.3}
-            />
-            <Path
-              d="M15.2 4.6a3.9 3.9 0 0 1 3.9 3.9c0 2.9-3.9 6.9-3.9 6.9s-3.9-4-3.9-6.9a3.9 3.9 0 0 1 3.9-3.9z"
-              fill={PAPER}
-            />
-            <Circle cx={15.2} cy={8.5} r={1.45} fill={ACID} />
-          </Svg>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.bold, { ...size(15.5), color: INK }]}>
-            Corinthians × Palmeiras
-          </Text>
-          <Text style={[styles.body, { ...size(13), color: MUTED }]}>
-            Hoje 21:30 · 4 bares perto de você
-          </Text>
-        </View>
-      </Glass>
+      <Pin
+        x={300 * sx}
+        y={226 * sy}
+        label="Boteco Sete"
+        progress={progress}
+        frames={MOTION.pins[1]}
+      />
+      <Pin
+        x={206 * sx}
+        y={312 * sy}
+        label="Bar do Zé"
+        live
+        progress={progress}
+        frames={MOTION.livePin}
+      />
+      <Enter progress={progress} frames={MOTION.card} style={styles.matchCard}>
+        <Glass tone="light" style={styles.matchGlass}>
+          <View style={styles.matchIcon}>
+            <Svg width={22} height={22} viewBox="0 0 24 24">
+              <Path
+                d="M2.5 6.2 8.6 4l6.2 2.2L21 4v13.8L14.8 20l-6.2-2.2-6.1 2.2z"
+                fill={PAPER}
+                opacity={0.3}
+              />
+              <Path
+                d="M15.2 4.6a3.9 3.9 0 0 1 3.9 3.9c0 2.9-3.9 6.9-3.9 6.9s-3.9-4-3.9-6.9a3.9 3.9 0 0 1 3.9-3.9z"
+                fill={PAPER}
+              />
+              <Circle cx={15.2} cy={8.5} r={1.45} fill={ACID} />
+            </Svg>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bold, { ...size(15.5), color: INK }]}>
+              Corinthians × Palmeiras
+            </Text>
+            <Text style={[styles.body, { ...size(13), color: MUTED }]}>
+              Hoje 21:30 · 4 bares perto de você
+            </Text>
+          </View>
+        </Glass>
+      </Enter>
       {/* Você: o ponto acid com os dois anéis do design, por cima do card como lá. */}
       <View
         style={[styles.you, { left: 193 * sx - 40, top: 375 * sy - 40 }]}
         pointerEvents="none"
       >
-        <View style={[styles.youRing, { width: 80, height: 80 }]} />
-        <View
-          style={[
-            styles.youRing,
-            {
-              width: 44,
-              height: 44,
-              backgroundColor: 'rgba(201,241,53,.25)'
-            }
-          ]}
+        <Enter
+          progress={progress}
+          frames={MOTION.youPulse}
+          style={[styles.youRing, styles.youPulse]}
         />
-        <View style={styles.youDot} />
+        <Enter progress={progress} frames={MOTION.you} style={styles.youBody}>
+          <View style={[styles.youRing, { width: 80, height: 80 }]} />
+          <View
+            style={[
+              styles.youRing,
+              {
+                width: 44,
+                height: 44,
+                backgroundColor: 'rgba(201,241,53,.25)'
+              }
+            ]}
+          />
+          <View style={styles.youDot} />
+        </Enter>
       </View>
       {/* Condição da ODbL: o mapa é OpenStreetMap, pelos tiles da Onside. */}
       <Text style={styles.attribution}>© OpenStreetMap</Text>
@@ -140,34 +238,42 @@ function Avatar({
   letter,
   background,
   color,
-  first
+  first,
+  progress,
+  frames
 }: {
   letter: string
   background: string
   color: string
   first?: boolean
+  progress: SharedValue<number>
+  frames: Frame[]
 }) {
   return (
-    <View
+    <Enter
+      progress={progress}
+      frames={frames}
       style={[
         styles.avatar,
         { backgroundColor: background, marginLeft: first ? 0 : -7 }
       ]}
     >
       <Text style={[styles.bold, { fontSize: 10, color }]}>{letter}</Text>
-    </View>
+    </Enter>
   )
 }
 
 /** 4c, "Quem vai": a foto do bar e o "Vou assistir aqui". */
-export function CrowdArt({ width, height }: ArtProps) {
+export function CrowdArt({ width, height, progress }: ArtProps) {
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}>
-      <Image
-        source={require('../assets/images/intro/bar.jpg')}
-        style={{ width, height }}
-        resizeMode="cover"
-      />
+      <Enter progress={progress} frames={MOTION.photo}>
+        <Image
+          source={require('../assets/images/intro/bar.jpg')}
+          style={{ width, height }}
+          resizeMode="cover"
+        />
+      </Enter>
       <LinearGradient
         colors={[
           'rgba(18,18,15,.25)',
@@ -177,39 +283,60 @@ export function CrowdArt({ width, height }: ArtProps) {
         locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <Glass tone="dark" style={styles.goingCard}>
-        <View style={styles.goingRow}>
+      <Enter progress={progress} frames={MOTION.card} style={styles.goingCard}>
+        <Glass tone="dark" style={styles.goingGlass}>
           <View style={styles.goingRow}>
-            <Avatar letter="M" background={ACID} color={INK} first />
-            <Avatar letter="R" background="#3a3a34" color={INK} />
-            <Avatar letter="J" background={LIVE} color={PAPER} />
-            <Text
-              style={[
-                styles.semibold,
-                { marginLeft: 7, ...size(12.5), color: PAPER }
-              ]}
-            >
-              34 vão
+            <View style={styles.goingRow}>
+              <Avatar
+                letter="M"
+                background={ACID}
+                color={INK}
+                first
+                progress={progress}
+                frames={MOTION.avatars[0]}
+              />
+              <Avatar
+                letter="R"
+                background="#3a3a34"
+                color={INK}
+                progress={progress}
+                frames={MOTION.avatars[1]}
+              />
+              <Avatar
+                letter="J"
+                background={LIVE}
+                color={PAPER}
+                progress={progress}
+                frames={MOTION.avatars[2]}
+              />
+              <Text
+                style={[
+                  styles.semibold,
+                  { marginLeft: 7, ...size(12.5), color: PAPER }
+                ]}
+              >
+                34 vão
+              </Text>
+            </View>
+            <Text style={[styles.body, { ...size(13), color: '#d6d3cb' }]}>
+              Bar do Zé · hoje
             </Text>
           </View>
-          <Text style={[styles.body, { ...size(13), color: '#d6d3cb' }]}>
-            Bar do Zé · hoje
-          </Text>
-        </View>
-        <View style={styles.goingButton}>
-          <Svg width={19} height={19} viewBox="0 0 24 24">
-            <G fill={PAPER} opacity={0.3}>
-              <Circle cx={16.5} cy={8} r={3.4} />
-              <Path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />
-            </G>
-            <Circle cx={9} cy={8} r={4} fill={PAPER} />
-            <Path d="M2 20.5a7 7 0 0 1 14 0z" fill={PAPER} />
-          </Svg>
-          <Text style={[styles.bold, { ...size(15), color: PAPER }]}>
-            Vou assistir aqui
-          </Text>
-        </View>
-      </Glass>
+          <View style={styles.goingButton}>
+            <Svg width={19} height={19} viewBox="0 0 24 24">
+              <G fill={PAPER} opacity={0.3}>
+                <Circle cx={16.5} cy={8} r={3.4} />
+                <Path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />
+              </G>
+              <Circle cx={9} cy={8} r={4} fill={PAPER} />
+              <Path d="M2 20.5a7 7 0 0 1 14 0z" fill={PAPER} />
+            </Svg>
+            <Text style={[styles.bold, { ...size(15), color: PAPER }]}>
+              Vou assistir aqui
+            </Text>
+          </View>
+        </Glass>
+      </Enter>
     </View>
   )
 }
@@ -222,70 +349,97 @@ function Notch({ side }: { side: 'left' | 'right' }) {
 /** 4d, "Mesa garantida": o canhoto da reserva confirmada. */
 export function TicketArt(props: ArtProps) {
   const { sy } = scale(props)
+  const { progress } = props
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: INK }]}>
-      <Svg style={StyleSheet.absoluteFill}>
-        <Defs>
-          <RadialGradient id="glow" cx="50%" cy="50%" rx="60%" ry="50%">
-            <Stop offset="0" stopColor={ACID} stopOpacity={0.14} />
-            <Stop offset="0.7" stopColor={INK} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#glow)" />
-      </Svg>
+      <Enter
+        progress={progress}
+        frames={MOTION.glow}
+        style={StyleSheet.absoluteFill}
+      >
+        <Svg style={StyleSheet.absoluteFill}>
+          <Defs>
+            <RadialGradient id="glow" cx="50%" cy="50%" rx="60%" ry="50%">
+              <Stop offset="0" stopColor={ACID} stopOpacity={0.14} />
+              <Stop offset="0.7" stopColor={INK} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#glow)" />
+        </Svg>
+      </Enter>
       <View style={[styles.ticketWrap, { top: 120 * sy }]}>
-        <View style={styles.ticketShadow} />
-        <View style={styles.ticket}>
-          <View style={styles.ticketHead}>
-            <View>
-              <Text style={[styles.bold, { ...size(17), color: INK }]}>
-                Bar do Zé
-              </Text>
-              <Text style={[styles.body, { ...size(12.5), color: MUTED }]}>
-                Mesa para 4 · hoje 21:30
-              </Text>
+        <Enter progress={progress} frames={MOTION.ticket}>
+          <View style={styles.ticketShadow} />
+          <View style={styles.ticket}>
+            <View style={styles.ticketHead}>
+              <View>
+                <Text style={[styles.bold, { ...size(17), color: INK }]}>
+                  Bar do Zé
+                </Text>
+                <Text style={[styles.body, { ...size(12.5), color: MUTED }]}>
+                  Mesa para 4 · hoje 21:30
+                </Text>
+              </View>
+              <Enter
+                progress={progress}
+                frames={MOTION.stamp}
+                style={styles.badge}
+              >
+                <Text style={[styles.bold, { ...size(10.5, 1.2), color: INK }]}>
+                  Confirmada
+                </Text>
+              </Enter>
             </View>
-            <View style={styles.badge}>
-              <Text style={[styles.bold, { ...size(10.5, 1.2), color: INK }]}>
-                Confirmada
+            <View style={styles.tear}>
+              <Notch side="left" />
+              {/* Borda tracejada de um lado só não sai no iOS: é SVG. */}
+              <Svg height={2} style={styles.tearLine}>
+                <Line
+                  x1="0"
+                  y1="1"
+                  x2="100%"
+                  y2="1"
+                  stroke="rgba(18,18,15,.16)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                />
+              </Svg>
+              <Notch side="right" />
+            </View>
+            <View style={styles.ticketCode}>
+              <Text style={[styles.semibold, { ...size(12), color: MUTED }]}>
+                Seu código
               </Text>
+              <Enter progress={progress} frames={MOTION.code}>
+                <Text style={styles.code}>A7K·29</Text>
+              </Enter>
             </View>
           </View>
-          <View style={styles.tear}>
-            <Notch side="left" />
-            {/* Borda tracejada de um lado só não sai no iOS: é SVG. */}
-            <Svg height={2} style={styles.tearLine}>
-              <Line
-                x1="0"
-                y1="1"
-                x2="100%"
-                y2="1"
-                stroke="rgba(18,18,15,.16)"
-                strokeWidth={1.5}
-                strokeDasharray="4 3"
-              />
-            </Svg>
-            <Notch side="right" />
-          </View>
-          <View style={styles.ticketCode}>
-            <Text style={[styles.semibold, { ...size(12), color: MUTED }]}>
-              Seu código
-            </Text>
-            <Text style={styles.code}>A7K·29</Text>
-          </View>
-        </View>
+        </Enter>
       </View>
     </View>
   )
 }
 
-function Bubble({ children, mine }: { children: ReactNode; mine?: boolean }) {
+function Bubble({
+  children,
+  mine,
+  progress
+}: {
+  children: ReactNode
+  mine?: boolean
+  progress: SharedValue<number>
+}) {
   return mine ? (
-    <View style={styles.bubbleMine}>{children}</View>
-  ) : (
-    <Glass tone="light" style={styles.reply}>
+    <Enter progress={progress} frames={MOTION.ask} style={styles.bubbleMine}>
       {children}
-    </Glass>
+    </Enter>
+  ) : (
+    <Enter progress={progress} frames={MOTION.reply} style={styles.replyAt}>
+      <Glass tone="light" style={styles.reply}>
+        {children}
+      </Glass>
+    </Enter>
   )
 }
 
@@ -294,9 +448,12 @@ export function AskArt(props: ArtProps) {
   const { sy } = scale(props)
   const size = 250 * Math.min(1, sy)
   const center = 221 * sy
+  const { progress } = props
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#e7e3db' }]}>
-      <View
+      <Enter
+        progress={progress}
+        frames={MOTION.orb}
         style={[
           styles.orb,
           {
@@ -308,7 +465,9 @@ export function AskArt(props: ArtProps) {
           }
         ]}
       />
-      <View
+      <Enter
+        progress={progress}
+        frames={MOTION.orb}
         style={[
           styles.orb,
           {
@@ -320,7 +479,9 @@ export function AskArt(props: ArtProps) {
           }
         ]}
       />
-      <View
+      <Enter
+        progress={progress}
+        frames={MOTION.orb}
         style={[
           styles.orb,
           {
@@ -333,29 +494,31 @@ export function AskArt(props: ArtProps) {
           }
         ]}
       >
-        <Svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
-          <Path
-            d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z"
-            fill={INK}
-            opacity={0.3}
-          />
-          <Path
-            d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z"
-            fill={INK}
-          />
-          <Path
-            d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z"
-            fill={LIVE}
-          />
-        </Svg>
-      </View>
+        <Enter progress={progress} frames={MOTION.star}>
+          <Svg width={size * 0.52} height={size * 0.52} viewBox="0 0 24 24">
+            <Path
+              d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z"
+              fill={INK}
+              opacity={0.3}
+            />
+            <Path
+              d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z"
+              fill={INK}
+            />
+            <Path
+              d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z"
+              fill={LIVE}
+            />
+          </Svg>
+        </Enter>
+      </Enter>
       <View style={styles.chat}>
-        <Bubble mine>
+        <Bubble mine progress={progress}>
           <Text style={[styles.body, styles.bubbleText, { color: PAPER }]}>
             Um bar com telão perto da Paulista para ver a NBA hoje
           </Text>
         </Bubble>
-        <Bubble>
+        <Bubble progress={progress}>
           <View style={styles.check}>
             <Svg width={14} height={14} viewBox="0 0 24 24">
               <Path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill={INK} />
@@ -407,6 +570,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  youBody: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  youPulse: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: ACID
+  },
   youRing: {
     position: 'absolute',
     borderRadius: 40,
@@ -420,11 +598,8 @@ const styles = StyleSheet.create({
     borderColor: INK,
     backgroundColor: ACID
   },
-  matchCard: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 22,
+  matchCard: { position: 'absolute', left: 18, right: 18, bottom: 22 },
+  matchGlass: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 22,
@@ -448,11 +623,8 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: 'rgba(18,18,15,.45)'
   },
-  goingCard: {
-    position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 22,
+  goingCard: { position: 'absolute', left: 18, right: 18, bottom: 22 },
+  goingGlass: {
     padding: 14,
     borderRadius: 24,
     gap: 12
@@ -547,8 +719,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
     backgroundColor: INK
   },
+  replyAt: { alignSelf: 'flex-start' },
   reply: {
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

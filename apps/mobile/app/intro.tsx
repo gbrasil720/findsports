@@ -1,6 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { type ComponentType, useEffect, useRef, useState } from 'react'
+import {
+  type ComponentType,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from 'react'
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -14,13 +20,25 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { Glass } from '@/components/glass'
-import { AskArt, CrowdArt, MapArt, TicketArt } from '@/components/intro-art'
+import {
+  type ArtProps,
+  AskArt,
+  CrowdArt,
+  MapArt,
+  TicketArt
+} from '@/components/intro-art'
+import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
+import { SplashDone } from '@/components/splash'
 
 /*
  * "03 Apresentação" do design: quatro telas, uma ideia de produto em cada,
  * iguais para torcedor e bar. Entra depois da splash para quem não tem
  * sessão. Arrastar ou "Continuar" passa de tela; "Pular", "Começar" e
  * "Entrar" levam ao login (o cadastro, "04 Conta", ainda não existe no app).
+ *
+ * Cada tela anima a entrada uma vez, na primeira vez que é alcançada indo
+ * para a frente (a primeira, quando a splash sai). Voltar mostra a tela
+ * pronta.
  */
 
 const INK = '#12120f'
@@ -28,7 +46,7 @@ const PAPER = '#f1eee6'
 const ACID = '#c9f135'
 
 type Page = {
-  Art: ComponentType<{ width: number; height: number }>
+  Art: ComponentType<ArtProps>
   /** As linhas do título como o design quebra: texto e trecho em destaque. */
   title: [string, string?][]
   body: string
@@ -70,10 +88,16 @@ export default function Intro() {
   const params = useLocalSearchParams<{ page?: string }>()
   const start = Math.min(Math.max(Number(params.page) - 1 || 0, 0), 3)
   const [page, setPage] = useState(start)
+  // A tela mais adiante já alcançada: até ela, a entrada já tocou.
+  const [reached, setReached] = useState(start)
+  const reach = (index: number) =>
+    setReached((current) => Math.max(current, index))
   useEffect(() => {
     pager.current?.scrollTo({ x: start * width, animated: false })
     setPage(start)
+    setReached((current) => Math.max(current, start))
   }, [start, width])
+  const splashDone = useContext(SplashDone)
 
   // A ilustração ocupa a mesma fração da tela que no design (476 de 844).
   const artHeight = Math.round((height * 476) / 844)
@@ -83,10 +107,16 @@ export default function Intro() {
   const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) =>
     setPage(Math.round(event.nativeEvent.contentOffset.x / width))
 
+  // A entrada começa quando a tela passa da metade, não quando o arraste
+  // termina.
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) =>
+    reach(Math.round(event.nativeEvent.contentOffset.x / width))
+
   const next = () => {
     if (last) return enter()
     pager.current?.scrollTo({ x: (page + 1) * width })
     setPage(page + 1)
+    reach(page + 1)
   }
 
   return (
@@ -99,36 +129,19 @@ export default function Intro() {
         bounces={false}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={onScrollEnd}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
       >
-        {PAGES.map(({ Art, title, body }, index) => (
-          <View key={body} style={{ width }}>
-            <View style={[styles.artShadow, { height: artHeight }]}>
-              <View style={styles.art}>
-                <Art width={width} height={artHeight} />
-              </View>
-            </View>
-            <View style={styles.copy}>
-              <View style={styles.dots}>
-                {PAGES.map((p, dot) => (
-                  <View
-                    key={p.body}
-                    style={[styles.dot, dot === index && styles.dotActive]}
-                  />
-                ))}
-              </View>
-              <View accessible accessibilityRole="header">
-                {title.map(([text, accent]) => (
-                  <Text key={text + accent} style={styles.title}>
-                    {text}
-                    {accent ? (
-                      <Text style={styles.titleAccent}>{accent}</Text>
-                    ) : null}
-                  </Text>
-                ))}
-              </View>
-              <Text style={styles.body}>{body}</Text>
-            </View>
-          </View>
+        {PAGES.map((item, index) => (
+          <IntroPage
+            key={item.body}
+            item={item}
+            index={index}
+            width={width}
+            artHeight={artHeight}
+            done={index < start}
+            play={splashDone && index <= reached}
+          />
         ))}
       </ScrollView>
 
@@ -173,6 +186,73 @@ export default function Intro() {
             Entrar
           </Text>
         </Text>
+      </View>
+    </View>
+  )
+}
+
+// O texto entra depois da ilustração começar: pontos, linhas do título uma
+// a uma, corpo.
+const COPY = {
+  dots: [{ at: 0.05, opacity: 0 }, { at: 0.25 }],
+  line: (n: number): Frame[] => [
+    { at: 0.1 + n * 0.06, y: 28, opacity: 0 }, // sp-up
+    { at: 0.4 + n * 0.06 }
+  ],
+  body: [{ at: 0.24, y: 12, opacity: 0 }, { at: 0.52 }] // sp-fade
+} satisfies Record<string, Frame[] | ((n: number) => Frame[])>
+
+function IntroPage({
+  item: { Art, title, body },
+  index,
+  width,
+  artHeight,
+  done,
+  play
+}: {
+  item: Page
+  index: number
+  width: number
+  artHeight: number
+  done: boolean
+  play: boolean
+}) {
+  const progress = useEntrance(done, play)
+  return (
+    <View style={{ width }}>
+      <View style={[styles.artShadow, { height: artHeight }]}>
+        <View style={styles.art}>
+          <Art width={width} height={artHeight} progress={progress} />
+        </View>
+      </View>
+      <View style={styles.copy}>
+        <Enter progress={progress} frames={COPY.dots} style={styles.dots}>
+          {PAGES.map((p, dot) => (
+            <View
+              key={p.body}
+              style={[styles.dot, dot === index && styles.dotActive]}
+            />
+          ))}
+        </Enter>
+        <View accessible accessibilityRole="header">
+          {title.map(([text, accent], line) => (
+            <Enter
+              key={text + accent}
+              progress={progress}
+              frames={COPY.line(line)}
+            >
+              <Text style={styles.title}>
+                {text}
+                {accent ? (
+                  <Text style={styles.titleAccent}>{accent}</Text>
+                ) : null}
+              </Text>
+            </Enter>
+          ))}
+        </View>
+        <Enter progress={progress} frames={COPY.body}>
+          <Text style={styles.body}>{body}</Text>
+        </Enter>
       </View>
     </View>
   )

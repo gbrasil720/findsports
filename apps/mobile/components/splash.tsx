@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient'
-import { useEffect, useState } from 'react'
+import { createContext, useEffect, useState } from 'react'
 import {
   StyleSheet,
   Text,
@@ -17,6 +17,13 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { SPLASH_ON, SPLASH_SIDE } from './splash-letters'
+
+/**
+ * Se a splash já saiu. A tela de baixo espera por isso para animar a
+ * entrada, que senão tocaria escondida (`app/intro.tsx`). Fora do provedor,
+ * vale como saída.
+ */
+export const SplashDone = createContext(true)
 
 /**
  * A splash do app: a agenda do dia em faixas inclinadas correndo por trás de um

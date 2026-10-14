@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'expo-status-bar'
 import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { Splash } from '@/components/splash'
+import { Splash, SplashDone } from '@/components/splash'
 import { queryClient, trpc } from '@/lib/trpc'
 
 // A splash nativa (cor chapada, `app.json`) fica até as fontes da marca
@@ -77,7 +77,9 @@ export default function Layout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <SplashDone value={splashDone}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </SplashDone>
         {splashDone ? null : (
           <Splash agenda={agenda ?? undefined} onDone={endSplash} />
         )}
