@@ -119,7 +119,7 @@ function SignupPage() {
       const password = value.password
 
       setIsLoading(true)
-      const { error } = await authClient.signUp.email({
+      const { data, error } = await authClient.signUp.email({
         name,
         email,
         password,
@@ -138,7 +138,7 @@ function SignupPage() {
         )
         return
       }
-      analytics.signupCompleted(role)
+      analytics.signupCompleted(role, data.user.id)
       sessionStorage.setItem(
         PENDING_VERIFICATION_KEY,
         JSON.stringify({ email, role })
