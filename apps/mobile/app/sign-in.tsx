@@ -28,8 +28,7 @@ import { queryClient } from '@/lib/trpc'
 
 /*
  * "Login · v2" do design. Quem tem verificação em duas etapas segue para
- * `/two-factor`; quem não confirmou o e-mail recebe outro link (o servidor
- * reenvia no login) e vai para `/verify-email`.
+ * `/two-factor`; quem não confirmou o e-mail vai para `/verify-email`.
  */
 
 const NOTICES: Record<string, string> = {
@@ -62,7 +61,11 @@ export default function SignIn() {
     const result = await authClient.signIn.email({
       email: email.trim(),
       password,
-      callbackURL: '/verified',
+      // Sem `callbackURL`: com ele o servidor responde "redirecionar" e o
+      // plugin do Expo abre a janela de login social do iOS ("deseja usar
+      // ... para iniciar sessão"). O e-mail de confirmação que o login
+      // reenvia a quem não confirmou leva ao site; o "Reenviar" da tela de
+      // confirmação manda o que volta para o app.
       fetchOptions: turnstile.fetchOptions
     })
     // O token do Turnstile vale uma vez: com erro ou não, pede outro.

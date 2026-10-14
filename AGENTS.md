@@ -287,7 +287,15 @@ invente layout que o projeto não tem.
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
   chave pública em `EXPO_PUBLIC_TURNSTILE_SITE_KEY`. A WebView se apresenta com o host de
-  `EXPO_PUBLIC_SERVER_URL`, que precisa estar liberado na chave: um IP de rede local não passa.
+  `EXPO_PUBLIC_SERVER_URL`, que precisa estar liberado na chave. **A chave de verdade recusa
+  `localhost` e IP de rede local** (Turnstile `110200`, e o servidor responde
+  `MISSING_RESPONSE`): em desenvolvimento, suba o web com o par de teste da Cloudflare, que
+  passa sempre (`TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` e
+  `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` antes de `vite dev`), e o Metro com
+  `EXPO_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`. Variável de ambiente ganha do
+  `.env`, então nenhum arquivo muda.
+- **Login por e-mail sem `callbackURL`:** com ele o servidor responde `redirect: true` e o
+  plugin do Expo abre a janela de login social do iOS ("deseja usar … para iniciar sessão").
 - **React próprio:** o app usa o React que o Expo exige (19.2.3), separado do web. Não suba a
   versão à mão: `bunx expo install --check` diz o que o SDK aceita.
 - `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
