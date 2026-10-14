@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/style/noHeadElement: The root shell must render the document head directly. */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: PostHog lifecycle effects intentionally use guarded route state. */
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Toaster } from '@findsports_oficial/ui/components/sonner'
 import type { QueryClient } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -246,7 +245,7 @@ function PostHogProvider() {
 
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
-  const impersonated = session?.session.impersonatedBy ? session.user : null
+  const impersonated = session?.session.impersonatedBy ? session : null
   const isDev = import.meta.env.DEV
   // WEB-383: o Houdini não mede o admin nem pede consentimento de cookie.
   const inHoudini = useRouterState({
@@ -275,7 +274,7 @@ function RootDocument() {
           style={
             {
               '--banner-h': impersonated
-                ? 'var(--onside-banner-h, 2.75rem)'
+                ? 'var(--onside-banner-h, 3.5rem)'
                 : '0px'
             } as CSSProperties
           }
@@ -290,22 +289,21 @@ function RootDocument() {
             <Suspense
               fallback={
                 <div
-                  className="onside-banner sticky top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)]"
+                  className="onside-pele"
+                  style={{ minHeight: 56 }}
                   role="status"
                   aria-busy="true"
                   aria-live="polite"
                 >
-                  <span className="sr-only">
-                    Carregando aviso de personificação…
-                  </span>
-                  <div className="mx-auto flex min-h-11 w-full max-w-[var(--onside-max)] items-center gap-2.5 px-4 py-2.5">
-                    <Skeleton className="size-7 bg-[var(--onside-ink)]/20" />
-                    <Skeleton className="h-4 w-64 max-w-[calc(100vw-5rem)] bg-[var(--onside-ink)]/20" />
-                  </div>
+                  <span className="sr-only">Carregando a faixa da pele…</span>
                 </div>
               }
             >
-              <ImpersonationBanner user={impersonated} />
+              <ImpersonationBanner
+                user={impersonated.user}
+                mode={impersonated.session.impersonationMode ?? 'look'}
+                startedAt={impersonated.session.createdAt}
+              />
             </Suspense>
           ) : null}
           <Outlet />

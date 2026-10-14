@@ -4,6 +4,10 @@ import {
   signMediaUpload
 } from '@findsports_oficial/api/lib/media-upload'
 import { auth } from '@findsports_oficial/auth'
+import {
+  isReadOnlyImpersonation,
+  READ_ONLY_IMPERSONATION_MESSAGE
+} from '@findsports_oficial/auth/impersonation-mode'
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -25,6 +29,9 @@ export const Route = createFileRoute('/api/user/avatar')({
           })
           if (!session) {
             throw new MediaUploadError(401, 'Não autorizado.')
+          }
+          if (isReadOnlyImpersonation(session, request.headers)) {
+            throw new MediaUploadError(403, READ_ONLY_IMPERSONATION_MESSAGE)
           }
           if (!session.user.emailVerified) {
             throw new MediaUploadError(
@@ -51,9 +58,13 @@ export const Route = createFileRoute('/api/user/avatar')({
       // cliente, que também renova o cookie de sessão.
       DELETE: async ({ request }) => {
         try {
-          await deleteAvatar(
-            await auth.api.getSession({ headers: request.headers })
-          )
+          const session = await auth.api.getSession({
+            headers: request.headers
+          })
+          if (isReadOnlyImpersonation(session, request.headers)) {
+            throw new MediaUploadError(403, READ_ONLY_IMPERSONATION_MESSAGE)
+          }
+          await deleteAvatar(session)
           return new Response(null, { status: 204 })
         } catch (err) {
           if (err instanceof MediaUploadError) {

@@ -15,7 +15,8 @@ function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
       expiresAt: new Date('2030-01-01'),
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
-      impersonatedBy: null
+      impersonatedBy: null,
+      impersonationMode: null
     },
     user: {
       id: 'u1',
@@ -309,9 +310,16 @@ describe('toClientSession', () => {
       expiresAt: new Date('2030-01-01'),
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
-      impersonatedBy: 'admin-1'
+      impersonatedBy: 'admin-1',
+      impersonationMode: 'look'
     })
     expect(client?.user).toBe(fromBetterAuth?.user)
+    expect(
+      toClientSession(
+        fromBetterAuth,
+        new Headers({ cookie: 'onside_impersonation_mode=s1:act' })
+      )?.session.impersonationMode
+    ).toBe('act')
   })
 
   test('sem sessão continua null', () => {

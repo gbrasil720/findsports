@@ -263,3 +263,54 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'na pele em "Só olhar" o better-auth recusa escrita; "Pode agir" libera (WEB-390)',
+  async () => {
+    const { createUser, call, signIn, cleanup } = await setup()
+    const { auth } = await import('./index')
+    const baseUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3001'
+    const updateName = (cookie: string) =>
+      auth.handler(
+        new Request(`${baseUrl}/api/auth/update-user`, {
+          method: 'POST',
+          headers: {
+            cookie,
+            origin: baseUrl,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({ name: 'Na pele' })
+        })
+      )
+
+    const admin = await createUser('admin')
+    const fan = await createUser()
+    try {
+      const { cookie: adminCookie } = await signIn(admin.email)
+      const skin = await call<{ session: { id: string } }>(
+        adminCookie,
+        '/admin/impersonate-user',
+        { userId: fan.id }
+      )
+      const sessionId = skin.data.session.id
+
+      for (const extra of ['', '; onside_impersonation_mode=outra:act']) {
+        const refused = await updateName(skin.cookie + extra)
+        expect(refused.status).toBe(403)
+        expect(await refused.json()).toMatchObject({
+          message: 'Só olhando: troque para Pode agir na faixa'
+        })
+      }
+
+      const acting = await updateName(
+        `${skin.cookie}; onside_impersonation_mode=${sessionId}:act`
+      )
+      expect(acting.status).toBe(200)
+
+      // Sair da pele continua livre em "Só olhar".
+      await call(skin.cookie, '/admin/stop-impersonating', {})
+    } finally {
+      await cleanup()
+    }
+  }
+)

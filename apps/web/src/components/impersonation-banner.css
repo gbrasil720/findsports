@@ -1,0 +1,184 @@
+/*
+ * WEB-390: faixa "Na pele" (NoitePele, proposta 3 do Houdini). Ela aparece no
+ * app claro, então traz só as fontes e as cores que usa, sem o `houdini.css`.
+ * As fontes só baixam quando a faixa aparece.
+ */
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/houdini/manrope-latin-wght.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/fonts/houdini/jetbrains-mono-latin-wght.woff2") format("woff2");
+}
+
+.onside-pele {
+  --pele-bg: #0c0b10;
+  --pele-panel: #15141b;
+  --pele-note: #1b1922;
+  --pele-seg: #262333;
+  --pele-line: rgb(255 255 255 / 0.09);
+  --pele-text: #edebf2;
+  --pele-soft: #c9c6d3;
+  --pele-muted: #9a96a8;
+  --pele-roxo: #8b6cff;
+  --pele-roxo-soft: #c4b5ff;
+  --pele-bad: #ff8da3;
+  --pele-sans: "Manrope", system-ui, sans-serif;
+  --pele-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  position: sticky;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  background: var(--pele-bg);
+  color: var(--pele-text);
+  font-family: var(--pele-sans);
+  color-scheme: dark;
+}
+
+.onside-pele :focus-visible {
+  outline: 2px solid var(--pele-roxo);
+  outline-offset: 2px;
+}
+
+.onside-pele-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  min-height: 56px;
+  padding: 8px clamp(16px, 2.5vw, 28px);
+  box-sizing: border-box;
+  border-bottom: 2px solid var(--pele-roxo);
+  box-shadow: 0 6px 30px rgb(139 108 255 / 0.35);
+}
+
+.onside-pele-hat {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgb(139 108 255 / 0.18);
+  color: var(--pele-roxo);
+}
+
+.onside-pele-who {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.onside-pele-who strong {
+  font-weight: 700;
+}
+
+.onside-pele-mono {
+  font-family: var(--pele-mono);
+  font-size: 12px;
+  color: var(--pele-muted);
+  overflow-wrap: anywhere;
+}
+
+/* No celular o e-mail desce para a linha de baixo, sem um `·` órfão. */
+@media (max-width: 639px) {
+  .onside-pele-mono {
+    display: block;
+  }
+
+  .onside-pele-dot {
+    display: none;
+  }
+}
+
+.onside-pele-seg {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--pele-panel);
+  border: 1px solid var(--pele-line);
+}
+
+.onside-pele-seg button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pele-muted);
+  font: 600 12px var(--pele-sans);
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.onside-pele-seg button[aria-pressed="true"] {
+  background: var(--pele-seg);
+  color: var(--pele-text);
+}
+
+.onside-pele-seg button:disabled {
+  cursor: progress;
+}
+
+.onside-pele-clock {
+  font-family: var(--pele-mono);
+  font-size: 13px;
+  color: var(--pele-roxo-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.onside-pele-stop {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--pele-roxo);
+  color: var(--pele-bg);
+  font: 700 13px var(--pele-sans);
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+.onside-pele-stop:hover {
+  opacity: 0.9;
+}
+
+.onside-pele-stop:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.onside-pele-note {
+  margin: 0;
+  padding: 8px clamp(16px, 2.5vw, 28px);
+  background: var(--pele-note);
+  color: var(--pele-soft);
+  font-size: 12px;
+}
+
+.onside-pele-error {
+  margin: 0;
+  padding: 8px clamp(16px, 2.5vw, 28px);
+  color: var(--pele-bad);
+  font-size: 12px;
+  font-weight: 600;
+}

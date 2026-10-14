@@ -5,6 +5,7 @@ import { adminAction } from './schema/houdini'
 export const ADMIN_ACTION_KINDS = [
   'user.impersonate',
   'user.stop_impersonating',
+  'user.impersonation_mode',
   'user.ban',
   'user.unban',
   'user.set_role',
