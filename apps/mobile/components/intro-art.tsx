@@ -10,14 +10,14 @@ import Svg, {
   Rect,
   Stop
 } from 'react-native-svg'
+import { Glass } from '@/components/glass'
 
 /*
  * As ilustrações das quatro telas de "03 Apresentação" (projeto "Onside
  * mobile app redesign"). O desenho é a 390 x 476: posições verticais escalam
  * com a altura real da ilustração (`sy`), as horizontais com a largura (`sx`).
  *
- * O vidro do design (`backdrop-filter`) não existe no React Native sem
- * dependência nova: aqui é cor translúcida mais opaca, que lê igual.
+ * O vidro do design é o `Glass` (`components/glass.tsx`).
  */
 
 const INK = '#12120f'
@@ -79,7 +79,7 @@ export function MapArt(props: ArtProps) {
       <Pin x={110 * sx} y={250 * sy} label="Casa 92" />
       <Pin x={300 * sx} y={226 * sy} label="Boteco Sete" />
       <Pin x={206 * sx} y={312 * sy} label="Bar do Zé" live />
-      <View style={[styles.glassLight, styles.matchCard]}>
+      <Glass tone="light" style={styles.matchCard}>
         <View style={styles.matchIcon}>
           <Svg width={22} height={22} viewBox="0 0 24 24">
             <Path
@@ -102,7 +102,7 @@ export function MapArt(props: ArtProps) {
             Hoje 21:30 · 4 bares perto de você
           </Text>
         </View>
-      </View>
+      </Glass>
       {/* Você: o ponto acid com os dois anéis do design, por cima do card como lá. */}
       <View
         style={[styles.you, { left: 193 * sx - 40, top: 375 * sy - 40 }]}
@@ -168,7 +168,7 @@ export function CrowdArt(_: ArtProps) {
         locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.glassDark, styles.goingCard]}>
+      <Glass tone="dark" style={styles.goingCard}>
         <View style={styles.goingRow}>
           <View style={styles.goingRow}>
             <Avatar letter="M" background={ACID} color={INK} first />
@@ -200,7 +200,7 @@ export function CrowdArt(_: ArtProps) {
             Vou assistir aqui
           </Text>
         </View>
-      </View>
+      </Glass>
     </View>
   )
 }
@@ -260,10 +260,12 @@ export function TicketArt(props: ArtProps) {
 }
 
 function Bubble({ children, mine }: { children: ReactNode; mine?: boolean }) {
-  return (
-    <View style={mine ? styles.bubbleMine : [styles.glassLight, styles.reply]}>
+  return mine ? (
+    <View style={styles.bubbleMine}>{children}</View>
+  ) : (
+    <Glass tone="light" style={styles.reply}>
       {children}
-    </View>
+    </Glass>
   )
 }
 
@@ -352,21 +354,6 @@ const styles = StyleSheet.create({
   body: { fontFamily: 'Archivo-Regular' },
   semibold: { fontFamily: 'Archivo-SemiBold' },
   bold: { fontFamily: 'Archivo-Bold' },
-  glassLight: {
-    backgroundColor: 'rgba(255,255,255,.78)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.9)',
-    shadowColor: INK,
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6
-  },
-  glassDark: {
-    backgroundColor: 'rgba(30,30,27,.62)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.24)'
-  },
   pin: {
     position: 'absolute',
     width: 200,

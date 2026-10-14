@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
+import { Glass } from '@/components/glass'
 import { AskArt, CrowdArt, MapArt, TicketArt } from '@/components/intro-art'
 
 /*
@@ -132,7 +133,9 @@ export default function Intro() {
         onPress={enter}
         style={[styles.skip, { top: insets.top + 4 }]}
       >
-        <Text style={styles.skipText}>Pular</Text>
+        <Glass tone="dark" interactive style={styles.skipGlass}>
+          <Text style={styles.skipText}>Pular</Text>
+        </Glass>
       </Pressable>
 
       <View
@@ -205,16 +208,12 @@ const styles = StyleSheet.create({
     lineHeight: 23.7,
     color: '#55554f'
   },
-  skip: {
-    position: 'absolute',
-    right: 18,
+  skip: { position: 'absolute', right: 18 },
+  skipGlass: {
     height: 34,
     paddingHorizontal: 15,
     borderRadius: 17,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(36,36,32,.40)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.24)'
+    justifyContent: 'center'
   },
   skipText: { fontFamily: 'Archivo-Bold', fontSize: 13.5, color: PAPER },
   footer: { position: 'absolute', left: 16, right: 16, gap: 12 },

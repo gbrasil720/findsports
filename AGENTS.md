@@ -304,6 +304,11 @@ invente layout que o projeto não tem.
   do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
   imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
   da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
+- **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
+  `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
+  cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
+- **Busca com IA:** a quarta tela da apresentação anuncia uma busca que o produto ainda não
+  tem; o dono confirmou (14/10/2026) que ela vai existir e a tela fica como no design.
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
   e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome
