@@ -91,6 +91,20 @@ export function describe(entry: GrimorioEntry): {
         text: `trocou a role de ${label}`,
         detail: `${asRecord(entry.before).role ?? '?'} → ${asRecord(entry.after).role ?? '?'}`
       }
+    case 'user.resend_verification':
+      return {
+        icon: 'check',
+        tone: 'neutral',
+        text: `reenviou a verificação de e-mail para ${label}`,
+        detail: null
+      }
+    case 'user.send_password_reset':
+      return {
+        icon: 'back',
+        tone: 'neutral',
+        text: `mandou o link de troca de senha para ${label}`,
+        detail: null
+      }
     case 'config.set':
       return {
         icon: 'wand',

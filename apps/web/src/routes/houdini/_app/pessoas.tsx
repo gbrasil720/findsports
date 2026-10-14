@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -335,6 +335,19 @@ function Dossie({ person, isSelf }: { person: Person; isSelf: boolean }) {
           </div>
         ) : null}
       </dl>
+
+      <Link
+        to="/houdini/pessoas/$userId"
+        params={{ userId: person.id }}
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--hd-roxo-soft)',
+          textDecoration: 'none'
+        }}
+      >
+        Abrir a ficha
+      </Link>
 
       {isSelf ? (
         <p className="hd-small" style={{ margin: 0 }}>
