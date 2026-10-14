@@ -76,10 +76,12 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   await expect(
     page.getByRole('heading', { name: 'Quão longe você topa ir?' })
   ).toBeVisible()
-  for (const km of [1, 3, 5, 10]) await expect(radius(page, km)).toBeVisible()
+  for (const km of [1, 3, 5, 10, 25, 50]) {
+    await expect(radius(page, km)).toBeVisible()
+  }
   await expect(radius(page, 3)).toHaveAttribute('aria-pressed', 'true')
-  await radius(page, 10).click()
-  await expect(radius(page, 10)).toHaveAttribute('aria-pressed', 'true')
+  await radius(page, 25).click()
+  await expect(radius(page, 25)).toHaveAttribute('aria-pressed', 'true')
   await expect(radius(page, 3)).toHaveAttribute('aria-pressed', 'false')
 
   // Cidade (WEB-319), no mesmo passo: a busca ignora acento, e texto
@@ -98,7 +100,7 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   for (const badge of [
     'Futebol',
     'Basquete',
-    '10 km',
+    '25 km',
     'São José dos Campos, SP'
   ]) {
     await expect(page.getByText(badge, { exact: true })).toBeVisible()
@@ -108,7 +110,7 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   const search = page.waitForRequest(
     (r) =>
       r.url().includes('pubs.search') &&
-      decodeURIComponent(r.url()).includes('"radiusKm":10')
+      decodeURIComponent(r.url()).includes('"radiusKm":25')
   )
   await button(page, /Salvar e encontrar bares/).click()
   await expect(page).toHaveURL(/\/dashboard$/)
@@ -125,7 +127,7 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   )
   expect(user).toEqual({
     onboarding_completed: true,
-    search_radius_km: 10,
+    search_radius_km: 25,
     search_city_name: 'São José dos Campos',
     search_city_uf: 'SP',
     has_center: true

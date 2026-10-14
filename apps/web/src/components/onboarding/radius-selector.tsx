@@ -5,7 +5,9 @@ const RADIUS_LABELS: Record<number, string> = {
   1: 'a pé',
   3: 'bem perto',
   5: 'no bairro',
-  10: 'explorar mais'
+  10: 'explorar mais',
+  25: 'a cidade',
+  50: 'a região'
 }
 
 type Props = {
@@ -18,7 +20,7 @@ export function RadiusSelector({ value, options, onChange }: Props) {
   return (
     <fieldset className="border-0 p-0 m-0">
       <legend className="sr-only">Raio de busca em quilômetros</legend>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {options.map((km) => {
           const on = value === km
           return (

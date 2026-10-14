@@ -108,3 +108,20 @@ describe('pubs.searchByLocation — validação de coordenadas (WEB-49)', () => 
     }
   })
 })
+
+describe('raio de busca', () => {
+  const base = { lat: -23.55, lng: -46.63 }
+
+  test.each([
+    'search',
+    'searchByLocation'
+  ] as const)('%s aceita qualquer km inteiro de 1 a 50', (name) => {
+    const parser = inputParser(appRouter.pubs[name])
+    for (const radiusKm of [1, 7, 27, 50]) {
+      expect(() => parser.parse({ ...base, radiusKm })).not.toThrow()
+    }
+    for (const radiusKm of [0, 51, 2.5]) {
+      expect(() => parser.parse({ ...base, radiusKm })).toThrow()
+    }
+  })
+})

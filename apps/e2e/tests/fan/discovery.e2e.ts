@@ -116,7 +116,7 @@ test('filtros de texto, esporte, raio, comodidade e time se combinam e saem pelo
   await expect(card(page, far.name)).toHaveCount(0)
 
   // Raio
-  await page.getByRole('button', { name: /^5 km/ }).click()
+  await page.getByRole('slider', { name: 'Raio' }).fill('5')
   await expect(card(page, far.name)).toBeVisible()
   await page.getByRole('button', { name: 'Remover filtro Até 5 km' }).click()
   await expect(card(page, far.name)).toHaveCount(0)
@@ -423,7 +423,7 @@ test('o card abre o perfil pelo jogo e voltar restaura os filtros', async ({
   const fan = await signInFanAt(page, spot)
 
   await page.goto('/dashboard')
-  await page.getByRole('button', { name: /^5 km/ }).click()
+  await page.getByRole('slider', { name: 'Raio' }).fill('5')
   await card(page, pub.name).click()
   await expect(page).toHaveURL(
     new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)

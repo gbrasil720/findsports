@@ -10,20 +10,10 @@ import Crosshairs from 'reicon-react/icons/Crosshairs'
 import Loader from 'reicon-react/icons/Loader'
 import Search from 'reicon-react/icons/Search'
 import Xmark from 'reicon-react/icons/Xmark'
+import { RadiusSlider } from '@/components/app/radius-slider'
 import { SportIcon } from '@/components/sports/sport-icon'
 import type { SportsState } from '@/domain/dashboard-selectors'
-import {
-  type LocationState,
-  type RadiusKm,
-  SEARCH_RADII
-} from '@/domain/discovery'
-
-const RADIUS_LABELS: Record<RadiusKm, string> = {
-  1: '1 km',
-  3: '3 km',
-  5: '5 km',
-  10: '10 km'
-}
+import type { LocationState, RadiusKm } from '@/domain/discovery'
 
 export type ActiveFilter = { label: string; clear: () => void }
 
@@ -291,31 +281,18 @@ export function SearchFilterBar({
           </fieldset>
         ) : null}
 
-        <fieldset className="shrink-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <legend className="onside-kicker shrink-0 pr-1">Raio</legend>
-            <div className="flex flex-wrap gap-2">
-              {SEARCH_RADII.map((km) => {
-                const selected = radiusKm === km
-                const preferred = km === preferredRadiusKm
-                return (
-                  <button
-                    key={km}
-                    type="button"
-                    onClick={() => onRadiusChange(km)}
-                    aria-pressed={selected}
-                    className="onside-chip onside-chip-stack"
-                  >
-                    <span className="leading-none">{RADIUS_LABELS[km]}</span>
-                    {preferred ? (
-                      <span className="onside-chip-note">Seu raio</span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </fieldset>
+        <div className="w-full shrink-0 sm:w-64">
+          <RadiusSlider
+            label="Raio"
+            value={radiusKm}
+            onCommit={onRadiusChange}
+            note={
+              radiusKm === preferredRadiusKm
+                ? 'Seu raio'
+                : `Seu raio: ${preferredRadiusKm} km`
+            }
+          />
+        </div>
       </div>
 
       {teams.length > 0 ? (

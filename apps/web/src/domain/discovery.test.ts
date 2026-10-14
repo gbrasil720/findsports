@@ -26,18 +26,17 @@ describe('discovery coordinates', () => {
 })
 
 describe('normalizeRadiusKm', () => {
-  test('devolve o degrau exato quando ele já é válido', () => {
+  test('qualquer km de 1 a 50 passa como está', () => {
     expect(normalizeRadiusKm(1)).toBe(1)
-    expect(normalizeRadiusKm(3)).toBe(3)
-    expect(normalizeRadiusKm(10)).toBe(10)
+    expect(normalizeRadiusKm(7)).toBe(7)
+    expect(normalizeRadiusKm(50)).toBe(50)
   })
 
-  test('cai no degrau mais próximo em vez de não marcar nada', () => {
-    // `search_radius_km` é um `integer` no banco: nada impede um 7 salvo por
-    // uma versão antiga ou por importação.
-    expect(normalizeRadiusKm(7)).toBe(5)
-    expect(normalizeRadiusKm(2)).toBe(1)
-    expect(normalizeRadiusKm(40)).toBe(10)
+  test('fora da faixa cai na borda, e fração no km inteiro', () => {
+    // `search_radius_km` é um `integer` sem restrição no banco.
+    expect(normalizeRadiusKm(0)).toBe(1)
+    expect(normalizeRadiusKm(80)).toBe(50)
+    expect(normalizeRadiusKm(12.6)).toBe(13)
   })
 
   test('sem raio salvo, usa o padrão do produto', () => {
@@ -116,7 +115,7 @@ describe('filtros do dashboard no hash (WEB-293)', () => {
   test('campo inválido cai no padrão sem derrubar os outros', () => {
     expect(
       parseDashboardFilters(
-        `#raio=7&comodidade=1&comodidade=9999&comodidade=abc&comodidade=1&time=nao-e-uuid&time=${TIME_A}&ordem=qualquer&favoritos=sim&hoje=1&busca=Flamengo&desconhecido=x`,
+        `#raio=abc&comodidade=1&comodidade=9999&comodidade=abc&comodidade=1&time=nao-e-uuid&time=${TIME_A}&ordem=qualquer&favoritos=sim&hoje=1&busca=Flamengo&desconhecido=x`,
         3
       )
     ).toEqual({
@@ -126,6 +125,11 @@ describe('filtros do dashboard no hash (WEB-293)', () => {
       teamIds: [TIME_A],
       gamesTodayOnly: true
     })
+  })
+
+  test('raio fora da faixa cai na borda; dentro dela, qualquer km', () => {
+    expect(parseDashboardFilters('#raio=99', 3).radiusKm).toBe(50)
+    expect(parseDashboardFilters('#raio=17', 3).radiusKm).toBe(17)
   })
 
   test('âncora da página não vira filtro', () => {

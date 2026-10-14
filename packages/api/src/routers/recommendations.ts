@@ -3,6 +3,7 @@ import {
   recommendationEvent,
   recommendationReset
 } from '@findsports_oficial/db/schema/recommendation'
+import { clampSearchRadiusKm } from '@findsports_oficial/db/search-radius'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -28,10 +29,6 @@ const runEventSchema = z.object({
   barId: z.string().uuid()
 })
 
-function normalizedRadius(value: number): 1 | 3 | 5 | 10 {
-  return value === 1 || value === 3 || value === 5 || value === 10 ? value : 3
-}
-
 function reasonLabel(item: ScoredRecommendation): string {
   switch (item.reason) {
     case 'recent_interest':
@@ -54,7 +51,7 @@ function reasonLabel(item: ScoredRecommendation): string {
 export const recommendationsRouter = router({
   get: fanProcedure.input(coordinatesSchema).query(async ({ ctx, input }) => {
     const now = new Date()
-    const radiusKm = normalizedRadius(ctx.session.user.searchRadiusKm)
+    const radiusKm = clampSearchRadiusKm(ctx.session.user.searchRadiusKm, 3)
     const candidates = await loadRecommendationCandidates({
       userId: ctx.session.user.id,
       lat: input.lat,

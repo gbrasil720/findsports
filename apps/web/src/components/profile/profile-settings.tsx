@@ -5,11 +5,8 @@ import Edit from 'reicon-react/icons/Edit'
 import Location from 'reicon-react/icons/Location'
 import Medal from 'reicon-react/icons/Medal'
 import { AccountSettings } from '@/components/account/account-settings'
-import {
-  normalizeRadiusKm,
-  type RadiusKm,
-  SEARCH_RADII
-} from '@/domain/discovery'
+import { RadiusSlider } from '@/components/app/radius-slider'
+import { normalizeRadiusKm, type RadiusKm } from '@/domain/discovery'
 import { ProfileCity } from './profile-city'
 import { ProfileFavoriteTeams } from './profile-favorite-teams'
 import type { Preference, ProfileUser, Sport } from './profile-model'
@@ -127,27 +124,13 @@ export function ProfileSettings(props: Props) {
         <p className="mb-4 text-[var(--onside-muted)] text-xs">
           Distância máxima para buscar bares
         </p>
-        <div className="flex flex-wrap gap-2">
-          {/*
-           * Mesmo chip da barra de busca do dashboard: era o mesmo controle
-           * com dois desenhos — aqui cinza sobre pedra, lá borda ink — e sem
-           * `aria-pressed`, então o estado marcado não existia para quem
-           * navega por leitor de tela.
-           */}
-          {SEARCH_RADII.map((radiusKm) => (
-            <button
-              key={radiusKm}
-              type="button"
-              disabled={props.savingRadius}
-              aria-pressed={
-                normalizeRadiusKm(props.user?.searchRadiusKm) === radiusKm
-              }
-              onClick={() => props.onRadiusChange(radiusKm)}
-              className="onside-chip tabular-nums"
-            >
-              {radiusKm} km
-            </button>
-          ))}
+        <div className="max-w-md">
+          <RadiusSlider
+            label="Distância"
+            value={normalizeRadiusKm(props.user?.searchRadiusKm)}
+            onCommit={props.onRadiusChange}
+            disabled={props.savingRadius}
+          />
         </div>
         {props.radiusError ? (
           <p

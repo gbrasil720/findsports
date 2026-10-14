@@ -1,3 +1,4 @@
+import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Basketball from 'reicon-react/icons/Basketball'
 import ChevronRight from 'reicon-react/icons/ChevronRight'
@@ -97,13 +98,16 @@ function EmptyResults({
             Usar minha localização
           </button>
         </>
-      ) : radiusKm < 10 ? (
+      ) : radiusKm < SEARCH_RADIUS_MAX_KM ? (
+        // O dobro, até o teto: de 3 vai a 6, de 30 vai a 50.
         <button
           type="button"
-          onClick={() => onRadiusChange(10)}
+          onClick={() =>
+            onRadiusChange(Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM))
+          }
           className="onside-btn onside-btn-acid mt-5"
         >
-          Buscar em 10 km →
+          Buscar em {Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)} km →
         </button>
       ) : null}
       {/* Sem filtro ligado não há o que limpar. */}

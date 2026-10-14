@@ -120,14 +120,12 @@ test('edita nome, esportes, raio, cidade e times', async ({ page }) => {
 
   // Raio
   const radius = section(page, 'Raio de busca')
-  await radius.getByRole('button', { name: '10 km' }).click()
-  await expect(radius.getByRole('button', { name: '10 km' })).toHaveAttribute(
-    'aria-pressed',
-    'true'
-  )
+  // Qualquer km até 50, não só a escala antiga.
+  await radius.getByRole('slider', { name: 'Distância' }).fill('27')
+  await expect(radius.getByText('27 km', { exact: true })).toBeVisible()
   await expect
     .poll(async () => (await userRow(fan.id))?.search_radius_km)
-    .toBe(10)
+    .toBe(27)
 
   // Cidade (WEB-319): busca sem acento, e escolher na lista já salva.
   const city = section(page, 'Sua cidade')
