@@ -45,21 +45,26 @@ export const jogoNaoAcabou = (e: SQL) => sql`
   AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
 
 /**
- * O bar recebe reservas agora: interruptor ligado e Elite vigente. É
- * `receivesReservations` (`../reservation-intake`) em SQL, e o teste de
- * integração do filtro compara as duas.
+ * O bar recebe reservas agora: Elite vigente e algum jogo que ainda não acabou
+ * marcado para receber. É `barReceivesReservations` (`../reservation-intake`)
+ * em SQL, e o teste de integração do filtro compara as duas.
  *
  * Lê `subscription`, e não `bar.plan`: a projeção só acompanha o relógio uma
  * vez por dia, e um trial vencido seguiria "recebendo" até a reconciliação.
  */
 export const recebeReservas = (barAlias: SQL) => sql`(
-  ${barAlias}.accepts_reservations
-  AND EXISTS (
+  EXISTS (
     SELECT 1 FROM subscription assinatura
     WHERE assinatura.bar_id = ${barAlias}.id
       AND subscription_current_plan(
         assinatura.plan, assinatura.status, assinatura.current_period_end
       ) = 'elite'
+  )
+  AND EXISTS (
+    SELECT 1 FROM event jogo_reservavel
+    WHERE jogo_reservavel.bar_id = ${barAlias}.id
+      AND jogo_reservavel.accepts_reservations
+      AND ${jogoNaoAcabou(sql`jogo_reservavel`)}
   ))`
 
 export type SearchInput = {

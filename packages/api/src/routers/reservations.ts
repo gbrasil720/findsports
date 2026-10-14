@@ -43,7 +43,7 @@ import {
  * como inexistente.
  *
  * Só criar passa por `assertReceivesReservations`. Ler e cancelar continuam
- * valendo com o bar sem Elite ou com o recebimento desligado (ADR 0003,
+ * valendo com o bar sem Elite ou com o jogo desmarcado (ADR 0003,
  * "Disposição do bar"): downgrade não pode prender ninguém num pedido.
  */
 
@@ -254,12 +254,15 @@ export const reservationsRouter = router({
       const now = new Date()
       const game = await db.query.event.findFirst({
         where: eq(event.id, input.eventId),
-        columns: { startsAt: true, reservationCap: true },
+        columns: {
+          startsAt: true,
+          reservationCap: true,
+          acceptsReservations: true
+        },
         with: {
           bar: {
             columns: {
               isActive: true,
-              acceptsReservations: true,
               houseOffer: true,
               reservationCap: true
             },
@@ -284,8 +287,9 @@ export const reservationsRouter = router({
             'Este jogo já começou. Reservas só podem ser pedidas para jogos que ainda vão acontecer.'
         })
       }
+      // Por jogo: o bar marca em quais recebe pedido.
       assertReceivesReservations(
-        game.bar.acceptsReservations,
+        game.acceptsReservations,
         game.bar.subscription ?? null,
         now
       )

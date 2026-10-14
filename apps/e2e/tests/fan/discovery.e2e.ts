@@ -163,27 +163,31 @@ test('filtro "Aceita reserva" traz só o bar que recebe reservas pela Onside', a
   page
 }) => {
   const spot = uniqueSpot()
-  // Os dois ligaram o interruptor; só o Elite recebe, e ele nunca teve a
-  // característica (10) gravada. O Pro a tem, de quando se marcava à mão.
-  const receiving = await pubAt(north(spot, 0.5), {
-    bar: { accepts_reservations: true }
-  })
+  // Os dois marcaram o jogo para reservas; só o Elite recebe, e ele nunca teve
+  // a característica (10) gravada. O Pro a tem, de quando se marcava à mão. O
+  // terceiro é Elite, mas o jogo dele não aceita reserva.
+  const receiving = await pubAt(north(spot, 0.5))
   const pro = await pubAt(north(spot, 0.8), {
     subscription: { plan: 'pro' },
-    bar: { amenities: [10], accepts_reservations: true }
+    bar: { amenities: [10] }
   })
-  await createEvent({ barId: receiving.barId, startsAt: days(2) })
-  await createEvent({ barId: pro.barId, startsAt: days(2) })
+  const unmarked = await pubAt(north(spot, 0.6))
+  for (const { barId } of [receiving, pro]) {
+    await createEvent({ barId, startsAt: days(2), acceptsReservations: true })
+  }
+  await createEvent({ barId: unmarked.barId, startsAt: days(2) })
   await signInFanAt(page, spot)
 
   await page.goto('/dashboard')
   await expect(card(page, receiving.name)).toBeVisible()
   await expect(card(page, pro.name)).toBeVisible()
+  await expect(card(page, unmarked.name)).toBeVisible()
 
   await page.getByRole('button', { name: 'O que o bar tem' }).click()
   await page.getByRole('button', { name: 'Aceita reserva' }).click()
   await expect(card(page, receiving.name)).toBeVisible()
   await expect(card(page, pro.name)).toHaveCount(0)
+  await expect(card(page, unmarked.name)).toHaveCount(0)
 })
 
 test('sem jogo na região e sem filtro, mostra os bares próximos', async ({

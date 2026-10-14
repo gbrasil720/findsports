@@ -21,7 +21,6 @@ import { HouseOfferEditor } from './house-offer-editor'
 import { PubHeroSection } from './pub-hero-section'
 import { QueryError } from './query-error'
 import { RatingsPanel } from './ratings-panel'
-import { ReservationIntakeCard } from './reservation-intake-card'
 
 export function SpaceTab({
   active,
@@ -121,12 +120,6 @@ export function SpaceTab({
   // O erro de cada card é o da própria mutation: um novo envio o limpa.
   const updateHouseOfferMutation = useMutation(
     trpc.pub.updateHouseOffer.mutationOptions({
-      onSuccess: () => void invalidateBar()
-    })
-  )
-
-  const updateAcceptsReservationsMutation = useMutation(
-    trpc.pub.updateAcceptsReservations.mutationOptions({
       onSuccess: () => void invalidateBar()
     })
   )
@@ -275,26 +268,6 @@ export function SpaceTab({
         isSaving={updateMenuInfoMutation.isPending}
         saveError={barMenuError}
         onSave={(changes) => updateMenuInfoMutation.mutateAsync(changes)}
-      />
-
-      <ReservationIntakeCard
-        acceptsReservations={bar.acceptsReservations}
-        hasHouseOffer={bar.houseOffer !== null}
-        plan={planState}
-        isSaving={updateAcceptsReservationsMutation.isPending}
-        saveError={
-          updateAcceptsReservationsMutation.error
-            ? getUserFacingMessage(
-                updateAcceptsReservationsMutation.error,
-                'Não foi possível mudar o recebimento de reservas. Tente novamente.'
-              )
-            : null
-        }
-        onChange={(acceptsReservations) =>
-          updateAcceptsReservationsMutation.mutateAsync({
-            acceptsReservations
-          })
-        }
       />
 
       <HouseOfferEditor

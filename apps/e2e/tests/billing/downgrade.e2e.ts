@@ -28,8 +28,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
     bar: {
       house_offer: 'Chopp em dobro',
       menu_url: 'https://bar.example/cardapio',
-      average_spend_cents: 6000,
-      accepts_reservations: true
+      average_spend_cents: 6000
     }
   })
   await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
@@ -37,7 +36,10 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
     user.id
   ])
   for (let day = 1; day <= 7; day++) {
-    await createEvent(barId, { startsAt: inDays(day) })
+    await createEvent(barId, {
+      startsAt: inDays(day),
+      acceptsReservations: true
+    })
   }
   // A assinatura existe no Stripe: é ela que faz a troca ir para o portal.
   const inStripe = (plan: 'elite' | 'starter') =>

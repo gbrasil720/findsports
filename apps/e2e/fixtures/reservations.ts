@@ -16,13 +16,19 @@ export async function soccerSportId(): Promise<string> {
 /**
  * Jogo de um bar. `startsAt` padrão: daqui a uma hora — dentro da janela de
  * validação do código (abre 3h antes do início). Esporte: futebol semeado.
+ * `acceptsReservations` é a marcação "Aceitar reservas neste jogo".
  */
 export async function createEvent(
   barId: string,
   {
     startsAt = new Date(Date.now() + HOUR),
-    championship = `Campeonato E2E ${randomUUID().slice(0, 6)}`
-  }: { startsAt?: Date; championship?: string } = {}
+    championship = `Campeonato E2E ${randomUUID().slice(0, 6)}`,
+    acceptsReservations = false
+  }: {
+    startsAt?: Date
+    championship?: string
+    acceptsReservations?: boolean
+  } = {}
 ): Promise<{ eventId: string; championship: string }> {
   const eventId = randomUUID()
   await insert('event', {
@@ -30,7 +36,8 @@ export async function createEvent(
     bar_id: barId,
     sport_id: await soccerSportId(),
     championship,
-    starts_at: startsAt
+    starts_at: startsAt,
+    accepts_reservations: acceptsReservations
   })
   return { eventId, championship }
 }

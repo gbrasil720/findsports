@@ -42,7 +42,8 @@ const EMPTY_FORM: EventForm = {
   startsAt: '',
   endsAt: '',
   participantIds: [],
-  participantFreeText: ''
+  participantFreeText: '',
+  acceptsReservations: false
 }
 
 type ManagerProps = {
@@ -135,10 +136,12 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
     queryClient.invalidateQueries({
       queryKey: trpc.pub.getMyEvents.queryKey()
     })
-  // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`.
+  // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`, e
+  // `pub.getMe` diz se o bar recebe reservas, pelos jogos marcados.
   const invalidateEvents = () =>
     Promise.all([
       invalidateMyEvents(),
+      queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() }),
       queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
     ])
   const invalidateEventsAndPolicy = () =>
@@ -196,7 +199,8 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           startsAt,
           endsAt,
           participantIds,
-          participantFreeText: form.participantFreeText || undefined
+          participantFreeText: form.participantFreeText || undefined,
+          acceptsReservations: form.acceptsReservations
         },
         {
           onSuccess: () => {
@@ -217,7 +221,8 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         startsAt,
         endsAt: endsAt ?? null,
         participantIds,
-        participantFreeText: form.participantFreeText
+        participantFreeText: form.participantFreeText,
+        acceptsReservations: form.acceptsReservations
       })
     }
   }
@@ -434,12 +439,15 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   participantIds:
                     editingEvent.participants?.map((item) => item.team.id) ??
                     [],
-                  participantFreeText: editingEvent.participantFreeText ?? ''
+                  participantFreeText: editingEvent.participantFreeText ?? '',
+                  acceptsReservations: editingEvent.acceptsReservations
                 }
               : EMPTY_FORM
           }
           sports={sports}
           loadingSports={loadingSports}
+          // O servidor confere o plano de novo ao gravar.
+          canEnableReservations={subscription?.currentPlan === 'elite'}
           onSave={handleSave}
           onCancel={closeModal}
           isSaving={isSaving}

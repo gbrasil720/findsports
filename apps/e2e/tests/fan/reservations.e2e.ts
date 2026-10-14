@@ -44,7 +44,7 @@ test('lista pendente, confirmada, recusada e cancelada; cancela a pendente', asy
   playwright
 }) => {
   const spot = uniqueSpot()
-  const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
+  const pub = await pubAt(spot)
   const games = {
     pending: `Pendente ${randomUUID().slice(0, 6)}`,
     confirmed: `Confirmada ${randomUUID().slice(0, 6)}`,
@@ -56,6 +56,7 @@ test('lista pendente, confirmada, recusada e cancelada; cancela a pendente', asy
   for (const [status, freeText] of Object.entries(games)) {
     const eventId = await createEvent({
       barId: pub.barId,
+      acceptsReservations: true,
       startsAt: days(3),
       freeText
     })
@@ -125,12 +126,13 @@ test('chegada registrada aparece na reserva e tira o cancelamento', async ({
   playwright
 }) => {
   const spot = uniqueSpot()
-  const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
+  const pub = await pubAt(spot)
   const freeText = `Chegada ${randomUUID().slice(0, 6)}`
   await signInFanAt(page, spot)
   // Daqui a 1h: a janela de validação já abriu e o jogo ainda não começou.
   const eventId = await createEvent({
     barId: pub.barId,
+    acceptsReservations: true,
     startsAt: hours(1),
     freeText
   })
@@ -182,10 +184,11 @@ test('recusa do bar vira toast e selo até o torcedor abrir Minhas reservas', as
   playwright
 }) => {
   const spot = uniqueSpot()
-  const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
+  const pub = await pubAt(spot)
   await signInFanAt(page, spot)
   const eventId = await createEvent({
     barId: pub.barId,
+    acceptsReservations: true,
     startsAt: days(3),
     freeText: `Aviso ${randomUUID().slice(0, 6)}`
   })
@@ -232,11 +235,12 @@ test('bar fora do ar: quem tem reserva lê que ele saiu e que a reserva vale; os
   const OFF_AIR =
     'Este bar não está mais na Onside. Sua reserva continua valendo: apresente o código no bar.'
   const spot = uniqueSpot()
-  const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
+  const pub = await pubAt(spot)
   const freeText = `Fora do ar ${randomUUID().slice(0, 6)}`
   const fan = await signInFanAt(page, spot)
   const eventId = await createEvent({
     barId: pub.barId,
+    acceptsReservations: true,
     startsAt: hours(1),
     freeText
   })

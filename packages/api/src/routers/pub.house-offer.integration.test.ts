@@ -14,9 +14,10 @@ import { inAMonth, seedBar, storedOffer } from './integration-seed'
 /**
  * Oferta da casa (WEB-120) contra o banco de verdade: o plano é conferido no
  * servidor a partir da assinatura, o perfil público só mostra a oferta com
- * Elite vigente E recebimento ligado, e perder o Elite esconde sem apagar —
- * nem o texto do bar, nem a cópia congelada numa reserva. O interruptor de
- * recebimento em si está em `pub.reservation-intake.integration.test.ts`.
+ * Elite vigente E algum jogo marcado para receber reservas, e perder o Elite
+ * esconde sem apagar — nem o texto do bar, nem a cópia congelada numa
+ * reserva. A marcação por jogo em si está em
+ * `pub.reservation-intake.integration.test.ts`.
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
@@ -26,9 +27,7 @@ integrationTest(
   async () => {
     const ctx = await seedBar('elite', 'active', inAMonth())
     try {
-      await ctx.owner.pub.updateAcceptsReservations({
-        acceptsReservations: true
-      })
+      await ctx.seedGame()
       const saved = await ctx.owner.pub.updateHouseOffer({
         houseOffer: '  Chopp   em dobro\nno intervalo  '
       })
@@ -91,7 +90,7 @@ integrationTest('Elite em past_due não configura', async () => {
 integrationTest('assinatura Elite em trialing configura', async () => {
   const ctx = await seedBar('elite', 'trialing', inAMonth())
   try {
-    await ctx.owner.pub.updateAcceptsReservations({ acceptsReservations: true })
+    await ctx.seedGame()
     const saved = await ctx.owner.pub.updateHouseOffer({
       houseOffer: 'Chopp em dobro'
     })
@@ -163,9 +162,6 @@ integrationTest(
     const ctx = await seedBar('elite', 'active', inAMonth())
     const sportId = crypto.randomUUID()
     try {
-      await ctx.owner.pub.updateAcceptsReservations({
-        acceptsReservations: true
-      })
       await ctx.owner.pub.updateHouseOffer({ houseOffer: 'Chopp em dobro' })
 
       // Reserva criada enquanto a oferta valia, com a cópia congelada.
@@ -180,7 +176,8 @@ integrationTest(
           barId: ctx.barId,
           sportId,
           championship: 'Campeonato de integração',
-          startsAt: inAMonth()
+          startsAt: inAMonth(),
+          acceptsReservations: true
         })
         .returning({ id: event.id })
       if (!createdEvent) throw new Error('evento não criado')

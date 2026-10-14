@@ -431,7 +431,8 @@ export interface PlanLossBar {
   houseOffer: string | null
   menuUrl: string | null
   averageSpendCents: number | null
-  acceptsReservations: boolean
+  /** Jogos que ainda não acabaram marcados para receber reservas. */
+  reservableEvents: number
 }
 
 /**
@@ -467,7 +468,7 @@ export function getPlanLossNote(
         ? 'Sua oferta da casa sai do perfil e fica guardada.'
         : null
     case 'reservations':
-      return bar.acceptsReservations
+      return bar.reservableEvents > 0
         ? 'Seu bar para de receber novos pedidos de reserva.'
         : null
     default:

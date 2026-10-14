@@ -149,19 +149,23 @@ atingir o teto o jogo para de receber pedidos; nada é confirmado sozinho.
 Texto curto e opcional em que o bar decide o que oferece a quem chega pela
 Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
 valida o conteúdo. Configurar exige plano Elite vigente (`active`, ou
-`trialing` dentro do período); exibir exige também o recebimento de reservas
-ligado, porque o único resgate da oferta é o código de uma reserva. Sem uma das
+`trialing` dentro do período); exibir exige também que o bar receba reservas
+(algum jogo por vir marcado), porque o único resgate da oferta é o código de uma reserva. Sem uma das
 duas coisas o texto some do perfil público, mas continua guardado. Uma reserva
 copia o texto na criação e não acompanha mudanças posteriores.
 
 ## Recebimento de reservas
 
-Interruptor do bar, no painel, que diz se ele **quer** receber pedidos de
-reserva pela Onside. Desligado por padrão: assinar Elite dá a capacidade, não
-inscreve o bar numa operação que ele não pediu. Ligar exige Elite vigente; o
-recebimento efetivo exige as duas coisas. Desligar só barra pedidos novos —
-reservas já criadas continuam legíveis, canceláveis e com código válido dentro
-da janela. Não é teto por jogo (WEB-132).
+Marcação **por jogo** ("Aceitar reservas neste jogo", `event.accepts_reservations`)
+que diz se o bar **quer** receber pedidos de reserva pela Onside para aquele
+jogo. Desmarcada por padrão: assinar Elite dá a capacidade, não inscreve o bar
+numa operação que ele não pediu. Marcar exige Elite vigente; o jogo recebe
+pedidos com as duas coisas. O bar "recebe reservas" (aba Reservas, oferta da
+casa, "Aceita reserva" no perfil e na busca) enquanto tem Elite e algum jogo
+que ainda não acabou marcado. Desmarcar só barra pedidos novos — reservas já
+criadas continuam legíveis, canceláveis e com código válido dentro da janela.
+Não é teto por jogo (WEB-132). Até a migration 0056 era um interruptor do bar
+inteiro (`bar.accepts_reservations`, obsoleta).
 
 ## Código de validação
 

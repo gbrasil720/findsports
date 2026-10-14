@@ -54,11 +54,11 @@ function FanActionsPreview({
 }) {
   const pub = normalizePub(profile)
   const heroEvent = resolveHeroEvent(pub.events, null)
-  const { reservableEvents, canReserve, ...actions } = resolveProfileActions(
-    pub,
-    heroEvent,
-    'fan'
-  )
+  const {
+    reservableEvents: _,
+    canReserve,
+    ...actions
+  } = resolveProfileActions(pub, heroEvent, 'fan')
   return (
     // Prévia não age: reservar ou marcar presença como dono não faz sentido.
     <div inert>
@@ -71,7 +71,7 @@ function FanActionsPreview({
         presence={
           heroEvent &&
           // Presença só em jogo que não começou, como no servidor.
-          reservableEvents.includes(heroEvent) && (
+          heroEvent.startsAt.getTime() > Date.now() && (
             <HeroAttendance
               game={heroEvent}
               attendance={{ attending: false, count: null }}

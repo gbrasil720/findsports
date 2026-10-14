@@ -9,7 +9,7 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { recebeReservas } from '../lib/pub-search/shared'
-import { receivesReservations } from '../lib/reservation-intake'
+import { barReceivesReservations } from '../lib/reservation-intake'
 import { contextFor, load } from './integration-seed'
 
 /**
@@ -168,9 +168,10 @@ integrationTest(
 
 /**
  * "Aceita reserva" (10) não é marcada: é a mesma coisa que receber reservas.
- * O filtro e o perfil a derivam da regra de `receivesReservations`, com o id
- * gravado em `bar.amenities` ou sem ele; a regra em SQL (`recebeReservas`) e
- * a em TypeScript têm de dizer a mesma coisa.
+ * O filtro e o perfil a derivam da regra de `barReceivesReservations` (Elite
+ * e algum jogo que não acabou marcado para receber), com o id gravado em
+ * `bar.amenities` ou sem ele; a regra em SQL (`recebeReservas`) e a em
+ * TypeScript têm de dizer a mesma coisa.
  */
 integrationTest(
   'filtro e perfil dão "Aceita reserva" a todo bar que recebe reservas, e só a eles, nos três caminhos',
@@ -187,9 +188,12 @@ integrationTest(
 
     // 1 = telão, 10 = aceita reserva. Quem não recebe tem o id 10 gravado, de
     // quando se marcava à mão; dos dois que recebem, um nunca o marcou.
+    // `accepts` marca o jogo que ainda vai acontecer; `encerradoMarcado` põe
+    // também um jogo já encerrado marcado, que não conta.
     const casos: {
       rotulo: string
       accepts: boolean
+      encerradoMarcado?: boolean
       assinatura?: Omit<typeof subscription.$inferInsert, 'barId'>
       amenities: number[]
       recebe: boolean
@@ -213,6 +217,14 @@ integrationTest(
         accepts: false,
         assinatura: { plan: 'elite', status: 'active' },
         amenities: [1, 10],
+        recebe: false
+      },
+      {
+        rotulo: 'Elite vigente, só um jogo encerrado marcado',
+        accepts: false,
+        encerradoMarcado: true,
+        assinatura: { plan: 'elite', status: 'active' },
+        amenities: [10],
         recebe: false
       },
       {
@@ -292,7 +304,6 @@ integrationTest(
           latitude: (lat + fixture.offset).toFixed(8),
           longitude: lng.toFixed(8),
           amenities: fixture.amenities,
-          acceptsReservations: fixture.accepts,
           isActive: true
         })
         if (fixture.assinatura) {
@@ -304,8 +315,18 @@ integrationTest(
           barId: fixture.barId,
           sportId,
           championship: `Jogo ${fixture.barId}`,
-          startsAt: new Date(now.getTime() + 60 * 60_000)
+          startsAt: new Date(now.getTime() + 60 * 60_000),
+          acceptsReservations: fixture.accepts
         })
+        if (fixture.encerradoMarcado) {
+          await db.insert(event).values({
+            barId: fixture.barId,
+            sportId,
+            championship: `Jogo encerrado ${fixture.barId}`,
+            startsAt: new Date(now.getTime() - 6 * HOUR),
+            acceptsReservations: true
+          })
+        }
       }
 
       // As duas regras, lado a lado, para os mesmos bares.
@@ -316,10 +337,18 @@ integrationTest(
           barIds.map((id) => sql`${id}`),
           sql`, `
         )})`)
+      // Como `pubs.getById`: só os jogos ainda na janela do perfil.
       const emTypeScript = await db.query.bar.findMany({
         where: inArray(bar.id, barIds),
-        columns: { id: true, acceptsReservations: true },
-        with: { subscription: true }
+        columns: { id: true },
+        with: {
+          subscription: true,
+          events: {
+            columns: { acceptsReservations: true },
+            where: (game, { gte }) =>
+              gte(game.startsAt, new Date(now.getTime() - 3 * HOUR))
+          }
+        }
       })
       const esperado = Object.fromEntries(
         fixtures.map((fixture) => [fixture.barId, fixture.recebe])
@@ -331,10 +360,7 @@ integrationTest(
         Object.fromEntries(
           emTypeScript.map((row) => [
             row.id,
-            receivesReservations(
-              row.acceptsReservations,
-              row.subscription ?? null
-            )
+            barReceivesReservations(row.events, row.subscription ?? null)
           ])
         )
       ).toEqual(esperado)

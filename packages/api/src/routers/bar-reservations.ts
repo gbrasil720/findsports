@@ -207,7 +207,8 @@ export const barReservationsRouter = router({
       columns: { reservationCap: true },
       with: {
         events: {
-          where: notEnded,
+          // Teto só faz sentido em jogo que recebe pedido.
+          where: and(notEnded, eq(event.acceptsReservations, true)),
           columns: {
             id: true,
             championship: true,

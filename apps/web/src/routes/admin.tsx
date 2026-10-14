@@ -205,7 +205,8 @@ function PubDashboard() {
 
   // O servidor confere o plano de novo; aqui só decide se a aba existe.
   const elite = subscription?.currentPlan === 'elite'
-  const receivesReservations = bar.acceptsReservations && elite
+  // Derivado no servidor: Elite e algum jogo por vir marcado para reservas.
+  const receivesReservations = bar.receivesReservations
   // Reserva em aberto segura a aba de quem não recebe mais pedido novo: o
   // torcedor continua com o código, e o bar precisa responder e validar
   // (WEB-341).

@@ -70,7 +70,7 @@ export function ReservationsTab({
             </p>
             <p className="text-sm opacity-90">
               {elite
-                ? 'O recebimento de reservas está desligado em Meu espaço.'
+                ? 'Nenhum jogo por vir aceita reservas. Marque “Aceitar reservas neste jogo” ao criar ou editar um jogo em Minha grade.'
                 : 'Receber reservas é um recurso do plano Elite.'}{' '}
               As reservas abaixo continuam valendo: responda as pendentes e
               valide o código de quem chegar.

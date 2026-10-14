@@ -32,6 +32,8 @@ export type PubOutput = NonNullable<
 >
 
 export type ProfileGame = ProfileEvent & {
+  /** Efetivo, do servidor: o jogo está marcado e o bar tem Elite. */
+  acceptsReservations: boolean
   reservationsSoldOut: boolean
   attendance: PubOutput['events'][number]['attendance']
 }
@@ -54,6 +56,7 @@ export function normalizePub(raw: PubOutput): NormalizedPub {
       startsAt: new Date(event.startsAt),
       endsAt: event.endsAt ? new Date(event.endsAt) : null,
       participantFreeText: event.participantFreeText,
+      acceptsReservations: event.acceptsReservations,
       reservationsSoldOut: event.reservationsSoldOut,
       attendance: event.attendance,
       sport: { name: event.sport.name, slug: event.sport.slug },
@@ -71,9 +74,10 @@ export function normalizePub(raw: PubOutput): NormalizedPub {
  * O que "Garanta seu lugar" oferece a quem visita. O perfil e a prévia do dono
  * no painel passam por aqui, para a prévia não divergir do que o torcedor vê.
  *
- * `acceptsReservations` já vem efetivo do servidor (quer E pode). Reserva só
- * para jogo que ainda não começou e conta de torcedor; o servidor confere de
- * novo ao gravar.
+ * `acceptsReservations` de cada jogo já vem efetivo do servidor (o bar marcou
+ * o jogo E tem Elite). Reserva só para jogo marcado que ainda não começou e
+ * conta de torcedor; o servidor confere de novo ao gravar. Jogo desmarcado
+ * nem entra na lista do pedido.
  */
 export function resolveProfileActions(
   pub: NormalizedPub,
@@ -82,12 +86,9 @@ export function resolveProfileActions(
   now: number = Date.now()
 ) {
   const reservableEvents = pub.events.filter(
-    (event) => event.startsAt.getTime() > now
+    (event) => event.acceptsReservations && event.startsAt.getTime() > now
   )
-  const offersReservation =
-    pub.acceptsReservations &&
-    viewerRole === 'fan' &&
-    reservableEvents.length > 0
+  const offersReservation = viewerRole === 'fan' && reservableEvents.length > 0
   const canReserve =
     offersReservation &&
     reservableEvents.some((event) => !event.reservationsSoldOut)

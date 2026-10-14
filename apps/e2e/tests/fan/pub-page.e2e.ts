@@ -98,11 +98,14 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({
       house_offer: 'Chopp em dobro no intervalo',
       menu_url: menuUrl,
       phone: '11987654321',
-      phone_accepts_whatsapp: true,
-      accepts_reservations: true
+      phone_accepts_whatsapp: true
     }
   })
-  await createEvent({ barId: pub.barId, startsAt: days(2) })
+  await createEvent({
+    barId: pub.barId,
+    startsAt: days(2),
+    acceptsReservations: true
+  })
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
@@ -202,8 +205,15 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
   isMobile
 }) => {
   const spot = uniqueSpot()
-  const pub = await pubAt(spot, { bar: { accepts_reservations: true } })
-  const eventId = await createEvent({ barId: pub.barId, startsAt: days(3) })
+  const pub = await pubAt(spot)
+  // O primeiro jogo não aceita reserva: fica fora do pedido.
+  const unmarked = `Sem reserva ${randomUUID().slice(0, 6)}`
+  await createEvent({ barId: pub.barId, startsAt: days(2), freeText: unmarked })
+  const eventId = await createEvent({
+    barId: pub.barId,
+    startsAt: days(3),
+    acceptsReservations: true
+  })
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
@@ -214,6 +224,8 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
     .press('Enter')
 
   const dialog = page.getByRole('dialog', { name: 'Reservar mesa' })
+  await expect(dialog.getByRole('radio')).toHaveCount(1)
+  await expect(dialog).not.toContainText(unmarked)
   const people = dialog.getByLabel('Quantas pessoas')
   const send = dialog.getByRole('button', { name: 'Enviar pedido' })
   await people.fill('21')
@@ -243,17 +255,18 @@ test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
   })
 })
 
-test('reserva não aparece fora do Elite ou com reservas desligadas', async ({
+test('reserva não aparece fora do Elite ou sem jogo que aceite reservas', async ({
   page,
   isMobile
 }) => {
   const spot = uniqueSpot()
-  const pro = await pubAt(spot, {
-    subscription: { plan: 'pro' },
-    bar: { accepts_reservations: true }
+  const pro = await pubAt(spot, { subscription: { plan: 'pro' } })
+  const off = await pubAt(spot)
+  await createEvent({
+    barId: pro.barId,
+    startsAt: days(2),
+    acceptsReservations: true
   })
-  const off = await pubAt(spot, { bar: { accepts_reservations: false } })
-  await createEvent({ barId: pro.barId, startsAt: days(2) })
   await createEvent({ barId: off.barId, startsAt: days(2) })
   await signInFanAt(page, spot)
 

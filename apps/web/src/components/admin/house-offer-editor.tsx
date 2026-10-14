@@ -30,7 +30,7 @@ export function HouseOfferEditor({ houseOffer, plan, ...form }: Props) {
       id="admin-house-offer"
       tier="elite"
       title="Oferta da casa"
-      description="O que você oferece a quem chega pela Onside. Aparece no perfil público do seu bar enquanto o recebimento de reservas estiver ligado. A promessa é sua com o cliente: a Onside não define nem confere o conteúdo."
+      description="O que você oferece a quem chega pela Onside. Aparece no perfil público do seu bar enquanto algum jogo seu aceitar reservas. A promessa é sua com o cliente: a Onside não define nem confere o conteúdo."
       plan={plan}
       loadingLabel="Carregando oferta da casa…"
       skeleton={

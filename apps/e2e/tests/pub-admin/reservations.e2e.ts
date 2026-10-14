@@ -6,12 +6,14 @@ import { createPub, inDays } from '../../fixtures/pubs'
 import { createEvent, createReservation } from '../../fixtures/reservations'
 import { answerCookieConsent, expect, test } from '../../fixtures/test'
 
-// Fila de pedidos de reserva (WEB-125): bar Elite com recebimento ligado
-// confirma ou recusa cada pedido.
+// Fila de pedidos de reserva (WEB-125): bar Elite com jogo que aceita
+// reservas confirma ou recusa cada pedido.
 
 async function openQueue(page: Page) {
-  const pub = await createPub({ bar: { accepts_reservations: true } })
-  const { eventId } = await createEvent(pub.barId)
+  const pub = await createPub()
+  const { eventId } = await createEvent(pub.barId, {
+    acceptsReservations: true
+  })
   await signIn(page, pub.user)
   return { ...pub, eventId }
 }
@@ -72,10 +74,9 @@ test('sem pedidos, a aba diz que está vazia', async ({ page }) => {
 test('link direto para Reservas sem Elite cai na Visão geral', async ({
   page
 }) => {
-  const pub = await createPub({
-    subscription: { plan: 'pro' },
-    bar: { accepts_reservations: true }
-  })
+  const pub = await createPub({ subscription: { plan: 'pro' } })
+  // Jogo marcado de quando era Elite: sem o plano, não recebe.
+  await createEvent(pub.barId, { acceptsReservations: true })
   await signIn(page, pub.user)
   await page.goto('/admin#admin-reservas')
   await expect(page.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute(
@@ -195,9 +196,11 @@ test('trial Elite vencido com reserva confirmada: a aba Reservas fica, o código
   const pub = await createPub({
     subscription: { status: 'trialing', currentPeriodEnd: inDays(-1) },
     // 1 = "Telão / projetor", 10 = "Aceita reserva".
-    bar: { accepts_reservations: true, amenities: [1, 10] }
+    bar: { amenities: [1, 10] }
   })
-  const { eventId } = await createEvent(pub.barId)
+  const { eventId } = await createEvent(pub.barId, {
+    acceptsReservations: true
+  })
   const confirmed = await createReservation(eventId, {
     offerSnapshot: 'Chopp em dobro'
   })
