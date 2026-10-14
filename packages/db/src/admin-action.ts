@@ -9,7 +9,11 @@ export const ADMIN_ACTION_KINDS = [
   'user.unban',
   'user.set_role',
   'config.set',
-  'config.reset'
+  'config.reset',
+  'bar.sync_search',
+  'bar.extend_trial',
+  'bar.take_off_air',
+  'bar.put_on_air'
 ] as const
 
 export type AdminActionKind = (typeof ADMIN_ACTION_KINDS)[number]

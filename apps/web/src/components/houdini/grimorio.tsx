@@ -1,3 +1,4 @@
+import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
 
@@ -27,6 +28,12 @@ function show(value: unknown) {
   const v = asRecord(value)
   if (v.padrao) return 'padrão'
   return JSON.stringify(v.value ?? v.role ?? value)
+}
+
+function planName(plan: unknown) {
+  return typeof plan === 'string' && plan in PLAN_NAMES
+    ? PLAN_NAMES[plan as keyof typeof PLAN_NAMES]
+    : '?'
 }
 
 function duration(seconds: unknown) {
@@ -99,6 +106,44 @@ export function describe(entry: GrimorioEntry): {
         tone: 'warn',
         text: `desfez ${label}`,
         detail: `${show(entry.before)} → padrão`
+      }
+    case 'bar.sync_search':
+      return {
+        icon: 'store',
+        tone: 'warn',
+        text: `sincronizou a busca de ${label}`,
+        detail: `${planName(asRecord(entry.before).plan)} → ${planName(asRecord(entry.after).plan)}`
+      }
+    case 'bar.extend_trial': {
+      const before = asRecord(entry.before)
+      const after = asRecord(entry.after)
+      const end =
+        typeof after.currentPeriodEnd === 'string'
+          ? `até ${formatDateTime(after.currentPeriodEnd)}`
+          : null
+      return {
+        icon: 'hourglass',
+        tone: 'roxo',
+        text: `estendeu o teste de ${label} em ${detail.days ?? '?'} dias`,
+        detail:
+          [end, !before.isActive && after.isActive ? 'religou o bar' : null]
+            .filter(Boolean)
+            .join(' · ') || null
+      }
+    }
+    case 'bar.take_off_air':
+      return {
+        icon: 'vanish',
+        tone: 'bad',
+        text: `tirou ${label} do ar`,
+        detail: null
+      }
+    case 'bar.put_on_air':
+      return {
+        icon: 'back',
+        tone: 'ok',
+        text: `religou ${label}`,
+        detail: null
       }
     default:
       return {

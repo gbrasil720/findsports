@@ -1,4 +1,3 @@
-import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -6,10 +5,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 
+import {
+  BarTricks,
+  SearchDriftAlert,
+  STANDING_LABELS,
+  searchDrift
+} from '@/components/houdini/bar-tricks'
 import { formatDate, formatDateTime } from '@/components/houdini/format'
-import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
-import { LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -19,18 +22,6 @@ export const Route = createFileRoute('/houdini/_app/bares')({
 })
 
 type Bar = inferRouterOutputs<AppRouter>['adminBars']['list']['bars'][number]
-
-const STANDING_LABELS: Record<SubscriptionStanding, string> = {
-  current: 'em dia',
-  past_due: LAPSED_COPY.past_due.label,
-  trial_ended: LAPSED_COPY.trial_ended.label,
-  ended: 'encerrada'
-}
-
-/** A busca ordena por `bar.plan`, que pode atrasar até um dia (WEB-129). */
-function searchDrift(bar: Bar) {
-  return bar.currentPlan !== null && bar.currentPlan !== bar.barPlan
-}
 
 function BaresPage() {
   const { env, admin } = Route.useRouteContext()
@@ -279,39 +270,33 @@ function BarPanel({ bar }: { bar: Bar }) {
         </div>
       </dl>
 
-      {searchDrift(bar) ? (
-        <div className="hd-alert" role="status">
-          <span className="hd-alert-title">
-            <Icon name="warn" size={16} strokeWidth={1.8} />
-            Busca desatualizada
-          </span>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 13,
-              lineHeight: 1.5,
-              color: 'var(--hd-soft)'
-            }}
-          >
-            O plano é {bar.currentPlan ? PLAN_NAMES[bar.currentPlan] : '—'}, mas
-            a busca ainda ordena este bar como {PLAN_NAMES[bar.barPlan]}. A
-            reconciliação diária arruma em até 24 h.
-          </p>
-        </div>
-      ) : null}
+      <SearchDriftAlert key={bar.id} bar={bar} />
 
-      {bar.stripeUrl ? (
-        <a
-          className="hd-btn"
-          href={bar.stripeUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ justifyContent: 'flex-start' }}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          paddingTop: 16,
+          borderTop: '1px solid var(--hd-line)'
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--hd-faint)'
+          }}
         >
-          <Icon name="external" size={16} strokeWidth={1.8} />
-          Abrir no Stripe
-        </a>
-      ) : null}
+          Truques
+        </span>
+        <BarTricks key={bar.id} bar={bar} showFicha />
+      </div>
+      <p className="hd-small" style={{ margin: 0 }}>
+        Tudo o que se faz aqui vai para o Grimório.
+      </p>
     </>
   )
 }

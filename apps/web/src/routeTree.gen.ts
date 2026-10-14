@@ -51,6 +51,7 @@ import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/f
 import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/feiticos'
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
+import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -263,6 +264,11 @@ const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   path: '/pessoas',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppBaresBarIdRoute = HoudiniAppBaresBarIdRouteImport.update({
+  id: '/bares_/$barId',
+  path: '/bares/$barId',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/': typeof HoudiniAppIndexRoute
+  '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -348,6 +355,7 @@ export interface FileRoutesByTo {
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -393,6 +401,7 @@ export interface FileRoutesById {
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
+  '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -438,6 +447,7 @@ export interface FileRouteTypes {
     | '/houdini/grimorio'
     | '/houdini/pessoas'
     | '/houdini/'
+    | '/houdini/bares/$barId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/houdini/feiticos'
     | '/houdini/grimorio'
     | '/houdini/pessoas'
+    | '/houdini/bares/$barId'
   id:
     | '__root__'
     | '/'
@@ -524,6 +535,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/grimorio'
     | '/houdini/_app/pessoas'
     | '/houdini/_app/'
+    | '/houdini/_app/bares_/$barId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -859,6 +871,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppPessoasRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/bares_/$barId': {
+      id: '/houdini/_app/bares_/$barId'
+      path: '/bares/$barId'
+      fullPath: '/houdini/bares/$barId'
+      preLoaderRoute: typeof HoudiniAppBaresBarIdRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
   }
 }
 
@@ -869,6 +888,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
   HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
+  HoudiniAppBaresBarIdRoute: typeof HoudiniAppBaresBarIdRoute
 }
 
 const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
@@ -878,6 +898,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
   HoudiniAppIndexRoute: HoudiniAppIndexRoute,
+  HoudiniAppBaresBarIdRoute: HoudiniAppBaresBarIdRoute,
 }
 
 const HoudiniAppRouteWithChildren = HoudiniAppRoute._addFileChildren(
