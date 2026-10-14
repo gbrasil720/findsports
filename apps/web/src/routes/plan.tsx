@@ -8,6 +8,7 @@ import CircleInfo from 'reicon-react/icons/CircleInfo'
 import Loader from 'reicon-react/icons/Loader'
 import { DowngradeConfirmDialog } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
+import { TrialStartedDialog } from '@/components/billing/trial-started-dialog'
 import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
 import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { PlanCard } from '@/components/pricing/plan-card'
@@ -25,6 +26,7 @@ import {
   getTrialNotice,
   PLAN_CATALOG,
   type Plan,
+  type PlanOrigin,
   parsePlanOrigin
 } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -35,9 +37,15 @@ import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/plan')({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { origin?: PlanOrigin; trial?: 'started' } => {
     const origin = parsePlanOrigin(search.origin)
-    return origin ? { origin } : {}
+    return {
+      ...(origin ? { origin } : {}),
+      // Vem do fim do cadastro do bar: abre a confirmação do teste.
+      ...(search.trial === 'started' ? { trial: 'started' as const } : {})
+    }
   },
   head: () => ({
     meta: [
@@ -55,7 +63,8 @@ export const Route = createFileRoute('/plan')({
 })
 
 function PlanSelection() {
-  const { origin } = Route.useSearch()
+  const { origin, trial } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const trpc = useTRPC()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -403,6 +412,19 @@ function PlanSelection() {
           </div>
         )}
       </div>
+
+      {trial === 'started' && onTrial && subscription?.currentPeriodEnd ? (
+        <TrialStartedDialog
+          plan={subscription.plan}
+          until={subscription.currentPeriodEnd}
+          onClose={() =>
+            navigate({
+              search: ({ trial: _, ...rest }) => rest,
+              replace: true
+            })
+          }
+        />
+      ) : null}
 
       {confirming && isDowngrade && currentPlan ? (
         <DowngradeConfirmDialog

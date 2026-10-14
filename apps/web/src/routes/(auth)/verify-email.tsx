@@ -106,7 +106,7 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        navigate({ to: '/plan' })
+        navigate({ to: '/plan', search: { trial: 'started' } })
         return
       }
 

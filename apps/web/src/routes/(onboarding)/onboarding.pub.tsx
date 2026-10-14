@@ -147,7 +147,11 @@ function PubOnboarding() {
     // Deep link que esperou a liberação volta para ele; sem destino, o plano.
     // `await`: o botão segue em "salvando" até a próxima tela abrir, em vez
     // de voltar ao normal com a revisão ainda na tela (WEB-286).
-    await navigate({ to: callbackUrl === '/dashboard' ? '/plan' : callbackUrl })
+    await navigate(
+      callbackUrl === '/dashboard'
+        ? { to: '/plan', search: { trial: 'started' } }
+        : { to: callbackUrl }
+    )
   }
 
   const completeMutation = useMutation(
