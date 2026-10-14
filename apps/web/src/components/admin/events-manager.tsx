@@ -118,6 +118,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   // Sem a assinatura lida, vale o texto do Starter: o limite é o mesmo.
   const { data: subscription } = useMySubscription()
   const lapsedPlan = getLapsedPaidPlan(subscription)
+  const canEnableReservations = subscription?.currentPlan === 'elite'
   const policyBlockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const sportsErrorMessage = sportsError
     ? getUserFacingMessage(
@@ -442,12 +443,14 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   participantFreeText: editingEvent.participantFreeText ?? '',
                   acceptsReservations: editingEvent.acceptsReservations
                 }
-              : EMPTY_FORM
+              : // Bar Elite quase sempre aceita reserva: o jogo novo já vem
+                // marcado, e o dono desmarca o que não der.
+                { ...EMPTY_FORM, acceptsReservations: canEnableReservations }
           }
           sports={sports}
           loadingSports={loadingSports}
           // O servidor confere o plano de novo ao gravar.
-          canEnableReservations={subscription?.currentPlan === 'elite'}
+          canEnableReservations={canEnableReservations}
           onSave={handleSave}
           onCancel={closeModal}
           isSaving={isSaving}

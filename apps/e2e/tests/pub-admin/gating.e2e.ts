@@ -138,6 +138,16 @@ test('Pro: cardápio liberado e salvo; oferta e reservas seguem bloqueadas', asy
   )
 })
 
+test('Elite: jogo novo já vem marcado para reservas', async ({ page }) => {
+  await openSpace(page, { subscription: { plan: 'elite' } })
+  await page.goto('/admin#admin-grade')
+  await page.getByRole('button', { name: 'Novo evento' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
+  const checkbox = dialog.getByRole('checkbox', { name: RESERVATIONS })
+  await expect(checkbox).toBeChecked()
+  await expect(checkbox).toBeEnabled()
+})
+
 test('Elite marca o jogo para reservas e ganha a aba Reservas', async ({
   page
 }) => {
