@@ -84,7 +84,8 @@ async function sendOnBehalf(
 }
 
 /**
- * WEB-193: a gestão de usuários (hoje Pessoas, `/houdini/pessoas`) buscava os 200 mais novos pelo
+ * WEB-193: a gestão de usuários (hoje Pessoas, `/houdini/pessoas`) buscava
+ * os 200 mais novos pelo
  * `admin.listUsers` do better-auth e filtrava no navegador — conta mais antiga
  * não aparecia nem pelo e-mail exato. A busca e o papel vão para o WHERE e o
  * corte de 200 vem depois deles. Aqui e não no `listUsers`: ele busca um campo
