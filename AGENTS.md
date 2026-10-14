@@ -295,13 +295,18 @@ invente layout que o projeto não tem.
 - **Splash:** `apps/mobile/components/splash.tsx`, a tela "02 Splash" do design (agenda do dia
   em faixas atrás do "ON / SIDE"), clara ou escura pelo tema do sistema. A splash nativa
   (`app.json`) é só a cor de fundo e fica até as fontes carregarem (`app/_layout.tsx`). As
-  letras grandes são vetor (`splash-letters.ts`), não texto. A agenda ainda é a de exemplo do
-  design (`SAMPLE_AGENDA`): falta vir da API.
+  letras grandes são vetor (`splash-letters.ts`), não texto.
+- **Agenda da splash:** os jogos de hoje vêm de `pubs.todayGames` (pública: bares no ar, dia de
+  Brasília, o mesmo jogo em vários bares conta uma vez). A abertura espera a resposta por até
+  600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
+  contagem** "N jogos hoje".
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`.
-- **Ver sem aparelho:** `bun run --cwd apps/mobile web` abre o app no navegador (é só prévia, o
-  web de verdade é `apps/web`). Print de tela: exporte com `expo export --platform web` e use o
-  Playwright de `apps/e2e`.
+- **Duas versões de React no repositório:** o Expo traz `react` e `react-dom` 19.2.3 próprios.
+  Pacote de `packages/*` que dependa de biblioteca de React **declara `react` e `react-dom`
+  na faixa do web** (`^19.2.5`), senão o bun liga a biblioteca à versão do Expo e o web quebra
+  com "Incompatible React versions". `@types/react` é um só, pelo catálogo da raiz. Por isso o
+  app não tem alvo web (`react-dom` próprio): quem confere é o aparelho.
 - Conferir sem aparelho: `cd apps/mobile && bunx expo export --platform ios --output-dir <pasta>`
   empacota com o Metro. Mapa e outros módulos nativos vão exigir build de desenvolvimento
   (`expo run:ios` / `expo run:android`), não Expo Go.

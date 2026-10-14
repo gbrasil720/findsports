@@ -28,7 +28,9 @@ import { SPLASH_ON, SPLASH_SIDE } from './splash-letters'
  * uma vez e sai. As medidas (px a 390 de largura) e os tempos são os de lá.
  */
 
-// Agenda de exemplo, a do design. Enquanto não vier da API, é só cenário.
+// Agenda de exemplo, a do design: cenário para quando não há jogo de verdade
+// para mostrar (nenhum cadastrado hoje, ou a API não respondeu a tempo). Com
+// ela a contagem do rodapé não aparece: não se conta jogo inventado.
 const SAMPLE_AGENDA = [
   'COR × PAL 21:30',
   'LAL × BOS 22:00',
@@ -69,6 +71,7 @@ const THEMES = {
 type Theme = (typeof THEMES)[keyof typeof THEMES]
 
 const ROWS = 12
+const MIN_ITEMS = 6 // jogos por volta de uma faixa, como no design
 const LINE = 164 // altura da máscara de cada linha do "ON / SIDE"
 const BASELINE = 161.5 // onde a linha de base das letras cai dentro da máscara
 const SQUARE = 45
@@ -116,9 +119,14 @@ function Band({
     ]
   }))
 
-  // Cada faixa começa num jogo diferente.
+  // Cada faixa começa num jogo diferente. Com poucos jogos no dia a fila se
+  // repete até encher a faixa, senão sobraria vazio entre uma volta e outra.
   const start = index % agenda.length
-  const items = [...agenda.slice(start), ...agenda.slice(0, start)]
+  const turn = [...agenda.slice(start), ...agenda.slice(0, start)]
+  const items = Array.from(
+    { length: Math.max(MIN_ITEMS, turn.length) },
+    (_, i) => turn[i % turn.length] as string
+  )
   const run = (copy: number) => (
     <View
       key={copy}
@@ -127,8 +135,9 @@ function Band({
       }
       style={styles.run}
     >
-      {items.map((item) => (
-        <View key={item} style={styles.run}>
+      {items.map((item, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a fila repete jogos, a posição é a identidade
+        <View key={i} style={styles.run}>
           <Text
             style={[
               styles.bandText,
@@ -210,12 +219,15 @@ function Line({
 }
 
 export function Splash({
-  agenda = SAMPLE_AGENDA,
+  agenda,
   onDone
 }: {
+  /** Os jogos de hoje, já escritos como vão na faixa ("FLAMENGO × PALMEIRAS 16:00"). */
   agenda?: string[]
   onDone: () => void
 }) {
+  const real = agenda && agenda.length > 0 ? agenda : null
+  const shown = real ?? SAMPLE_AGENDA
   const theme = THEMES[useColorScheme() === 'dark' ? 'dark' : 'light']
   const { width } = useWindowDimensions()
   const scale = Math.min(
@@ -244,7 +256,9 @@ export function Splash({
   }))
   const exitStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }))
 
-  const count = `${agenda.length} ${agenda.length === 1 ? 'JOGO' : 'JOGOS'} HOJE`
+  const count = real
+    ? `${real.length} ${real.length === 1 ? 'JOGO' : 'JOGOS'} HOJE`
+    : null
 
   return (
     <Animated.View
@@ -259,7 +273,7 @@ export function Splash({
       <View pointerEvents="none" style={styles.bands}>
         {Array.from({ length: ROWS }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: as faixas são fixas, a posição é a identidade
-          <Band key={i} index={i} agenda={agenda} theme={theme} />
+          <Band key={i} index={i} agenda={shown} theme={theme} />
         ))}
       </View>
       <LinearGradient
@@ -287,7 +301,11 @@ export function Splash({
         <Text style={[styles.footerText, { color: theme.footer }]}>
           O JOGO É AQUI
         </Text>
-        <Text style={[styles.footerText, { color: theme.count }]}>{count}</Text>
+        {count ? (
+          <Text style={[styles.footerText, { color: theme.count }]}>
+            {count}
+          </Text>
+        ) : null}
       </Animated.View>
     </Animated.View>
   )

@@ -25,7 +25,12 @@ import { recommendationEvent } from '@findsports_oficial/db/schema/recommendatio
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { fanProcedure, protectedProcedure, router } from '../index'
+import {
+  fanProcedure,
+  protectedProcedure,
+  publicProcedure,
+  router
+} from '../index'
 import {
   MAX_AMENITY_FILTER,
   normalizeAmenityIds,
@@ -43,7 +48,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
-import { byMatchOrder } from '../lib/game-participants'
+import { byMatchOrder, gameTitle } from '../lib/game-participants'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -276,7 +281,44 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
   }))
 }
 
+/** Teto da agenda do dia: é cenário de splash, não listagem. */
+const TODAY_GAMES_LIMIT = 30
+
 export const pubsRouter = router({
+  /**
+   * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
+   * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
+   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez.
+   * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
+   */
+  todayGames: publicProcedure.query(async () => {
+    const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+    const games = await db.execute<{ title: string; starts_at: string }>(sql`
+      SELECT g.title, g.starts_at
+      FROM (
+        SELECT
+          ${gameTitle({
+            id: sql`e.id`,
+            participantFreeText: sql`e.participant_free_text`,
+            championship: sql`e.championship`
+          })} AS title,
+          e.starts_at
+        FROM event e
+        JOIN bar b ON b.id = e.bar_id
+        WHERE b.is_active
+          AND e.starts_at >= ${dayStart}
+          AND e.starts_at < ${dayStart} + interval '1 day'
+      ) g
+      GROUP BY g.title, g.starts_at
+      ORDER BY g.starts_at, g.title
+      LIMIT ${TODAY_GAMES_LIMIT}
+    `)
+    return games.rows.map((game) => ({
+      title: game.title,
+      startsAt: utcIso(game.starts_at)
+    }))
+  }),
+
   search: protectedProcedure
     .input(
       z.object({
