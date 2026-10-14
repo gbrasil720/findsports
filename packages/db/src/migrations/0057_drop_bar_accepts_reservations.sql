@@ -1,0 +1,1 @@
+ALTER TABLE "bar" DROP COLUMN "accepts_reservations";

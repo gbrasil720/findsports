@@ -14,9 +14,8 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  *
  * - capacidade — o bar **pode**: Elite vigente, pela assinatura;
  * - disposição — o bar **quer**, jogo a jogo: `event.accepts_reservations`,
- *   desligado por padrão. Era um interruptor do bar inteiro
- *   (`bar.accepts_reservations`, obsoleto), que abria pedido até em jogo em
- *   que o bar não segura mesa;
+ *   desligado por padrão. Era um interruptor do bar inteiro (removido na
+ *   WEB-382), que abria pedido até em jogo em que o bar não segura mesa;
  * - disponibilidade — ainda **cabe** neste jogo: teto de pessoas confirmadas
  *   (WEB-152, ADR 0003 "Teto por jogo").
  *
