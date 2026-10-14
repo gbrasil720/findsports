@@ -19,16 +19,24 @@
       "predictiveBackGestureEnabled": false,
       "package": "sh.onside.app"
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-font",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 160,
+          "image": "./assets/images/splash-blank.png",
+          "imageWidth": 1,
           "resizeMode": "contain",
-          "backgroundColor": "#f1eee6"
+          "backgroundColor": "#c9f135",
+          "dark": {
+            "backgroundColor": "#12120f"
+          }
         }
       ]
     ],

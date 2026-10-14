@@ -269,6 +269,12 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `apps/mobile` (pacote `mobile`), montado como o Better-T-Stack monta `native-uniwind`, sem a
 HeroUI Native. Esquema `onside://`, identificador `sh.onside.app` (iOS e Android).
 
+**Design do app:** projeto no Claude Design,
+<https://claude.ai/design/p/5185ab40-42b3-4469-a0a7-9e96448d9e24> (a tela de entrada é o
+arquivo `Onside Selecao 1 Entrada.dc.html`). É a referência de desenho e de texto das telas:
+leia o arquivo da tela antes de implementá-la (`DesignSync`, depois de `/design-login`) e não
+invente layout que o projeto não tem.
+
 - **Não tem backend próprio.** Fala com a API do web: `EXPO_PUBLIC_SERVER_URL` + `/api/trpc` e
   `/api/auth` (`apps/mobile/.env`, modelo em `.env.example`). Só o **tipo** do router cruza a
   fronteira (`import type { AppRouter }` em `lib/trpc.ts`); código de servidor nunca entra no
@@ -286,6 +292,16 @@ HeroUI Native. Esquema `onside://`, identificador `sh.onside.app` (iOS e Android
   versão à mão: `bunx expo install --check` diz o que o SDK aceita.
 - `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
 - Tokens da Onside em `apps/mobile/global.css` (`bg-ink`, `text-paper`, `bg-acid`...).
+- **Splash:** `apps/mobile/components/splash.tsx`, a tela "02 Splash" do design (agenda do dia
+  em faixas atrás do "ON / SIDE"), clara ou escura pelo tema do sistema. A splash nativa
+  (`app.json`) é só a cor de fundo e fica até as fontes carregarem (`app/_layout.tsx`). As
+  letras grandes são vetor (`splash-letters.ts`), não texto. A agenda ainda é a de exemplo do
+  design (`SAMPLE_AGENDA`): falta vir da API.
+- **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
+  não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`.
+- **Ver sem aparelho:** `bun run --cwd apps/mobile web` abre o app no navegador (é só prévia, o
+  web de verdade é `apps/web`). Print de tela: exporte com `expo export --platform web` e use o
+  Playwright de `apps/e2e`.
 - Conferir sem aparelho: `cd apps/mobile && bunx expo export --platform ios --output-dir <pasta>`
   empacota com o Metro. Mapa e outros módulos nativos vão exigir build de desenvolvimento
   (`expo run:ios` / `expo run:android`), não Expo Go.
