@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'expo-router'
+import { Link, Redirect } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { authClient } from '@/lib/auth-client'
@@ -12,6 +12,9 @@ export default function Home() {
   const insets = useSafeAreaInsets()
   const session = authClient.useSession()
   const api = useQuery(trpc.appConfig.getPublic.queryOptions())
+
+  // Sem sessão, o app começa pela apresentação.
+  if (!session.isPending && !session.data) return <Redirect href="/intro" />
 
   const apiStatus = api.isPending
     ? 'Conectando à API…'

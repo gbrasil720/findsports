@@ -300,6 +300,10 @@ invente layout que o projeto não tem.
   Brasília, o mesmo jogo em vários bares conta uma vez). A abertura espera a resposta por até
   600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
   contagem** "N jogos hoje".
+- **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
+  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
+  imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
+  da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`.
 - **Duas versões de React no repositório:** o Expo traz `react` e `react-dom` 19.2.3 próprios.

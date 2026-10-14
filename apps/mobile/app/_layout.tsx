@@ -57,6 +57,9 @@ function useTodayAgenda() {
 export default function Layout() {
   const [fontsLoaded] = useFonts({
     Anton: require('../assets/fonts/Anton-Regular.ttf'),
+    'Archivo-Regular': require('../assets/fonts/Archivo-Regular.ttf'),
+    'Archivo-SemiBold': require('../assets/fonts/Archivo-SemiBold.ttf'),
+    'Archivo-Bold': require('../assets/fonts/Archivo-Bold.ttf'),
     'GeistMono-SemiBold': require('../assets/fonts/GeistMono-SemiBold.ttf')
   })
   const agenda = useTodayAgenda()
