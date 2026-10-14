@@ -407,6 +407,13 @@
       "when": 1792013250485,
       "tag": "0058_admin_action",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792013722153,
+      "tag": "0059_app_config_expires_at",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,24 @@ export const Route = createFileRoute('/houdini/_app/feiticos')({
 
 type Spell = inferRouterOutputs<AppRouter>['appConfig']['list'][number]
 
+// WEB-387: passado o prazo, o feitiço volta ao padrão sozinho.
+const PRAZOS = [
+  { label: '15 min', minutes: 15 },
+  { label: '1 h', minutes: 60 },
+  { label: '24 h', minutes: 24 * 60 },
+  { label: 'Sem prazo', minutes: null }
+] as const
+
+function remaining(expiresAt: string, now = Date.now()) {
+  const minutes = Math.max(
+    0,
+    Math.round((Date.parse(expiresAt) - now) / 60_000)
+  )
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.floor(minutes / 60)
+  return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`
+}
+
 function asJson(value: unknown) {
   return JSON.stringify(value, null, 2)
 }
@@ -27,6 +45,8 @@ function FeiticosPage() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [prazo, setPrazo] = useState(1)
+  const minutes = PRAZOS[prazo]?.minutes ?? null
 
   const list = useQuery({
     ...trpc.appConfig.list.queryOptions(),
@@ -41,8 +61,13 @@ function FeiticosPage() {
 
   const set = useMutation(
     trpc.appConfig.set.mutationOptions({
-      onSuccess: async (r) => {
-        toast.success(`${r.key} lançado.`)
+      onSuccess: async (r, input) => {
+        const por = PRAZOS.find((p) => p.minutes === input.expiresInMinutes)
+        toast.success(
+          input.expiresInMinutes && por
+            ? `${r.key} lançado por ${por.label}.`
+            : `${r.key} lançado.`
+        )
         await reload()
       },
       onError: (error) =>
@@ -88,6 +113,34 @@ function FeiticosPage() {
           ) : null}
         </div>
 
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 10
+          }}
+        >
+          <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
+            Lançar por
+          </span>
+          <fieldset className="hd-seg" aria-label="Prazo do feitiço">
+            {PRAZOS.map((p, index) => (
+              <button
+                key={p.label}
+                type="button"
+                aria-pressed={prazo === index}
+                onClick={() => setPrazo(index)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </fieldset>
+          <span className="hd-small">
+            Acabou o prazo, o feitiço se desfaz sozinho e o Grimório anota.
+          </span>
+        </div>
+
         {list.isError ? (
           <div className="hd-card" role="alert">
             <p style={{ margin: 0 }}>
@@ -122,7 +175,13 @@ function FeiticosPage() {
                   setOpenKey((k) => (k === spell.key ? null : spell.key))
                 }
                 busy={set.isPending || reset.isPending}
-                onSet={(value) => set.mutate({ key: spell.key, value })}
+                onSet={(value) =>
+                  set.mutate({
+                    key: spell.key,
+                    value,
+                    expiresInMinutes: minutes
+                  })
+                }
                 onReset={() => reset.mutate({ key: spell.key })}
               />
             ))}
@@ -235,6 +294,11 @@ function SpellRow({
         >
           {spell.sobrescrito ? 'lançado' : 'no padrão'}
         </span>
+        {spell.expiresAt ? (
+          <span className="hd-pill" data-tone="warn">
+            volta em {remaining(spell.expiresAt)}
+          </span>
+        ) : null}
         <span className="hd-pill">
           {spell.publico ? 'público' : 'só servidor'}
         </span>

@@ -91,7 +91,18 @@ export function describe(entry: GrimorioEntry): {
         icon: 'wand',
         tone: 'warn',
         text: `lançou ${label}`,
-        detail: `${show(entry.before)} → ${show(entry.after)}`
+        detail: `${show(entry.before)} → ${show(entry.after)}${
+          typeof detail.expiresInMinutes === 'number'
+            ? ` · por ${detail.expiresInMinutes} min`
+            : ''
+        }`
+      }
+    case 'config.expire':
+      return {
+        icon: 'hourglass',
+        tone: 'warn',
+        text: `desfez ${label}: o prazo acabou`,
+        detail: `${show(entry.before)} → padrão`
       }
     case 'config.reset':
       return {

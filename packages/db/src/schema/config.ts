@@ -31,5 +31,11 @@ export const appConfig = pgTable('app_config', {
    * para `user`, porque apagar um administrador não pode apagar — nem travar
    * — a configuração que ele deixou ligada.
    */
-  updatedBy: text('updated_by')
+  updatedBy: text('updated_by'),
+  /**
+   * WEB-387: feitiço com prazo. Passado este instante a linha não vale mais
+   * (a leitura a ignora) e some na próxima carga, com a volta escrita no
+   * Grimório. Nulo = sem prazo.
+   */
+  expiresAt: timestamp('expires_at')
 })
