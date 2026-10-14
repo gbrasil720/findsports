@@ -230,6 +230,18 @@ navegador, leia `docs/e2e.md`** — fixtures, dublês (outbox de e-mail, stub da
 LocationIQ, R2, API e webhook do Stripe), por que o servidor roda sem cache e as
 variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
+### Houdini (painel interno)
+
+O `/internal` está virando o Houdini (projeto Houdini no Linear, WEB-383 em diante),
+em `houdini.onside.sh`, servido pelo mesmo Worker. As rotas são `/houdini/*`; no host
+próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts`). No
+`www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
+`vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por
+`lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
+"Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
+`components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
+(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt).
+
 ### Routing
 
 TanStack Router file-based routing — `routeTree.gen.ts` is auto-generated, never edit manually. Route context carries `trpc` (TRPCOptionsProxy) and `queryClient`.

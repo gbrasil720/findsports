@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as HoudiniRouteImport } from './routes/houdini'
 import { Route as InternalRouteImport } from './routes/internal'
 import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
@@ -27,6 +28,8 @@ import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-emai
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
+import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as InternalAttendanceRouteImport } from './routes/internal_.attendance'
 import { Route as InternalBarsRouteImport } from './routes/internal_.bars'
 import { Route as InternalFlagsRouteImport } from './routes/internal_.flags'
@@ -42,6 +45,11 @@ import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/comm
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
+import { Route as HoudiniAppIndexRouteImport } from './routes/houdini/_app/index'
+import { Route as HoudiniAppBaresRouteImport } from './routes/houdini/_app/bares'
+import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/fantasmas'
+import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/feiticos'
+import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -61,6 +69,11 @@ const AdminRoute = AdminRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoudiniRoute = HoudiniRouteImport.update({
+  id: '/houdini',
+  path: '/houdini',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InternalRoute = InternalRouteImport.update({
@@ -132,6 +145,15 @@ const AdminValidateRoute = AdminValidateRouteImport.update({
   id: '/admin_/validate',
   path: '/admin/validate',
   getParentRoute: () => rootRouteImport,
+} as any)
+const HoudiniAppRoute = HoudiniAppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => HoudiniRoute,
+} as any)
+const HoudiniEntrarRoute = HoudiniEntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
+  getParentRoute: () => HoudiniRoute,
 } as any)
 const InternalAttendanceRoute = InternalAttendanceRouteImport.update({
   id: '/internal_/attendance',
@@ -210,12 +232,38 @@ const ApiUserAvatarRoute = ApiUserAvatarRouteImport.update({
   path: '/api/user/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HoudiniAppIndexRoute = HoudiniAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const HoudiniAppBaresRoute = HoudiniAppBaresRouteImport.update({
+  id: '/bares',
+  path: '/bares',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const HoudiniAppFantasmasRoute = HoudiniAppFantasmasRouteImport.update({
+  id: '/fantasmas',
+  path: '/fantasmas',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const HoudiniAppFeiticosRoute = HoudiniAppFeiticosRouteImport.update({
+  id: '/feiticos',
+  path: '/feiticos',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
+  id: '/pessoas',
+  path: '/pessoas',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/houdini': typeof HoudiniRouteWithChildren
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -230,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/houdini/entrar': typeof HoudiniEntrarRoute
   '/internal/attendance': typeof InternalAttendanceRoute
   '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -245,12 +294,18 @@ export interface FileRoutesByFullPath {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/bares': typeof HoudiniAppBaresRoute
+  '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
+  '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
+  '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/': typeof HoudiniAppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/houdini': typeof HoudiniAppIndexRoute
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -265,6 +320,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/houdini/entrar': typeof HoudiniEntrarRoute
   '/internal/attendance': typeof InternalAttendanceRoute
   '/internal/bars': typeof InternalBarsRoute
   '/internal/flags': typeof InternalFlagsRoute
@@ -280,6 +336,10 @@ export interface FileRoutesByTo {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/bares': typeof HoudiniAppBaresRoute
+  '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
+  '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
+  '/houdini/pessoas': typeof HoudiniAppPessoasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -287,6 +347,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/houdini': typeof HoudiniRouteWithChildren
   '/internal': typeof InternalRoute
   '/plan': typeof PlanRoute
   '/privacidade': typeof PrivacidadeRoute
@@ -301,6 +362,8 @@ export interface FileRoutesById {
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/admin_/validate': typeof AdminValidateRoute
+  '/houdini/_app': typeof HoudiniAppRouteWithChildren
+  '/houdini/entrar': typeof HoudiniEntrarRoute
   '/internal_/attendance': typeof InternalAttendanceRoute
   '/internal_/bars': typeof InternalBarsRoute
   '/internal_/flags': typeof InternalFlagsRoute
@@ -316,6 +379,11 @@ export interface FileRoutesById {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/_app/bares': typeof HoudiniAppBaresRoute
+  '/houdini/_app/fantasmas': typeof HoudiniAppFantasmasRoute
+  '/houdini/_app/feiticos': typeof HoudiniAppFeiticosRoute
+  '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/_app/': typeof HoudiniAppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -324,6 +392,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/admin'
     | '/app'
+    | '/houdini'
     | '/internal'
     | '/plan'
     | '/privacidade'
@@ -338,6 +407,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/houdini/entrar'
     | '/internal/attendance'
     | '/internal/bars'
     | '/internal/flags'
@@ -353,12 +423,18 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/bares'
+    | '/houdini/fantasmas'
+    | '/houdini/feiticos'
+    | '/houdini/pessoas'
+    | '/houdini/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
     | '/admin'
     | '/app'
+    | '/houdini'
     | '/internal'
     | '/plan'
     | '/privacidade'
@@ -373,6 +449,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/houdini/entrar'
     | '/internal/attendance'
     | '/internal/bars'
     | '/internal/flags'
@@ -388,12 +465,17 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/bares'
+    | '/houdini/fantasmas'
+    | '/houdini/feiticos'
+    | '/houdini/pessoas'
   id:
     | '__root__'
     | '/'
     | '/$'
     | '/admin'
     | '/app'
+    | '/houdini'
     | '/internal'
     | '/plan'
     | '/privacidade'
@@ -408,6 +490,8 @@ export interface FileRouteTypes {
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/admin_/validate'
+    | '/houdini/_app'
+    | '/houdini/entrar'
     | '/internal_/attendance'
     | '/internal_/bars'
     | '/internal_/flags'
@@ -423,6 +507,11 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/_app/bares'
+    | '/houdini/_app/fantasmas'
+    | '/houdini/_app/feiticos'
+    | '/houdini/_app/pessoas'
+    | '/houdini/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -430,6 +519,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
+  HoudiniRoute: typeof HoudiniRouteWithChildren
   InternalRoute: typeof InternalRoute
   PlanRoute: typeof PlanRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
@@ -489,6 +579,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/houdini': {
+      id: '/houdini'
+      path: '/houdini'
+      fullPath: '/houdini'
+      preLoaderRoute: typeof HoudiniRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/internal': {
@@ -588,6 +685,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/houdini/_app': {
+      id: '/houdini/_app'
+      path: ''
+      fullPath: '/houdini'
+      preLoaderRoute: typeof HoudiniAppRouteImport
+      parentRoute: typeof HoudiniRoute
+    }
+    '/houdini/entrar': {
+      id: '/houdini/entrar'
+      path: '/entrar'
+      fullPath: '/houdini/entrar'
+      preLoaderRoute: typeof HoudiniEntrarRouteImport
+      parentRoute: typeof HoudiniRoute
     }
     '/internal_/attendance': {
       id: '/internal_/attendance'
@@ -694,14 +805,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiUserAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/houdini/_app/': {
+      id: '/houdini/_app/'
+      path: '/'
+      fullPath: '/houdini/'
+      preLoaderRoute: typeof HoudiniAppIndexRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/houdini/_app/bares': {
+      id: '/houdini/_app/bares'
+      path: '/bares'
+      fullPath: '/houdini/bares'
+      preLoaderRoute: typeof HoudiniAppBaresRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/houdini/_app/fantasmas': {
+      id: '/houdini/_app/fantasmas'
+      path: '/fantasmas'
+      fullPath: '/houdini/fantasmas'
+      preLoaderRoute: typeof HoudiniAppFantasmasRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/houdini/_app/feiticos': {
+      id: '/houdini/_app/feiticos'
+      path: '/feiticos'
+      fullPath: '/houdini/feiticos'
+      preLoaderRoute: typeof HoudiniAppFeiticosRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/houdini/_app/pessoas': {
+      id: '/houdini/_app/pessoas'
+      path: '/pessoas'
+      fullPath: '/houdini/pessoas'
+      preLoaderRoute: typeof HoudiniAppPessoasRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
   }
 }
+
+interface HoudiniAppRouteChildren {
+  HoudiniAppBaresRoute: typeof HoudiniAppBaresRoute
+  HoudiniAppFantasmasRoute: typeof HoudiniAppFantasmasRoute
+  HoudiniAppFeiticosRoute: typeof HoudiniAppFeiticosRoute
+  HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
+  HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
+}
+
+const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
+  HoudiniAppBaresRoute: HoudiniAppBaresRoute,
+  HoudiniAppFantasmasRoute: HoudiniAppFantasmasRoute,
+  HoudiniAppFeiticosRoute: HoudiniAppFeiticosRoute,
+  HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
+  HoudiniAppIndexRoute: HoudiniAppIndexRoute,
+}
+
+const HoudiniAppRouteWithChildren = HoudiniAppRoute._addFileChildren(
+  HoudiniAppRouteChildren,
+)
+
+interface HoudiniRouteChildren {
+  HoudiniAppRoute: typeof HoudiniAppRouteWithChildren
+  HoudiniEntrarRoute: typeof HoudiniEntrarRoute
+}
+
+const HoudiniRouteChildren: HoudiniRouteChildren = {
+  HoudiniAppRoute: HoudiniAppRouteWithChildren,
+  HoudiniEntrarRoute: HoudiniEntrarRoute,
+}
+
+const HoudiniRouteWithChildren =
+  HoudiniRoute._addFileChildren(HoudiniRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   AdminRoute: AdminRoute,
   AppRoute: AppRoute,
+  HoudiniRoute: HoudiniRouteWithChildren,
   InternalRoute: InternalRoute,
   PlanRoute: PlanRoute,
   PrivacidadeRoute: PrivacidadeRoute,

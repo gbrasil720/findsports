@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import { Loader } from './components/loader'
 import { NotFoundPage } from './components/not-found/not-found-page'
 import { RouteErrorPage } from './components/route-error-page'
+import { houdiniRewriteInput, houdiniRewriteOutput } from './lib/houdini-host'
 import { getUserFacingError, shouldRetryQuery } from './lib/user-facing-error'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
@@ -94,6 +95,11 @@ export const getRouter = () => {
 
   const router = createTanStackRouter({
     routeTree,
+    // WEB-383: `houdini.onside.sh/x` é a rota `/houdini/x` (ver houdini-host).
+    rewrite: {
+      input: ({ url }) => houdiniRewriteInput(url),
+      output: ({ url }) => houdiniRewriteOutput(url)
+    },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
     context: {

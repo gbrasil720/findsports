@@ -248,6 +248,12 @@ function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonated = session?.session.impersonatedBy ? session.user : null
   const isDev = import.meta.env.DEV
+  // WEB-383: o Houdini não mede o admin nem pede consentimento de cookie.
+  const inHoudini = useRouterState({
+    select: (s) =>
+      s.location.pathname === '/houdini' ||
+      s.location.pathname.startsWith('/houdini/')
+  })
 
   // Marca de hidratação para o E2E (WEB-174): antes dela, o formulário ainda
   // é HTML puro e um clique faz submit nativo. `fixtures/test.ts` espera por ela.
@@ -274,9 +280,13 @@ function RootDocument() {
             } as CSSProperties
           }
         >
-          <PostHogProvider />
-          <CookieConsent />
-          {impersonated ? (
+          {inHoudini ? null : (
+            <>
+              <PostHogProvider />
+              <CookieConsent />
+            </>
+          )}
+          {impersonated && !inHoudini ? (
             <Suspense
               fallback={
                 <div

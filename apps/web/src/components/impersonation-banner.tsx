@@ -3,6 +3,7 @@ import AlertTriangle from 'reicon-react/icons/AlertTriangle'
 import Loader from 'reicon-react/icons/Loader'
 import Users from 'reicon-react/icons/Users'
 import { authClient } from '@/lib/auth-client'
+import { houdiniHref } from '@/lib/houdini-host'
 import { getUserFacingError } from '@/lib/user-facing-error'
 
 /*
@@ -56,7 +57,10 @@ export function ImpersonationBanner({
         setRetryable(feedback.retryable)
         return
       }
-      window.location.href = '/internal/manage-users'
+      window.location.href = houdiniHref(
+        '/houdini/pessoas',
+        new URL(window.location.href)
+      )
     } catch (reason) {
       setStopping(false)
       const feedback = getUserFacingError(

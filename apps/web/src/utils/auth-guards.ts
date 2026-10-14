@@ -34,6 +34,10 @@ export function applyAuthGuards(
   // de verificação de e-mail, que precisa funcionar antes da sessão existir.
   // WEB-210: `href` relativo (caminho + query) volta como destino do login;
   // `getCallbackUrl` só aceita mesma origem.
+  // WEB-383: o Houdini tem portão próprio (`lib/houdini-gate`), que vale
+  // também para sessão impersonada de conta sem onboarding.
+  if (pathname === '/houdini' || pathname.startsWith('/houdini/')) return
+
   if (!session && requiresAuthentication(pathname)) {
     throw redirect({ to: '/login', search: { callbackUrl: href } })
   }
