@@ -23,6 +23,8 @@
       "!**/.nuxt",
       "!bts.jsonc",
       "!**/.expo",
+      "!**/uniwind-types.d.ts",
+      "!**/expo-env.d.ts",
       "!**/.wrangler",
       "!**/.alchemy",
       "!**/.svelte-kit",

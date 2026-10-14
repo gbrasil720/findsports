@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "uniwind";
+
+/*
+ * Os tokens da Onside, os mesmos de `apps/web/src/styles/onside/tokens.css`.
+ * Viram classes: `bg-ink`, `text-paper`, `bg-acid`, `text-live`...
+ */
+@theme {
+  --color-ink: #12120f;
+  --color-paper: #f1eee6;
+  --color-stone: #e7e3db;
+  --color-acid: #c9f135;
+  --color-live: #e8320c;
+  --color-live-on-ink: #f3421d;
+  --color-muted: #55554f;
+  --color-muted-on-ink: #aaa9a4;
+}

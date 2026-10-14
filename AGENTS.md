@@ -14,6 +14,7 @@ copiar o conteúdo — duas cópias divergem na primeira edição.
 bun install          # install deps
 bun run dev          # all apps
 bun run dev:web      # web only
+bun run dev:mobile   # app nativo (Expo); fica fora do `bun run dev`
 bun run build        # full build
 bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
@@ -52,6 +53,7 @@ Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, sing
 ### Apps
 - **`apps/web`** — fullstack app: TanStack Start (SSR) + TanStack Router (file-based) + React 19. Runs on `localhost:3001`.
 - **`apps/e2e`** — Playwright E2E suite against `vite dev` and a disposable Postgres. See `docs/e2e.md`.
+- **`apps/mobile`** — app nativo: Expo SDK 57 + expo-router + Uniwind (Tailwind v4 no React Native). Ver "App mobile" abaixo.
 
 ### Packages
 | Package | Import | Purpose |
@@ -261,6 +263,32 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 "Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
 `components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
 (proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt).
+
+### App mobile
+
+`apps/mobile` (pacote `mobile`), montado como o Better-T-Stack monta `native-uniwind`, sem a
+HeroUI Native. Esquema `onside://`, identificador `sh.onside.app` (iOS e Android).
+
+- **Não tem backend próprio.** Fala com a API do web: `EXPO_PUBLIC_SERVER_URL` + `/api/trpc` e
+  `/api/auth` (`apps/mobile/.env`, modelo em `.env.example`). Só o **tipo** do router cruza a
+  fronteira (`import type { AppRouter }` em `lib/trpc.ts`); código de servidor nunca entra no
+  bundle do app.
+- **Sessão:** `@better-auth/expo` guarda a sessão no SecureStore e a manda como cabeçalho
+  `Cookie`. No servidor, o plugin `expo()` e o esquema `onside://` em
+  `packages/auth/src/trusted-origins.ts` (`APP_SCHEME`, igual ao `scheme` do `app.json`).
+  `exp://` e `localhost:8081` só valem em `development`.
+- **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
+  e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
+  (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
+  chave pública em `EXPO_PUBLIC_TURNSTILE_SITE_KEY`. A WebView se apresenta com o host de
+  `EXPO_PUBLIC_SERVER_URL`, que precisa estar liberado na chave: um IP de rede local não passa.
+- **React próprio:** o app usa o React que o Expo exige (19.2.3), separado do web. Não suba a
+  versão à mão: `bunx expo install --check` diz o que o SDK aceita.
+- `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
+- Tokens da Onside em `apps/mobile/global.css` (`bg-ink`, `text-paper`, `bg-acid`...).
+- Conferir sem aparelho: `cd apps/mobile && bunx expo export --platform ios --output-dir <pasta>`
+  empacota com o Metro. Mapa e outros módulos nativos vão exigir build de desenvolvimento
+  (`expo run:ios` / `expo run:android`), não Expo Go.
 
 ### Routing
 
