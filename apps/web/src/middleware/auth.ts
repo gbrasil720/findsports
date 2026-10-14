@@ -10,7 +10,7 @@ export const authMiddleware = createMiddleware().server(
         headers: request.headers
       })
       return next({
-        context: { session: toClientSession(session) }
+        context: { session: toClientSession(session, request.headers) }
       })
     } catch {
       // A session lookup failure must not prevent public routes from rendering.

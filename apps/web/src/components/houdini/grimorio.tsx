@@ -62,6 +62,15 @@ export function describe(entry: GrimorioEntry): {
         detail: lasted ? `durou ${lasted}` : null
       }
     }
+    case 'user.impersonation_mode': {
+      const act = asRecord(entry.after).mode === 'act'
+      return {
+        icon: 'mask',
+        tone: act ? 'warn' : 'roxo',
+        text: `${act ? 'passou a agir' : 'voltou a só olhar'} na pele de ${label}`,
+        detail: null
+      }
+    }
     case 'user.ban':
       return {
         icon: 'vanish',

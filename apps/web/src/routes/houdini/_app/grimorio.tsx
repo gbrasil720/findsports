@@ -14,7 +14,14 @@ export const Route = createFileRoute('/houdini/_app/grimorio')({
 
 const FILTERS = [
   { label: 'Tudo', kinds: undefined },
-  { label: 'Na pele', kinds: ['user.impersonate', 'user.stop_impersonating'] },
+  {
+    label: 'Na pele',
+    kinds: [
+      'user.impersonate',
+      'user.stop_impersonating',
+      'user.impersonation_mode'
+    ]
+  },
   { label: 'Sumiços', kinds: ['user.ban', 'user.unban'] },
   { label: 'Roles', kinds: ['user.set_role'] },
   { label: 'Feitiços', kinds: ['config.set', 'config.reset'] }

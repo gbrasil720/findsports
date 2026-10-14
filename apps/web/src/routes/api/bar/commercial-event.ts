@@ -4,6 +4,10 @@ import {
   COMMERCIAL_EVENT_TYPES,
   type CommercialEventType
 } from '@findsports_oficial/api/lib/commercial-analytics/types'
+import {
+  isReadOnlyImpersonation,
+  READ_ONLY_IMPERSONATION_MESSAGE
+} from '@findsports_oficial/auth/impersonation-mode'
 import { createFileRoute } from '@tanstack/react-router'
 import { TRPCError } from '@trpc/server'
 
@@ -59,6 +63,13 @@ export const Route = createFileRoute('/api/bar/commercial-event')({
 
         try {
           const ctx = await createContext({ req: request })
+          // Métrica do bar: o admin olhando como torcedor não conta.
+          if (isReadOnlyImpersonation(ctx.session, request.headers)) {
+            return Response.json(
+              { error: READ_ONLY_IMPERSONATION_MESSAGE },
+              { status: 403 }
+            )
+          }
           await recordCommercialEvent(ctx, {
             pubId,
             type,

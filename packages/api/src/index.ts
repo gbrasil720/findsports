@@ -1,3 +1,7 @@
+import {
+  isReadOnlyImpersonation,
+  READ_ONLY_IMPERSONATION_MESSAGE
+} from '@findsports_oficial/auth/impersonation-mode'
 import { initTRPC, TRPCError } from '@trpc/server'
 
 import type { Context } from './context'
@@ -43,9 +47,27 @@ const comRegistro = t.procedure.use(async ({ path, type, next }) => {
   return resultado
 })
 
-export const publicProcedure = comRegistro
+/**
+ * WEB-390: na pele de alguém em "Só olhar", nenhuma mutação passa. Fica na
+ * base, junto do registro, para valer também para o procedimento que ainda
+ * não existe.
+ */
+const comTravaDaPele = comRegistro.use(({ ctx, type, next }) => {
+  if (
+    type === 'mutation' &&
+    isReadOnlyImpersonation(ctx.session, ctx.headers)
+  ) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: READ_ONLY_IMPERSONATION_MESSAGE
+    })
+  }
+  return next()
+})
 
-export const protectedProcedure = comRegistro.use(({ ctx, next }) => {
+export const publicProcedure = comTravaDaPele
+
+export const protectedProcedure = comTravaDaPele.use(({ ctx, next }) => {
   if (!ctx.session) {
     throw new TRPCError({
       code: 'UNAUTHORIZED',

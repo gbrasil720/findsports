@@ -1,4 +1,5 @@
 import type { auth } from '@findsports_oficial/auth'
+import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
 import { getCallbackUrl } from './callback-url'
 
@@ -154,13 +155,25 @@ export function isHashOnlyChange(
  * passa o que o cliente usa. `token` é o valor do cookie httpOnly (WEB-149).
  */
 export function toClientSession(
-  session: Awaited<ReturnType<typeof auth.api.getSession>>
+  session: Awaited<ReturnType<typeof auth.api.getSession>>,
+  headers?: Headers
 ) {
   if (!session) return null
   const { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy } =
     session.session
   return {
     user: session.user,
-    session: { id, userId, expiresAt, createdAt, updatedAt, impersonatedBy }
+    session: {
+      id,
+      userId,
+      expiresAt,
+      createdAt,
+      updatedAt,
+      impersonatedBy,
+      // WEB-390: o modo da pele, para a faixa; quem trava é o servidor.
+      impersonationMode: impersonatedBy
+        ? impersonationModeFrom(headers?.get('cookie'), id)
+        : null
+    }
   }
 }
