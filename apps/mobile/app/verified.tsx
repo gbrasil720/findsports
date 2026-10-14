@@ -1,7 +1,9 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { View } from 'react-native'
-import { adoptSessionCookie } from '@/lib/auth-client'
+import { adoptSessionCookie, authClient } from '@/lib/auth-client'
+import { latestURL } from '@/lib/latest-url'
+import { rawParam } from '@/lib/raw-param'
 import { queryClient } from '@/lib/trpc'
 
 /*
@@ -9,19 +11,23 @@ import { queryClient } from '@/lib/trpc'
  * redireciona para cá com a sessão em `?cookie=…`; sem ela (link vencido ou
  * já usado, `?error=…`), o login pede outro link.
  */
+
 export default function Verified() {
   const router = useRouter()
-  const { cookie } = useLocalSearchParams<{ cookie?: string }>()
-
   useEffect(() => {
-    if (!cookie) {
-      router.replace({ pathname: '/sign-in', params: { notice: 'expired' } })
-      return
-    }
-    adoptSessionCookie(cookie)
-      .then(() => queryClient.invalidateQueries())
-      .then(() => router.replace('/'))
-  }, [cookie, router])
+    latestURL().then(async (url) => {
+      const cookie = url ? rawParam(url, 'cookie') : undefined
+      if (!cookie) {
+        router.replace({ pathname: '/sign-in', params: { notice: 'expired' } })
+        return
+      }
+      await adoptSessionCookie(cookie)
+      // Busca a sessão antes de sair daqui, para a tela inicial já a ver.
+      await authClient.getSession()
+      await queryClient.invalidateQueries()
+      router.replace('/')
+    })
+  }, [router])
 
   return <View style={{ flex: 1, backgroundColor: '#f1eee6' }} />
 }

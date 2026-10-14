@@ -1,4 +1,6 @@
 import '@/global.css'
+// Ouve os links desde a abertura (ver `lib/latest-url.ts`).
+import '@/lib/latest-url'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'

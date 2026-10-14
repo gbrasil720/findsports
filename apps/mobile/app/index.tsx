@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, Redirect } from 'expo-router'
 import { Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useStatusBar } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { trpc } from '@/lib/trpc'
 
@@ -11,10 +12,14 @@ import { trpc } from '@/lib/trpc'
 export default function Home() {
   const insets = useSafeAreaInsets()
   const session = authClient.useSession()
+  useStatusBar('light')
   const api = useQuery(trpc.appConfig.getPublic.queryOptions())
 
   // Sem sessão, o app começa pela apresentação.
-  if (!session.isPending && !session.data) return <Redirect href="/intro" />
+  // Só sem sessão de fato: logo depois de entrar (ou de confirmar o e-mail),
+  // a sessão nova ainda está sendo buscada e `data` vem vazio por um instante.
+  if (!session.isPending && !session.isRefetching && !session.data)
+    return <Redirect href="/intro" />
 
   const apiStatus = api.isPending
     ? 'Conectando à API…'
