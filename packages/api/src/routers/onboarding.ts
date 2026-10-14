@@ -31,6 +31,7 @@ import {
   searchCityColumns,
   searchCitySchema
 } from '../lib/search-city'
+import { searchRadiusKmSchema } from '../lib/search-radius'
 
 /**
  * WEB-324: lê o banco, não `ctx.session` — a sessão pode vir do cookie cache,
@@ -183,12 +184,7 @@ export const onboardingRouter = router({
         sportIds: z
           .array(z.string().uuid())
           .min(1, 'Selecione pelo menos 1 esporte.'),
-        searchRadiusKm: z.union([
-          z.literal(1),
-          z.literal(3),
-          z.literal(5),
-          z.literal(10)
-        ]),
+        searchRadiusKm: searchRadiusKmSchema,
         // WEB-68: opcional — o passo de times pode ser pulado.
         teamIds: favoriteTeamIdsSchema.default([]),
         // WEB-319: opcional — a tela deixa seguir sem cidade, e um app aberto

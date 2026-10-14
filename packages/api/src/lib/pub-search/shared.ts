@@ -70,7 +70,7 @@ export const recebeReservas = (barAlias: SQL) => sql`(
 export type SearchInput = {
   lat: number
   lng: number
-  radiusKm: 1 | 3 | 5 | 10
+  radiusKm: number
   sportId?: string
   championship?: string
   date?: string

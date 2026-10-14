@@ -3,6 +3,10 @@ import { emailAssetUrls } from '@findsports_oficial/config/site'
 import { db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
+import {
+  SEARCH_RADIUS_MAX_KM,
+  SEARCH_RADIUS_MIN_KM
+} from '@findsports_oficial/db/search-radius'
 import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -243,7 +247,15 @@ export function createAuth() {
           type: 'number',
           required: false,
           defaultValue: 3,
-          input: true
+          input: true,
+          // `updateUser` grava direto: sem isto, qualquer número ia ao banco.
+          validator: {
+            input: z
+              .number()
+              .int()
+              .min(SEARCH_RADIUS_MIN_KM)
+              .max(SEARCH_RADIUS_MAX_KM)
+          }
         }
       }
     },

@@ -60,6 +60,7 @@ import {
   searchCityColumns,
   searchCitySchema
 } from '../lib/search-city'
+import { searchRadiusKmSchema } from '../lib/search-radius'
 import { createSharedCache } from '../lib/shared-cache'
 import { utcIso } from '../lib/utc-timestamp'
 
@@ -136,7 +137,7 @@ type LocationPage = { bars: LocationBar[]; nextCursor: string | null }
 type LocationInput = {
   lat: number
   lng: number
-  radiusKm: 1 | 3 | 5 | 10
+  radiusKm: number
   cursor?: string
   limit: number
 }
@@ -259,9 +260,7 @@ export const pubsRouter = router({
       z.object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
-        radiusKm: z
-          .union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
-          .default(3),
+        radiusKm: searchRadiusKmSchema.default(3),
         sportId: z.string().uuid().optional(),
         championship: z.string().optional(),
         date: z.string().date().optional(),
@@ -753,9 +752,7 @@ export const pubsRouter = router({
       z.object({
         lat: z.number().min(-90).max(90),
         lng: z.number().min(-180).max(180),
-        radiusKm: z
-          .union([z.literal(1), z.literal(3), z.literal(5), z.literal(10)])
-          .default(5),
+        radiusKm: searchRadiusKmSchema.default(5),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20)
       })
