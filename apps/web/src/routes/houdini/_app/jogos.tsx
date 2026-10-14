@@ -14,7 +14,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
+import { refusalMessage } from '@/components/houdini/errors'
 import { HoldButton } from '@/components/houdini/hold-button'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
@@ -87,18 +87,6 @@ function reservationsLabel(game: Game) {
   return game.pendingReservations > 0
     ? `${seats} · ${game.pendingReservations} pend.`
     : seats
-}
-
-/**
- * Recusa de regra (400, 412) já vem escrita para quem opera: "Este jogo tem 1
- * reserva ativa…", "Esse horário já passou.". O resto passa pelo texto padrão.
- */
-function refusalMessage(error: unknown, fallback: string) {
-  const status = (error as { data?: { httpStatus?: number } } | null)?.data
-    ?.httpStatus
-  return (status === 400 || status === 412) && error instanceof Error
-    ? error.message
-    : getUserFacingMessage(error, fallback)
 }
 
 function JogosPage() {

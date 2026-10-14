@@ -5,7 +5,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
+import { refusalMessage } from '@/components/houdini/errors'
 import {
   formatDate,
   formatDateTime,
@@ -445,7 +445,7 @@ function Emails({ account }: { account: Ficha['account'] }) {
     })
   }
   const onError = (fallback: string) => (error: unknown) =>
-    toast.error(getUserFacingMessage(error, fallback))
+    toast.error(refusalMessage(error, fallback))
 
   const verification = useMutation(
     trpc.adminUsers.resendVerification.mutationOptions({

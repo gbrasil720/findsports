@@ -4,12 +4,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
 import { authClient } from '@/lib/auth-client'
 import { appHref } from '@/lib/houdini-host'
 import { LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { refusalMessage } from './errors'
 import { formatDateTime } from './format'
 import { HoldButton } from './hold-button'
 import { HatIcon, Icon } from './icons'
@@ -58,20 +58,6 @@ function isSignupTrial(bar: TrickBar) {
 
 const TRIAL_DAYS = [7, 14, 30] as const
 
-/**
- * A recusa do servidor diz por que o truque não cabe (teste do Stripe, teste
- * vencido); a mensagem genérica esconderia o motivo.
- */
-function refusal(
-  error: { message: string; data?: { code?: string } | null },
-  fallback: string
-) {
-  const code = error.data?.code
-  return code === 'PRECONDITION_FAILED' || code === 'CONFLICT'
-    ? error.message
-    : getUserFacingMessage(error, fallback)
-}
-
 function useRefresh() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -94,9 +80,7 @@ export function SearchDriftAlert({ bar }: { bar: TrickBar }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(
-          getUserFacingMessage(error, 'Não foi possível arrumar a busca.')
-        )
+        toast.error(refusalMessage(error, 'Não foi possível arrumar a busca.'))
     })
   )
 
@@ -196,7 +180,7 @@ export function BarTricks({
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusal(error, 'Não foi possível estender o teste.'))
+        toast.error(refusalMessage(error, 'Não foi possível estender o teste.'))
     })
   )
   const setActive = useMutation(
@@ -210,7 +194,7 @@ export function BarTricks({
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusal(error, 'Não foi possível mudar o bar.'))
+        toast.error(refusalMessage(error, 'Não foi possível mudar o bar.'))
     })
   )
   const busy = extend.isPending || setActive.isPending || entering

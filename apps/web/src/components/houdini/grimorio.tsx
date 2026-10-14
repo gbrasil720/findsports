@@ -273,6 +273,7 @@ export function GrimorioRow({
   const tone = TONES[d.tone]
   return (
     <article
+      className="hd-grim-row"
       style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -328,7 +329,7 @@ export function GrimorioRow({
         ) : null}
       </div>
       <time
-        className="hd-mono"
+        className="hd-mono hd-grim-time"
         dateTime={new Date(entry.createdAt).toISOString()}
         style={{ flex: '0 0 auto', fontSize: 12, color: 'var(--hd-faint)' }}
       >

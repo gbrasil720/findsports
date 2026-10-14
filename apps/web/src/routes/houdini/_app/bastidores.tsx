@@ -4,7 +4,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import type { CSSProperties } from 'react'
 import { toast } from 'sonner'
-
+import { refusalMessage } from '@/components/houdini/errors'
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
@@ -294,7 +294,7 @@ function BastidoresPage() {
       },
       // A falha também fica registrada: o cartão passa a mostrar o erro.
       onError: async (error) => {
-        toast.error(getUserFacingMessage(error, 'A rotina falhou.'))
+        toast.error(refusalMessage(error, 'A rotina falhou.'))
         await reload()
       }
     })
