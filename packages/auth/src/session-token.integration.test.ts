@@ -87,6 +87,21 @@ async function setup() {
   const signIn = (email: string) =>
     call<object>('', '/sign-in/email', { email, password })
 
+  // WEB-383: ação de admin pede 2FA no servidor. Liga o 2FA depois do login
+  // (com ele ligado antes, o login pediria o código) e renova o cookie cache.
+  async function signInAdmin(email: string) {
+    const signedIn = await signIn(email)
+    await db
+      .update(user)
+      .set({ twoFactorEnabled: true })
+      .where(eq(user.email, email))
+    const refreshed = await call<object>(
+      signedIn.cookie,
+      '/get-session?disableCookieCache=true'
+    )
+    return { data: signedIn.data, cookie: refreshed.cookie }
+  }
+
   async function cleanup() {
     await db.delete(user).where(inArray(user.id, userIds))
     await db
@@ -98,7 +113,7 @@ async function setup() {
   const completeOnboarding = (id: string) =>
     db.update(user).set({ onboardingCompleted: true }).where(eq(user.id, id))
 
-  return { createUser, call, signIn, completeOnboarding, cleanup }
+  return { createUser, call, signIn, signInAdmin, completeOnboarding, cleanup }
 }
 
 integrationTest(
@@ -155,7 +170,7 @@ integrationTest(
 integrationTest(
   'login, troca de senha e rotas de admin não entregam token',
   async () => {
-    const { createUser, call, signIn, cleanup } = await setup()
+    const { createUser, call, signInAdmin, cleanup } = await setup()
 
     // Lê do banco: prova que o cookie, e não o corpo, carrega a sessão.
     const userIdOf = async (cookie: string) =>
@@ -170,7 +185,7 @@ integrationTest(
     const fan = await createUser()
     try {
       // Login: a resposta não leva o token, mas o cookie httpOnly autentica.
-      const signedIn = await signIn(admin.email)
+      const signedIn = await signInAdmin(admin.email)
       expect(signedIn.data).not.toHaveProperty('token')
       const adminCookie = signedIn.cookie
       expect(await userIdOf(adminCookie)).toBe(admin.id)
@@ -218,8 +233,14 @@ integrationTest(
 integrationTest(
   'expirar o cookie cache faz a sessão reler o banco, com ou sem "não lembrar de mim" (WEB-324)',
   async () => {
-    const { createUser, call, signIn, completeOnboarding, cleanup } =
-      await setup()
+    const {
+      createUser,
+      call,
+      signIn,
+      signInAdmin,
+      completeOnboarding,
+      cleanup
+    } = await setup()
 
     type Current = { user: { onboardingCompleted: boolean } }
     const getSession = (cookie: string, query = '') =>
@@ -232,7 +253,7 @@ integrationTest(
     try {
       const remembered = (await signIn(fan.email)).cookie
       // A impersonação cria a sessão com `dontRememberMe` e grava o cache.
-      const adminCookie = (await signIn(admin.email)).cookie
+      const adminCookie = (await signInAdmin(admin.email)).cookie
       const impersonated = (
         await call(adminCookie, '/admin/impersonate-user', { userId: fan.id })
       ).cookie
@@ -258,6 +279,57 @@ integrationTest(
         expect(expired.cookie).not.toContain('session_data=')
         expect(await onboardingDone(expired.cookie)).toBe(true)
       }
+    } finally {
+      await cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'na pele em "Só olhar" o better-auth recusa escrita; "Pode agir" libera (WEB-390)',
+  async () => {
+    const { createUser, call, signInAdmin, cleanup } = await setup()
+    const { auth } = await import('./index')
+    const baseUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3001'
+    const updateName = (cookie: string) =>
+      auth.handler(
+        new Request(`${baseUrl}/api/auth/update-user`, {
+          method: 'POST',
+          headers: {
+            cookie,
+            origin: baseUrl,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({ name: 'Na pele' })
+        })
+      )
+
+    const admin = await createUser('admin')
+    const fan = await createUser()
+    try {
+      const { cookie: adminCookie } = await signInAdmin(admin.email)
+      const skin = await call<{ session: { id: string } }>(
+        adminCookie,
+        '/admin/impersonate-user',
+        { userId: fan.id }
+      )
+      const sessionId = skin.data.session.id
+
+      for (const extra of ['', '; onside_impersonation_mode=outra:act']) {
+        const refused = await updateName(skin.cookie + extra)
+        expect(refused.status).toBe(403)
+        expect(await refused.json()).toMatchObject({
+          message: 'Só olhando: troque para Pode agir na faixa'
+        })
+      }
+
+      const acting = await updateName(
+        `${skin.cookie}; onside_impersonation_mode=${sessionId}:act`
+      )
+      expect(acting.status).toBe(200)
+
+      // Sair da pele continua livre em "Só olhar".
+      await call(skin.cookie, '/admin/stop-impersonating', {})
     } finally {
       await cleanup()
     }

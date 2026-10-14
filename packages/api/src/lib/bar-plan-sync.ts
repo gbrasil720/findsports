@@ -19,10 +19,14 @@ import { db, sql } from '@findsports_oficial/db'
  * quando o dono contrata. `past_due` é de quem já assina e segue no ar, com
  * os recursos do Starter. O atraso é o mesmo da projeção, até 24 horas.
  *
- * Devolve quantos bares mudaram de plano. De quebra conserta qualquer
+ * Devolve quantos bares mudaram de plano e quantos saíram do ar, que o
+ * Bastidores do Houdini mostra (WEB-389). De quebra conserta qualquer
  * dessincronia da projeção.
  */
-export async function reconcileBarPlans(): Promise<number> {
+export async function reconcileBarPlans(): Promise<{
+  updated: number
+  offAir: number
+}> {
   const result = await db.execute(sql`
     UPDATE bar b
     SET plan = subscription_current_plan(s.plan, s.status, s.current_period_end)
@@ -48,14 +52,9 @@ export async function reconcileBarPlans(): Promise<number> {
       )
     RETURNING b.id
   `)
-  const updated = result.rows.length
+  const counts = { updated: result.rows.length, offAir: expired.rows.length }
   console.log(
-    JSON.stringify({
-      evt: 'bar_plan_reconcile',
-      ok: true,
-      updated,
-      offAir: expired.rows.length
-    })
+    JSON.stringify({ evt: 'bar_plan_reconcile', ok: true, ...counts })
   )
-  return updated
+  return counts
 }

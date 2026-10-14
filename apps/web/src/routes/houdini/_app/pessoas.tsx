@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -21,6 +21,11 @@ import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/pessoas')({
   head: () => ({ meta: [{ title: 'Pessoas — Houdini' }] }),
+  // `?pessoa=<id>` vem do ⌘K: abre com a busca no id, e a ficha já aberta.
+  // Outro resultado do ⌘K, com a página aberta, remonta com o novo id.
+  validateSearch: (search: Record<string, unknown>): { pessoa?: string } =>
+    typeof search.pessoa === 'string' ? { pessoa: search.pessoa } : {},
+  remountDeps: ({ search }) => search.pessoa,
   component: PessoasPage
 })
 
@@ -38,9 +43,10 @@ const ROLE_FILTERS = [
 function PessoasPage() {
   const { env, admin } = Route.useRouteContext()
   const trpc = useTRPC()
-  const [search, setSearch] = useState('')
+  const { pessoa: fromPalette } = Route.useSearch()
+  const [search, setSearch] = useState(fromPalette ?? '')
   const [role, setRole] = useState<Role | undefined>()
-  const [pickedId, setPickedId] = useState<string | null>(null)
+  const [pickedId, setPickedId] = useState<string | null>(fromPalette ?? null)
 
   const query = useQuery({
     ...trpc.adminUsers.list.queryOptions({
@@ -335,6 +341,19 @@ function Dossie({ person, isSelf }: { person: Person; isSelf: boolean }) {
           </div>
         ) : null}
       </dl>
+
+      <Link
+        to="/houdini/pessoas/$userId"
+        params={{ userId: person.id }}
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--hd-roxo-soft)',
+          textDecoration: 'none'
+        }}
+      >
+        Abrir a ficha
+      </Link>
 
       {isSelf ? (
         <p className="hd-small" style={{ margin: 0 }}>

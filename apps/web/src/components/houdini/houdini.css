@@ -829,6 +829,16 @@
     display: none;
   }
 
+  .hd-grim-row {
+    flex-wrap: wrap;
+  }
+
+  .hd-grim-time {
+    order: 3;
+    width: 100%;
+    padding-left: 46px;
+  }
+
   .hd-aside {
     order: -1;
     border-left: 0;

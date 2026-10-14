@@ -1,25 +1,48 @@
+import type { ImpersonationMode } from '@findsports_oficial/auth/impersonation-mode'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import AlertTriangle from 'reicon-react/icons/AlertTriangle'
-import Loader from 'reicon-react/icons/Loader'
-import Users from 'reicon-react/icons/Users'
+import { HatIcon } from '@/components/houdini/icons'
+import { setImpersonationMode } from '@/functions/impersonation-mode'
 import { authClient } from '@/lib/auth-client'
 import { houdiniHref } from '@/lib/houdini-host'
 import { getUserFacingError } from '@/lib/user-facing-error'
+
+const MODES: { value: ImpersonationMode; label: string }[] = [
+  { value: 'look', label: 'Só olhar' },
+  { value: 'act', label: 'Pode agir' }
+]
+
+function elapsed(ms: number) {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0')
+  const ss = String(total % 60).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+}
 
 /*
  * Quem está sendo personificado vem da sessão do servidor, pelo contexto da
  * rota (`__root.tsx`), e não de `authClient.useSession()`: no SSR o hook não
  * tem sessão e o banner sairia vazio do HTML, enquanto o cliente — hidratando
  * depois do `lazy` — já tinha a sessão e o desenhava (WEB-196).
+ *
+ * WEB-390: a faixa só mostra e troca o modo; quem recusa a escrita em "Só
+ * olhar" é o servidor (`@findsports_oficial/auth/impersonation-mode`).
  */
 export function ImpersonationBanner({
-  user
+  user,
+  mode: initialMode,
+  startedAt
 }: {
-  user: { name: string; email: string }
+  user: { name: string; email: string; role?: string | null }
+  mode: ImpersonationMode
+  startedAt: Date | string
 }) {
+  const [mode, setMode] = useState(initialMode)
+  const [switching, setSwitching] = useState(false)
   const [stopping, setStopping] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [retryable, setRetryable] = useState(false)
+  // Só no cliente: o relógio do SSR não bate com o da hidratação.
+  const [now, setNow] = useState<number | null>(null)
   const bannerRef = useRef<HTMLDivElement>(null)
 
   const measure = useCallback(() => {
@@ -41,20 +64,40 @@ export function ImpersonationBanner({
     }
   }, [measure])
 
+  useEffect(() => {
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  async function pick(next: ImpersonationMode) {
+    if (next === mode || switching) return
+    setSwitching(true)
+    setError(null)
+    try {
+      setMode(await setImpersonationMode({ data: next }))
+    } catch (reason) {
+      setError(
+        getUserFacingError(reason, 'Não foi possível trocar o modo.').message
+      )
+    } finally {
+      setSwitching(false)
+    }
+  }
+
   async function handleStop() {
     setStopping(true)
     setError(null)
-    setRetryable(false)
     try {
       const result = await authClient.admin.stopImpersonating()
       if (result.error) {
         setStopping(false)
-        const feedback = getUserFacingError(
-          result.error,
-          'Não foi possível encerrar a personificação. Tente novamente.'
+        setError(
+          getUserFacingError(
+            result.error,
+            'Não foi possível tirar a pele. Tente novamente.'
+          ).message
         )
-        setError(feedback.message)
-        setRetryable(feedback.retryable)
         return
       }
       window.location.href = houdiniHref(
@@ -63,12 +106,12 @@ export function ImpersonationBanner({
       )
     } catch (reason) {
       setStopping(false)
-      const feedback = getUserFacingError(
-        reason,
-        'Não foi possível encerrar a personificação. Tente novamente.'
+      setError(
+        getUserFacingError(
+          reason,
+          'Não foi possível tirar a pele. Tente novamente.'
+        ).message
       )
-      setError(feedback.message)
-      setRetryable(feedback.retryable)
     }
   }
 
@@ -81,59 +124,66 @@ export function ImpersonationBanner({
   return (
     <div
       ref={bannerRef}
-      className="onside-banner sticky top-0 right-0 left-0 z-[60] border-[var(--onside-ink)] border-b bg-[var(--onside-acid)] font-[family-name:var(--onside-body)] text-[var(--onside-ink)]"
+      className="onside-pele"
       role="status"
       aria-live="polite"
-      aria-atomic="true"
     >
-      <div className="mx-auto flex min-h-11 w-full max-w-[var(--onside-max)] flex-wrap items-center justify-between gap-3 px-4 py-2.5">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center">
-          <div className="mt-0.5 grid size-7 shrink-0 place-items-center border border-[var(--onside-ink)] bg-[var(--onside-ink)] sm:mt-0">
-            <Users size={14} color="var(--onside-paper)" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 text-sm leading-snug">
-            <span className="font-medium">Modo de personificação ativo — </span>
-            <span className="font-bold break-words">{user.name || '…'}</span>{' '}
-            <span className="break-all font-[family-name:var(--onside-mono)] text-xs text-[var(--onside-ink)] opacity-80">
-              ({user.email})
-            </span>
-            {error ? (
-              <p
-                className="mt-1 flex items-start gap-1.5 text-xs font-semibold text-[var(--onside-live-text)]"
-                role="alert"
-              >
-                <AlertTriangle
-                  size={14}
-                  color="currentColor"
-                  className="mt-0.5 shrink-0"
-                  aria-hidden="true"
-                />
-                {error}
-              </p>
-            ) : null}
-          </div>
-        </div>
+      <div className="onside-pele-row">
+        <span className="onside-pele-hat">
+          <HatIcon size={20} />
+        </span>
+        <span className="onside-pele-who">
+          Você está na pele de <strong>{user.name || '…'}</strong>{' '}
+          <span className="onside-pele-mono">
+            <span className="onside-pele-dot">· </span>
+            {user.email}
+            {user.role ? ` · ${user.role}` : null}
+          </span>
+        </span>
+        <fieldset className="onside-pele-seg" aria-label="Modo">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              aria-pressed={mode === m.value}
+              disabled={switching}
+              onClick={() => pick(m.value)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </fieldset>
+        {/* `timer` não é anunciado a cada segundo dentro do `status`. */}
+        <span
+          className="onside-pele-clock"
+          role="timer"
+          aria-live="off"
+          aria-label="Tempo na pele"
+        >
+          {now === null
+            ? '--:--'
+            : elapsed(now - new Date(startedAt).getTime())}
+        </span>
         <button
           type="button"
+          className="onside-pele-stop"
           onClick={handleStop}
           disabled={stopping}
-          className="inline-flex min-h-11 min-w-[44px] shrink-0 items-center justify-center gap-1.5 border border-[var(--onside-ink)] bg-[var(--onside-ink)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--onside-paper)] transition-[opacity] duration-150 hover:opacity-90 disabled:opacity-60"
         >
-          {stopping ? (
-            <Loader
-              size={14}
-              color="currentColor"
-              className="animate-spin"
-              aria-hidden="true"
-            />
-          ) : null}
-          {stopping
-            ? 'Encerrando…'
-            : error && retryable
-              ? 'Tentar novamente'
-              : 'Encerrar sessão'}
+          {stopping ? 'Tirando…' : 'Tirar a pele'}
         </button>
       </div>
+      {error ? (
+        <p className="onside-pele-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {mode === 'look' ? (
+        <p className="onside-pele-note">
+          Só olhando: botões que gravam ficam travados. Troque para “Pode agir”
+          se precisar mexer como essa conta.
+        </p>
+      ) : null}
     </div>
   )
 }

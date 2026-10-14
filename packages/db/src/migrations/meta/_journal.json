@@ -400,6 +400,27 @@
       "when": 1792005610622,
       "tag": "0057_drop_bar_accepts_reservations",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792013250485,
+      "tag": "0058_admin_action",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792013722153,
+      "tag": "0059_app_config_expires_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792014070388,
+      "tag": "0060_job_run",
+      "breakpoints": true
     }
   ]
 }

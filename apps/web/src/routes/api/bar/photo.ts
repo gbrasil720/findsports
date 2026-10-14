@@ -5,6 +5,10 @@ import {
   signMediaUpload
 } from '@findsports_oficial/api/lib/media-upload'
 import { auth } from '@findsports_oficial/auth'
+import {
+  isReadOnlyImpersonation,
+  READ_ONLY_IMPERSONATION_MESSAGE
+} from '@findsports_oficial/auth/impersonation-mode'
 import { db, eq } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { createFileRoute } from '@tanstack/react-router'
@@ -33,6 +37,9 @@ export const Route = createFileRoute('/api/bar/photo')({
             headers: request.headers
           })
           if (!session) throw new MediaUploadError(401, 'Não autorizado.')
+          if (isReadOnlyImpersonation(session, request.headers)) {
+            throw new MediaUploadError(403, READ_ONLY_IMPERSONATION_MESSAGE)
+          }
           if (!session.user.emailVerified) {
             throw new MediaUploadError(
               403,
@@ -80,6 +87,9 @@ export const Route = createFileRoute('/api/bar/photo')({
           const session = await auth.api.getSession({
             headers: request.headers
           })
+          if (isReadOnlyImpersonation(session, request.headers)) {
+            throw new MediaUploadError(403, READ_ONLY_IMPERSONATION_MESSAGE)
+          }
           const ownBar = session
             ? await db.query.bar.findFirst({
                 where: eq(bar.userId, session.user.id),

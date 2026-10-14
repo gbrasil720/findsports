@@ -22,12 +22,19 @@ import {
   deleteStripeSubscriptionOf,
   endLiveSubscriptionOf
 } from './account-deletion'
+import { adminRouteRefusal } from './admin-guard'
+import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
 import { runInBackground } from './background'
 import {
   blocksNewCheckout,
   canAccessPubBilling,
   requiresPubBillingAccess
 } from './billing-access'
+import {
+  isAuthWrite,
+  isReadOnlyImpersonation,
+  READ_ONLY_IMPERSONATION_MESSAGE
+} from './impersonation-mode'
 import { sendResetPasswordEmailWithResend } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
@@ -87,6 +94,19 @@ function turnstilePlugin() {
   return { id: 'captcha-disabled' }
 }
 
+/** WEB-390: o cookie do modo da pele, com o mesmo domínio do de sessão. */
+export function impersonationModeCookieOptions(expires: Date) {
+  const domain = cookieDomainFor(env.BETTER_AUTH_URL)
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: env.BETTER_AUTH_URL.startsWith('https:'),
+    path: '/',
+    expires,
+    ...(domain ? { domain } : {})
+  }
+}
+
 export function createAuth() {
   const cookieDomain = cookieDomainFor(env.BETTER_AUTH_URL)
 
@@ -110,6 +130,34 @@ export function createAuth() {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // WEB-390: na pele em "Só olhar", nada grava pelo better-auth. Sem
+        // cookie não há sessão a conferir (webhook, cadastro).
+        if (
+          ctx.headers?.has('cookie') &&
+          isAuthWrite(ctx.path, ctx.method ?? ctx.request?.method)
+        ) {
+          const session = await getSessionFromCtx(ctx)
+          if (isReadOnlyImpersonation(session, ctx.headers)) {
+            throw new APIError('FORBIDDEN', {
+              message: READ_ONLY_IMPERSONATION_MESSAGE
+            })
+          }
+        }
+        // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
+        if (ctx.path?.startsWith('/admin/')) {
+          const refusal = adminRouteRefusal(
+            ctx.path,
+            await getSessionFromCtx(ctx)
+          )
+          if (refusal) throw new APIError('FORBIDDEN', { message: refusal })
+        }
+        // WEB-384: o Grimório registra a troca de papel com o valor de antes,
+        // que o `after` já não consegue ler.
+        if (ctx.path === '/admin/set-role') {
+          return {
+            context: { houdiniRoleBefore: await previousRole(ctx.body ?? {}) }
+          }
+        }
         // `image` só entra pelo avatar enviado ao nosso store: um host
         // qualquer veria IP e horário de quem vê a foto. No cadastro ainda
         // não há usuário, então ali só cabe vazio.
@@ -151,6 +199,20 @@ export function createAuth() {
             })
           }
         }
+      }),
+      // WEB-384: depois de a rota do plugin admin responder sem erro.
+      after: createAuthMiddleware(async (ctx) => {
+        if (!isLoggedAdminPath(ctx.path)) return
+        if (ctx.context.returned instanceof APIError) return
+        const session = await getSessionFromCtx(ctx)
+        if (!session) return
+        await logAdminAction({
+          path: ctx.path,
+          body: ctx.body ?? {},
+          session,
+          roleBefore: (ctx as { houdiniRoleBefore?: string | null })
+            .houdiniRoleBefore
+        })
       })
     },
     database: drizzleAdapter(db, {

@@ -51,7 +51,7 @@ export function contextFor(
         banned: false,
         onboardingCompleted,
         searchRadiusKm: 3,
-        twoFactorEnabled: false,
+        twoFactorEnabled: role === 'admin',
         createdAt: now,
         updatedAt: now
       }

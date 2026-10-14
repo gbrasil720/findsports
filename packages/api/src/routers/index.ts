@@ -1,11 +1,15 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
 import { adminBarsRouter } from './admin-bars'
+import { adminEventsRouter } from './admin-events'
 import { adminUsersRouter } from './admin-users'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
+import { bastidoresRouter } from './bastidores'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
+import { grimorioRouter } from './grimorio'
+import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
@@ -25,8 +29,10 @@ export const appRouter = router({
     }
   }),
   adminBars: adminBarsRouter,
+  adminEvents: adminEventsRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
+  bastidores: bastidoresRouter,
   onboarding: onboardingRouter,
   pub: pubRouter,
   pubs: pubsRouter,
@@ -37,6 +43,8 @@ export const appRouter = router({
   reservations: reservationsRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
-  feedback: feedbackRouter
+  feedback: feedbackRouter,
+  grimorio: grimorioRouter,
+  houdini: houdiniRouter
 })
 export type AppRouter = typeof appRouter

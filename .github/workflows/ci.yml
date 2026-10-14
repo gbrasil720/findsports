@@ -199,4 +199,5 @@ jobs:
         run: bun run build:cf
       - name: Deploy
         working-directory: apps/web
-        run: bunx wrangler deploy --message "${{ github.event_name }} ${{ github.sha }}"
+        # WEB-389: a tag (commit curto) é o que o Bastidores do Houdini mostra.
+        run: bunx wrangler deploy --message "${{ github.event_name }} ${{ github.sha }}" --tag "${GITHUB_SHA::7}"

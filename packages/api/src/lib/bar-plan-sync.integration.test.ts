@@ -67,7 +67,7 @@ integrationTest(
         .update(bar)
         .set({ plan: 'elite' })
         .where(eq(bar.id, ctx.barId))
-      expect(await reconcileBarPlans()).toBeGreaterThanOrEqual(1)
+      expect((await reconcileBarPlans()).updated).toBeGreaterThanOrEqual(1)
       expect(await projected()).toBe('starter')
 
       // O plano contratado continua guardado.

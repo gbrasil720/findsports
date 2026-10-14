@@ -288,12 +288,15 @@ export async function runAndRecordAnalyticsRetention(options: {
  * (`scheduled()` em `apps/web/src/worker.ts`, WEB-203). O resultado fica em
  * `analytics_retention_run`; a falha vai ao log porque é o único rastro quando
  * o próprio registro no banco também falhou, e é relançada para o agendador
- * marcar a execução como falha.
+ * marcar a execução como falha. O "Rodar agora" do Houdini (WEB-389) passa
+ * pelo mesmo caminho, gravado como `admin`.
  */
-export async function runScheduledAnalyticsRetention(): Promise<RetentionResult> {
+export async function runScheduledAnalyticsRetention(
+  trigger: 'cron' | 'admin' = 'cron'
+): Promise<RetentionResult> {
   try {
     return await runAndRecordAnalyticsRetention({
-      trigger: 'cron',
+      trigger,
       retentionDays: RETENCAO_BRUTOS_DIAS,
       apagarEventosBrutos: true
     })

@@ -5,6 +5,9 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./migrations/meta/_journal.json": {
+      "default": "./src/migrations/meta/_journal.json"
+    },
     "./*": {
       "default": "./src/*.ts"
     }

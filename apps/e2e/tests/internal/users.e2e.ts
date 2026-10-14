@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
-import { signIn } from '../../fixtures/auth'
+import { grantAdmin2fa, signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
@@ -36,6 +36,7 @@ let admin: TestUser
 test.beforeEach(async ({ page }) => {
   admin = await createUser({ role: 'admin', name: uniqueName('Admin') })
   await signIn(page, admin)
+  await grantAdmin2fa(page, admin.email)
 })
 
 test('banir com motivo bloqueia o login; desbanir libera', async ({
@@ -141,7 +142,7 @@ test('impersonar torcedor mostra o banner; encerrar volta ao painel', async ({
   await waitForHydration(page)
   const banner = page
     .getByRole('status')
-    .filter({ hasText: 'Modo de personificação ativo' })
+    .filter({ hasText: 'Você está na pele de' })
   await expect(banner).toContainText(target.name)
   await expect(banner).toContainText(target.email)
 
@@ -149,7 +150,7 @@ test('impersonar torcedor mostra o banner; encerrar volta ao painel', async ({
   const session = await page.request.get('/api/auth/get-session')
   expect((await session.json()).user.email).toBe(target.email)
 
-  await banner.getByRole('button', { name: 'Encerrar sessão' }).click()
+  await banner.getByRole('button', { name: 'Tirar a pele' }).click()
   // WEB-383: encerrar a impersonação volta para o Houdini.
   await expect(page).toHaveURL(/\/houdini\/pessoas$/)
   await expect(banner).toHaveCount(0)
@@ -170,10 +171,10 @@ test('impersonar dono de bar abre o painel do bar', async ({ page }) => {
   await waitForHydration(page)
   const banner = page
     .getByRole('status')
-    .filter({ hasText: 'Modo de personificação ativo' })
+    .filter({ hasText: 'Você está na pele de' })
   await expect(banner).toContainText(owner.name)
 
-  await banner.getByRole('button', { name: 'Encerrar sessão' }).click()
+  await banner.getByRole('button', { name: 'Tirar a pele' }).click()
   // WEB-383: encerrar a impersonação volta para o Houdini.
   await expect(page).toHaveURL(/\/houdini\/pessoas$/)
   await expect(banner).toHaveCount(0)
