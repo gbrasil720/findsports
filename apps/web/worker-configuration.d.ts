@@ -3,6 +3,7 @@
 // Runtime types generated with workerd@1.20261001.1 2026-10-01 nodejs_compat
 interface __BaseEnv_Env {
 	HYPERDRIVE: Hyperdrive;
+	CF_VERSION_METADATA: WorkerVersionMetadata;
 	NODE_ENV: string;
 	BETTER_AUTH_URL: string;
 	CORS_ORIGIN: string;
@@ -18,6 +19,7 @@ declare namespace Cloudflare {
 	}
 	interface PreviewEnv {
 		HYPERDRIVE: Hyperdrive;
+		CF_VERSION_METADATA: WorkerVersionMetadata;
 		NODE_ENV: string;
 		BETTER_AUTH_URL: string;
 		CORS_ORIGIN: string;

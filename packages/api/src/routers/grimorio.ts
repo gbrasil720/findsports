@@ -16,7 +16,9 @@ export const grimorioRouter = router({
     .input(
       z.object({
         kinds: z.array(z.enum(ADMIN_ACTION_KINDS)).max(20).optional(),
-        targetType: z.enum(['user', 'bar', 'event', 'config']).optional(),
+        targetType: z
+          .enum(['user', 'bar', 'event', 'config', 'job'])
+          .optional(),
         targetId: z.string().max(255).optional(),
         /** Cursor: devolve o que é mais antigo que este instante. */
         cursor: z.coerce.date().nullish(),

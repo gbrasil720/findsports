@@ -52,6 +52,9 @@
   // volte para [] e faça deploy —
   // apagar a chave não remove o agendamento já publicado.
   "triggers": { "crons": ["0 4 * * *"] },
+  // WEB-389: id e data da versão no ar, para o Bastidores do Houdini. A tag é
+  // o commit, posta pelo `wrangler deploy --tag` do CI.
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
 
   // WEB-204: preview de PR, outro Worker com banco próprio (branch `preview`
   // do Neon). Uma URL só, a do último PR publicado: com ela no
@@ -69,6 +72,7 @@
       // herdados do topo, e herdar o www roubaria o domínio de produção.
       "triggers": { "crons": [] },
       "routes": [],
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",

@@ -44,12 +44,25 @@ export const appConfigRouter = router({
       ...entrada,
       updatedAt: auditoria.get(entrada.key)?.updatedAt ?? null,
       updatedBy: auditoria.get(entrada.key)?.updatedBy ?? null,
-      updatedByNome: auditoria.get(entrada.key)?.updatedByNome ?? null
+      updatedByNome: auditoria.get(entrada.key)?.updatedByNome ?? null,
+      expiresAt: auditoria.get(entrada.key)?.expiresAt ?? null
     }))
   }),
 
   set: adminProcedure
-    .input(z.object({ key: appConfigKeySchema, value: z.unknown() }))
+    .input(
+      z.object({
+        key: appConfigKeySchema,
+        value: z.unknown(),
+        // WEB-387: até uma semana. Nulo ou ausente = sem prazo.
+        expiresInMinutes: z
+          .number()
+          .int()
+          .min(1)
+          .max(7 * 24 * 60)
+          .nullish()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       // Valor recusado é erro de quem pediu, não do servidor. A distinção
       // importa: um 500 aqui seria investigado como falha, quando o que
@@ -60,7 +73,12 @@ export const appConfigRouter = router({
       }
 
       const antes = await valorGravado(input.key)
-      await setAppConfig(input.key, validado.value, ctx.session.user.id)
+      await setAppConfig(
+        input.key,
+        validado.value,
+        ctx.session.user.id,
+        input.expiresInMinutes ?? null
+      )
       await recordAdminActionSafely({
         kind: 'config.set',
         actorId: ctx.session.user.id,
@@ -69,7 +87,10 @@ export const appConfigRouter = router({
         targetId: input.key,
         targetLabel: input.key,
         before: antes,
-        after: { value: validado.value }
+        after: { value: validado.value },
+        detail: input.expiresInMinutes
+          ? { expiresInMinutes: input.expiresInMinutes }
+          : null
       })
       return { key: input.key, valor: validado.value }
     }),

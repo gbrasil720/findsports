@@ -22,7 +22,9 @@ import type { AppConfigKey, AppConfigValue } from './registry'
 export async function setAppConfig<K extends AppConfigKey>(
   key: K,
   value: AppConfigValue<K>,
-  updatedBy: string | null
+  updatedBy: string | null,
+  /** WEB-387: prazo em minutos; passado ele, volta ao padrão. Nulo = sem prazo. */
+  expiresInMinutes: number | null = null
 ): Promise<void> {
   // `jsonb` precisa do valor serializado: o driver mandaria um array ou um
   // booleano do JS como parâmetro de outro tipo. `::jsonb` sobre texto é o
@@ -30,12 +32,17 @@ export async function setAppConfig<K extends AppConfigKey>(
   const serializado = JSON.stringify(value)
 
   await db.execute(sql`
-    INSERT INTO app_config (key, value, updated_at, updated_by)
-    VALUES (${key}, ${serializado}::jsonb, NOW(), ${updatedBy})
+    INSERT INTO app_config (key, value, updated_at, updated_by, expires_at)
+    VALUES (
+      ${key}, ${serializado}::jsonb, NOW(), ${updatedBy},
+      CASE WHEN ${expiresInMinutes}::int IS NULL THEN NULL
+        ELSE NOW() + make_interval(mins => ${expiresInMinutes}::int) END
+    )
     ON CONFLICT (key) DO UPDATE SET
       value = EXCLUDED.value,
       updated_at = EXCLUDED.updated_at,
-      updated_by = EXCLUDED.updated_by
+      updated_by = EXCLUDED.updated_by,
+      expires_at = EXCLUDED.expires_at
   `)
 
   await appConfigStore.invalidate()

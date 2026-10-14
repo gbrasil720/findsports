@@ -4,8 +4,8 @@
  * `vite dev` em Node, onde `cloudflare:workers` não existe.
  */
 import { waitUntil } from 'cloudflare:workers'
-import { reconcileBarPlans } from '@findsports_oficial/api/lib/bar-plan-sync'
-import { runScheduledAnalyticsRetention } from '@findsports_oficial/api/lib/commercial-analytics/retention'
+import { setDeployVersion } from '@findsports_oficial/api/lib/deploy-version'
+import { runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { runWithDb } from '@findsports_oficial/db'
 import handler from '@tanstack/react-start/server-entry'
@@ -16,6 +16,7 @@ setBackgroundTaskHandler(waitUntil)
 
 export default {
   async fetch(request, env) {
+    setDeployVersion(env.CF_VERSION_METADATA)
     // WEB-201: banco por requisição, sobre o Hyperdrive.
     const response = await runWithDb(env.HYPERDRIVE.connectionString, () =>
       handler.fetch(request)
@@ -29,15 +30,13 @@ export default {
   //
   // WEB-129: o mesmo cron reaplica o plano vigente em `bar.plan`, que é como
   // um trial vencido sai da camada do plano na busca, e o bar de teste do
-  // cadastro vencido sem contratação sai do ar (WEB-357). O `finally` garante
-  // que uma falha ali não pule a retenção, e a falha ainda marca a invocação.
+  // cadastro vencido sem contratação sai do ar (WEB-357). O `finally` de
+  // `runScheduledJobs` garante que uma falha ali não pule a retenção, e a
+  // falha ainda marca a invocação.
+  //
+  // WEB-389: cada rotina deixa uma linha em `job_run`, que o Bastidores do
+  // Houdini mostra.
   async scheduled(_controller, env) {
-    await runWithDb(env.HYPERDRIVE.connectionString, async () => {
-      try {
-        await reconcileBarPlans()
-      } finally {
-        await runScheduledAnalyticsRetention()
-      }
-    })
+    await runWithDb(env.HYPERDRIVE.connectionString, runScheduledJobs)
   }
 } satisfies ExportedHandler<Env>

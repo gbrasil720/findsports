@@ -1,4 +1,5 @@
 import { db, sql } from '@findsports_oficial/db'
+import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 
 import { createSharedCache } from '../shared-cache'
 import { utcIso } from '../utc-timestamp'
@@ -25,8 +26,52 @@ import {
  * Lê a tabela inteira. Chaves fora do registro são descartadas aqui mesmo —
  * lixo antigo ou linha inserida à mão não chega a virar configuração.
  */
+/**
+ * WEB-387: feitiço com prazo vencido sai da tabela e a volta fica escrita no
+ * Grimório. O `DELETE … RETURNING` garante que só uma instância registra cada
+ * volta, por mais que várias carreguem ao mesmo tempo. Roda a cada carga do
+ * store (no máximo uma vez por TTL por instância), então a volta aparece em
+ * até um TTL depois do prazo; a leitura já ignora a linha vencida antes disso.
+ */
+export async function expirarFeiticosVencidos(): Promise<AppConfigKey[]> {
+  const resultado = await db.execute(sql`
+    DELETE FROM app_config
+    WHERE expires_at IS NOT NULL AND expires_at <= NOW()
+    RETURNING key, value, expires_at, updated_by
+  `)
+  const linhas = resultado.rows as {
+    key: string
+    value: unknown
+    expires_at: string | Date
+    updated_by: string | null
+  }[]
+  const chaves: AppConfigKey[] = []
+  for (const linha of linhas) {
+    if (!isAppConfigKey(linha.key)) continue
+    chaves.push(linha.key)
+    await recordAdminActionSafely({
+      kind: 'config.expire',
+      actorId: 'houdini',
+      actorName: 'Houdini',
+      targetType: 'config',
+      targetId: linha.key,
+      targetLabel: linha.key,
+      before: { value: linha.value },
+      after: { padrao: true },
+      detail: {
+        expiresAt: utcIso(linha.expires_at),
+        lancadoPor: linha.updated_by
+      }
+    })
+  }
+  return chaves
+}
+
 async function carregarDoBanco(): Promise<RegistroBruto> {
-  const resultado = await db.execute(sql`SELECT key, value FROM app_config`)
+  await expirarFeiticosVencidos()
+  const resultado = await db.execute(
+    sql`SELECT key, value FROM app_config WHERE expires_at IS NULL OR expires_at > NOW()`
+  )
   const linhas = resultado.rows as { key: string; value: unknown }[]
 
   const bruto: RegistroBruto = {}
@@ -47,6 +92,8 @@ export type LinhaAppConfig = {
    * tem chave estrangeira, então o id sobrevive ao usuário.
    */
   updatedByNome: string | null
+  /** WEB-387: até quando vale; nulo = sem prazo. */
+  expiresAt: string | null
 }
 
 /**
@@ -62,10 +109,11 @@ export type LinhaAppConfig = {
 export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
   const resultado = await db.execute(
     sql`
-      SELECT c.key, c.value, c.updated_at, c.updated_by,
+      SELECT c.key, c.value, c.updated_at, c.updated_by, c.expires_at,
         COALESCE(NULLIF(btrim(u.name), ''), u.email) AS updated_by_nome
       FROM app_config c
       LEFT JOIN "user" u ON u.id = c.updated_by
+      WHERE c.expires_at IS NULL OR c.expires_at > NOW()
     `
   )
   const linhas = resultado.rows as {
@@ -74,6 +122,7 @@ export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
     updated_at: string | Date
     updated_by: string | null
     updated_by_nome: string | null
+    expires_at: string | Date | null
   }[]
 
   return linhas
@@ -83,7 +132,8 @@ export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
       value: linha.value,
       updatedAt: utcIso(linha.updated_at),
       updatedBy: linha.updated_by,
-      updatedByNome: linha.updated_by_nome
+      updatedByNome: linha.updated_by_nome,
+      expiresAt: linha.expires_at ? utcIso(linha.expires_at) : null
     }))
 }
 
