@@ -6,6 +6,7 @@ import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
+import { grimorioRouter } from './grimorio'
 import { onboardingRouter } from './onboarding'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
@@ -37,6 +38,7 @@ export const appRouter = router({
   reservations: reservationsRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
-  feedback: feedbackRouter
+  feedback: feedbackRouter,
+  grimorio: grimorioRouter
 })
 export type AppRouter = typeof appRouter

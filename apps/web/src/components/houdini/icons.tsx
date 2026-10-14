@@ -38,6 +38,9 @@ export const ICON_PATHS = {
   book: 'M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4Z M20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6Z',
   warn: 'M12 3 L22 20 H2 Z M12 10 V14 M12 17 V17.5',
   check: 'M5 12 L10 17 L19 7',
+  mask: 'M3 6c3 1 6 1 9 0s6-1 9 0c0 6-3 11-9 11S3 12 3 6Z M8 10h2 M14 10h2',
+  vanish: 'M12 3a9 9 0 1 0 0 18 M12 3a9 9 0 0 1 0 18 M3 12h4 M17 12h4',
+  back: 'M9 14 L4 9 L9 4 M4 9h11a5 5 0 0 1 0 10h-3',
   external: 'M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6'
 } as const
 

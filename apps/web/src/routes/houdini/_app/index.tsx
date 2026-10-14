@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
+import { GrimorioRow } from '@/components/houdini/grimorio'
 import { Icon, type IconName } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
 import { useTRPC } from '@/utils/trpc'
@@ -37,6 +38,10 @@ function InicioPage() {
     ...quiet
   })
   const spells = useQuery({ ...trpc.appConfig.list.queryOptions(), ...quiet })
+  const grimorio = useQuery({
+    ...trpc.grimorio.list.queryOptions({ limit: 6 }),
+    ...quiet
+  })
 
   const tiles: Array<{
     to:
@@ -128,6 +133,41 @@ function InicioPage() {
             </Link>
           ))}
         </div>
+        <section className="hd-card" aria-labelledby="grim-h">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 8
+            }}
+          >
+            <h2 id="grim-h" className="hd-h2">
+              Grimório
+            </h2>
+            <Link
+              to="/houdini/grimorio"
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--hd-roxo-soft)',
+                textDecoration: 'none'
+              }}
+            >
+              ver tudo
+            </Link>
+          </div>
+          {grimorio.data?.entries.length ? (
+            grimorio.data.entries.map((entry) => (
+              <GrimorioRow key={entry.id} entry={entry} compact />
+            ))
+          ) : (
+            <p className="hd-small" style={{ margin: 0 }}>
+              {grimorio.isLoading ? 'Lendo…' : 'Nenhum truque escrito ainda.'}
+            </p>
+          )}
+        </section>
       </div>
     </HoudiniShell>
   )

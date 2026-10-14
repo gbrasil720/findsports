@@ -22,6 +22,7 @@ import {
   deleteStripeSubscriptionOf,
   endLiveSubscriptionOf
 } from './account-deletion'
+import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
 import { runInBackground } from './background'
 import {
   blocksNewCheckout,
@@ -110,6 +111,13 @@ export function createAuth() {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // WEB-384: o Grimório registra a troca de papel com o valor de antes,
+        // que o `after` já não consegue ler.
+        if (ctx.path === '/admin/set-role') {
+          return {
+            context: { houdiniRoleBefore: await previousRole(ctx.body ?? {}) }
+          }
+        }
         // `image` só entra pelo avatar enviado ao nosso store: um host
         // qualquer veria IP e horário de quem vê a foto. No cadastro ainda
         // não há usuário, então ali só cabe vazio.
@@ -151,6 +159,20 @@ export function createAuth() {
             })
           }
         }
+      }),
+      // WEB-384: depois de a rota do plugin admin responder sem erro.
+      after: createAuthMiddleware(async (ctx) => {
+        if (!isLoggedAdminPath(ctx.path)) return
+        if (ctx.context.returned instanceof APIError) return
+        const session = await getSessionFromCtx(ctx)
+        if (!session) return
+        await logAdminAction({
+          path: ctx.path,
+          body: ctx.body ?? {},
+          session,
+          roleBefore: (ctx as { houdiniRoleBefore?: string | null })
+            .houdiniRoleBefore
+        })
       })
     },
     database: drizzleAdapter(db, {

@@ -11,7 +11,8 @@ export const HOUDINI_NAV = [
   { to: '/houdini/pessoas', label: 'Pessoas', icon: 'users' },
   { to: '/houdini/feiticos', label: 'Feitiços', icon: 'wand' },
   { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' },
-  { to: '/houdini/bares', label: 'Bares', icon: 'store' }
+  { to: '/houdini/bares', label: 'Bares', icon: 'store' },
+  { to: '/houdini/grimorio', label: 'Grimório', icon: 'book' }
 ] as const satisfies ReadonlyArray<{
   to: string
   label: string

@@ -1,3 +1,4 @@
+import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -26,6 +27,12 @@ import {
  * avisar o usuário antes de ele bater numa porta fechada.
  */
 
+/** WEB-384: o que estava gravado antes, para o Grimório. Sem linha, o padrão. */
+async function valorGravado(key: string) {
+  const linha = (await carregarAppConfigGravada()).find((l) => l.key === key)
+  return linha ? { value: linha.value } : { padrao: true }
+}
+
 export const appConfigRouter = router({
   list: adminProcedure.query(async () => {
     const gravadas = await carregarAppConfigGravada()
@@ -52,14 +59,36 @@ export const appConfigRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: validado.erro })
       }
 
+      const antes = await valorGravado(input.key)
       await setAppConfig(input.key, validado.value, ctx.session.user.id)
+      await recordAdminActionSafely({
+        kind: 'config.set',
+        actorId: ctx.session.user.id,
+        actorName: ctx.session.user.name,
+        targetType: 'config',
+        targetId: input.key,
+        targetLabel: input.key,
+        before: antes,
+        after: { value: validado.value }
+      })
       return { key: input.key, valor: validado.value }
     }),
 
   reset: adminProcedure
     .input(z.object({ key: appConfigKeySchema }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const antes = await valorGravado(input.key)
       await resetAppConfig(input.key)
+      await recordAdminActionSafely({
+        kind: 'config.reset',
+        actorId: ctx.session.user.id,
+        actorName: ctx.session.user.name,
+        targetType: 'config',
+        targetId: input.key,
+        targetLabel: input.key,
+        before: antes,
+        after: { padrao: true }
+      })
       return { key: input.key }
     }),
 
