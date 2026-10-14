@@ -85,3 +85,40 @@ integrationTest('grimorio.list é só de admin', async () => {
   const caller = appRouter.createCaller(contextFor(crypto.randomUUID(), 'pub'))
   await expect(caller.grimorio.list({})).rejects.toThrow()
 })
+
+integrationTest('a paginação não pula nem repete linha', async () => {
+  const { appRouter } = await load()
+  const { recordAdminAction } = await import(
+    '@findsports_oficial/db/admin-action'
+  )
+  const targetId = crypto.randomUUID()
+  for (let i = 0; i < 5; i++) {
+    await recordAdminAction({
+      kind: 'user.unban',
+      actorId: 'a',
+      actorName: 'A',
+      targetType: 'user',
+      targetId,
+      targetLabel: `linha ${i}`
+    })
+  }
+  const caller = appRouter.createCaller(
+    contextFor(crypto.randomUUID(), 'admin')
+  )
+  const seen: string[] = []
+  let cursor: string | null = null
+  do {
+    const page = await caller.grimorio.list({ targetId, limit: 2, cursor })
+    seen.push(...page.entries.map((e) => e.targetLabel))
+    cursor = page.nextCursor
+  } while (cursor)
+  // No mesmo milissegundo a ordem é a do id: o que importa é cada linha
+  // aparecer uma vez só.
+  expect([...seen].sort()).toEqual([
+    'linha 0',
+    'linha 1',
+    'linha 2',
+    'linha 3',
+    'linha 4'
+  ])
+})

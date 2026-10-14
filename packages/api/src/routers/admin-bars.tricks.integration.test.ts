@@ -332,3 +332,79 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'extendTrial não religa bar que um admin tirou do ar (revisão do lote)',
+  async () => {
+    const seeded = await seedBar(
+      'elite',
+      'trialing',
+      new Date(Date.now() + 2 * DAY)
+    )
+    try {
+      await seeded.db
+        .update(bar)
+        .set({ isActive: true })
+        .where(eq(bar.id, seeded.barId))
+      const caller = await admin()
+      await caller.adminBars.setActive({ barId: seeded.barId, active: false })
+      // O teste vence depois: estender não desfaz a decisão do admin.
+      await seeded.db
+        .update(subscription)
+        .set({ currentPeriodEnd: new Date(Date.now() - DAY) })
+        .where(eq(subscription.barId, seeded.barId))
+
+      expect(
+        await caller.adminBars.extendTrial({ barId: seeded.barId, days: 7 })
+      ).toMatchObject({ isActive: false })
+      expect((await stored(seeded.barId))?.isActive).toBe(false)
+    } finally {
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'setActive recusa tirar do ar bar que assina pelo Stripe',
+  async () => {
+    const seeded = await seedBar(
+      'pro',
+      'active',
+      new Date(Date.now() + 9 * DAY)
+    )
+    try {
+      await seeded.db
+        .update(bar)
+        .set({ isActive: true })
+        .where(eq(bar.id, seeded.barId))
+      await seeded.db
+        .update(subscription)
+        .set({
+          provider: 'stripe',
+          externalSubscriptionId: `sub_${crypto.randomUUID()}`
+        })
+        .where(eq(subscription.barId, seeded.barId))
+      const caller = await admin()
+
+      expect(
+        (
+          await refusal(
+            caller.adminBars.setActive({ barId: seeded.barId, active: false })
+          )
+        ).code
+      ).toBe('PRECONDITION_FAILED')
+      expect((await stored(seeded.barId))?.isActive).toBe(true)
+      expect(await grimorio(seeded.barId)).toHaveLength(0)
+    } finally {
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest('admin sem 2FA não age pelo servidor', async () => {
+  const { appRouter } = await load()
+  const ctx = contextFor(crypto.randomUUID(), 'admin')
+  ctx.session.user.twoFactorEnabled = false
+  const caller = appRouter.createCaller(ctx)
+  expect((await refusal(caller.adminBars.list({}))).code).toBe('FORBIDDEN')
+})
