@@ -322,6 +322,11 @@ invente layout que o projeto não tem.
   entrada (`entering`) é **constante de módulo** (`POP`, `SWAP`...): o Reanimated 4
   recomeça a entrada quando o objeto muda, e um `ZoomIn.delay(...)` escrito no JSX é um
   objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
+- **Navegador de telas (só em desenvolvimento):** a aba "DEV" na borda direita
+  (`components/dev-tab.tsx`) abre `app/dev.tsx`, a lista das telas pelo código do design
+  (4b…4h, 2p, 11p…11s; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
+  tela montada de novo; "Recarregar esta tela", ou segurar a aba, monta a atual outra vez
+  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`.
 - **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
   `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
   `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.

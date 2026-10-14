@@ -5,6 +5,7 @@ import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { DevTab } from '@/components/dev-tab'
 import { Splash, SplashDone } from '@/components/splash'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -78,6 +79,7 @@ export default function Layout() {
         <SplashDone value={splashDone}>
           <Stack screenOptions={{ headerShown: false }} />
         </SplashDone>
+        <DevTab />
         {splashDone ? null : (
           <Splash agenda={agenda ?? undefined} onDone={endSplash} />
         )}
