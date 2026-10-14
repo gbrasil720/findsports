@@ -50,6 +50,7 @@ import { Route as HoudiniAppBaresRouteImport } from './routes/houdini/_app/bares
 import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/fantasmas'
 import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/feiticos'
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
+import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 
 const IndexRoute = IndexRouteImport.update({
@@ -258,6 +259,11 @@ const HoudiniAppGrimorioRoute = HoudiniAppGrimorioRouteImport.update({
   path: '/grimorio',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppJogosRoute = HoudiniAppJogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   id: '/pessoas',
   path: '/pessoas',
@@ -304,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/': typeof HoudiniAppIndexRoute
 }
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
 }
 export interface FileRoutesById {
@@ -391,6 +399,7 @@ export interface FileRoutesById {
   '/houdini/_app/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/_app/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
 }
@@ -436,6 +445,7 @@ export interface FileRouteTypes {
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
+    | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/'
   fileRoutesByTo: FileRoutesByTo
@@ -479,6 +489,7 @@ export interface FileRouteTypes {
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
+    | '/houdini/jogos'
     | '/houdini/pessoas'
   id:
     | '__root__'
@@ -522,6 +533,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/fantasmas'
     | '/houdini/_app/feiticos'
     | '/houdini/_app/grimorio'
+    | '/houdini/_app/jogos'
     | '/houdini/_app/pessoas'
     | '/houdini/_app/'
   fileRoutesById: FileRoutesById
@@ -852,6 +864,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppGrimorioRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/jogos': {
+      id: '/houdini/_app/jogos'
+      path: '/jogos'
+      fullPath: '/houdini/jogos'
+      preLoaderRoute: typeof HoudiniAppJogosRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
     '/houdini/_app/pessoas': {
       id: '/houdini/_app/pessoas'
       path: '/pessoas'
@@ -867,6 +886,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppFantasmasRoute: typeof HoudiniAppFantasmasRoute
   HoudiniAppFeiticosRoute: typeof HoudiniAppFeiticosRoute
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
+  HoudiniAppJogosRoute: typeof HoudiniAppJogosRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
   HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
 }
@@ -876,6 +896,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppFantasmasRoute: HoudiniAppFantasmasRoute,
   HoudiniAppFeiticosRoute: HoudiniAppFeiticosRoute,
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
+  HoudiniAppJogosRoute: HoudiniAppJogosRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
   HoudiniAppIndexRoute: HoudiniAppIndexRoute,
 }

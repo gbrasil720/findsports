@@ -1,5 +1,6 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
 import { adminBarsRouter } from './admin-bars'
+import { adminEventsRouter } from './admin-events'
 import { adminUsersRouter } from './admin-users'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
@@ -26,6 +27,7 @@ export const appRouter = router({
     }
   }),
   adminBars: adminBarsRouter,
+  adminEvents: adminEventsRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
   onboarding: onboardingRouter,
