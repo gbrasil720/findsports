@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { ErrorText, haptic } from '@/components/motion'
@@ -22,16 +21,12 @@ import {
   text
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
-import { env } from '@/lib/env'
 
 /*
  * "Criar conta" (4g do design). O papel vem do perfil de uso. Depois do
  * cadastro o servidor manda o e-mail de confirmação; o link volta para o app
  * em `/verified`, que adota a sessão (ver `lib/auth-client.ts`).
  */
-
-const openPage = (path: string) =>
-  WebBrowser.openBrowserAsync(`${env.EXPO_PUBLIC_SERVER_URL}${path}`)
 
 export default function SignUp() {
   const router = useRouter()
@@ -126,11 +121,24 @@ export default function SignUp() {
       <Checkbox checked={accepted} onChange={setAccepted}>
         <Text style={[text(13.5), { color: MUTED }]}>
           Li e aceito os{' '}
-          <Text style={styles.link} onPress={() => openPage('/termos')}>
+          <Text
+            style={styles.link}
+            onPress={() =>
+              router.push({ pathname: '/legal', params: { doc: 'termos' } })
+            }
+          >
             Termos de Uso
           </Text>{' '}
           e a{' '}
-          <Text style={styles.link} onPress={() => openPage('/privacidade')}>
+          <Text
+            style={styles.link}
+            onPress={() =>
+              router.push({
+                pathname: '/legal',
+                params: { doc: 'privacidade' }
+              })
+            }
+          >
             Política de Privacidade
           </Text>
           .

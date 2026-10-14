@@ -20,6 +20,10 @@ export default function Home() {
   // a sessão nova ainda está sendo buscada e `data` vem vazio por um instante.
   if (!session.isPending && !session.isRefetching && !session.data)
     return <Redirect href="/intro" />
+  // Torcedor que ainda não escolheu esportes e distância faz o onboarding.
+  const user = session.data?.user
+  if (user?.role === 'fan' && !user.onboardingCompleted)
+    return <Redirect href="/onboarding" />
 
   const apiStatus = api.isPending
     ? 'Conectando à API…'

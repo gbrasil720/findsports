@@ -171,6 +171,76 @@ const ICONS = {
       </G>
     </>
   ),
+  fire: (c: string) => (
+    <>
+      <Path
+        d="M12 22a7 7 0 0 1-7-7c0-4.6 3.5-6 3.5-10.5 3.5 2.3 4.7 4.7 4.7 7 1.2-1.2 1.7-2.3 1.7-3.5C17.2 10.3 19 12.6 19 15a7 7 0 0 1-7 7z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M12 22a3.6 3.6 0 0 1-3.6-3.6c0-2.4 1.8-3.4 2.4-5.4 2.6 1.5 4.8 3 4.8 5.4A3.6 3.6 0 0 1 12 22z"
+        fill={c}
+      />
+    </>
+  ),
+  map: (c: string) => (
+    <>
+      <Path
+        d="M2.5 6.2 8.6 4l6.2 2.2L21 4v13.8L14.8 20l-6.2-2.2-6.1 2.2z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M15.2 4.6a3.9 3.9 0 0 1 3.9 3.9c0 2.9-3.9 6.9-3.9 6.9s-3.9-4-3.9-6.9a3.9 3.9 0 0 1 3.9-3.9z"
+        fill={c}
+      />
+      <Circle cx={15.2} cy={8.5} r={1.45} fill={LIVE} />
+    </>
+  ),
+  people: (c: string) => (
+    <>
+      <G fill={c} opacity={0.3}>
+        <Circle cx={16.5} cy={8} r={3.4} />
+        <Path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />
+      </G>
+      <Circle cx={9} cy={8} r={4} fill={c} />
+      <Path d="M2 20.5a7 7 0 0 1 14 0z" fill={c} />
+    </>
+  ),
+  search: (c: string) => (
+    <>
+      <Circle cx={10.5} cy={10.5} r={7} fill={c} opacity={0.3} />
+      <Path
+        fillRule="evenodd"
+        d="M10.5 2.5a8 8 0 0 1 6.3 12.9l4.4 4.4-1.6 1.6-4.4-4.4A8 8 0 1 1 10.5 2.5zm0 2.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2z"
+        fill={c}
+      />
+    </>
+  ),
+  pin: (c: string) => (
+    <Path
+      fillRule="evenodd"
+      d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z"
+      fill={c}
+    />
+  ),
+  tv: (c: string) => (
+    <>
+      <Rect
+        x={2.5}
+        y={4}
+        width={19}
+        height={13}
+        rx={2.5}
+        fill={c}
+        opacity={0.3}
+      />
+      <Rect x={8} y={18.6} width={8} height={2.4} rx={1.2} fill={c} />
+      <Path d="M4.5 6.5h15v8h-15z" fill={c} opacity={0.55} />
+      <Circle cx={18} cy={8.2} r={1.7} fill={LIVE} />
+    </>
+  ),
   shield: (c: string) => (
     <>
       <Path d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10.2z" fill={c} opacity={0.35} />
@@ -527,11 +597,14 @@ export function Field({
   label,
   icon,
   action,
+  bare,
   ...input
 }: TextInputProps & {
   label: string
-  icon: 'person' | 'mail' | 'lock'
+  icon: 'person' | 'mail' | 'lock' | 'search' | 'pin'
   action?: { label: string; onPress: () => void }
+  /** Sem a linha do rótulo (que ainda vale para leitores de tela). */
+  bare?: boolean
 }) {
   const [focused, setFocused] = useState(false)
   // O foco acende: a borda escurece e a sombra acid sai de trás da caixa.
@@ -551,7 +624,7 @@ export function Field({
   }))
   return (
     <View style={{ gap: 7 }}>
-      <View style={styles.labelRow}>
+      <View style={[styles.labelRow, bare && { display: 'none' }]}>
         <Text style={text(13, 'SemiBold')}>{label}</Text>
         {action ? (
           <Text

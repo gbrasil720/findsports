@@ -321,6 +321,15 @@ invente layout que o projeto não tem.
   `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
+- **Onboarding do torcedor ("05", 4i–4n):** `app/onboarding/*`, escolhas num contexto
+  (`components/onboarding.tsx`) e um envio só no fim (`onboarding.completeFan`), como no web.
+  A tela inicial manda para lá o torcedor com `onboardingCompleted` falso. Cidade por
+  `pubs.searchCities` e a contagem "N bares com jogo hoje" por `pubs.countTodayNear`.
+  Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
+  corpo `{}`, senão 415) e relê com `disableCookieCache`. O banco local nasce sem times:
+  `NODE_ENV=development bun run db:seed:teams` (o resolver fixa o Postgres local).
+- **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
+  O texto legal vem de `packages/legal`, o mesmo do site.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`

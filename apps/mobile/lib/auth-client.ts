@@ -28,7 +28,10 @@ export const authClient = createAuthClient({
     // O papel vai no cadastro (`fan` ou `pub`, ver `allow-role-on-signup` no
     // servidor).
     inferAdditionalFields({
-      user: { role: { type: 'string', required: false } }
+      user: {
+        role: { type: 'string', required: false },
+        onboardingCompleted: { type: 'boolean', required: false }
+      }
     }),
     twoFactorClient()
   ]
@@ -54,3 +57,18 @@ export async function adoptSessionCookie(setCookie: string) {
 
 /** Onde a tela de senha nova acha o e-mail, para entrar logo depois. */
 export const RESET_EMAIL_KEY = 'onside.reset-email'
+
+/**
+ * Relê a sessão do banco. O servidor guarda a sessão num cookie por 60 s, e o
+ * onboarding grava `onboardingCompleted` por fora do better-auth: sem
+ * descartar o cache, o app continuaria vendo o onboarding como pendente. É o
+ * `refreshSessionCache` do web.
+ */
+export async function refreshSession() {
+  // Corpo `{}`: sem JSON o servidor recusa com 415.
+  await authClient
+    .$fetch('/expire-session-cache', { method: 'POST', body: {} })
+    .catch(() => {})
+  await authClient.getSession({ query: { disableCookieCache: true } })
+  authClient.$store.notify('$sessionSignal')
+}

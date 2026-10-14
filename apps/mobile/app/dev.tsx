@@ -75,6 +75,30 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       },
       { code: '11s', label: 'Duas etapas', href: '/two-factor' }
     ]
+  },
+  {
+    title: '05 Onboarding do torcedor',
+    // Precisa de sessão de torcedor (os esportes e times vêm da API).
+    items: [
+      { code: '4i', label: 'Boas-vindas', href: '/onboarding' },
+      { code: '4j', label: 'Esportes', href: '/onboarding/sports' },
+      { code: '4k', label: 'Times', href: '/onboarding/teams' },
+      { code: '4l', label: 'Distância', href: '/onboarding/distance' },
+      { code: '4m', label: 'Localização', href: '/onboarding/location' },
+      { code: '4n', label: 'Revisão', href: '/onboarding/review' }
+    ]
+  },
+  {
+    title: '06 Avulsas',
+    items: [
+      { code: '11w', label: '404', href: '/pagina-que-nao-existe' as Href },
+      { code: '11x', label: 'Termos de Uso', href: '/legal' },
+      {
+        code: '11x',
+        label: 'Privacidade',
+        href: { pathname: '/legal', params: { doc: 'privacidade' } }
+      }
+    ]
   }
 ]
 
