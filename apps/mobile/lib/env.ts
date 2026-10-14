@@ -1,3 +1,4 @@
+import Constants from 'expo-constants'
 import { z } from 'zod'
 
 // `EXPO_PUBLIC_*` é embutida no bundle do app pelo Expo, e só quando lida
@@ -10,8 +11,29 @@ const schema = z.object({
   EXPO_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional()
 })
 
-export const env = schema.parse({
+const parsed = schema.parse({
   EXPO_PUBLIC_SERVER_URL: process.env.EXPO_PUBLIC_SERVER_URL,
   EXPO_PUBLIC_TURNSTILE_SITE_KEY:
     process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY || undefined
 })
+
+/**
+ * Em desenvolvimento, `localhost` no celular é o próprio celular. O Expo sabe
+ * por qual endereço o aparelho alcançou o Metro (`hostUri`, o IP do Mac na
+ * rede): o servidor do web está na mesma máquina, então `localhost` vira esse
+ * endereço. No simulador `hostUri` já é `localhost` e nada muda; fora de
+ * desenvolvimento a URL configurada vale como está.
+ */
+function reachableServerUrl(configured: string): string {
+  if (!__DEV__) return configured
+  const url = new URL(configured)
+  const metroHost = Constants.expoConfig?.hostUri?.split(':')[0]
+  if (url.hostname !== 'localhost' || !metroHost) return configured
+  url.hostname = metroHost
+  return url.origin
+}
+
+export const env = {
+  ...parsed,
+  EXPO_PUBLIC_SERVER_URL: reachableServerUrl(parsed.EXPO_PUBLIC_SERVER_URL)
+}
