@@ -19,10 +19,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "sh.onside.app"
     },
-    "web": {
-      "bundler": "metro",
-      "output": "single"
-    },
     "plugins": [
       "expo-router",
       "expo-secure-store",
