@@ -106,11 +106,21 @@ export default function Intro() {
                   />
                 ))}
               </View>
-              <Text style={styles.title} accessibilityRole="header">
-                {title[0]}
-                {title[2] ? '\n' : ' '}
-                <Text style={styles.titleAccent}>{title[1]}</Text>
-              </Text>
+              <View accessible accessibilityRole="header">
+                {title[2] ? (
+                  <>
+                    <Text style={styles.title}>{title[0]}</Text>
+                    <Text style={[styles.title, styles.titleAccent]}>
+                      {title[1]}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.title}>
+                    {title[0]}{' '}
+                    <Text style={styles.titleAccent}>{title[1]}</Text>
+                  </Text>
+                )}
+              </View>
               <Text style={styles.body}>{body}</Text>
             </View>
           </View>
@@ -177,10 +187,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18,18,15,.2)'
   },
   dotActive: { width: 18, backgroundColor: INK },
+  // No iOS, `lineHeight` menor que a altura da fonte corta o topo das letras,
+  // e a do Anton é 1,5em. Cada linha fica com a altura natural e a margem
+  // negativa traz o espaçamento para o 1.02 do design: (1,505 - 1,02) / 2 em.
   title: {
     fontFamily: 'Anton',
     fontSize: 38,
-    lineHeight: 39,
+    marginVertical: -9.2,
     letterSpacing: -0.76,
     textTransform: 'uppercase',
     color: INK

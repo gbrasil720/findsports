@@ -305,7 +305,12 @@ invente layout que o projeto não tem.
   imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
   da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
-  não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`.
+  não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
+  e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome
+  da fonte variável, e o iOS registra uma só das instâncias com nome repetido (os pesos
+  saem todos iguais). Texto em Anton ou Geist Mono não leva `lineHeight` menor que a altura
+  natural da fonte (1,505em e 1,3em), senão o iOS corta o topo das letras: use margem
+  vertical negativa (ver `title` em `app/intro.tsx`).
 - **Duas versões de React no repositório:** o Expo traz `react` e `react-dom` 19.2.3 próprios.
   Pacote de `packages/*` que dependa de biblioteca de React **declara `react` e `react-dom`
   na faixa do web** (`^19.2.5`), senão o bun liga a biblioteca à versão do Expo e o web quebra

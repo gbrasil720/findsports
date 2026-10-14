@@ -322,13 +322,21 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-8deg' }]
   },
   run: { flexDirection: 'row', alignSelf: 'flex-start' },
+  // Sem `lineHeight`: menor que a altura natural da fonte, o iOS corta o topo
+  // das letras. A margem negativa leva a linha natural do Anton (1,505em, 81)
+  // aos 64 do design.
   bandText: {
     fontFamily: 'Anton',
     fontSize: 54,
-    lineHeight: 64,
+    marginVertical: -8.6,
     paddingHorizontal: 18
   },
-  slash: { fontFamily: 'Anton', fontSize: 54, lineHeight: 64, opacity: 0.35 },
+  slash: {
+    fontFamily: 'Anton',
+    fontSize: 54,
+    marginVertical: -8.6,
+    opacity: 0.35
+  },
   word: { position: 'absolute', left: MARGIN, right: MARGIN, bottom: 160 },
   footer: {
     position: 'absolute',
@@ -338,5 +346,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
-  footerText: { fontFamily: 'GeistMono-SemiBold', fontSize: 13, lineHeight: 13 }
+  // Mesmo motivo: a Geist Mono tem 1,3em de altura natural, o design pede 1em.
+  footerText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13,
+    marginVertical: -1.95
+  }
 })

@@ -79,24 +79,6 @@ export function MapArt(props: ArtProps) {
       <Pin x={110 * sx} y={250 * sy} label="Casa 92" />
       <Pin x={300 * sx} y={226 * sy} label="Boteco Sete" />
       <Pin x={206 * sx} y={312 * sy} label="Bar do Zé" live />
-      {/* Você: o ponto acid com os dois anéis do design. */}
-      <View
-        style={[styles.you, { left: 193 * sx - 40, top: 375 * sy - 40 }]}
-        pointerEvents="none"
-      >
-        <View style={[styles.youRing, { width: 80, height: 80 }]} />
-        <View
-          style={[
-            styles.youRing,
-            {
-              width: 44,
-              height: 44,
-              backgroundColor: 'rgba(201,241,53,.25)'
-            }
-          ]}
-        />
-        <View style={styles.youDot} />
-      </View>
       <View style={[styles.glassLight, styles.matchCard]}>
         <View style={styles.matchIcon}>
           <Svg width={22} height={22} viewBox="0 0 24 24">
@@ -120,6 +102,24 @@ export function MapArt(props: ArtProps) {
             Hoje 21:30 · 4 bares perto de você
           </Text>
         </View>
+      </View>
+      {/* Você: o ponto acid com os dois anéis do design, por cima do card como lá. */}
+      <View
+        style={[styles.you, { left: 193 * sx - 40, top: 375 * sy - 40 }]}
+        pointerEvents="none"
+      >
+        <View style={[styles.youRing, { width: 80, height: 80 }]} />
+        <View
+          style={[
+            styles.youRing,
+            {
+              width: 44,
+              height: 44,
+              backgroundColor: 'rgba(201,241,53,.25)'
+            }
+          ]}
+        />
+        <View style={styles.youDot} />
       </View>
       {/* Condição da ODbL: o mapa é OpenStreetMap, pelos tiles da Onside. */}
       <Text style={styles.attribution}>© OpenStreetMap</Text>
@@ -529,9 +529,10 @@ const styles = StyleSheet.create({
   code: {
     fontFamily: 'Anton',
     fontSize: 60,
-    lineHeight: 66,
     letterSpacing: 3.6,
-    marginTop: 6,
+    // Linha de 1em como no design, sem `lineHeight` (ver `title` em `app/intro.tsx`).
+    marginTop: 6 - 15.2,
+    marginBottom: -15.2,
     color: INK
   },
   orb: { position: 'absolute', left: '50%', borderRadius: 999 },
