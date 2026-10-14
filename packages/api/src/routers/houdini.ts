@@ -9,11 +9,17 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { adminAction } from '@findsports_oficial/db/schema/houdini'
+import {
+  bar,
+  event,
+  subscription
+} from '@findsports_oficial/db/schema/platform'
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
 import { readUnregisteredAlerts } from '../lib/attendance'
+import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 
 const DAY = 24 * 3_600_000
@@ -27,6 +33,35 @@ const tally = (where: SQL | undefined) =>
 // instante: o Postgres descarta o fuso ao converter para `timestamp`.
 const iso = (date: Date) => date.toISOString()
 
+// Teste do cadastro: `trialing` sem assinatura no Stripe. É o que a
+// reconciliação diária tira do ar quando vence (WEB-357).
+const signupTrial = and(
+  eq(subscription.status, 'trialing'),
+  isNull(subscription.externalSubscriptionId)
+)
+
+/**
+ * Teste do cadastro que acaba até o fim do sexto dia depois de hoje, no
+ * horário de Brasília: as sete colunas da Ampulheta, e o cartão do Início
+ * conta o mesmo. Entra também o que já venceu e segue no ar à espera da
+ * reconciliação (sem data conta como vencido, como lá): a coluna de hoje.
+ */
+const trialEndingThisWeek = and(
+  signupTrial,
+  sql`(${subscription.currentPeriodEnd} IS NULL OR ${subscription.currentPeriodEnd} < ((date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') + interval '7 days') AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`
+)
+
+/** Dias entre hoje e o fim do teste, contados no calendário de Brasília. */
+const spDaysUntilEnd = sql<number>`(((${subscription.currentPeriodEnd} AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date - (now() AT TIME ZONE 'America/Sao_Paulo')::date)`
+
+const upcomingGames = sql<number>`(
+  SELECT count(*)::int FROM ${event}
+  WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+)`
+
+// ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
+const AMPULHETA_LIMIT = 200
+
 /**
  * WEB-391: o Início do Houdini e o ⌘K. Só leitura, montado com o que as
  * tabelas já registram.
@@ -34,12 +69,6 @@ const iso = (date: Date) => date.toISOString()
 export const houdiniRouter = router({
   overview: adminProcedure.query(async () => {
     const now = new Date()
-    // Teste do cadastro: `trialing` sem assinatura no Stripe. É o que a
-    // reconciliação diária tira do ar quando vence (WEB-357).
-    const signupTrial = and(
-      eq(subscription.status, 'trialing'),
-      isNull(subscription.externalSubscriptionId)
-    )
     const [[people], [bars], ghosts] = await Promise.all([
       db
         .select({
@@ -61,13 +90,7 @@ export const houdiniRouter = router({
             )
           ),
           pagando: tally(eq(subscription.status, 'active')),
-          testesAcabando: tally(
-            and(
-              signupTrial,
-              sql`${subscription.currentPeriodEnd} > ${iso(now)}`,
-              sql`${subscription.currentPeriodEnd} <= ${iso(new Date(now.getTime() + 7 * DAY))}`
-            )
-          )
+          testesAcabando: tally(trialEndingThisWeek)
         })
         .from(bar)
         .leftJoin(subscription, eq(subscription.barId, bar.id))
@@ -83,6 +106,73 @@ export const houdiniRouter = router({
       },
       testesAcabando: bars?.testesAcabando ?? 0,
       fantasmas: ghosts.length
+    }
+  }),
+
+  /**
+   * WEB-386: a Ampulheta. `ending` são os bares no ar cujo teste do cadastro
+   * acaba nesta semana, com o dia (0 = hoje, no calendário de Brasília).
+   *
+   * `gone` são os que estão fora do ar com o teste vencido nos últimos 7 dias.
+   * A reconciliação não anota quais bares desligou (o `job_run` guarda só a
+   * contagem), então a data é a do fim do teste: o bar saiu na execução
+   * seguinte, até um dia depois. Fica de fora o bar que um admin tirou do ar
+   * (o último liga/desliga dele no Grimório é desligar): religar ali
+   * desfaria uma decisão, não um vencimento.
+   */
+  ampulheta: adminProcedure.query(async () => {
+    const lastOnOff = sql`(
+      SELECT ${adminAction.kind} FROM ${adminAction}
+      WHERE ${adminAction.targetType} = 'bar'
+        AND ${adminAction.targetId} = ${bar.id}
+        AND ${adminAction.kind} IN ('bar.take_off_air', 'bar.put_on_air')
+      ORDER BY ${adminAction.createdAt} DESC
+      LIMIT 1
+    )`
+    const columns = {
+      id: bar.id,
+      name: bar.name,
+      plan: subscription.plan,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      upcomingGames
+    }
+    const [ending, gone] = await Promise.all([
+      db
+        .select({
+          ...columns,
+          status: subscription.status,
+          day: sql<number>`GREATEST(0, COALESCE(${spDaysUntilEnd}, 0))`
+        })
+        .from(bar)
+        .innerJoin(subscription, eq(subscription.barId, bar.id))
+        .where(and(eq(bar.isActive, true), trialEndingThisWeek))
+        .orderBy(sql`${subscription.currentPeriodEnd} ASC NULLS FIRST`)
+        .limit(AMPULHETA_LIMIT),
+      db
+        .select({ ...columns, daysAgo: sql<number>`-${spDaysUntilEnd}` })
+        .from(bar)
+        .innerJoin(subscription, eq(subscription.barId, bar.id))
+        .where(
+          and(
+            eq(bar.isActive, false),
+            signupTrial,
+            sql`${subscription.currentPeriodEnd} <= (now() AT TIME ZONE 'UTC')`,
+            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC') - interval '7 days'`,
+            sql`${lastOnOff} IS DISTINCT FROM 'bar.take_off_air'`
+          )
+        )
+        .orderBy(sql`${subscription.currentPeriodEnd} DESC`)
+        .limit(AMPULHETA_LIMIT)
+    ])
+    const now = new Date()
+    return {
+      // O plano do teste pela regra de recurso pago: o que já venceu e
+      // espera a reconciliação aparece sem plano.
+      ending: ending.map(({ status, ...row }) => ({
+        ...row,
+        currentPlan: getCurrentPlan({ ...row, status }, now)
+      })),
+      gone
     }
   }),
 

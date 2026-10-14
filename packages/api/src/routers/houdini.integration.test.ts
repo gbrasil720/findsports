@@ -139,10 +139,75 @@ integrationTest(
   }
 )
 
+integrationTest(
+  'ampulheta separa os testes da semana e os bares que saíram do ar',
+  async () => {
+    const caller = await admin()
+    const inTwo = await seedBar('pro', 'trialing', inDays(2))
+    // Venceu e ainda espera a reconciliação: hoje, já sem plano.
+    const overdue = await seedBar('elite', 'trialing', inDays(-0.01))
+    const later = await seedBar('elite', 'trialing', inDays(10))
+    const stripeTrial = await seedBar('pro', 'trialing', inDays(1))
+    const gone = await seedBar('elite', 'trialing', inDays(-2), {
+      isActive: false
+    })
+    const longGone = await seedBar('elite', 'trialing', inDays(-10), {
+      isActive: false
+    })
+    const takenOff = await seedBar('starter', 'trialing', inDays(-1), {
+      isActive: false
+    })
+    const seeds = [inTwo, overdue, later, stripeTrial, gone, longGone, takenOff]
+    try {
+      await inTwo.seedGame()
+      await stripeTrial.db
+        .update(subscription)
+        .set({ externalSubscriptionId: `sub_${crypto.randomUUID()}` })
+        .where(eq(subscription.barId, stripeTrial.barId))
+      const { recordAdminAction } = await import(
+        '@findsports_oficial/db/admin-action'
+      )
+      await recordAdminAction({
+        kind: 'bar.take_off_air',
+        actorId: crypto.randomUUID(),
+        actorName: 'Admin de integração',
+        targetType: 'bar',
+        targetId: takenOff.barId,
+        targetLabel: 'Bar de integração'
+      })
+
+      const { ending, gone: off } = await caller.houdini.ampulheta()
+      const mine = (ids: string[]) =>
+        ids.filter((id) => seeds.some((s) => s.barId === id))
+      expect(mine(ending.map((b) => b.id))).toEqual([
+        overdue.barId,
+        inTwo.barId
+      ])
+      expect(ending.find((b) => b.id === inTwo.barId)).toMatchObject({
+        day: 2,
+        currentPlan: 'pro',
+        upcomingGames: 1
+      })
+      expect(ending.find((b) => b.id === overdue.barId)).toMatchObject({
+        day: 0,
+        currentPlan: null
+      })
+      expect(mine(off.map((b) => b.id))).toEqual([gone.barId])
+      expect(off.find((b) => b.id === gone.barId)).toMatchObject({
+        daysAgo: 2,
+        plan: 'elite'
+      })
+    } finally {
+      for (const seed of seeds) await seed.cleanup()
+    }
+  }
+)
+
 integrationTest('houdini é só de admin', async () => {
   const { appRouter } = await load()
   const caller = appRouter.createCaller(contextFor(crypto.randomUUID(), 'pub'))
   await expect(caller.houdini.overview()).rejects.toThrow()
   await expect(caller.houdini.coelhos({})).rejects.toThrow()
   await expect(caller.houdini.search({ q: 'a' })).rejects.toThrow()
+  await expect(caller.houdini.ampulheta()).rejects.toThrow()
 })

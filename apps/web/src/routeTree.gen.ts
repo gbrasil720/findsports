@@ -46,6 +46,7 @@ import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api/trpc/$'
 import { Route as ApiUserAvatarRouteImport } from './routes/api/user/avatar'
 import { Route as HoudiniAppIndexRouteImport } from './routes/houdini/_app/index'
+import { Route as HoudiniAppAmpulhetaRouteImport } from './routes/houdini/_app/ampulheta'
 import { Route as HoudiniAppBaresRouteImport } from './routes/houdini/_app/bares'
 import { Route as HoudiniAppBastidoresRouteImport } from './routes/houdini/_app/bastidores'
 import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/fantasmas'
@@ -242,6 +243,11 @@ const HoudiniAppIndexRoute = HoudiniAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppAmpulhetaRoute = HoudiniAppAmpulhetaRouteImport.update({
+  id: '/ampulheta',
+  path: '/ampulheta',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 const HoudiniAppBaresRoute = HoudiniAppBaresRouteImport.update({
   id: '/bares',
   path: '/bares',
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/ampulheta': typeof HoudiniAppAmpulhetaRoute
   '/houdini/bares': typeof HoudiniAppBaresRoute
   '/houdini/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
@@ -371,6 +378,7 @@ export interface FileRoutesByTo {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/ampulheta': typeof HoudiniAppAmpulhetaRoute
   '/houdini/bares': typeof HoudiniAppBaresRoute
   '/houdini/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
@@ -419,6 +427,7 @@ export interface FileRoutesById {
   '/api/bar/photo': typeof ApiBarPhotoRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
   '/api/user/avatar': typeof ApiUserAvatarRoute
+  '/houdini/_app/ampulheta': typeof HoudiniAppAmpulhetaRoute
   '/houdini/_app/bares': typeof HoudiniAppBaresRoute
   '/houdini/_app/bastidores': typeof HoudiniAppBastidoresRoute
   '/houdini/_app/fantasmas': typeof HoudiniAppFantasmasRoute
@@ -468,6 +477,7 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/ampulheta'
     | '/houdini/bares'
     | '/houdini/bastidores'
     | '/houdini/fantasmas'
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/ampulheta'
     | '/houdini/bares'
     | '/houdini/bastidores'
     | '/houdini/fantasmas'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/api/bar/photo'
     | '/api/trpc/$'
     | '/api/user/avatar'
+    | '/houdini/_app/ampulheta'
     | '/houdini/_app/bares'
     | '/houdini/_app/bastidores'
     | '/houdini/_app/fantasmas'
@@ -872,6 +884,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppIndexRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/ampulheta': {
+      id: '/houdini/_app/ampulheta'
+      path: '/ampulheta'
+      fullPath: '/houdini/ampulheta'
+      preLoaderRoute: typeof HoudiniAppAmpulhetaRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
     '/houdini/_app/bares': {
       id: '/houdini/_app/bares'
       path: '/bares'
@@ -939,6 +958,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface HoudiniAppRouteChildren {
+  HoudiniAppAmpulhetaRoute: typeof HoudiniAppAmpulhetaRoute
   HoudiniAppBaresRoute: typeof HoudiniAppBaresRoute
   HoudiniAppBastidoresRoute: typeof HoudiniAppBastidoresRoute
   HoudiniAppFantasmasRoute: typeof HoudiniAppFantasmasRoute
@@ -952,6 +972,7 @@ interface HoudiniAppRouteChildren {
 }
 
 const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
+  HoudiniAppAmpulhetaRoute: HoudiniAppAmpulhetaRoute,
   HoudiniAppBaresRoute: HoudiniAppBaresRoute,
   HoudiniAppBastidoresRoute: HoudiniAppBastidoresRoute,
   HoudiniAppFantasmasRoute: HoudiniAppFantasmasRoute,
