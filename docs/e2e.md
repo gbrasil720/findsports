@@ -95,7 +95,7 @@ apps/e2e/
 | `tests/fan` | WEB-178 — busca, mapa, página do bar, reservas, perfil |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
-| `tests/internal` | WEB-181 — painéis internos |
+| `tests/houdini` | WEB-181, WEB-393 — o Houdini (painel interno) |
 | `tests/feedback` | "Enviar feedback" no menu da conta, com imagem em anexo |
 
 Fixture nova (eventos, reservas…) entra num arquivo novo em `fixtures/`, em vez

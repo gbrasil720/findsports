@@ -11,7 +11,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { contextFor, load, refusal, seedBar } from './integration-seed'
 
 /**
- * `/internal/bars` (WEB-354) contra o banco de verdade: a busca pelos três
+ * Bares do Houdini, `/houdini/bares` (WEB-354), contra o banco de verdade: a busca pelos três
  * caminhos do suporte e o plano efetivo saindo da mesma regra do app.
  */
 

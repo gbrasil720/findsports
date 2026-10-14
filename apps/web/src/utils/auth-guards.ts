@@ -9,7 +9,6 @@ const AUTHENTICATED_PREFIXES = [
   '/dashboard',
   '/admin',
   '/plan',
-  '/internal',
   // `start_url` do PWA: abrir o ícone da tela inicial sem sessão tem que cair
   // no login, e não numa tela em branco.
   '/app',
@@ -97,13 +96,6 @@ export function applyAuthGuards(
     }
   }
 
-  // Não-admin tentando acessar área interna
-  if (pathname.startsWith('/internal') && session.user.role !== 'admin') {
-    throw redirect({
-      to: session.user.role === 'pub' ? '/admin' : '/dashboard'
-    })
-  }
-
   // Fan tentando acessar área do bar
   if (session.user.role === 'fan' && pathname.startsWith('/admin')) {
     throw redirect({ to: '/dashboard' })
@@ -114,9 +106,10 @@ export function applyAuthGuards(
     throw redirect({ to: '/admin' })
   }
 
-  // Admin tentando acessar área do fan
+  // Admin tentando acessar área do fan vai para o Houdini. No `www` o portão
+  // dele manda admin para `houdini.onside.sh`; no preview e local é o caminho.
   if (session.user.role === 'admin' && pathname.startsWith('/dashboard')) {
-    throw redirect({ to: '/internal' })
+    throw redirect({ to: '/houdini' })
   }
 
   // /plan é exclusivo para pub — fan vai pro dashboard, não autenticado vai pro sign-in
@@ -150,8 +143,8 @@ export function isHashOnlyChange(
 }
 
 /**
- * A sessão que sai do servidor. `getSession` e `getUser` devolvem este
- * contexto ao cliente — no SSR, serializado no HTML da página —, então só
+ * A sessão que sai do servidor. O `authMiddleware` devolve este contexto às
+ * server functions e ao cliente — no SSR, serializado no HTML da página —, então só
  * passa o que o cliente usa. `token` é o valor do cookie httpOnly (WEB-149).
  */
 export function toClientSession(

@@ -43,8 +43,6 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/admin/validate')).toBe(true)
     expect(requiresAuthentication('/plan')).toBe(true)
     expect(requiresAuthentication('/plan/confirmed')).toBe(true)
-    expect(requiresAuthentication('/internal')).toBe(true)
-    expect(requiresAuthentication('/internal/flags')).toBe(true)
     expect(requiresAuthentication('/onboarding/fan')).toBe(true)
   })
 
@@ -53,6 +51,8 @@ describe('requiresAuthentication', () => {
     expect(requiresAuthentication('/login')).toBe(false)
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
+    // WEB-393: o painel antigo saiu; `/internal` é URL desconhecida, o 404.
+    expect(requiresAuthentication('/internal')).toBe(false)
     expect(requiresAuthentication('/verify-email')).toBe(false)
     expect(requiresAuthentication('/forgot-password')).toBe(false)
     expect(requiresAuthentication('/reset-password')).toBe(false)
@@ -178,17 +178,14 @@ describe('applyAuthGuards', () => {
     expect(() =>
       applyAuthGuards(session('pub'), '/plan/confirmed')
     ).not.toThrow()
-    expect(() => applyAuthGuards(session('fan'), '/internal')).toThrow()
     expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
-    expect(() => applyAuthGuards(session('pub'), '/internal')).toThrow()
-    expect(() => applyAuthGuards(session('admin'), '/internal')).not.toThrow()
 
     try {
       applyAuthGuards(session('admin'), '/dashboard/profile')
       throw new Error('admin deveria ser redirecionado')
     } catch (error) {
       expect((error as { options?: { to?: string } }).options?.to).toBe(
-        '/internal'
+        '/houdini'
       )
     }
   })

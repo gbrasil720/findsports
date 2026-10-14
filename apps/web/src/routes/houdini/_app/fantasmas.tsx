@@ -11,7 +11,8 @@ export const Route = createFileRoute('/houdini/_app/fantasmas')({
   component: FantasmasPage
 })
 
-// As quatro leituras do cruzamento (WEB-128), na ordem de `/internal/attendance`.
+// As quatro leituras do cruzamento (WEB-128), na ordem do antigo painel de
+// comparecimento.
 const READINGS = [
   {
     key: 'bothRegistered',

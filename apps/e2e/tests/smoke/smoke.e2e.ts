@@ -37,7 +37,7 @@ test('torcedor semeado entra pelo /login e chega no /dashboard', async ({
 for (const [role, home] of [
   ['fan', '/dashboard'],
   ['pub', '/admin'],
-  ['admin', '/internal']
+  ['admin', '/houdini']
 ] as const) {
   test.describe(`sessão pronta de ${role}`, () => {
     test.use({ storageState: storageState(role) })

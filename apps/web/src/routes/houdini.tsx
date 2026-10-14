@@ -52,7 +52,7 @@ function HoudiniRoot() {
  * O 404 do host do Houdini: o mesmo para todo mundo que não é admin. O ponto
  * final leva à Entrada; é só cenografia, o portão é que decide.
  */
-export function Cortina() {
+function Cortina() {
   return (
     <main className="houdini hd-cortina">
       <p style={{ margin: 0 }}>

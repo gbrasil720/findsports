@@ -240,21 +240,6 @@ test.describe('logout', () => {
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
-  test('pelo shell interno', async ({ page }) => {
-    const admin = await createUser({ role: 'admin' })
-    await signIn(page, admin)
-    await page.goto('/internal')
-
-    await page
-      .getByRole('navigation', { name: 'Navegação interna' })
-      .getByRole('button', { name: 'Sair' })
-      .click()
-
-    await expect(page).toHaveURL(/\/$/)
-    await page.goto('/internal')
-    await expect(page).toHaveURL(/\/login\?callbackUrl=/)
-  })
-
   test('pelas configurações da conta', async ({ page }) => {
     const user = await createUser()
     await signIn(page, user)

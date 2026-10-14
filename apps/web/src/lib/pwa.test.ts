@@ -184,7 +184,7 @@ describe('memória de dispensa', () => {
  * O recorte é a decisão central do WEB-72: o app instalável é o produto
  * logado, não o site. Quem declara o manifest é quem oferece instalação, então
  * o conjunto de rotas que o declaram *é* o recorte — e ele precisa falhar aqui
- * se alguém mover a declaração para o `__root.tsx` ou ligá-la em `/internal`.
+ * se alguém mover a declaração para o `__root.tsx` ou ligá-la no Houdini.
  */
 describe('recorte do manifest', () => {
   const rotas = path.join(import.meta.dir, '..', 'routes')
@@ -218,7 +218,7 @@ describe('recorte do manifest', () => {
   })
 
   test('a landing e o painel interno não oferecem instalação', () => {
-    for (const arquivo of ['__root.tsx', 'index.tsx', 'internal.tsx']) {
+    for (const arquivo of ['__root.tsx', 'index.tsx', 'houdini.tsx']) {
       const conteudo = fs.readFileSync(path.join(rotas, arquivo), 'utf8')
       expect(conteudo).not.toContain('PWA_LINKS')
       expect(conteudo).not.toContain('manifest')
