@@ -156,7 +156,7 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
     await expect(page.getByText(dado, { exact: true })).toBeVisible()
   }
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -310,7 +310,7 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await button(page, 'Pular').click()
   await expect(page.getByText('Bom Jesus, RN', { exact: true })).toBeVisible()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({ city: 'Bom Jesus', uf: 'RN' })
@@ -385,7 +385,7 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [owner] = await query<{ id: string; onboarding_completed: boolean }>(
     'SELECT id, onboarding_completed FROM "user" WHERE email = $1',
@@ -424,7 +424,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
     neighborhood: 'Centro'
   })
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await barOf(owner.id)).toHaveLength(1)
 })
 
@@ -467,7 +467,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await storedDraft(page)).toBeNull()
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -539,7 +539,7 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
 
   await button(page, 'Pular').click()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
   expect(
     await query(
@@ -578,7 +578,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   await button(page, 'Pular').click()
   await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await storedDraft(page)).toBeNull()
 })
 
@@ -607,7 +607,7 @@ test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cl
   })
   expect(await cache()).toHaveLength(1)
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan$/)
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await cache()).toHaveLength(0)
 })
 
