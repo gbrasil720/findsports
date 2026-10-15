@@ -17,7 +17,7 @@ type EmailFetcher = (input: string, init?: RequestInit) => Promise<Response>
  * (`createOnsideEmailTemplate`), então identidade visual, fallback em texto e
  * escape de HTML são exatamente os já cobertos por `verification-email`.
  * O que muda aqui é só a copy — e ela precisa dizer três coisas que o fluxo
- * de fato garante: uso único, prazo de 1 hora e queda das sessões abertas.
+ * de fato garante: uso único, prazo de 30 minutos e queda das sessões abertas.
  */
 export function createResetPasswordEmail({
   name,
@@ -32,7 +32,7 @@ export function createResetPasswordEmail({
     intro: `Olá, ${name.trim() || 'torcedor'}. Recebemos um pedido para redefinir a senha da sua conta Onside. Use o link abaixo para escolher uma nova.`,
     highlights: [
       'O link é de uso único: depois que a senha for definida, ele deixa de valer.',
-      'Por segurança, este link expira em 1 hora.',
+      'Por segurança, este link expira em 30 minutos.',
       'Ao concluir, as sessões abertas são encerradas — entre de novo com a senha nova.'
     ],
     action: 'Definir nova senha',
