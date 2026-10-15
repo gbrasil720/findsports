@@ -10,8 +10,8 @@
  * precisa ser prefixo de `start_url` e da URL do manifest. `/dashboard` e
  * `/admin` são irmãos: o único prefixo comum é a raiz. O que restringe o
  * convite não é o `scope`, é **onde o `<link rel="manifest">` é declarado** —
- * e ele só é declarado nas rotas acima, nunca no `__root.tsx` e nunca no
- * Houdini (`/houdini/*`).
+ * e ele só é declarado nas rotas acima, nunca no `__root.tsx`. O Houdini é
+ * outro app, com manifest próprio (`/houdini.webmanifest`, em `houdini.tsx`).
  */
 
 /**

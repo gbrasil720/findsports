@@ -65,6 +65,44 @@ const getSession = createServerFn()
 const ONSIDE_DESCRIPTION =
   'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
 
+const ONSIDE_ICONS = [
+  {
+    rel: 'icon',
+    href: '/favicon-32x32.png?v=3',
+    type: 'image/png',
+    sizes: '32x32'
+  },
+  {
+    rel: 'icon',
+    href: '/favicon-16x16.png?v=3',
+    type: 'image/png',
+    sizes: '16x16'
+  },
+  {
+    rel: 'icon',
+    href: '/favicon-64x64.png?v=3',
+    type: 'image/png',
+    sizes: '64x64'
+  },
+  {
+    rel: 'icon',
+    href: '/favicon-512x512.png?v=3',
+    type: 'image/png',
+    sizes: '512x512'
+  },
+  {
+    rel: 'icon',
+    href: '/favicon.ico?v=3',
+    type: 'image/x-icon',
+    sizes: 'any'
+  },
+  {
+    rel: 'apple-touch-icon',
+    href: '/apple-touch-icon.png?v=3',
+    sizes: '180x180'
+  }
+]
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location, context }) => {
     const last = context.lastSessionCheck.current
@@ -82,7 +120,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     )
     return { session }
   },
-  head: () => ({
+  head: ({ matches }) => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -140,41 +178,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         ],
     links: [
       { rel: 'stylesheet', href: appCss },
-      {
-        rel: 'icon',
-        href: '/favicon-32x32.png?v=3',
-        type: 'image/png',
-        sizes: '32x32'
-      },
-      {
-        rel: 'icon',
-        href: '/favicon-16x16.png?v=3',
-        type: 'image/png',
-        sizes: '16x16'
-      },
-      {
-        rel: 'icon',
-        href: '/favicon-64x64.png?v=3',
-        type: 'image/png',
-        sizes: '64x64'
-      },
-      {
-        rel: 'icon',
-        href: '/favicon-512x512.png?v=3',
-        type: 'image/png',
-        sizes: '512x512'
-      },
-      {
-        rel: 'icon',
-        href: '/favicon.ico?v=3',
-        type: 'image/x-icon',
-        sizes: 'any'
-      },
-      {
-        rel: 'apple-touch-icon',
-        href: '/apple-touch-icon.png?v=3',
-        sizes: '180x180'
-      }
+      // O Houdini declara os ícones dele (a cartola); dois conjuntos na mesma
+      // página deixam a escolha com o navegador.
+      ...(matches.some((m) => (m.routeId as string) === '/houdini')
+        ? []
+        : ONSIDE_ICONS)
     ]
   }),
   notFoundComponent: NotFoundPage,
