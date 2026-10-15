@@ -73,9 +73,16 @@ async function byItem(rows: Row[]) {
   return [...items.entries()]
 }
 
+/**
+ * Nome em português e em inglês. A Wikidata guarda o nome de muita gente só
+ * em `mul` (multilíngue: "Novak Djokovic", "Alexander Zverev"), que vale como
+ * o inglês quando ele falta.
+ */
 const LABELS = `
   OPTIONAL { ?item rdfs:label ?pt FILTER(lang(?pt) = "pt-br" || lang(?pt) = "pt") }
-  OPTIONAL { ?item rdfs:label ?en FILTER(lang(?en) = "en") }`
+  OPTIONAL { ?item rdfs:label ?en0 FILTER(lang(?en0) = "en") }
+  OPTIONAL { ?item rdfs:label ?mul FILTER(lang(?mul) = "mul") }
+  BIND(COALESCE(?en0, ?mul) AS ?en)`
 
 // --------------------------------------------------------------------------
 // Futebol
@@ -330,6 +337,35 @@ async function ufcFighters(): Promise<Proposal[]> {
   }))
 }
 
+/**
+ * Tenista com código da ATP ou da WTA, vivo, nascido de 1985 em diante, sem
+ * data de fim de carreira e com 15 artigos ou mais na Wikipédia. Simples e
+ * duplas ficam juntos: o código não separa.
+ */
+async function tennisPlayers(): Promise<Proposal[]> {
+  const rows = await sparql(`
+    SELECT ?item ?pt ?en ?links ?country WHERE {
+      { ?item wdt:P536 [] } UNION { ?item wdt:P597 [] }
+      ?item wikibase:sitelinks ?links; wdt:P569 ?born .
+      FILTER(?links >= 15 && YEAR(?born) >= 1985)
+      FILTER NOT EXISTS { ?item wdt:P570 [] }
+      FILTER NOT EXISTS { ?item wdt:P2032 [] }
+      # O país por que joga; sem ele, a cidadania.
+      OPTIONAL { ?item wdt:P1532/wdt:P297 ?sportCountry }
+      OPTIONAL { ?item wdt:P27/wdt:P297 ?citizenship }
+      BIND(COALESCE(?sportCountry, ?citizenship) AS ?country)
+      ${LABELS}
+    }`)
+  return (await byItem(rows)).map(([key, { row, aliases }]) => ({
+    key,
+    name: (row.en ?? row.pt ?? key).replace(/\s*\(.*\)$/, ''),
+    kind: 'athlete',
+    country: row.country ?? null,
+    relevance: Number(row.links),
+    aliases: [...aliases].slice(0, MAX_ALIASES)
+  }))
+}
+
 // --------------------------------------------------------------------------
 // F1: a Wikidata não diz quem corre a temporada; a Jolpica-F1 diz.
 // --------------------------------------------------------------------------
@@ -422,7 +458,8 @@ export const SOURCES: Record<CatalogSport, (() => Promise<Proposal[]>)[]> = {
   volei: [],
   'futebol-americano': [() => leagueTeams('Q1215884')],
   'formula-1': [formulaOne],
-  'mma-ufc': [ufcFighters]
+  'mma-ufc': [ufcFighters],
+  tenis: [tennisPlayers]
 }
 
 // --------------------------------------------------------------------------

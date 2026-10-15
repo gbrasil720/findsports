@@ -19,11 +19,13 @@ import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { DateTimeInput, formatDateTime, parseDateTime } from './date-time-input'
 
+// Tênis entra pelo jogo de simples (um contra um); dupla vai no texto livre.
 const DIRECT_CONFRONTATION_SLUGS = new Set([
   'futebol',
   'basquete',
   'volei',
-  'futebol-americano'
+  'futebol-americano',
+  'tenis'
 ])
 
 type EventForm = {

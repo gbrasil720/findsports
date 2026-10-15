@@ -5,7 +5,6 @@ import {
   desc,
   eq,
   inArray,
-  like,
   notInArray,
   or,
   sql
@@ -823,18 +822,23 @@ export const pubsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const needle = fold(input.query).replace(/[\\%_]/g, '\\$&')
+      const needle = fold(input.query)
+      // O termo casa no começo de uma palavra: "bia" acha "Bianca", e não
+      // "Tobias". `search_text` separa nome e apelidos por " | ".
+      const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const wordStart = `(^|[^a-z0-9])${escaped}`
+      const nameStart = `(^|\\| )${escaped}`
       return db
         .select(TEAM_COLUMNS)
         .from(team)
         .where(
           and(
             inArray(team.sportId, input.sportIds),
-            like(team.searchText, `%${needle}%`)
+            sql`${team.searchText} ~ ${wordStart}`
           )
         )
         .orderBy(
-          sql`(${team.searchText} LIKE ${`${needle}%`} OR ${team.searchText} LIKE ${`% | ${needle}%`}) DESC`,
+          sql`(${team.searchText} ~ ${nameStart}) DESC`,
           desc(team.relevance),
           asc(team.name)
         )
