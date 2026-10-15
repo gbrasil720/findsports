@@ -26,7 +26,9 @@ describe('e-mail de redefinição de senha', () => {
     expect(email.text).toContain(
       'https://onside.app/api/auth/reset-password/abc'
     )
-    expect(email.text).toContain('• Por segurança, este link expira em 1 hora.')
+    expect(email.text).toContain(
+      '• Por segurança, este link expira em 30 minutos.'
+    )
   })
 
   it('declara uso único, prazo e queda das sessões — o que o fluxo garante', () => {
@@ -37,7 +39,7 @@ describe('e-mail de redefinição de senha', () => {
       heroImageUrl: 'https://onside.app/hero.jpg'
     })
     expect(email.text).toContain('uso único')
-    expect(email.text).toContain('expira em 1 hora')
+    expect(email.text).toContain('expira em 30 minutos')
     expect(email.text).toContain('sessões abertas são encerradas')
     // Quem não pediu a redefinição precisa saber que ignorar basta.
     expect(email.text).toContain('Se você não pediu para redefinir sua senha')
