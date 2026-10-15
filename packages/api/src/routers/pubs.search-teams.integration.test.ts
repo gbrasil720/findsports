@@ -74,9 +74,13 @@ integrationTest(
       expect(await search('timão')).toEqual(['Corinthians'])
       // Quem começa com o termo vem antes do mais conhecido.
       expect(await search('bras')).toEqual(['Brasil de Pelotas'])
-      // `%` e `_` são texto, não curinga.
-      expect(await search('0%')).toEqual(['100% Futebol'])
+      // Começo de palavra, não meio: "eta" não acha "Ponte Preta".
+      expect(await search('eta')).toEqual([])
+      expect(await search('preta')).toEqual(['Ponte Preta'])
+      // `%`, `_` e símbolo de expressão regular são texto.
+      expect(await search('100%')).toEqual(['100% Futebol'])
       expect(await search('o_')).toEqual([])
+      expect(await search('(.*')).toEqual([])
       // Só nos esportes pedidos, e o atleta vem marcado.
       expect(await search('oliveira', [footballId])).toEqual([])
       expect(

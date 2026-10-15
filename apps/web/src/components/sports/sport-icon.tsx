@@ -5,6 +5,7 @@ import Flag from 'reicon-react/icons/Flag'
 import Football from 'reicon-react/icons/Football'
 import Lightbulb from 'reicon-react/icons/Lightbulb'
 import Rugby from 'reicon-react/icons/Rugby'
+import Tennis from 'reicon-react/icons/Tennis'
 import Volleyball from 'reicon-react/icons/Volleyball'
 
 type IconProps = {
@@ -30,7 +31,8 @@ const SPORT_PRESENTATIONS: Record<string, SportPresentation> = {
     filter: Lightbulb,
     onboarding: 'text',
     onboardingText: 'MMA'
-  }
+  },
+  tenis: { filter: Tennis, onboarding: Tennis }
 }
 
 type Props = IconProps & {

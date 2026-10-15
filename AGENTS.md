@@ -138,8 +138,9 @@ Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 
 A tabela `team` (times, seleções, escuderias e atletas: `kind`) é gravada a partir de
 `packages/db/src/catalog/data/<esporte>.json`, um item por linha (WEB-381). Fontes:
-Wikidata (CC0) para futebol, NBA, NFL e UFC, Jolpica-F1 para a grade da F1, e à mão
-(`manual:`) para vôlei e NBB. O ciclo:
+Wikidata (CC0) para futebol, NBA, NFL, UFC e tênis (código da ATP ou da WTA),
+Jolpica-F1 para a grade da F1, e à mão (`manual:`) para vôlei e NBB. A Wikidata
+guarda o nome de muita gente só na língua `mul`, que o `propose` usa quando falta o inglês. O ciclo:
 
 ```bash
 bun run catalog:propose [esporte]   # consulta as fontes e acrescenta o que é novo ao JSON

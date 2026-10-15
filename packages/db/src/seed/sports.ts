@@ -31,6 +31,11 @@ const sports = [
     name: 'MMA / UFC',
     slug: 'mma-ufc',
     iconUrl: null
+  },
+  {
+    name: 'Tênis',
+    slug: 'tenis',
+    iconUrl: null
   }
 ]
 

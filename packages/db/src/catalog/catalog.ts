@@ -40,7 +40,8 @@ export const CATALOG_SPORTS = [
   'volei',
   'futebol-americano',
   'formula-1',
-  'mma-ufc'
+  'mma-ufc',
+  'tenis'
 ] as const
 
 export type CatalogSport = (typeof CATALOG_SPORTS)[number]
