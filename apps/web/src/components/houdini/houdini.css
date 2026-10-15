@@ -52,6 +52,22 @@
   font-family: var(--hd-sans);
   font-size: 14px;
   color-scheme: dark;
+  /* O flash cinza do toque é o "isto é um site" mais alto; o retorno vem do
+     :active de cada controle. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Clique sem a espera do duplo toque, e segurar um botão não seleciona o
+   rótulo nem abre o menu do link. Texto de conteúdo continua selecionável. */
+.houdini :is(button, a, [role="button"], summary) {
+  touch-action: manipulation;
+}
+
+.houdini :is(button, [role="button"], .hd-btn, .hd-rail-item) {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .houdini *:focus-visible {
@@ -84,9 +100,10 @@
 }
 
 .hd-rail {
-  flex: 0 0 72px;
+  flex: 0 0 calc(72px + env(safe-area-inset-left, 0px));
   box-sizing: border-box;
-  padding: 16px 0;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 0
+    calc(16px + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 0px);
   border-right: 1px solid var(--hd-line);
   display: flex;
   flex-direction: column;
@@ -125,7 +142,7 @@
     color 150ms ease;
 }
 
-.hd-rail-item:hover {
+.hd-rail-item:active {
   background: var(--hd-raise);
   color: var(--hd-text);
 }
@@ -153,7 +170,6 @@
   z-index: 20;
 }
 
-.hd-rail-item:hover .hd-tip,
 .hd-rail-item:focus-visible .hd-tip {
   opacity: 1;
 }
@@ -161,6 +177,7 @@
 .hd-main {
   flex: 1 1 auto;
   min-width: 0;
+  padding-right: env(safe-area-inset-right, 0px);
   display: flex;
   flex-direction: column;
 }
@@ -171,7 +188,8 @@
   align-items: center;
   gap: 16px;
   min-height: 64px;
-  padding: 10px clamp(16px, 2.5vw, 32px);
+  padding: calc(10px + env(safe-area-inset-top, 0px)) clamp(16px, 2.5vw, 32px)
+    10px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--hd-line);
 }
@@ -207,10 +225,6 @@
   font: 400 14px var(--hd-sans);
   text-align: left;
   cursor: pointer;
-}
-
-.hd-search:hover {
-  border-color: rgb(255 255 255 / 0.16);
 }
 
 .hd-kbd {
@@ -274,7 +288,8 @@
   width: 100%;
   max-width: 1240px;
   box-sizing: border-box;
-  padding: 28px clamp(16px, 2.5vw, 32px) 56px;
+  padding: 28px clamp(16px, 2.5vw, 32px)
+    calc(56px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -384,11 +399,12 @@
   transition:
     background-color 150ms ease,
     border-color 150ms ease,
-    opacity 150ms ease;
+    opacity 150ms ease,
+    transform 100ms ease-out;
 }
 
-.hd-btn:hover {
-  border-color: rgb(255 255 255 / 0.18);
+.hd-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .hd-btn:disabled {
@@ -404,20 +420,11 @@
   box-shadow: 0 0 28px rgb(139 108 255 / 0.3);
 }
 
-.hd-btn-primary:hover {
-  border-color: transparent;
-  background: #9a7fff;
-}
-
 .hd-btn-danger {
   border-color: rgb(255 92 122 / 0.45);
   background: rgb(255 92 122 / 0.08);
   color: var(--hd-bad);
   font-weight: 700;
-}
-
-.hd-btn-danger:hover {
-  border-color: rgb(255 92 122 / 0.7);
 }
 
 .hd-btn-soft {
@@ -569,6 +576,8 @@
   border-radius: 14px;
   border: 1px solid var(--hd-line);
   overflow-x: auto;
+  /* Chegar ao fim da tabela não vira o "voltar" do gesto lateral. */
+  overscroll-behavior-x: contain;
 }
 
 .hd-table {
@@ -684,6 +693,43 @@
 @keyframes hd-shimmer {
   to {
     background-position: -200% 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hd-rail-item:hover {
+    background: var(--hd-raise);
+    color: var(--hd-text);
+  }
+
+  .hd-rail-item:hover .hd-tip {
+    opacity: 1;
+  }
+
+  .hd-search:hover {
+    border-color: rgb(255 255 255 / 0.16);
+  }
+
+  .hd-btn:hover {
+    border-color: rgb(255 255 255 / 0.18);
+  }
+
+  .hd-btn-primary:hover {
+    border-color: transparent;
+    background: #9a7fff;
+  }
+
+  .hd-btn-danger:hover {
+    border-color: rgb(255 92 122 / 0.7);
+  }
+}
+
+/* O iOS dá zoom na página ao focar campo com letra abaixo de 16px, e não
+   volta. No desktop o desenho fica com 14px. */
+@media (pointer: coarse) {
+  .hd-input,
+  .hd-select {
+    font-size: 16px;
   }
 }
 
@@ -814,11 +860,18 @@
     flex-direction: row;
     height: auto;
     width: 100%;
-    padding: 8px 12px;
+    padding: calc(8px + env(safe-area-inset-top, 0px))
+      calc(12px + env(safe-area-inset-right, 0px)) 8px
+      calc(12px + env(safe-area-inset-left, 0px));
     border-right: 0;
     border-bottom: 1px solid var(--hd-line);
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     position: static;
+  }
+
+  .hd-top {
+    padding-top: 10px;
   }
 
   .hd-logo {

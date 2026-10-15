@@ -1,0 +1,32 @@
+{
+  "id": "/houdini",
+  "name": "Houdini",
+  "short_name": "Houdini",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/houdini",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0C0B10",
+  "theme_color": "#0C0B10",
+  "icons": [
+    {
+      "src": "/icons/houdini-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/houdini-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/houdini-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

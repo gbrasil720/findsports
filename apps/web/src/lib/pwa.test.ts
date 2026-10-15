@@ -217,11 +217,17 @@ describe('recorte do manifest', () => {
     ])
   })
 
-  test('a landing e o painel interno não oferecem instalação', () => {
-    for (const arquivo of ['__root.tsx', 'index.tsx', 'houdini.tsx']) {
+  test('a landing não oferece instalação', () => {
+    for (const arquivo of ['__root.tsx', 'index.tsx']) {
       const conteudo = fs.readFileSync(path.join(rotas, arquivo), 'utf8')
       expect(conteudo).not.toContain('PWA_LINKS')
       expect(conteudo).not.toContain('manifest')
     }
+  })
+
+  test('o Houdini instala como ele mesmo, não como Onside', () => {
+    const conteudo = fs.readFileSync(path.join(rotas, 'houdini.tsx'), 'utf8')
+    expect(conteudo).not.toContain('PWA_LINKS')
+    expect(conteudo).toContain("href: '/houdini.webmanifest'")
   })
 })
