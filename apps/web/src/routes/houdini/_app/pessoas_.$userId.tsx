@@ -468,7 +468,7 @@ function Emails({ account }: { account: Ficha['account'] }) {
       </h2>
       <p className="hd-small" style={{ margin: 0 }}>
         Saem para {account.email}, com os mesmos links que a pessoa pediria
-        sozinha. Os dois valem por 1 hora.
+        sozinha. O de confirmação vale por 1 hora; o de senha, por 30 minutos.
       </p>
       <button
         type="button"
