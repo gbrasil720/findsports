@@ -24,6 +24,15 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "A Onside usa sua localização para contar a distância até os bares com jogo perto de você. Ela não fica salva e nunca aparece para os bares.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-blank.png",
