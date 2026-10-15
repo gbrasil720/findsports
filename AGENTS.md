@@ -134,6 +134,25 @@ Não existe modo "descubra sozinho até onde o banco está": marcar como aplicad
 migration que não está faz o `migrate` pular SQL de verdade, e o erro só aparece depois.
 Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 
+### Catálogo de times e atletas
+
+A tabela `team` (times, seleções, escuderias e atletas: `kind`) é gravada a partir de
+`packages/db/src/catalog/data/<esporte>.json`, um item por linha (WEB-381). Fontes:
+Wikidata (CC0) para futebol, NBA, NFL e UFC, Jolpica-F1 para a grade da F1, e à mão
+(`manual:`) para vôlei e NBB. O ciclo:
+
+```bash
+bun run catalog:propose [esporte]   # consulta as fontes e acrescenta o que é novo ao JSON
+NODE_ENV=development bun run db:catalog:sync   # grava no banco local (o deploy roda o mesmo)
+```
+
+O JSON é a versão revisada: o `propose` não muda nome, tipo nem destaque do que já
+está lá, então o nome curto ("Corinthians", não "Sport Club Corinthians Paulista") se
+corrige à mão no PR. Item que não deve aparecer leva `"hidden": true`, não é apagado:
+o `propose` o traria de volta, e o `sync` nunca apaga linha (favoritos e jogos saem em
+cascata). `featured` é a lista curta que a tela mostra sem busca; o resto aparece por
+`pubs.searchTeams`. Escudo e foto não entram (marca do clube, licença das imagens).
+
 ### Environment variables
 
 Split by runtime boundary:

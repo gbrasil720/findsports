@@ -34,6 +34,7 @@
       "!apps/web/scripts/landing-posters",
       "!apps/web/src/data/municipios.json",
       "!packages/api/src/data/municipios-centros.json",
+      "!packages/db/src/catalog/data/*.json",
       "!apps/e2e/.auth",
       "!apps/e2e/.outbox",
       "!apps/e2e/test-results",

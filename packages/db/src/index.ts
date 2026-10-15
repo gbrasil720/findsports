@@ -59,11 +59,14 @@ export const db = new Proxy({} as Db, {
 })
 export {
   and,
+  asc,
   count,
+  desc,
   eq,
   gte,
   inArray,
   isNull,
+  like,
   notInArray,
   or,
   type SQL,

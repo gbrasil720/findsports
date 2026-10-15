@@ -48,7 +48,7 @@ function tomorrowAt(hour: number): string {
 async function soccerTeams(): Promise<string[]> {
   const rows = await query<{ name: string }>(
     `SELECT t.name FROM team t JOIN sport s ON s.id = t.sport_id
-     WHERE s.slug = 'futebol' ORDER BY t.name LIMIT 3`
+     WHERE s.slug = 'futebol' AND t.featured ORDER BY t.name LIMIT 3`
   )
   return rows.map((row) => row.name)
 }

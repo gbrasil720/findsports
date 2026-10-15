@@ -1,17 +1,22 @@
 import {
   and,
+  asc,
   db,
+  desc,
   eq,
   inArray,
+  like,
   notInArray,
   or,
   sql
 } from '@findsports_oficial/db'
+import { fold } from '@findsports_oficial/db/catalog/fold'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   sport,
   subscription,
+  type TeamKind,
   team,
   userFavoriteBars,
   userFavoriteTeams,
@@ -81,6 +86,16 @@ const BUSCA_TTL_MS = 60_000
 const porNome = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, 'pt-BR')
 
+/** O que a tela de escolha precisa de um time; o resto da linha fica no servidor. */
+const TEAM_COLUMNS = {
+  id: team.id,
+  sportId: team.sportId,
+  name: team.name,
+  kind: team.kind,
+  isNationalTeam: team.isNationalTeam
+}
+const TEAM_SEARCH_LIMIT = 30
+
 /**
  * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
  * só teve o teste do cadastro nunca contratou nada, então "a assinatura
@@ -97,7 +112,15 @@ const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
   prefix: 'pubs.sports',
   ttlMs: CATALOGO_TTL_MS
 })
-const cacheTimes = createSharedCache<(typeof team.$inferSelect)[]>({
+const cacheTimes = createSharedCache<
+  {
+    id: string
+    sportId: string
+    name: string
+    kind: TeamKind
+    isNationalTeam: boolean
+  }[]
+>({
   prefix: 'pubs.teams',
   ttlMs: CATALOGO_TTL_MS,
   maxEntries: 50
@@ -768,13 +791,53 @@ export const pubsRouter = router({
     return cacheEsportes.get('todos', () => db.select().from(sport))
   }),
 
+  /**
+   * Os times em destaque do esporte (WEB-381): a lista curta que a tela mostra
+   * sem busca. O resto do catálogo vem por `searchTeams`.
+   */
   getTeamsBySport: protectedProcedure
     .input(z.object({ sportId: z.string().uuid() }))
     .query(async ({ input }) => {
       return cacheTimes.get(input.sportId, async () =>
         (
-          await db.select().from(team).where(eq(team.sportId, input.sportId))
+          await db
+            .select(TEAM_COLUMNS)
+            .from(team)
+            .where(
+              and(eq(team.sportId, input.sportId), eq(team.featured, true))
+            )
         ).sort(porNome)
       )
+    }),
+
+  /**
+   * Busca no catálogo inteiro dos esportes pedidos, por nome, nome oficial ou
+   * apelido, sem acento. Quem começa com o termo vem antes; depois, o mais
+   * conhecido.
+   */
+  searchTeams: protectedProcedure
+    .input(
+      z.object({
+        sportIds: z.array(z.string().uuid()).min(1).max(20),
+        query: z.string().trim().min(2).max(60)
+      })
+    )
+    .query(async ({ input }) => {
+      const needle = fold(input.query).replace(/[\\%_]/g, '\\$&')
+      return db
+        .select(TEAM_COLUMNS)
+        .from(team)
+        .where(
+          and(
+            inArray(team.sportId, input.sportIds),
+            like(team.searchText, `%${needle}%`)
+          )
+        )
+        .orderBy(
+          sql`(${team.searchText} LIKE ${`${needle}%`} OR ${team.searchText} LIKE ${`% | ${needle}%`}) DESC`,
+          desc(team.relevance),
+          asc(team.name)
+        )
+        .limit(TEAM_SEARCH_LIMIT)
     })
 })

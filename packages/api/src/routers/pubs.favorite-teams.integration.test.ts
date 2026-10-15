@@ -29,27 +29,42 @@ integrationTest(
       { id: f1Id, name: 'F1', slug: `f1-${suffix}` }
     ])
     await db.insert(team).values([
-      { id: clubId, sportId: footballId, name: 'PSG', slug: `a-${suffix}` },
+      {
+        id: clubId,
+        sportId: footballId,
+        name: 'PSG',
+        slug: `a-${suffix}`,
+        featured: true
+      },
       {
         id: otherClubId,
         sportId: footballId,
         name: 'Palmeiras',
-        slug: `b-${suffix}`
+        slug: `b-${suffix}`,
+        featured: true
       },
       {
         id: crypto.randomUUID(),
         sportId: footballId,
         name: 'Água Santa',
-        slug: `d-${suffix}`
+        slug: `d-${suffix}`,
+        featured: true
       },
       {
         id: crypto.randomUUID(),
         sportId: footballId,
         name: 'Brasil',
         slug: `e-${suffix}`,
-        isNationalTeam: true
+        isNationalTeam: true,
+        featured: true
       },
-      { id: constructorId, sportId: f1Id, name: 'C', slug: `c-${suffix}` }
+      {
+        id: constructorId,
+        sportId: f1Id,
+        name: 'C',
+        slug: `c-${suffix}`,
+        featured: true
+      }
     ])
     await db.insert(user).values(
       [withTeamsId, withoutTeamsId].map((id) => ({

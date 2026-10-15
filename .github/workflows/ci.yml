@@ -188,6 +188,13 @@ jobs:
           NODE_ENV: production
           DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.check.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
         run: bun run db:migrate:deploy
+      # WEB-381: catálogo de times e atletas (`packages/db/src/catalog/data`).
+      # Depois da migration, que cria as colunas; só escreve o que mudou.
+      - name: Catálogo de times
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.check.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
+        run: bun run db:catalog:sync
       - name: Build
         working-directory: apps/web
         env:

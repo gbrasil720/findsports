@@ -17,6 +17,12 @@ mock.module('@/utils/trpc', () => ({
           queryKey: ['teams', sportId],
           queryFn: async () => []
         })
+      },
+      searchTeams: {
+        queryOptions: (input: unknown) => ({
+          queryKey: ['search-teams', input],
+          queryFn: async () => []
+        })
       }
     }
   })

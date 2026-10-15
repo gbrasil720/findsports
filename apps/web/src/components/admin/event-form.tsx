@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useId, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { groupTeamsByKind, TeamGroup } from '@/components/sports/team-groups'
+import { TeamSearchField, useTeamSearch } from '@/components/sports/team-picker'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { DateTimeInput, formatDateTime, parseDateTime } from './date-time-input'
@@ -46,6 +47,8 @@ type Props = {
   loadingSports: boolean
   /** Elite vigente: só ele marca o jogo para receber reservas. */
   canEnableReservations: boolean
+  /** Nomes dos times do jogo em edição: podem não estar entre os em destaque. */
+  initialParticipants?: { id: string; name: string }[]
   error?: string
 }
 
@@ -99,6 +102,7 @@ export function EventFormComponent({
   isSaving,
   loadingSports,
   canEnableReservations,
+  initialParticipants = [],
   error
 }: Props) {
   const trpc = useTRPC()
@@ -126,22 +130,64 @@ export function EventFormComponent({
     : false
   const hasFreeText = form.participantFreeText.trim().length > 0
 
-  const toggleTeam = (id: string) => {
+  // WEB-381: o catálogo inteiro só vem pela busca; o nome de quem foi
+  // marcado fica guardado para o confronto e para o chip continuar na tela.
+  const search = useTeamSearch(form.sportId ? [form.sportId] : [])
+  const [picked, setPicked] = useState(
+    () => new Map(initialParticipants.map((team) => [team.id, team.name]))
+  )
+  const known = new Map([
+    ...[...teams, ...(search.results.data ?? [])].map(
+      (team) => [team.id, team.name] as const
+    ),
+    ...picked
+  ])
+
+  const toggleTeam = (team: { id: string; name: string }) => {
+    setPicked((prev) => new Map(prev).set(team.id, team.name))
     setForm((prev) => ({
       ...prev,
-      participantIds: prev.participantIds.includes(id)
-        ? prev.participantIds.filter((t) => t !== id)
-        : [...prev.participantIds, id]
+      participantIds: prev.participantIds.includes(team.id)
+        ? prev.participantIds.filter((t) => t !== team.id)
+        : [...prev.participantIds, team.id]
     }))
   }
 
   // A ordem em que os chips foram marcados é a do confronto: o primeiro é o
   // mandante. Vazio enquanto os times carregam.
-  const matchup = form.participantIds.flatMap(
-    (id) => teams.find((t) => t.id === id)?.name ?? []
-  )
+  const matchup = form.participantIds.flatMap((id) => known.get(id) ?? [])
+  const featuredIds = new Set(teams.map((t) => t.id))
+  const pickedOutside = form.participantIds.flatMap((id) => {
+    const name = known.get(id)
+    return name && !featuredIds.has(id) ? [{ id, name }] : []
+  })
+
+  const renderChip = (t: { id: string; name: string }) => {
+    const selected = form.participantIds.includes(t.id)
+    const maxReached = hasLimit && form.participantIds.length >= 2 && !selected
+    const disabled = maxReached || hasFreeText
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => !disabled && toggleTeam(t)}
+        disabled={disabled}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
+          selected
+            ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+            : disabled
+              ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
+              : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
+        }`}
+      >
+        {selected && <Check size={12} color="currentColor" />}
+        {t.name}
+      </button>
+    )
+  }
 
   const handleSportChange = (sportId: string) => {
+    search.setText('')
     setForm((prev) => ({
       ...prev,
       sportId,
@@ -264,37 +310,47 @@ export function EventFormComponent({
               <Skeleton className="h-9 w-28" />
               <Skeleton className="h-9 w-20" />
             </div>
-          ) : teams.length > 0 ? (
+          ) : teams.length > 0 || pickedOutside.length > 0 ? (
             <>
-              <div className="mb-3 space-y-3">
-                {groupTeamsByKind(teams).map((group) => (
-                  <TeamGroup key={group.label} label={group.label}>
-                    {group.teams.map((t) => {
-                      const selected = form.participantIds.includes(t.id)
-                      const maxReached =
-                        hasLimit && form.participantIds.length >= 2 && !selected
-                      const disabled = maxReached || hasFreeText
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => !disabled && toggleTeam(t.id)}
-                          disabled={disabled}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
-                            selected
-                              ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                              : disabled
-                                ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
-                                : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-                          }`}
-                        >
-                          {selected && <Check size={12} color="currentColor" />}
-                          {t.name}
-                        </button>
-                      )
-                    })}
-                  </TeamGroup>
-                ))}
+              <div className="mb-3">
+                <TeamSearchField
+                  value={search.text}
+                  onChange={search.setText}
+                />
+              </div>
+              <div className="mb-3 space-y-3" aria-live="polite">
+                {search.active ? (
+                  search.results.isError ? (
+                    <p className="text-xs" role="alert">
+                      Não foi possível buscar.
+                    </p>
+                  ) : !search.results.data ? (
+                    <p className="text-xs opacity-70" role="status">
+                      Buscando…
+                    </p>
+                  ) : search.results.data.length === 0 ? (
+                    <p className="text-xs opacity-70">
+                      Nada com “{search.query}”. Use o texto livre abaixo.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {search.results.data.map(renderChip)}
+                    </div>
+                  )
+                ) : (
+                  <>
+                    {pickedOutside.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {pickedOutside.map(renderChip)}
+                      </div>
+                    ) : null}
+                    {groupTeamsByKind(teams).map((group) => (
+                      <TeamGroup key={group.label} label={group.label}>
+                        {group.teams.map(renderChip)}
+                      </TeamGroup>
+                    ))}
+                  </>
+                )}
               </div>
               {!hasFreeText && (
                 <p className="text-[10px] text-[var(--onside-muted)] mb-2">

@@ -447,6 +447,9 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                 // marcado, e o dono desmarca o que não der.
                 { ...EMPTY_FORM, acceptsReservations: canEnableReservations }
           }
+          initialParticipants={editingEvent?.participants?.map(
+            (item) => item.team
+          )}
           sports={sports}
           loadingSports={loadingSports}
           // O servidor confere o plano de novo ao gravar.
