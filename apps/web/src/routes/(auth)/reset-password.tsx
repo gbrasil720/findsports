@@ -116,7 +116,7 @@ function LinkInvalido() {
         <span className="text-[var(--onside-live-text)]">VALE MAIS.</span>
       </h1>
       <p className="text-sm text-[var(--onside-muted)] leading-relaxed">
-        Links de redefinição valem por 1 hora e só funcionam uma vez. Este
+        Links de redefinição valem por 30 minutos e só funcionam uma vez. Este
         expirou, já foi usado ou chegou quebrado pelo cliente de e-mail.
       </p>
       <p className="mt-4 text-sm text-[var(--onside-muted)] leading-relaxed">
