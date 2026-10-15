@@ -34,7 +34,13 @@ import {
 export const STEPS = 5
 export type Radius = 1 | 3 | 5 | 10
 export type City = { name: string; uf: string; lat: number; lng: number }
-export type Team = { id: string; name: string; sportId: string }
+export type Team = {
+  id: string
+  name: string
+  sportId: string
+  /** WEB-381: piloto e lutador são "atleta"; o resto, "time". */
+  kind: 'team' | 'athlete'
+}
 
 type Choices = {
   sportIds: string[]
@@ -83,10 +89,6 @@ export function sportMark(name: string) {
       .toUpperCase()
   return name.slice(0, 2).toUpperCase()
 }
-
-/** Sem acento e em minúsculas, para a busca de time. */
-export const fold = (value: string) =>
-  value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
 // --- Topo -------------------------------------------------------------------
 

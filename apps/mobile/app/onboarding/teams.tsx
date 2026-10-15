@@ -1,48 +1,118 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
-import { Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
 import {
-  fold,
   OnboardingTop,
   SportBadge,
+  type Team,
   TeamChip,
   useOnboarding
 } from '@/components/onboarding'
-import { Field, MUTED, PillButton, Screen, Title, text } from '@/components/ui'
+import {
+  Field,
+  INK,
+  MUTED,
+  PillButton,
+  Screen,
+  Title,
+  text
+} from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
 /*
- * 4k, "Times": opcional. Os times dos esportes escolhidos, por esporte, com
- * busca por nome (sem acento).
+ * 4k, "Times": opcional. Sem busca, os times em destaque de cada esporte e os
+ * já escolhidos; com busca (duas letras ou mais), o catálogo inteiro pelo
+ * servidor (WEB-381). Quem não acha sugere, e a sugestão vai como feedback.
  */
+
+function countLabel(teams: Team[]) {
+  const count = teams.length
+  if (teams.every((team) => team.kind === 'athlete')) {
+    return `${count} ${count === 1 ? 'atleta' : 'atletas'}`
+  }
+  if (teams.every((team) => team.kind === 'team')) {
+    return `${count} ${count === 1 ? 'time' : 'times'}`
+  }
+  return `${count} escolhidos`
+}
 
 export default function Teams() {
   const router = useRouter()
   const { choices, set } = useOnboarding()
   const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), 250)
+    return () => clearTimeout(timer)
+  }, [search])
+  const searching = search.trim().length >= 2
+
   const sports = useQuery(trpc.pubs.getSports.queryOptions())
-  const lists = useQueries({
+  const featured = useQueries({
     queries: choices.sportIds.map((sportId) =>
       trpc.pubs.getTeamsBySport.queryOptions({ sportId })
     )
   })
-
-  const needle = fold(search)
-  const groups = choices.sportIds.map((sportId, index) => ({
-    sport: sports.data?.find((sport) => sport.id === sportId),
-    teams: (lists[index]?.data ?? []).filter(
-      (team) => !needle || fold(team.name).includes(needle)
-    )
-  }))
+  const results = useQuery({
+    ...trpc.pubs.searchTeams.queryOptions({
+      sportIds: choices.sportIds,
+      query
+    }),
+    enabled: searching && query.length >= 2,
+    placeholderData: (previous) => previous
+  })
 
   const selected = (id: string) => choices.teams.some((team) => team.id === id)
-  const toggle = (team: { id: string; name: string; sportId: string }) =>
+  const toggle = (team: Team) =>
     set({
       teams: selected(team.id)
         ? choices.teams.filter((chosen) => chosen.id !== team.id)
         : [...choices.teams, team]
     })
+  const chip = (team: Team) => (
+    <TeamChip
+      key={team.id}
+      name={team.name}
+      selected={selected(team.id)}
+      onPress={() => toggle(team)}
+    />
+  )
+
+  const groups = choices.sportIds.map((sportId, index) => {
+    const sport = sports.data?.find((item) => item.id === sportId)
+    if (searching) {
+      return {
+        sport,
+        sections: [
+          {
+            label: null,
+            teams: (results.data ?? []).filter((t) => t.sportId === sportId)
+          }
+        ]
+      }
+    }
+    const list = featured[index]?.data ?? []
+    const ids = new Set(list.map((team) => team.id))
+    const extra = choices.teams.filter(
+      (team) => team.sportId === sportId && !ids.has(team.id)
+    )
+    const teams = list.filter((team) => team.kind !== 'athlete')
+    const athletes = list.filter((team) => team.kind === 'athlete')
+    // Na F1, escuderias e pilotos: com os dois, cada um com seu subtítulo.
+    const both = teams.length > 0 && athletes.length > 0
+    return {
+      sport,
+      sections: [
+        { label: null, teams: extra },
+        { label: both ? 'Times' : null, teams },
+        { label: both ? 'Atletas' : null, teams: athletes }
+      ]
+    }
+  })
+  const nothing = groups.every((group) =>
+    group.sections.every((section) => section.teams.length === 0)
+  )
 
   const count = choices.teams.length
   return (
@@ -52,9 +122,7 @@ export default function Teams() {
       footer={
         <PillButton
           label={
-            count === 0
-              ? 'Pular'
-              : `Continuar · ${count} ${count === 1 ? 'time' : 'times'}`
+            count === 0 ? 'Pular' : `Continuar · ${countLabel(choices.teams)}`
           }
           onPress={() => router.push('/onboarding/distance')}
         />
@@ -69,15 +137,16 @@ export default function Teams() {
       </Text>
       <Field
         bare
-        label="Buscar time ou piloto"
+        label="Buscar time ou atleta"
         icon="search"
-        placeholder="Buscar time ou piloto"
+        placeholder="Buscar time ou atleta"
         autoCorrect={false}
+        returnKeyType="search"
         value={search}
         onChangeText={setSearch}
       />
-      {groups.map(({ sport, teams }) =>
-        sport && teams.length > 0 ? (
+      {groups.map(({ sport, sections }) =>
+        sport && sections.some((section) => section.teams.length > 0) ? (
           <View key={sport.id} style={{ gap: 8 }}>
             <View
               style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
@@ -85,33 +154,96 @@ export default function Teams() {
               <SportBadge name={sport.name} />
               <Text style={text(14, 'Bold')}>{sport.name}</Text>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-              {teams.map((team) => (
-                <TeamChip
-                  key={team.id}
-                  name={team.name}
-                  selected={selected(team.id)}
-                  onPress={() =>
-                    toggle({ id: team.id, name: team.name, sportId: sport.id })
-                  }
-                />
-              ))}
-            </View>
+            {sections.map((section, index) =>
+              section.teams.length > 0 ? (
+                // biome-ignore lint/suspicious/noArrayIndexKey: seções fixas, sempre na mesma ordem
+                <View key={index} style={{ gap: 6 }}>
+                  {section.label ? (
+                    <Text style={[text(12), { color: MUTED }]}>
+                      {section.label}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}
+                  >
+                    {section.teams.map(chip)}
+                  </View>
+                </View>
+              ) : null
+            )}
           </View>
         ) : null
       )}
-      {!needle &&
-      lists.every((list) => list.isSuccess) &&
-      groups.every((group) => group.teams.length === 0) ? (
+      {searching && results.isError ? (
         <Text style={[text(14), { color: MUTED }]}>
-          Ainda não temos times desses esportes. Pode pular este passo.
+          Não foi possível buscar. Confira a conexão.
+        </Text>
+      ) : searching && !results.data ? (
+        <Text style={[text(14), { color: MUTED }]}>Buscando…</Text>
+      ) : searching && nothing ? (
+        <Text style={[text(14), { color: MUTED }]}>Nada com “{query}”.</Text>
+      ) : !searching && nothing && featured.every((list) => list.isSuccess) ? (
+        <Text style={[text(14), { color: MUTED }]}>
+          Busque pelo nome acima.
         </Text>
       ) : null}
-      {needle && groups.every((group) => group.teams.length === 0) ? (
-        <Text style={[text(14), { color: MUTED }]}>
-          Nenhum time com “{search.trim()}”.
-        </Text>
+      {searching && results.data ? (
+        <Suggest
+          key={query}
+          name={query}
+          sports={choices.sportIds.flatMap(
+            (id) => sports.data?.find((sport) => sport.id === id)?.name ?? []
+          )}
+        />
       ) : null}
     </Screen>
+  )
+}
+
+/** O torcedor não achou: vai como feedback e entra depois de revisado. */
+function Suggest({ name, sports }: { name: string; sports: string[] }) {
+  const send = useMutation(trpc.feedback.send.mutationOptions())
+  if (send.isSuccess) {
+    return (
+      <Text
+        style={[text(14), { color: MUTED }]}
+        accessibilityLiveRegion="polite"
+      >
+        Recebemos a sugestão de “{name}”. A gente revisa antes de incluir.
+      </Text>
+    )
+  }
+  return (
+    <View
+      style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}
+    >
+      <Text style={[text(14), { color: MUTED }]}>Não achou? </Text>
+      <Pressable
+        accessibilityRole="button"
+        disabled={send.isPending}
+        hitSlop={12}
+        onPress={() =>
+          send.mutate({
+            message: `Sugestão para o catálogo de times e atletas: “${name}” (${sports.join(', ')}).`,
+            pageUrl: 'onside://onboarding/teams'
+          })
+        }
+      >
+        <Text
+          style={[
+            text(14, 'Bold'),
+            { color: INK, textDecorationLine: 'underline' }
+          ]}
+        >
+          Sugerir “{name}”
+        </Text>
+      </Pressable>
+      {send.isError ? (
+        <Text style={[text(14), { color: MUTED }]}>
+          {' '}
+          Não deu para enviar. Tente de novo.
+        </Text>
+      ) : null}
+    </View>
   )
 }
