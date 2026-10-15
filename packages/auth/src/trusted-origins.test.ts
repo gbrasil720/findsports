@@ -46,7 +46,12 @@ describe('origens confiáveis do auth', () => {
         nodeEnv: 'production',
         appScheme: 'onside'
       })
-    ).toEqual(['https://onside.sh', 'https://www.onside.sh', 'onside://'])
+    ).toEqual([
+      'https://onside.sh',
+      'https://www.onside.sh',
+      'https://houdini.onside.sh',
+      'onside://'
+    ])
 
     expect(
       buildTrustedOrigins({
@@ -56,6 +61,7 @@ describe('origens confiáveis do auth', () => {
       })
     ).toEqual([
       'http://localhost:3001',
+      'http://houdini.localhost:3001',
       'onside://',
       'exp://',
       'http://localhost:8081'
