@@ -2,7 +2,11 @@ import { expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { groupTeamsByKind, TeamGroup } from './team-groups'
 
-type Row = { name: string; isNationalTeam?: boolean }
+type Row = {
+  name: string
+  isNationalTeam?: boolean
+  kind?: 'team' | 'athlete'
+}
 const club = (name: string): Row => ({ name, isNationalTeam: false })
 const national = (name: string): Row => ({ name, isNationalTeam: true })
 const shape = (groups: { label: string | null; teams: Row[] }[]) =>
@@ -41,6 +45,26 @@ test('linha sem o campo (cache anterior à coluna) conta como clube', () => {
   ).toEqual([
     ['Clubes', ['Flamengo']],
     ['Seleções', ['Brasil']]
+  ])
+})
+
+// WEB-381
+test('F1: escuderias são "Times" e pilotos, "Atletas"', () => {
+  const athlete = (name: string): Row => ({ name, kind: 'athlete' })
+  expect(
+    shape(
+      groupTeamsByKind([
+        club('Ferrari'),
+        athlete('Lewis Hamilton'),
+        club('McLaren')
+      ])
+    )
+  ).toEqual([
+    ['Times', ['Ferrari', 'McLaren']],
+    ['Atletas', ['Lewis Hamilton']]
+  ])
+  expect(shape(groupTeamsByKind([athlete('Alex Pereira')]))).toEqual([
+    [null, ['Alex Pereira']]
   ])
 })
 

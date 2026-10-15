@@ -28,7 +28,7 @@ async function startOnboarding(page: Page) {
 async function firstTeamOf(sportName: string) {
   const [team] = await query<{ id: string; name: string }>(
     `SELECT t.id, t.name FROM team t JOIN sport s ON s.id = t.sport_id
-     WHERE s.name = $1 ORDER BY t.name LIMIT 1`,
+     WHERE s.name = $1 AND t.featured ORDER BY t.name LIMIT 1`,
     [sportName]
   )
   if (!team) throw new Error(`sem time semeado para ${sportName}`)

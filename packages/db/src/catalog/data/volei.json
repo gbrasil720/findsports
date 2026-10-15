@@ -1,0 +1,23 @@
+[
+  {"key":"manual:barueri-volei","name":"Barueri","kind":"team","country":"BR","relevance":0,"aliases":[]},
+  {"key":"manual:brasil-volei","name":"Brasil Vôlei","kind":"team","country":"BR","nationalTeam":true,"featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:brasilia-volei","name":"Brasília Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Brasília"]},
+  {"key":"manual:dentil-praia-clube","name":"Dentil/Praia Clube","kind":"team","country":"BR","hidden":true,"relevance":0,"aliases":[]},
+  {"key":"manual:ems-taubate-funvic","name":"EMS Taubaté Funvic","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:fluminense-volei","name":"Fluminense Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Fluminense"]},
+  {"key":"manual:guarulhos-volei","name":"Guarulhos Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Guarulhos"]},
+  {"key":"manual:itambe-minas","name":"Itambé/Minas","kind":"team","country":"BR","hidden":true,"relevance":0,"aliases":[]},
+  {"key":"manual:joinville-volei","name":"Joinville Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Joinville"]},
+  {"key":"manual:maringa-volei","name":"Maringá Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Maringá"]},
+  {"key":"manual:minas-tenis-clube-volei","name":"Minas Tênis Clube","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:montes-claros-volei","name":"Montes Claros Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Montes Claros"]},
+  {"key":"manual:osasco-audax","name":"Osasco Audax","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:pinheiros","name":"Pinheiros","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:praia-clube","name":"Praia Clube","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:renata-valinhos-volei","name":"Renata Valinhos","kind":"team","country":"BR","relevance":0,"aliases":["Valinhos"]},
+  {"key":"manual:sada-cruzeiro","name":"Sada Cruzeiro","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:sesc-rj-flamengo-volei","name":"Sesc RJ Flamengo","kind":"team","country":"BR","relevance":0,"aliases":["Flamengo"]},
+  {"key":"manual:sesi-bauru-volei","name":"Sesi Bauru","kind":"team","country":"BR","relevance":0,"aliases":["Bauru"]},
+  {"key":"manual:sesi-sp","name":"Sesi-SP","kind":"team","country":"BR","featured":true,"relevance":0,"aliases":[]},
+  {"key":"manual:suzano-volei","name":"Suzano Vôlei","kind":"team","country":"BR","relevance":0,"aliases":["Suzano"]}
+]

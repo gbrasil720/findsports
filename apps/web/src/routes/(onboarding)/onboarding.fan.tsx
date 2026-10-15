@@ -229,6 +229,7 @@ function FanOnboarding() {
               Opcional — marque quantos quiser em cada esporte, ou pule.
             </p>
             <TeamPicker
+              ink
               sports={selectedSports}
               selected={selectedTeams}
               onChange={setSelectedTeams}

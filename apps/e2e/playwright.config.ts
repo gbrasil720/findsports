@@ -80,7 +80,7 @@ export default defineConfig({
         'cd ../../packages/db',
         'bunx drizzle-kit migrate',
         'bun src/seed/sports.ts',
-        'bun src/seed/teams.ts',
+        'bun src/catalog/sync.ts',
         'cd ../../apps/web',
         `bunx vite dev --port ${APP_PORT} --strictPort --host 127.0.0.1`
       ].join(' && '),

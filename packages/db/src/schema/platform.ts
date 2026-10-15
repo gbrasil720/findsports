@@ -48,6 +48,16 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', [
 
 export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
 
+/**
+ * WEB-381: quem o torcedor acompanha é um time (clube, seleção, escuderia da
+ * F1) ou um atleta (piloto, lutador). A interface diz "time" ou "atleta"; o
+ * resto do sistema (favoritos, participantes do jogo, busca) trata os dois
+ * pela mesma tabela.
+ */
+export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
+
+export type TeamKind = (typeof teamKindEnum.enumValues)[number]
+
 const reservationCapRange = (column: AnyPgColumn) =>
   sql`${column} IS NULL OR ${column} BETWEEN 1 AND ${sql.raw(String(RESERVATION_CAP_MAX))}` // sql-raw-permitido: constante de limite em CHECK
 
@@ -208,7 +218,18 @@ export const team = pgTable(
     // Seleção nacional, e não clube (WEB-284). Dado, não heurística: "Brasil"
     // e "Flamengo" têm o mesmo `country`. Quem agrupa é a tela de escolha.
     isNationalTeam: boolean('is_national_team').default(false).notNull(),
+    kind: teamKindEnum('kind').default('team').notNull(),
     logoUrl: text('logo_url'),
+    // WEB-381: o catálogo vem de `packages/db/src/catalog/data` (Wikidata,
+    // Jolpica-F1 ou lista à mão) e é gravado por `db:catalog:sync`. A chave
+    // liga a linha à entrada do catálogo; nula só em time criado fora dele.
+    catalogKey: text('catalog_key').unique(),
+    // Aparece sem busca na tela de escolha. O resto do catálogo só pela busca.
+    featured: boolean('featured').default(false).notNull(),
+    // Ordem da busca: número de artigos na Wikipédia sobre o item.
+    relevance: integer('relevance').default(0).notNull(),
+    // Nome, nome oficial e apelidos sem acento e em minúsculas.
+    searchText: text('search_text').default('').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [index('team_sportId_idx').on(table.sportId)]

@@ -57,9 +57,6 @@
     },
     "db:seed:sports": {
       "cache": false
-    },
-    "db:seed:teams": {
-      "cache": false
     }
   }
 }
