@@ -21,8 +21,8 @@ import {
 import { authClient } from '@/lib/auth-client'
 
 /*
- * "Link enviado" (do design, em tinta). O link vale 1 hora
- * (`resetPasswordTokenExpiresIn` no servidor); o design dizia 30 minutos.
+ * "Link enviado" (do design, em tinta). O link vale 30 minutos
+ * (`resetPasswordTokenExpiresIn` no servidor).
  */
 
 // No iOS, `message://` abre o Mail; no Android não há endereço comum para
@@ -108,7 +108,7 @@ export default function ResetSent() {
         <Text style={[text(16, 'Bold', 1.5), { color: PAPER }]}>
           {maskEmail(email)}
         </Text>
-        . Ele vale por 1 hora. Se não aparecer, olhe o spam.
+        . Ele vale por 30 minutos. Se não aparecer, olhe o spam.
       </Text>
       {notice ? (
         <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
