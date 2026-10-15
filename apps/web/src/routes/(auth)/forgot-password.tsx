@@ -253,8 +253,8 @@ function EmailEnviado({
       <ul className="my-7 grid gap-3 text-sm text-[var(--onside-muted)]">
         <li className="border-[var(--onside-line)] border-l-2 pl-3">
           O link vale por{' '}
-          <strong className="text-[var(--onside-ink)]">1 hora</strong> e só pode
-          ser usado uma vez.
+          <strong className="text-[var(--onside-ink)]">30 minutos</strong> e só
+          pode ser usado uma vez.
         </li>
         <li className="border-[var(--onside-line)] border-l-2 pl-3">
           Não achou? Procure em spam ou promoções antes de pedir outro.
