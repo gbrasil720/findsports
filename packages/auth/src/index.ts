@@ -235,7 +235,8 @@ export function createAuth() {
       // token para nivelar o tempo de resposta), então não há enumeração de
       // contas a proteger aqui — a UI só não pode acrescentar o que o
       // servidor calou.
-      resetPasswordTokenExpiresIn: 60 * 60,
+      // 30 minutos, o prazo que o app e o design anunciam.
+      resetPasswordTokenExpiresIn: 30 * 60,
       // Quem redefine a senha normalmente é quem perdeu o acesso; se a conta
       // estava comprometida, as sessões do invasor precisam cair junto.
       revokeSessionsOnPasswordReset: true,
