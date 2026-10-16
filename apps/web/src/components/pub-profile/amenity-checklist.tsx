@@ -86,14 +86,6 @@ export function AmenityChecklist({
             )}
           </div>
 
-          {group.key === 'practical' ? (
-            <p className="mt-2 text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] text-xs leading-snug">
-              “Aceita reserva” aparece sozinha no perfil quando o bar recebe
-              reservas pela Onside, o que se marca jogo a jogo, em “Aceitar
-              reservas neste jogo”, em Minha grade.
-            </p>
-          ) : null}
-
           {group.key === 'watch' ? (
             <div className="mt-2 flex flex-wrap items-center gap-x-3">
               <label
