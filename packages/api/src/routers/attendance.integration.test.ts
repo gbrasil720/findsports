@@ -179,6 +179,9 @@ integrationTest(
       // Jogo que já começou não oferece o botão.
       expect(marked.events.find(({ id }) => id === past)?.attendance).toBeNull()
 
+      expect(await api.mine()).toMatchObject([
+        { eventId: future, code: null, window: null, validated: false }
+      ])
       await api.set({ eventId: future, attending: false })
       expect(await ctx.presences(future)).toHaveLength(0)
 
@@ -244,6 +247,14 @@ integrationTest(
         .insert(reservationCodeUse)
         .values({ codeId: code?.id as string })
       expect((await mine())?.validated).toBe(true)
+      const [listed] = await ctx.fan().attendance.mine()
+      expect(listed).toMatchObject({
+        eventId: future,
+        code: again?.code,
+        validated: true,
+        ended: false,
+        missed: false
+      })
       expect(
         (await refusal(api.set({ eventId: future, attending: false }))).code
       ).toBe('CONFLICT')

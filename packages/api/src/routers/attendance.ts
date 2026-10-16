@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { adminProcedure, fanProcedure, router } from '../index'
 import {
   readAttendanceQuestions,
+  readMyGames,
   readUnregisteredAlerts
 } from '../lib/attendance'
 import { issueTicket, retireTicket } from '../lib/attendance-ticket'
@@ -95,6 +96,9 @@ export const attendanceRouter = router({
       })
       return { attending: input.attending }
     }),
+
+  /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
+  mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
 
   /**
    * Perguntas pós-jogo ainda sem resposta (WEB-128). Uma por jogo; a tela
