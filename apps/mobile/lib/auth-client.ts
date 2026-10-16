@@ -30,7 +30,9 @@ export const authClient = createAuthClient({
     inferAdditionalFields({
       user: {
         role: { type: 'string', required: false },
-        onboardingCompleted: { type: 'boolean', required: false }
+        onboardingCompleted: { type: 'boolean', required: false },
+        // Raio da busca do Explorar, escolhido no onboarding.
+        searchRadiusKm: { type: 'number', required: false }
       }
     }),
     twoFactorClient()
