@@ -3,7 +3,6 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
-import { RESERVATION_CAP_MAX } from '@findsports_oficial/db/reservation-limits'
 import {
   keepPreviousData,
   useMutation,
@@ -18,6 +17,7 @@ import { refusalMessage } from '@/components/houdini/errors'
 import { HoldButton } from '@/components/houdini/hold-button'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
+import { countLabel } from '@/lib/plural'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -39,8 +39,7 @@ const FILTERS = [
 
 const WARN_SHORT: Record<Warning['kind'], string> = {
   duplicate: 'duplicado',
-  free_text: 'time fora do catálogo',
-  uncapped: 'reservas sem limite'
+  free_text: 'time fora do catálogo'
 }
 
 const TZ = 'America/Sao_Paulo'
@@ -75,18 +74,9 @@ function matchTitle(game: Game) {
   )
 }
 
-function reservationsLabel(game: Game) {
-  if (
-    !game.acceptsReservations &&
-    game.confirmedSeats === 0 &&
-    game.pendingReservations === 0
-  ) {
-    return 'sem reservas'
-  }
-  const seats = `${game.confirmedSeats}/${game.effectiveCap ?? '—'}`
-  return game.pendingReservations > 0
-    ? `${seats} · ${game.pendingReservations} pend.`
-    : seats
+/** Códigos do balcão em vigor: quem marcou "Vou assistir aqui" no Elite. */
+function codesLabel(game: Game) {
+  return game.codes ? countLabel(game.codes, 'código', 'códigos') : '—'
 }
 
 function JogosPage() {
@@ -186,7 +176,7 @@ function JogosPage() {
                     <th scope="col">Quando</th>
                     <th scope="col">Jogo</th>
                     <th scope="col">Bar</th>
-                    <th scope="col">Reservas</th>
+                    <th scope="col">Códigos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,7 +230,7 @@ function JogosPage() {
                           {game.barName}
                         </td>
                         <td className="hd-mono" style={{ fontSize: 12 }}>
-                          {reservationsLabel(game)}
+                          {codesLabel(game)}
                         </td>
                       </tr>
                     ))
@@ -296,8 +286,8 @@ function warningCopy(warning: Warning): {
       return {
         title: 'Jogo duplicado',
         text: warning.canDelete
-          ? 'O mesmo bar tem outro jogo com os mesmos times no mesmo horário. Este não tem reserva e pode sair sem levar nada junto.'
-          : 'O mesmo bar tem outro jogo com os mesmos times no mesmo horário. Este tem reserva, então fica: apague o outro, se ele estiver sem reserva.',
+          ? 'O mesmo bar tem outro jogo com os mesmos times no mesmo horário. Este não tem código de ninguém e pode sair sem levar nada junto.'
+          : 'O mesmo bar tem outro jogo com os mesmos times no mesmo horário. Este tem código de quem vai, então fica: apague o outro, se ele estiver sem código.',
         fix: warning.canDelete ? 'Apagar este duplicado' : null
       }
     case 'free_text': {
@@ -310,12 +300,6 @@ function warningCopy(warning: Warning): {
         fix: names ? `Ligar ao ${names}` : null
       }
     }
-    case 'uncapped':
-      return {
-        title: 'Reservas sem limite',
-        text: 'O jogo aceita reservas, mas nem ele nem o bar têm limite de lugares: qualquer quantidade é aceita. O bar não tem limite padrão para aplicar, então preencha o limite deste jogo abaixo.',
-        fix: null
-      }
   }
 }
 
@@ -329,8 +313,6 @@ function GamePanel({ game }: { game: Game }) {
     game.endsAt ? brt(game.endsAt).time : ''
   )
   const [championship, setChampionship] = useState(game.championship)
-  const [accepts, setAccepts] = useState(game.acceptsReservations)
-  const [cap, setCap] = useState(game.reservationCap?.toString() ?? '')
   const [fixedText, setFixedText] = useState<string | null>(null)
 
   async function refresh() {
@@ -395,9 +377,7 @@ function GamePanel({ game }: { game: Game }) {
       eventId: game.id,
       startsAt: startsAt.toISOString(),
       endsAt: endsAt?.toISOString() ?? null,
-      championship,
-      acceptsReservations: accepts,
-      reservationCap: cap ? Number(cap) : null
+      championship
     })
   }
 
@@ -430,7 +410,7 @@ function GamePanel({ game }: { game: Game }) {
             >
               {copy.text}
             </p>
-            {copy.fix && warning.kind !== 'uncapped' ? (
+            {copy.fix ? (
               <button
                 type="button"
                 className="hd-btn"
@@ -526,42 +506,6 @@ function GamePanel({ game }: { game: Game }) {
             maxLength={EVENT_CHAMPIONSHIP_MAX_LENGTH}
             value={championship}
             onChange={(event) => setChampionship(event.target.value)}
-          />
-        </label>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            minHeight: 44,
-            fontSize: 13,
-            color: 'var(--hd-soft)'
-          }}
-        >
-          <span id="hd-aceita">Aceitar reservas neste jogo</span>
-          <button
-            type="button"
-            role="switch"
-            className="hd-switch"
-            aria-checked={accepts}
-            aria-labelledby="hd-aceita"
-            onClick={() => setAccepts((on) => !on)}
-          />
-        </div>
-        <label className="hd-label">
-          Limite de pessoas neste jogo
-          <input
-            type="number"
-            inputMode="numeric"
-            className="hd-input"
-            min={1}
-            max={RESERVATION_CAP_MAX}
-            placeholder={
-              game.barCap ? `vazio usa o do bar (${game.barCap})` : 'sem limite'
-            }
-            value={cap}
-            onChange={(event) => setCap(event.target.value)}
           />
         </label>
         <div
