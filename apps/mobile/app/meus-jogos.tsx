@@ -118,12 +118,14 @@ export default function MyGames() {
           />
         }
       >
+        {/* No design não há voltar: Meus jogos fica dentro das abas (WEB-407). */}
         <View style={styles.top}>
           <BackButton />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Pôr na agenda do celular"
             hitSlop={8}
+            // O que o botão faz ainda não foi decidido: WEB-406.
             onPress={() => soon.show('A agenda do celular chega em breve')}
           >
             <Glass

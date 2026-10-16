@@ -157,6 +157,7 @@ export default function GoingSheet() {
                 ]}
               >
                 {game.going.count.toLocaleString('pt-BR')} pessoas vão
+                {/* Falta ", entre elas Marina e Rafael" do design: WEB-404. */}
               </Text>
             </View>
           </Card>

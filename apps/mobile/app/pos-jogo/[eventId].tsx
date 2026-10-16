@@ -31,8 +31,9 @@ import { trpc } from '@/lib/trpc'
  * Pós-jogo (3g do design): "Você foi ao bar?" e "Voltaria?" numa tela só.
  * A primeira é a pergunta de presença (`attendance.report`, WEB-128), que só
  * existe para quem marcou "Vou assistir aqui"; a segunda é a avaliação
- * (`ratings.submit`). "O que pesou?" e a contagem de resenhas do design não
- * entram: o servidor não guarda o motivo e não há conquistas ainda.
+ * (`ratings.submit`). Faltam, do design: "O que pesou?" entre os cartões e o
+ * "Enviar" (WEB-398: o servidor não guarda o motivo) e o cartão "Sua Nª
+ * resenha" (WEB-403: não há conquistas).
  */
 
 export default function AfterGame() {
