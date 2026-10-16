@@ -10,6 +10,7 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -32,12 +33,13 @@ import {
   router
 } from '../index'
 import {
+  declaredAmenityIds,
   MAX_AMENITY_FILTER,
   normalizeAmenityIds,
   publicAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { readFanAttendance } from '../lib/attendance'
+import { ATTENDANCE_DISPLAY_FLOOR, readFanAttendance } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
   getSubscriptionStanding,
@@ -282,6 +284,56 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
   }))
 }
 
+/**
+ * O que o card do bar no app mostra além da busca (07 do design): as
+ * características declaradas e quantos marcaram presença no próximo jogo.
+ * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
+ * segue o piso de "Vou assistir aqui" (`ATTENDANCE_DISPLAY_FLOOR`): abaixo
+ * dele sai `null`, e jogo vazio não vira número na tela.
+ */
+async function comCaracteristicasEPresenca<
+  T extends { id: string; nextEvent?: { id: string } | undefined }
+>(bars: T[]) {
+  const eventIds = bars.flatMap((achado) =>
+    achado.nextEvent ? [achado.nextEvent.id] : []
+  )
+  const [declarados, presencas] = await Promise.all([
+    bars.length
+      ? db
+          .select({ id: bar.id, amenities: bar.amenities })
+          .from(bar)
+          .where(
+            inArray(
+              bar.id,
+              bars.map((achado) => achado.id)
+            )
+          )
+      : [],
+    eventIds.length
+      ? db
+          .select({
+            eventId: attendance.eventId,
+            count: sql<number>`count(*)::int`
+          })
+          .from(attendance)
+          .where(inArray(attendance.eventId, eventIds))
+          .groupBy(attendance.eventId)
+      : []
+  ])
+  const caracteristicas = new Map(
+    declarados.map((row) => [row.id, declaredAmenityIds(row.amenities)])
+  )
+  const vao = new Map(presencas.map((row) => [row.eventId, row.count]))
+  return bars.map((achado) => {
+    const count = achado.nextEvent ? (vao.get(achado.nextEvent.id) ?? 0) : 0
+    return {
+      ...achado,
+      amenities: caracteristicas.get(achado.id) ?? [],
+      goingCount: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null
+    }
+  })
+}
+
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
 
@@ -382,7 +434,9 @@ export const pubsRouter = router({
       // depois de a exibição ser desligada — e desligar exibição costuma ser
       // a reação a um problema, ou seja, exatamente a hora em que a demora
       // não é aceitável.
-      const bars = await comGastoMedio(pagina.bars)
+      const bars = await comCaracteristicasEPresenca(
+        await comGastoMedio(pagina.bars)
+      )
       return {
         ...pagina,
         bars: notaPublica
