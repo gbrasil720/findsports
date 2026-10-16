@@ -60,7 +60,7 @@ import {
   parseHouseOfferInput
 } from '../lib/house-offer'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
-import { recebeReservas } from '../lib/pub-search/shared'
+import { eliteVigente } from '../lib/pub-search/shared'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -261,10 +261,10 @@ async function getBarByUserId(userId: string) {
 export const pubRouter = router({
   getMe: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
-    // Derivado dos jogos, pela mesma regra do perfil e da busca: decide se a
-    // aba Reservas existe no painel.
+    // Elite vigente pela assinatura, como na busca: decide se a aba Quem vai
+    // existe no painel.
     const [row] = await db
-      .select({ receives: recebeReservas(sql`${bar}`) })
+      .select({ receives: eliteVigente(sql`${bar}`) })
       .from(bar)
       .where(eq(bar.id, existingBar.id))
     return { ...existingBar, receivesReservations: row?.receives === true }
@@ -370,10 +370,7 @@ export const pubRouter = router({
           ...(input.uf && { uf: input.uf }),
           ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
-            amenities: writableAmenityIds(
-              input.amenities,
-              existingBar.amenities
-            )
+            amenities: writableAmenityIds(input.amenities)
           }),
           ...(input.screenCount !== undefined && {
             screenCount: input.screenCount

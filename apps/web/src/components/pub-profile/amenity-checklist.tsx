@@ -3,7 +3,7 @@ import {
   AMENITY_GROUPS,
   MAX_SCREEN_COUNT,
   motivoTelasInvalido,
-  RESERVATIONS_AMENITY_ID
+  HOUSE_OFFER_AMENITY_ID
 } from '@findsports_oficial/api/lib/amenities'
 import Check from 'reicon-react/icons/Check'
 
@@ -16,10 +16,10 @@ type Props = {
 }
 
 /**
- * "Aceita reserva" não está entre os itens: não é escolha do bar, aparece no
- * perfil quando ele recebe reservas pela Onside (`publicAmenityIds`).
+ * "Com oferta da casa" não está entre os itens: não é escolha do bar, é o
+ * filtro da busca para quem é Elite e tem oferta cadastrada.
  */
-const ITENS = AMENITIES.filter(({ id }) => id !== RESERVATIONS_AMENITY_ID)
+const ITENS = AMENITIES.filter(({ id }) => id !== HOUSE_OFFER_AMENITY_ID)
 
 /**
  * O checklist de características, usado no onboarding e no `/admin`.
