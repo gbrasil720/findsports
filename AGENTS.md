@@ -327,9 +327,21 @@ invente layout que o projeto não tem.
   `pubs.searchCities` e a contagem "N bares com jogo hoje" por `pubs.countTodayNear`.
   Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
   corpo `{}`, senão 415) e relê com `disableCookieCache`. O banco local nasce sem times:
-  `NODE_ENV=development bun run db:seed:teams` (o resolver fixa o Postgres local).
+  `NODE_ENV=development bun run db:catalog:sync` (o resolver fixa o Postgres local).
 - **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
   O texto legal vem de `packages/legal`, o mesmo do site.
+- **Explorar ("07"):** `app/explore.tsx`, onde o torcedor com onboarding feito começa, e
+  `app/bar/[id].tsx` (página do bar); peças em `components/explore.tsx`, contas puras em
+  `lib/explore.ts`. O mapa é o nativo, pelo `react-native-maps` (decisão do dono em
+  15/10/2026): Apple Maps na versão apagada (`mutedStandard`, sem pontos de interesse) no
+  iOS, Google Maps com `customMapStyle` nas cores da Onside (`lib/map-style.ts`) no Android.
+  Roda no Expo Go. Os pinos, o raio e os cards são nossos. A busca é `pubs.search` a partir
+  do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
+  ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
+  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A busca
+  com IA (2h) e a reserva (08) ainda não entraram. O banco local nasce sem jogos: crie
+  eventos para hoje nos bares de teste para ver os pinos. Publicar no Android vai pedir
+  chave do Maps SDK for Android em `app.json`.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
@@ -341,7 +353,7 @@ invente layout que o projeto não tem.
   objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
 - **Navegador de telas (só em desenvolvimento):** a aba "DEV" na borda direita
   (`components/dev-tab.tsx`) abre `app/dev.tsx`, a lista das telas pelo código do design
-  (4b…4h, 2p, 11p…11s; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
+  (4b…4n, 2p, 11p…11x, 2d/2e; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
   tela montada de novo; "Recarregar esta tela", ou segurar a aba, monta a atual outra vez
   (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`.
 - **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
