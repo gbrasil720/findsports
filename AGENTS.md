@@ -339,7 +339,14 @@ invente layout que o projeto não tem.
   do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
   página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A busca
-  com IA (2h) e a reserva (08) ainda não entraram. O banco local nasce sem jogos: crie
+  com IA (2h) e a reserva (08) ainda não entraram; o que o design mostra e não
+  existe avisa "chega em breve" (`components/soon.tsx`). As abas do torcedor são a barra
+  nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
+  distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
+  (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
+  `search` (o círculo à direita), Ranking e IA desabilitadas com `tabPress`, e "Você"
+  desabilitada abrindo o menu de vidro (`components/tab-bar.tsx`). Borda tracejada de um
+  lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos. Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
