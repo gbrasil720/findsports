@@ -179,6 +179,7 @@ export async function readMyGames(userId: string, now = new Date()) {
       barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
+      photoUrl: bar.photoUrl,
       // Bar fora do ar segue na lista, sem perfil para abrir (WEB-360).
       barActive: bar.isActive,
       offer: reservation.offerSnapshot,
