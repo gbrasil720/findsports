@@ -13,6 +13,7 @@
   "dependencies": {
     "@better-auth/expo": "catalog:",
     "@findsports_oficial/api": "workspace:*",
+    "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/legal": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
     "@trpc/client": "catalog:",
