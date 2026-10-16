@@ -1,9 +1,9 @@
 import {
   AMENITIES,
   AMENITY_GROUPS,
+  HOUSE_OFFER_AMENITY_ID,
   MAX_SCREEN_COUNT,
-  motivoTelasInvalido,
-  HOUSE_OFFER_AMENITY_ID
+  motivoTelasInvalido
 } from '@findsports_oficial/api/lib/amenities'
 import Check from 'reicon-react/icons/Check'
 
