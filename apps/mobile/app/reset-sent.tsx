@@ -8,6 +8,7 @@ import {
   ACID,
   BackButton,
   Icon,
+  INK,
   LIVE,
   maskEmail,
   openMailApp,
@@ -93,7 +94,7 @@ export default function ResetSent() {
         <View style={styles.tileShadow} />
         <Float distance={5}>
           <View style={styles.tile}>
-            <Icon name="mail" size={52} />
+            <Icon name="mail" size={52} color={INK} accent={LIVE} />
           </View>
         </Float>
       </View>

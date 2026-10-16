@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { View } from 'react-native'
+import { BG } from '@/components/ui'
 import { adoptSessionCookie, authClient } from '@/lib/auth-client'
 import { latestURL } from '@/lib/latest-url'
 import { rawParam } from '@/lib/raw-param'
@@ -29,5 +30,5 @@ export default function Verified() {
     })
   }, [router])
 
-  return <View style={{ flex: 1, backgroundColor: '#f1eee6' }} />
+  return <View style={{ flex: 1, backgroundColor: BG }} />
 }

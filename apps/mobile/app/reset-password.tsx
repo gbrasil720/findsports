@@ -10,19 +10,25 @@ import {
   authErrorMessage,
   BackButton,
   BlockButton,
+  CARD,
+  DROP,
+  FG,
   Field,
   Icon,
   INK,
+  LINE,
   LIVE,
   MIN_PASSWORD,
-  MUTED,
   PASSWORD_RULES,
   passwordScore,
   Screen,
+  STONE,
   STRENGTH,
   StrengthBars,
+  SUB,
   Title,
-  text
+  text,
+  themed
 } from '@/components/ui'
 import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
@@ -117,8 +123,10 @@ export default function ResetPassword() {
         onChangeText={setPassword}
       />
       <View style={{ gap: 8, marginTop: -6 }}>
-        <StrengthBars score={score} empty="#e7e3db" />
-        <Text style={text(12.5, 'Bold')}>{STRENGTH[score] || ' '}</Text>
+        <StrengthBars score={score} empty={STONE} />
+        <Text style={[text(12.5, 'Bold'), { color: FG }]}>
+          {STRENGTH[score] || ' '}
+        </Text>
       </View>
       <View style={styles.rules}>
         {PASSWORD_RULES.map((rule) => {
@@ -132,11 +140,11 @@ export default function ResetPassword() {
                     exiting={FadeOut.duration(120)}
                     style={[styles.dot, styles.dotOn]}
                   >
-                    <Icon name="check" size={11} />
+                    <Icon name="check" size={11} color={INK} accent={LIVE} />
                   </Animated.View>
                 ) : null}
               </View>
-              <Text style={[text(13.5), { color: met ? INK : MUTED }]}>
+              <Text style={[text(13.5), { color: met ? FG : SUB }]}>
                 {rule.label}
               </Text>
             </View>
@@ -170,14 +178,14 @@ const styles = StyleSheet.create({
   rules: {
     padding: 14,
     borderRadius: 6,
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)',
+    borderColor: LINE,
     flexDirection: 'row',
     flexWrap: 'wrap',
     rowGap: 10,
-    shadowColor: INK,
-    shadowOpacity: 0.09,
+    shadowColor: DROP,
+    shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 4, height: 4 }
   },
@@ -196,5 +204,8 @@ const styles = StyleSheet.create({
     left: -1.5,
     backgroundColor: ACID
   },
-  dotOff: { borderWidth: 1.5, borderColor: 'rgba(18,18,15,.25)' }
+  dotOff: {
+    borderWidth: 1.5,
+    borderColor: themed('rgba(18,18,15,.25)', 'rgba(241,238,230,.3)')
+  }
 })

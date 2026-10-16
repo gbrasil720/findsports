@@ -11,8 +11,8 @@ import {
   BlockButton,
   Field,
   LIVE,
-  MUTED,
   Screen,
+  SUB,
   TextLink,
   Title,
   text
@@ -63,7 +63,7 @@ export default function ForgotPassword() {
       <BackButton />
       <View style={{ gap: 10, marginTop: 10 }}>
         <Title lines={[['Esqueceu ', 'a senha?']]} size={46} />
-        <Text style={[text(16, 'Regular', 1.45), { color: MUTED }]}>
+        <Text style={[text(16, 'Regular', 1.45), { color: SUB }]}>
           Digite o e-mail da sua conta. Mandamos um link para você criar uma
           senha nova.
         </Text>
