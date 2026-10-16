@@ -19,9 +19,17 @@ type GlassProps = ViewProps & {
   tone: 'light' | 'dark'
   /** Responde ao toque (botão). */
   interactive?: boolean
+  /** Cor do vidro no lugar da do tom: o vermelho de "Ao vivo", o acid do Elite. */
+  tint?: string
 }
 
-export function Glass({ tone, interactive, style, ...props }: GlassProps) {
+export function Glass({
+  tone,
+  interactive,
+  tint,
+  style,
+  ...props
+}: GlassProps) {
   if (LIQUID) {
     return (
       <GlassView
@@ -29,14 +37,19 @@ export function Glass({ tone, interactive, style, ...props }: GlassProps) {
         // ficava só a seta); o escuro fica "clear", sobre foto e mapa.
         glassEffectStyle={tone === 'light' ? 'regular' : 'clear'}
         colorScheme={tone}
-        tintColor={TINT[tone]}
+        tintColor={tint ?? TINT[tone]}
         isInteractive={interactive}
         style={style}
         {...props}
       />
     )
   }
-  return <View style={[fallback[tone], style]} {...props} />
+  return (
+    <View
+      style={[fallback[tone], tint ? { backgroundColor: tint } : null, style]}
+      {...props}
+    />
+  )
 }
 
 const fallback = StyleSheet.create({
