@@ -16,7 +16,6 @@ import { pubsRouter } from './pubs'
 import { ratingsRouter } from './ratings'
 import { recommendationsRouter } from './recommendations'
 import { reservationValidationRouter } from './reservation-validation'
-import { reservationsRouter } from './reservations'
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -40,7 +39,6 @@ export const appRouter = router({
   commercialAnalytics: commercialAnalyticsRouter,
   ratings: ratingsRouter,
   reservationValidation: reservationValidationRouter,
-  reservations: reservationsRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
   feedback: feedbackRouter,
