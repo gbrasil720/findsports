@@ -10,7 +10,6 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
-import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -39,7 +38,7 @@ import {
   publicAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { ATTENDANCE_DISPLAY_FLOOR, readFanAttendance } from '../lib/attendance'
+import { readFanAttendance, readGoing } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
   getSubscriptionStanding,
@@ -288,8 +287,8 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
  * O que o card do bar no app mostra além da busca (07 do design): as
  * características declaradas e quantos marcaram presença no próximo jogo.
  * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
- * segue o piso de "Vou assistir aqui" (`ATTENDANCE_DISPLAY_FLOOR`): abaixo
- * dele sai `null`, e jogo vazio não vira número na tela.
+ * segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele sai `null`,
+ * e jogo vazio não vira número na tela; junto vão as iniciais de quem vai.
  */
 async function comCaracteristicasEPresenca<
   T extends { id: string; nextEvent?: { id: string } | undefined }
@@ -297,7 +296,7 @@ async function comCaracteristicasEPresenca<
   const eventIds = bars.flatMap((achado) =>
     achado.nextEvent ? [achado.nextEvent.id] : []
   )
-  const [declarados, presencas] = await Promise.all([
+  const [declarados, vao] = await Promise.all([
     bars.length
       ? db
           .select({ id: bar.id, amenities: bar.amenities })
@@ -309,27 +308,18 @@ async function comCaracteristicasEPresenca<
             )
           )
       : [],
-    eventIds.length
-      ? db
-          .select({
-            eventId: attendance.eventId,
-            count: sql<number>`count(*)::int`
-          })
-          .from(attendance)
-          .where(inArray(attendance.eventId, eventIds))
-          .groupBy(attendance.eventId)
-      : []
+    readGoing(eventIds)
   ])
   const caracteristicas = new Map(
     declarados.map((row) => [row.id, declaredAmenityIds(row.amenities)])
   )
-  const vao = new Map(presencas.map((row) => [row.eventId, row.count]))
   return bars.map((achado) => {
-    const count = achado.nextEvent ? (vao.get(achado.nextEvent.id) ?? 0) : 0
+    const going = achado.nextEvent ? vao.get(achado.nextEvent.id) : undefined
     return {
       ...achado,
       amenities: caracteristicas.get(achado.id) ?? [],
-      goingCount: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null
+      goingCount: going?.count ?? null,
+      goingInitials: going?.initials ?? []
     }
   })
 }
@@ -581,7 +571,13 @@ export const pubsRouter = router({
       // Como o recebimento, o teto sai resolvido: o torcedor sabe se o jogo
       // esgotou, não quantos lugares o dono definiu.
       const games = await withSeatAvailability(events, defaultCap)
-      const attendance = await readFanAttendance(ctx.session.user, events, now)
+      const fan = ctx.session.user.role === 'fan'
+      const [attendance, going] = await Promise.all([
+        readFanAttendance(ctx.session.user, events, now),
+        // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
+        // só para torcedor (o bar recebe o sinal relativo, nunca o número).
+        fan ? readGoing(events.map((game) => game.id)) : new Map()
+      ])
       return {
         ...publicBar,
         amenities: publicAmenityIds(publicBar.amenities, receiving),
@@ -605,7 +601,9 @@ export const pubsRouter = router({
               acceptsReservations: gameReceiving,
               reservationsSoldOut: gameReceiving && soldOut,
               // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
-              attendance: attendance.get(game.id) ?? null
+              attendance: attendance.get(game.id) ?? null,
+              // `null`: abaixo do piso, ou conta que não é de torcedor.
+              going: going.get(game.id) ?? null
             }
           }
         ),

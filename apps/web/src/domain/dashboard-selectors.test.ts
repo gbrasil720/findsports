@@ -25,6 +25,7 @@ function makeBar(id: string, startsAt?: string): SearchBar {
     averageSpendCents: null,
     amenities: [],
     goingCount: null,
+    goingInitials: [],
     rating: null,
     distance_km: 1,
     plan: 'starter',

@@ -7,6 +7,7 @@ import {
   attendance,
   attendanceReport
 } from '@findsports_oficial/db/schema/attendance'
+import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
@@ -33,6 +34,44 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
  * pelo menos uma presença. Valor provisório da ADR.
  */
 export const INTEREST_MIN_HISTORY = 5
+
+/**
+ * Quem vai a cada jogo, para o card do Explorar e o ingresso da página do
+ * bar: a contagem a partir do piso e a inicial do nome dos três que marcaram
+ * por último (design 2g: "M R J 34 vão"). Vale também para jogo já começado:
+ * o botão "Vou assistir aqui" não cabe mais, a contagem sim. Só a primeira
+ * letra: mostra que é gente de verdade sem identificar ninguém.
+ */
+export async function readGoing(
+  eventIds: string[]
+): Promise<Map<string, { count: number; initials: string[] }>> {
+  if (!eventIds.length) return new Map()
+  const rows = await db
+    .select({
+      eventId: attendance.eventId,
+      count: sql<number>`count(*)::int`,
+      initials: sql<
+        (string | null)[]
+      >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
+    })
+    .from(attendance)
+    .innerJoin(user, eq(user.id, attendance.userId))
+    .where(inArray(attendance.eventId, eventIds))
+    .groupBy(attendance.eventId)
+  return new Map(
+    rows
+      .filter((row) => row.count >= ATTENDANCE_DISPLAY_FLOOR)
+      .map((row) => [
+        row.eventId,
+        {
+          count: row.count,
+          initials: row.initials.filter((letter): letter is string =>
+            Boolean(letter)
+          )
+        }
+      ])
+  )
+}
 
 type FanAttendance = {
   attending: boolean
