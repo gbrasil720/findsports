@@ -58,24 +58,46 @@ export default function FanTabs() {
   const user = session.data?.user
 
   const items: MenuItem[] = [
-    { key: 'perfil', icon: 'you', label: 'Perfil' },
-    { key: 'conquistas', icon: 'medal', label: 'Conquistas' },
-    { key: 'reservas', icon: 'ticket', label: 'Minhas reservas' },
+    {
+      key: 'perfil',
+      icon: 'you',
+      label: 'Perfil',
+      soon: 'O perfil chega em breve'
+    },
+    {
+      key: 'conquistas',
+      icon: 'medal',
+      label: 'Conquistas',
+      soon: 'As conquistas chegam em breve'
+    },
+    {
+      key: 'reservas',
+      icon: 'ticket',
+      label: 'Minhas reservas',
+      soon: 'Suas reservas chegam em breve'
+    },
     {
       key: 'favoritos',
       icon: 'fan',
       label: 'Favoritos',
+      soon: 'A lista de favoritos chega em breve',
       meta: favorites.data?.length ? String(favorites.data.length) : undefined
     },
     {
       key: 'avaliacoes',
       icon: 'star',
       label: 'Avaliações',
+      soon: 'As avaliações chegam em breve',
       meta: pending.data?.length
         ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
         : undefined
     },
-    { key: 'preferencias', icon: 'sliders', label: 'Preferências' }
+    {
+      key: 'preferencias',
+      icon: 'sliders',
+      label: 'Preferências',
+      soon: 'As preferências chegam em breve'
+    }
   ]
   // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
   const settings = () =>
@@ -104,7 +126,7 @@ export default function FanTabs() {
         <NativeTabs.Trigger
           name="ranking"
           disabled
-          listeners={{ tabPress: () => soon.show('O ranking') }}
+          listeners={{ tabPress: () => soon.show('O ranking chega em breve') }}
         >
           <NativeTabs.Trigger.Icon
             src={icons.ranking}
@@ -125,7 +147,9 @@ export default function FanTabs() {
           role="search"
           disabled
           accessibilityLabel="Busca com IA"
-          listeners={{ tabPress: () => soon.show('A busca com IA') }}
+          listeners={{
+            tabPress: () => soon.show('A busca com IA chega em breve')
+          }}
         >
           <NativeTabs.Trigger.Icon
             src={icons.sparkle}
@@ -141,8 +165,8 @@ export default function FanTabs() {
           initials={initialsOf(user?.name ?? '')}
           items={items}
           onClose={() => setMenuOpen(false)}
-          onItem={(item) => soon.show(item.label)}
-          onChat={() => soon.show('A conversa com a Onside')}
+          onItem={(item) => soon.show(item.soon)}
+          onChat={() => soon.show('A conversa com a Onside chega em breve')}
           onSettings={settings}
         />
       ) : null}

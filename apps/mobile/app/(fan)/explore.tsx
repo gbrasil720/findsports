@@ -347,7 +347,7 @@ export default function Explore() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Buscar"
-              onPress={() => soon.show('A busca')}
+              onPress={() => soon.show('A busca chega em breve')}
             >
               <Glass tone={glassTone} interactive style={styles.round}>
                 <Icon name="search" size={19} color={palette.ink} />
@@ -356,7 +356,7 @@ export default function Explore() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Avisos"
-              onPress={() => soon.show('Avisos')}
+              onPress={() => soon.show('Os avisos chegam em breve')}
             >
               <Glass tone={glassTone} interactive style={styles.round}>
                 <Icon

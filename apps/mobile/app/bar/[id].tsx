@@ -381,7 +381,7 @@ export default function BarPage() {
               accessibilityRole="button"
               onPressIn={reserve.onPressIn}
               onPressOut={reserve.onPressOut}
-              onPress={() => soon.show('A reserva de mesa')}
+              onPress={() => soon.show('A reserva de mesa chega em breve')}
               style={{ flex: 1 }}
             >
               <View style={styles.reserveShadow} />

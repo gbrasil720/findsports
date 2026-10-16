@@ -30,6 +30,8 @@ export type MenuItem = {
   icon: 'you' | 'medal' | 'ticket' | 'fan' | 'star' | 'sliders'
   label: string
   meta?: string
+  /** O aviso enquanto a tela não existe. */
+  soon: string
 }
 
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.

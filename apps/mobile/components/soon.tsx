@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { StyleSheet, Text } from 'react-native'
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
+import Animated, {
+  type EntryExitAnimationFunction,
+  withTiming
+} from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
 import { text } from '@/components/ui'
@@ -8,31 +11,42 @@ import { text } from '@/components/ui'
 /*
  * Aviso curto para o que o design já mostra mas o app ainda não tem (Ranking,
  * busca com IA, telas do menu "Você"): o toque responde em vez de não fazer
- * nada. Some sozinho em 1,6 s.
+ * nada. Some sozinho em 1,6 s. Quem chama passa a frase inteira, para a
+ * concordância ficar certa ("O ranking chega em breve", "Minhas reservas
+ * chegam em breve").
  */
 
-const IN = FadeIn.duration(160).easing(EASE)
-const OUT = FadeOut.duration(140)
+// Vidro some com opacidade animada (o GlassView não desenha a meio
+// caminho): o aviso entra só subindo e crescendo, e sai de uma vez.
+const IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ translateY: 8 }, { scale: 0.96 }] },
+    animations: {
+      transform: [
+        { translateY: withTiming(0, { duration: 200, easing: EASE }) },
+        { scale: withTiming(1, { duration: 200, easing: EASE }) }
+      ]
+    }
+  }
+}
 
 export function useSoon() {
-  const [label, setLabel] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const show = useCallback((what: string) => {
+  const show = useCallback((sentence: string) => {
     clearTimeout(timer.current)
-    setLabel(what)
-    timer.current = setTimeout(() => setLabel(null), 1600)
+    setMessage(sentence)
+    timer.current = setTimeout(() => setMessage(null), 1600)
   }, [])
-  const toast = label ? (
-    <Animated.View
-      key={label}
-      entering={IN}
-      exiting={OUT}
-      pointerEvents="none"
-      style={styles.wrap}
-    >
+  const toast = message ? (
+    <Animated.View entering={IN} pointerEvents="none" style={styles.wrap}>
       <Glass tone="dark" style={styles.toast}>
-        <Text style={[text(13.5, 'SemiBold', 1.2), { color: '#f1eee6' }]}>
-          {label} chega em breve
+        <Text
+          style={[text(13.5, 'SemiBold', 1.2), { color: '#f1eee6' }]}
+          maxFontSizeMultiplier={1.3}
+        >
+          {message}
         </Text>
       </Glass>
     </Animated.View>
@@ -50,8 +64,9 @@ const styles = StyleSheet.create({
     zIndex: 100
   },
   toast: {
-    height: 40,
+    minHeight: 40,
     paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     justifyContent: 'center',
     overflow: 'hidden'
