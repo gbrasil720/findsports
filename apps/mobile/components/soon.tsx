@@ -1,3 +1,4 @@
+import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import { useCallback, useRef, useState } from 'react'
 import { StyleSheet, Text } from 'react-native'
 import Animated, {
@@ -18,11 +19,18 @@ import { text } from '@/components/ui'
 
 // Vidro some com opacidade animada (o GlassView não desenha a meio
 // caminho): o aviso entra só subindo e crescendo, e sai de uma vez.
+// Sem vidro nativo (Android, iOS anterior), o fundo é cor comum e pode
+// aparecer com opacidade junto.
+const LIQUID = isLiquidGlassAvailable()
 const IN: EntryExitAnimationFunction = () => {
   'worklet'
   return {
-    initialValues: { transform: [{ translateY: 8 }, { scale: 0.96 }] },
+    initialValues: {
+      opacity: LIQUID ? 1 : 0,
+      transform: [{ translateY: 8 }, { scale: 0.96 }]
+    },
     animations: {
+      opacity: withTiming(1, { duration: 200, easing: EASE }),
       transform: [
         { translateY: withTiming(0, { duration: 200, easing: EASE }) },
         { scale: withTiming(1, { duration: 200, easing: EASE }) }
