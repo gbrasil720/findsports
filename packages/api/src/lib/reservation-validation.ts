@@ -48,7 +48,7 @@ export function assertCanValidateReservations(
   if (getCurrentPlan(subscription, now) !== 'elite') {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'A validação de reservas é um recurso do plano Elite.'
+      message: 'A validação de códigos é um recurso do plano Elite.'
     })
   }
 }
@@ -79,10 +79,10 @@ export function assertReservationConfirmed(status: ReservationStatus): void {
     code: 'UNPROCESSABLE_CONTENT',
     message:
       status === 'pending'
-        ? 'Esta reserva ainda não foi confirmada pelo bar.'
+        ? 'Este código é de um pedido de reserva antigo, sem resposta.'
         : status === 'declined'
-          ? 'Esta reserva foi recusada pelo bar.'
-          : 'Esta reserva foi cancelada pelo torcedor.'
+          ? 'Este código é de um pedido de reserva recusado.'
+          : 'O torcedor desmarcou este jogo.'
   })
 }
 
@@ -184,8 +184,8 @@ export function translateArrivalWriteError(
       code: 'CONFLICT',
       message:
         maxUses === 1
-          ? 'A única pessoa desta reserva já foi validada.'
-          : `As ${maxUses} pessoas desta reserva já foram validadas.`
+          ? 'Este código já foi validado.'
+          : `As ${maxUses} pessoas deste código já foram validadas.`
     })
   }
   // Aposentado entre a busca e o `+1`: para quem digita, deixou de existir.

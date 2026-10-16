@@ -447,7 +447,7 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
 
     const extra = await refusal(arrive())
     expect(extra.code).toBe('CONFLICT')
-    expect(extra.message).toBe('As 2 pessoas desta reserva já foram validadas.')
+    expect(extra.message).toBe('As 2 pessoas deste código já foram validadas.')
     expect(await counterOf(ctx)).toBe(2)
     expect(await usesOf(ctx)).toHaveLength(2)
 
@@ -468,7 +468,7 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
       const lost = race.find((r) => r.status === 'rejected')
       expect((lost as PromiseRejectedResult).reason).toMatchObject({
         code: 'CONFLICT',
-        message: 'A única pessoa desta reserva já foi validada.'
+        message: 'Este código já foi validado.'
       })
       expect(await counterOf(last)).toBe(1)
     } finally {
@@ -724,7 +724,7 @@ integrationTest('validar exige benefício Elite vigente', async () => {
       ]) {
         expect(await refusal(attempt())).toEqual({
           code: 'FORBIDDEN',
-          message: 'A validação de reservas é um recurso do plano Elite.'
+          message: 'A validação de códigos é um recurso do plano Elite.'
         })
       }
       expect(await counterOf(ctx)).toBe(0)
@@ -779,7 +779,7 @@ integrationTest(
       ]) {
         expect(await refusal(attempt())).toEqual({
           code: 'FORBIDDEN',
-          message: 'A validação de reservas é um recurso do plano Elite.'
+          message: 'A validação de códigos é um recurso do plano Elite.'
         })
       }
       expect(await counterOf(ctx)).toBe(1)

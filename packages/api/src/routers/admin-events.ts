@@ -423,7 +423,7 @@ export const adminEventsRouter = router({
             throw new TRPCError({
               code: 'PRECONDITION_FAILED',
               message:
-                'Este jogo tem reservas, avaliação ou presença. Apague o outro, ou edite à mão.'
+                'Este jogo tem código de quem vai, avaliação ou presença. Apague o outro, ou edite à mão.'
             })
           }
           await tx.delete(event).where(eq(event.id, row.id))
