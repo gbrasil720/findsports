@@ -50,7 +50,7 @@ export function ReservationSummary({
         tabIndex={-1}
         className="onside-display text-2xl [overflow-wrap:anywhere]"
       >
-        Código de {reservation.guestName}
+        {reservation.guestName}
       </h3>
 
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">

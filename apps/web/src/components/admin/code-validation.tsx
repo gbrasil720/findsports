@@ -72,18 +72,16 @@ export function CodeValidation({ access, ...panel }: Props) {
         {openOnly ? 'Códigos em aberto' : 'Plano Elite'}
       </p>
       <h2 id={TITLE_ID} className="onside-display text-2xl">
-        Código da reserva
+        Código do torcedor
       </h2>
       <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
-        Digite o código que o torcedor mostra no celular e registre cada pessoa
-        que chegar. O grupo pode chegar aos poucos: o mesmo código vale até
-        completar a reserva.
+        Digite o código que o torcedor mostra no celular. Validado, a oferta da
+        casa é dele. Cada código vale uma vez.
       </p>
       {openOnly ? (
         <p className="mt-2 max-w-2xl text-[var(--onside-muted)] text-sm">
-          Seu plano não recebe reservas novas. As que você já aceitou continuam
-          valendo, e dá para registrar a chegada até a janela de cada jogo
-          fechar.
+          Seu plano não emite códigos novos. Os que já saíram continuam
+          valendo, e dá para validar até a janela de cada jogo fechar.
         </p>
       ) : null}
 

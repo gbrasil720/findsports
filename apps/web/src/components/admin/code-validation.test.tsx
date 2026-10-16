@@ -330,7 +330,7 @@ describe('busca do código', () => {
 
     expect(api.lookup).toHaveBeenCalledWith({ code: 'AB3K9X' })
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Código de Marina Souza')
+    expect(text).toContain('Marina Souza')
     expect(text).toContain('Corinthians × Palmeiras')
     expect(text).toContain('Chopp em dobro')
     expect(text).toContain('0 de 3 validados')
@@ -341,7 +341,7 @@ describe('busca do código', () => {
     expect(status()).toBe(
       'Código de Marina Souza encontrado. 0 de 3 validados.'
     )
-    expect(document.activeElement?.textContent).toBe('Código de Marina Souza')
+    expect(document.activeElement?.textContent).toBe('Marina Souza')
   })
 
   test('código malformado não vai ao servidor e o erro fica preso ao campo', async () => {
@@ -589,7 +589,7 @@ describe('estado da reserva', () => {
     await find(api)
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Código de Marina Souza')
+    expect(text).toContain('Marina Souza')
     expect(text).toContain('Este código é de um pedido antigo')
     expect(button('Registrar chegada')).toBeUndefined()
     expect(status()).toContain('Este código é de um pedido antigo.')
