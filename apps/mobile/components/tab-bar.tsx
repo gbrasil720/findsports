@@ -32,6 +32,8 @@ export type MenuItem = {
   meta?: string
   /** O aviso enquanto a tela não existe. */
   soon: string
+  /** A tela, quando ela existe. */
+  open?: () => void
 }
 
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
