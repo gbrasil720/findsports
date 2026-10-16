@@ -11,6 +11,7 @@ import {
 } from 'react'
 import {
   Alert,
+  DynamicColorIOS,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -21,6 +22,7 @@ import {
   Text,
   TextInput,
   type TextInputProps,
+  useColorScheme,
   View,
   type ViewStyle
 } from 'react-native'
@@ -54,6 +56,50 @@ export const LIVE = '#e8320c'
 export const MUTED = '#55554f'
 export const ACCENT = '#c92b0c'
 
+/*
+ * Cores que seguem o tema do sistema. O design só desenha as telas de conta
+ * e o onboarding no claro; no escuro valem as mesmas formas com tinta e papel
+ * trocados e o acid no lugar do vermelho (a regra da tab bar do design). São
+ * cores dinâmicas do iOS: trocam sozinhas, então servem no `StyleSheet` de
+ * módulo e no SVG. Onde a cor é calculada em JS (`interpolateColor`,
+ * gradiente), use `useColorScheme`.
+ *
+ * ponytail: no Android ficam no claro; trocar por um hook de tema quando o
+ * app for testado lá.
+ */
+export const themed = (light: string, dark: string) =>
+  (Platform.OS === 'ios'
+    ? DynamicColorIOS({ light, dark })
+    : light) as unknown as string
+/** Texto e traço: tinta no claro, papel no escuro. */
+export const FG = themed(INK, PAPER)
+/** Fundo da tela. */
+export const BG = themed(PAPER, INK)
+/** O detalhe dos ícones: vermelho no claro, acid no escuro (em acid, passe LIVE). */
+export const SPARK = themed(LIVE, ACID)
+/** Texto secundário. */
+export const SUB = themed(MUTED, '#aaa9a4')
+/** O trecho em destaque do título. */
+export const HOT = themed(ACCENT, ACID)
+/** Card sobre o fundo. */
+export const CARD = themed('#faf8f3', '#1c1c18')
+/** Caixa de texto. */
+export const FIELD = themed('#fffdf8', '#1c1c18')
+/** Placa apagada (mapa vazio, capa sem foto). */
+export const STONE = themed('#e7e3db', '#2a2a25')
+/** Borda fina de card. */
+export const LINE = themed('rgba(18,18,15,.08)', 'rgba(241,238,230,.1)')
+/** Borda de campo e trilho vazio. */
+export const LINE_STRONG = themed('rgba(18,18,15,.14)', 'rgba(241,238,230,.16)')
+/** A sombra dura dos botões acid: tinta some no fundo de tinta, vira preto. */
+export const EDGE = themed(INK, '#000')
+// O visto acid na caixa de tinta; na caixa de papel (escuro), tinta.
+const CHECK = themed(ACID, INK)
+const FIELD_DROP = themed('rgba(18,18,15,.05)', 'rgba(0,0,0,.5)')
+const PLACEHOLDER = themed('rgba(85,85,79,.6)', 'rgba(170,169,164,.6)')
+/** A sombra dura dos cards ("4px 4px 0"). */
+export const DROP = themed('rgba(18,18,15,.09)', '#000')
+
 /** Texto em Archivo com a altura de linha 1,4 do design. */
 export const text = (
   fontSize: number,
@@ -70,8 +116,8 @@ export const text = (
 export function Icon({
   name,
   size = 19,
-  color = INK,
-  accent = LIVE
+  color = FG,
+  accent = SPARK
 }: {
   name: keyof typeof ICONS
   size?: number
@@ -87,7 +133,7 @@ export function Icon({
 }
 
 /** As setinhas de "abre menu" (⇅), ao lado de um rótulo. */
-export function UpDown({ color = INK }: { color?: string }) {
+export function UpDown({ color = FG }: { color?: string }) {
   return (
     <Svg width={8} height={14} viewBox="0 0 8 14">
       <Path d="M4 1 7.4 5H.6zM4 13 .6 9h6.8z" fill={color} opacity={0.7} />
@@ -447,8 +493,13 @@ const ICONS = {
  * react-native-screens reaplica o padrão no fim da transição: por isso
  * também no `transitionEnd`.
  */
-export function useStatusBar(style: 'light' | 'dark' | 'auto') {
+export function useStatusBar(wanted: 'light' | 'dark' | 'auto') {
   const navigation = useNavigation()
+  // "auto" resolvido aqui: o do expo-status-bar só olha o tema na hora da
+  // chamada, e trocar o tema com a tela aberta deixaria a barra errada.
+  const scheme = useColorScheme()
+  const style =
+    wanted === 'auto' ? (scheme === 'dark' ? 'light' : 'dark') : wanted
   useFocusEffect(useCallback(() => setStatusBarStyle(style), [style]))
   useEffect(
     () =>
@@ -491,7 +542,7 @@ export function Screen({
   children: ReactNode
 }) {
   const insets = useSafeAreaInsets()
-  useStatusBar(dark || lightStatus ? 'light' : 'dark')
+  useStatusBar(dark || lightStatus ? 'light' : 'auto')
   // A entrada em sequência vale só para o que nasce com a tela; o que aparece
   // depois (erro, aviso) entra sozinho, na hora.
   const born = useRef(Date.now())
@@ -510,7 +561,7 @@ export function Screen({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: dark ? INK : PAPER }}
+      style={{ flex: 1, backgroundColor: dark ? INK : BG }}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -562,15 +613,18 @@ export function Screen({
 
 /** O botão redondo de voltar (ou fechar), em vidro. */
 export function BackButton({
-  tone = 'light',
+  tone: forced,
   icon = 'back',
   onPress
 }: {
+  /** Sem tom, segue o tema do sistema. */
   tone?: 'light' | 'dark'
   icon?: 'back' | 'close'
   onPress?: () => void
 }) {
   const router = useRouter()
+  const scheme = useColorScheme()
+  const tone = forced ?? (scheme === 'dark' ? 'dark' : 'light')
   return (
     <Pressable
       accessibilityRole="button"
@@ -581,7 +635,7 @@ export function BackButton({
     >
       {/* Vidro só aparece com algo atrás; sobre o papel liso, a base branca
           e a sombra do design (0 12px 30px -10px) fazem o círculo. */}
-      <View style={tone === 'light' && styles.roundBase}>
+      <View style={forced !== 'dark' && styles.roundBase}>
         <Glass tone={tone} interactive style={styles.round}>
           <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
         </Glass>
@@ -600,8 +654,8 @@ export function BackButton({
 export function Title({
   lines,
   size,
-  color = INK,
-  accentColor = ACCENT
+  color = FG,
+  accentColor = HOT
 }: {
   lines: [string, string?][]
   size: number
@@ -663,7 +717,7 @@ export function BlockButton({
   onPress,
   disabled,
   trailing,
-  shadow = INK,
+  shadow = EDGE,
   style
 }: {
   label: string
@@ -689,8 +743,10 @@ export function BlockButton({
         <HardShadow color={shadow} x={3} y={3} radius={4} />
         <Animated.View style={[styles.block, press.style]}>
           <Animated.View key={label} entering={SWAP} style={styles.row}>
-            <Text style={text(15, 'Bold')}>{label}</Text>
-            {trailing ? <Icon name="next" size={16} /> : null}
+            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+            {trailing ? (
+              <Icon name="next" size={16} color={INK} accent={LIVE} />
+            ) : null}
           </Animated.View>
         </Animated.View>
       </View>
@@ -703,7 +759,7 @@ export function PillButton({
   label,
   onPress,
   trailing,
-  edge = INK,
+  edge = EDGE,
   disabled
 }: {
   label: string
@@ -732,8 +788,10 @@ export function PillButton({
         <Animated.View style={[styles.pill, press.style]}>
           {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
           <Animated.View key={label} entering={SWAP} style={styles.row}>
-            <Text style={text(15, 'Bold')}>{label}</Text>
-            {trailing ? <Icon name="next" size={17} /> : null}
+            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+            {trailing ? (
+              <Icon name="next" size={17} color={INK} accent={LIVE} />
+            ) : null}
           </Animated.View>
         </Animated.View>
       </Pressable>
@@ -747,8 +805,8 @@ export function TextLink({
   label,
   onPress,
   underline,
-  color = INK,
-  leadColor = MUTED,
+  color = FG,
+  leadColor = SUB,
   size = 14
 }: {
   lead?: string
@@ -813,20 +871,20 @@ export function Field({
   return (
     <View style={{ gap: 7 }}>
       <View style={[styles.labelRow, bare && { display: 'none' }]}>
-        <Text style={text(13, 'SemiBold')}>{label}</Text>
+        <Text style={[text(13, 'SemiBold'), { color: FG }]}>{label}</Text>
         {action ? (
           <Text
             accessibilityRole="button"
             onPress={action.onPress}
             suppressHighlighting
-            style={[text(13, 'SemiBold'), { color: MUTED }]}
+            style={[text(13, 'SemiBold'), { color: SUB }]}
           >
             {action.label}
           </Text>
         ) : null}
       </View>
       <View>
-        <HardShadow color="rgba(18,18,15,.05)" x={3} y={3} radius={5} />
+        <HardShadow color={FIELD_DROP} x={3} y={3} radius={5} />
         <Animated.View
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, styles.glow, glow]}
@@ -836,12 +894,12 @@ export function Field({
             pointerEvents="none"
             style={[StyleSheet.absoluteFill, styles.ring, ring]}
           />
-          <Icon name={icon} color={focused ? INK : MUTED} />
+          <Icon name={icon} color={focused ? FG : SUB} />
           <TextInput
             accessibilityLabel={label}
-            placeholderTextColor="rgba(85,85,79,.6)"
-            selectionColor={INK}
-            cursorColor={INK}
+            placeholderTextColor={PLACEHOLDER}
+            selectionColor={FG}
+            cursorColor={FG}
             style={styles.inputText}
             {...input}
             onFocus={(event) => {
@@ -879,7 +937,7 @@ export const STRENGTH = ['', 'Fraca', 'Média', 'Forte', 'Muito forte']
 /** As quatro barras de força. */
 export function StrengthBars({
   score,
-  empty = 'rgba(18,18,15,.14)'
+  empty = LINE_STRONG
 }: {
   score: number
   empty?: string
@@ -933,7 +991,7 @@ export function Checkbox({
       <View style={[styles.box, checked && styles.boxChecked]}>
         {checked ? (
           <Animated.View entering={POP_FAST}>
-            <Icon name="check" size={14} color={ACID} />
+            <Icon name="check" size={14} color={CHECK} />
           </Animated.View>
         ) : null}
       </View>
@@ -1067,9 +1125,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fffdf8',
+    backgroundColor: FIELD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.14)'
+    borderColor: LINE_STRONG
   },
   glow: { borderRadius: 5, backgroundColor: ACID },
   ring: {
@@ -1079,7 +1137,7 @@ const styles = StyleSheet.create({
     bottom: -1,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: INK
+    borderColor: FG
   },
   row: {
     flexDirection: 'row',
@@ -1092,13 +1150,13 @@ const styles = StyleSheet.create({
     height: '100%',
     fontFamily: 'Archivo-Regular',
     fontSize: 16,
-    color: INK
+    color: FG
   },
   bar: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
   barFill: {
     flex: 1,
     borderRadius: 2,
-    backgroundColor: INK,
+    backgroundColor: FG,
     transformOrigin: 'left'
   },
   box: {
@@ -1108,7 +1166,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(18,18,15,.3)'
+    borderColor: themed('rgba(18,18,15,.3)', 'rgba(241,238,230,.35)')
   },
-  boxChecked: { backgroundColor: INK, borderColor: INK }
+  boxChecked: { backgroundColor: FG, borderColor: FG }
 })
