@@ -349,8 +349,8 @@ invente layout que o projeto não tem.
   marca presença e, no bar Elite, o servidor já emite o código do balcão
   (`packages/api/src/lib/attendance-ticket.ts`).
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
-  (`formSheet` nativo; `ScrollView` dentro dela não desenha, por isso até três jogos e sem
-  rolagem), que marca a presença; no bar Elite (`pubs.getById` → `issuesCode`) ela dá lugar
+  (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
+  tela; `ScrollView` dentro dela só desenha com `flex: 1`), que marca a presença; no bar Elite (`pubs.getById` → `issuesCode`) ela dá lugar
   ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
   pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
   `/admin/validate?code=`, que no web já abre buscando o código. `app/meus-jogos.tsx`
