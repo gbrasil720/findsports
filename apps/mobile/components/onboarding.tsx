@@ -8,6 +8,7 @@ import {
 import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import Animated, {
   interpolateColor,
+  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming
@@ -151,13 +152,21 @@ function useSelected(selected: boolean) {
 }
 
 /**
- * O fundo do cartão sem escolha, em cor pronta: o `interpolateColor` não
- * aceita a cor dinâmica do tema.
+ * As cores sem escolha (fundo, texto, texto secundário) em cor pronta: o
+ * `interpolateColor` não aceita a cor dinâmica do tema. O texto troca junto
+ * com o fundo; trocando na hora, no escuro ele sumia nos primeiros quadros.
  */
 const useIdle = () =>
   useColorScheme() === 'dark'
-    ? { idle: '#1c1c18', dark: true }
-    : { idle: '#faf8f3', dark: false }
+    ? { idle: '#1c1c18', ink: PAPER, sub: '#aaa9a4', dark: true }
+    : { idle: '#faf8f3', ink: INK, sub: '#55554f', dark: false }
+
+/** A cor de um texto que vai de `from` (sem escolha) a `to` (escolhido). */
+function useTextColor(on: SharedValue<number>, from: string, to: string) {
+  return useAnimatedStyle(() => ({
+    color: interpolateColor(on.value, [0, 1], [from, to])
+  }))
+}
 
 /** Um esporte (4j): acid com sombra de tinta quando escolhido. */
 export function SportTile({
@@ -170,11 +179,12 @@ export function SportTile({
   onPress: () => void
 }) {
   const on = useSelected(selected)
-  const { idle } = useIdle()
+  const { idle, ink } = useIdle()
   const card = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(on.value, [0, 1], [idle, ACID])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
+  const label = useTextColor(on, ink, INK)
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -192,18 +202,13 @@ export function SportTile({
       <View style={styles.tileIdleShadow} />
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.tile, card]}>
-        <Text
-          style={[
-            styles.tileMark,
-            { color: selected ? INK : FG, opacity: selected ? 0.16 : 0.08 }
-          ]}
+        <Animated.Text
+          style={[styles.tileMark, { opacity: selected ? 0.16 : 0.08 }, label]}
           numberOfLines={1}
         >
           {sportMark(name)}
-        </Text>
-        <Text style={[text(16, 'Bold'), { color: selected ? INK : FG }]}>
-          {name}
-        </Text>
+        </Animated.Text>
+        <Animated.Text style={[text(16, 'Bold'), label]}>{name}</Animated.Text>
         {selected ? (
           <Animated.View entering={POP} style={styles.tileCheck}>
             <Icon name="check" size={13} color={ACID} />
@@ -226,12 +231,13 @@ export function TeamChip({
 }) {
   const on = useSelected(selected)
   // Escolhido é tinta no claro e papel no escuro: o inverso do fundo.
-  const { idle, dark } = useIdle()
+  const { idle, ink, dark } = useIdle()
   const lit = dark ? PAPER : INK
   const chip = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(on.value, [0, 1], [idle, lit])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
+  const label = useTextColor(on, ink, dark ? INK : PAPER)
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -249,14 +255,9 @@ export function TeamChip({
             <Icon name="check" size={14} color={dark ? INK : ACID} />
           </Animated.View>
         ) : null}
-        <Text
-          style={[
-            text(14, 'SemiBold'),
-            { color: selected ? (dark ? INK : PAPER) : FG }
-          ]}
-        >
+        <Animated.Text style={[text(14, 'SemiBold'), label]}>
           {name}
-        </Text>
+        </Animated.Text>
       </Animated.View>
     </Pressable>
   )
@@ -289,11 +290,13 @@ export function RadiusTile({
   onPress: () => void
 }) {
   const on = useSelected(selected)
-  const { idle } = useIdle()
+  const { idle, ink, sub } = useIdle()
   const tile = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(on.value, [0, 1], [idle, ACID])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
+  const kmColor = useTextColor(on, ink, INK)
+  const labelColor = useTextColor(on, sub, INK)
   return (
     <Pressable
       accessibilityRole="radio"
@@ -308,17 +311,10 @@ export function RadiusTile({
       <View style={styles.tileIdleShadow} />
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.radius, tile]}>
-        <Text style={[styles.radiusKm, { color: selected ? INK : FG }]}>
-          {km}
-        </Text>
-        <Text
-          style={[
-            text(11.5, 'SemiBold', 1.25),
-            { color: selected ? INK : SUB }
-          ]}
-        >
+        <Animated.Text style={[styles.radiusKm, kmColor]}>{km}</Animated.Text>
+        <Animated.Text style={[text(11.5, 'SemiBold', 1.25), labelColor]}>
           km · {RADIUS_LABEL[km]}
-        </Text>
+        </Animated.Text>
       </Animated.View>
     </Pressable>
   )
