@@ -307,3 +307,53 @@ test('bar fora do ar: quem marcou lê que ele saiu e que o código vale; os outr
     page.getByRole('heading', { level: 3, name: fan.name })
   ).toBeVisible()
 })
+
+// Marcar "Vou assistir aqui" libera a avaliação; em Meus jogos o jogo que
+// passou ganha "Avaliar", que abre o dashboard com esse jogo na frente.
+test('jogo encerrado com avaliação aberta: Avaliar leva ao card daquele jogo', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const pub = await pubAt(spot)
+  const fan = await signInFanAt(page, spot)
+  const tag = randomUUID().slice(0, 6)
+  const recent = `Recente ${tag}`
+  const older = `Antigo ${tag}`
+  const recentId = await createEvent({
+    barId: pub.barId,
+    startsAt: hours(-5),
+    freeText: recent
+  })
+  const olderId = await createEvent({
+    barId: pub.barId,
+    startsAt: hours(-30),
+    freeText: older
+  })
+  for (const eventId of [recentId, olderId]) {
+    await query('INSERT INTO attendance (user_id, event_id) VALUES ($1, $2)', [
+      fan.id,
+      eventId
+    ])
+  }
+
+  await page.goto('/dashboard/games')
+  const row = page.getByRole('listitem').filter({ hasText: older })
+  await row.getByRole('link', { name: `Avaliar o ${pub.name}` }).click()
+  await expect(page).toHaveURL(new RegExp(`/dashboard\\?avaliar=${olderId}`))
+
+  const rating = page.getByRole('region', {
+    name: `Voltaria pra ver jogo no ${pub.name}?`
+  })
+  await expect(rating).toContainText(older)
+  await rating.getByRole('button', { name: 'Voltaria', exact: true }).click()
+  await expect
+    .poll(async () =>
+      (
+        await query<{ would_return: boolean }>(
+          'SELECT would_return FROM bar_rating WHERE actor_user_id = $1 AND event_id = $2',
+          [fan.id, olderId]
+        )
+      ).map((r) => r.would_return)
+    )
+    .toEqual([true])
+})
