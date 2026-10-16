@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import type { ReactNode } from 'react'
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { Image, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import type { SharedValue } from 'react-native-reanimated'
 import Svg, {
   Circle,
@@ -23,6 +23,11 @@ import { Enter, type Frame } from '@/components/intro-motion'
  * O vidro do design é o `Glass` (`components/glass.tsx`). A entrada de cada
  * tela é por quadros-chave (`intro-motion.ts`); no vidro só a posição anda,
  * porque o liquid glass com transparência animada sai errado no iOS 26.
+ *
+ * O design só desenha o tema claro. No escuro valem as mesmas formas com a
+ * tinta e o papel trocados (a regra do design para a tab bar): o mapa tem
+ * versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida) e as
+ * telas 2 e 3 já são escuras nos dois temas.
  */
 
 const INK = '#12120f'
@@ -30,6 +35,7 @@ const PAPER = '#f1eee6'
 const ACID = '#c9f135'
 const LIVE = '#e8320c'
 const MUTED = '#55554f'
+const MUTED_DARK = '#aaa9a4'
 
 export type ArtProps = {
   width: number
@@ -145,11 +151,16 @@ function Pin({
 export function MapArt(props: ArtProps) {
   const { sx, sy } = scale(props)
   const { progress } = props
+  const dark = useColorScheme() === 'dark'
   return (
     <View style={StyleSheet.absoluteFill}>
       <Enter progress={progress} frames={MOTION.mapPan}>
         <Image
-          source={require('../assets/images/intro/map.jpg')}
+          source={
+            dark
+              ? require('../assets/images/intro/map-dark.jpg')
+              : require('../assets/images/intro/map.jpg')
+          }
           // Tamanho explícito: só com `absoluteFill` a imagem sai no tamanho
           // original, sem o `cover` reduzir.
           style={{ width: props.width, height: props.height }}
@@ -179,7 +190,7 @@ export function MapArt(props: ArtProps) {
         frames={MOTION.livePin}
       />
       <Enter progress={progress} frames={MOTION.card} style={styles.matchCard}>
-        <Glass tone="light" style={styles.matchGlass}>
+        <Glass tone={dark ? 'dark' : 'light'} style={styles.matchGlass}>
           <View style={styles.matchIcon}>
             <Svg width={22} height={22} viewBox="0 0 24 24">
               <Path
@@ -195,10 +206,20 @@ export function MapArt(props: ArtProps) {
             </Svg>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.bold, { ...size(15.5), color: INK }]}>
+            <Text
+              style={[
+                styles.bold,
+                { ...size(15.5), color: dark ? PAPER : INK }
+              ]}
+            >
               Corinthians × Palmeiras
             </Text>
-            <Text style={[styles.body, { ...size(13), color: MUTED }]}>
+            <Text
+              style={[
+                styles.body,
+                { ...size(13), color: dark ? MUTED_DARK : MUTED }
+              ]}
+            >
               Hoje 21:30 · 4 bares perto de você
             </Text>
           </View>
@@ -230,7 +251,11 @@ export function MapArt(props: ArtProps) {
         </Enter>
       </View>
       {/* Condição da ODbL: o mapa é OpenStreetMap, pelos tiles da Onside. */}
-      <Text style={styles.attribution}>© OpenStreetMap</Text>
+      <Text
+        style={[styles.attribution, dark && { color: 'rgba(241,238,230,.45)' }]}
+      >
+        © OpenStreetMap
+      </Text>
     </View>
   )
 }
@@ -431,13 +456,18 @@ function Bubble({
   mine?: boolean
   progress: SharedValue<number>
 }) {
+  const dark = useColorScheme() === 'dark'
   return mine ? (
-    <Enter progress={progress} frames={MOTION.ask} style={styles.bubbleMine}>
+    <Enter
+      progress={progress}
+      frames={MOTION.ask}
+      style={[styles.bubbleMine, dark && { backgroundColor: PAPER }]}
+    >
       {children}
     </Enter>
   ) : (
     <Enter progress={progress} frames={MOTION.reply} style={styles.replyAt}>
-      <Glass tone="light" style={styles.reply}>
+      <Glass tone={dark ? 'dark' : 'light'} style={styles.reply}>
         {children}
       </Glass>
     </Enter>
@@ -450,8 +480,14 @@ export function AskArt(props: ArtProps) {
   const size = 250 * Math.min(1, sy)
   const center = 221 * sy
   const { progress } = props
+  const dark = useColorScheme() === 'dark'
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#e7e3db' }]}>
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: dark ? '#2a2a25' : '#e7e3db' }
+      ]}
+    >
       <Enter
         progress={progress}
         frames={MOTION.orb}
@@ -462,7 +498,7 @@ export function AskArt(props: ArtProps) {
             height: size,
             top: center - size / 2 + 6,
             marginLeft: -size / 2 + 6,
-            backgroundColor: 'rgba(18,18,15,.9)'
+            backgroundColor: dark ? '#000' : 'rgba(18,18,15,.9)'
           }
         ]}
       />
@@ -515,7 +551,13 @@ export function AskArt(props: ArtProps) {
       </Enter>
       <View style={styles.chat}>
         <Bubble mine progress={progress}>
-          <Text style={[styles.body, styles.bubbleText, { color: PAPER }]}>
+          <Text
+            style={[
+              styles.body,
+              styles.bubbleText,
+              { color: dark ? INK : PAPER }
+            ]}
+          >
             Um bar com telão perto da Paulista para ver a NBA hoje
           </Text>
         </Bubble>
@@ -525,7 +567,14 @@ export function AskArt(props: ArtProps) {
               <Path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill={INK} />
             </Svg>
           </View>
-          <Text style={[styles.body, styles.bubbleText, { flexShrink: 1 }]}>
+          <Text
+            style={[
+              styles.body,
+              styles.bubbleText,
+              { flexShrink: 1 },
+              dark && { color: PAPER }
+            ]}
+          >
             Encontrei 3 bares. O mais perto fica a 600 m.
           </Text>
         </Bubble>
