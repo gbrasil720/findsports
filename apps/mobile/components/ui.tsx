@@ -380,7 +380,7 @@ const ICONS = {
       <Rect x={13.5} y={16.3} width={2.2} height={2.2} fill={a} />
     </>
   ),
-  ticket: (c: string) => (
+  ticket: (c: string, a: string) => (
     <>
       <Path
         d="M2.5 6.5h19v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-19v-3.2a2.3 2.3 0 0 0 0-4.6z"
@@ -388,7 +388,7 @@ const ICONS = {
         opacity={0.25}
       />
       <Path d="M15.5 6.5h6v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-6z" fill={c} />
-      <Circle cx={8.6} cy={12} r={2} fill={INK} />
+      <Circle cx={8.6} cy={12} r={2} fill={a} />
     </>
   ),
   medal: (c: string) => (
