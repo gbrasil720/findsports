@@ -159,35 +159,35 @@ test('filtros de texto, esporte, raio, comodidade e time se combinam e saem pelo
   ).toBeVisible()
 })
 
-test('filtro "Aceita reserva" traz só o bar que recebe reservas pela Onside', async ({
+test('filtro "Com oferta da casa" traz só o bar Elite com oferta', async ({
   page
 }) => {
   const spot = uniqueSpot()
-  // Os dois marcaram o jogo para reservas; só o Elite recebe, e ele nunca teve
-  // a característica (10) gravada. O Pro a tem, de quando se marcava à mão. O
-  // terceiro é Elite, mas o jogo dele não aceita reserva.
-  const receiving = await pubAt(north(spot, 0.5))
+  // O Pro guarda a oferta de quando era Elite, e ainda tem o 10 gravado de
+  // quando ele era "Aceita reserva"; o outro Elite não cadastrou oferta.
+  const offering = await pubAt(north(spot, 0.5), {
+    bar: { house_offer: 'Chopp em dobro' }
+  })
   const pro = await pubAt(north(spot, 0.8), {
     subscription: { plan: 'pro' },
-    bar: { amenities: [10] }
+    bar: { house_offer: 'Oferta guardada', amenities: [10] }
   })
-  const unmarked = await pubAt(north(spot, 0.6))
-  for (const { barId } of [receiving, pro]) {
-    await createEvent({ barId, startsAt: days(2), acceptsReservations: true })
+  const noOffer = await pubAt(north(spot, 0.6))
+  for (const { barId } of [offering, pro, noOffer]) {
+    await createEvent({ barId, startsAt: days(2) })
   }
-  await createEvent({ barId: unmarked.barId, startsAt: days(2) })
   await signInFanAt(page, spot)
 
   await page.goto('/dashboard')
-  await expect(card(page, receiving.name)).toBeVisible()
+  await expect(card(page, offering.name)).toBeVisible()
   await expect(card(page, pro.name)).toBeVisible()
-  await expect(card(page, unmarked.name)).toBeVisible()
+  await expect(card(page, noOffer.name)).toBeVisible()
 
   await page.getByRole('button', { name: 'O que o bar tem' }).click()
-  await page.getByRole('button', { name: 'Aceita reserva' }).click()
-  await expect(card(page, receiving.name)).toBeVisible()
+  await page.getByRole('button', { name: 'Com oferta da casa' }).click()
+  await expect(card(page, offering.name)).toBeVisible()
   await expect(card(page, pro.name)).toHaveCount(0)
-  await expect(card(page, unmarked.name)).toHaveCount(0)
+  await expect(card(page, noOffer.name)).toHaveCount(0)
 })
 
 test('sem jogo na região e sem filtro, mostra os bares próximos', async ({
