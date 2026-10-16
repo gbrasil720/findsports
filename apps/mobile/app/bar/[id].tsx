@@ -87,23 +87,24 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 const WEEK = 7 * 86_400_000
 /**
- * O corpo chega quando a resposta chega (o topo já estava lá): sobe 8 pt e
- * aparece em 200 ms. Com "reduzir movimento", o `withTiming` vira instantâneo.
+ * O corpo chega quando a resposta chega (o topo já estava lá): sobe 8 pt em
+ * 200 ms. Só posição: as etiquetas do ingresso são vidro, e vidro com
+ * transparência animada por cima não desenha (somem "Ao vivo" e "Elite").
+ * Com "reduzir movimento", o `withTiming` vira instantâneo.
  */
 const BODY_IN: EntryExitAnimationFunction = () => {
   'worklet'
   return {
-    initialValues: { opacity: 0, transform: [{ translateY: 8 }] },
+    initialValues: { transform: [{ translateY: 8 }] },
     animations: {
-      opacity: withTiming(1, { duration: 200, easing: EASE }),
       transform: [
         { translateY: withTiming(0, { duration: 200, easing: EASE }) }
       ]
     }
   }
 }
-/** Quantos próximos jogos a página lista, como o design. */
-const MORE_GAMES = 5
+/** Quantos próximos jogos a página lista: três, como o design. */
+const MORE_GAMES = 3
 /** Onde a foto (340) termina embaixo da barra de status. */
 const HERO_EDGE = 290
 
@@ -419,7 +420,7 @@ export default function BarPage() {
           <Animated.View entering={BODY_IN} style={styles.body}>
             {next ? (
               <>
-                <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
+                <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
                   {dayLabel(next.startsAt, now) === 'Hoje' ||
                   new Date(next.startsAt).getTime() <= now
                     ? 'Hoje no telão'
@@ -435,7 +436,8 @@ export default function BarPage() {
                     rating: data.rating,
                     distance_km: km ? Number(km) : null,
                     amenities: data.amenities,
-                    goingCount: next.attendance?.count ?? null,
+                    goingCount: next.going?.count ?? null,
+                    goingInitials: next.going?.initials ?? [],
                     nextEvent: next
                   }}
                   now={now}
@@ -462,7 +464,7 @@ export default function BarPage() {
                     />
                     <Text
                       style={[
-                        text(11.5, 'SemiBold', 1.2),
+                        text(11.5, 'SemiBold', 1.4),
                         { color: palette.ink, textAlign: 'center' }
                       ]}
                       numberOfLines={2}
@@ -483,7 +485,7 @@ export default function BarPage() {
                   </View>
                   <View style={styles.offerText}>
                     <Text
-                      style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}
+                      style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
                     >
                       Oferta da casa
                     </Text>
@@ -529,7 +531,7 @@ export default function BarPage() {
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <Text
                             style={[
-                              text(14.5, 'Bold', 1.3),
+                              text(14.5, 'Bold', 1.4),
                               { color: palette.ink }
                             ]}
                             numberOfLines={2}
@@ -585,7 +587,7 @@ export default function BarPage() {
                     >
                       <Text
                         style={[
-                          text(11.5, 'SemiBold', 1.2),
+                          text(11.5, 'SemiBold', 1.4),
                           { color: palette.ink }
                         ]}
                       >
@@ -646,7 +648,7 @@ export default function BarPage() {
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={[
-                          text(14.5, 'Bold', 1.3),
+                          text(14.5, 'Bold', 1.4),
                           { color: palette.ink }
                         ]}
                         numberOfLines={1}
@@ -676,7 +678,7 @@ export default function BarPage() {
                       ]}
                     >
                       <Text
-                        style={[text(13, 'Bold', 1.2), { color: palette.bg }]}
+                        style={[text(13, 'Bold', 1.4), { color: palette.bg }]}
                       >
                         Como chegar
                       </Text>
@@ -728,7 +730,7 @@ export default function BarPage() {
               >
                 <Text
                   style={[
-                    text(13.5, 'SemiBold', 1.2),
+                    text(13.5, 'SemiBold', 1.4),
                     { color: palette.muted }
                   ]}
                 >
@@ -820,7 +822,7 @@ export default function BarPage() {
               onPressIn={reserve.onPressIn}
               onPressOut={reserve.onPressOut}
               onPress={() => soon.show('A reserva de mesa chega em breve')}
-              style={{ flex: 1 }}
+              style={{ flex: 1.2 }}
             >
               <View style={styles.reserveShadow} />
               <Animated.View style={[styles.reserve, reserve.style]}>
@@ -853,12 +855,12 @@ function Heading({
   return (
     <View style={styles.heading}>
       <Text
-        style={[text(16, 'Bold', 1.3), { color: palette.ink, flexShrink: 1 }]}
+        style={[text(16, 'Bold', 1.4), { color: palette.ink, flexShrink: 1 }]}
       >
         {title}
       </Text>
       {aside ? (
-        <Text style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}>
+        <Text style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}>
           {aside}
         </Text>
       ) : null}
@@ -1105,7 +1107,8 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: 'hidden'
   },
-  // Os dois botões dividem o vidro igual: o rótulo que cresce não empurra
+  // Os dois botões dividem o vidro em 1 : 1,2, como o design, por `flex`: o
+  // rótulo que cresce ("Vou assistir aqui") encolhe a letra, não empurra
   // "Reservar mesa".
   attend: {
     flex: 1,
