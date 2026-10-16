@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { createEvent, createTicket } from '../../fixtures/going'
 import { createPub, type Plan } from '../../fixtures/pubs'
-import { createEvent, createReservation } from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 
-// Validação de chegada (WEB-126) em /admin/validate. Cada teste cria o próprio
-// bar Elite: o contador e o limite de tentativas são por conta.
+// Validação do código de quem vai (WEB-126) em /admin/validate. Cada teste
+// cria o próprio bar Elite: o contador e o limite de tentativas são por conta.
+// O código é de uma pessoa só (`max_uses = 1`) desde que a reserva de mesa
+// saiu do produto (16/10/2026).
 
 /** `ARRIVAL_UNDO_WINDOW_MS` de `packages/db/src/reservation-code.ts`. */
 const ARRIVAL_UNDO_WINDOW_MS = 45_000
@@ -25,7 +27,7 @@ async function lookup(page: Page, code: string) {
     code.replace(/[^a-z0-9]/gi, '').length === 6
       ? page.waitForResponse(/reservationValidation\.lookup/)
       : null
-  await page.getByRole('button', { name: 'Buscar reserva' }).click()
+  await page.getByRole('button', { name: 'Buscar código' }).click()
   await answered
 }
 
@@ -57,7 +59,7 @@ test('Starter recebe FORBIDDEN ao chamar a validação direto', async ({
   expect(response.status()).toBe(403)
 })
 
-test('Pro com reserva confirmada ainda valida na margem depois do fim do jogo', async ({
+test('Pro com código em aberto ainda valida na margem depois do fim do jogo', async ({
   page
 }) => {
   const { user, barId } = await createPub({ subscription: { plan: 'pro' } })
@@ -66,20 +68,17 @@ test('Pro com reserva confirmada ainda valida na margem depois do fim do jogo', 
   const { eventId } = await createEvent(barId, {
     startsAt: new Date(Date.now() - 4 * 3_600_000)
   })
-  const reservation = await createReservation(eventId)
+  const ticket = await createTicket(eventId)
   await signIn(page, user)
   await page.goto('/admin/validate')
 
   // Quem valida sem Elite não lê "Plano Elite" sobre o próprio plano.
-  await expect(page.getByText('Reservas em aberto')).toBeVisible()
-  await expect(
-    page.getByText('Seu plano não recebe reservas novas.')
-  ).toBeVisible()
+  await expect(page.getByText('Códigos em aberto')).toBeVisible()
   await expect(page.getByText('Plano Elite', { exact: true })).toHaveCount(0)
 
-  await lookup(page, reservation.code)
+  await lookup(page, ticket.code)
   await expect(
-    page.getByRole('heading', { name: `Reserva de ${reservation.guestName}` })
+    page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
   await page
@@ -87,66 +86,52 @@ test('Pro com reserva confirmada ainda valida na margem depois do fim do jogo', 
     .getByRole('button', { name: 'Confirmar chegada' })
     .click()
   await expect(
-    page.getByText('Chegada registrada. 1 de 2 validados.')
+    page.getByText('Chegada registrada. 1 de 1 validado. Código validado.')
   ).toBeVisible()
 })
 
-test('Elite registra chegada com confirmação, desfaz e completa a reserva', async ({
+test('Elite registra chegada com confirmação, desfaz e valida o código', async ({
   page
 }) => {
   const { user, eventId } = await openValidation()
-  const reservation = await createReservation(eventId, {
-    partySize: 2,
+  const ticket = await createTicket(eventId, {
     offerSnapshot: 'Chope em dobro'
   })
   await signIn(page, user)
   await page.goto('/admin/validate')
 
   // Minúscula vale: o campo normaliza para a forma gravada.
-  await lookup(page, reservation.code.toLowerCase())
+  await lookup(page, ticket.code.toLowerCase())
   await expect(
-    page.getByRole('heading', { name: `Reserva de ${reservation.guestName}` })
+    page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await expect(page.getByText('Chope em dobro')).toBeVisible()
-  await expect(
-    page.getByText('0 de 2 validados', { exact: true })
-  ).toBeVisible()
+  await expect(page.getByText('0 de 1 validado', { exact: true })).toBeVisible()
 
   // +1 pede confirmação; cancelar não grava.
   await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
   const dialog = page.getByRole('dialog', { name: 'Registrar chegada?' })
-  await expect(dialog).toContainText('1 de 2 validados')
+  await expect(dialog).toContainText('1 de 1 validado')
   await dialog.getByRole('button', { name: 'Cancelar' }).click()
   await expect(dialog).toBeHidden()
-  await expect(
-    page.getByText('0 de 2 validados', { exact: true })
-  ).toBeVisible()
+  await expect(page.getByText('0 de 1 validado', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
   await dialog.getByRole('button', { name: 'Confirmar chegada' }).click()
   await expect(
-    page.getByText('Chegada registrada. 1 de 2 validados.')
+    page.getByText('Chegada registrada. 1 de 1 validado. Código validado.')
   ).toBeVisible()
 
   await page.getByRole('button', { name: 'Desfazer a última chegada' }).click()
   await expect(
-    page.getByText('Chegada desfeita. 0 de 2 validados.')
+    page.getByText('Chegada desfeita. 0 de 1 validado.')
   ).toBeVisible()
 
-  for (const counter of ['1 de 2 validados', '2 de 2 validados']) {
-    await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
-    await dialog.getByRole('button', { name: 'Confirmar chegada' }).click()
-    await expect(
-      page.getByText(`Chegada registrada. ${counter}.`)
-    ).toBeVisible()
-  }
-  await expect(
-    page.getByText('Reserva completa', { exact: true })
-  ).toBeVisible()
-  await expect(
-    page.getByText('As 2 pessoas desta reserva já foram validadas.')
-  ).toBeVisible()
-  // Completa, o `+1` sai da tela e o desfazer curto continua (WEB-299).
+  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await dialog.getByRole('button', { name: 'Confirmar chegada' }).click()
+  await expect(page.getByText('Código validado', { exact: true })).toBeVisible()
+  await expect(page.getByText('Este código já foi validado.')).toBeVisible()
+  // Validado, o `+1` sai da tela e o desfazer curto continua (WEB-299).
   await expect(
     page.getByRole('button', { name: 'Registrar chegada (+1)' })
   ).toHaveCount(0)
@@ -156,18 +141,21 @@ test('Elite registra chegada com confirmação, desfaz e completa a reserva', as
 
   const [code] = await query<{ used_count: number }>(
     'SELECT used_count FROM reservation_code WHERE reservation_id = $1',
-    [reservation.reservationId]
+    [ticket.reservationId]
   )
-  expect(code?.used_count).toBe(2)
+  expect(code?.used_count).toBe(1)
 
   await page.getByRole('button', { name: 'Validar outro código' }).click()
   await expect(page.getByLabel('Código', { exact: true })).toBeFocused()
 })
 
-test('código incompleto, inexistente e de outro bar', async ({ page }) => {
-  const { user } = await openValidation()
+test('código incompleto, inexistente, desmarcado e de outro bar', async ({
+  page
+}) => {
+  const { user, eventId } = await openValidation()
+  const unmarked = await createTicket(eventId, { unmarked: true })
   const other = await openValidation()
-  const othersReservation = await createReservation(other.eventId)
+  const othersTicket = await createTicket(other.eventId)
   await signIn(page, user)
   await page.goto('/admin/validate')
 
@@ -179,40 +167,31 @@ test('código incompleto, inexistente e de outro bar', async ({ page }) => {
   ).toBeVisible()
 
   const notFound =
-    'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
+    'Código não encontrado ou desmarcado. Confira com o torcedor.'
   await lookup(page, 'ZZZZZ9')
   await expect(
     page.getByRole('alert').filter({ hasText: notFound })
   ).toBeVisible()
 
-  // Código de outro bar responde igual a código que não existe.
-  await lookup(page, othersReservation.code)
-  await expect(
-    page.getByRole('alert').filter({ hasText: notFound })
-  ).toBeVisible()
+  // Quem desmarcou e código de outro bar respondem igual a código que não
+  // existe.
+  for (const code of [unmarked.code, othersTicket.code]) {
+    await lookup(page, code)
+    await expect(
+      page.getByRole('alert').filter({ hasText: notFound })
+    ).toBeVisible()
+  }
 })
 
-test('reserva pendente e jogo fora da janela não registram chegada', async ({
-  page
-}) => {
-  const { user, barId, eventId } = await openValidation()
-  const pending = await createReservation(eventId, { status: 'pending' })
+test('jogo fora da janela não registra chegada', async ({ page }) => {
+  const { user, barId } = await openValidation()
   const later = await createEvent(barId, {
     startsAt: new Date(Date.now() + 2 * 86_400_000)
   })
-  const early = await createReservation(later.eventId)
+  const early = await createTicket(later.eventId)
   await signIn(page, user)
   await page.goto('/admin/validate')
 
-  await lookup(page, pending.code)
-  await expect(
-    page.getByText('Esta reserva ainda não foi confirmada', { exact: true })
-  ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Registrar chegada (+1)' })
-  ).toHaveCount(0)
-
-  await page.getByRole('button', { name: 'Validar outro código' }).click()
   await lookup(page, early.code)
   await expect(
     page.getByText('Este código ainda não abriu', { exact: true })
@@ -230,7 +209,7 @@ test('jogo encerrado há mais de 3h: código expirado, e o servidor recusa a che
   const past = await createEvent(barId, {
     startsAt: new Date(Date.now() - 7 * 3_600_000)
   })
-  const expired = await createReservation(past.eventId)
+  const expired = await createTicket(past.eventId)
   await signIn(page, user)
   await page.goto('/admin/validate')
 
@@ -256,11 +235,11 @@ test('jogo encerrado há mais de 3h: código expirado, e o servidor recusa a che
 test('o botão de desfazer some quando o prazo acaba', async ({ page }) => {
   await page.clock.install()
   const { user, eventId } = await openValidation()
-  const reservation = await createReservation(eventId, { partySize: 1 })
+  const ticket = await createTicket(eventId)
   await signIn(page, user)
   await page.goto('/admin/validate')
 
-  await lookup(page, reservation.code)
+  await lookup(page, ticket.code)
   await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
   await page
     .getByRole('dialog', { name: 'Registrar chegada?' })
@@ -278,7 +257,7 @@ test('limite de tentativas: depois de 10 códigos errados, nem o certo passa', a
   page
 }) => {
   const { user, eventId } = await openValidation()
-  const reservation = await createReservation(eventId)
+  const ticket = await createTicket(eventId)
   await signIn(page, user)
   for (let i = 0; i < 10; i++) {
     const wrong = await page.request.post(
@@ -290,13 +269,13 @@ test('limite de tentativas: depois de 10 códigos errados, nem o certo passa', a
   }
   await page.goto('/admin/validate')
 
-  await lookup(page, reservation.code)
+  await lookup(page, ticket.code)
   await expect(
     page.getByRole('alert').filter({
       hasText: 'Muitas tentativas seguidas. Aguarde um pouco e tente novamente.'
     })
   ).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: `Reserva de ${reservation.guestName}` })
+    page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toHaveCount(0)
 })
