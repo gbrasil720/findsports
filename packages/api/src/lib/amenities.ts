@@ -73,6 +73,7 @@ export const AMENITIES: readonly Amenity[] = [
     label: 'Cozinha até tarde',
     group: 'practical'
   },
+  { id: 15, slug: 'wifi', label: 'Wi-fi', group: 'practical' },
   { id: 14, slug: 'pix_and_card', label: 'Pix e cartão', group: 'practical' }
 ] as const
 
