@@ -107,7 +107,7 @@ const fresh = (href: Href): Href => {
   const stamp = String(Date.now())
   return typeof href === 'string'
     ? { pathname: href as never, params: { _r: stamp } }
-    : { ...href, params: { ...href.params, _r: stamp } }
+    : ({ ...href, params: { ...href.params, _r: stamp } } as Href)
 }
 
 function Row({ item, onPress }: { item: Item; onPress: () => void }) {
