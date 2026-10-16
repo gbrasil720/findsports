@@ -20,8 +20,8 @@ insert into bar (id, user_id, name, description, phone, address, neighborhood, c
 values ('b0b0b0b0-0000-4000-8000-000000000e01', 'ze-dono', 'Bar do Zé',
   'Boteco da Vila Madalena com telão e som do jogo.', '', 'Rua Aspicuelta, 214',
   'Vila Madalena', 'São Paulo', 'SP', -23.55680000, -46.68780000,
-  :'photo', true, 'elite', '{1,2,3,4,5,6,7,12,13,14}', 6,
-  142, 124, 'Chopp em dobro até o intervalo para quem reservar pela Onside.', 8000);
+  :'photo', true, 'elite', '{1,2,3,4,5,6,7,12,13,15,14}', 6,
+  142, 124, 'Chopp em dobro até o intervalo para quem mostrar o código da Onside.', 8000);
 
 insert into subscription (id, bar_id, plan, status, current_period_end)
 values (gen_random_uuid()::text, 'b0b0b0b0-0000-4000-8000-000000000e01', 'elite', 'trialing',
