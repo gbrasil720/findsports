@@ -2,18 +2,21 @@ import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams } from 'expo-router'
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
   View
 } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   BarTicket,
@@ -24,7 +27,7 @@ import {
   usePalette
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { haptic, usePress } from '@/components/motion'
+import { haptic, SWAP, usePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -39,6 +42,7 @@ import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
 import { formatKm, formatTime } from '@/lib/explore'
+import { useFavorites } from '@/lib/favorites'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -56,8 +60,19 @@ const TILES = [
   { id: 4, icon: 'outdoor', label: 'Área externa' }
 ] as const
 
+const HERO_SHADE = [
+  'rgba(18,18,15,.3)',
+  'rgba(18,18,15,0)',
+  'rgba(18,18,15,.82)'
+] as const
+
 export default function BarPage() {
-  const { id, km } = useLocalSearchParams<{ id: string; km?: string }>()
+  const { id, km, name, photo } = useLocalSearchParams<{
+    id: string
+    km?: string
+    name?: string
+    photo?: string
+  }>()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
@@ -67,30 +82,56 @@ export default function BarPage() {
   useStatusBar('light')
 
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
-  const favorites = useQuery(trpc.pubs.getFavorites.queryOptions())
-  const favorite = favorites.data?.some((item) => item.barId === id) ?? false
+  const favorites = useFavorites()
+  const favorite = favorites.ids.has(id)
 
-  const refreshFavorites = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.pubs.getFavorites.queryKey()
-    })
-  const addFavorite = useMutation(
-    trpc.pubs.favorite.mutationOptions({ onSettled: refreshFavorites })
-  )
-  const removeFavorite = useMutation(
-    trpc.pubs.unfavorite.mutationOptions({ onSettled: refreshFavorites })
-  )
+  // "Vou assistir" otimista: o botão acende no toque, com o háptico; volta
+  // se o servidor recusar.
+  const key = trpc.pubs.getById.queryKey({ id })
+  type Bar = NonNullable<typeof bar.data>
+  const before = useRef<Bar | undefined>(undefined)
   const attend = useMutation(
     trpc.attendance.set.mutationOptions({
-      onSuccess: () => {
-        haptic.success()
-        return queryClient.invalidateQueries({
-          queryKey: trpc.pubs.getById.queryKey({ id })
-        })
+      onMutate: async ({ eventId, attending }) => {
+        if (attending) haptic.success()
+        else haptic.select()
+        await queryClient.cancelQueries({ queryKey: key })
+        before.current = queryClient.getQueryData<Bar>(key)
+        queryClient.setQueryData<Bar>(key, (old) =>
+          old
+            ? {
+                ...old,
+                events: old.events.map((game) =>
+                  game.id === eventId && game.attendance
+                    ? { ...game, attendance: { ...game.attendance, attending } }
+                    : game
+                )
+              }
+            : old
+        )
       },
-      onError: () => haptic.error()
+      onError: () => {
+        haptic.error()
+        queryClient.setQueryData(key, before.current)
+      },
+      onSettled: () => queryClient.invalidateQueries({ queryKey: key })
     })
   )
+
+  // Puxar para baixo estica a foto em vez de mostrar papel acima dela.
+  const scrollY = useSharedValue(0)
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.set(event.contentOffset.y)
+  })
+  const stretch = useAnimatedStyle(() => {
+    const pull = Math.max(-scrollY.get(), 0)
+    return {
+      transform: [
+        { translateY: Math.min(scrollY.get(), 0) },
+        { scale: 1 + pull / 340 }
+      ]
+    }
+  })
 
   // Uma visita por abertura da página, só depois de ela existir.
   const loaded = bar.isSuccess
@@ -98,6 +139,43 @@ export default function BarPage() {
   useEffect(() => {
     if (loaded && fan) trackCommercialEvent({ pubId: id, type: 'profile_view' })
   }, [loaded, fan, id])
+
+  // Enquanto carrega, o topo já vem com o nome e a foto que o Explorar passou.
+  if (!bar.data && !bar.isError && name) {
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.sheet }}>
+        <View style={styles.hero}>
+          {photo ? (
+            <Image
+              source={{ uri: photo }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : null}
+          <LinearGradient
+            colors={HERO_SHADE}
+            locations={[0, 0.35, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.heroText}>
+            <Text
+              style={styles.name}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+              maxFontSizeMultiplier={1.1}
+            >
+              {name.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+        <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
+        <View style={[styles.top, { top: insets.top + 6 }]}>
+          <BackButton tone="dark" />
+        </View>
+      </View>
+    )
+  }
 
   if (!bar.data) {
     return (
@@ -151,8 +229,7 @@ export default function BarPage() {
 
   const toggleFavorite = () => {
     haptic.select()
-    if (favorite) removeFavorite.mutate({ barId: id })
-    else addFavorite.mutate({ barId: id })
+    favorites.toggle(id)
   }
   const share = () =>
     Share.share({
@@ -161,49 +238,58 @@ export default function BarPage() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.sheet }}>
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          {data.photoUrl ? (
-            <Image
-              source={{ uri: data.photoUrl }}
+          <Animated.View style={[styles.heroArt, stretch]}>
+            {data.photoUrl ? (
+              <Image
+                source={{ uri: data.photoUrl }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
+            ) : null}
+            <LinearGradient
+              colors={HERO_SHADE}
+              locations={[0, 0.35, 1]}
               style={StyleSheet.absoluteFill}
-              resizeMode="cover"
             />
-          ) : null}
-          <LinearGradient
-            colors={[
-              'rgba(18,18,15,.3)',
-              'rgba(18,18,15,0)',
-              'rgba(18,18,15,.82)'
-            ]}
-            locations={[0, 0.35, 1]}
-            style={StyleSheet.absoluteFill}
-          />
+          </Animated.View>
           <View style={styles.heroText}>
             <View style={styles.heroPills}>
               {data.plan === 'elite' ? (
-                <PhotoPill kind="acid" height={32}>
+                <PhotoPill kind="acid" height={28}>
                   <Icon name="medal" size={15} color={INK} />
-                  <Text style={[text(13.5, 'Bold', 1.2), { color: INK }]}>
+                  <Text style={[text(12, 'Bold', 1.2), { color: INK }]}>
                     Elite
                   </Text>
                 </PhotoPill>
               ) : null}
               {data.rating ? (
-                <PhotoPill kind="dark" height={32}>
-                  <Text style={[text(13.5, 'Bold', 1.2), { color: PAPER }]}>
+                <PhotoPill kind="dark" height={28}>
+                  <Text style={[text(12, 'Bold', 1.2), { color: PAPER }]}>
                     {data.rating.percentage}% voltariam
                   </Text>
                 </PhotoPill>
               ) : null}
             </View>
-            <Text style={styles.name} numberOfLines={3}>
+            <Text
+              style={styles.name}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+              maxFontSizeMultiplier={1.1}
+            >
               {data.name.toUpperCase()}
             </Text>
-            <Text style={[text(14, 'Regular', 1.4), styles.info]}>
+            <Text
+              style={[text(14, 'Regular', 1.4), styles.info]}
+              numberOfLines={2}
+            >
               {info.join(' · ')}
             </Text>
           </View>
@@ -226,7 +312,7 @@ export default function BarPage() {
                   photo_url: data.photoUrl,
                   plan: data.plan,
                   rating: data.rating,
-                  distance_km: km ? Number(km) : 0,
+                  distance_km: km ? Number(km) : null,
                   amenities: data.amenities,
                   goingCount: next.attendance?.count ?? null,
                   nextEvent: next
@@ -320,7 +406,7 @@ export default function BarPage() {
             </View>
           ) : null}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View style={[styles.top, { top: insets.top + 6 }]}>
         <BackButton tone="dark" />
@@ -356,7 +442,6 @@ export default function BarPage() {
                 styles.attend,
                 palette.dark && styles.attendDark,
                 mine.attending && { backgroundColor: ACID },
-                !reservable && { flex: 1 },
                 pressed && { transform: [{ scale: 0.97 }] }
               ]}
             >
@@ -366,14 +451,16 @@ export default function BarPage() {
                 color={mine.attending ? INK : palette.ink}
                 accent={palette.accent}
               />
-              <Text
+              <Animated.Text
+                key={mine.attending ? 'on' : 'off'}
+                entering={SWAP}
                 style={[
                   text(15, 'Bold', 1.2),
                   { color: mine.attending ? INK : palette.ink }
                 ]}
               >
                 {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
-              </Text>
+              </Animated.Text>
             </Pressable>
           ) : null}
           {reservable ? (
@@ -474,7 +561,12 @@ function RoundGlass({
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  hero: { height: 340, backgroundColor: '#2a2a25', justifyContent: 'flex-end' },
+  hero: { height: 340, justifyContent: 'flex-end' },
+  heroArt: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#2a2a25',
+    transformOrigin: 'top'
+  },
   heroText: { padding: 18 },
   heroPills: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   name: {
@@ -541,7 +633,10 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: 'hidden'
   },
+  // Os dois botões dividem o vidro igual: o rótulo que cresce não empurra
+  // "Reservar mesa".
   attend: {
+    flex: 1,
     height: 52,
     paddingHorizontal: 18,
     borderRadius: 26,
