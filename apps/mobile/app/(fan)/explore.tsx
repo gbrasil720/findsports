@@ -1,8 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   Platform,
   Pressable,
@@ -36,6 +35,7 @@ import {
   type SearchBar,
   usePalette
 } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
@@ -49,7 +49,7 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
-import { type Coordinates, greeting, isLive, searchCenter } from '@/lib/explore'
+import { greeting, isLive, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
@@ -80,35 +80,10 @@ export default function Explore() {
   useStatusBar(palette.dark ? 'light' : 'dark')
 
   // De onde a busca parte: o aparelho (se já deu permissão), a cidade do
-  // perfil ou São Paulo. Não pede permissão aqui; o onboarding já pediu.
-  const [device, setDevice] = useState<Coordinates | null>(null)
-  const [district, setDistrict] = useState<string | null>(null)
-  useEffect(() => {
-    Location.getForegroundPermissionsAsync()
-      .then(({ granted }) =>
-        granted
-          ? Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced
-            })
-          : null
-      )
-      .then(async (position) => {
-        if (!position) return
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        }
-        setDevice(coords)
-        // O bairro de onde a pessoa está, como o design escreve
-        // ("Vila Madalena"); sem ele, fica a cidade.
-        const [place] = await Location.reverseGeocodeAsync({
-          latitude: coords.lat,
-          longitude: coords.lng
-        })
-        setDistrict(place?.district ?? place?.subregion ?? place?.city ?? null)
-      })
-      .catch(() => {})
-  }, [])
+  // perfil ou São Paulo. Localização, filtros e folha vêm do estado que as
+  // abas dividem (a aba "Você" mostra este mesmo Explorar sob o menu).
+  const state = useExploreState()
+  const { device, district, liveOnly, todayOnly, amenities } = state
   const city = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
     meta: { errorToast: false }
@@ -116,12 +91,11 @@ export default function Explore() {
   const center = searchCenter(device, city.data)
   const radiusKm = session.data?.user.searchRadiusKm ?? 3
 
-  const [liveOnly, setLiveOnly] = useState(false)
-  const [todayOnly, setTodayOnly] = useState(false)
-  const [amenities, setAmenities] = useState<number[]>([])
   const toggleAmenity = (id: number) =>
-    setAmenities((list) =>
-      list.includes(id) ? list.filter((item) => item !== id) : [...list, id]
+    state.setAmenities(
+      amenities.includes(id)
+        ? amenities.filter((item) => item !== id)
+        : [...amenities, id]
     )
 
   const search = useQuery({
@@ -172,7 +146,8 @@ export default function Explore() {
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
   const top = insets.top + 8
   const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace]
-  const [resting, setResting] = useState(snaps[1])
+  const resting = state.resting ?? snaps[1]
+  const { setResting } = state
   const expanded = resting === 0
   const reduced = useReducedMotion()
 
@@ -206,7 +181,12 @@ export default function Explore() {
     map.current?.animateToRegion(region, reduced ? 0 : 400)
   }, [center.lat, center.lng, radiusKm, framed])
 
-  const y = useSharedValue(snaps[1])
+  const y = useSharedValue(resting)
+  // A outra aba pode ter movido a folha: esta acompanha ao voltar.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a folha assenta
+  useEffect(() => {
+    if (Math.abs(y.get() - resting) > 1) y.set(resting)
+  }, [resting])
   const start = useSharedValue(0)
   const scrollY = useSharedValue(0)
   /** A mola da folha; quando assenta, a tela fica sabendo onde parou. */
@@ -445,13 +425,13 @@ export default function Explore() {
           label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
           on={liveOnly}
           palette={palette}
-          onPress={() => setLiveOnly((on) => !on)}
+          onPress={() => state.setLiveOnly(!liveOnly)}
         />
         <Chip
           label="Hoje"
           on={todayOnly}
           palette={palette}
-          onPress={() => setTodayOnly((on) => !on)}
+          onPress={() => state.setTodayOnly(!todayOnly)}
         />
         <Chip
           icon="tv"
