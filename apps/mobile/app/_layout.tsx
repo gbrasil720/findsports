@@ -95,6 +95,10 @@ export default function Layout() {
               name="codigo/[eventId]"
               options={{ presentation: 'fullScreenModal' }}
             />
+            <Stack.Screen
+              name="pos-jogo/[eventId]"
+              options={{ presentation: 'fullScreenModal' }}
+            />
           </Stack>
         </SplashDone>
         <DevTab />
