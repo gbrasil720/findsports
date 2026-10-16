@@ -9,6 +9,8 @@ import {
 describe('normalizeReservationCode', () => {
   test('ignora caixa, espaço e separador', () => {
     expect(normalizeReservationCode(' ab3-k9 x ')).toBe('AB3K9X')
+    // Como o app mostra: "A7K·29".
+    expect(normalizeReservationCode('a7k·29')).toBe('A7K29')
     expect(normalizeReservationCode('ab3.k9_x')).toBe('AB3K9X')
   })
 

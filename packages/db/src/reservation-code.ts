@@ -48,7 +48,7 @@ export function generateReservationCode(): string {
  * separador e caixa não fazem parte do código.
  */
 export function normalizeReservationCode(input: string): string {
-  return input.replace(/[\s\-_.]/g, '').toUpperCase()
+  return input.replace(/[\s\-_.·]/g, '').toUpperCase()
 }
 
 /** Recebe o código JÁ normalizado. */
