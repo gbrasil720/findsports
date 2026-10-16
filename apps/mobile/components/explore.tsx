@@ -23,7 +23,14 @@ import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
 type Outputs = inferRouterOutputs<AppRouter>
 export type SearchBar = Outputs['pubs']['search']['bars'][number]
-export type NextGame = NonNullable<SearchBar['nextEvent']>
+/** Um jogo, na forma comum à busca e ao perfil do bar (`pubs.getById`). */
+export type Game = {
+  startsAt: string
+  endsAt: string | null
+  championship: string
+  participants: { team: { name: string } }[]
+  participantFreeText: string | null
+}
 
 export const PALETTE = {
   light: {
@@ -224,10 +231,13 @@ export function dayLabel(date: string | Date, now: number) {
   })
 }
 
-export function matchLine(game: NextGame) {
+export function matchLine(game: Game) {
   const names = game.participants.map((p) => p.team.name)
   if (names.length === 2) return `${names[0]} × ${names[1]}`
-  return game.participantFreeText ?? names.join(', ') ?? game.championship
+  return (
+    game.participantFreeText ??
+    (names.length ? names.join(', ') : game.championship)
+  )
 }
 
 function Photo({
@@ -253,7 +263,7 @@ export function MatchRow({
   now,
   palette
 }: {
-  game: NextGame
+  game: Game
   now: number
   palette: Palette
 }) {
