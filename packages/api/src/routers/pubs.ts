@@ -34,13 +34,13 @@ import {
 import {
   declaredAmenityIds,
   MAX_AMENITY_FILTER,
-  normalizeAmenityIds,
-  publicAmenityIds
+  normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance, readGoing } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
+  getCurrentPlan,
   getSubscriptionStanding,
   type SubscriptionStanding
 } from '../lib/current-plan'
@@ -59,11 +59,6 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
-import {
-  barReceivesReservations,
-  receivesReservations,
-  withSeatAvailability
-} from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
@@ -481,8 +476,7 @@ export const pubsRouter = router({
           ratingPositive: true,
           houseOffer: true,
           menuUrl: true,
-          averageSpendCents: true,
-          reservationCap: true
+          averageSpendCents: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -534,9 +528,8 @@ export const pubsRouter = router({
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
       //
-      // Recebimento de reservas e oferta da casa seguem a mesma lógica: o
-      // cliente recebe o efetivo (quer E pode), nunca o interruptor cru nem o
-      // texto com um aviso para esconder. Vale também para a prévia do dono —
+      // A oferta da casa segue a mesma lógica: o cliente recebe o efetivo,
+      // nunca o texto com um aviso para esconder. Vale também para a prévia do dono —
       // ela mostra o que o torcedor vê. Cardápio e gasto médio idem, com Pro
       // ou Elite.
       const {
@@ -546,7 +539,6 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
-        reservationCap: defaultCap,
         subscription,
         events,
         ...publicBar
@@ -562,57 +554,35 @@ export const pubsRouter = router({
             }
           : null
 
-      // `events` já vem na janela do perfil: é a mesma regra da busca.
-      const receiving = barReceivesReservations(
-        events,
-        subscription ?? null,
-        now
-      )
-      // Como o recebimento, o teto sai resolvido: o torcedor sabe se o jogo
-      // esgotou, não quantos lugares o dono definiu.
-      const games = await withSeatAvailability(events, defaultCap)
+      // O código do balcão, e com ele a oferta da casa, é do Elite: fora
+      // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
+      const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
       const fan = ctx.session.user.role === 'fan'
       const [attendance, going] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
-        // só para torcedor (o bar recebe o sinal relativo, nunca o número).
+        // só para torcedor.
         fan ? readGoing(events.map((game) => game.id)) : new Map()
       ])
       return {
         ...publicBar,
-        amenities: publicAmenityIds(publicBar.amenities, receiving),
-        events: games.map(
+        amenities: declaredAmenityIds(publicBar.amenities),
+        events: events.map(
+          // Colunas da antiga reserva de mesa: não saem mais.
           ({
-            reservationCap,
-            confirmedSeats,
-            effectiveCap,
-            soldOut,
-            acceptsReservations,
+            reservationCap: _cap,
+            acceptsReservations: _accepts,
             ...game
-          }) => {
-            // Por jogo: o bar marca em quais recebe pedido.
-            const gameReceiving = receivesReservations(
-              acceptsReservations,
-              subscription ?? null,
-              now
-            )
-            return {
-              ...game,
-              acceptsReservations: gameReceiving,
-              reservationsSoldOut: gameReceiving && soldOut,
-              // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
-              attendance: attendance.get(game.id) ?? null,
-              // `null`: abaixo do piso, ou conta que não é de torcedor.
-              going: going.get(game.id) ?? null
-            }
-          }
+          }) => ({
+            ...game,
+            // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
+            attendance: attendance.get(game.id) ?? null,
+            // `null`: abaixo do piso, ou conta que não é de torcedor.
+            going: going.get(game.id) ?? null
+          })
         ),
         rating,
-        // O único resgate da oferta é o código de uma reserva: sem
-        // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
-        houseOffer: receiving ? houseOffer : null,
-        // Efetivo e derivado dos jogos: algum jogo no perfil recebe pedido.
-        acceptsReservations: receiving,
+        houseOffer: elite ? houseOffer : null,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
           subscription ?? null,
@@ -745,8 +715,7 @@ export const pubsRouter = router({
                   and(isNotNull(event.endsAt), gte(event.endsAt, now)),
                   and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
                 ),
-              // O teto do dono não vai para o torcedor (WEB-152), nem a
-              // marcação crua de reservas: o efetivo sai só no perfil.
+              // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
               with: {
                 sport: true,
