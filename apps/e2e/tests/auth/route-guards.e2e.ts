@@ -24,7 +24,7 @@ test.describe('deslogado', () => {
   for (const path of [
     '/dashboard',
     '/dashboard/profile',
-    '/dashboard/reservations',
+    '/dashboard/games',
     '/admin',
     '/admin/billing',
     '/admin/validate',
@@ -125,7 +125,7 @@ test.describe('papel errado cai na casa certa', () => {
   test.describe('admin', () => {
     test.use({ storageState: storageState('admin') })
     expectRedirect('/dashboard', '/houdini')
-    expectRedirect('/dashboard/reservations', '/houdini')
+    expectRedirect('/dashboard/games', '/houdini')
     // /plan manda para /dashboard, que manda admin para o Houdini.
     expectRedirect('/plan', '/houdini')
   })
