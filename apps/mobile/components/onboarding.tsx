@@ -5,7 +5,7 @@ import {
   useEffect,
   useState
 } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -14,12 +14,19 @@ import Animated, {
 } from 'react-native-reanimated'
 import { EASE, haptic, POP } from '@/components/motion'
 import {
-  ACCENT,
   ACID,
   BackButton,
+  BG,
+  DROP,
+  EDGE,
+  FG,
+  HOT,
   Icon,
   INK,
-  MUTED,
+  LINE,
+  LINE_STRONG,
+  PAPER,
+  SUB,
   text
 } from '@/components/ui'
 
@@ -113,7 +120,7 @@ export function OnboardingTop({ step }: { step: number }) {
   return (
     <View style={styles.top}>
       {step === 1 ? (
-        <Text style={[text(13, 'Bold'), { color: ACCENT }]}>
+        <Text style={[text(13, 'Bold'), { color: HOT }]}>
           Conta de torcedor
         </Text>
       ) : (
@@ -125,7 +132,7 @@ export function OnboardingTop({ step }: { step: number }) {
           <Segment key={index} on={index < step} />
         ))}
       </View>
-      <Text style={[text(13, 'SemiBold'), { color: MUTED }]}>
+      <Text style={[text(13, 'SemiBold'), { color: SUB }]}>
         {step} de {STEPS}
       </Text>
     </View>
@@ -143,6 +150,15 @@ function useSelected(selected: boolean) {
   return on
 }
 
+/**
+ * O fundo do cartão sem escolha, em cor pronta: o `interpolateColor` não
+ * aceita a cor dinâmica do tema.
+ */
+const useIdle = () =>
+  useColorScheme() === 'dark'
+    ? { idle: '#1c1c18', dark: true }
+    : { idle: '#faf8f3', dark: false }
+
 /** Um esporte (4j): acid com sombra de tinta quando escolhido. */
 export function SportTile({
   name,
@@ -154,8 +170,9 @@ export function SportTile({
   onPress: () => void
 }) {
   const on = useSelected(selected)
+  const { idle } = useIdle()
   const card = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', ACID])
+    backgroundColor: interpolateColor(on.value, [0, 1], [idle, ACID])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
   return (
@@ -176,12 +193,17 @@ export function SportTile({
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.tile, card]}>
         <Text
-          style={[styles.tileMark, { opacity: selected ? 0.16 : 0.08 }]}
+          style={[
+            styles.tileMark,
+            { color: selected ? INK : FG, opacity: selected ? 0.16 : 0.08 }
+          ]}
           numberOfLines={1}
         >
           {sportMark(name)}
         </Text>
-        <Text style={text(16, 'Bold')}>{name}</Text>
+        <Text style={[text(16, 'Bold'), { color: selected ? INK : FG }]}>
+          {name}
+        </Text>
         {selected ? (
           <Animated.View entering={POP} style={styles.tileCheck}>
             <Icon name="check" size={13} color={ACID} />
@@ -203,8 +225,11 @@ export function TeamChip({
   onPress: () => void
 }) {
   const on = useSelected(selected)
+  // Escolhido é tinta no claro e papel no escuro: o inverso do fundo.
+  const { idle, dark } = useIdle()
+  const lit = dark ? PAPER : INK
   const chip = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', INK])
+    backgroundColor: interpolateColor(on.value, [0, 1], [idle, lit])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
   return (
@@ -221,11 +246,14 @@ export function TeamChip({
       <Animated.View style={[styles.chip, chip]}>
         {selected ? (
           <Animated.View entering={POP}>
-            <Icon name="check" size={14} color={ACID} />
+            <Icon name="check" size={14} color={dark ? INK : ACID} />
           </Animated.View>
         ) : null}
         <Text
-          style={[text(14, 'SemiBold'), { color: selected ? '#f1eee6' : INK }]}
+          style={[
+            text(14, 'SemiBold'),
+            { color: selected ? (dark ? INK : PAPER) : FG }
+          ]}
         >
           {name}
         </Text>
@@ -261,8 +289,9 @@ export function RadiusTile({
   onPress: () => void
 }) {
   const on = useSelected(selected)
+  const { idle } = useIdle()
   const tile = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', ACID])
+    backgroundColor: interpolateColor(on.value, [0, 1], [idle, ACID])
   }))
   const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
   return (
@@ -279,11 +308,13 @@ export function RadiusTile({
       <View style={styles.tileIdleShadow} />
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.radius, tile]}>
-        <Text style={styles.radiusKm}>{km}</Text>
+        <Text style={[styles.radiusKm, { color: selected ? INK : FG }]}>
+          {km}
+        </Text>
         <Text
           style={[
             text(11.5, 'SemiBold', 1.25),
-            { color: selected ? INK : MUTED }
+            { color: selected ? INK : SUB }
           ]}
         >
           km · {RADIUS_LABEL[km]}
@@ -301,11 +332,11 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     overflow: 'hidden',
-    backgroundColor: 'rgba(18,18,15,.14)'
+    backgroundColor: LINE_STRONG
   },
   segmentFill: {
     flex: 1,
-    backgroundColor: INK,
+    backgroundColor: FG,
     transformOrigin: 'left'
   },
   tileWrap: { flex: 1 },
@@ -318,7 +349,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   // Sombra dura de tinta (escolhido) sobre a sombra leve (não escolhido).
   tileShadow: {
@@ -328,7 +359,7 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 6,
-    backgroundColor: INK
+    backgroundColor: EDGE
   },
   tileIdleShadow: {
     position: 'absolute',
@@ -337,15 +368,14 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   },
   tileMark: {
     position: 'absolute',
     right: -4,
     top: -10,
     fontFamily: 'Anton',
-    fontSize: 60,
-    color: INK
+    fontSize: 60
   },
   tileCheck: {
     position: 'absolute',
@@ -366,7 +396,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   chipShadow: {
     position: 'absolute',
@@ -384,20 +414,20 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 5,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   },
   badge: {
     width: 17,
     height: 17,
     borderRadius: 2,
-    backgroundColor: INK,
+    backgroundColor: FG,
     alignItems: 'center',
     justifyContent: 'center'
   },
   badgeText: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 7,
-    color: '#f1eee6'
+    color: BG
   },
   radius: {
     height: 96,
@@ -405,12 +435,11 @@ const styles = StyleSheet.create({
     padding: 10,
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   radiusKm: {
     fontFamily: 'Anton',
     fontSize: 28,
-    color: INK,
     marginVertical: -7
   }
 })
