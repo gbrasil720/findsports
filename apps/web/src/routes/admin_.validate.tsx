@@ -8,6 +8,9 @@ import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/validate')({
+  // O QR do código no app do torcedor abre aqui com `?code=`.
+  validateSearch: (search: Record<string, unknown>): { code?: string } =>
+    typeof search.code === 'string' ? { code: search.code } : {},
   head: () => ({
     meta: [
       { title: 'Validar código — Onside' },
@@ -22,6 +25,7 @@ export const Route = createFileRoute('/admin_/validate')({
 function ValidatePage() {
   const trpc = useTRPC()
   const now = useMinuteNow()
+  const { code } = Route.useSearch()
 
   // A tela desenha o próprio erro, com botão de tentar de novo.
   const subscriptionQuery = useQuery({
@@ -77,6 +81,7 @@ function ValidatePage() {
         lookup={reservationValidation.lookup.mutate}
         registerArrival={reservationValidation.registerArrival.mutate}
         undoArrival={reservationValidation.undoArrival.mutate}
+        initialCode={code}
       />
     </AppShell>
   )
