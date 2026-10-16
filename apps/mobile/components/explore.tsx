@@ -92,10 +92,11 @@ const dayOf = (value: number | string | Date) =>
     timeZone: 'America/Sao_Paulo'
   })
 
-/** "Hoje", "Amanhã" ou "sáb., 18/10". */
+/** "Hoje", "Amanhã", "Ontem" ou "sáb., 18/10". */
 export function dayLabel(date: string | Date, now: number) {
   if (dayOf(date) === dayOf(now)) return 'Hoje'
   if (dayOf(date) === dayOf(now + DAY)) return 'Amanhã'
+  if (dayOf(date) === dayOf(now - DAY)) return 'Ontem'
   return new Date(date).toLocaleDateString('pt-BR', {
     weekday: 'short',
     day: '2-digit',
