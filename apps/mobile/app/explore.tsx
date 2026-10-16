@@ -59,7 +59,7 @@ export default function Explore() {
   const dark = palette.bg === INK
   const queryClient = useQueryClient()
   const session = authClient.useSession()
-  useStatusBar('auto')
+  useStatusBar(dark ? 'light' : 'dark')
 
   // De onde a busca parte: o aparelho (se já deu permissão), a cidade do
   // perfil ou São Paulo. Não pede permissão aqui; o onboarding já pediu.
@@ -308,7 +308,7 @@ export default function Explore() {
           onPress={account}
           style={styles.who}
         >
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, dark && { shadowOpacity: 0.35 }]}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View>
