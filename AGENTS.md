@@ -354,6 +354,15 @@ invente layout que o projeto não tem.
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos. Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
+- **Tema escuro:** o design só desenha conta, onboarding e avulsas no claro; no escuro valem
+  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. As cores que
+  seguem o tema estão em `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`, `LINE`,
+  `DROP`, `EDGE`, `SPARK`, e `themed(claro, escuro)` para um valor avulso): são
+  `DynamicColorIOS`, trocam sozinhas e servem no `StyleSheet` de módulo e no SVG. Onde a cor
+  é calculada em JS (`interpolateColor`, gradiente, imagem, tom do `Glass`) use
+  `useColorScheme`. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
+  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as cores
+  dinâmicas ficam no claro.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
