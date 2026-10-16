@@ -80,17 +80,17 @@ test('Pro com código em aberto ainda valida na margem depois do fim do jogo', a
   await expect(
     page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await page.getByRole('button', { name: 'Validar código' }).click()
   await page
-    .getByRole('dialog', { name: 'Registrar chegada?' })
-    .getByRole('button', { name: 'Confirmar chegada' })
+    .getByRole('dialog', { name: 'Validar o código?' })
+    .getByRole('button', { name: 'Sim, validar' })
     .click()
   await expect(
-    page.getByText('Chegada registrada. 1 de 1 validado. Código validado.')
+    page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
 })
 
-test('Elite registra chegada com confirmação, desfaz e valida o código', async ({
+test('Elite valida o código com confirmação, desfaz e valida o código', async ({
   page
 }) => {
   const { user, eventId } = await openValidation()
@@ -108,35 +108,35 @@ test('Elite registra chegada com confirmação, desfaz e valida o código', asyn
   await expect(page.getByText('Chope em dobro')).toBeVisible()
   await expect(page.getByText('0 de 1 validado', { exact: true })).toBeVisible()
 
-  // +1 pede confirmação; cancelar não grava.
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Registrar chegada?' })
-  await expect(dialog).toContainText('1 de 1 validado')
+  // Validar pede confirmação; cancelar não grava.
+  await page.getByRole('button', { name: 'Validar código' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Validar o código?' })
+  await expect(dialog).toContainText('A oferta da casa fica liberada')
   await dialog.getByRole('button', { name: 'Cancelar' }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByText('0 de 1 validado', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
-  await dialog.getByRole('button', { name: 'Confirmar chegada' }).click()
+  await page.getByRole('button', { name: 'Validar código' }).click()
+  await dialog.getByRole('button', { name: 'Sim, validar' }).click()
   await expect(
-    page.getByText('Chegada registrada. 1 de 1 validado. Código validado.')
+    page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Desfazer a última chegada' }).click()
+  await page.getByRole('button', { name: 'Desfazer a validação' }).click()
   await expect(
-    page.getByText('Chegada desfeita. 0 de 1 validado.')
+    page.getByText('Validação desfeita. 0 de 1 validado.')
   ).toBeVisible()
 
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
-  await dialog.getByRole('button', { name: 'Confirmar chegada' }).click()
+  await page.getByRole('button', { name: 'Validar código' }).click()
+  await dialog.getByRole('button', { name: 'Sim, validar' }).click()
   await expect(page.getByText('Código validado', { exact: true })).toBeVisible()
   await expect(page.getByText('Este código já foi validado.')).toBeVisible()
-  // Validado, o `+1` sai da tela e o desfazer curto continua (WEB-299).
+  // Validado, o botão sai da tela e o desfazer curto continua (WEB-299).
   await expect(
-    page.getByRole('button', { name: 'Registrar chegada (+1)' })
+    page.getByRole('button', { name: 'Validar código' })
   ).toHaveCount(0)
   await expect(
-    page.getByRole('button', { name: 'Desfazer a última chegada' })
+    page.getByRole('button', { name: 'Desfazer a validação' })
   ).toBeVisible()
 
   const [code] = await query<{ used_count: number }>(
@@ -197,7 +197,7 @@ test('jogo fora da janela não registra chegada', async ({ page }) => {
     page.getByText('Este código ainda não abriu', { exact: true })
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Registrar chegada (+1)' })
+    page.getByRole('button', { name: 'Validar código' })
   ).toHaveCount(0)
 })
 
@@ -218,7 +218,7 @@ test('jogo encerrado há mais de 3h: código expirado, e o servidor recusa a che
     page.getByText('Este código expirou', { exact: true })
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Registrar chegada (+1)' })
+    page.getByRole('button', { name: 'Validar código' })
   ).toHaveCount(0)
 
   const [code] = await query<{ id: string }>(
@@ -240,12 +240,12 @@ test('o botão de desfazer some quando o prazo acaba', async ({ page }) => {
   await page.goto('/admin/validate')
 
   await lookup(page, ticket.code)
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await page.getByRole('button', { name: 'Validar código' }).click()
   await page
-    .getByRole('dialog', { name: 'Registrar chegada?' })
-    .getByRole('button', { name: 'Confirmar chegada' })
+    .getByRole('dialog', { name: 'Validar o código?' })
+    .getByRole('button', { name: 'Sim, validar' })
     .click()
-  const undo = page.getByRole('button', { name: 'Desfazer a última chegada' })
+  const undo = page.getByRole('button', { name: 'Desfazer a validação' })
   await expect(undo).toBeVisible()
 
   await page.clock.fastForward(ARRIVAL_UNDO_WINDOW_MS + 1_000)

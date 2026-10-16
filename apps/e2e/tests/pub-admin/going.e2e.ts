@@ -97,12 +97,12 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await expect(page.getByText('Chopp em dobro')).toBeVisible()
-  await page.getByRole('button', { name: 'Registrar chegada (+1)' }).click()
+  await page.getByRole('button', { name: 'Validar código' }).click()
   await page
-    .getByRole('dialog', { name: 'Registrar chegada?' })
-    .getByRole('button', { name: 'Confirmar chegada' })
+    .getByRole('dialog', { name: 'Validar o código?' })
+    .getByRole('button', { name: 'Sim, validar' })
     .click()
   await expect(
-    page.getByText('Chegada registrada. 1 de 1 validado. Código validado.')
+    page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
 })
