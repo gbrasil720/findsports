@@ -137,8 +137,25 @@ export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const later = game && !live && dayOf(game.startsAt) === dayOf(now)
-  const bg = live ? LIVE : later ? ACID : INK
-  const fg = later ? INK : PAPER
+  return (
+    <PinTag
+      label={later && game ? formatTime(game.startsAt) : bar.name}
+      kind={live ? 'live' : later ? 'later' : 'idle'}
+    />
+  )
+}
+
+/** A etiqueta do pino, sem a regra de qual cor: o mapa de "Onde fica" a usa. */
+export function PinTag({
+  label,
+  kind
+}: {
+  label: string
+  kind: 'live' | 'later' | 'idle'
+}) {
+  const live = kind === 'live'
+  const bg = live ? LIVE : kind === 'later' ? ACID : INK
+  const fg = kind === 'later' ? INK : PAPER
   return (
     <View style={styles.pin}>
       <View
@@ -156,7 +173,7 @@ export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
           ]}
           numberOfLines={1}
         >
-          {later && game ? formatTime(game.startsAt) : bar.name}
+          {label}
         </Text>
       </View>
       <View style={[styles.pinTip, { backgroundColor: bg }]} />
