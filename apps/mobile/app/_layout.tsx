@@ -79,7 +79,23 @@ export default function Layout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SplashDone value={splashDone}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. */}
+            <Stack.Screen
+              name="vou/[barId]"
+              options={{
+                presentation: 'formSheet',
+                sheetAllowedDetents: [0.88],
+                sheetGrabberVisible: true,
+                sheetCornerRadius: 28
+              }}
+            />
+            {/* O código no balcão cobre tudo, no escuro (3f). */}
+            <Stack.Screen
+              name="codigo/[eventId]"
+              options={{ presentation: 'fullScreenModal' }}
+            />
+          </Stack>
         </SplashDone>
         <DevTab />
         {splashDone ? null : (
