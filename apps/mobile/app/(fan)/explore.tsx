@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Platform,
   Pressable,
@@ -15,7 +15,12 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MapView, { Marker } from 'react-native-maps'
 import Animated, {
+  cancelAnimation,
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSpring
 } from 'react-native-reanimated'
@@ -25,6 +30,7 @@ import {
   BarRow,
   BarTicket,
   Chip,
+  initials as initialsOf,
   MeDot,
   Pin,
   type SearchBar,
@@ -44,6 +50,7 @@ import {
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { type Coordinates, greeting, isLive, searchCenter } from '@/lib/explore'
+import { useFavorites } from '@/lib/favorites'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
@@ -62,21 +69,11 @@ const AREA_EXTERNA = 4
 const today = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
-const initialsOf = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-
 export default function Explore() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const palette = usePalette()
-  const queryClient = useQueryClient()
   const session = authClient.useSession()
   const soon = useSoon()
   const tabSpace = useTabBarSpace()
@@ -135,7 +132,10 @@ export default function Explore() {
       amenities: amenities.length ? amenities : undefined,
       limit: 30
     }),
-    enabled: device !== null || !city.isPending
+    enabled: device !== null || !city.isPending,
+    // Trocar um filtro mantém a lista e os pinos de antes até chegar a nova,
+    // em vez de piscar "Buscando bares…".
+    placeholderData: keepPreviousData
   })
   const now = Date.now()
   const found = search.data?.bars ?? []
@@ -155,26 +155,18 @@ export default function Explore() {
         }) === today())
   ).length
 
-  const favorites = useQuery(trpc.pubs.getFavorites.queryOptions())
-  const favoriteIds = useMemo(
-    () => new Set(favorites.data?.map((item) => item.barId)),
-    [favorites.data]
-  )
-  const refreshFavorites = () =>
-    queryClient.invalidateQueries({
-      queryKey: trpc.pubs.getFavorites.queryKey()
-    })
-  const addFavorite = useMutation(
-    trpc.pubs.favorite.mutationOptions({ onSettled: refreshFavorites })
-  )
-  const removeFavorite = useMutation(
-    trpc.pubs.unfavorite.mutationOptions({ onSettled: refreshFavorites })
-  )
+  const favorites = useFavorites()
 
   const open = (bar: SearchBar) =>
     router.push({
       pathname: '/bar/[id]',
-      params: { id: bar.id, km: String(bar.distance_km) }
+      // Nome e foto vão junto: a página desenha o topo antes da resposta.
+      params: {
+        id: bar.id,
+        km: String(bar.distance_km),
+        name: bar.name,
+        photo: bar.photo_url ?? undefined
+      }
     })
 
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
@@ -182,13 +174,16 @@ export default function Explore() {
   const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace]
   const [resting, setResting] = useState(snaps[1])
   const expanded = resting === 0
+  const reduced = useReducedMotion()
 
-  // O centro do mapa fica na faixa entre os chips e a folha (`mapPadding`).
+  // O centro do mapa fica na faixa entre os chips e a folha no meio
+  // (`mapPadding`). Fixo: mudar o enquadramento a cada ponto da folha
+  // recentrava o mapa por cima da mola.
   const padding = {
     top: insets.top + 196,
     right: 0,
     left: 0,
-    bottom: height - (top + (resting === 0 ? snaps[1] : resting))
+    bottom: height - (top + snaps[1])
   }
   // Escala de bairro, como o design (uns 2 km na largura da tela), aberta o
   // bastante para os cinco primeiros bares caberem, sem passar do raio.
@@ -203,48 +198,103 @@ export default function Explore() {
       (kmPerPoint * width) / (111.32 * Math.cos((center.lat * Math.PI) / 180))
   }
   const map = useRef<MapView>(null)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro, o raio e a folha
+  // Enquadra quando o centro muda e quando chega a primeira resposta; não a
+  // cada filtro, que desfaria o arrasto que a pessoa fez no mapa.
+  const framed = search.data !== undefined
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, raio e primeira resposta
   useEffect(() => {
-    map.current?.animateToRegion(region, 400)
-  }, [center.lat, center.lng, across, resting])
+    map.current?.animateToRegion(region, reduced ? 0 : 400)
+  }, [center.lat, center.lng, radiusKm, framed])
 
   const y = useSharedValue(snaps[1])
   const start = useSharedValue(0)
+  const scrollY = useSharedValue(0)
+  /** A mola da folha; quando assenta, a tela fica sabendo onde parou. */
   const settle = (to: number, velocity = 0) => {
     'worklet'
-    y.value = withSpring(to, {
-      duration: 300,
-      dampingRatio: 0.8,
-      velocity,
-      overshootClamping: true
-    })
+    y.set(
+      withSpring(
+        to,
+        { duration: 300, dampingRatio: 0.8, velocity, overshootClamping: true },
+        (done) => {
+          if (done) scheduleOnRN(setResting, to)
+        }
+      )
+    )
   }
+  const nearest = (value: number) => {
+    'worklet'
+    let target = snaps[0]
+    for (const snap of snaps)
+      if (Math.abs(snap - value) < Math.abs(target - value)) target = snap
+    return target
+  }
+  // Elástico da Apple: quanto mais passa da ponta, mais resiste.
+  const rubber = (over: number) => {
+    'worklet'
+    return (over * height * 0.55) / (height + 0.55 * Math.abs(over))
+  }
+  const follow = (translationY: number) => {
+    'worklet'
+    const next = start.get() + translationY
+    y.set(
+      next < 0
+        ? -rubber(-next)
+        : next > snaps[2]
+          ? snaps[2] + rubber(next - snaps[2])
+          : next
+    )
+  }
+  const release = (velocityY: number) => {
+    'worklet'
+    // Um peteleco basta: a velocidade escolhe o lado antes da distância.
+    settle(nearest(y.get() + velocityY * 0.15), velocityY)
+  }
+  // O cabeçalho da folha arrasta sempre. Tocar sem arrastar a reassenta.
   const pan = Gesture.Pan()
     .onBegin(() => {
-      start.value = y.value
+      cancelAnimation(y)
+      start.set(y.get())
+    })
+    .onUpdate((event) => follow(event.translationY))
+    .onEnd((event) => release(event.velocityY))
+    .onFinalize((_, success) => {
+      if (!success) settle(nearest(y.get()))
+    })
+  // A lista: com a folha aberta, rola; puxada para baixo no topo, desce a
+  // folha. No meio, arrastá-la move a folha (a rolagem só vale aberta).
+  const scroll = Gesture.Native()
+  const dragging = useSharedValue(false)
+  const listPan = Gesture.Pan()
+    .simultaneousWithExternalGesture(scroll)
+    .onBegin(() => {
+      cancelAnimation(y)
+      start.set(y.get())
+      dragging.set(false)
     })
     .onUpdate((event) => {
-      const next = start.value + event.translationY
-      // Passou das pontas, resiste (elástico) em vez de parar seco.
-      y.value =
-        next < 0
-          ? next / 3
-          : next > snaps[2]
-            ? snaps[2] + (next - snaps[2]) / 3
-            : next
+      const open = start.get() <= 0
+      if (!open || (scrollY.get() <= 0 && event.translationY > 0)) {
+        dragging.set(true)
+        follow(event.translationY)
+      }
     })
     .onEnd((event) => {
-      // Um peteleco basta: a velocidade escolhe o lado antes da distância.
-      const projected = y.value + event.velocityY * 0.15
-      let target = snaps[0]
-      for (const snap of snaps)
-        if (Math.abs(snap - projected) < Math.abs(target - projected))
-          target = snap
-      settle(target, event.velocityY)
-      scheduleOnRN(setResting, target)
+      if (dragging.get()) release(event.velocityY)
     })
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.set(event.contentOffset.y)
+  })
   const sheet = useAnimatedStyle(() => ({
-    transform: [{ translateY: y.value }]
+    transform: [{ translateY: y.get() }]
+  }))
+  // A seta de "Lista" vira com a folha, não depois dela.
+  const arrow = useAnimatedStyle(() => ({
+    transform: [
+      {
+        rotate: `${interpolate(y.get(), [0, snaps[1]], [180, 0], Extrapolation.CLAMP)}deg`
+      }
+    ]
   }))
 
   const user = session.data?.user
@@ -327,15 +377,22 @@ export default function Explore() {
             >
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
-            <View>
-              <Text style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}>
+            <View style={{ flexShrink: 1 }}>
+              <Text
+                style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}
+                numberOfLines={1}
+              >
                 {greeting()}
                 {firstName ? `, ${firstName}` : ''}
               </Text>
               <View style={styles.place}>
                 <Icon name="pin" size={13} color={palette.dark ? ACID : LIVE} />
                 <Text
-                  style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+                  style={[
+                    text(12.5, 'Regular', 1.3),
+                    { color: palette.muted, flexShrink: 1 }
+                  ]}
+                  numberOfLines={1}
                 >
                   {place}
                 </Text>
@@ -369,7 +426,10 @@ export default function Explore() {
             </Pressable>
           </View>
         </View>
-        <Text style={[styles.title, { color: palette.ink }]}>
+        <Text
+          style={[styles.title, { color: palette.ink }]}
+          maxFontSizeMultiplier={1.2}
+        >
           ONDE VAI SER <Text style={{ color: palette.live }}>O JOGO?</Text>
         </Text>
       </View>
@@ -433,91 +493,90 @@ export default function Explore() {
                 accessibilityRole="button"
                 hitSlop={10}
                 onPress={() => {
-                  const to = expanded ? snaps[1] : 0
-                  settle(to)
-                  setResting(to)
+                  settle(expanded ? snaps[1] : 0)
                 }}
                 style={styles.listButton}
               >
                 <Text style={[text(13, 'Bold', 1.2), { color: palette.ink }]}>
                   {expanded ? 'Mapa' : 'Lista'}
                 </Text>
-                <View
-                  style={{
-                    transform: [{ rotate: expanded ? '180deg' : '0deg' }]
-                  }}
-                >
+                <Animated.View style={arrow}>
                   <Icon name="arrowUp" size={14} color={palette.ink} />
-                </View>
+                </Animated.View>
               </Pressable>
             </View>
           </View>
         </GestureDetector>
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 2,
-            // A barra de vidro fica por cima: o último card sobe acima dela.
-            paddingBottom: tabSpace + 24 + top,
-            gap: 12
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {search.isError ? (
-            <View style={styles.note}>
-              <Text style={[text(14), { color: palette.muted }]}>
-                Não deu para buscar os bares.
-              </Text>
-              <Pressable onPress={() => search.refetch()} hitSlop={10}>
-                <Text
-                  style={[
-                    text(14, 'Bold'),
-                    styles.link,
-                    { color: palette.ink }
-                  ]}
-                >
-                  Tentar de novo
+        <GestureDetector gesture={listPan}>
+          <GestureDetector gesture={scroll}>
+            <Animated.ScrollView
+              onScroll={onScroll}
+              scrollEventThrottle={16}
+              scrollEnabled={expanded}
+              bounces={false}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingTop: 2,
+                // A barra fica por cima e, no meio, a folha passa da tela: o
+                // último card precisa subir acima das duas.
+                paddingBottom: tabSpace + 24 + top + resting,
+                gap: 12
+              }}
+              showsVerticalScrollIndicator={false}
+            >
+              {search.isError ? (
+                <View style={styles.note}>
+                  <Text style={[text(14), { color: palette.muted }]}>
+                    Não deu para buscar os bares.
+                  </Text>
+                  <Pressable onPress={() => search.refetch()} hitSlop={10}>
+                    <Text
+                      style={[
+                        text(14, 'Bold'),
+                        styles.link,
+                        { color: palette.ink }
+                      ]}
+                    >
+                      Tentar de novo
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : !search.data ? (
+                <Text style={[text(14), styles.note, { color: palette.muted }]}>
+                  Buscando bares…
                 </Text>
-              </Pressable>
-            </View>
-          ) : !search.data ? (
-            <Text style={[text(14), styles.note, { color: palette.muted }]}>
-              Buscando bares…
-            </Text>
-          ) : bars.length === 0 ? (
-            <Text style={[text(14), styles.note, { color: palette.muted }]}>
-              {liveOnly
-                ? 'Nenhum jogo ao vivo agora por perto.'
-                : `Nenhum bar com jogo num raio de ${radiusKm} km.`}
-            </Text>
-          ) : (
-            bars.map((bar, index) =>
-              index === 0 ? (
-                <BarTicket
-                  key={bar.id}
-                  bar={bar}
-                  now={now}
-                  palette={palette}
-                  favorite={favoriteIds.has(bar.id)}
-                  onFavorite={() =>
-                    favoriteIds.has(bar.id)
-                      ? removeFavorite.mutate({ barId: bar.id })
-                      : addFavorite.mutate({ barId: bar.id })
-                  }
-                  onPress={() => open(bar)}
-                />
+              ) : bars.length === 0 ? (
+                <Text style={[text(14), styles.note, { color: palette.muted }]}>
+                  {liveOnly
+                    ? 'Nenhum jogo ao vivo agora por perto.'
+                    : `Nenhum bar com jogo num raio de ${radiusKm} km.`}
+                </Text>
               ) : (
-                <BarRow
-                  key={bar.id}
-                  bar={bar}
-                  now={now}
-                  palette={palette}
-                  onPress={() => open(bar)}
-                />
-              )
-            )
-          )}
-        </ScrollView>
+                bars.map((bar, index) =>
+                  index === 0 ? (
+                    <BarTicket
+                      key={bar.id}
+                      bar={bar}
+                      now={now}
+                      palette={palette}
+                      favorite={favorites.ids.has(bar.id)}
+                      onFavorite={() => favorites.toggle(bar.id)}
+                      onPress={() => open(bar)}
+                    />
+                  ) : (
+                    <BarRow
+                      key={bar.id}
+                      bar={bar}
+                      now={now}
+                      palette={palette}
+                      onPress={() => open(bar)}
+                    />
+                  )
+                )
+              )}
+            </Animated.ScrollView>
+          </GestureDetector>
+        </GestureDetector>
       </Animated.View>
 
       {soon.toast}
@@ -533,7 +592,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  who: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  // Encolhe com nome longo em vez de empurrar a busca e o sino para fora.
+  who: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center'
+  },
   avatar: {
     width: 40,
     height: 40,
