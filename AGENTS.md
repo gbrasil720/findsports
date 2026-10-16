@@ -344,8 +344,10 @@ invente layout que o projeto não tem.
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
-  `search` (o círculo à direita), Ranking e IA desabilitadas com `tabPress`, e "Você"
-  desabilitada abrindo o menu de vidro (`components/tab-bar.tsx`). Borda tracejada de um
+  `search` (o círculo à direita) e Ranking e IA desabilitadas com `tabPress`. "Você" é aba
+  de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
+  cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
+  localização) fica em `components/explore-state.tsx`. Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos. Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
