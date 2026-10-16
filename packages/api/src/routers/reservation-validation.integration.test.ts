@@ -761,7 +761,7 @@ integrationTest(
       // A margem é só da validação: a fila segue fechando no fim do jogo.
       expect(await queue.hasValidatable()).toBe(true)
       expect(await queue.hasOpen()).toBe(false)
-      expect((await refusal(queue.list())).code).toBe('FORBIDDEN')
+      expect((await refusal(queue.going())).code).toBe('FORBIDDEN')
 
       // Janela fechada há 1 h: volta a recusa de quem não é Elite.
       await ctx.db

@@ -1,44 +1,34 @@
-import {
-  and,
-  db,
-  eq,
-  inArray,
-  isNull,
-  type SQL,
-  sql
-} from '@findsports_oficial/db'
-import { RESERVATION_CAP_MAX } from '@findsports_oficial/db/reservation-limits'
+import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
+import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
+  ACTIVE_RESERVATION_STATUSES,
   reservation,
-  reservationCode
+  reservationCode,
+  reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
-import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
-import { byMatchOrder } from '../lib/game-participants'
+import { participantNames } from '../lib/game-participants'
 import {
   assertCanEnableReservations,
   canManageReservations,
   hasOpenReservations,
-  notEnded,
-  validationOpen,
-  withSeatAvailability
+  validationOpen
 } from '../lib/reservation-intake'
 
 /**
- * Fila de pedidos de reserva do bar (WEB-125): listar, confirmar, recusar.
+ * "Quem vai" do bar (seção 17 do design): por jogo, quem marcou "Vou assistir
+ * aqui" e quem já validou o código no balcão. Substituiu a fila de pedidos
+ * de reserva quando a reserva de mesa saiu do produto (16/10/2026). Quem
+ * marca já recebe o código: o bar não aprova ninguém.
  *
- * Nenhuma entrada carrega `barId`: o bar sai da sessão, e toda leitura e
- * escrita filtra pelos jogos dele. Pedido de outro bar responde como
- * inexistente.
- *
- * A fila não exige o interruptor de recebimento (WEB-131) nem, havendo
- * reserva em aberto, o Elite vigente (WEB-341): desligar ou perder o plano
- * impede pedidos novos, e os que já chegaram ainda precisam de resposta. O
- * teto é recurso do plano e continua exigindo Elite.
+ * Nenhuma entrada carrega `barId`: o bar sai da sessão. Do torcedor, só o
+ * nome; telefone e e-mail não saem daqui. É recurso do Elite, e continua
+ * para quem perdeu o plano com código em aberto, que precisa honrar a oferta
+ * (WEB-341).
  */
 
 const barProcedure = pubProcedure.use(async ({ ctx, next }) => {
@@ -58,7 +48,7 @@ const barProcedure = pubProcedure.use(async ({ ctx, next }) => {
   })
 })
 
-/** Listar e responder: Elite vigente, ou reserva em aberto para honrar. */
+/** Elite vigente, ou código em aberto para honrar. */
 const ownerProcedure = barProcedure.use(async ({ ctx, next }) => {
   if (!(await canManageReservations(ctx.barId, ctx.subscription))) {
     assertCanEnableReservations(ctx.subscription)
@@ -66,72 +56,10 @@ const ownerProcedure = barProcedure.use(async ({ ctx, next }) => {
   return next()
 })
 
-const eliteProcedure = barProcedure.use(({ ctx, next }) => {
-  assertCanEnableReservations(ctx.subscription)
-  return next()
-})
-
-/** Teto em pessoas; `null` tira o teto (ou, no jogo, volta ao padrão do bar). */
-export const reservationCapInput = z
-  .number()
-  .int()
-  .min(1)
-  .max(RESERVATION_CAP_MAX)
-  .nullable()
-
-const ownEvents = (barId: string, extra?: SQL) =>
-  db
-    .select({ id: event.id })
-    .from(event)
-    .where(and(eq(event.barId, barId), extra))
-
-/**
- * O `UPDATE` condicional não alterou nada: passa só se o pedido já está na
- * resposta pedida (repetição). Outro estado é recusa, e pedido de outro bar
- * é inexistente.
- */
-async function assertAlreadyAnswered(
-  own: SQL | undefined,
-  answer: 'confirmed' | 'declined'
-) {
-  const [current] = await db
-    .select({ status: reservation.status })
-    .from(reservation)
-    .where(own)
-    .limit(1)
-  if (!current) {
-    throw new TRPCError({
-      code: 'NOT_FOUND',
-      message: 'Pedido não encontrado.'
-    })
-  }
-  if (current.status === answer) return
-  if (current.status === 'cancelled') {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message: 'O torcedor cancelou este pedido.'
-    })
-  }
-  // Ainda pendente e o `UPDATE` não pegou: o jogo acabou e o pedido expirou.
-  if (current.status === 'pending') {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message: 'O jogo já acabou. Este pedido expirou sem resposta.'
-    })
-  }
-  throw new TRPCError({
-    code: 'CONFLICT',
-    message:
-      current.status === 'declined'
-        ? 'Este pedido já foi recusado.'
-        : 'Este pedido já foi confirmado.'
-  })
-}
-
 export const barReservationsRouter = router({
   /**
    * Há reserva pendente ou confirmada de jogo que ainda não acabou. É o que
-   * mantém a aba Reservas e a validação no painel de quem não recebe mais
+   * mantém a aba Quem vai e a validação no painel de quem não recebe mais
    * pedido novo (WEB-341). Sem guarda de plano: só diz o que desenhar.
    */
   hasOpen: barProcedure.query(({ ctx }) => hasOpenReservations(ctx.barId)),
@@ -145,193 +73,80 @@ export const barReservationsRouter = router({
   ),
 
   /**
-   * Pedidos dos jogos que ainda não acabaram, pendentes primeiro e, dentro de
-   * cada estado, por ordem de chegada. Do torcedor, só o nome: telefone e
-   * e-mail não saem daqui.
+   * Os jogos com a validação ainda aberta, do mais próximo ao mais distante,
+   * cada um com quem vai e quando validou. Quem validou primeiro, e dentro de
+   * cada grupo, quem marcou antes.
    */
-  list: ownerProcedure.query(async ({ ctx }) => {
-    // ponytail: sem paginação; o teto por jogo (WEB-152) limita o volume.
-    const rows = await db.query.reservation.findMany({
-      where: inArray(reservation.eventId, ownEvents(ctx.barId, notEnded)),
-      columns: {
-        id: true,
-        status: true,
-        partySize: true,
-        note: true,
-        // A cópia congelada na reserva, nunca `bar.house_offer` (ADR 0003).
-        offerSnapshot: true,
-        createdAt: true
-      },
-      with: {
-        user: { columns: { name: true } },
-        event: {
-          columns: {
-            championship: true,
-            participantFreeText: true,
-            startsAt: true
-          },
-          with: {
-            participants: {
-              with: { team: { columns: { name: true } } },
-              orderBy: byMatchOrder
-            }
-          }
-        }
-      },
-      orderBy: (row, { asc }) => [
-        sql`${row.status} <> 'pending'`,
-        asc(row.createdAt)
-      ]
-    })
-
-    return rows.map(({ user: guest, event: game, ...row }) => ({
-      ...row,
-      guestName: guest.name,
-      event: {
-        championship: game.championship,
-        participantFreeText: game.participantFreeText,
-        participants: game.participants.map(({ team }) => team.name),
-        startsAt: game.startsAt
-      }
-    }))
-  }),
-
-  /**
-   * Lotação dos jogos que ainda não acabaram (WEB-152): pessoas confirmadas
-   * diante do teto efetivo. O teto só fecha pedidos novos; confirmar além
-   * dele continua permitido, e é por isso que o dono vê o número.
-   */
-  capacity: eliteProcedure.query(async ({ ctx }) => {
-    const ownBar = await db.query.bar.findFirst({
-      where: eq(bar.id, ctx.barId),
-      columns: { reservationCap: true },
-      with: {
-        events: {
-          // Teto só faz sentido em jogo que recebe pedido.
-          where: and(notEnded, eq(event.acceptsReservations, true)),
-          columns: {
-            id: true,
-            championship: true,
-            participantFreeText: true,
-            startsAt: true,
-            reservationCap: true
-          },
-          with: {
-            participants: {
-              with: { team: { columns: { name: true } } },
-              orderBy: byMatchOrder
-            }
-          },
-          orderBy: (row, { asc }) => [asc(row.startsAt)]
-        }
-      }
-    })
-    const defaultCap = ownBar?.reservationCap ?? null
-    const games = await withSeatAvailability(ownBar?.events ?? [], defaultCap)
-
-    return {
-      defaultCap,
-      games: games.map(({ participants, ...game }) => ({
-        ...game,
-        participants: participants.map(({ team }) => team.name)
-      }))
-    }
-  }),
-
-  setDefaultCap: eliteProcedure
-    .input(z.object({ reservationCap: reservationCapInput }))
-    .mutation(async ({ ctx, input }) => {
-      await db
-        .update(bar)
-        .set({ reservationCap: input.reservationCap })
-        .where(eq(bar.id, ctx.barId))
-      return { reservationCap: input.reservationCap }
-    }),
-
-  setGameCap: eliteProcedure
-    .input(
-      z.object({
-        eventId: z.string().uuid(),
-        reservationCap: reservationCapInput
+  going: ownerProcedure.query(async ({ ctx }) => {
+    // ponytail: sem paginação; o volume é o de quem marca num bar só.
+    const rows = await db
+      .select({
+        eventId: event.id,
+        championship: event.championship,
+        participantFreeText: event.participantFreeText,
+        participants: participantNames(sql`${event.id}`),
+        startsAt: event.startsAt,
+        name: user.name,
+        markedAt: attendance.createdAt,
+        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`
       })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const [updated] = await db
-        .update(event)
-        .set({ reservationCap: input.reservationCap })
-        .where(and(eq(event.id, input.eventId), eq(event.barId, ctx.barId)))
-        .returning({ id: event.id })
-      if (!updated) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Jogo não encontrado.'
-        })
-      }
-      return { reservationCap: input.reservationCap }
-    }),
-
-  /**
-   * Só pedido pendente muda. A condição de estado vai no próprio `UPDATE`:
-   * duas respostas simultâneas disputam a linha no banco, e só a primeira
-   * encontra `pending`. Depois do fim do jogo o pedido expirou (a fila já
-   * não o mostra) e não muda mais. Repetir a MESMA resposta devolve o estado
-   * atual com `changed: false`; responder diferente, ou responder pedido
-   * cancelado ou expirado, falha.
-   *
-   * O `updated_at` gravado aqui é a data da resposta que o aviso do torcedor
-   * lê (WEB-318, `decidedAt` em `reservations.mine`).
-   */
-  respond: ownerProcedure
-    .input(
-      z.object({
-        reservationId: z.string().uuid(),
-        status: z.enum(['confirmed', 'declined'])
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const own = (extra?: SQL) =>
+      .from(attendance)
+      .innerJoin(event, eq(event.id, attendance.eventId))
+      .innerJoin(user, eq(user.id, attendance.userId))
+      .leftJoin(
+        reservation,
         and(
-          eq(reservation.id, input.reservationId),
-          inArray(reservation.eventId, ownEvents(ctx.barId, extra))
+          eq(reservation.userId, attendance.userId),
+          eq(reservation.eventId, attendance.eventId),
+          inArray(reservation.status, ACTIVE_RESERVATION_STATUSES)
         )
+      )
+      .leftJoin(
+        reservationCode,
+        and(
+          eq(reservationCode.reservationId, reservation.id),
+          isNull(reservationCode.retiredAt)
+        )
+      )
+      .leftJoin(
+        reservationCodeUse,
+        and(
+          eq(reservationCodeUse.codeId, reservationCode.id),
+          isNull(reservationCodeUse.undoneAt)
+        )
+      )
+      .where(and(eq(event.barId, ctx.barId), validationOpen))
+      .groupBy(event.id, user.id, attendance.createdAt)
+      .orderBy(event.startsAt, event.id)
 
-      const changed = await db.transaction(async (tx) => {
-        const [updated] = await tx
-          .update(reservation)
-          .set({ status: input.status })
-          .where(and(own(notEnded), eq(reservation.status, 'pending')))
-          .returning({
-            userId: reservation.userId,
-            eventId: reservation.eventId
-          })
-        if (!updated) return false
-
-        if (input.status === 'declined') {
-          // Recusado, o código para de valer no bar e volta a circular.
-          await tx
-            .update(reservationCode)
-            .set({ retiredAt: new Date() })
-            .where(
-              and(
-                eq(reservationCode.reservationId, input.reservationId),
-                isNull(reservationCode.retiredAt)
-              )
-            )
-          // A recusa leva junto a presença que a reserva criou, e só ela: a
-          // marcada à mão é intenção do torcedor e fica (ADR 0003, WEB-296).
-          await tx
-            .delete(attendance)
-            .where(
-              and(
-                eq(attendance.userId, updated.userId),
-                eq(attendance.eventId, updated.eventId),
-                eq(attendance.source, 'reservation')
-              )
-            )
-        }
-        return true
+    const games = new Map<
+      string,
+      {
+        id: string
+        championship: string
+        participantFreeText: string | null
+        participants: string[]
+        startsAt: Date
+        people: { name: string; markedAt: Date; validatedAt: Date | null }[]
+      }
+    >()
+    for (const { eventId, name, markedAt, validatedAt, ...game } of rows) {
+      const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
+      entry.people.push({
+        name,
+        markedAt,
+        validatedAt: validatedAt ? new Date(validatedAt) : null
       })
-      if (!changed) await assertAlreadyAnswered(own(), input.status)
-      return { status: input.status, changed }
-    })
+      games.set(eventId, entry)
+    }
+    return [...games.values()].map((game) => ({
+      ...game,
+      people: game.people.sort(
+        (a, b) =>
+          Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||
+          a.markedAt.getTime() - b.markedAt.getTime()
+      ),
+      validated: game.people.filter(({ validatedAt }) => validatedAt).length
+    }))
+  })
 })

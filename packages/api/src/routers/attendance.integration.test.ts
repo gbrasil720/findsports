@@ -247,6 +247,12 @@ integrationTest(
         .insert(reservationCodeUse)
         .values({ codeId: code?.id as string })
       expect((await mine())?.validated).toBe(true)
+      // O bar Elite vê quem vai, pelo nome, e quem já validou.
+      const [going] = await ctx.owner.barReservations.going()
+      expect(going).toMatchObject({ id: future, validated: 1 })
+      expect(going?.people).toMatchObject([{ name: 'Conta fan' }])
+      expect(going?.people[0]?.validatedAt).toBeInstanceOf(Date)
+
       const [listed] = await ctx.fan().attendance.mine()
       expect(listed).toMatchObject({
         eventId: future,
