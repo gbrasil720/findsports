@@ -727,13 +727,12 @@ export default function BarPage() {
             accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
             onPressIn={attendPress.onPressIn}
             onPressOut={attendPress.onPressOut}
+            // A folha também é onde se vê o código e se desmarca.
             onPress={() =>
-              mine.attending && mine.code
-                ? router.push(`/codigo/${going.id}`)
-                : router.push({
-                    pathname: '/vou/[barId]',
-                    params: { barId: id, eventId: going.id }
-                  })
+              router.push({
+                pathname: '/vou/[barId]',
+                params: { barId: id, eventId: going.id }
+              })
             }
             style={styles.attendSlot}
           >
