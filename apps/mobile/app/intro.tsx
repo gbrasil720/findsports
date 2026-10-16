@@ -17,6 +17,7 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { type Palette, usePalette } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import {
   type ArtProps,
@@ -42,13 +43,14 @@ import { PillButton, useStatusBar } from '@/components/ui'
 
 const INK = '#12120f'
 const PAPER = '#f1eee6'
+const ACID = '#c9f135'
 
 type Page = {
   Art: ComponentType<ArtProps>
   /** As linhas do título como o design quebra: texto e trecho em destaque. */
   title: [string, string?][]
   body: string
-  /** A ilustração é escura: barra de status clara. */
+  /** A ilustração é escura nos dois temas: barra de status clara. */
   dark?: boolean
 }
 
@@ -96,8 +98,13 @@ export default function Intro() {
     setReached((current) => Math.max(current, start))
   }, [start, width])
   const splashDone = useContext(SplashDone)
+  // O design só tem o claro; no escuro, tinta e papel trocam e o acid
+  // assume o destaque do vermelho, como na tab bar do design.
+  const palette = usePalette()
   // Durante a splash, a barra segue o tema do sistema, como ela.
-  useStatusBar(splashDone ? (PAGES[page].dark ? 'light' : 'dark') : 'auto')
+  useStatusBar(
+    splashDone ? (PAGES[page].dark || palette.dark ? 'light' : 'dark') : 'auto'
+  )
 
   // A ilustração ocupa a mesma fração da tela que no design (476 de 844).
   const artHeight = Math.round((height * 476) / 844)
@@ -122,7 +129,7 @@ export default function Intro() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
         ref={pager}
         horizontal
@@ -142,6 +149,7 @@ export default function Intro() {
             artHeight={artHeight}
             done={index < start}
             play={splashDone && index <= reached}
+            palette={palette}
           />
         ))}
       </ScrollView>
@@ -163,11 +171,13 @@ export default function Intro() {
           label={last ? 'Começar' : 'Continuar'}
           trailing
           onPress={next}
+          // Sombra dura em tinta some no fundo de tinta: preto, como em reset-sent.
+          edge={palette.dark ? '#000' : INK}
         />
-        <Text style={styles.signIn}>
+        <Text style={[styles.signIn, { color: palette.muted }]}>
           Já tem conta?{' '}
           <Text
-            style={styles.signInLink}
+            style={[styles.signInLink, { color: palette.ink }]}
             onPress={signIn}
             accessibilityRole="link"
           >
@@ -196,7 +206,8 @@ function IntroPage({
   width,
   artHeight,
   done,
-  play
+  play,
+  palette
 }: {
   item: Page
   index: number
@@ -204,11 +215,18 @@ function IntroPage({
   artHeight: number
   done: boolean
   play: boolean
+  palette: Palette
 }) {
   const progress = useEntrance(done, play)
   return (
     <View style={{ width }}>
-      <View style={[styles.artShadow, { height: artHeight }]}>
+      <View
+        style={[
+          styles.artShadow,
+          { height: artHeight, backgroundColor: palette.bg },
+          palette.dark && { shadowColor: '#000', shadowOpacity: 0.6 }
+        ]}
+      >
         <View style={styles.art}>
           <Art width={width} height={artHeight} progress={progress} />
         </View>
@@ -218,7 +236,14 @@ function IntroPage({
           {PAGES.map((p, dot) => (
             <View
               key={p.body}
-              style={[styles.dot, dot === index && styles.dotActive]}
+              style={[
+                styles.dot,
+                palette.dark && { backgroundColor: 'rgba(241,238,230,.2)' },
+                dot === index && [
+                  styles.dotActive,
+                  { backgroundColor: palette.ink }
+                ]
+              ]}
             />
           ))}
         </Enter>
@@ -229,17 +254,24 @@ function IntroPage({
               progress={progress}
               frames={COPY.line(line)}
             >
-              <Text style={styles.title}>
+              <Text style={[styles.title, { color: palette.ink }]}>
                 {text}
                 {accent ? (
-                  <Text style={styles.titleAccent}>{accent}</Text>
+                  <Text
+                    style={[
+                      styles.titleAccent,
+                      palette.dark && { color: ACID }
+                    ]}
+                  >
+                    {accent}
+                  </Text>
                 ) : null}
               </Text>
             </Enter>
           ))}
         </View>
         <Enter progress={progress} frames={COPY.body}>
-          <Text style={styles.body}>{body}</Text>
+          <Text style={[styles.body, { color: palette.muted }]}>{body}</Text>
         </Enter>
       </View>
     </View>
