@@ -13,23 +13,24 @@ import {
   Text,
   View
 } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
+  BarTicket,
   dayLabel,
-  MatchRow,
   matchLine,
   type Palette,
   PhotoPill,
   usePalette
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, usePress } from '@/components/motion'
+import { useSoon } from '@/components/soon'
 import {
   ACID,
   BackButton,
   Icon,
   INK,
-  LIVE,
   PAPER,
   text,
   useStatusBar
@@ -37,13 +38,14 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
-import { formatKm, formatTime, isLive } from '@/lib/explore'
+import { formatKm, formatTime } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
- * "Bar · página" (07 do design): foto, nome, o jogo de hoje, o que o bar tem
- * para ver o jogo, a oferta da casa e "Vou assistir". A reserva de mesa é a
- * seção 08 e entra com ela.
+ * "Página do bar" (2g do design): a foto com o nome, o jogo de hoje no mesmo
+ * ingresso do Explorar, o que o bar tem para ver o jogo, a oferta da casa e a
+ * dupla "Vou assistir" e "Reservar mesa" num vidro preso embaixo. A reserva é
+ * a seção 08: até lá o botão avisa que chega em breve.
  */
 
 /** As características que o design desenha em ladrilho, com ícone. */
@@ -60,6 +62,8 @@ export default function BarPage() {
   const palette = usePalette()
   const queryClient = useQueryClient()
   const session = authClient.useSession()
+  const soon = useSoon()
+  const reserve = usePress(0, 3)
   useStatusBar('light')
 
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
@@ -143,6 +147,7 @@ export default function BarPage() {
       data.amenities.includes(item.id) &&
       !TILES.some((tile) => tile.id === item.id)
   )
+  const reservable = games.some((game) => game.acceptsReservations)
 
   const toggleFavorite = () => {
     haptic.select()
@@ -155,7 +160,7 @@ export default function BarPage() {
     })
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View style={{ flex: 1, backgroundColor: palette.sheet }}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
@@ -178,21 +183,27 @@ export default function BarPage() {
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.heroText}>
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+            <View style={styles.heroPills}>
               {data.plan === 'elite' ? (
-                <PhotoPill kind="elite" label="Elite" />
+                <PhotoPill kind="acid" height={32}>
+                  <Icon name="medal" size={15} color={INK} />
+                  <Text style={[text(13.5, 'Bold', 1.2), { color: INK }]}>
+                    Elite
+                  </Text>
+                </PhotoPill>
               ) : null}
               {data.rating ? (
-                <PhotoPill
-                  kind="glass"
-                  label={`${data.rating.percentage}% voltariam`}
-                />
+                <PhotoPill kind="dark" height={32}>
+                  <Text style={[text(13.5, 'Bold', 1.2), { color: PAPER }]}>
+                    {data.rating.percentage}% voltariam
+                  </Text>
+                </PhotoPill>
               ) : null}
             </View>
             <Text style={styles.name} numberOfLines={3}>
               {data.name.toUpperCase()}
             </Text>
-            <Text style={[text(14), { color: '#e2dfd7', marginTop: 4 }]}>
+            <Text style={[text(14, 'Regular', 1.4), styles.info]}>
               {info.join(' · ')}
             </Text>
           </View>
@@ -201,12 +212,30 @@ export default function BarPage() {
         <View style={styles.body}>
           {next ? (
             <>
-              <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-                {isLive(next, now) || dayLabel(next.startsAt, now) === 'Hoje'
+              <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
+                {dayLabel(next.startsAt, now) === 'Hoje' ||
+                new Date(next.startsAt).getTime() <= now
                   ? 'Hoje no telão'
                   : 'Próximo jogo'}
               </Text>
-              <GameCard game={next} now={now} palette={palette} />
+              <BarTicket
+                bar={{
+                  id: data.id,
+                  name: data.name,
+                  neighborhood: data.neighborhood,
+                  photo_url: data.photoUrl,
+                  plan: data.plan,
+                  rating: data.rating,
+                  distance_km: km ? Number(km) : 0,
+                  amenities: data.amenities,
+                  goingCount: next.attendance?.count ?? null,
+                  nextEvent: next
+                }}
+                now={now}
+                palette={palette}
+                favorite={favorite}
+                onFavorite={toggleFavorite}
+              />
             </>
           ) : (
             <Text style={[text(15), { color: palette.muted }]}>
@@ -217,11 +246,13 @@ export default function BarPage() {
           {tiles.length ? (
             <View style={styles.tiles}>
               {tiles.map((tile) => (
-                <View
-                  key={tile.id}
-                  style={[styles.tile, { backgroundColor: palette.card }]}
-                >
-                  <Icon name={tile.icon} size={26} color={palette.ink} />
+                <Card key={tile.id} palette={palette} style={styles.tile}>
+                  <Icon
+                    name={tile.icon}
+                    size={26}
+                    color={palette.ink}
+                    accent={palette.accent}
+                  />
                   <Text
                     style={[
                       text(11.5, 'SemiBold', 1.2),
@@ -230,37 +261,41 @@ export default function BarPage() {
                   >
                     {tile.label}
                   </Text>
-                </View>
+                </Card>
               ))}
             </View>
           ) : null}
           {others.length ? (
-            <Text style={[text(13), { color: palette.muted }]}>
+            <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
               Também: {others.map((item) => item.label).join(', ')}.
             </Text>
           ) : null}
 
           {data.houseOffer ? (
-            <View style={[styles.offer, { backgroundColor: palette.card }]}>
-              <View style={styles.offerStub}>
-                <Icon name="ticket" size={26} color={INK} />
+            <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
+              <View style={styles.offer}>
+                <View style={styles.offerStub}>
+                  <Icon name="ticket" size={26} color={INK} />
+                </View>
+                <View style={styles.offerText}>
+                  <Text
+                    style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}
+                  >
+                    Oferta da casa
+                  </Text>
+                  <Text
+                    style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
+                  >
+                    {data.houseOffer}
+                  </Text>
+                </View>
               </View>
-              <View
-                style={{ flex: 1, padding: 12, paddingHorizontal: 14, gap: 2 }}
-              >
-                <Text style={[text(14.5, 'Bold'), { color: palette.ink }]}>
-                  Oferta da casa
-                </Text>
-                <Text style={[text(13), { color: palette.muted }]}>
-                  {data.houseOffer}
-                </Text>
-              </View>
-            </View>
+            </Card>
           ) : null}
 
           {games.length > 1 ? (
-            <View style={{ gap: 8 }}>
-              <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+            <View style={{ gap: 4 }}>
+              <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
                 Outros jogos
               </Text>
               {games.slice(1).map((game) => (
@@ -270,14 +305,14 @@ export default function BarPage() {
                 >
                   <Text
                     style={[
-                      text(14, 'SemiBold'),
+                      text(14, 'SemiBold', 1.3),
                       { color: palette.ink, flex: 1 }
                     ]}
                     numberOfLines={1}
                   >
                     {matchLine(game)}
                   </Text>
-                  <Text style={[text(13), { color: palette.muted }]}>
+                  <Text style={[styles.otherWhen, { color: palette.muted }]}>
                     {dayLabel(game.startsAt, now)} · {formatTime(game.startsAt)}
                   </Text>
                 </View>
@@ -298,56 +333,110 @@ export default function BarPage() {
             selected={favorite}
             onPress={toggleFavorite}
           >
-            <Icon name="fan" size={20} color={PAPER} />
+            <Icon name="fan" size={20} color={PAPER} accent={PAPER} />
           </RoundGlass>
         </View>
       </View>
 
-      {going && mine ? (
+      {(going && mine) || reservable ? (
         <Glass
-          tone="light"
-          style={[styles.dock, { bottom: insets.bottom + 12 }]}
+          tone={palette.dark ? 'dark' : 'light'}
+          style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: mine.attending }}
-            disabled={attend.isPending}
-            onPress={() =>
-              attend.mutate({
-                eventId: going.id,
-                attending: !mine.attending
-              })
-            }
-            style={({ pressed }) => [
-              styles.attend,
-              mine.attending && { backgroundColor: ACID },
-              pressed && { transform: [{ scale: 0.97 }] }
-            ]}
-          >
-            <Icon name={mine.attending ? 'check' : 'people'} size={19} />
-            <View>
-              <Text style={[text(15, 'Bold', 1.2), { color: INK }]}>
-                {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
-                {mine.count ? (
-                  <Text style={[text(13, 'SemiBold'), { color: '#55554f' }]}>
-                    {' '}
-                    · {mine.count} vão
-                  </Text>
-                ) : null}
-              </Text>
-              {/* Vale para o próximo jogo que não começou: diz qual. */}
+          {going && mine ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: mine.attending }}
+              accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
+              disabled={attend.isPending}
+              onPress={() =>
+                attend.mutate({ eventId: going.id, attending: !mine.attending })
+              }
+              style={({ pressed }) => [
+                styles.attend,
+                palette.dark && styles.attendDark,
+                mine.attending && { backgroundColor: ACID },
+                !reservable && { flex: 1 },
+                pressed && { transform: [{ scale: 0.97 }] }
+              ]}
+            >
+              <Icon
+                name={mine.attending ? 'check' : 'people'}
+                size={19}
+                color={mine.attending ? INK : palette.ink}
+                accent={palette.accent}
+              />
               <Text
-                style={[text(12, 'Regular', 1.2), { color: '#55554f' }]}
-                numberOfLines={1}
+                style={[
+                  text(15, 'Bold', 1.2),
+                  { color: mine.attending ? INK : palette.ink }
+                ]}
               >
-                {matchLine(going)},{' '}
-                {dayLabel(going.startsAt, now).toLowerCase()} às{' '}
-                {formatTime(going.startsAt)}
+                {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
               </Text>
-            </View>
-          </Pressable>
+            </Pressable>
+          ) : null}
+          {reservable ? (
+            <Pressable
+              accessibilityRole="button"
+              onPressIn={reserve.onPressIn}
+              onPressOut={reserve.onPressOut}
+              onPress={() => soon.show('A reserva de mesa')}
+              style={{ flex: 1 }}
+            >
+              <View style={styles.reserveShadow} />
+              <Animated.View style={[styles.reserve, reserve.style]}>
+                <Text style={[text(15, 'Bold', 1.2), { color: INK }]}>
+                  Reservar mesa
+                </Text>
+              </Animated.View>
+            </Pressable>
+          ) : null}
         </Glass>
       ) : null}
+      {soon.toast}
+    </View>
+  )
+}
+
+/** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
+function Card({
+  palette,
+  shadow,
+  offset = 4,
+  style,
+  children
+}: {
+  palette: Palette
+  shadow?: string
+  offset?: number
+  style?: object
+  children: ReactNode
+}) {
+  return (
+    <View style={style && { flex: 1 }}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            top: offset,
+            left: offset,
+            right: -offset,
+            bottom: -offset,
+            borderRadius: 6,
+            backgroundColor: shadow ?? palette.shadow
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.card, borderColor: palette.ring },
+          style
+        ]}
+      >
+        {children}
+      </View>
     </View>
   )
 }
@@ -371,47 +460,15 @@ function RoundGlass({
       hitSlop={8}
       onPress={onPress}
     >
-      {selected ? (
-        <View style={[styles.round, { backgroundColor: LIVE }]}>
-          {children}
-        </View>
-      ) : (
-        <Glass tone="dark" interactive style={styles.round}>
-          {children}
-        </Glass>
-      )}
+      <Glass
+        tone="dark"
+        tint={selected ? 'rgba(232,50,12,.8)' : undefined}
+        interactive
+        style={styles.round}
+      >
+        {children}
+      </Glass>
     </Pressable>
-  )
-}
-
-/** O jogo de hoje (ou o próximo): times, estado e quando. */
-function GameCard({
-  game,
-  now,
-  palette
-}: {
-  game: Parameters<typeof MatchRow>[0]['game']
-  now: number
-  palette: Palette
-}) {
-  const live = isLive(game, now)
-  return (
-    <View>
-      <View
-        style={[
-          styles.cardShadow,
-          live && { backgroundColor: 'rgba(232,50,12,.28)' }
-        ]}
-      />
-      <View style={[styles.card, { backgroundColor: palette.card }]}>
-        <MatchRow game={game} now={now} palette={palette} />
-        <Text style={[text(12.5), styles.cardFoot, { color: palette.muted }]}>
-          {live
-            ? 'Rolando agora'
-            : `${dayLabel(game.startsAt, now)}, ${formatTime(game.startsAt)}`}
-        </Text>
-      </View>
-    </View>
   )
 }
 
@@ -419,6 +476,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   hero: { height: 340, backgroundColor: '#2a2a25', justifyContent: 'flex-end' },
   heroText: { padding: 18 },
+  heroPills: { flexDirection: 'row', gap: 6, marginBottom: 8 },
   name: {
     fontFamily: 'Anton',
     fontSize: 52,
@@ -426,26 +484,18 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     marginVertical: -12
   },
+  info: { color: '#e2dfd7', marginTop: 4 },
   body: { padding: 16, gap: 14 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: {
-    flex: 1,
     paddingTop: 11,
     paddingBottom: 10,
     paddingHorizontal: 6,
-    borderRadius: 6,
     alignItems: 'center',
-    gap: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18,18,15,.12)'
+    gap: 6
   },
-  offer: {
-    flexDirection: 'row',
-    borderRadius: 6,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18,18,15,.12)'
-  },
+  card: { borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
+  offer: { flexDirection: 'row' },
   offerStub: {
     width: 62,
     backgroundColor: ACID,
@@ -455,6 +505,7 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(18,18,15,.25)',
     borderStyle: 'dashed'
   },
+  offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14, gap: 2 },
   other: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,6 +513,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth
   },
+  otherWhen: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
   top: {
     position: 'absolute',
     left: 16,
@@ -483,33 +535,42 @@ const styles = StyleSheet.create({
     right: 14,
     height: 70,
     borderRadius: 35,
-    padding: 9,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     overflow: 'hidden'
   },
   attend: {
-    flex: 1,
+    height: 52,
+    paddingHorizontal: 18,
     borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    backgroundColor: 'rgba(255,255,255,.55)'
-  },
-  card: {
-    borderRadius: 6,
-    overflow: 'hidden',
-    paddingBottom: 12,
+    backgroundColor: 'rgba(255,255,255,.55)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18,18,15,.12)'
+    borderColor: '#fff'
   },
-  cardShadow: {
+  attendDark: {
+    backgroundColor: 'rgba(255,255,255,.1)',
+    borderColor: 'rgba(255,255,255,.22)'
+  },
+  reserveShadow: {
     position: 'absolute',
-    top: 5,
-    left: 5,
-    right: -5,
-    bottom: -5,
-    borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    left: 0,
+    right: 0,
+    top: 3,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: INK
   },
-  cardFoot: { paddingHorizontal: 14, paddingTop: 10 }
+  reserve: {
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
 })
