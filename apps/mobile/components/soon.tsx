@@ -10,7 +10,7 @@ import { EASE } from '@/components/motion'
 import { text } from '@/components/ui'
 
 /*
- * Aviso curto para o que o design já mostra mas o app ainda não tem (Ranking,
+ * Aviso curto para o que o design já mostra mas o app ainda não tem (Favoritos,
  * busca com IA, telas do menu "Você"): o toque responde em vez de não fazer
  * nada. Some sozinho em 1,6 s. Quem chama passa a frase inteira, para a
  * concordância ficar certa ("O ranking chega em breve", "As conquistas
