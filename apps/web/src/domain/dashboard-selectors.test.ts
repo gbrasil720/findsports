@@ -23,6 +23,8 @@ function makeBar(id: string, startsAt?: string): SearchBar {
     photo_url: null,
     created_at: '2026-08-01T00:00:00.000Z',
     averageSpendCents: null,
+    amenities: [],
+    goingCount: null,
     rating: null,
     distance_km: 1,
     plan: 'starter',
