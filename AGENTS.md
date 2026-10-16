@@ -354,7 +354,7 @@ invente layout que o projeto não tem.
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
-  `search` (o círculo à direita) e Ranking e IA desabilitadas com `tabPress`. "Você" é aba
+  `search` (o círculo à direita) e Favoritos e IA desabilitadas com `tabPress`. A barra tem Favoritos onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
   de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
   cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
   localização) fica em `components/explore-state.tsx`. Borda tracejada de um
