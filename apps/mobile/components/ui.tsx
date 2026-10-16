@@ -246,6 +246,93 @@ const ICONS = {
       <Path d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10.2z" fill={c} opacity={0.35} />
       <Path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10.2z" fill={c} />
     </>
+  ),
+  bell: (c: string) => (
+    <>
+      <Path d="M5 17V11a7 7 0 0 1 14 0v6l1.6 2H3.4z" fill={c} opacity={0.3} />
+      <Path d="M9.4 20a2.6 2.6 0 0 0 5.2 0z" fill={c} />
+      <Path d="M3.4 19 5 17h14l1.6 2z" fill={c} />
+      <Circle cx={18} cy={5.5} r={3.2} fill={LIVE} />
+    </>
+  ),
+  outdoor: (c: string) => (
+    <>
+      <Path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9z" fill={c} opacity={0.3} />
+      <Rect x={11} y={11} width={2.2} height={10} rx={1.1} fill={c} />
+      <Path d="M3 12h18v1.4H3z" fill={c} />
+      <Circle cx={12} cy={3.4} r={1.5} fill={LIVE} />
+    </>
+  ),
+  sound: (c: string) => (
+    <>
+      <Path
+        d="M16 7.5a6 6 0 0 1 0 9M18.6 4.8a10 10 0 0 1 0 14.4"
+        stroke={c}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        fill="none"
+        opacity={0.3}
+      />
+      <Path d="M3 9h4l5-4.5v15L7 15H3z" fill={c} />
+    </>
+  ),
+  premiere: (c: string) => (
+    <>
+      <Rect
+        x={2.5}
+        y={4.5}
+        width={19}
+        height={15}
+        rx={3}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path d="m10 8.4 6 3.6-6 3.6z" fill={c} />
+    </>
+  ),
+  ticket: (c: string) => (
+    <>
+      <Path
+        d="M2.5 6.5h19v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-19v-3.2a2.3 2.3 0 0 0 0-4.6z"
+        fill={c}
+        opacity={0.25}
+      />
+      <Path d="M15.5 6.5h6v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-6z" fill={c} />
+      <Circle cx={8.6} cy={12} r={2} fill={INK} />
+    </>
+  ),
+  medal: (c: string) => (
+    <>
+      <Path
+        d="M6.5 2h4.2l2.4 6.2H8.9zM13.3 2h4.2l-2.4 6.2h-4.2z"
+        fill={c}
+        opacity={0.35}
+      />
+      <Circle cx={12} cy={15} r={6.6} fill={c} />
+      <Path
+        d="m12 11.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"
+        fill={INK}
+      />
+    </>
+  ),
+  arrowUp: (c: string) => (
+    <Path
+      d="M12 3.5 19 10.5l-1.7 1.7-4.1-4.1V20.5h-2.4V8.1l-4.1 4.1L5 10.5z"
+      fill={c}
+    />
+  ),
+  share: (c: string) => (
+    <>
+      <Path
+        d="M4.5 10.5h4v2h-2v7h11v-7h-2v-2h4v11h-15z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M12 2.2 16.6 7l-1.5 1.5L13.1 6.4V15h-2.2V6.4L8.9 8.5 7.4 7z"
+        fill={c}
+      />
+    </>
   )
 }
 
