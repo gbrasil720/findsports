@@ -480,10 +480,10 @@ export function Perforation({ palette }: { palette: Palette }) {
 }
 
 /** As características que viram ícone no card (telão, som, Premiere, área externa). */
+// Os três do design no ingresso; Premiere fica nos ladrilhos da página.
 const AMENITY_ICONS = [
   [1, 'tv'],
   [2, 'sound'],
-  [3, 'premiere'],
   [4, 'outdoor']
 ] as const
 
@@ -505,22 +505,76 @@ export function AmenityIcons({
   )
 }
 
-/** Quem vai: o total confirmado, a partir do piso que o servidor aplica. */
-export function Going({ count, palette }: { count: number; palette: Palette }) {
+/**
+ * Quem vai: a inicial dos três que marcaram por último, sobrepostas, e o
+ * total, a partir do piso que o servidor aplica ("M R J 34 vão", 2g).
+ */
+export function Going({
+  count,
+  initials,
+  palette
+}: {
+  count: number
+  initials: string[]
+  palette: Palette
+}) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-      <Icon
-        name="people"
-        size={17}
-        color={palette.ink}
-        accent={palette.accent}
-      />
-      <Text style={[text(12.5, 'SemiBold', 1.2), { color: palette.ink }]}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      {initials.length ? (
+        initials.map((letter, index) => {
+          const [bg, fg] = GOING_COLORS[index % GOING_COLORS.length]
+          return (
+            <View
+              // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa
+              key={index}
+              style={[
+                styles.goer,
+                {
+                  // Passo de 15 pt entre centros, como os 22 pt com -7 do design.
+                  marginLeft: index ? -11 : 0,
+                  backgroundColor: bg === 'mark' ? palette.mark : bg,
+                  borderColor: palette.card
+                }
+              ]}
+            >
+              <Text
+                style={[
+                  text(10, 'Bold', 1.2),
+                  { color: fg === 'ink' ? palette.ink : fg }
+                ]}
+                maxFontSizeMultiplier={1}
+              >
+                {letter}
+              </Text>
+            </View>
+          )
+        })
+      ) : (
+        <Icon
+          name="people"
+          size={17}
+          color={palette.ink}
+          accent={palette.accent}
+        />
+      )}
+      <Text
+        style={[
+          text(12.5, 'SemiBold', 1.2),
+          { color: palette.ink, marginLeft: 5 }
+        ]}
+      >
         {count.toLocaleString('pt-BR')} {count === 1 ? 'vai' : 'vão'}
       </Text>
     </View>
   )
 }
+
+/** As três bolinhas do design: acid, cinza e vermelha. */
+const GOING_COLORS = [
+  [ACID, INK],
+  ['mark', 'ink'],
+  [LIVE, PAPER]
+] as const
 
 /** O que o ingresso mostra: a busca e o perfil do bar dão os dois. */
 export type TicketBar = Pick<
@@ -533,6 +587,7 @@ export type TicketBar = Pick<
   | 'rating'
   | 'amenities'
   | 'goingCount'
+  | 'goingInitials'
 > & {
   nextEvent?: Game
   /** Sem ela (link compartilhado), o selo de distância não aparece. */
@@ -717,7 +772,11 @@ export function BarTicket({
               </View>
             </View>
             {bar.goingCount ? (
-              <Going count={bar.goingCount} palette={palette} />
+              <Going
+                count={bar.goingCount}
+                initials={bar.goingInitials}
+                palette={palette}
+              />
             ) : null}
           </View>
         </View>
@@ -835,6 +894,15 @@ export function BarRow({
 
 const styles = StyleSheet.create({
   pin: { alignItems: 'center' },
+  // 22 pt com o anel de 2 pt da cor do cartão por fora, como o box-shadow.
+  goer: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   pinLabel: {
     flexDirection: 'row',
     alignItems: 'center',
