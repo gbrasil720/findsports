@@ -1,8 +1,8 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useLocalSearchParams } from 'expo-router'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { type ReactNode, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -156,8 +156,8 @@ export default function BarPage() {
     walk?: string
   }>()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const palette = usePalette()
-  const queryClient = useQueryClient()
   const session = authClient.useSession()
   const soon = useSoon()
   const attendPress = usePress(0, 3)
@@ -172,39 +172,6 @@ export default function BarPage() {
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
   const favorites = useFavorites()
   const favorite = favorites.ids.has(id)
-
-  // "Vou assistir" otimista: o botão acende no toque, com o háptico; volta
-  // se o servidor recusar.
-  const key = trpc.pubs.getById.queryKey({ id })
-  type Bar = NonNullable<typeof bar.data>
-  const before = useRef<Bar | undefined>(undefined)
-  const attend = useMutation(
-    trpc.attendance.set.mutationOptions({
-      onMutate: async ({ eventId, attending }) => {
-        if (attending) haptic.success()
-        else haptic.select()
-        await queryClient.cancelQueries({ queryKey: key })
-        before.current = queryClient.getQueryData<Bar>(key)
-        queryClient.setQueryData<Bar>(key, (old) =>
-          old
-            ? {
-                ...old,
-                events: old.events.map((game) =>
-                  game.id === eventId && game.attendance
-                    ? { ...game, attendance: { ...game.attendance, attending } }
-                    : game
-                )
-              }
-            : old
-        )
-      },
-      onError: () => {
-        haptic.error()
-        queryClient.setQueryData(key, before.current)
-      },
-      onSettled: () => queryClient.invalidateQueries({ queryKey: key })
-    })
-  )
 
   // Puxar para baixo estica a foto em vez de mostrar papel acima dela.
   const scrollY = useSharedValue(0)
@@ -277,8 +244,10 @@ export default function BarPage() {
   const now = Date.now()
   const games = data?.events ?? []
   const next = games[0]
-  // "Vou assistir" vale para o próximo jogo que ainda não começou.
-  const going = games.find((game) => game.attendance)
+  // "Vou assistir" abre no jogo marcado, senão no próximo que não começou.
+  const going =
+    games.find((game) => game.attendance?.attending) ??
+    games.find((game) => game.attendance)
   const mine = going?.attendance
   const spend = data?.averageSpendCents
     ? `R$ ${Math.round(data.averageSpendCents / 100)} por pessoa, informado pelo bar`
@@ -756,11 +725,15 @@ export default function BarPage() {
             accessibilityRole="button"
             accessibilityState={{ selected: mine.attending }}
             accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
-            disabled={attend.isPending}
             onPressIn={attendPress.onPressIn}
             onPressOut={attendPress.onPressOut}
             onPress={() =>
-              attend.mutate({ eventId: going.id, attending: !mine.attending })
+              mine.attending && mine.code
+                ? router.push(`/codigo/${going.id}`)
+                : router.push({
+                    pathname: '/vou/[barId]',
+                    params: { barId: id, eventId: going.id }
+                  })
             }
             style={styles.attendSlot}
           >
