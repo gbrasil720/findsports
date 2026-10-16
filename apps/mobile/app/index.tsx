@@ -24,6 +24,9 @@ export default function Home() {
   const user = session.data?.user
   if (user?.role === 'fan' && !user.onboardingCompleted)
     return <Redirect href="/onboarding" />
+  // Com o onboarding feito, o torcedor começa no Explorar. O bar continua
+  // nesta tela até o app ter o painel do dono (seções 16 e 17).
+  if (user?.role === 'fan') return <Redirect href="/explore" />
 
   const apiStatus = api.isPending
     ? 'Conectando à API…'
