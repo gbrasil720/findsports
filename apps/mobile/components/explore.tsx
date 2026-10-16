@@ -226,6 +226,7 @@ export function Chip({
   onPress: () => void
 }) {
   const fg = on ? INK : palette.ink
+  const press = usePressScale()
   return (
     <Pressable
       accessibilityRole="button"
@@ -236,26 +237,27 @@ export function Chip({
       }}
       // O vidro interativo do iOS 26 já reage ao toque; a escala só entra
       // onde ele não existe.
-      style={({ pressed }) =>
-        !LIQUID && pressed && { transform: [{ scale: 0.97 }] }
-      }
+      onPressIn={LIQUID ? undefined : press.onPressIn}
+      onPressOut={LIQUID ? undefined : press.onPressOut}
     >
-      <Glass
-        tone={palette.dark ? 'dark' : 'light'}
-        tint={on ? 'rgba(201,241,53,.66)' : undefined}
-        interactive
-        style={styles.chip}
-      >
-        {live ? <View style={styles.liveDot} /> : null}
-        {icon ? (
-          <Icon name={icon} size={16} color={fg} accent={palette.accent} />
-        ) : null}
-        <Text
-          style={[text(13.5, on ? 'Bold' : 'SemiBold', 1.2), { color: fg }]}
+      <Animated.View style={LIQUID ? undefined : press.style}>
+        <Glass
+          tone={palette.dark ? 'dark' : 'light'}
+          tint={on ? 'rgba(201,241,53,.66)' : undefined}
+          interactive
+          style={styles.chip}
         >
-          {label}
-        </Text>
-      </Glass>
+          {live ? <View style={styles.liveDot} /> : null}
+          {icon ? (
+            <Icon name={icon} size={16} color={fg} accent={palette.accent} />
+          ) : null}
+          <Text
+            style={[text(13.5, on ? 'Bold' : 'SemiBold', 1.2), { color: fg }]}
+          >
+            {label}
+          </Text>
+        </Glass>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -521,7 +523,7 @@ export type TicketBar = Pick<
 }
 
 /**
- * O coração do card: ao favoritar (ou desfazer), o ícone estala de 0,8 para
+ * O coração do card: ao favoritar (ou desfazer), o ícone estala de 0,9 para
  * 1 numa mola curta. Só escala: está sobre vidro, que não aceita opacidade
  * animada. Não estala na primeira pintura.
  */
@@ -534,7 +536,7 @@ function HeartPop({ on }: { on: boolean }) {
       first.current = false
       return
     }
-    scale.set(0.8)
+    scale.set(0.9)
     scale.set(withSpring(1, { duration: 300, dampingRatio: 0.7 }))
   }, [on, scale])
   const style = useAnimatedStyle(() => ({
