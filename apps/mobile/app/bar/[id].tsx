@@ -27,7 +27,7 @@ import {
   usePalette
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { haptic, SWAP, usePress } from '@/components/motion'
+import { haptic, SWAP, usePress, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -60,6 +60,8 @@ const TILES = [
   { id: 4, icon: 'outdoor', label: 'Área externa' }
 ] as const
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
 const HERO_SHADE = [
   'rgba(18,18,15,.3)',
   'rgba(18,18,15,0)',
@@ -79,6 +81,7 @@ export default function BarPage() {
   const session = authClient.useSession()
   const soon = useSoon()
   const reserve = usePress(0, 3)
+  const attendPress = usePressScale()
   useStatusBar('light')
 
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
@@ -430,19 +433,21 @@ export default function BarPage() {
           style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
         >
           {going && mine ? (
-            <Pressable
+            <AnimatedPressable
               accessibilityRole="button"
               accessibilityState={{ selected: mine.attending }}
+              onPressIn={attendPress.onPressIn}
+              onPressOut={attendPress.onPressOut}
               accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
               disabled={attend.isPending}
               onPress={() =>
                 attend.mutate({ eventId: going.id, attending: !mine.attending })
               }
-              style={({ pressed }) => [
+              style={[
                 styles.attend,
                 palette.dark && styles.attendDark,
                 mine.attending && { backgroundColor: ACID },
-                pressed && { transform: [{ scale: 0.97 }] }
+                attendPress.style
               ]}
             >
               <Icon
@@ -461,7 +466,7 @@ export default function BarPage() {
               >
                 {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
               </Animated.Text>
-            </Pressable>
+            </AnimatedPressable>
           ) : null}
           {reservable ? (
             <Pressable
