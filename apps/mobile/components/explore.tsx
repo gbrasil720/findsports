@@ -1,7 +1,8 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
+import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import { LinearGradient } from 'expo-linear-gradient'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   Image,
   Pressable,
@@ -11,9 +12,14 @@ import {
   View,
   type ViewStyle
 } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
+} from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
@@ -112,7 +118,7 @@ export function matchLine(game: Game) {
 }
 
 /** "BS" para Boteco Sete: a foto que falta vira as iniciais. */
-const initials = (name: string) =>
+export const initials = (name: string) =>
   name
     .split(/\s+/)
     .filter((word) => /\p{L}/u.test(word[0] ?? ''))
@@ -171,6 +177,8 @@ export function MeDot() {
 
 // --- Vidro ------------------------------------------------------------------
 
+const LIQUID = isLiquidGlassAvailable()
+
 const TINT = {
   live: 'rgba(232,50,12,.78)',
   acid: 'rgba(201,241,53,.82)',
@@ -226,7 +234,11 @@ export function Chip({
         haptic.select()
         onPress()
       }}
-      style={({ pressed }) => pressed && { transform: [{ scale: 0.97 }] }}
+      // O vidro interativo do iOS 26 já reage ao toque; a escala só entra
+      // onde ele não existe.
+      style={({ pressed }) =>
+        !LIQUID && pressed && { transform: [{ scale: 0.97 }] }
+      }
     >
       <Glass
         tone={palette.dark ? 'dark' : 'light'}
@@ -311,7 +323,16 @@ function Photo({
   palette: Palette
   big?: boolean
 }) {
-  if (uri) return <Image source={{ uri }} style={style as never} />
+  // Foto que não carrega cai para as iniciais em vez de um quadro vazio.
+  const [failed, setFailed] = useState(false)
+  if (uri && !failed)
+    return (
+      <Image
+        source={{ uri }}
+        style={style as never}
+        onError={() => setFailed(true)}
+      />
+    )
   return (
     <View
       style={[
@@ -476,7 +497,7 @@ export function Going({ count, palette }: { count: number; palette: Palette }) {
         accent={palette.accent}
       />
       <Text style={[text(12.5, 'SemiBold', 1.2), { color: palette.ink }]}>
-        {count} vão
+        {count.toLocaleString('pt-BR')} {count === 1 ? 'vai' : 'vão'}
       </Text>
     </View>
   )
@@ -491,10 +512,40 @@ export type TicketBar = Pick<
   | 'photo_url'
   | 'plan'
   | 'rating'
-  | 'distance_km'
   | 'amenities'
   | 'goingCount'
-> & { nextEvent?: Game }
+> & {
+  nextEvent?: Game
+  /** Sem ela (link compartilhado), o selo de distância não aparece. */
+  distance_km?: number | null
+}
+
+/**
+ * O coração do card: ao favoritar (ou desfazer), o ícone estala de 0,8 para
+ * 1 numa mola curta. Só escala: está sobre vidro, que não aceita opacidade
+ * animada. Não estala na primeira pintura.
+ */
+function HeartPop({ on }: { on: boolean }) {
+  const scale = useSharedValue(1)
+  const first = useRef(true)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: estala quando `on` muda
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    scale.set(0.8)
+    scale.set(withSpring(1, { duration: 300, dampingRatio: 0.7 }))
+  }, [on, scale])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }]
+  }))
+  return (
+    <Animated.View style={style}>
+      <Icon name="fan" size={18} color={PAPER} accent={PAPER} />
+    </Animated.View>
+  )
+}
 
 type CardProps = {
   bar: SearchBar
@@ -529,115 +580,129 @@ export function BarTicket({
     : elite
       ? { color: 'rgba(201,241,53,.85)', offset: 5 }
       : { color: palette.shadow, offset: 4 }
+  const press = usePressScale(0.985)
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={bar.name}
       disabled={!onPress}
       onPress={onPress}
-      style={({ pressed }) => pressed && { transform: [{ scale: 0.985 }] }}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
     >
-      <HardShadow {...shadow} />
-      <View
-        style={[
-          styles.ticket,
-          { backgroundColor: palette.card, borderColor: palette.ring }
-        ]}
-      >
-        <View style={styles.ticketPhoto}>
-          <Photo
-            uri={bar.photo_url}
-            name={bar.name}
-            style={StyleSheet.absoluteFill}
-            palette={palette}
-            big
-          />
-          <LinearGradient
-            colors={['rgba(18,18,15,0)', 'rgba(18,18,15,.55)']}
-            locations={[0.4, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.ticketPills}>
-            {live ? (
-              <PhotoPill kind="live">
-                <View style={[styles.liveDot, { backgroundColor: PAPER }]} />
-                <Text style={pillText(INK)}>Ao vivo</Text>
-              </PhotoPill>
-            ) : game ? (
-              <PhotoPill kind="dark">
-                <Text style={[styles.monoPill, { color: PAPER }]}>
-                  {dayLabel(game.startsAt, now)} às {formatTime(game.startsAt)}
-                </Text>
-              </PhotoPill>
-            ) : null}
-            {elite ? (
-              <PhotoPill kind="acid">
-                <Icon name="medal" size={14} color={INK} />
-                <Text style={pillText(INK)}>Elite</Text>
-              </PhotoPill>
-            ) : null}
-          </View>
-          <View style={styles.ticketDistance}>
-            <PhotoPill kind="dark" height={28}>
-              <Icon name="pin" size={13} color={PAPER} />
-              <Text style={pillText(PAPER)}>{formatKm(bar.distance_km)}</Text>
-            </PhotoPill>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={favorite ? 'Tirar dos favoritos' : 'Favoritar'}
-            accessibilityState={{ selected: favorite }}
-            hitSlop={8}
-            onPress={() => {
-              haptic.select()
-              onFavorite()
-            }}
-            style={styles.heartSpot}
-          >
-            <Glass
-              tone="dark"
-              tint={favorite ? TINT.favorite : TINT.dark}
-              interactive
-              style={styles.heart}
-            >
-              <Icon name="fan" size={18} color={PAPER} accent={PAPER} />
-            </Glass>
-          </Pressable>
-        </View>
-        {game ? <MatchRow game={game} now={now} palette={palette} /> : null}
-        {game ? (
-          <Perforation palette={palette} />
-        ) : (
-          <View style={{ height: 12 }} />
-        )}
-        <View style={styles.ticketFoot}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={styles.nameRow}>
-              <Text
-                style={[styles.ticketName, { color: palette.ink }]}
-                numberOfLines={1}
-              >
-                {bar.name}
-              </Text>
-              {bar.rating ? (
-                <Tag>{bar.rating.percentage}% voltariam</Tag>
+      <Animated.View style={press.style}>
+        <HardShadow {...shadow} />
+        <View
+          style={[
+            styles.ticket,
+            { backgroundColor: palette.card, borderColor: palette.ring }
+          ]}
+        >
+          <View style={styles.ticketPhoto}>
+            <Photo
+              uri={bar.photo_url}
+              name={bar.name}
+              style={StyleSheet.absoluteFill}
+              palette={palette}
+              big
+            />
+            <LinearGradient
+              colors={['rgba(18,18,15,0)', 'rgba(18,18,15,.55)']}
+              locations={[0.4, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.ticketPills}>
+              {live ? (
+                <PhotoPill kind="live">
+                  <View style={[styles.liveDot, { backgroundColor: PAPER }]} />
+                  <Text style={pillText(INK)}>Ao vivo</Text>
+                </PhotoPill>
+              ) : game ? (
+                <PhotoPill kind="dark">
+                  <Text style={[styles.monoPill, { color: PAPER }]}>
+                    {dayLabel(game.startsAt, now)} às{' '}
+                    {formatTime(game.startsAt)}
+                  </Text>
+                </PhotoPill>
+              ) : null}
+              {elite ? (
+                <PhotoPill kind="acid">
+                  <Icon name="medal" size={14} color={INK} />
+                  <Text style={pillText(INK)}>Elite</Text>
+                </PhotoPill>
               ) : null}
             </View>
-            <View style={styles.hoodRow}>
-              <Text
-                style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-                numberOfLines={1}
+            {bar.distance_km != null ? (
+              <View style={styles.ticketDistance}>
+                <PhotoPill kind="dark" height={28}>
+                  <Icon name="pin" size={13} color={PAPER} />
+                  <Text style={pillText(PAPER)}>
+                    {formatKm(bar.distance_km)}
+                  </Text>
+                </PhotoPill>
+              </View>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                favorite ? 'Tirar dos favoritos' : 'Favoritar'
+              }
+              accessibilityState={{ selected: favorite }}
+              hitSlop={8}
+              onPress={() => {
+                haptic.select()
+                onFavorite()
+              }}
+              style={styles.heartSpot}
+            >
+              <Glass
+                tone="dark"
+                tint={favorite ? TINT.favorite : TINT.dark}
+                interactive
+                style={styles.heart}
               >
-                {bar.neighborhood}
-              </Text>
-              <AmenityIcons ids={bar.amenities} palette={palette} />
-            </View>
+                <HeartPop on={favorite} />
+              </Glass>
+            </Pressable>
           </View>
-          {bar.goingCount ? (
-            <Going count={bar.goingCount} palette={palette} />
-          ) : null}
+          {game ? <MatchRow game={game} now={now} palette={palette} /> : null}
+          {game ? (
+            <Perforation palette={palette} />
+          ) : (
+            <View style={{ height: 12 }} />
+          )}
+          <View style={styles.ticketFoot}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={styles.nameRow}>
+                <Text
+                  style={[styles.ticketName, { color: palette.ink }]}
+                  numberOfLines={1}
+                >
+                  {bar.name}
+                </Text>
+                {bar.rating ? (
+                  <Tag>{bar.rating.percentage}% voltariam</Tag>
+                ) : null}
+              </View>
+              <View style={styles.hoodRow}>
+                <Text
+                  style={[
+                    text(12.5, 'Regular', 1.3),
+                    { color: palette.muted, flexShrink: 1 }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {bar.neighborhood}
+                </Text>
+                <AmenityIcons ids={bar.amenities} palette={palette} />
+              </View>
+            </View>
+            {bar.goingCount ? (
+              <Going count={bar.goingCount} palette={palette} />
+            ) : null}
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -654,93 +719,97 @@ export function BarRow({
 }: Omit<CardProps, 'favorite' | 'onFavorite'>) {
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
+  const press = usePressScale(0.985)
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={bar.name}
       onPress={onPress}
-      style={({ pressed }) => pressed && { transform: [{ scale: 0.985 }] }}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
     >
-      <HardShadow color={palette.shadow} offset={4} />
-      <View
-        style={[
-          styles.row,
-          { backgroundColor: palette.card, borderColor: palette.ring }
-        ]}
-      >
-        <View>
-          <Photo
-            uri={bar.photo_url}
-            name={bar.name}
-            style={styles.rowPhoto}
-            palette={palette}
-          />
-          {isNewBar(bar.created_at, now) ? (
-            <View style={styles.newTag}>
-              <Tag shadow>Novo</Tag>
+      <Animated.View style={press.style}>
+        <HardShadow color={palette.shadow} offset={4} />
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: palette.card, borderColor: palette.ring }
+          ]}
+        >
+          <View>
+            <Photo
+              uri={bar.photo_url}
+              name={bar.name}
+              style={styles.rowPhoto}
+              palette={palette}
+            />
+            {isNewBar(bar.created_at, now) ? (
+              <View style={styles.newTag}>
+                <Tag shadow>Novo</Tag>
+              </View>
+            ) : null}
+          </View>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <View style={styles.nameRow}>
+              <Text
+                style={[
+                  text(16, 'Bold', 1.2),
+                  { color: palette.ink, flexShrink: 1 }
+                ]}
+                numberOfLines={1}
+              >
+                {bar.name}
+              </Text>
+              {bar.plan === 'pro' ? (
+                <Tag outline color={palette.ink}>
+                  Pro
+                </Tag>
+              ) : null}
+            </View>
+            <Text
+              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+              numberOfLines={1}
+            >
+              {game ? matchLine(game) : 'Sem eventos programados'}
+            </Text>
+            <View style={styles.rowMeta}>
+              <View style={styles.km}>
+                <Icon name="pin" size={13} color={palette.ink} />
+                <Text style={[text(12, 'Bold', 1.2), { color: palette.ink }]}>
+                  {formatKm(bar.distance_km)}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  text(12, 'Regular', 1.2),
+                  { color: palette.muted, flexShrink: 1 }
+                ]}
+                numberOfLines={1}
+              >
+                {bar.neighborhood}
+              </Text>
+              {bar.rating ? <Tag>{bar.rating.percentage}%</Tag> : null}
+            </View>
+          </View>
+          {game ? (
+            <View style={styles.rowWhen}>
+              <Text
+                style={[
+                  styles.rowTime,
+                  { color: live ? palette.live : palette.ink }
+                ]}
+              >
+                {live ? 'AO VIVO' : formatTime(game.startsAt)}
+              </Text>
+              <Text
+                style={[text(11.5, 'Regular', 1.2), { color: palette.muted }]}
+              >
+                {live ? 'Agora' : dayLabel(game.startsAt, now)}
+              </Text>
             </View>
           ) : null}
         </View>
-        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <View style={styles.nameRow}>
-            <Text
-              style={[
-                text(16, 'Bold', 1.2),
-                { color: palette.ink, flexShrink: 1 }
-              ]}
-              numberOfLines={1}
-            >
-              {bar.name}
-            </Text>
-            {bar.plan === 'pro' ? (
-              <Tag outline color={palette.ink}>
-                Pro
-              </Tag>
-            ) : null}
-          </View>
-          <Text
-            style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-            numberOfLines={1}
-          >
-            {game ? matchLine(game) : 'Sem eventos programados'}
-          </Text>
-          <View style={styles.rowMeta}>
-            <View style={styles.km}>
-              <Icon name="pin" size={13} color={palette.ink} />
-              <Text style={[text(12, 'Bold', 1.2), { color: palette.ink }]}>
-                {formatKm(bar.distance_km)}
-              </Text>
-            </View>
-            <Text
-              style={[
-                text(12, 'Regular', 1.2),
-                { color: palette.muted, flexShrink: 1 }
-              ]}
-              numberOfLines={1}
-            >
-              {bar.neighborhood}
-            </Text>
-            {bar.rating ? <Tag>{bar.rating.percentage}%</Tag> : null}
-          </View>
-        </View>
-        {game ? (
-          <View style={styles.rowWhen}>
-            <Text
-              style={[
-                styles.rowTime,
-                { color: live ? palette.live : palette.ink }
-              ]}
-            >
-              {live ? 'AO VIVO' : formatTime(game.startsAt)}
-            </Text>
-            <Text
-              style={[text(11.5, 'Regular', 1.2), { color: palette.muted }]}
-            >
-              {live ? 'Agora' : dayLabel(game.startsAt, now)}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+      </Animated.View>
     </Pressable>
   )
 }
