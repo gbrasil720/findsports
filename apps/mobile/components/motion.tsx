@@ -112,6 +112,27 @@ export function usePress(x: number, y: number) {
   }
 }
 
+/**
+ * Encolher ao toque (cards, linhas, botões sem sombra dura): vai a `to` em
+ * 120 ms no toque e volta em 160 ms, com a curva do design. Num quadro só a
+ * pressão parecia um salto.
+ */
+export function usePressScale(to = 0.97) {
+  const down = useSharedValue(0)
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - down.get() * (1 - to) }]
+  }))
+  return {
+    style,
+    onPressIn: () => {
+      down.set(withTiming(1, { duration: 120, easing: EASE }))
+    },
+    onPressOut: () => {
+      down.set(withTiming(0, { duration: 160, easing: EASE }))
+    }
+  }
+}
+
 /** Tremida curta de erro, para chamar `shake()` quando algo falha. */
 export function useShake() {
   const x = useSharedValue(0)
