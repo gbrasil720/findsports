@@ -7,28 +7,28 @@ import { ExploreStateProvider } from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
-import { useFavorites } from '@/lib/favorites'
 import { trpc } from '@/lib/trpc'
 
 /*
- * As abas do torcedor ("02 Navbar glass"): Explorar, Ranking e Você, com a
- * busca com IA no círculo à direita. É a barra nativa do iOS 26
+ * As abas do torcedor ("02 Navbar glass"): Explorar, Favoritos e Você, com a
+ * busca com IA no círculo à direita. O design põe o Ranking no lugar dos
+ * Favoritos; o dono trocou (16/10/2026), e o Ranking foi para o menu. É a barra nativa do iOS 26
  * (UITabBarController, pelo `NativeTabs`): o vidro distorce o que passa por
  * baixo e o destaque da aba se arrasta de uma para outra, como no sistema.
- * Ranking e IA ainda não existem (avisam "em breve"); "Você" mostra o
+ * Favoritos e IA ainda não existem (avisam "em breve"); "Você" mostra o
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
 const TAB_ICONS = {
   light: {
     map: require('../../assets/images/tabs/map-light.png'),
-    ranking: require('../../assets/images/tabs/ranking-light.png'),
+    fan: require('../../assets/images/tabs/fan-light.png'),
     you: require('../../assets/images/tabs/you-light.png'),
     sparkle: require('../../assets/images/tabs/sparkle-light.png')
   },
   dark: {
     map: require('../../assets/images/tabs/map-dark.png'),
-    ranking: require('../../assets/images/tabs/ranking-dark.png'),
+    fan: require('../../assets/images/tabs/fan-dark.png'),
     you: require('../../assets/images/tabs/you-dark.png'),
     sparkle: require('../../assets/images/tabs/sparkle-dark.png')
   }
@@ -44,7 +44,6 @@ export default function FanTabs() {
   const pathname = usePathname()
   const menuOpen = pathname === '/voce'
   const closeMenu = () => router.navigate('/explore')
-  const favorites = useFavorites()
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
     retry: false,
@@ -73,11 +72,10 @@ export default function FanTabs() {
       soon: 'Meus jogos chega em breve'
     },
     {
-      key: 'favoritos',
-      icon: 'fan',
-      label: 'Favoritos',
-      soon: 'A lista de favoritos chega em breve',
-      meta: favorites.count ? String(favorites.count) : undefined
+      key: 'ranking',
+      icon: 'ranking',
+      label: 'Ranking',
+      soon: 'O ranking chega em breve'
     },
     {
       key: 'avaliacoes',
@@ -118,17 +116,14 @@ export default function FanTabs() {
             <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
-            name="ranking"
+            name="favoritos"
             disabled
             listeners={{
-              tabPress: () => soon.show('O ranking chega em breve')
+              tabPress: () => soon.show('A lista de favoritos chega em breve')
             }}
           >
-            <NativeTabs.Trigger.Icon
-              src={icons.ranking}
-              renderingMode="original"
-            />
-            <NativeTabs.Trigger.Label>Ranking</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
+            <NativeTabs.Trigger.Label>Favoritos</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="voce"
