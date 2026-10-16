@@ -325,14 +325,26 @@ export default function BarPage() {
             ]}
           >
             <Icon name={mine.attending ? 'check' : 'people'} size={19} />
-            <Text style={[text(15, 'Bold'), { color: INK }]}>
-              {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
-            </Text>
-            {mine.count ? (
-              <Text style={[text(13, 'SemiBold'), { color: '#55554f' }]}>
-                · {mine.count} vão
+            <View>
+              <Text style={[text(15, 'Bold', 1.2), { color: INK }]}>
+                {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
+                {mine.count ? (
+                  <Text style={[text(13, 'SemiBold'), { color: '#55554f' }]}>
+                    {' '}
+                    · {mine.count} vão
+                  </Text>
+                ) : null}
               </Text>
-            ) : null}
+              {/* Vale para o próximo jogo que não começou: diz qual. */}
+              <Text
+                style={[text(12, 'Regular', 1.2), { color: '#55554f' }]}
+                numberOfLines={1}
+              >
+                {matchLine(going)},{' '}
+                {dayLabel(going.startsAt, now).toLowerCase()} às{' '}
+                {formatTime(going.startsAt)}
+              </Text>
+            </View>
           </Pressable>
         </Glass>
       ) : null}
