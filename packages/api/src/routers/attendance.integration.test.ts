@@ -172,6 +172,7 @@ integrationTest(
 
       const marked = await ctx.fan().pubs.getById({ id: ctx.barId })
       // Bar sem Elite: presença sem código.
+      expect(marked.issuesCode).toBe(false)
       expect(marked.events.find(({ id }) => id === future)?.attendance).toEqual(
         { attending: true, count: null, code: null, validated: false }
       )
@@ -211,6 +212,9 @@ integrationTest(
         ({ id }) => id === future
       )?.attendance
     try {
+      expect((await ctx.fan().pubs.getById({ id: ctx.barId })).issuesCode).toBe(
+        true
+      )
       const api = ctx.fan().attendance
       await api.set({ eventId: future, attending: true })
       await api.set({ eventId: future, attending: true })
