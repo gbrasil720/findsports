@@ -355,7 +355,9 @@ invente layout que o projeto não tem.
   cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
   localização) fica em `components/explore-state.tsx`. Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
-  eventos para hoje nos bares de teste para ver os pinos. Publicar no Android vai pedir
+  eventos para hoje nos bares de teste para ver os pinos, ou rode
+  `apps/mobile/scripts/bar-do-ze.sql`, que monta o "Bar do Zé" completo da tela 2g (jogo ao
+  vivo, próximos jogos, oferta, nota, 34 presenças, todas as características). Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
 - **Tema escuro:** o design só desenha conta, onboarding e avulsas no claro; no escuro valem
   as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. As cores que
