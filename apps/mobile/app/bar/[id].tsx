@@ -822,7 +822,7 @@ export default function BarPage() {
               onPressIn={reserve.onPressIn}
               onPressOut={reserve.onPressOut}
               onPress={() => soon.show('A reserva de mesa chega em breve')}
-              style={{ flex: 1.2 }}
+              style={styles.reserveSlot}
             >
               <View style={styles.reserveShadow} />
               <Animated.View style={[styles.reserve, reserve.style]}>
@@ -1107,13 +1107,12 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: 'hidden'
   },
-  // Os dois botões dividem o vidro em 1 : 1,2, como o design, por `flex`: o
-  // rótulo que cresce ("Vou assistir aqui") encolhe a letra, não empurra
-  // "Reservar mesa".
+  // O `flex: 1` / `flex: 1.2` do design no CSS: base zero, e o "Reservar
+  // mesa" soma o padding de 22 + 22. Dá 133 e 203 pt na tela de 390.
   attend: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 0,
     height: 52,
-    paddingHorizontal: 10,
     borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1136,6 +1135,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: INK
   },
+  reserveSlot: { flexGrow: 1.2, flexBasis: 44 },
   reserve: {
     height: 52,
     borderRadius: 26,
