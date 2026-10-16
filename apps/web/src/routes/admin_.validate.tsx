@@ -10,7 +10,7 @@ import { useTRPC, useTRPCClient } from '@/utils/trpc'
 export const Route = createFileRoute('/admin_/validate')({
   head: () => ({
     meta: [
-      { title: 'Validar código de reserva — Onside' },
+      { title: 'Validar código — Onside' },
       { name: 'robots', content: 'noindex' },
       ...PWA_META
     ],
@@ -50,7 +50,8 @@ function ValidatePage() {
         </Link>
         <h1 className="onside-display text-3xl md:text-4xl">Validar código</h1>
         <p className="mt-2 text-[var(--onside-muted)] text-sm">
-          Registre quem chegou com reserva feita pela Onside.
+          Valide o código de quem marcou “Vou assistir aqui” e libere a oferta
+          da casa.
         </p>
       </div>
 
