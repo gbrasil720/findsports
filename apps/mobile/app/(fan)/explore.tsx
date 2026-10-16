@@ -22,7 +22,8 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withSpring
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
@@ -38,6 +39,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
+import { EASE, haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
@@ -142,7 +144,9 @@ export default function Explore() {
         id: bar.id,
         km: String(bar.distance_km),
         name: bar.name,
-        photo: bar.photo_url ?? undefined
+        photo: bar.photo_url ?? undefined,
+        // Distância do aparelho, não do centro da cidade: vale "N min a pé".
+        walk: device ? '1' : undefined
       }
     })
 
@@ -183,10 +187,29 @@ export default function Explore() {
   // primeira resposta; não a cada filtro, que desfaria o arrasto que a
   // pessoa fez no mapa.
   const framed = search.data !== undefined
-  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, raio, mapa pronto e primeira resposta
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, mapa pronto e primeira resposta
   useEffect(() => {
     if (mapReady) map.current?.animateToRegion(region, reduced ? 0 : 400)
-  }, [mapReady, center.lat, center.lng, radiusKm, framed])
+  }, [mapReady, center.lat, center.lng, framed])
+  // "Ampliar" reenquadra quando os bares do raio novo chegam, não no toque:
+  // antes disso a região sairia dos bares antigos.
+  const framedRadius = useRef(radiusKm)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a resposta do raio novo chega
+  useEffect(() => {
+    if (!mapReady || search.isPlaceholderData) return
+    if (framedRadius.current === radiusKm) return
+    framedRadius.current = radiusKm
+    map.current?.animateToRegion(region, reduced ? 0 : 400)
+  }, [mapReady, search.data, radiusKm])
+
+  // Enquanto a busca nova não chega, a lista de antes fica esmaecida: diz que
+  // vai mudar sem piscar "Buscando bares…".
+  const stale = search.isPlaceholderData
+  const fresh = useSharedValue(1)
+  useEffect(() => {
+    fresh.set(withTiming(stale ? 0.5 : 1, { duration: 150, easing: EASE }))
+  }, [stale, fresh])
+  const listFade = useAnimatedStyle(() => ({ opacity: fresh.get() }))
 
   const y = useSharedValue(resting)
   // A outra aba pode ter movido a folha: esta acompanha ao voltar.
@@ -542,29 +565,31 @@ export default function Explore() {
                     : `Nenhum bar com jogo num raio de ${radiusKm} km.`}
                 </Text>
               ) : (
-                bars.map((bar, index) =>
-                  index === 0 ? (
-                    <BarTicket
-                      key={bar.id}
-                      bar={bar}
-                      now={now}
-                      palette={palette}
-                      favorite={favorites.ids.has(bar.id)}
-                      onFavorite={() => favorites.toggle(bar.id)}
-                      onPress={() => open(bar)}
-                    />
-                  ) : (
-                    <BarRow
-                      key={bar.id}
-                      bar={bar}
-                      now={now}
-                      palette={palette}
-                      onPress={() => open(bar)}
-                    />
-                  )
-                )
+                <Animated.View style={[{ gap: 12 }, listFade]}>
+                  {bars.map((bar, index) =>
+                    index === 0 ? (
+                      <BarTicket
+                        key={bar.id}
+                        bar={bar}
+                        now={now}
+                        palette={palette}
+                        favorite={favorites.ids.has(bar.id)}
+                        onFavorite={() => favorites.toggle(bar.id)}
+                        onPress={() => open(bar)}
+                      />
+                    ) : (
+                      <BarRow
+                        key={bar.id}
+                        bar={bar}
+                        now={now}
+                        palette={palette}
+                        onPress={() => open(bar)}
+                      />
+                    )
+                  )}
+                </Animated.View>
               )}
-              {search.data && bars.length > 0 ? (
+              {stale ? (
                 <Text
                   style={[
                     text(13.5, 'Regular', 1.3),
@@ -572,14 +597,32 @@ export default function Explore() {
                     { color: palette.muted }
                   ]}
                 >
-                  Fim da lista no raio de {radiusKm} km
+                  Buscando no raio de {radiusKm} km…
+                </Text>
+              ) : search.data && bars.length > 0 && !search.data.nextCursor ? (
+                // Só no fim de verdade: com página seguinte, ampliar traria os
+                // mesmos bares mais perto.
+                <View style={styles.endRow}>
+                  <Text
+                    style={[
+                      text(13.5, 'Regular', 1.3),
+                      { color: palette.muted }
+                    ]}
+                  >
+                    Fim da lista no raio de {radiusKm} km
+                    {wider > radiusKm ? ' · ' : ''}
+                  </Text>
                   {wider > radiusKm ? (
-                    <>
-                      {' · '}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ampliar para ${wider} km`}
+                      hitSlop={12}
+                      onPress={() => {
+                        haptic.select()
+                        state.setRadius(wider)
+                      }}
+                    >
                       <Text
-                        accessibilityRole="button"
-                        onPress={() => state.setRadius(wider)}
-                        suppressHighlighting
                         style={[
                           text(13.5, 'Bold', 1.3),
                           { color: palette.ink }
@@ -587,9 +630,9 @@ export default function Explore() {
                       >
                         Ampliar
                       </Text>
-                    </>
+                    </Pressable>
                   ) : null}
-                </Text>
+                </View>
               ) : null}
             </Animated.ScrollView>
           </GestureDetector>
@@ -704,5 +747,11 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   link: { textDecorationLine: 'underline' },
-  end: { textAlign: 'center', paddingVertical: 8 }
+  end: { textAlign: 'center', paddingVertical: 8 },
+  endRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    paddingVertical: 8
+  }
 })
