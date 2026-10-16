@@ -8,21 +8,24 @@ import {
   StyleSheet,
   Text,
   useColorScheme,
-  View
+  View,
+  type ViewStyle
 } from 'react-native'
 import { Glass } from '@/components/glass'
 import { haptic } from '@/components/motion'
-import { ACCENT, ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
 /*
- * Peças do Explorar e da página do bar ("07" do design): pino do mapa, chip
- * de filtro, selos (plano, ao vivo, voltariam) e os cards de bar. Claro e
- * escuro seguem o tema do sistema, como no design ("Explorar · escuro").
+ * Peças do Explorar e da página do bar (07 do design, e o card e a linha da
+ * página "Onside Componentes"): pino do mapa, chip, selos de vidro, o card
+ * em formato de ingresso e a linha compacta. Claro e escuro seguem o tema do
+ * sistema, com as cores do design para cada um.
  */
 
 type Outputs = inferRouterOutputs<AppRouter>
 export type SearchBar = Outputs['pubs']['search']['bars'][number]
+
 /** Um jogo, na forma comum à busca e ao perfil do bar (`pubs.getById`). */
 export type Game = {
   startsAt: string
@@ -34,42 +37,99 @@ export type Game = {
 
 export const PALETTE = {
   light: {
+    dark: false,
     bg: PAPER,
+    sheet: PAPER,
     card: '#faf8f3',
     ink: INK,
     muted: '#55554f',
-    line: 'rgba(18,18,15,.16)',
+    line: 'rgba(18,18,15,.12)',
+    ring: 'rgba(18,18,15,.08)',
     mark: '#e7e3db',
+    markRing: 'rgba(18,18,15,.08)',
+    dash: 'rgba(18,18,15,.16)',
     grabber: 'rgba(18,18,15,.18)',
-    live: ACCENT
+    live: '#c92b0c',
+    accent: LIVE,
+    shadow: 'rgba(18,18,15,.09)',
+    liveShadow: 'rgba(232,50,12,.28)'
   },
   dark: {
+    dark: true,
     bg: INK,
+    sheet: '#161613',
     card: '#1c1c18',
     ink: PAPER,
-    muted: '#a9a59b',
-    line: 'rgba(241,238,230,.16)',
+    muted: '#aaa9a4',
+    line: 'rgba(241,238,230,.1)',
+    ring: 'rgba(241,238,230,.09)',
     mark: '#2a2a25',
-    grabber: 'rgba(241,238,230,.22)',
-    live: '#ff5a36'
+    markRing: 'rgba(241,238,230,.12)',
+    dash: 'rgba(241,238,230,.16)',
+    grabber: 'rgba(241,238,230,.2)',
+    live: '#f3421d',
+    accent: ACID,
+    shadow: 'rgba(0,0,0,.35)',
+    liveShadow: 'rgba(232,50,12,.30)'
   }
 }
-export type Palette = (typeof PALETTE)['light']
+export type Palette = (typeof PALETTE)['light'] | (typeof PALETTE)['dark']
 
-export function usePalette() {
+export function usePalette(): Palette {
   return PALETTE[useColorScheme() === 'dark' ? 'dark' : 'light']
 }
+
+const DAY = 86_400_000
+const dayOf = (value: number | string | Date) =>
+  new Date(value).toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  })
+
+/** "Hoje", "Amanhã" ou "sáb., 18/10". */
+export function dayLabel(date: string | Date, now: number) {
+  if (dayOf(date) === dayOf(now)) return 'Hoje'
+  if (dayOf(date) === dayOf(now + DAY)) return 'Amanhã'
+  return new Date(date).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  })
+}
+
+/** Bar cadastrado há menos de 30 dias ganha o selo "Novo", como no web. */
+export const isNewBar = (createdAt: string, now: number) =>
+  now - new Date(createdAt).getTime() < 30 * DAY
+
+export function matchLine(game: Game) {
+  const names = game.participants.map((p) => p.team.name)
+  if (names.length === 2) return `${names[0]} × ${names[1]}`
+  return (
+    game.participantFreeText ??
+    (names.length ? names.join(', ') : game.championship)
+  )
+}
+
+/** "BS" para Boteco Sete: a foto que falta vira as iniciais. */
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter((word) => /\p{L}/u.test(word[0] ?? ''))
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
 
 // --- Mapa -------------------------------------------------------------------
 
 /**
- * O pino do bar: ao vivo em vermelho, com o nome; jogo mais tarde em acid,
- * com a hora; sem jogo hoje, em tinta, com o nome.
+ * O pino do bar: ao vivo em vermelho, com o nome; jogo mais tarde hoje em
+ * acid, com a hora; o resto em tinta, com o nome.
  */
 export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
-  const later = game && !live && isToday(game.startsAt, now)
+  const later = game && !live && dayOf(game.startsAt) === dayOf(now)
   const bg = live ? LIVE : later ? ACID : INK
   const fg = later ? INK : PAPER
   return (
@@ -108,34 +168,55 @@ export function MeDot() {
   )
 }
 
-// --- Filtros e selos --------------------------------------------------------
+// --- Vidro ------------------------------------------------------------------
 
-/** Chip de vidro sobre o mapa; ligado, fica acid. */
+const TINT = {
+  live: 'rgba(232,50,12,.78)',
+  acid: 'rgba(201,241,53,.82)',
+  dark: 'rgba(36,36,32,.40)',
+  favorite: 'rgba(232,50,12,.8)'
+}
+
+/** Selo de vidro sobre foto: "Ao vivo", "Elite", "Hoje às 21:30", "0,8 km". */
+export function PhotoPill({
+  kind,
+  height = 30,
+  children
+}: {
+  kind: 'live' | 'acid' | 'dark'
+  height?: number
+  children: ReactNode
+}) {
+  return (
+    <Glass
+      tone="dark"
+      tint={TINT[kind]}
+      style={[styles.photoPill, { height, borderRadius: height / 2 }]}
+    >
+      {children}
+    </Glass>
+  )
+}
+
+const pillText = (color: string) => [text(12.5, 'Bold', 1.2), { color }]
+
+/** Chip de filtro sobre o mapa; ligado, fica no vidro acid. */
 export function Chip({
   label,
   icon,
   live,
   on,
-  dark,
+  palette,
   onPress
 }: {
   label: string
   icon?: 'tv' | 'outdoor'
   live?: boolean
   on: boolean
-  dark: boolean
+  palette: Palette
   onPress: () => void
 }) {
-  const fg = on || !dark ? INK : PAPER
-  const body = (
-    <>
-      {live ? <View style={styles.liveDot} /> : null}
-      {icon ? <Icon name={icon} size={16} color={fg} /> : null}
-      <Text style={[text(13.5, on ? 'Bold' : 'SemiBold', 1.2), { color: fg }]}>
-        {label}
-      </Text>
-    </>
-  )
+  const fg = on ? INK : palette.ink
   return (
     <Pressable
       accessibilityRole="button"
@@ -146,119 +227,106 @@ export function Chip({
       }}
       style={({ pressed }) => pressed && { transform: [{ scale: 0.97 }] }}
     >
-      {on ? (
-        <View style={[styles.chip, styles.chipOn]}>{body}</View>
-      ) : (
-        <Glass tone={dark ? 'dark' : 'light'} interactive style={styles.chip}>
-          {body}
-        </Glass>
-      )}
+      <Glass
+        tone={palette.dark ? 'dark' : 'light'}
+        tint={on ? 'rgba(201,241,53,.66)' : undefined}
+        interactive
+        style={styles.chip}
+      >
+        {live ? <View style={styles.liveDot} /> : null}
+        {icon ? (
+          <Icon name={icon} size={16} color={fg} accent={palette.accent} />
+        ) : null}
+        <Text
+          style={[text(13.5, on ? 'Bold' : 'SemiBold', 1.2), { color: fg }]}
+        >
+          {label}
+        </Text>
+      </Glass>
     </Pressable>
   )
 }
 
-/** Selo pequeno: "87% voltariam", "Pro". */
+/** Selo pequeno: "87% voltariam", "Pro", "Novo". */
 export function Tag({
   children,
   outline,
-  color
+  color = INK,
+  shadow
 }: {
   children: ReactNode
   outline?: boolean
   color?: string
+  shadow?: boolean
 }) {
   return (
     <View
       style={[
         styles.tag,
         outline
-          ? { borderWidth: 1, borderColor: color ?? INK }
-          : { backgroundColor: ACID }
+          ? { borderWidth: 1, borderColor: color }
+          : { backgroundColor: ACID },
+        shadow && styles.tagShadow
       ]}
     >
-      <Text
-        style={[
-          text(10.5, 'Bold', 1.2),
-          { color: outline ? (color ?? INK) : INK }
-        ]}
-      >
+      <Text style={[text(10.5, 'Bold', 1.2), { color: outline ? color : INK }]}>
         {children}
       </Text>
     </View>
   )
 }
 
-/** Selo de vidro sobre foto: "Ao vivo", "Elite", "0,8 km". */
-export function PhotoPill({
-  kind,
-  label
-}: {
-  kind: 'live' | 'elite' | 'pro' | 'glass'
-  label: string
-}) {
-  const bg =
-    kind === 'live'
-      ? 'rgba(232,50,12,.86)'
-      : kind === 'elite'
-        ? 'rgba(201,241,53,.9)'
-        : 'rgba(36,36,32,.55)'
-  const fg = kind === 'elite' ? INK : PAPER
+/** Sombra dura deslocada, como o `box-shadow` sem desfoque do design. */
+function HardShadow({ color, offset }: { color: string; offset: number }) {
   return (
-    <View style={[styles.photoPill, { backgroundColor: bg }]}>
-      {kind === 'live' ? (
-        <View style={[styles.liveDot, { backgroundColor: PAPER }]} />
-      ) : null}
-      {kind === 'elite' ? <Icon name="medal" size={15} color={INK} /> : null}
-      {kind === 'glass' ? <Icon name="pin" size={14} color={PAPER} /> : null}
-      <Text style={[text(13, 'SemiBold', 1.2), { color: fg }]}>{label}</Text>
-    </View>
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          top: offset,
+          left: offset,
+          right: -offset,
+          bottom: -offset,
+          borderRadius: 6,
+          backgroundColor: color
+        }
+      ]}
+    />
   )
 }
 
-// --- Cards ------------------------------------------------------------------
-
-function isToday(date: string | Date, now: number) {
-  const day = (value: number | string | Date) =>
-    new Date(value).toLocaleDateString('pt-BR', {
-      timeZone: 'America/Sao_Paulo'
-    })
-  return day(date) === day(now)
-}
-
-/** "Hoje", "Amanhã" ou "sáb., 18/10". */
-export function dayLabel(date: string | Date, now: number) {
-  if (isToday(date, now)) return 'Hoje'
-  if (isToday(date, now + 86_400_000)) return 'Amanhã'
-  return new Date(date).toLocaleDateString('pt-BR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  })
-}
-
-export function matchLine(game: Game) {
-  const names = game.participants.map((p) => p.team.name)
-  if (names.length === 2) return `${names[0]} × ${names[1]}`
-  return (
-    game.participantFreeText ??
-    (names.length ? names.join(', ') : game.championship)
-  )
-}
+// --- Card do bar (ingresso) --------------------------------------------------
 
 function Photo({
   uri,
   name,
-  style
+  style,
+  palette,
+  big
 }: {
   uri: string | null
   name: string
-  style: object
+  style: ViewStyle
+  palette: Palette
+  big?: boolean
 }) {
-  if (uri) return <Image source={{ uri }} style={style} resizeMode="cover" />
+  if (uri) return <Image source={{ uri }} style={style as never} />
   return (
-    <View style={[style, styles.noPhoto]}>
-      <Text style={styles.noPhotoText}>{name.slice(0, 1).toUpperCase()}</Text>
+    <View
+      style={[
+        style,
+        styles.noPhoto,
+        { backgroundColor: big ? '#2a2a25' : palette.mark }
+      ]}
+    >
+      <Text
+        style={[
+          text(big ? 34 : 19, 'Bold', 1.2),
+          { color: big ? 'rgba(241,238,230,.22)' : palette.ink }
+        ]}
+      >
+        {initials(name)}
+      </Text>
     </View>
   )
 }
@@ -293,9 +361,9 @@ export function MatchRow({
   )
   if (!home || !away) {
     return (
-      <View style={styles.matchFree}>
+      <View style={styles.match}>
         <Text
-          style={[text(14, 'Bold', 1.2), { color: palette.ink, flex: 1 }]}
+          style={[text(14, 'Bold', 1.15), { color: palette.ink, flex: 1 }]}
           numberOfLines={2}
         >
           {matchLine(game)}
@@ -306,7 +374,12 @@ export function MatchRow({
   }
   const team = (name: string, right?: boolean) => (
     <View style={[styles.team, right && styles.teamRight]}>
-      <View style={[styles.teamMark, { backgroundColor: palette.mark }]}>
+      <View
+        style={[
+          styles.teamMark,
+          { backgroundColor: palette.mark, borderColor: palette.markRing }
+        ]}
+      >
         <Text style={[styles.teamMarkText, { color: palette.ink }]}>
           {teamMark(name)}
         </Text>
@@ -338,18 +411,77 @@ export function MatchRow({
   )
 }
 
-/** O recorte de ingresso entre o jogo e o bar. */
-function Perforation({ palette }: { palette: Palette }) {
+/** O picote entre o jogo e o bar, com os dois recortes na cor da folha. */
+export function Perforation({ palette }: { palette: Palette }) {
   return (
     <View style={styles.perforation}>
-      <View style={[styles.notch, { left: -9, backgroundColor: palette.bg }]} />
-      <View style={[styles.dashed, { borderColor: palette.line }]} />
       <View
-        style={[styles.notch, { right: -9, backgroundColor: palette.bg }]}
+        style={[styles.notch, { left: -9, backgroundColor: palette.sheet }]}
+      />
+      <View style={[styles.dashed, { borderColor: palette.dash }]} />
+      <View
+        style={[styles.notch, { right: -9, backgroundColor: palette.sheet }]}
       />
     </View>
   )
 }
+
+/** As características que viram ícone no card (telão, som, Premiere, área externa). */
+const AMENITY_ICONS = [
+  [1, 'tv'],
+  [2, 'sound'],
+  [3, 'premiere'],
+  [4, 'outdoor']
+] as const
+
+export function AmenityIcons({
+  ids,
+  palette
+}: {
+  ids: number[]
+  palette: Palette
+}) {
+  const shown = AMENITY_ICONS.filter(([id]) => ids.includes(id))
+  if (!shown.length) return null
+  return (
+    <View style={{ flexDirection: 'row', gap: 6 }}>
+      {shown.map(([id, icon]) => (
+        <Icon key={id} name={icon} size={15} color={palette.muted} />
+      ))}
+    </View>
+  )
+}
+
+/** Quem vai: o total confirmado, a partir do piso que o servidor aplica. */
+export function Going({ count, palette }: { count: number; palette: Palette }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+      <Icon
+        name="people"
+        size={17}
+        color={palette.ink}
+        accent={palette.accent}
+      />
+      <Text style={[text(12.5, 'SemiBold', 1.2), { color: palette.ink }]}>
+        {count} vão
+      </Text>
+    </View>
+  )
+}
+
+/** O que o ingresso mostra: a busca e o perfil do bar dão os dois. */
+export type TicketBar = Pick<
+  SearchBar,
+  | 'id'
+  | 'name'
+  | 'neighborhood'
+  | 'photo_url'
+  | 'plan'
+  | 'rating'
+  | 'distance_km'
+  | 'amenities'
+  | 'goingCount'
+> & { nextEvent?: Game }
 
 type CardProps = {
   bar: SearchBar
@@ -360,45 +492,83 @@ type CardProps = {
   onPress: () => void
 }
 
-/** O primeiro bar da lista: foto, jogo e bar, com sombra vermelha. */
-export function BigBarCard({
+/**
+ * O primeiro bar da lista, em formato de ingresso: a foto com os selos de
+ * vidro, o jogo, o picote e o bar. A sombra muda com o estado: vermelha ao
+ * vivo, acid no Elite, a padrão no resto.
+ */
+export function BarTicket({
   bar,
   now,
   palette,
   favorite,
   onFavorite,
   onPress
-}: CardProps) {
+}: Omit<CardProps, 'bar' | 'onPress'> & {
+  bar: TicketBar
+  onPress?: () => void
+}) {
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
+  const elite = bar.plan === 'elite'
+  const shadow = live
+    ? { color: palette.liveShadow, offset: 5 }
+    : elite
+      ? { color: 'rgba(201,241,53,.85)', offset: 5 }
+      : { color: palette.shadow, offset: 4 }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={bar.name}
+      disabled={!onPress}
       onPress={onPress}
       style={({ pressed }) => pressed && { transform: [{ scale: 0.985 }] }}
     >
-      <View style={[styles.bigShadow, live && styles.bigShadowLive]} />
-      <View style={[styles.big, { backgroundColor: palette.card }]}>
-        <View style={styles.bigPhoto}>
+      <HardShadow {...shadow} />
+      <View
+        style={[
+          styles.ticket,
+          { backgroundColor: palette.card, borderColor: palette.ring }
+        ]}
+      >
+        <View style={styles.ticketPhoto}>
           <Photo
             uri={bar.photo_url}
             name={bar.name}
             style={StyleSheet.absoluteFill}
+            palette={palette}
+            big
           />
           <LinearGradient
             colors={['rgba(18,18,15,0)', 'rgba(18,18,15,.55)']}
             locations={[0.4, 1]}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.bigPills}>
-            {live ? <PhotoPill kind="live" label="Ao vivo" /> : null}
-            {bar.plan === 'elite' ? (
-              <PhotoPill kind="elite" label="Elite" />
+          <View style={styles.ticketPills}>
+            {live ? (
+              <PhotoPill kind="live">
+                <View style={[styles.liveDot, { backgroundColor: PAPER }]} />
+                <Text style={pillText(INK)}>Ao vivo</Text>
+              </PhotoPill>
+            ) : game ? (
+              <PhotoPill kind="dark">
+                <Text style={[styles.monoPill, { color: PAPER }]}>
+                  {dayLabel(game.startsAt, now)} às {formatTime(game.startsAt)}
+                </Text>
+              </PhotoPill>
+            ) : null}
+            {elite ? (
+              <PhotoPill kind="acid">
+                <Icon name="medal" size={14} color={INK} />
+                <Text style={pillText(INK)}>Elite</Text>
+              </PhotoPill>
             ) : null}
           </View>
-          <View style={styles.bigDistance}>
-            <PhotoPill kind="glass" label={formatKm(bar.distance_km)} />
+          <View style={styles.ticketDistance}>
+            <PhotoPill kind="dark" height={28}>
+              <Icon name="pin" size={13} color={PAPER} />
+              <Text style={pillText(PAPER)}>{formatKm(bar.distance_km)}</Text>
+            </PhotoPill>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -409,9 +579,16 @@ export function BigBarCard({
               haptic.select()
               onFavorite()
             }}
-            style={[styles.heart, favorite && { backgroundColor: LIVE }]}
+            style={styles.heartSpot}
           >
-            <Icon name="fan" size={20} color={PAPER} />
+            <Glass
+              tone="dark"
+              tint={favorite ? TINT.favorite : TINT.dark}
+              interactive
+              style={styles.heart}
+            >
+              <Icon name="fan" size={18} color={PAPER} accent={PAPER} />
+            </Glass>
           </Pressable>
         </View>
         {game ? <MatchRow game={game} now={now} palette={palette} /> : null}
@@ -420,34 +597,42 @@ export function BigBarCard({
         ) : (
           <View style={{ height: 12 }} />
         )}
-        <View style={styles.bigFoot}>
-          <View style={{ flexDirection: 'row', gap: 7, alignItems: 'center' }}>
-            <Text
-              style={[
-                text(17, 'Bold', 1.2),
-                { color: palette.ink, flexShrink: 1 }
-              ]}
-              numberOfLines={1}
-            >
-              {bar.name}
-            </Text>
-            {bar.rating ? <Tag>{bar.rating.percentage}% voltariam</Tag> : null}
-            {bar.plan === 'pro' ? (
-              <Tag outline color={palette.ink}>
-                Pro
-              </Tag>
-            ) : null}
+        <View style={styles.ticketFoot}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.nameRow}>
+              <Text
+                style={[styles.ticketName, { color: palette.ink }]}
+                numberOfLines={1}
+              >
+                {bar.name}
+              </Text>
+              {bar.rating ? (
+                <Tag>{bar.rating.percentage}% voltariam</Tag>
+              ) : null}
+            </View>
+            <View style={styles.hoodRow}>
+              <Text
+                style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {bar.neighborhood}
+              </Text>
+              <AmenityIcons ids={bar.amenities} palette={palette} />
+            </View>
           </View>
-          <Text style={[text(12.5), { color: palette.muted, marginTop: 3 }]}>
-            {bar.neighborhood}
-          </Text>
+          {bar.goingCount ? (
+            <Going count={bar.goingCount} palette={palette} />
+          ) : null}
         </View>
       </View>
     </Pressable>
   )
 }
 
-/** Os demais bares: foto pequena, jogo, distância e a hora à direita. */
+/**
+ * A linha compacta: foto (ou iniciais, com "Novo" para bar recém-chegado),
+ * jogo, distância e a hora em destaque à direita.
+ */
 export function BarRow({
   bar,
   now,
@@ -463,10 +648,28 @@ export function BarRow({
       onPress={onPress}
       style={({ pressed }) => pressed && { transform: [{ scale: 0.985 }] }}
     >
-      <View style={[styles.row, { backgroundColor: palette.card }]}>
-        <Photo uri={bar.photo_url} name={bar.name} style={styles.rowPhoto} />
+      <HardShadow color={palette.shadow} offset={4} />
+      <View
+        style={[
+          styles.row,
+          { backgroundColor: palette.card, borderColor: palette.ring }
+        ]}
+      >
+        <View>
+          <Photo
+            uri={bar.photo_url}
+            name={bar.name}
+            style={styles.rowPhoto}
+            palette={palette}
+          />
+          {isNewBar(bar.created_at, now) ? (
+            <View style={styles.newTag}>
+              <Tag shadow>Novo</Tag>
+            </View>
+          ) : null}
+        </View>
         <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-          <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          <View style={styles.nameRow}>
             <Text
               style={[
                 text(16, 'Bold', 1.2),
@@ -476,27 +679,30 @@ export function BarRow({
             >
               {bar.name}
             </Text>
-            {bar.plan === 'elite' ? <Tag>Elite</Tag> : null}
             {bar.plan === 'pro' ? (
               <Tag outline color={palette.ink}>
                 Pro
               </Tag>
             ) : null}
           </View>
-          {game ? (
+          <Text
+            style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+            numberOfLines={1}
+          >
+            {game ? matchLine(game) : 'Sem eventos programados'}
+          </Text>
+          <View style={styles.rowMeta}>
+            <View style={styles.km}>
+              <Icon name="pin" size={13} color={palette.ink} />
+              <Text style={[text(12, 'Bold', 1.2), { color: palette.ink }]}>
+                {formatKm(bar.distance_km)}
+              </Text>
+            </View>
             <Text
-              style={[text(12.5), { color: palette.muted }]}
-              numberOfLines={1}
-            >
-              {matchLine(game)}
-            </Text>
-          ) : null}
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <Text style={[text(12, 'Bold'), { color: palette.ink }]}>
-              {formatKm(bar.distance_km)}
-            </Text>
-            <Text
-              style={[text(12), { color: palette.muted, flexShrink: 1 }]}
+              style={[
+                text(12, 'Regular', 1.2),
+                { color: palette.muted, flexShrink: 1 }
+              ]}
               numberOfLines={1}
             >
               {bar.neighborhood}
@@ -505,7 +711,7 @@ export function BarRow({
           </View>
         </View>
         {game ? (
-          <View style={{ alignItems: 'flex-end', paddingRight: 4 }}>
+          <View style={styles.rowWhen}>
             <Text
               style={[
                 styles.rowTime,
@@ -514,8 +720,10 @@ export function BarRow({
             >
               {live ? 'AO VIVO' : formatTime(game.startsAt)}
             </Text>
-            <Text style={[text(11.5), { color: palette.muted }]}>
-              {live ? game.championship : dayLabel(game.startsAt, now)}
+            <Text
+              style={[text(11.5, 'Regular', 1.2), { color: palette.muted }]}
+            >
+              {live ? 'Agora' : dayLabel(game.startsAt, now)}
             </Text>
           </View>
         ) : null}
@@ -534,7 +742,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: PAPER
+    borderColor: PAPER,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 6 }
   },
   pinLive: { paddingVertical: 8, paddingHorizontal: 12 },
   pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
@@ -580,52 +792,49 @@ const styles = StyleSheet.create({
     gap: 7,
     overflow: 'hidden'
   },
-  chipOn: { backgroundColor: 'rgba(201,241,53,.9)' },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
-  tag: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
+  tag: {
+    alignSelf: 'flex-start',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 3
+  },
+  tagShadow: {
+    shadowColor: INK,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 2, height: 2 }
+  },
   photoPill: {
-    height: 34,
-    paddingHorizontal: 13,
-    borderRadius: 17,
+    paddingHorizontal: 11,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: 6,
+    overflow: 'hidden'
   },
-  big: {
+  monoPill: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  ticket: {
     borderRadius: 6,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18,18,15,.12)'
+    borderWidth: 1
   },
-  bigShadow: {
-    position: 'absolute',
-    top: 5,
-    left: 5,
-    right: -5,
-    bottom: -5,
-    borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.09)'
-  },
-  bigShadowLive: { backgroundColor: 'rgba(232,50,12,.28)' },
-  bigPhoto: { height: 128, backgroundColor: '#2a2a25' },
-  bigPills: {
+  ticketPhoto: { height: 128, backgroundColor: '#2a2a25' },
+  ticketPills: {
     position: 'absolute',
     top: 10,
     left: 10,
     flexDirection: 'row',
     gap: 6
   },
-  bigDistance: { position: 'absolute', left: 10, bottom: 10 },
+  ticketDistance: { position: 'absolute', left: 10, bottom: 10 },
+  heartSpot: { position: 'absolute', top: 8, right: 8 },
   heart: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(36,36,32,.45)'
+    overflow: 'hidden'
   },
   match: {
     paddingTop: 12,
@@ -633,13 +842,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8
-  },
-  matchFree: {
-    paddingTop: 12,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
   },
   team: {
     flex: 1,
@@ -653,10 +855,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  teamMarkText: { fontFamily: 'Anton', fontSize: 15, marginVertical: -4 },
+  teamMarkText: {
+    fontFamily: 'Anton',
+    fontSize: 15,
+    letterSpacing: 0.3,
+    marginVertical: -4
+  },
   matchState: { fontFamily: 'Anton', fontSize: 22, marginVertical: -6 },
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, marginTop: 2 },
   perforation: { height: 18, justifyContent: 'center' },
@@ -666,32 +874,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 1.5,
     borderStyle: 'dashed'
   },
-  bigFoot: { paddingHorizontal: 14, paddingBottom: 13 },
+  ticketFoot: {
+    paddingHorizontal: 14,
+    paddingBottom: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  nameRow: { flexDirection: 'row', gap: 7, alignItems: 'center' },
+  ticketName: {
+    ...text(17, 'Bold', 1.2),
+    letterSpacing: -0.17,
+    flexShrink: 1
+  },
+  hoodRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    marginTop: 3
+  },
   row: {
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
     padding: 10,
     borderRadius: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(18,18,15,.12)'
+    borderWidth: 1
   },
-  rowPhoto: {
-    width: 62,
-    height: 62,
-    borderRadius: 3,
-    backgroundColor: '#2a2a25'
-  },
+  rowPhoto: { width: 62, height: 62, borderRadius: 3 },
+  newTag: { position: 'absolute', left: -4, top: -4 },
+  rowMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
+  rowWhen: { alignItems: 'flex-end', paddingRight: 4, gap: 3 },
   rowTime: { fontFamily: 'Anton', fontSize: 24, marginVertical: -7 },
-  noPhoto: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: INK
-  },
-  noPhotoText: {
-    fontFamily: 'Anton',
-    fontSize: 28,
-    color: ACID,
-    marginVertical: -8
-  }
+  noPhoto: { alignItems: 'center', justifyContent: 'center' }
 })
