@@ -80,14 +80,15 @@ export default function Layout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SplashDone value={splashDone}>
           <Stack screenOptions={{ headerShown: false }}>
-            {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. */}
+            {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
+                transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
             <Stack.Screen
               name="vou/[barId]"
               options={{
                 presentation: 'formSheet',
                 sheetAllowedDetents: [0.88],
                 sheetGrabberVisible: true,
-                sheetCornerRadius: 28
+                contentStyle: { backgroundColor: 'transparent' }
               }}
             />
             {/* O código no balcão cobre tudo, no escuro (3f). */}
