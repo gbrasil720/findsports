@@ -69,7 +69,8 @@ export default function FanTabs() {
       key: 'jogos',
       icon: 'ticket',
       label: 'Meus jogos',
-      soon: 'Meus jogos chega em breve'
+      soon: 'Meus jogos chega em breve',
+      open: () => router.push('/meus-jogos')
     },
     {
       key: 'ranking',
@@ -82,6 +83,10 @@ export default function FanTabs() {
       icon: 'star',
       label: 'Avaliações',
       soon: 'As avaliações chegam em breve',
+      // ponytail: sem a lista de avaliações (10), o item abre a mais recente.
+      open: pending.data?.[0]
+        ? () => router.push(`/pos-jogo/${pending.data[0]?.eventId}`)
+        : undefined,
       meta: pending.data?.length
         ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
         : undefined
@@ -156,7 +161,11 @@ export default function FanTabs() {
             initials={initials(user?.name ?? '')}
             items={items}
             onClose={closeMenu}
-            onItem={(item) => soon.show(item.soon)}
+            onItem={(item) => {
+              if (!item.open) return soon.show(item.soon)
+              closeMenu()
+              item.open()
+            }}
             onChat={() => soon.show('A conversa com a Onside chega em breve')}
             onSettings={settings}
           />
