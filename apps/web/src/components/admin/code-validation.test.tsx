@@ -184,6 +184,7 @@ async function render(
     access?: ValidationAccess
     now?: number
     undoWindowMs?: number
+    initialCode?: string
   } = {}
 ) {
   const container = document.createElement('div')
@@ -200,6 +201,7 @@ async function render(
         registerArrival={api.registerArrival as never}
         undoArrival={api.undoArrival as never}
         undoWindowMs={options.undoWindowMs}
+        initialCode={options.initialCode}
       />
     )
   })
@@ -334,6 +336,22 @@ describe('busca do código', () => {
     expect(text).toContain('Corinthians × Palmeiras')
     expect(text).toContain('Chopp em dobro')
     expect(text).toContain('0 de 3 validados')
+  })
+
+  // O QR do app abre `/admin/validate?code=`: a tela já chega buscando.
+  test('o código do link busca sozinho, uma vez', async () => {
+    const api = fakeApi()
+    await render(api, { initialCode: 'ab3-k9x' })
+    expect(api.lookup).toHaveBeenCalledTimes(1)
+    expect(api.lookup).toHaveBeenCalledWith({ code: 'AB3K9X' })
+    expect(document.body.textContent).toContain('Marina Souza')
+  })
+
+  test('código incompleto no link fica no campo, sem buscar', async () => {
+    const api = fakeApi()
+    await render(api, { initialCode: 'AB3' })
+    expect(api.lookup).not.toHaveBeenCalled()
+    expect(input().value).toBe('AB3')
   })
 
   test('resultado é anunciado e o foco vai para o resumo', async () => {

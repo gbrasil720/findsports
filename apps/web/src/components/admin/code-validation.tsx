@@ -1,6 +1,7 @@
 import {
   ARRIVAL_UNDO_WINDOW_MS,
   isReservationCodeComplete,
+  normalizeReservationCode,
   RESERVATION_CODE_LENGTH
 } from '@findsports_oficial/db/reservation-code'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
@@ -46,6 +47,11 @@ type Props = {
     requestId: string
   }) => Promise<ArrivalResult>
   undoArrival: (input: { useId: string }) => Promise<UndoResult>
+  /**
+   * O código que veio no link (`?code=`, o QR do app do torcedor): a tela já
+   * abre buscando.
+   */
+  initialCode?: string
   /** Só os testes mudam. */
   undoWindowMs?: number
 }
@@ -157,13 +163,16 @@ function ValidationPanel({
   lookup,
   registerArrival,
   undoArrival,
+  initialCode,
   undoWindowMs = ARRIVAL_UNDO_WINDOW_MS
 }: Omit<Props, 'access'>) {
   const fieldId = useId()
   const hintId = `${fieldId}-hint`
   const errorId = `${fieldId}-error`
 
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(() =>
+    normalizeReservationCode(initialCode ?? '')
+  )
   const [reservation, setReservation] = useState<ValidatedReservation | null>(
     null
   )
@@ -240,7 +249,18 @@ function ValidationPanel({
 
   const handleLookup = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    lookupCode()
+  }
 
+  // O código do link busca sozinho, uma vez; incompleto, fica no campo.
+  const linkLookup = useRef(isReservationCodeComplete(code))
+  useEffect(() => {
+    if (!linkLookup.current) return
+    linkLookup.current = false
+    lookupCode()
+  })
+
+  const lookupCode = () => {
     // Código incompleto não gasta tentativa no servidor.
     if (!isReservationCodeComplete(code)) {
       setLookupError(
