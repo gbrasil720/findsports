@@ -1,7 +1,3 @@
-import { Redirect } from 'expo-router'
-
-// Aba desabilitada na barra (ver `_layout.tsx`): só existe para a barra ter o
-// item. Se alguém chegar aqui por link, volta para o Explorar.
-export default function NotYet() {
-  return <Redirect href="/explore" />
-}
+// A aba "Você" mostra o mesmo Explorar, com o menu de vidro (2c) por cima
+// (o menu e o estado que as duas dividem ficam em `_layout.tsx`).
+export { default } from './explore'
