@@ -372,7 +372,7 @@ function Notch({ side }: { side: 'left' | 'right' }) {
   return <View style={[styles.notch, { [side]: -9 }]} />
 }
 
-/** 4d, "Mesa garantida": o canhoto da reserva confirmada. */
+/** 4d, "Oferta da casa": o canhoto de quem marcou que vai, com o código. */
 export function TicketArt(props: ArtProps) {
   const { sy } = scale(props)
   const { progress } = props
@@ -403,7 +403,7 @@ export function TicketArt(props: ArtProps) {
                   Bar do Zé
                 </Text>
                 <Text style={[styles.body, { ...size(12.5), color: MUTED }]}>
-                  Mesa para 4 · hoje 21:30
+                  Corinthians × Palmeiras · 21:30
                 </Text>
               </View>
               <Enter
@@ -412,7 +412,7 @@ export function TicketArt(props: ArtProps) {
                 style={styles.badge}
               >
                 <Text style={[styles.bold, { ...size(10.5, 1.2), color: INK }]}>
-                  Confirmada
+                  Você vai
                 </Text>
               </Enter>
             </View>

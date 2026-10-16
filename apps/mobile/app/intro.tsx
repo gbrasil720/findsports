@@ -68,8 +68,8 @@ const PAGES: Page[] = [
   },
   {
     Art: TicketArt,
-    title: [['Mesa garantida'], ['', 'antes do apito.']],
-    body: 'Peça a reserva pelo app. O bar confirma, e o código fica guardado no seu celular.',
+    title: [['Marque que vai.'], ['', 'A oferta é sua.']],
+    body: 'Toque em “Vou assistir aqui” e receba um código na hora. Mostre no balcão e ganhe a oferta da casa.',
     dark: true
   },
   {
