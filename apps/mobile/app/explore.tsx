@@ -150,6 +150,8 @@ export default function Explore() {
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
   const top = insets.top + 8
   const snaps = [0, height * 0.54 - top, height - top - 150]
+  const [resting, setResting] = useState(snaps[1])
+  const expanded = resting === 0
 
   // O mapa mostra o raio de ponta a ponta na faixa entre os chips e a folha
   // (o centro fica nessa faixa, pelo `mapPadding`).
@@ -157,7 +159,8 @@ export default function Explore() {
     top: insets.top + 196,
     right: 0,
     left: 0,
-    bottom: height - (top + snaps[1])
+    // Com a folha baixa, o mapa ganha a tela; aberta, a lista cobre tudo.
+    bottom: height - (top + (resting === 0 ? snaps[1] : resting))
   }
   const kmPerPoint = (radiusKm * 2.2) / width
   const region = {
@@ -172,8 +175,7 @@ export default function Explore() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro e o raio
   useEffect(() => {
     map.current?.animateToRegion(region, 400)
-  }, [center.lat, center.lng, radiusKm])
-  const [expanded, setExpanded] = useState(false)
+  }, [center.lat, center.lng, radiusKm, resting])
   const y = useSharedValue(snaps[1])
   const start = useSharedValue(0)
   const settle = (to: number, velocity = 0) => {
@@ -207,7 +209,7 @@ export default function Explore() {
         if (Math.abs(snap - projected) < Math.abs(target - projected))
           target = snap
       settle(target, event.velocityY)
-      scheduleOnRN(setExpanded, target === 0)
+      scheduleOnRN(setResting, target)
     })
   const sheet = useAnimatedStyle(() => ({
     transform: [{ translateY: y.value }]
@@ -388,8 +390,9 @@ export default function Explore() {
                 accessibilityRole="button"
                 hitSlop={10}
                 onPress={() => {
-                  settle(expanded ? snaps[1] : 0)
-                  setExpanded(!expanded)
+                  const to = expanded ? snaps[1] : 0
+                  settle(to)
+                  setResting(to)
                 }}
                 style={styles.listButton}
               >
