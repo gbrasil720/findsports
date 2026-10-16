@@ -5,10 +5,7 @@ import {
   DialogTitle
 } from '@findsports_oficial/ui/components/dialog'
 import { useRef } from 'react'
-import {
-  getCounterLabel,
-  type ValidatedReservation
-} from '@/domain/reservation-validation'
+import type { ValidatedReservation } from '@/domain/reservation-validation'
 
 type Props = {
   open: boolean
@@ -18,7 +15,7 @@ type Props = {
 }
 
 /**
- * Cada chegada custa um brinde ao bar: o `+1` pede confirmação antes de
+ * Cada validação custa um brinde ao bar: o botão pede confirmação antes de
  * gravar, e o desfazer fica para o engano que passou mesmo assim.
  */
 export function ArrivalConfirmDialog({
@@ -41,11 +38,10 @@ export function ArrivalConfirmDialog({
         className="onside-dialog max-w-[calc(100vw-2rem)] p-6 sm:max-w-sm"
       >
         <DialogTitle className="onside-display text-2xl">
-          Registrar chegada?
+          Validar o código?
         </DialogTitle>
         <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
-          Código de {reservation.guestName}. Com esta chegada ficam{' '}
-          {getCounterLabel(reservation.usedCount + 1, reservation.maxUses)}.
+          Código de {reservation.guestName}. A oferta da casa fica liberada.
         </DialogDescription>
         <div className="mt-6 flex flex-wrap gap-2">
           <button
@@ -54,7 +50,7 @@ export function ArrivalConfirmDialog({
             onClick={onConfirm}
             className="onside-btn onside-btn-acid"
           >
-            Confirmar chegada
+            Sim, validar
           </button>
           <button
             type="button"
