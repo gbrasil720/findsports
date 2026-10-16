@@ -1,12 +1,8 @@
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
+import { createEvent, createTicket, soccerSportId } from '../../fixtures/going'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
-import {
-  createEvent,
-  createReservation,
-  soccerSportId
-} from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -164,14 +160,14 @@ test('a ordem em que os times são marcados é a do confronto, e dá para invert
   await expect(page.getByText(`${first} × ${second}`).first()).toBeVisible()
 })
 
-test('jogo com reserva ativa não é excluído, e o que foi recusado vai junto', async ({
+test('jogo com código de quem vai não é excluído, e o desmarcado vai junto', async ({
   page
 }) => {
   const { barId } = await openSchedule(page)
   const blocked = await createEvent(barId, { championship: 'Bloqueado E2E' })
-  await createReservation(blocked.eventId, { status: 'confirmed' })
+  await createTicket(blocked.eventId)
   const free = await createEvent(barId, { championship: 'Liberado E2E' })
-  await createReservation(free.eventId, { status: 'declined' })
+  await createTicket(free.eventId, { unmarked: true })
   await gotoSchedule(page)
 
   await page
@@ -182,7 +178,7 @@ test('jogo com reserva ativa não é excluído, e o que foi recusado vai junto',
   const refusal = page.getByRole('dialog', {
     name: 'Este jogo não pode ser excluído'
   })
-  await expect(refusal).toContainText('Este jogo tem 1 reserva confirmada.')
+  await expect(refusal).toContainText('Este jogo tem 1 código de quem vai.')
   await expect(
     refusal.getByRole('button', { name: 'Excluir jogo' })
   ).toHaveCount(0)
@@ -200,7 +196,7 @@ test('jogo com reserva ativa não é excluído, e o que foi recusado vai junto',
     .getByRole('button', { name: 'Excluir evento' })
     .click()
   const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
-  await expect(confirm).toContainText('Também apaga 1 reserva encerrada')
+  await expect(confirm).toContainText('Também apaga 1 código desmarcado')
   await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
   await expect
     .poll(async () =>
