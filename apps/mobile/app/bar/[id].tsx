@@ -28,6 +28,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
+import { Card, OfferCard } from '@/components/card'
 import {
   BarTicket,
   dayLabel,
@@ -476,28 +477,7 @@ export default function BarPage() {
             ) : null}
 
             {data.houseOffer ? (
-              <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
-                <View style={styles.offer}>
-                  <View style={styles.offerStub}>
-                    <Icon name="ticket" size={26} color={INK} />
-                  </View>
-                  <View style={styles.offerText}>
-                    <Text
-                      style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
-                    >
-                      Oferta da casa
-                    </Text>
-                    <Text
-                      style={[
-                        text(13, 'Regular', 1.4),
-                        { color: palette.muted }
-                      ]}
-                    >
-                      {data.houseOffer}
-                    </Text>
-                  </View>
-                </View>
-              </Card>
+              <OfferCard palette={palette} offer={data.houseOffer} />
             ) : null}
 
             {games.length > 1 ? (
@@ -846,62 +826,6 @@ function Label({ palette, children }: { palette: Palette; children: string }) {
   )
 }
 
-/** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
-function Card({
-  palette,
-  shadow,
-  offset = 4,
-  soft,
-  style,
-  children
-}: {
-  palette: Palette
-  shadow?: string
-  offset?: number
-  /** Mais a sombra longa e macia dos cartões de lista. */
-  soft?: boolean
-  style?: object
-  children: ReactNode
-}) {
-  return (
-    <View style={style && { flex: 1 }}>
-      {/* A sombra longa num fundo cheio: sem fundo o iOS a calcularia pelos
-          pixels dos filhos (o mapa) a cada quadro da rolagem. */}
-      {soft ? (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            styles.soft,
-            { backgroundColor: palette.card }
-          ]}
-        />
-      ) : null}
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            top: offset,
-            left: offset,
-            right: -offset,
-            bottom: -offset,
-            borderRadius: 6,
-            backgroundColor: shadow ?? palette.shadow
-          }
-        ]}
-      />
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: palette.card, borderColor: palette.ring },
-          style
-        ]}
-      >
-        {children}
-      </View>
-    </View>
-  )
-}
-
 function RoundGlass({
   label,
   selected,
@@ -960,18 +884,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6
   },
-  card: { borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
-  offer: { flexDirection: 'row' },
-  offerStub: {
-    width: 62,
-    backgroundColor: ACID,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRightWidth: 1.5,
-    borderRightColor: 'rgba(18,18,15,.25)',
-    borderStyle: 'dashed'
-  },
-  offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14, gap: 2 },
   heading: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -981,13 +893,6 @@ const styles = StyleSheet.create({
     marginTop: 6
   },
   sub: { flexDirection: 'row', minWidth: 0 },
-  soft: {
-    borderRadius: 6,
-    shadowColor: INK,
-    shadowOpacity: 0.3,
-    shadowRadius: 17,
-    shadowOffset: { width: 0, height: 14 }
-  },
   list: { paddingHorizontal: 14 },
   game: {
     flexDirection: 'row',
