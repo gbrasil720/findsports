@@ -11,6 +11,7 @@ import {
   View,
   type ViewStyle
 } from 'react-native'
+import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { haptic } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
@@ -418,7 +419,19 @@ export function Perforation({ palette }: { palette: Palette }) {
       <View
         style={[styles.notch, { left: -9, backgroundColor: palette.sheet }]}
       />
-      <View style={[styles.dashed, { borderColor: palette.dash }]} />
+      {/* Tracejado em SVG: no iOS o React Native não desenha borda
+          tracejada de um lado só. */}
+      <Svg height={2} style={styles.dashed}>
+        <Line
+          x1={0}
+          y1={1}
+          x2="100%"
+          y2={1}
+          stroke={palette.dash}
+          strokeWidth={1.5}
+          strokeDasharray="4.5,4.5"
+        />
+      </Svg>
       <View
         style={[styles.notch, { right: -9, backgroundColor: palette.sheet }]}
       />
@@ -869,11 +882,7 @@ const styles = StyleSheet.create({
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, marginTop: 2 },
   perforation: { height: 18, justifyContent: 'center' },
   notch: { position: 'absolute', width: 18, height: 18, borderRadius: 9 },
-  dashed: {
-    marginHorizontal: 14,
-    borderTopWidth: 1.5,
-    borderStyle: 'dashed'
-  },
+  dashed: { marginHorizontal: 14, alignSelf: 'stretch' },
   ticketFoot: {
     paddingHorizontal: 14,
     paddingBottom: 13,
