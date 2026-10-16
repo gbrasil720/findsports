@@ -66,7 +66,6 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import { assertCanEnableReservations } from '../lib/reservation-intake'
 import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
 import { utcIso } from '../lib/utc-timestamp'
 
@@ -601,9 +600,7 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional(),
-        // Marcar exige Elite vigente; ausente é desmarcado.
-        acceptsReservations: z.boolean().optional()
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -633,9 +630,6 @@ export const pubRouter = router({
         const existingSubscription = await tx.query.subscription.findFirst({
           where: eq(subscription.barId, lockedBar.id)
         })
-        if (input.acceptsReservations) {
-          assertCanEnableReservations(existingSubscription ?? null)
-        }
         const policy = await getEventCreationPolicy(tx, {
           id: lockedBar.id,
           isActive: lockedBar.isActive,
@@ -676,8 +670,7 @@ export const pubRouter = router({
             ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
             ...(input.participantFreeText && {
               participantFreeText: input.participantFreeText
-            }),
-            acceptsReservations: input.acceptsReservations ?? false
+            })
           })
           .returning({ id: event.id })
 
@@ -723,19 +716,13 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional(),
-        // Marcar exige Elite vigente. Desmarcar vale sempre, inclusive para
-        // quem perdeu o plano com o jogo marcado.
-        acceptsReservations: z.boolean().optional()
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       const existingBar = await getBarByUserId(userId)
-      if (input.acceptsReservations) {
-        assertCanEnableReservations(existingBar.subscription ?? null)
-      }
 
       const existingEvent = await db.query.event.findFirst({
         where: eq(event.id, input.eventId)
@@ -779,9 +766,6 @@ export const pubRouter = router({
           ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
           ...(input.participantFreeText !== undefined && {
             participantFreeText: input.participantFreeText || null
-          }),
-          ...(input.acceptsReservations !== undefined && {
-            acceptsReservations: input.acceptsReservations
           })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
