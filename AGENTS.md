@@ -312,6 +312,9 @@ invente layout que o projeto não tem.
   do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
   imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
   da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
+  O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
+  trocados e o acid no lugar do vermelho (a regra da tab bar do design), e o mapa tem
+  versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida).
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
