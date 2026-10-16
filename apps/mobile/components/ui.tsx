@@ -70,15 +70,27 @@ export const text = (
 export function Icon({
   name,
   size = 19,
-  color = INK
+  color = INK,
+  accent = LIVE
 }: {
   name: keyof typeof ICONS
   size?: number
   color?: string
+  /** O detalhe do ícone: vermelho no claro, acid no escuro. */
+  accent?: string
 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      {ICONS[name](color)}
+      {ICONS[name](color, accent)}
+    </Svg>
+  )
+}
+
+/** As setinhas de "abre menu" (⇅), ao lado de um rótulo. */
+export function UpDown({ color = INK }: { color?: string }) {
+  return (
+    <Svg width={8} height={14} viewBox="0 0 8 14">
+      <Path d="M4 1 7.4 5H.6zM4 13 .6 9h6.8z" fill={color} opacity={0.7} />
     </Svg>
   )
 }
@@ -119,7 +131,7 @@ const ICONS = {
       <Path d="m3.2 6.6 8.8 6.4 8.8-6.4v2.6L12 15.6 3.2 9.2z" fill={c} />
     </>
   ),
-  lock: (c: string) => (
+  lock: (c: string, a: string) => (
     <>
       <Rect
         x={4}
@@ -134,10 +146,10 @@ const ICONS = {
         d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10h-2.4V7.5a2.1 2.1 0 0 0-4.2 0V10z"
         fill={c}
       />
-      <Circle cx={12} cy={15.6} r={2} fill={LIVE} />
+      <Circle cx={12} cy={15.6} r={2} fill={a} />
     </>
   ),
-  fan: (c: string) => (
+  fan: (c: string, a: string) => (
     <>
       <Path
         d="M12 21s-8.6-5-8.6-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.6 3.2C20.6 16 12 21 12 21z"
@@ -150,11 +162,11 @@ const ICONS = {
       />
       <Path
         d="M19.3 2.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"
-        fill={LIVE}
+        fill={a}
       />
     </>
   ),
-  bar: (c: string) => (
+  bar: (c: string, a: string) => (
     <>
       <G fill={c} opacity={0.3}>
         <Path d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z" />
@@ -164,7 +176,7 @@ const ICONS = {
         d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
         fill={c}
       />
-      <G fill={LIVE}>
+      <G fill={a}>
         <Circle cx={7.4} cy={5.6} r={2.6} />
         <Circle cx={11} cy={4.6} r={2.9} />
         <Circle cx={14.2} cy={5.8} r={2.3} />
@@ -184,7 +196,7 @@ const ICONS = {
       />
     </>
   ),
-  map: (c: string) => (
+  map: (c: string, a: string) => (
     <>
       <Path
         d="M2.5 6.2 8.6 4l6.2 2.2L21 4v13.8L14.8 20l-6.2-2.2-6.1 2.2z"
@@ -195,7 +207,7 @@ const ICONS = {
         d="M15.2 4.6a3.9 3.9 0 0 1 3.9 3.9c0 2.9-3.9 6.9-3.9 6.9s-3.9-4-3.9-6.9a3.9 3.9 0 0 1 3.9-3.9z"
         fill={c}
       />
-      <Circle cx={15.2} cy={8.5} r={1.45} fill={LIVE} />
+      <Circle cx={15.2} cy={8.5} r={1.45} fill={a} />
     </>
   ),
   people: (c: string) => (
@@ -225,7 +237,7 @@ const ICONS = {
       fill={c}
     />
   ),
-  tv: (c: string) => (
+  tv: (c: string, a: string) => (
     <>
       <Rect
         x={2.5}
@@ -238,7 +250,7 @@ const ICONS = {
       />
       <Rect x={8} y={18.6} width={8} height={2.4} rx={1.2} fill={c} />
       <Path d="M4.5 6.5h15v8h-15z" fill={c} opacity={0.55} />
-      <Circle cx={18} cy={8.2} r={1.7} fill={LIVE} />
+      <Circle cx={18} cy={8.2} r={1.7} fill={a} />
     </>
   ),
   shield: (c: string) => (
@@ -247,20 +259,20 @@ const ICONS = {
       <Path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10.2z" fill={c} />
     </>
   ),
-  bell: (c: string) => (
+  bell: (c: string, a: string) => (
     <>
       <Path d="M5 17V11a7 7 0 0 1 14 0v6l1.6 2H3.4z" fill={c} opacity={0.3} />
       <Path d="M9.4 20a2.6 2.6 0 0 0 5.2 0z" fill={c} />
       <Path d="M3.4 19 5 17h14l1.6 2z" fill={c} />
-      <Circle cx={18} cy={5.5} r={3.2} fill={LIVE} />
+      <Circle cx={18} cy={5.5} r={3.2} fill={a} />
     </>
   ),
-  outdoor: (c: string) => (
+  outdoor: (c: string, a: string) => (
     <>
       <Path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9z" fill={c} opacity={0.3} />
       <Rect x={11} y={11} width={2.2} height={10} rx={1.1} fill={c} />
       <Path d="M3 12h18v1.4H3z" fill={c} />
-      <Circle cx={12} cy={3.4} r={1.5} fill={LIVE} />
+      <Circle cx={12} cy={3.4} r={1.5} fill={a} />
     </>
   ),
   sound: (c: string) => (
@@ -332,6 +344,95 @@ const ICONS = {
         d="M12 2.2 16.6 7l-1.5 1.5L13.1 6.4V15h-2.2V6.4L8.9 8.5 7.4 7z"
         fill={c}
       />
+    </>
+  ),
+  ranking: (c: string, a: string) => (
+    <>
+      <Path d="M2 11.5h6V21H2zM16 14h6v7h-6z" fill={c} opacity={0.35} />
+      <Path d="M8.7 7.5h6.6V21H8.7z" fill={c} />
+      <Path
+        d="M12 1.1Q12.45 3.15 14.5 3.6Q12.45 4.05 12 6.1Q11.55 4.05 9.5 3.6Q11.55 3.15 12 1.1Z"
+        fill={a}
+      />
+    </>
+  ),
+  you: (c: string, a: string) => (
+    <>
+      <Path
+        fillRule="evenodd"
+        d="M11 2.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17zm0 3.6a4.9 4.9 0 1 0 0 9.8 4.9 4.9 0 0 0 0-9.8z"
+        fill={c}
+      />
+      <Circle cx={17.6} cy={17.6} r={3.4} fill={a} />
+    </>
+  ),
+  sparkle: (c: string, a: string) => (
+    <>
+      <Path
+        d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z"
+        fill={c}
+      />
+      <Path
+        d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z"
+        fill={a}
+      />
+    </>
+  ),
+  gear: (c: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9} fill={c} opacity={0.3} />
+      <Path
+        fillRule="evenodd"
+        d="M10.6 2h2.8l.5 2.7 1.9.8 2.3-1.6 2 2-1.6 2.3.8 1.9 2.7.5v2.8l-2.7.5-.8 1.9 1.6 2.3-2 2-2.3-1.6-1.9.8-.5 2.7h-2.8l-.5-2.7-1.9-.8-2.3 1.6-2-2 1.6-2.3-.8-1.9L2 13.4v-2.8l2.7-.5.8-1.9-1.6-2.3 2-2 2.3 1.6 1.9-.8zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z"
+        fill={c}
+      />
+    </>
+  ),
+  chat: (c: string) => (
+    <>
+      <Path
+        d="M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v9a2.5 2.5 0 0 1-2.5 2.5H10l-5 4v-4h.5A2.5 2.5 0 0 1 3 14.5z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Circle cx={8} cy={10} r={1.6} fill={c} />
+      <Circle cx={12} cy={10} r={1.6} fill={c} />
+      <Circle cx={16} cy={10} r={1.6} fill={c} />
+    </>
+  ),
+  star: (c: string) => (
+    <Path
+      d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"
+      fill={c}
+    />
+  ),
+  sliders: (c: string, a: string) => (
+    <>
+      <Rect
+        x={3}
+        y={5.5}
+        width={18}
+        height={3}
+        rx={1.5}
+        fill={c}
+        opacity={0.35}
+      />
+      <Rect
+        x={3}
+        y={15.5}
+        width={18}
+        height={3}
+        rx={1.5}
+        fill={c}
+        opacity={0.35}
+      />
+      <Circle cx={15.5} cy={7} r={3.2} fill={c} />
+      <Circle cx={8.5} cy={17} r={3.2} fill={a} />
     </>
   )
 }
