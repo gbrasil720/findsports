@@ -35,7 +35,7 @@ export type MenuItem = {
 }
 
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
-const DIM_IN = FadeIn.duration(180)
+const DIM_IN = FadeIn.duration(180).easing(EASE)
 const DIM_OUT = FadeOut.duration(140)
 // O menu é vidro, e vidro some com opacidade animada (o GlassView não
 // desenha a meio caminho): ele entra só subindo e crescendo, nunca
@@ -139,11 +139,11 @@ export function YouMenu({
                 onPress={() => onItem(item)}
                 style={({ pressed }) => [
                   styles.menuItem,
-                  on &&
+                  // O toque acende o mesmo fundo do item em destaque.
+                  (on || pressed) &&
                     (palette.dark
                       ? styles.menuItemOnDark
-                      : styles.menuItemOnLight),
-                  pressed && { opacity: 0.7 }
+                      : styles.menuItemOnLight)
                 ]}
               >
                 <Icon
@@ -205,7 +205,14 @@ function RoundButton({
 }
 
 const styles = StyleSheet.create({
-  menuWrap: { position: 'absolute', left: 14, right: 14, zIndex: 30 },
+  // Cresce da aba "Você" (terceira da barra), não do próprio centro.
+  menuWrap: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    zIndex: 30,
+    transformOrigin: '62% 100%'
+  },
   menu: { borderRadius: 32, padding: 8, overflow: 'hidden' },
   menuHead: {
     flexDirection: 'row',
@@ -240,7 +247,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   menuItem: {
-    height: 52,
+    minHeight: 52,
     paddingHorizontal: 14,
     borderRadius: 18,
     flexDirection: 'row',
