@@ -14,7 +14,7 @@ import {
   View
 } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
-import MapView, { Circle, Marker } from 'react-native-maps'
+import MapView, { Marker } from 'react-native-maps'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -24,24 +24,41 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import {
   BarRow,
-  BigBarCard,
+  BarTicket,
   Chip,
   MeDot,
   Pin,
   type SearchBar,
   usePalette
 } from '@/components/explore'
-import { Icon, INK, text, useStatusBar } from '@/components/ui'
+import { Glass } from '@/components/glass'
+import { useSoon } from '@/components/soon'
+import {
+  FanTabBar,
+  type MenuItem,
+  useTabBarSpace,
+  YouMenu
+} from '@/components/tab-bar'
+import {
+  ACID,
+  Icon,
+  INK,
+  LIVE,
+  text,
+  UpDown,
+  useStatusBar
+} from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { type Coordinates, greeting, isLive, searchCenter } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
- * "Explorar" (07 do design): o mapa dos bares com jogo por perto, o
- * cabeçalho com a saudação, os filtros em chips e a lista numa folha que
- * arrasta. O mapa é o nativo: Apple Maps apagado no iOS, Google Maps com as
- * cores da Onside no Android (`lib/map-style.ts`).
+ * "Explorar" (2d e 2e do design): o mapa dos bares com jogo por perto, o
+ * cabeçalho com a saudação, os filtros em chips de vidro, a lista numa folha
+ * que arrasta e a barra de vidro do torcedor, com o menu "Você" (2c). O mapa
+ * é o nativo: Apple Maps apagado no iOS, Google Maps com as cores da Onside
+ * no Android (`lib/map-style.ts`).
  */
 
 const TELAO = 1
@@ -51,19 +68,30 @@ const AREA_EXTERNA = 4
 const today = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
+const initialsOf = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+
 export default function Explore() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const palette = usePalette()
-  const dark = palette.bg === INK
   const queryClient = useQueryClient()
   const session = authClient.useSession()
-  useStatusBar(dark ? 'light' : 'dark')
+  const soon = useSoon()
+  const tabSpace = useTabBarSpace()
+  useStatusBar(palette.dark ? 'light' : 'dark')
 
   // De onde a busca parte: o aparelho (se já deu permissão), a cidade do
   // perfil ou São Paulo. Não pede permissão aqui; o onboarding já pediu.
   const [device, setDevice] = useState<Coordinates | null>(null)
+  const [district, setDistrict] = useState<string | null>(null)
   useEffect(() => {
     Location.getForegroundPermissionsAsync()
       .then(({ granted }) =>
@@ -73,12 +101,20 @@ export default function Explore() {
             })
           : null
       )
-      .then((position) => {
-        if (position)
-          setDevice({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          })
+      .then(async (position) => {
+        if (!position) return
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        }
+        setDevice(coords)
+        // O bairro de onde a pessoa está, como o design escreve
+        // ("Vila Madalena"); sem ele, fica a cidade.
+        const [place] = await Location.reverseGeocodeAsync({
+          latitude: coords.lat,
+          longitude: coords.lng
+        })
+        setDistrict(place?.district ?? place?.subregion ?? place?.city ?? null)
       })
       .catch(() => {})
   }, [])
@@ -130,6 +166,11 @@ export default function Explore() {
     () => new Set(favorites.data?.map((item) => item.barId)),
     [favorites.data]
   )
+  const pending = useQuery({
+    ...trpc.ratings.getPending.queryOptions(),
+    retry: false,
+    meta: { errorToast: false }
+  })
   const refreshFavorites = () =>
     queryClient.invalidateQueries({
       queryKey: trpc.pubs.getFavorites.queryKey()
@@ -149,17 +190,16 @@ export default function Explore() {
 
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
   const top = insets.top + 8
-  const snaps = [0, height * 0.54 - top, height - top - 150]
+  const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace - 64]
   const [resting, setResting] = useState(snaps[1])
   const expanded = resting === 0
 
-  // O mapa mostra o raio de ponta a ponta na faixa entre os chips e a folha
-  // (o centro fica nessa faixa, pelo `mapPadding`).
+  // O mapa enquadra o raio da busca na faixa entre os chips e a folha (o
+  // centro fica nessa faixa, pelo `mapPadding`).
   const padding = {
     top: insets.top + 196,
     right: 0,
     left: 0,
-    // Com a folha baixa, o mapa ganha a tela; aberta, a lista cobre tudo.
     bottom: height - (top + (resting === 0 ? snaps[1] : resting))
   }
   const kmPerPoint = (radiusKm * 2.2) / width
@@ -170,12 +210,12 @@ export default function Explore() {
     longitudeDelta:
       (kmPerPoint * width) / (111.32 * Math.cos((center.lat * Math.PI) / 180))
   }
-  // Acompanha o centro quando a localização chega depois da cidade.
   const map = useRef<MapView>(null)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro e o raio
+  // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro, o raio e a folha
   useEffect(() => {
     map.current?.animateToRegion(region, 400)
   }, [center.lat, center.lng, radiusKm, resting])
+
   const y = useSharedValue(snaps[1])
   const start = useSharedValue(0)
   const settle = (to: number, velocity = 0) => {
@@ -217,16 +257,31 @@ export default function Explore() {
 
   const user = session.data?.user
   const firstName = user?.name.split(' ')[0] ?? ''
-  const initials = (user?.name ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-  const place = device ? 'Perto de você' : (city.data?.name ?? 'São Paulo')
-  // ponytail: menu "Você" é a seção 10; até lá a inicial abre só o "Sair".
-  const account = () =>
+  const initials = initialsOf(user?.name ?? '')
+  const place = district ?? city.data?.name ?? 'São Paulo'
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuItems: MenuItem[] = [
+    { key: 'perfil', icon: 'you', label: 'Perfil' },
+    { key: 'conquistas', icon: 'medal', label: 'Conquistas' },
+    { key: 'reservas', icon: 'ticket', label: 'Minhas reservas' },
+    {
+      key: 'favoritos',
+      icon: 'fan',
+      label: 'Favoritos',
+      meta: favorites.data?.length ? String(favorites.data.length) : undefined
+    },
+    {
+      key: 'avaliacoes',
+      icon: 'star',
+      label: 'Avaliações',
+      meta: pending.data?.length
+        ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
+        : undefined
+    },
+    { key: 'preferencias', icon: 'sliders', label: 'Preferências' }
+  ]
+  // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
+  const settings = () =>
     Alert.alert(user?.name ?? 'Conta', user?.email, [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -245,6 +300,8 @@ export default function Explore() {
       : bars.length > 0
         ? `${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} com jogo`
         : 'Bares com jogo'
+  const glassTone = palette.dark ? 'dark' : 'light'
+  const fade = palette.dark ? '18,18,15' : '241,238,230'
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -252,25 +309,16 @@ export default function Explore() {
         ref={map}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        // O centro fica no pedaço visível, entre o título e a folha.
         mapPadding={padding}
         mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
-        customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
-        userInterfaceStyle={dark ? 'dark' : 'light'}
+        customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
+        userInterfaceStyle={palette.dark ? 'dark' : 'light'}
         showsPointsOfInterests={false}
         showsCompass={false}
         showsTraffic={false}
         pitchEnabled={false}
         toolbarEnabled={false}
       >
-        <Circle
-          center={{ latitude: center.lat, longitude: center.lng }}
-          radius={radiusKm * 1000}
-          strokeColor={dark ? 'rgba(241,238,230,.5)' : 'rgba(18,18,15,.55)'}
-          strokeWidth={1.5}
-          lineDashPattern={[6, 5]}
-          fillColor="rgba(201,241,53,.10)"
-        />
         {device ? (
           <Marker
             coordinate={{ latitude: device.lat, longitude: device.lng }}
@@ -296,36 +344,73 @@ export default function Explore() {
         ))}
       </MapView>
 
+      {/* O papel cobre o topo e se desfaz até o mapa, como no design: opaco
+          até 150, 60% em 230, nada em 330. */}
       <LinearGradient
         pointerEvents="none"
-        colors={[palette.bg, palette.bg, `${palette.bg}99`, `${palette.bg}00`]}
-        locations={[0, 0.45, 0.7, 1]}
-        style={[styles.fade, { height: insets.top + 270 }]}
+        colors={[
+          `rgba(${fade},1)`,
+          `rgba(${fade},.96)`,
+          `rgba(${fade},.6)`,
+          `rgba(${fade},0)`
+        ]}
+        locations={[0, 0.4545, 0.697, 1]}
+        style={[styles.fade, { height: insets.top + 283 }]}
       />
 
-      <View style={[styles.head, { top: insets.top + 6 }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sua conta"
-          onPress={account}
-          style={styles.who}
-        >
-          <View style={[styles.avatar, dark && { shadowOpacity: 0.35 }]}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-          <View>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              {greeting()}
-              {firstName ? `, ${firstName}` : ''}
-            </Text>
-            <View style={styles.place}>
-              <Icon name="pin" size={13} color="#e8320c" />
-              <Text style={[text(12.5), { color: palette.muted }]}>
-                {place}
+      <View style={[styles.head, { top: insets.top + 13 }]}>
+        <View style={styles.topRow}>
+          <View style={styles.who}>
+            <View
+              style={[
+                styles.avatar,
+                { shadowColor: palette.dark ? 'rgba(201,241,53,.35)' : ACID }
+              ]}
+            >
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+            <View>
+              <Text style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}>
+                {greeting()}
+                {firstName ? `, ${firstName}` : ''}
               </Text>
+              <View style={styles.place}>
+                <Icon name="pin" size={13} color={palette.dark ? ACID : LIVE} />
+                <Text
+                  style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  {place}
+                </Text>
+                <UpDown color={palette.muted} />
+              </View>
             </View>
           </View>
-        </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Buscar"
+              onPress={() => soon.show('A busca')}
+            >
+              <Glass tone={glassTone} interactive style={styles.round}>
+                <Icon name="search" size={19} color={palette.ink} />
+              </Glass>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Avisos"
+              onPress={() => soon.show('Avisos')}
+            >
+              <Glass tone={glassTone} interactive style={styles.round}>
+                <Icon
+                  name="bell"
+                  size={19}
+                  color={palette.ink}
+                  accent={palette.dark ? ACID : LIVE}
+                />
+              </Glass>
+            </Pressable>
+          </View>
+        </View>
         <Text style={[styles.title, { color: palette.ink }]}>
           ONDE VAI SER <Text style={{ color: palette.live }}>O JOGO?</Text>
         </Text>
@@ -334,34 +419,34 @@ export default function Explore() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[styles.chips, { top: insets.top + 152 }]}
+        style={[styles.chips, { top: insets.top + 159 }]}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
       >
         <Chip
           live
           label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
           on={liveOnly}
-          dark={dark}
+          palette={palette}
           onPress={() => setLiveOnly((on) => !on)}
         />
         <Chip
           label="Hoje"
           on={todayOnly}
-          dark={dark}
+          palette={palette}
           onPress={() => setTodayOnly((on) => !on)}
         />
         <Chip
           icon="tv"
           label="Telão"
           on={amenities.includes(TELAO)}
-          dark={dark}
+          palette={palette}
           onPress={() => toggleAmenity(TELAO)}
         />
         <Chip
           icon="outdoor"
           label="Área externa"
           on={amenities.includes(AREA_EXTERNA)}
-          dark={dark}
+          palette={palette}
           onPress={() => toggleAmenity(AREA_EXTERNA)}
         />
       </ScrollView>
@@ -369,8 +454,8 @@ export default function Explore() {
       <Animated.View
         style={[
           styles.sheet,
-          { top, backgroundColor: palette.bg },
-          dark && styles.sheetDark,
+          { top, backgroundColor: palette.sheet },
+          palette.dark && styles.sheetDark,
           sheet
         ]}
       >
@@ -396,7 +481,7 @@ export default function Explore() {
                 }}
                 style={styles.listButton}
               >
-                <Text style={[text(13, 'Bold'), { color: palette.ink }]}>
+                <Text style={[text(13, 'Bold', 1.2), { color: palette.ink }]}>
                   {expanded ? 'Mapa' : 'Lista'}
                 </Text>
                 <View
@@ -413,7 +498,9 @@ export default function Explore() {
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingBottom: insets.bottom + 40 + top,
+            paddingTop: 2,
+            // A barra de vidro fica por cima: o último card sobe acima dela.
+            paddingBottom: tabSpace + 64 + 24 + top,
             gap: 12
           }}
           showsVerticalScrollIndicator={false}
@@ -448,7 +535,7 @@ export default function Explore() {
           ) : (
             bars.map((bar, index) =>
               index === 0 ? (
-                <BigBarCard
+                <BarTicket
                   key={bar.id}
                   bar={bar}
                   now={now}
@@ -474,6 +561,33 @@ export default function Explore() {
           )}
         </ScrollView>
       </Animated.View>
+
+      {menuOpen ? (
+        <YouMenu
+          palette={palette}
+          name={user?.name ?? ''}
+          initials={initials}
+          items={menuItems}
+          onClose={() => setMenuOpen(false)}
+          onItem={(item) => soon.show(item.label)}
+          onChat={() => soon.show('A conversa com a Onside')}
+          onSettings={settings}
+        />
+      ) : null}
+      <FanTabBar
+        active="explore"
+        palette={palette}
+        menuOpen={menuOpen}
+        onTab={(tab) => {
+          if (tab === 'you') setMenuOpen((on) => !on)
+          else {
+            setMenuOpen(false)
+            if (tab === 'ranking') soon.show('O ranking')
+          }
+        }}
+        onAi={() => soon.show('A busca com IA')}
+      />
+      {soon.toast}
     </View>
   )
 }
@@ -481,12 +595,12 @@ export default function Explore() {
 const styles = StyleSheet.create({
   fade: { position: 'absolute', top: 0, left: 0, right: 0 },
   head: { position: 'absolute', left: 16, right: 16, gap: 12 },
-  who: {
+  topRow: {
     flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    alignSelf: 'flex-start'
+    justifyContent: 'space-between',
+    alignItems: 'center'
   },
+  who: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   avatar: {
     width: 40,
     height: 40,
@@ -494,7 +608,6 @@ const styles = StyleSheet.create({
     backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#c9f135',
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 3, height: 3 }
@@ -502,10 +615,18 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: 'Anton',
     fontSize: 17,
-    color: '#c9f135',
+    color: ACID,
     marginVertical: -5
   },
   place: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  round: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
   title: {
     fontFamily: 'Anton',
     fontSize: 40,
@@ -527,8 +648,9 @@ const styles = StyleSheet.create({
     elevation: 12
   },
   sheetDark: {
+    shadowOpacity: 0.7,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(241,238,230,.14)'
+    borderColor: 'rgba(255,255,255,.06)'
   },
   grabber: {
     width: 38,
