@@ -56,6 +56,10 @@ export const Route = createFileRoute('/(dashboard)/dashboard')({
     ],
     links: [...PWA_LINKS]
   }),
+  // "Avaliar" de Meus jogos abre aqui com `?avaliar=<jogo>`: os cards do
+  // pós-jogo trazem esse jogo na frente.
+  validateSearch: (search: Record<string, unknown>): { avaliar?: string } =>
+    typeof search.avaliar === 'string' ? { avaliar: search.avaliar } : {},
   component: FanDashboard
 })
 
@@ -91,6 +95,7 @@ function toggled<T>(list: T[], item: T): T[] {
 function FanDashboard() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const navigate = useNavigate()
+  const { avaliar } = Route.useSearch()
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
@@ -605,8 +610,11 @@ function FanDashboard() {
         locationState={locationState}
         fallbackCityName={(profileCity ?? SAO_PAULO_CITY).name}
       />
-      <AttendanceReportCard />
-      <PendingRatingCard pending={pendingRatingsQuery.data ?? []} />
+      <AttendanceReportCard first={avaliar} />
+      <PendingRatingCard
+        pending={pendingRatingsQuery.data ?? []}
+        first={avaliar}
+      />
       <SearchFilterBar
         championship={searchText}
         onChampionshipChange={(value) => setSearch(value, value === '')}
