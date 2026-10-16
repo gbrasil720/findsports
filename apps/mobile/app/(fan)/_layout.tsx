@@ -3,10 +3,11 @@ import { useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useState } from 'react'
 import { Alert, View } from 'react-native'
-import { usePalette } from '@/components/explore'
+import { initials, usePalette } from '@/components/explore'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
+import { useFavorites } from '@/lib/favorites'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -33,22 +34,13 @@ const TAB_ICONS = {
   }
 }
 
-const initialsOf = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-
 export default function FanTabs() {
   const router = useRouter()
   const palette = usePalette()
   const soon = useSoon()
   const session = authClient.useSession()
   const [menuOpen, setMenuOpen] = useState(false)
-  const favorites = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const favorites = useFavorites()
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
     retry: false,
@@ -81,7 +73,7 @@ export default function FanTabs() {
       icon: 'fan',
       label: 'Favoritos',
       soon: 'A lista de favoritos chega em breve',
-      meta: favorites.data?.length ? String(favorites.data.length) : undefined
+      meta: favorites.count ? String(favorites.count) : undefined
     },
     {
       key: 'avaliacoes',
@@ -162,7 +154,7 @@ export default function FanTabs() {
         <YouMenu
           palette={palette}
           name={user?.name ?? ''}
-          initials={initialsOf(user?.name ?? '')}
+          initials={initials(user?.name ?? '')}
           items={items}
           onClose={() => setMenuOpen(false)}
           onItem={(item) => soon.show(item.soon)}
