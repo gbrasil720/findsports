@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { EMAIL_LOGO_URL } from '@findsports_oficial/config/site'
 import { createOnsideEmailTemplate } from './email-layout'
 
 const input = {
@@ -14,9 +15,13 @@ const input = {
 // O Outlook mandava os e-mails para o lixo eletrônico com SPF/DKIM/DMARC
 // passando: o que estes testes travam é o conteúdo que sai do filtro.
 describe('layout dos e-mails Onside', () => {
-  it('não leva imagem nem preheader escondido', () => {
+  it('leva só o wordmark de imagem, sem preheader escondido', () => {
     const { html } = createOnsideEmailTemplate(input)
-    expect(html).not.toContain('<img')
+    const images = html.match(/<img [^>]*>/g) ?? []
+    expect(images).toHaveLength(1)
+    expect(images[0]).toContain(`src="${EMAIL_LOGO_URL}"`)
+    expect(images[0]).toContain('alt="Onside"')
+    expect(images[0]).toContain('width="132" height="40"')
     expect(html).not.toContain('display:none')
     expect(html).not.toContain('<style')
   })
@@ -36,7 +41,7 @@ describe('layout dos e-mails Onside', () => {
     const body = html.slice(html.indexOf('<body'))
     const visibleText = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
     expect(visibleText.trim()).toStartWith(
-      'ONSIDE Confirme seu e-mail Olá, Ana. Falta um passo.'
+      'Confirme seu e-mail Olá, Ana. Falta um passo.'
     )
   })
 

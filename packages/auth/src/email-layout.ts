@@ -2,12 +2,14 @@
  * Layout único dos e-mails transacionais da Onside.
  *
  * Feito para passar em filtro de conteúdo (o Outlook mandava para o lixo
- * eletrônico com SPF/DKIM/DMARC passando): nenhuma imagem, a marca vai em
- * texto; HTML em tabelas com estilo inline, sem `<style>` nem preheader
+ * eletrônico com SPF/DKIM/DMARC passando): uma só imagem, o wordmark
+ * hospedado no próprio domínio, pequeno e com `alt`; HTML em tabelas com estilo inline, sem `<style>` nem preheader
  * escondido, porque a primeira frase visível já faz esse papel; um só botão,
  * com o mesmo link em texto logo abaixo; e a versão `text/plain` montada da
  * mesma copy, para as duas partes dizerem a mesma coisa.
  */
+
+import { EMAIL_LOGO_URL } from '@findsports_oficial/config/site'
 
 export type OnsideEmailInput = {
   /** Título do e-mail, no `<title>` e no topo da mensagem. */
@@ -30,6 +32,9 @@ const MUTED = '#55554f'
 const LIME = '#c9f135'
 const PAPER = '#f1eee6'
 const FONT = 'Arial,Helvetica,sans-serif'
+// Proporção do PNG (845×256) em 132px de largura.
+const LOGO_WIDTH = 132
+const LOGO_HEIGHT = 40
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -90,7 +95,7 @@ export function createOnsideEmailTemplate({
 <tr><td align="center" style="padding:24px 12px">
 <!--[if mso]><table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border:1px solid #d9d5cc;border-collapse:collapse">
-<tr><td style="padding:20px 32px;border-bottom:4px solid ${LIME};font-family:${FONT};font-size:20px;font-weight:700;letter-spacing:3px;color:${INK}">ONSIDE</td></tr>
+<tr><td style="padding:20px 32px;border-bottom:4px solid ${LIME}"><img src="${EMAIL_LOGO_URL}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="Onside" style="display:block;width:${LOGO_WIDTH}px;height:${LOGO_HEIGHT}px;border:0"></td></tr>
 ${cell('28px 32px 0', `font-size:24px;font-weight:700;line-height:1.3;color:${INK}`, `<h1 style="margin:0;font-size:24px;font-weight:700;line-height:1.3">${safe.heading}</h1>`)}
 ${cell('16px 32px 0', `font-size:16px;line-height:1.6;color:${INK}`, safe.intro)}
 ${

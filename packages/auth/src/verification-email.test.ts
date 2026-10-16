@@ -25,7 +25,7 @@ describe('e-mail de verificação Onside', () => {
     expect(email.subject).toBe('Confirme seu e-mail para entrar em campo')
     expect(email.html).toContain('#12120f')
     expect(email.html).toContain('#c9f135')
-    expect(email.html).toContain('ONSIDE')
+    expect(email.html).toContain('alt="Onside"')
     expect(email.html).toContain('Confirmar meu e-mail')
     expect(email.html).toContain('copie e cole este endereço')
     expect(email.text).toContain(
@@ -59,8 +59,8 @@ describe('e-mail de verificação Onside', () => {
       (match) => (match[1] ?? '').replaceAll('&amp;', '&')
     )
 
-    // Botão e link em texto: nenhuma imagem, nenhum outro destino.
-    expect(urls).toHaveLength(2)
+    // Wordmark, botão e link em texto: nenhum outro destino.
+    expect(urls).toHaveLength(3)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)

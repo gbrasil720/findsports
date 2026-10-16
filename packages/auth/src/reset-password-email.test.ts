@@ -17,7 +17,7 @@ describe('e-mail de redefinição de senha', () => {
     expect(email.html).toContain('#12120f')
     expect(email.html).toContain('#c9f135')
     expect(email.html).toContain('Definir nova senha')
-    expect(email.html).toContain('ONSIDE')
+    expect(email.html).toContain('alt="Onside"')
     expect(email.html).toContain('copie e cole este endereço')
     expect(email.text).toContain(
       'https://onside.app/api/auth/reset-password/abc'
@@ -76,7 +76,7 @@ describe('e-mail de redefinição de senha', () => {
       (match) => (match[1] ?? '').replaceAll('&amp;', '&')
     )
 
-    expect(urls).toHaveLength(2)
+    expect(urls).toHaveLength(3)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)
