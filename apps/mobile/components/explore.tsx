@@ -329,7 +329,7 @@ function HardShadow({ color, offset }: { color: string; offset: number }) {
 
 // --- Card do bar (ingresso) --------------------------------------------------
 
-function Photo({
+export function Photo({
   uri,
   name,
   style,
