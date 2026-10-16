@@ -1,7 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,12 +21,13 @@ import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
   BlockButton,
+  FG,
   Field,
   INK,
   LIVE,
-  MUTED,
   PAPER,
   Screen,
+  SUB,
   Title,
   text
 } from '@/components/ui'
@@ -39,6 +47,7 @@ const NOTICES: Record<string, string> = {
 export default function SignIn() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const dark = useColorScheme() === 'dark'
   const params = useLocalSearchParams<{ email?: string; notice?: string }>()
   const [email, setEmail] = useState(params.email ?? '')
   const [password, setPassword] = useState('')
@@ -109,7 +118,12 @@ export default function SignIn() {
             resizeMode="cover"
           />
           <LinearGradient
-            colors={['rgba(18,18,15,.2)', 'rgba(18,18,15,0)', PAPER]}
+            // Funde no fundo da tela; o gradiente pede cor pronta, não dinâmica.
+            colors={[
+              'rgba(18,18,15,.2)',
+              'rgba(18,18,15,0)',
+              dark ? INK : PAPER
+            ]}
             locations={[0, 0.45, 1]}
             style={StyleSheet.absoluteFill}
           />
@@ -139,12 +153,12 @@ export default function SignIn() {
         <View>
           <Title lines={[['De volta ', 'ao jogo.']]} size={48} />
           <View style={{ marginTop: 8 }}>
-            <Text style={[text(15), { color: MUTED }]}>
+            <Text style={[text(15), { color: SUB }]}>
               Não tem conta?{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => router.push('/profile')}
-                style={[text(15, 'Bold'), { color: INK }, styles.underline]}
+                style={[text(15, 'Bold'), { color: FG }, styles.underline]}
               >
                 Cadastre-se grátis
               </Text>
@@ -152,7 +166,10 @@ export default function SignIn() {
           </View>
         </View>
         {notice ? (
-          <Text accessibilityRole="alert" style={text(14, 'SemiBold')}>
+          <Text
+            accessibilityRole="alert"
+            style={[text(14, 'SemiBold'), { color: FG }]}
+          >
             {notice}
           </Text>
         ) : null}
@@ -194,7 +211,7 @@ export default function SignIn() {
           onPress={submit}
           style={{ marginTop: 6 }}
         />
-        <Text style={[text(12.5), { color: MUTED, textAlign: 'center' }]}>
+        <Text style={[text(12.5), { color: SUB, textAlign: 'center' }]}>
           Ao entrar, você acessa o app Onside com sua conta.
         </Text>
         {turnstile.widget}

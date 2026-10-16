@@ -8,14 +8,16 @@ import {
   BackButton,
   BlockButton,
   Checkbox,
+  FG,
   Field,
   Icon,
   LIVE,
   MIN_PASSWORD,
-  MUTED,
   passwordScore,
   Screen,
+  STONE,
   StrengthBars,
+  SUB,
   TextLink,
   Title,
   text
@@ -83,7 +85,7 @@ export default function SignUp() {
       </View>
       <View style={styles.tag}>
         <Icon name={role === 'pub' ? 'bar' : 'fan'} size={11} />
-        <Text style={text(10.5, 'Bold', 1.2)}>
+        <Text style={[text(10.5, 'Bold', 1.2), { color: FG }]}>
           {role === 'pub' ? 'Conta de bar' : 'Conta de torcedor'}
         </Text>
       </View>
@@ -119,7 +121,7 @@ export default function SignUp() {
         <StrengthBars score={passwordScore(password)} />
       </View>
       <Checkbox checked={accepted} onChange={setAccepted}>
-        <Text style={[text(13.5), { color: MUTED }]}>
+        <Text style={[text(13.5), { color: SUB }]}>
           Li e aceito os{' '}
           <Text
             style={styles.link}
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 6,
     borderRadius: 3,
-    backgroundColor: '#e7e3db'
+    backgroundColor: STONE
   },
   link: { textDecorationLine: 'underline' }
 })

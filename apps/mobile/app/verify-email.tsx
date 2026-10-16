@@ -7,14 +7,20 @@ import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
   BackButton,
+  BG,
+  CARD,
+  DROP,
+  EDGE,
+  FG,
   Icon,
   INK,
+  LINE,
   LIVE,
   MAIL_APPS,
-  MUTED,
   openMailApp,
   PAPER,
   Screen,
+  SUB,
   TextLink,
   Title,
   text,
@@ -56,9 +62,9 @@ export default function VerifyEmail() {
       footer={
         <View style={{ gap: 12, alignItems: 'center' }}>
           {countdown.left > 0 ? (
-            <Text style={[text(14), { color: MUTED }]}>
+            <Text style={[text(14), { color: SUB }]}>
               Não chegou?{' '}
-              <Text style={text(14, 'Bold')}>
+              <Text style={[text(14, 'Bold'), { color: FG }]}>
                 Reenviar em {countdown.label}
               </Text>
             </Text>
@@ -81,7 +87,7 @@ export default function VerifyEmail() {
               respira. */}
           <Float>
             <View style={styles.orb}>
-              <Icon name="mail" size={76} />
+              <Icon name="mail" size={76} color={INK} accent={LIVE} />
             </View>
             <Animated.View entering={POP_LATE} style={styles.badge}>
               <Text style={[text(15, 'Bold', 1), { color: PAPER }]}>1</Text>
@@ -90,11 +96,9 @@ export default function VerifyEmail() {
         </View>
       </View>
       <Title lines={[['Confirme seu e-mail']]} size={38} />
-      <Text
-        style={[text(16, 'Regular', 1.48), { color: MUTED, marginTop: -4 }]}
-      >
+      <Text style={[text(16, 'Regular', 1.48), { color: SUB, marginTop: -4 }]}>
         Enviamos um link para{' '}
-        <Text style={[text(16, 'Bold', 1.48), { color: INK }]}>{email}</Text>.
+        <Text style={[text(16, 'Bold', 1.48), { color: FG }]}>{email}</Text>.
         Toque nele para continuar o cadastro.
       </Text>
       <View style={styles.apps}>
@@ -105,7 +109,7 @@ export default function VerifyEmail() {
             onPress={() => openMailApp(app.label, app.url)}
             style={styles.app}
           >
-            <Text style={text(13.5, 'Bold')}>{app.label}</Text>
+            <Text style={[text(13.5, 'Bold'), { color: FG }]}>{app.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -134,7 +138,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: INK
+    backgroundColor: EDGE
   },
   // O "1" vermelho no canto da bola, com o anel de papel do design.
   badge: {
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 3,
-    borderColor: PAPER,
+    borderColor: BG,
     backgroundColor: LIVE,
     alignItems: 'center',
     justifyContent: 'center'
@@ -157,11 +161,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)',
-    shadowColor: INK,
-    shadowOpacity: 0.09,
+    borderColor: LINE,
+    shadowColor: DROP,
+    shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 4, height: 4 }
   }

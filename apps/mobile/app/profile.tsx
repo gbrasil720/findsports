@@ -1,6 +1,13 @@
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View
+} from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -12,11 +19,14 @@ import { EASE, haptic, POP } from '@/components/motion'
 import {
   ACID,
   BackButton,
+  DROP,
+  FG,
   Icon,
   INK,
-  MUTED,
+  LINE,
   PillButton,
   Screen,
+  SUB,
   Title,
   text
 } from '@/components/ui'
@@ -93,6 +103,11 @@ function Option({
   // Escolher: a sombra acid sai de trás do cartão, o fundo clareia e a borda
   // escurece; o outro cartão faz o caminho de volta. Tocar afunda um pouco.
   const on = useSharedValue(selected ? 1 : 0)
+  // Cor calculada no quadro: a dinâmica do tema não entra no `interpolateColor`.
+  const [rest, lit] =
+    useColorScheme() === 'dark'
+      ? ['#1c1c18', '#24241f']
+      : ['#faf8f3', '#ffffff']
   const down = useSharedValue(0)
   useEffect(() => {
     // Troca de estado curta: tempo fixo, sem mola (escolher não quica).
@@ -107,7 +122,7 @@ function Option({
   }))
   const gray = useAnimatedStyle(() => ({ opacity: 1 - on.value }))
   const card = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(on.value, [0, 1], ['#faf8f3', '#ffffff'])
+    backgroundColor: interpolateColor(on.value, [0, 1], [rest, lit])
   }))
   // A borda escura é uma camada por cima, só em opacidade (animar a largura
   // da borda refaria o layout a cada quadro).
@@ -158,8 +173,10 @@ function Option({
           <View style={styles.cardBody}>
             <Icon name={option.icon} size={28} />
             <View style={{ flex: 1 }}>
-              <Text style={text(18, 'Bold')}>{option.title}</Text>
-              <Text style={[text(13.5), { color: MUTED, marginTop: 2 }]}>
+              <Text style={[text(18, 'Bold'), { color: FG }]}>
+                {option.title}
+              </Text>
+              <Text style={[text(13.5), { color: SUB, marginTop: 2 }]}>
                 {option.body}
               </Text>
             </View>
@@ -177,6 +194,7 @@ function Option({
 export default function Profile() {
   const router = useRouter()
   const [role, setRole] = useState<Role>('fan')
+  const dark = useColorScheme() === 'dark'
 
   return (
     <Screen
@@ -198,7 +216,11 @@ export default function Profile() {
       <View style={styles.top}>
         <BackButton />
         <Image
-          source={require('../assets/images/brand/wordmark.png')}
+          source={
+            dark
+              ? require('../assets/images/brand/wordmark-light.png')
+              : require('../assets/images/brand/wordmark.png')
+          }
           accessibilityLabel="Onside"
           style={{ height: 20, width: (20 * 845) / 256 }}
         />
@@ -231,7 +253,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   // A sombra dura acid do cartão escolhido, fora do recorte.
   selectedShadow: {
@@ -250,9 +272,9 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 8,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   },
-  ring: { borderRadius: 8, borderWidth: 1.5, borderColor: INK },
+  ring: { borderRadius: 8, borderWidth: 1.5, borderColor: FG },
   cover: { height: 120, backgroundColor: '#2a2a25' },
   mark: {
     position: 'absolute',
