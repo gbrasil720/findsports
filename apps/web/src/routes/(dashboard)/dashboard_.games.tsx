@@ -39,6 +39,20 @@ function MyGamesPage() {
     ...trpc.attendance.mine.queryOptions(),
     meta: { errorToast: false }
   })
+  // Jogo que ainda tem "Você foi?" ou "Voltaria?" ganha o "Avaliar".
+  const ratings = useQuery({
+    ...trpc.ratings.getPending.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const reports = useQuery({
+    ...trpc.attendance.pendingReports.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const toRate = new Set(
+    [...(ratings.data ?? []), ...(reports.data ?? [])].map(
+      (item) => item.eventId
+    )
+  )
   const [announcement, setAnnouncement] = useState('')
   const games = query.data ?? []
   // O servidor manda do mais recente para o mais antigo; as próximas vão do
@@ -123,11 +137,22 @@ function MyGamesPage() {
                           })}
                         </p>
                       </div>
-                      <span
-                        className={`onside-badge ${game.validated ? 'onside-badge-acid' : 'onside-badge-stone'}`}
-                      >
-                        {pastLabel(game)}
-                      </span>
+                      {toRate.has(game.eventId) ? (
+                        <Link
+                          to="/dashboard"
+                          search={{ avaliar: game.eventId }}
+                          className="onside-btn onside-btn-ink"
+                          aria-label={`Avaliar o ${game.barName}`}
+                        >
+                          Avaliar
+                        </Link>
+                      ) : (
+                        <span
+                          className={`onside-badge ${game.validated ? 'onside-badge-acid' : 'onside-badge-stone'}`}
+                        >
+                          {pastLabel(game)}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
