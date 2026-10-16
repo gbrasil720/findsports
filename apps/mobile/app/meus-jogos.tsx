@@ -422,48 +422,56 @@ function LaterGame({
   ]
     .filter(Boolean)
     .join(' · ')
+  const press = usePressScale(0.985)
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
-      <Card palette={palette}>
-        <View style={styles.barRow}>
-          <Photo
-            uri={game.photoUrl}
-            name={game.barName}
-            palette={palette}
-            style={styles.photo}
-          />
-          <View style={{ flex: 1 }}>
-            <View style={styles.when}>
-              <Icon
-                name="calendar"
-                size={14}
-                color={palette.dark ? ACID : palette.ink}
-                accent={palette.dark ? ACID : palette.accent}
-              />
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.style}>
+        <Card palette={palette}>
+          <View style={styles.barRow}>
+            <Photo
+              uri={game.photoUrl}
+              name={game.barName}
+              palette={palette}
+              style={styles.photo}
+            />
+            <View style={{ flex: 1 }}>
+              <View style={styles.when}>
+                <Icon
+                  name="calendar"
+                  size={14}
+                  color={palette.dark ? ACID : palette.ink}
+                  accent={palette.dark ? ACID : palette.accent}
+                />
+                <Text
+                  style={[
+                    text(13.5, 'Bold', 1.3),
+                    { color: palette.dark ? ACID : palette.ink }
+                  ]}
+                >
+                  Você vai · {dayLabel(game.startsAt, now).toLowerCase()}
+                </Text>
+              </View>
               <Text
-                style={[
-                  text(13.5, 'Bold', 1.3),
-                  { color: palette.dark ? ACID : palette.ink }
-                ]}
+                style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
+                numberOfLines={1}
               >
-                Você vai · {dayLabel(game.startsAt, now).toLowerCase()}
+                {game.barName}
+              </Text>
+              <Text
+                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {line}
               </Text>
             </View>
-            <Text
-              style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
-              numberOfLines={1}
-            >
-              {game.barName}
-            </Text>
-            <Text
-              style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-              numberOfLines={1}
-            >
-              {line}
-            </Text>
           </View>
-        </View>
-      </Card>
+        </Card>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -482,6 +490,7 @@ function PastRow({
   onRate: () => void
 }) {
   const label = pastLabel(game)
+  const press = usePressScale()
   return (
     <View
       style={[
@@ -514,12 +523,15 @@ function PastRow({
           accessibilityRole="button"
           accessibilityLabel={`Avaliar o ${game.barName}`}
           onPress={onRate}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
           hitSlop={8}
-          style={styles.rate}
         >
-          <Text style={[text(12.5, 'Bold', 1.2), { color: PAPER }]}>
-            Avaliar
-          </Text>
+          <Animated.View style={[styles.rate, press.style]}>
+            <Text style={[text(12.5, 'Bold', 1.2), { color: PAPER }]}>
+              Avaliar
+            </Text>
+          </Animated.View>
         </Pressable>
       ) : (
         <View
