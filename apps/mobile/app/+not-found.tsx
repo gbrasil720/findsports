@@ -6,12 +6,13 @@ import { EASE } from '@/components/motion'
 import {
   ACID,
   BlockButton,
-  INK,
+  FG,
   LIVE,
-  MUTED,
   Screen,
+  SUB,
   Title,
-  text
+  text,
+  themed
 } from '@/components/ui'
 
 /*
@@ -65,7 +66,7 @@ export default function NotFound() {
         </View>
         <Text style={styles.code}>ERRO 404</Text>
         <Title lines={[['Lance ', 'impedido.']]} size={56} />
-        <Text style={[text(16.5, 'Regular', 1.5), { color: MUTED }]}>
+        <Text style={[text(16.5, 'Regular', 1.5), { color: SUB }]}>
           Essa página não existe ou saiu do ar. O link pode estar errado, ou o
           bar deixou a Onside.
         </Text>
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     fontSize: 260,
     lineHeight: 260 * 1.505,
     marginTop: -0.3 * 260,
-    color: 'rgba(18,18,15,.06)'
+    color: themed('rgba(18,18,15,.06)', 'rgba(241,238,230,.06)')
   },
   flag: { width: 150, height: 190 },
   pole: {
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 190,
     borderRadius: 3,
-    backgroundColor: INK
+    backgroundColor: FG
   },
   cloth: {
     position: 'absolute',
@@ -111,11 +112,11 @@ const styles = StyleSheet.create({
     width: 116,
     height: 84,
     borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.15)'
+    backgroundColor: themed('rgba(18,18,15,.15)', '#000')
   },
   code: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 13,
-    color: MUTED
+    color: SUB
   }
 })

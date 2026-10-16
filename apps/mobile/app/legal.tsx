@@ -15,6 +15,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  useColorScheme,
   View
 } from 'react-native'
 import Animated, {
@@ -30,12 +31,18 @@ import { Glass } from '@/components/glass'
 import { EASE, haptic, SWAP } from '@/components/motion'
 import {
   BackButton,
+  BG,
+  CARD,
+  FG,
+  FIELD,
   INK,
+  LINE,
   LIVE,
-  MUTED,
   PAPER,
+  SUB,
   Title,
   text,
+  themed,
   useStatusBar
 } from '@/components/ui'
 
@@ -114,7 +121,7 @@ function Block({ block }: { block: LegalBlock }) {
       )
     case 'h3':
       return (
-        <Text style={[text(16, 'Bold'), { marginTop: 2 }]}>
+        <Text style={[text(16, 'Bold'), { color: FG, marginTop: 2 }]}>
           {block.num ? `${block.num} ` : ''}
           {block.text}
         </Text>
@@ -149,7 +156,7 @@ function Block({ block }: { block: LegalBlock }) {
               {row.map((cell, cellIndex) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: tabela fixa
                 <View key={cellIndex} style={{ gap: 2 }}>
-                  <Text style={[text(12, 'Bold'), { color: MUTED }]}>
+                  <Text style={[text(12, 'Bold'), { color: SUB }]}>
                     {block.head[cellIndex]}
                   </Text>
                   <Text style={[styles.body, { fontSize: 14.5 }]}>
@@ -177,8 +184,9 @@ function Tabs({ doc, onChange }: { doc: Doc; onChange: (doc: Doc) => void }) {
   const pill = useAnimatedStyle(() => ({
     transform: [{ translateX: (x.value * width) / 2 }]
   }))
+  const tone = useColorScheme() === 'dark' ? 'dark' : 'light'
   return (
-    <Glass tone="light" style={styles.tabs}>
+    <Glass tone={tone} style={styles.tabs}>
       <View
         style={{ flex: 1, flexDirection: 'row' }}
         onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
@@ -200,7 +208,8 @@ function Tabs({ doc, onChange }: { doc: Doc; onChange: (doc: Doc) => void }) {
             <Text
               style={[
                 text(14, doc === key ? 'Bold' : 'Regular'),
-                { color: doc === key ? INK : MUTED }
+                // O indicador é branco nos dois temas: o escolhido fica em tinta.
+                { color: doc === key ? INK : SUB }
               ]}
             >
               {key === 'termos' ? 'Termos de Uso' : 'Privacidade'}
@@ -215,7 +224,7 @@ function Tabs({ doc, onChange }: { doc: Doc; onChange: (doc: Doc) => void }) {
 function Chevron({ open }: { open: boolean }) {
   return (
     <Svg width={14} height={14} viewBox="0 0 24 24">
-      <Path d={open ? 'M5 15l7-7 7 7z' : 'M5 9l7 7 7-7z'} fill={INK} />
+      <Path d={open ? 'M5 15l7-7 7 7z' : 'M5 9l7 7 7-7z'} fill={FG} />
     </Svg>
   )
 }
@@ -232,7 +241,9 @@ export default function Legal() {
   const [current, setCurrent] = useState(0)
   const [menu, setMenu] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  useStatusBar('dark')
+  useStatusBar('auto')
+  const dark = useColorScheme() === 'dark'
+  const tone = dark ? 'dark' : 'light'
 
   const switchDoc = (next: Doc) => {
     setDoc(next)
@@ -253,7 +264,7 @@ export default function Legal() {
   const section = document.sections[current]
 
   return (
-    <View style={{ flex: 1, backgroundColor: PAPER }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView
         ref={scroller}
         scrollEventThrottle={64}
@@ -293,7 +304,9 @@ export default function Legal() {
                 offsets.current[part.id] = event.nativeEvent.layout.y
               }}
             >
-              <Text style={text(17, 'Bold')}>{sectionLabel(part)}</Text>
+              <Text style={[text(17, 'Bold'), { color: FG }]}>
+                {sectionLabel(part)}
+              </Text>
               {part.blocks.map((block, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: texto fixo
                 <Block key={index} block={block} />
@@ -302,7 +315,7 @@ export default function Legal() {
           ))}
           <View style={{ marginTop: 10, gap: 2 }}>
             {document.company.map((line) => (
-              <Text key={line} style={[text(13), { color: MUTED }]}>
+              <Text key={line} style={[text(13), { color: SUB }]}>
                 {line}
               </Text>
             ))}
@@ -317,7 +330,11 @@ export default function Legal() {
       >
         <LinearGradient
           pointerEvents="none"
-          colors={[PAPER, PAPER, 'rgba(241,238,230,0)']}
+          colors={
+            dark
+              ? [INK, INK, 'rgba(18,18,15,0)']
+              : [PAPER, PAPER, 'rgba(241,238,230,0)']
+          }
           locations={[0, 0.78, 1]}
           style={[styles.fade, { height: headerHeight + 40 }]}
         />
@@ -332,9 +349,12 @@ export default function Legal() {
           accessibilityLabel="Índice"
           onPress={() => setMenu(!menu)}
         >
-          <Glass tone="light" style={styles.index}>
-            <Text style={[text(14, 'SemiBold'), { flex: 1 }]} numberOfLines={1}>
-              <Text style={{ color: MUTED }}>Índice · </Text>
+          <Glass tone={tone} style={styles.index}>
+            <Text
+              style={[text(14, 'SemiBold'), { color: FG, flex: 1 }]}
+              numberOfLines={1}
+            >
+              <Text style={{ color: SUB }}>Índice · </Text>
               {section ? sectionLabel(section) : ''}
             </Text>
             <Chevron open={menu} />
@@ -354,11 +374,14 @@ export default function Legal() {
                   onPress={() => goTo(index)}
                   style={({ pressed }) => [
                     styles.menuItem,
-                    pressed && { backgroundColor: 'rgba(18,18,15,.05)' }
+                    pressed && { backgroundColor: PRESSED }
                   ]}
                 >
                   <Text
-                    style={text(14.5, index === current ? 'Bold' : 'Regular')}
+                    style={[
+                      text(14.5, index === current ? 'Bold' : 'Regular'),
+                      { color: FG }
+                    ]}
                   >
                     {sectionLabel(part)}
                   </Text>
@@ -381,11 +404,11 @@ export default function Legal() {
             })
           }
         >
-          <Glass tone="light" interactive style={styles.round}>
+          <Glass tone={tone} interactive style={styles.round}>
             <Svg width={18} height={18} viewBox="0 0 24 24">
               <Path
                 d="M12 2.5 7.5 7l1.4 1.4L11 6.3V15h2V6.3l2.1 2.1L16.5 7zM5 11v9.5h14V11h-3v2h1v5.5H7V13h1v-2z"
-                fill={INK}
+                fill={FG}
               />
             </Svg>
           </Glass>
@@ -396,14 +419,14 @@ export default function Legal() {
               accessibilityRole="button"
               onPress={() => scroller.current?.scrollTo({ y: 0 })}
             >
-              <Glass tone="light" interactive style={styles.topButton}>
+              <Glass tone={tone} interactive style={styles.topButton}>
                 <Svg width={14} height={14} viewBox="0 0 24 24">
                   <Path
                     d="M11 21V7.8l-5.6 5.6L4 12l8-8 8 8-1.4 1.4L13 7.8V21z"
-                    fill={INK}
+                    fill={FG}
                   />
                 </Svg>
-                <Text style={text(14, 'Bold')}>Topo</Text>
+                <Text style={[text(14, 'Bold'), { color: FG }]}>Topo</Text>
               </Glass>
             </Pressable>
           </Animated.View>
@@ -413,12 +436,14 @@ export default function Legal() {
   )
 }
 
+const PRESSED = themed('rgba(18,18,15,.05)', 'rgba(241,238,230,.06)')
+
 const styles = StyleSheet.create({
   body: {
     fontFamily: 'Archivo-Regular',
     fontSize: 15.5,
     lineHeight: 15.5 * 1.6,
-    color: INK
+    color: FG
   },
   bold: { fontFamily: 'Archivo-Bold' },
   link: { fontFamily: 'Archivo-Bold', textDecorationLine: 'underline' },
@@ -426,7 +451,7 @@ const styles = StyleSheet.create({
   updated: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 12.5,
-    color: MUTED
+    color: SUB
   },
   bullet: {
     width: 6,
@@ -439,7 +464,7 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 14,
     borderRadius: 6,
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderLeftWidth: 3,
     borderLeftColor: LIVE
   },
@@ -447,9 +472,9 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderRadius: 6,
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   header: {
     position: 'absolute',
@@ -485,11 +510,11 @@ const styles = StyleSheet.create({
   },
   menu: {
     borderRadius: 16,
-    backgroundColor: '#fffdf8',
+    backgroundColor: FIELD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.1)',
+    borderColor: themed('rgba(18,18,15,.1)', 'rgba(241,238,230,.12)'),
     paddingVertical: 6,
-    shadowColor: INK,
+    shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 }
