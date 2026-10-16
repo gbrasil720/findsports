@@ -344,9 +344,13 @@ invente layout que o projeto não tem.
   página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
   o design até "O que dizem", menos "Horário" e as avaliações escritas, que não têm dado (o
   bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
-  lista, dobra o raio só na visita. A busca
-  com IA (2h) e a reserva (08) ainda não entraram; o que o design mostra e não
-  existe avisa "chega em breve" (`components/soon.tsx`). As abas do torcedor são a barra
+  lista, dobra o raio só na visita. **Não existe reserva de mesa** (decisão do
+  dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
+  marca presença e, no bar Elite, o servidor já emite o código do balcão
+  (`packages/api/src/lib/attendance-ticket.ts`), que o web mostra. No app, a
+  busca com IA (2h) e as telas da 08 (confirmar e gerar código, Meus jogos,
+  código no balcão) ainda não entraram: o botão marca direto, e o que o design
+  mostra e não existe avisa "chega em breve" (`components/soon.tsx`). As abas do torcedor são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
