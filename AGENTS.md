@@ -341,7 +341,10 @@ invente layout que o projeto não tem.
   Roda no Expo Go. Os pinos, o raio e os cards são nossos. A busca é `pubs.search` a partir
   do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
-  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A busca
+  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
+  o design até "O que dizem", menos "Horário" e as avaliações escritas, que não têm dado (o
+  bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
+  lista, dobra o raio só na visita. A busca
   com IA (2h) e a reserva (08) ainda não entraram; o que o design mostra e não
   existe avisa "chega em breve" (`components/soon.tsx`). As abas do torcedor são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
