@@ -7,8 +7,6 @@ import {
   EVENT_START_PROBLEM_MESSAGE,
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
-import { Checkbox } from '@findsports_oficial/ui/components/checkbox'
-import { Label } from '@findsports_oficial/ui/components/label'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useId, useState } from 'react'
@@ -35,7 +33,6 @@ type EventForm = {
   endsAt: string
   participantIds: string[]
   participantFreeText: string
-  acceptsReservations: boolean
 }
 
 type Sport = { id: string; name: string; slug: string }
@@ -47,8 +44,6 @@ type Props = {
   onCancel: () => void
   isSaving: boolean
   loadingSports: boolean
-  /** Elite vigente: só ele marca o jogo para receber reservas. */
-  canEnableReservations: boolean
   /** Nomes dos times do jogo em edição: podem não estar entre os em destaque. */
   initialParticipants?: { id: string; name: string }[]
   error?: string
@@ -103,7 +98,6 @@ export function EventFormComponent({
   onCancel,
   isSaving,
   loadingSports,
-  canEnableReservations,
   initialParticipants = [],
   error
 }: Props) {
@@ -112,7 +106,6 @@ export function EventFormComponent({
   const championshipErrorId = `${ids}-championship-error`
   const freeTextErrorId = `${ids}-free-text-error`
   const missingId = `${ids}-missing`
-  const reservationsHintId = `${ids}-reservations-hint`
   const [form, setForm] = useState<EventForm>(initial)
   // Data e hora ficam como texto com máscara enquanto se digita (WEB-306);
   // `onSave` recebe o mesmo `aaaa-mm-ddThh:mm` que o campo nativo entregava.
@@ -421,31 +414,6 @@ export function EventFormComponent({
           </FieldLimit>
         </div>
       )}
-
-      <div>
-        <Label className="onside-choice-row">
-          <Checkbox
-            checked={form.acceptsReservations}
-            onCheckedChange={(checked) =>
-              setForm((prev) => ({ ...prev, acceptsReservations: checked }))
-            }
-            // Sem Elite, só desmarcar: o servidor recusa marcar.
-            disabled={!canEnableReservations && !form.acceptsReservations}
-            aria-describedby={reservationsHintId}
-          />
-          Aceitar reservas neste jogo
-        </Label>
-        <p
-          id={reservationsHintId}
-          className="mt-1 text-[10px] text-[var(--onside-muted)]"
-        >
-          {canEnableReservations
-            ? 'O torcedor pede mesa pelo perfil do bar, e o pedido só vira reserva quando você confirma.'
-            : form.acceptsReservations
-              ? 'Sem o Elite, este jogo não recebe pedidos. Desmarque para não voltar a receber quando o plano voltar.'
-              : 'Receber reservas é um recurso do plano Elite.'}
-        </p>
-      </div>
 
       {error && (
         <p className="text-xs text-[var(--onside-live-text)]" role="alert">

@@ -6,7 +6,7 @@ import { getCreateBlockReason, getDeleteErrorMessage } from './events-manager'
 
 test('recusa do servidor na exclusão vira texto da tela', () => {
   expect(getDeleteErrorMessage({ data: { code: 'PRECONDITION_FAILED' } })).toBe(
-    'Este jogo recebeu reserva ou avaliação e não pode mais ser excluído.'
+    'Este jogo já tem código de quem vai ou avaliação e não pode mais ser excluído.'
   )
   expect(getDeleteErrorMessage(new Error('boom'))).toBe(
     'Não foi possível excluir o jogo. Tente novamente.'
