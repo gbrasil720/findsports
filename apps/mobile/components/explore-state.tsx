@@ -26,6 +26,9 @@ type ExploreState = {
   setTodayOnly: (on: boolean) => void
   amenities: number[]
   setAmenities: (ids: number[]) => void
+  /** O raio ampliado no fim da lista; `null` usa o do perfil. */
+  radius: number | null
+  setRadius: (km: number) => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
@@ -39,6 +42,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [liveOnly, setLiveOnly] = useState(false)
   const [todayOnly, setTodayOnly] = useState(false)
   const [amenities, setAmenities] = useState<number[]>([])
+  const [radius, setRadius] = useState<number | null>(null)
   const [resting, setResting] = useState<number | null>(null)
 
   useEffect(() => {
@@ -77,6 +81,8 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setTodayOnly,
         amenities,
         setAmenities,
+        radius,
+        setRadius,
         resting,
         setResting
       }}

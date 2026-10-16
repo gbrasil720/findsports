@@ -1,3 +1,4 @@
+import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
@@ -89,7 +90,9 @@ export default function Explore() {
     meta: { errorToast: false }
   })
   const center = searchCenter(device, city.data)
-  const radiusKm = session.data?.user.searchRadiusKm ?? 3
+  const radiusKm = state.radius ?? session.data?.user.searchRadiusKm ?? 3
+  // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
+  const wider = Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)
 
   const toggleAmenity = (id: number) =>
     state.setAmenities(
@@ -561,6 +564,33 @@ export default function Explore() {
                   )
                 )
               )}
+              {search.data && bars.length > 0 ? (
+                <Text
+                  style={[
+                    text(13.5, 'Regular', 1.3),
+                    styles.end,
+                    { color: palette.muted }
+                  ]}
+                >
+                  Fim da lista no raio de {radiusKm} km
+                  {wider > radiusKm ? (
+                    <>
+                      {' · '}
+                      <Text
+                        accessibilityRole="button"
+                        onPress={() => state.setRadius(wider)}
+                        suppressHighlighting
+                        style={[
+                          text(13.5, 'Bold', 1.3),
+                          { color: palette.ink }
+                        ]}
+                      >
+                        Ampliar
+                      </Text>
+                    </>
+                  ) : null}
+                </Text>
+              ) : null}
             </Animated.ScrollView>
           </GestureDetector>
         </GestureDetector>
@@ -673,5 +703,6 @@ const styles = StyleSheet.create({
     gap: 10,
     textAlign: 'center'
   },
-  link: { textDecorationLine: 'underline' }
+  link: { textDecorationLine: 'underline' },
+  end: { textAlign: 'center', paddingVertical: 8 }
 })
