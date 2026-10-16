@@ -347,10 +347,20 @@ invente layout que o projeto não tem.
   lista, dobra o raio só na visita. **Não existe reserva de mesa** (decisão do
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
-  (`packages/api/src/lib/attendance-ticket.ts`), que o web mostra. No app, a
-  busca com IA (2h) e as telas da 08 (confirmar e gerar código, Meus jogos,
-  código no balcão) ainda não entraram: o botão marca direto, e o que o design
-  mostra e não existe avisa "chega em breve" (`components/soon.tsx`). As abas do torcedor são a barra
+  (`packages/api/src/lib/attendance-ticket.ts`).
+- **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
+  (`formSheet` nativo; `ScrollView` dentro dela não desenha, por isso até três jogos e sem
+  rolagem), que marca a presença; no bar Elite (`pubs.getById` → `issuesCode`) ela dá lugar
+  ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
+  pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
+  `/admin/validate?code=`, que no web já abre buscando o código. `app/meus-jogos.tsx`
+  (menu "Você") lista os próximos e os anteriores; "Avaliar" abre o pós-jogo
+  `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
+  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). "O que pesou?" e a
+  contagem de resenhas do design não entraram: o servidor não guarda o motivo e não há
+  conquistas. A busca com IA (2h) também não: o que o design mostra e não existe avisa
+  "chega em breve" (`components/soon.tsx`).
+- **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
