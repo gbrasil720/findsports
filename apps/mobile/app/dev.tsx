@@ -18,6 +18,8 @@ const EMAIL = 'gabriel@onside.sh'
 
 type Item = { code: string; label: string; href?: Href; reload?: true }
 
+const BAR_DO_ZE = 'b0b0b0b0-0000-4000-8000-000000000e01'
+
 const SECTIONS: { title: string; items: Item[] }[] = [
   {
     title: '02 Splash',
@@ -106,6 +108,19 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       // Claro ou escuro pelo tema do sistema; a página do bar (2g) abre
       // tocando num card ou num pino.
       { code: '2d/2e', label: 'Explorar', href: '/explore' }
+    ]
+  },
+  {
+    title: '08 Vou assistir',
+    items: [
+      // O Bar do Zé de `scripts/bar-do-ze.sql`. O código (3f) e o pós-jogo
+      // (3g) abrem de Meus jogos, com jogo marcado e jogo encerrado.
+      {
+        code: '3d',
+        label: 'Vou assistir aqui',
+        href: { pathname: '/vou/[barId]', params: { barId: BAR_DO_ZE } }
+      },
+      { code: '3e', label: 'Meus jogos', href: '/meus-jogos' }
     ]
   }
 ]
