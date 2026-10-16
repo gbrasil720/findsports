@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import Calendar from 'reicon-react/icons/Calendar'
 import Chat from 'reicon-react/icons/Chat'
 import Phone from 'reicon-react/icons/Phone'
 import Route from 'reicon-react/icons/Route'
@@ -13,20 +12,7 @@ export type BarActions = {
   onWhatsApp: () => void
   onDirections: () => void
   onPhone: () => void
-  /**
-   * Presente só quando o torcedor pode pedir mesa agora: bar recebendo
-   * reservas (quer e pode), jogo futuro na agenda e conta de torcedor.
-   */
-  onReserve: (() => void) | null
-  /**
-   * O bar recebe, mas todo jogo futuro atingiu o teto (WEB-152): o lugar de
-   * "Reservar mesa" mostra o esgotado, e os contatos continuam.
-   */
-  reservationsSoldOut: boolean
-  /**
-   * "Vou assistir aqui" do jogo em destaque (WEB-127), ao lado de "Reservar
-   * mesa" e sem subordinação a ela. Só no painel.
-   */
+  /** "Vou assistir aqui" do jogo em destaque (WEB-127). Só no painel. */
   presence?: ReactNode
 }
 
@@ -49,10 +35,6 @@ type Action = {
  * Quando o bar não deixou WhatsApp, a rota assume o primário em vez de sobrar
  * um botão desabilitado: o torcedor não tem culpa do cadastro incompleto, e um
  * botão morto vale menos que um botão que leva.
- *
- * O componente é o ponto único de troca: com reserva disponível (WEB-124),
- * "Reservar mesa" vira o primário e o WhatsApp desce para secundário. Sem
- * ela, nada muda — nenhum botão morto.
  */
 export function BarActions({
   whatsappUrl,
@@ -61,8 +43,6 @@ export function BarActions({
   onWhatsApp,
   onDirections,
   onPhone,
-  onReserve,
-  reservationsSoldOut,
   presence,
   variant,
   isOwner
@@ -72,20 +52,6 @@ export function BarActions({
   // Em ordem de preferência: a primeira disponível é a principal, as outras
   // descem para secundárias. Telefone nunca é principal.
   const candidates: (Action | false | '' | null)[] = [
-    onReserve
-      ? {
-          key: 'reserve',
-          icon: Calendar,
-          label: 'Reservar mesa',
-          shortLabel: 'Reservar mesa',
-          onClick: onReserve
-        }
-      : reservationsSoldOut && {
-          key: 'sold-out',
-          icon: Calendar,
-          label: 'Reservas esgotadas para este jogo',
-          shortLabel: 'Esgotado'
-        },
     whatsappUrl && {
       key: 'whatsapp',
       icon: Chat,
@@ -124,8 +90,7 @@ export function BarActions({
   // Na barra fixa do celular, três botões com texto não cabem (em 390px o
   // "Falar com o bar" estourava o terço dele e espremia os ícones, WEB-370):
   // com dois secundários ou mais eles ficam só com ícone (o nome segue para
-  // leitor de tela). Pelo mesmo motivo o esgotado, que não tem clique, usa lá
-  // o texto curto: o longo quebrava em quatro linhas.
+  // leitor de tela).
   const compact = isBar && secondaryActions.length > 1
 
   const primary = primaryAction ? (
@@ -153,13 +118,10 @@ export function BarActions({
     />
   ))
 
-  // "Garanta seu lugar" só quando dá para reservar agora (WEB-353), e "Fale
-  // com o bar" só com WhatsApp ou telefone: sobrando a rota, o título é ela.
-  const title = onReserve
-    ? 'Garanta seu lugar'
-    : !whatsappUrl && !phone && directionsUrl
-      ? 'Como chegar'
-      : 'Fale com o bar'
+  // "Fale com o bar" só com WhatsApp ou telefone: sobrando a rota, o título
+  // é ela.
+  const title =
+    !whatsappUrl && !phone && directionsUrl ? 'Como chegar' : 'Fale com o bar'
 
   // Bar sem contato nenhum e sem coordenada não tem ação a oferecer — mas o
   // dono ainda precisa saber que a página chegou nesse estado.
@@ -211,8 +173,8 @@ export function BarActions({
           <OwnerNudge
             action={{ label: 'Liberar', to: '/admin', hash: 'admin-espaco' }}
           >
-            Sem WhatsApp confirmado, você perde o contato que costuma virar mesa
-            reservada.
+            Sem WhatsApp confirmado, você perde o contato de quem quer saber se
+            tem mesa.
           </OwnerNudge>
         ) : (
           <p
