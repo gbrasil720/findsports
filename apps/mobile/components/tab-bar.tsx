@@ -1,5 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated'
+import Animated, {
+  type EntryExitAnimationFunction,
+  FadeIn,
+  FadeOut,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Palette } from '@/components/explore'
 import { Glass } from '@/components/glass'
@@ -121,10 +126,21 @@ export type MenuItem = {
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
 const DIM_IN = FadeIn.duration(180)
 const DIM_OUT = FadeOut.duration(140)
-const MENU_IN = FadeInDown.duration(220)
-  .easing(EASE)
-  .withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })
-const MENU_OUT = FadeOut.duration(140)
+// O menu é vidro, e vidro some com opacidade animada (o GlassView não
+// desenha a meio caminho): ele entra só subindo e crescendo, nunca
+// aparecendo; e sai de uma vez, com o fundo escurecido saindo por ele.
+const MENU_IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ translateY: 18 }, { scale: 0.97 }] },
+    animations: {
+      transform: [
+        { translateY: withTiming(0, { duration: 220, easing: EASE }) },
+        { scale: withTiming(1, { duration: 220, easing: EASE }) }
+      ]
+    }
+  }
+}
 
 export function YouMenu({
   palette,
@@ -167,11 +183,7 @@ export function YouMenu({
           ]}
         />
       </Animated.View>
-      <Animated.View
-        entering={MENU_IN}
-        exiting={MENU_OUT}
-        style={[styles.menuWrap, { bottom }]}
-      >
+      <Animated.View entering={MENU_IN} style={[styles.menuWrap, { bottom }]}>
         <Glass
           tone={tone}
           tint={palette.dark ? 'rgba(30,30,27,.55)' : 'rgba(255,255,255,.55)'}
