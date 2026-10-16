@@ -48,13 +48,13 @@ const OPTIONS: {
     role: 'fan',
     icon: 'fan',
     title: 'Sou torcedor',
-    body: 'Encontrar bares que passam meus jogos, marcar presença e reservar mesa.'
+    body: 'Encontrar bares que passam meus jogos, marcar que vou e ganhar a oferta da casa.'
   },
   {
     role: 'pub',
     icon: 'bar',
     title: 'Tenho um bar',
-    body: 'Divulgar a programação, receber reservas e lotar nos dias de clássico.'
+    body: 'Divulgar a programação, ver quem vai e lotar nos dias de clássico.'
   }
 ]
 
