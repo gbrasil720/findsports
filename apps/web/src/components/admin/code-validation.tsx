@@ -80,8 +80,8 @@ export function CodeValidation({ access, ...panel }: Props) {
       </p>
       {openOnly ? (
         <p className="mt-2 max-w-2xl text-[var(--onside-muted)] text-sm">
-          Seu plano não emite códigos novos. Os que já saíram continuam
-          valendo, e dá para validar até a janela de cada jogo fechar.
+          Seu plano não emite códigos novos. Os que já saíram continuam valendo,
+          e dá para validar até a janela de cada jogo fechar.
         </p>
       ) : null}
 
@@ -307,8 +307,10 @@ function ValidationPanel({
         )
         setAnnouncement(
           result.undone
-            ? `Essa chegada já tinha sido desfeita. ${counter}.`
-            : `Chegada registrada. ${counter}.${result.usedCount >= result.maxUses ? ' Código validado.' : ''}`
+            ? `Essa validação já tinha sido desfeita. ${counter}.`
+            : result.usedCount >= result.maxUses
+              ? 'Código validado. Libere a oferta da casa.'
+              : `Validado. ${counter}.`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -325,7 +327,7 @@ function ValidationPanel({
         updateCounter(result)
         setLastArrival(null)
         setAnnouncement(
-          `Chegada desfeita. ${getCounterLabel(result.usedCount, result.maxUses)}.`
+          `Validação desfeita. ${getCounterLabel(result.usedCount, result.maxUses)}.`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -416,9 +418,7 @@ function ValidationPanel({
               disabled={pending !== null}
               className="onside-btn onside-btn-acid"
             >
-              {pending === 'arrival'
-                ? 'Registrando…'
-                : 'Registrar chegada (+1)'}
+              {pending === 'arrival' ? 'Validando…' : 'Validar código'}
             </button>
           ) : null}
           {lastArrival ? (
@@ -427,7 +427,7 @@ function ValidationPanel({
               type="button"
               onClick={() => void handleUndo(lastArrival)}
               disabled={pending !== null}
-              aria-label="Desfazer a última chegada"
+              aria-label="Desfazer a validação"
               className="onside-btn onside-btn-outline"
             >
               {pending === 'undo' ? 'Desfazendo…' : 'Desfazer'}
