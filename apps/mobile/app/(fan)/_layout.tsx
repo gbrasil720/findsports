@@ -67,10 +67,10 @@ export default function FanTabs() {
       soon: 'As conquistas chegam em breve'
     },
     {
-      key: 'reservas',
+      key: 'jogos',
       icon: 'ticket',
-      label: 'Minhas reservas',
-      soon: 'Suas reservas chegam em breve'
+      label: 'Meus jogos',
+      soon: 'Meus jogos chega em breve'
     },
     {
       key: 'favoritos',
