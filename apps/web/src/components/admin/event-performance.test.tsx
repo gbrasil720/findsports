@@ -50,23 +50,23 @@ describe('legenda da comparação (WEB-258)', () => {
   })
 })
 
-describe('reservas e chegadas por jogo (WEB-323)', () => {
-  test('plano com reserva de mesa vê os dois números do jogo', () => {
+describe('códigos e validados por jogo (WEB-323)', () => {
+  test('plano Elite vê os dois números do jogo', () => {
     const markup = renderizar(jogo(), 'advanced')
-    expect(markup).toContain('<span class="sr-only">Reservas: </span>6')
-    expect(markup).toContain('<span class="sr-only">Chegadas: </span>5')
+    expect(markup).toContain('<span class="sr-only">Códigos: </span>6')
+    expect(markup).toContain('<span class="sr-only">Validados: </span>5')
     // ADR 0003: não entram na taxa, que continua interessados sobre quem viu.
     expect(markup).toContain('<span class="sr-only">Taxa: </span>50.0%')
   })
 
   // O servidor manda `null` para o plano sem reserva de mesa; a linha não
   // ganha coluna, e o painel expandido mostra o valor travado, nunca zero.
-  test('plano sem reserva não ganha as colunas', () => {
+  test('plano sem Elite não ganha as colunas', () => {
     const markup = renderizar(
       jogo({ reservedPeople: null, arrivals: null }),
       'cross_game'
     )
-    expect(markup).not.toContain('Reservas')
+    expect(markup).not.toContain('Códigos')
     expect(markup).not.toContain('Chegadas')
   })
 })
