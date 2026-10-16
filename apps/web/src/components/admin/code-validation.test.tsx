@@ -295,7 +295,7 @@ describe('acesso', () => {
       access: { status: 'ready', eligible: true, elite: false }
     })
     expect(document.querySelector('input')).not.toBeNull()
-    expect(document.body.textContent).toContain('Reservas em aberto')
+    expect(document.body.textContent).toContain('Códigos em aberto')
     expect(document.body.textContent).not.toContain('Plano Elite')
   })
 
@@ -330,7 +330,7 @@ describe('busca do código', () => {
 
     expect(api.lookup).toHaveBeenCalledWith({ code: 'AB3K9X' })
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Reserva de Marina Souza')
+    expect(text).toContain('Código de Marina Souza')
     expect(text).toContain('Corinthians × Palmeiras')
     expect(text).toContain('Chopp em dobro')
     expect(text).toContain('0 de 3 validados')
@@ -339,9 +339,9 @@ describe('busca do código', () => {
   test('resultado é anunciado e o foco vai para o resumo', async () => {
     await find(fakeApi())
     expect(status()).toBe(
-      'Reserva de Marina Souza encontrada. 0 de 3 validados.'
+      'Código de Marina Souza encontrado. 0 de 3 validados.'
     )
-    expect(document.activeElement?.textContent).toBe('Reserva de Marina Souza')
+    expect(document.activeElement?.textContent).toBe('Código de Marina Souza')
   })
 
   test('código malformado não vai ao servidor e o erro fica preso ao campo', async () => {
@@ -375,7 +375,7 @@ describe('busca do código', () => {
     await find(api)
 
     expect(alertText()).toBe(
-      'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
+      'Código não encontrado ou desmarcado. Confira com o torcedor.'
     )
     expect(document.body.textContent).not.toContain('texto do servidor')
     expect(document.activeElement).toBe(input())
@@ -392,7 +392,7 @@ describe('confirmação da chegada', () => {
     expect(api.registerArrival).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="dialog"]')
     expect(dialog?.textContent).toContain('Registrar chegada?')
-    expect(dialog?.textContent).toContain('Reserva de Marina Souza')
+    expect(dialog?.textContent).toContain('Código de Marina Souza')
     expect(dialog?.textContent).toContain('1 de 3 validados')
     expect(document.body.textContent).toContain('0 de 3 validados')
   })
@@ -479,7 +479,7 @@ describe('registro de chegada', () => {
     await find(api)
     await arrive()
 
-    expect(alertText()).toBe('As 3 pessoas desta reserva já foram validadas.')
+    expect(alertText()).toBe('As 3 pessoas deste código já foram validadas.')
   })
 
   test('reserva completa tira o +1, diz que acabou e mantém o desfazer', async () => {
@@ -496,12 +496,12 @@ describe('registro de chegada', () => {
     await arrive()
 
     expect(button('Registrar chegada')).toBeUndefined()
-    expect(document.body.textContent).toContain('Reserva completa')
+    expect(document.body.textContent).toContain('Código validado')
     expect(document.body.textContent).toContain(
-      'As 3 pessoas desta reserva já foram validadas.'
+      'As 3 pessoas deste código já foram validadas.'
     )
     expect(status()).toBe(
-      'Chegada registrada. 3 de 3 validados. Reserva completa.'
+      'Chegada registrada. 3 de 3 validados. Código validado.'
     )
     expect(button('Desfazer a última chegada')).toBeDefined()
     expect(document.activeElement).toBe(button('Validar outro código') ?? null)
@@ -564,7 +564,7 @@ describe('janela de validação', () => {
     await find(fakeApi(), { now: NOW + 6 * HOUR })
 
     expect(status()).toMatch(
-      /^Reserva de Marina Souza encontrada\. 0 de 3 validados\. Este código expirou\. Ele valia até .+\.$/
+      /^Código de Marina Souza encontrado\. 0 de 3 validados\. Este código expirou\. Ele valia até .+\.$/
     )
   })
 
@@ -589,10 +589,10 @@ describe('estado da reserva', () => {
     await find(api)
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Reserva de Marina Souza')
-    expect(text).toContain('Esta reserva ainda não foi confirmada')
+    expect(text).toContain('Código de Marina Souza')
+    expect(text).toContain('Este código é de um pedido antigo')
     expect(button('Registrar chegada')).toBeUndefined()
-    expect(status()).toContain('Esta reserva ainda não foi confirmada.')
+    expect(status()).toContain('Este código é de um pedido antigo.')
   })
 
   test('reserva cancelada com código ainda ativo não oferece +1', async () => {
@@ -604,7 +604,7 @@ describe('estado da reserva', () => {
     })
     await find(api)
 
-    expect(document.body.textContent).toContain('Esta reserva foi cancelada')
+    expect(document.body.textContent).toContain('O torcedor desmarcou')
     expect(button('Registrar chegada')).toBeUndefined()
   })
 
@@ -618,7 +618,7 @@ describe('estado da reserva', () => {
     await arrive()
 
     expect(alertText()).toBe(
-      'Esta reserva não está confirmada. Busque o código de novo.'
+      'Este código deixou de valer. Busque o código de novo.'
     )
   })
 })

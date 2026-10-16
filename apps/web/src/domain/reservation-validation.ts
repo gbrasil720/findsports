@@ -67,20 +67,21 @@ const STATUS_NOTICES: Record<
   Exclude<ValidatedReservation['reservationStatus'], 'confirmed'>,
   Notice
 > = {
-  // O código nasce com o pedido, antes de o dono responder: quem chega com
-  // reserva pendente tem código de verdade.
+  // Pendente e recusado só existem em pedido de reserva de antes de a
+  // reserva de mesa sair do produto (16/10/2026).
   pending: {
-    title: 'Esta reserva ainda não foi confirmada',
+    title: 'Este código é de um pedido antigo',
     detail:
-      'O pedido está pendente de resposta do bar. Chegadas só são registradas em reserva confirmada.'
+      'O pedido de reserva ficou sem resposta. O código não registra chegadas.'
   },
   declined: {
-    title: 'Esta reserva foi recusada',
-    detail: 'O bar recusou o pedido. O código não registra chegadas.'
+    title: 'Este código é de um pedido recusado',
+    detail: 'O código não registra chegadas.'
   },
   cancelled: {
-    title: 'Esta reserva foi cancelada',
-    detail: 'O torcedor cancelou o pedido. O código não registra chegadas.'
+    title: 'O torcedor desmarcou',
+    detail:
+      'Ele tirou o “Vou assistir aqui” deste jogo. O código não registra chegadas.'
   }
 }
 
@@ -119,8 +120,8 @@ export function getCounterLabel(usedCount: number, maxUses: number): string {
 
 export function getAllValidatedMessage(maxUses: number): string {
   return maxUses === 1
-    ? 'A única pessoa desta reserva já foi validada.'
-    : `As ${maxUses} pessoas desta reserva já foram validadas.`
+    ? 'Este código já foi validado.'
+    : `As ${maxUses} pessoas deste código já foram validadas.`
 }
 
 export function errorCode(error: unknown): string | undefined {
@@ -146,7 +147,7 @@ function refusalMessage(
   fallback: string
 ): string {
   const messages: Record<string, string> = {
-    FORBIDDEN: 'A validação de reservas é um recurso do plano Elite.',
+    FORBIDDEN: 'A validação de códigos é um recurso do plano Elite.',
     ...byCode
   }
   return (
@@ -156,11 +157,11 @@ function refusalMessage(
 
 /**
  * O servidor responde igual para código inexistente, de outro bar e de
- * reserva recusada ou cancelada, de propósito (ADR 0003, WEB-255). O texto
+ * quem desmarcou, de propósito (ADR 0003, WEB-255). O texto
  * diz o que essa resposta única cobre, sem distinguir os casos.
  */
 export const CODE_NOT_FOUND_MESSAGE =
-  'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
+  'Código não encontrado ou desmarcado. Confira com o torcedor.'
 
 export function getLookupErrorMessage(error: unknown): string {
   return refusalMessage(
@@ -191,7 +192,7 @@ export function getArrivalErrorMessage(
       PRECONDITION_FAILED: `${title}. ${detail}`,
       NOT_FOUND: 'Este código deixou de valer. Busque o código de novo.',
       UNPROCESSABLE_CONTENT:
-        'Esta reserva não está confirmada. Busque o código de novo.'
+        'Este código deixou de valer. Busque o código de novo.'
     },
     'Não foi possível registrar a chegada. Tente novamente.'
   )

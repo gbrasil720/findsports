@@ -44,7 +44,7 @@ export function ArrivalConfirmDialog({
           Registrar chegada?
         </DialogTitle>
         <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
-          Reserva de {reservation.guestName}. Com esta chegada ficam{' '}
+          Código de {reservation.guestName}. Com esta chegada ficam{' '}
           {getCounterLabel(reservation.usedCount + 1, reservation.maxUses)}.
         </DialogDescription>
         <div className="mt-6 flex flex-wrap gap-2">

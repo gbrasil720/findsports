@@ -69,7 +69,7 @@ export function CodeValidation({ access, ...panel }: Props) {
       aria-busy={access.status === 'loading' || undefined}
     >
       <p className="onside-kicker">
-        {openOnly ? 'Reservas em aberto' : 'Plano Elite'}
+        {openOnly ? 'Códigos em aberto' : 'Plano Elite'}
       </p>
       <h2 id={TITLE_ID} className="onside-display text-2xl">
         Código da reserva
@@ -270,7 +270,7 @@ function ValidationPanel({
         const blocker = getArrivalBlocker(found, now)
         setAnnouncement(
           [
-            `Reserva de ${found.guestName} encontrada.`,
+            `Código de ${found.guestName} encontrado.`,
             `${getCounterLabel(found.usedCount, found.maxUses)}.`,
             blocker && `${blocker.title}. ${blocker.detail}`
           ]
@@ -310,7 +310,7 @@ function ValidationPanel({
         setAnnouncement(
           result.undone
             ? `Essa chegada já tinha sido desfeita. ${counter}.`
-            : `Chegada registrada. ${counter}.${result.usedCount >= result.maxUses ? ' Reserva completa.' : ''}`
+            : `Chegada registrada. ${counter}.${result.usedCount >= result.maxUses ? ' Código validado.' : ''}`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -375,7 +375,7 @@ function ValidationPanel({
             disabled={pending === 'lookup'}
             className="onside-btn onside-btn-ink"
           >
-            {pending === 'lookup' ? 'Buscando…' : 'Buscar reserva'}
+            {pending === 'lookup' ? 'Buscando…' : 'Buscar código'}
           </button>
         </div>
         <p id={hintId} className="mt-1.5 text-[var(--onside-muted)] text-xs">
