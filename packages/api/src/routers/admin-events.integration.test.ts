@@ -315,7 +315,7 @@ integrationTest('exclusão recusa jogo com reserva e diz quantas', async () => {
       await refusal(ctx.admin.adminEvents.delete({ eventId: booked }))
     ).toEqual({
       code: 'PRECONDITION_FAILED',
-      message: 'Este jogo tem 1 reserva ativa e não pode ser excluído.'
+      message: 'Este jogo tem 1 código de quem vai e não pode ser excluído.'
     })
     expect(await ctx.grimorio(booked)).toHaveLength(0)
 
