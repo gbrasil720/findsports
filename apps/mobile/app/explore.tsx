@@ -54,7 +54,7 @@ const today = () =>
 export default function Explore() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { height } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const palette = usePalette()
   const dark = palette.bg === INK
   const queryClient = useQueryClient()
@@ -116,11 +116,13 @@ export default function Explore() {
     ? found.filter((bar) => bar.nextEvent && isLive(bar.nextEvent, now))
     : found
   const todayCount = bars.filter(
+    // Jogo que começou ontem à noite e ainda rola também é "hoje".
     (bar) =>
       bar.nextEvent &&
-      new Date(bar.nextEvent.startsAt).toLocaleDateString('en-CA', {
-        timeZone: 'America/Sao_Paulo'
-      }) === today()
+      (isLive(bar.nextEvent, now) ||
+        new Date(bar.nextEvent.startsAt).toLocaleDateString('en-CA', {
+          timeZone: 'America/Sao_Paulo'
+        }) === today())
   ).length
 
   const favorites = useQuery(trpc.pubs.getFavorites.queryOptions())
@@ -145,24 +147,32 @@ export default function Explore() {
       params: { id: bar.id, km: String(bar.distance_km) }
     })
 
-  // O mapa acompanha o centro quando a localização chega depois da cidade.
-  const map = useRef<MapView>(null)
-  const delta = (radiusKm * 2.6) / 111
-  useEffect(() => {
-    map.current?.animateToRegion(
-      {
-        latitude: center.lat,
-        longitude: center.lng,
-        latitudeDelta: delta,
-        longitudeDelta: delta
-      },
-      400
-    )
-  }, [center.lat, center.lng, delta])
-
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
   const top = insets.top + 8
   const snaps = [0, height * 0.54 - top, height - top - 150]
+
+  // O mapa mostra o raio de ponta a ponta na faixa entre os chips e a folha
+  // (o centro fica nessa faixa, pelo `mapPadding`).
+  const padding = {
+    top: insets.top + 196,
+    right: 0,
+    left: 0,
+    bottom: height - (top + snaps[1])
+  }
+  const kmPerPoint = (radiusKm * 2.2) / width
+  const region = {
+    latitude: center.lat,
+    longitude: center.lng,
+    latitudeDelta: (kmPerPoint * (height - padding.top - padding.bottom)) / 111,
+    longitudeDelta:
+      (kmPerPoint * width) / (111.32 * Math.cos((center.lat * Math.PI) / 180))
+  }
+  // Acompanha o centro quando a localização chega depois da cidade.
+  const map = useRef<MapView>(null)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro e o raio
+  useEffect(() => {
+    map.current?.animateToRegion(region, 400)
+  }, [center.lat, center.lng, radiusKm])
   const [expanded, setExpanded] = useState(false)
   const y = useSharedValue(snaps[1])
   const start = useSharedValue(0)
@@ -239,19 +249,9 @@ export default function Explore() {
       <MapView
         ref={map}
         style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: center.lat,
-          longitude: center.lng,
-          latitudeDelta: delta,
-          longitudeDelta: delta
-        }}
+        initialRegion={region}
         // O centro fica no pedaço visível, entre o título e a folha.
-        mapPadding={{
-          top: 230,
-          right: 0,
-          left: 0,
-          bottom: height - (top + snaps[1])
-        }}
+        mapPadding={padding}
         mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
         customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
         userInterfaceStyle={dark ? 'dark' : 'light'}
