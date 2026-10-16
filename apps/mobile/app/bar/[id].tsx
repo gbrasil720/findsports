@@ -5,13 +5,17 @@ import { useLocalSearchParams } from 'expo-router'
 import { type ReactNode, useEffect, useRef } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Linking,
+  Platform,
   Pressable,
   Share,
   StyleSheet,
   Text,
   View
 } from 'react-native'
+import MapView from 'react-native-maps'
 import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -24,6 +28,7 @@ import {
   matchLine,
   type Palette,
   PhotoPill,
+  PinTag,
   usePalette
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
@@ -43,13 +48,19 @@ import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
 import { formatKm, formatTime } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
+import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
  * "Página do bar" (2g do design): a foto com o nome, o jogo de hoje no mesmo
- * ingresso do Explorar, o que o bar tem para ver o jogo, a oferta da casa e a
- * dupla "Vou assistir" e "Reservar mesa" num vidro preso embaixo. A reserva é
- * a seção 08: até lá o botão avisa que chega em breve.
+ * ingresso do Explorar, o que o bar tem para ver o jogo, a oferta da casa, os
+ * próximos jogos, as características, onde fica, a nota e a dupla "Vou
+ * assistir" e "Reservar mesa" num vidro preso embaixo. A reserva é a seção
+ * 08: até lá o botão avisa que chega em breve.
+ *
+ * ponytail: o design ainda tem "Horário" e avaliações escritas com etiquetas;
+ * o bar não cadastra horário e a avaliação da Onside é só "voltaria", então
+ * as duas ficam de fora até existirem os dados.
  */
 
 /** As características que o design desenha em ladrilho, com ícone. */
@@ -61,6 +72,39 @@ const TILES = [
 ] as const
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
+const WEEK = 7 * 86_400_000
+
+/** O rótulo curto do design ("Premiere"), não o do cadastro. */
+const chipLabel = (item: (typeof AMENITIES)[number]) =>
+  item.id === 3 ? 'Premiere' : item.label
+
+/** A pé, a 4,5 km/h: 0,8 km dá 11 min, como no design. */
+const walkMinutes = (km: number) => Math.max(1, Math.round((km / 4.5) * 60))
+
+const directions = (lat: number, lng: number) =>
+  Platform.OS === 'ios'
+    ? `http://maps.apple.com/?daddr=${lat},${lng}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+
+/** A coluna grande da lista: a hora hoje, o dia da semana nesta semana. */
+function gameDay(startsAt: string, now: number) {
+  if (dayLabel(startsAt, now) === 'Hoje') return formatTime(startsAt)
+  const date = new Date(startsAt)
+  if (date.getTime() - now < 6 * 86_400_000)
+    return date
+      .toLocaleDateString('pt-BR', {
+        weekday: 'short',
+        timeZone: 'America/Sao_Paulo'
+      })
+      .replace('.', '')
+      .toUpperCase()
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  })
+}
 
 const HERO_SHADE = [
   'rgba(18,18,15,.3)',
@@ -82,6 +126,7 @@ export default function BarPage() {
   const soon = useSoon()
   const reserve = usePress(0, 3)
   const attendPress = usePressScale()
+  const feedback = useMutation(trpc.feedback.send.mutationOptions())
   useStatusBar('light')
 
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
@@ -223,17 +268,58 @@ export default function BarPage() {
     spend
   ].filter(Boolean)
   const tiles = TILES.filter((tile) => data.amenities.includes(tile.id))
-  const others = AMENITIES.filter(
-    (item) =>
-      data.amenities.includes(item.id) &&
-      !TILES.some((tile) => tile.id === item.id)
+  const features = AMENITIES.filter((item) =>
+    data.amenities.includes(item.id)
+  ).flatMap((item) =>
+    // O número de telas entra logo depois do telão, como no design.
+    item.id === 1 && data.screenCount && data.screenCount > 1
+      ? [chipLabel(item), `${data.screenCount} telas`]
+      : [chipLabel(item)]
   )
+  const week = games.filter(
+    (game) => new Date(game.startsAt).getTime() < now + WEEK
+  ).length
+  const lat = Number(data.latitude)
+  const lng = Number(data.longitude)
+  const located = Number.isFinite(lat) && Number.isFinite(lng)
+  const place = [
+    data.neighborhood,
+    km ? formatKm(Number(km)) : null,
+    km ? `${walkMinutes(Number(km))} min a pé` : null
+  ].filter(Boolean)
   const reservable = games.some((game) => game.acceptsReservations)
 
   const toggleFavorite = () => {
     haptic.select()
     favorites.toggle(id)
   }
+  // ponytail: Alert.prompt só existe no iOS; no Android o link fica escondido.
+  const report = (barName: string) =>
+    Alert.prompt(
+      'Reportar um problema',
+      `O que está errado na página do ${barName}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          onPress: (message?: string) => {
+            if (!message?.trim()) return
+            feedback.mutate(
+              { message: message.trim(), pageUrl: `onside://bar/${id}` },
+              {
+                onSuccess: () => {
+                  haptic.success()
+                  soon.show('Recebemos, obrigado')
+                },
+                onError: (error) =>
+                  Alert.alert('Não deu para enviar', error.message)
+              }
+            )
+          }
+        }
+      ],
+      'plain-text'
+    )
   const share = () =>
     Share.share({
       message: `${data.name} na Onside: ${env.EXPO_PUBLIC_SERVER_URL}/pub/${id}`
@@ -354,11 +440,6 @@ export default function BarPage() {
               ))}
             </View>
           ) : null}
-          {others.length ? (
-            <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
-              Também: {others.map((item) => item.label).join(', ')}.
-            </Text>
-          ) : null}
 
           {data.houseOffer ? (
             <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
@@ -383,30 +464,199 @@ export default function BarPage() {
           ) : null}
 
           {games.length > 1 ? (
-            <View style={{ gap: 4 }}>
-              <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
-                Outros jogos
-              </Text>
-              {games.slice(1).map((game) => (
-                <View
-                  key={game.id}
-                  style={[styles.other, { borderColor: palette.line }]}
-                >
-                  <Text
-                    style={[
-                      text(14, 'SemiBold', 1.3),
-                      { color: palette.ink, flex: 1 }
-                    ]}
-                    numberOfLines={1}
+            <>
+              <Heading
+                palette={palette}
+                title="Próximos jogos aqui"
+                aside={`${week} esta semana`}
+              />
+              <Card palette={palette} soft>
+                <View style={styles.list}>
+                  {games.slice(1).map((game, index) => (
+                    <View
+                      key={game.id}
+                      style={[
+                        styles.game,
+                        index > 0 && {
+                          borderTopWidth: 1,
+                          borderTopColor: palette.line
+                        }
+                      ]}
+                    >
+                      <Text style={[styles.when, { color: palette.ink }]}>
+                        {gameDay(game.startsAt, now)}
+                      </Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text
+                          style={[
+                            text(14.5, 'Bold', 1.3),
+                            { color: palette.ink }
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {matchLine(game)}
+                        </Text>
+                        <Text
+                          style={[
+                            text(12, 'Regular', 1.4),
+                            { color: palette.muted }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {game.championship} ·{' '}
+                          {dayLabel(game.startsAt, now) === 'Hoje'
+                            ? 'hoje'
+                            : formatTime(game.startsAt)}
+                        </Text>
+                      </View>
+                      {game.acceptsReservations ? (
+                        <Label palette={palette}>
+                          {game.reservationsSoldOut ? 'Esgotado' : 'Reserva'}
+                        </Label>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            </>
+          ) : null}
+
+          {features.length ? (
+            <>
+              <Heading palette={palette} title="O que tem" />
+              <View style={styles.chips}>
+                {features.map((label) => (
+                  <View
+                    key={label}
+                    style={[styles.chip, { backgroundColor: palette.mark }]}
                   >
-                    {matchLine(game)}
+                    <Text
+                      style={[
+                        text(11.5, 'SemiBold', 1.2),
+                        { color: palette.ink }
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          {located ? (
+            <>
+              <Heading palette={palette} title="Onde fica" />
+              <Card palette={palette} soft>
+                <View style={styles.map} pointerEvents="none">
+                  <MapView
+                    style={StyleSheet.absoluteFill}
+                    initialRegion={{
+                      latitude: lat,
+                      longitude: lng,
+                      latitudeDelta: 0.006,
+                      longitudeDelta: 0.012
+                    }}
+                    // O centro fica 15 pt abaixo do meio: a ponta do pino cai
+                    // em 80 de 130, como no design.
+                    mapPadding={{ top: 30, right: 0, bottom: 0, left: 0 }}
+                    mapType={
+                      Platform.OS === 'ios' ? 'mutedStandard' : 'standard'
+                    }
+                    customMapStyle={
+                      palette.dark ? MAP_STYLE.dark : MAP_STYLE.light
+                    }
+                    userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+                    showsPointsOfInterests={false}
+                    scrollEnabled={false}
+                    zoomEnabled={false}
+                    rotateEnabled={false}
+                    pitchEnabled={false}
+                    toolbarEnabled={false}
+                  />
+                  <View style={styles.mapPin}>
+                    <PinTag label={data.name} kind="live" />
+                  </View>
+                </View>
+                <View style={styles.where}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}
+                      numberOfLines={1}
+                    >
+                      {data.address}
+                    </Text>
+                    <Text
+                      style={[
+                        text(12.5, 'Regular', 1.4),
+                        { color: palette.muted }
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {place.join(' · ')}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="link"
+                    onPress={() => Linking.openURL(directions(lat, lng))}
+                    style={({ pressed }) => [
+                      styles.go,
+                      { backgroundColor: palette.ink },
+                      pressed && { opacity: 0.8 }
+                    ]}
+                  >
+                    <Text
+                      style={[text(13, 'Bold', 1.2), { color: palette.bg }]}
+                    >
+                      Como chegar
+                    </Text>
+                  </Pressable>
+                </View>
+              </Card>
+            </>
+          ) : null}
+
+          {data.rating ? (
+            <>
+              <Heading
+                palette={palette}
+                title="O que dizem"
+                aside={`${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
+              />
+              <View>
+                <View
+                  style={[
+                    styles.scoreShadow,
+                    { backgroundColor: palette.dark ? '#000' : INK }
+                  ]}
+                />
+                <View style={styles.score}>
+                  <Text style={styles.scoreNumber}>
+                    {data.rating.percentage}%
                   </Text>
-                  <Text style={[styles.otherWhen, { color: palette.muted }]}>
-                    {dayLabel(game.startsAt, now)} · {formatTime(game.startsAt)}
+                  <Text
+                    style={[text(13.5, 'SemiBold', 1.35), styles.scoreText]}
+                  >
+                    dos torcedores voltariam para ver outro jogo aqui
                   </Text>
                 </View>
-              ))}
-            </View>
+              </View>
+            </>
+          ) : null}
+
+          {Platform.OS === 'ios' ? (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => report(data.name)}
+              style={styles.report}
+            >
+              <Text
+                style={[text(13.5, 'SemiBold', 1.2), { color: palette.muted }]}
+              >
+                Reportar um problema
+              </Text>
+            </Pressable>
           ) : null}
         </View>
       </Animated.ScrollView>
@@ -491,22 +741,60 @@ export default function BarPage() {
   )
 }
 
+/** O título de seção do design, com o número à direita ("5 esta semana"). */
+function Heading({
+  palette,
+  title,
+  aside
+}: {
+  palette: Palette
+  title: string
+  aside?: string
+}) {
+  return (
+    <View style={styles.heading}>
+      <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
+        {title}
+      </Text>
+      {aside ? (
+        <Text style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}>
+          {aside}
+        </Text>
+      ) : null}
+    </View>
+  )
+}
+
+/** A etiqueta cinza da lista de jogos ("Reserva"). */
+function Label({ palette, children }: { palette: Palette; children: string }) {
+  return (
+    <View style={[styles.label, { backgroundColor: palette.mark }]}>
+      <Text style={[text(10.5, 'Bold', 1.2), { color: palette.ink }]}>
+        {children}
+      </Text>
+    </View>
+  )
+}
+
 /** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
 function Card({
   palette,
   shadow,
   offset = 4,
+  soft,
   style,
   children
 }: {
   palette: Palette
   shadow?: string
   offset?: number
+  /** Mais a sombra longa e macia dos cartões de lista. */
+  soft?: boolean
   style?: object
   children: ReactNode
 }) {
   return (
-    <View style={style && { flex: 1 }}>
+    <View style={[style && { flex: 1 }, soft && styles.soft]}>
       <View
         style={[
           StyleSheet.absoluteFill,
@@ -603,14 +891,76 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed'
   },
   offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14, gap: 2 },
-  other: {
+  heading: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 6
+  },
+  soft: {
+    shadowColor: INK,
+    shadowOpacity: 0.3,
+    shadowRadius: 17,
+    shadowOffset: { width: 0, height: 14 }
+  },
+  list: { paddingHorizontal: 14 },
+  game: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 11
+  },
+  // Anton 22/1 do design, sem `lineHeight` (corta no iOS): margem negativa.
+  when: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    width: 62,
+    marginVertical: -5.5,
+    fontVariant: ['tabular-nums']
+  },
+  label: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 3 },
+  map: { height: 130 },
+  mapPin: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 50,
+    alignItems: 'center'
+  },
+  where: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  go: { paddingVertical: 9, paddingHorizontal: 12, borderRadius: 4 },
+  score: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    padding: 14,
+    borderRadius: 6,
+    backgroundColor: ACID
   },
-  otherWhen: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  scoreShadow: {
+    ...StyleSheet.absoluteFill,
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
+    borderRadius: 6
+  },
+  scoreNumber: {
+    fontFamily: 'Anton',
+    fontSize: 44,
+    color: INK,
+    marginVertical: -11
+  },
+  scoreText: { flex: 1, color: INK },
+  report: { alignSelf: 'flex-end', padding: 4 },
   top: {
     position: 'absolute',
     left: 16,
