@@ -8,110 +8,19 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Palette } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { EASE, haptic } from '@/components/motion'
+import { EASE } from '@/components/motion'
 import { ACID, Icon, INK, text, UpDown } from '@/components/ui'
 
 /*
- * A barra de vidro do torcedor ("02 Navbar glass" da página de componentes):
- * Explorar, Ranking e Você (que abre o menu de vidro, 2c), com a busca com IA
- * no círculo acid à direita. O item ativo mostra o nome; os outros, só o
- * ícone a 78%.
+ * O menu "Você" (2c do design): vidro acima da barra de abas, com o
+ * torcedor no topo e os atalhos da conta. A barra em si é a nativa do iOS
+ * (`NativeTabs`, em `app/(fan)/_layout.tsx`).
  */
 
-type Tab = 'explore' | 'ranking' | 'you'
-
+/** Espaço que a barra de abas nativa (iOS 26) ocupa no rodapé. */
 export function useTabBarSpace() {
   const insets = useSafeAreaInsets()
-  return Math.max(insets.bottom - 8, 14)
-}
-
-export function FanTabBar({
-  active,
-  palette,
-  menuOpen,
-  onTab,
-  onAi
-}: {
-  active: Tab
-  palette: Palette
-  menuOpen: boolean
-  onTab: (tab: Tab) => void
-  onAi: () => void
-}) {
-  const bottom = useTabBarSpace()
-  const tone = palette.dark ? 'dark' : 'light'
-  const current: Tab = menuOpen ? 'you' : active
-  const item = (tab: Tab, icon: 'map' | 'ranking' | 'you', label: string) => {
-    const on = current === tab
-    return (
-      <Pressable
-        key={tab}
-        accessibilityRole="tab"
-        accessibilityLabel={label}
-        accessibilityState={{ selected: on }}
-        onPress={() => {
-          haptic.select()
-          onTab(tab)
-        }}
-        style={[
-          styles.item,
-          on && styles.itemOn,
-          on && (palette.dark ? styles.itemOnDark : styles.itemOnLight)
-        ]}
-      >
-        <View
-          style={{
-            opacity: on ? 1 : 0.78,
-            flexDirection: 'row',
-            gap: 8,
-            alignItems: 'center'
-          }}
-        >
-          <Icon
-            name={icon}
-            size={24}
-            color={palette.ink}
-            accent={palette.accent}
-          />
-          {on ? (
-            <Text
-              style={[
-                text(14, 'Bold', 1.2),
-                { color: palette.ink, letterSpacing: -0.14 }
-              ]}
-            >
-              {label}
-            </Text>
-          ) : null}
-          {tab === 'you' ? <UpDown color={palette.ink} /> : null}
-        </View>
-      </Pressable>
-    )
-  }
-  return (
-    <View style={[styles.bar, { bottom }]}>
-      <Glass tone={tone} style={styles.pill}>
-        {item('explore', 'map', 'Explorar')}
-        {item('ranking', 'ranking', 'Ranking')}
-        {item('you', 'you', 'Você')}
-      </Glass>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Busca com IA"
-        onPress={onAi}
-        style={({ pressed }) => pressed && { transform: [{ scale: 0.96 }] }}
-      >
-        <Glass
-          tone={tone}
-          tint="rgba(201,241,53,.5)"
-          interactive
-          style={styles.ai}
-        >
-          <Icon name="sparkle" size={28} color={INK} />
-        </Glass>
-      </Pressable>
-    </View>
-  )
+  return insets.bottom + 62
 }
 
 // --- Menu "Você" (2c) --------------------------------------------------------
@@ -161,7 +70,7 @@ export function YouMenu({
   onChat: () => void
   onSettings: () => void
 }) {
-  const bottom = useTabBarSpace() + 64 + 14
+  const bottom = useTabBarSpace() + 10
   const tone = palette.dark ? 'dark' : 'light'
   return (
     <>
@@ -294,49 +203,6 @@ function RoundButton({
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    zIndex: 40
-  },
-  pill: {
-    flex: 1,
-    height: 64,
-    borderRadius: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    gap: 2,
-    overflow: 'hidden'
-  },
-  item: { flex: 1, height: 52, alignItems: 'center', justifyContent: 'center' },
-  itemOn: { flex: 1.75, borderRadius: 26 },
-  itemOnLight: {
-    backgroundColor: 'rgba(255,255,255,.62)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.9)',
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 }
-  },
-  itemOnDark: {
-    backgroundColor: 'rgba(255,255,255,.1)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,.22)'
-  },
-  ai: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
   menuWrap: { position: 'absolute', left: 14, right: 14, zIndex: 30 },
   menu: { borderRadius: 32, padding: 8, overflow: 'hidden' },
   menuHead: {
