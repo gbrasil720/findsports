@@ -14,8 +14,9 @@ test.use({ storageState: storageState('admin') })
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
 
 /**
- * `games` jogos encerrados há dias, cada um com uma reserva confirmada de um
- * torcedor que respondeu "fui" — e nenhum código registrado pelo bar.
+ * `games` jogos encerrados há dias, cada um com o código de um torcedor que
+ * marcou "Vou assistir aqui" (como `attendance-ticket.ts` grava) e respondeu
+ * "fui" — e nenhum código registrado pelo bar.
  */
 async function barWithUnregisteredGames(games: number) {
   const name = `Bar Comparecimento ${randomUUID().slice(0, 8)}`
@@ -34,12 +35,20 @@ async function barWithUnregisteredGames(games: number) {
       starts_at: startsAt,
       ends_at: new Date(startsAt.getTime() + 2 * 3_600_000)
     })
+    const reservationId = randomUUID()
+    await insert('attendance', { user_id: fan.id, event_id: eventId })
     await insert('reservation', {
-      id: randomUUID(),
+      id: reservationId,
       event_id: eventId,
       user_id: fan.id,
-      party_size: 2,
+      party_size: 1,
       status: 'confirmed'
+    })
+    await insert('reservation_code', {
+      id: randomUUID(),
+      code: randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase(),
+      reservation_id: reservationId,
+      max_uses: 1
     })
     await insert('attendance_report', {
       user_id: fan.id,
