@@ -60,7 +60,6 @@ import {
   parseHouseOfferInput
 } from '../lib/house-offer'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
-import { eliteVigente } from '../lib/pub-search/shared'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -258,16 +257,7 @@ async function getBarByUserId(userId: string) {
 }
 
 export const pubRouter = router({
-  getMe: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
-    // Elite vigente pela assinatura, como na busca: decide se a aba Quem vai
-    // existe no painel.
-    const [row] = await db
-      .select({ receives: eliteVigente(sql`${bar}`) })
-      .from(bar)
-      .where(eq(bar.id, existingBar.id))
-    return { ...existingBar, receivesReservations: row?.receives === true }
-  }),
+  getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
 
   updateMe: pubProcedure
     .input(
