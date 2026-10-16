@@ -742,6 +742,7 @@ export default function BarPage() {
                 name={mine.attending ? 'check' : 'ticket'}
                 size={18}
                 color={INK}
+                accent={INK}
               />
               <Animated.Text
                 key={mine.attending ? 'on' : 'off'}

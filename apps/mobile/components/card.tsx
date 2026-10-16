@@ -79,7 +79,7 @@ export function OfferCard({
     <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
       <View style={styles.offer}>
         <View style={styles.offerStub}>
-          <Icon name="ticket" size={26} color={INK} />
+          <Icon name="ticket" size={26} color={INK} accent={INK} />
         </View>
         <View style={styles.offerText}>
           <Text style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}>
