@@ -66,9 +66,9 @@ import { trpc } from '@/lib/trpc'
 /*
  * "Página do bar" (2g do design): a foto com o nome, o jogo de hoje no mesmo
  * ingresso do Explorar, o que o bar tem para ver o jogo, a oferta da casa, os
- * próximos jogos, as características, onde fica, a nota e a dupla "Vou
- * assistir" e "Reservar mesa" num vidro preso embaixo. A reserva é a seção
- * 08: até lá o botão avisa que chega em breve.
+ * próximos jogos, as características, onde fica, a nota e o "Vou assistir
+ * aqui" num vidro preso embaixo. Sem reserva de mesa (decisão do dono em
+ * 16/10/2026, card da seção 08): quem marca recebe um código.
  *
  * ponytail: o design ainda tem "Horário" e avaliações escritas com etiquetas;
  * o bar não cadastra horário e a avaliação da Onside é só "voltaria", então
@@ -159,8 +159,7 @@ export default function BarPage() {
   const queryClient = useQueryClient()
   const session = authClient.useSession()
   const soon = useSoon()
-  const reserve = usePress(0, 3)
-  const attendPress = usePressScale()
+  const attendPress = usePress(0, 3)
   const goPress = usePressScale()
   const mapPress = usePressScale(0.985)
   const reportPress = usePressScale()
@@ -312,7 +311,6 @@ export default function BarPage() {
     km ? formatKm(Number(km)) : null,
     minutes && minutes <= 30 ? `${minutes} min a pé` : null
   ].filter(Boolean)
-  const reservable = games.some((game) => game.acceptsReservations)
 
   const toggleFavorite = () => {
     haptic.select()
@@ -564,10 +562,8 @@ export default function BarPage() {
                             </Text>
                           </View>
                         </View>
-                        {game.acceptsReservations ? (
-                          <Label palette={palette}>
-                            {game.reservationsSoldOut ? 'Esgotado' : 'Reserva'}
-                          </Label>
+                        {game.attendance?.attending ? (
+                          <Label palette={palette}>Vou</Label>
                         ) : null}
                       </View>
                     ))}
@@ -771,70 +767,41 @@ export default function BarPage() {
         </View>
       </View>
 
-      {(going && mine) || reservable ? (
+      {going && mine ? (
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
           style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
         >
-          {going && mine ? (
-            <AnimatedPressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: mine.attending }}
-              onPressIn={attendPress.onPressIn}
-              onPressOut={attendPress.onPressOut}
-              accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
-              disabled={attend.isPending}
-              onPress={() =>
-                attend.mutate({ eventId: going.id, attending: !mine.attending })
-              }
-              style={[
-                styles.attend,
-                palette.dark && styles.attendDark,
-                mine.attending && { backgroundColor: ACID },
-                attendPress.style
-              ]}
-            >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: mine.attending }}
+            accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
+            disabled={attend.isPending}
+            onPressIn={attendPress.onPressIn}
+            onPressOut={attendPress.onPressOut}
+            onPress={() =>
+              attend.mutate({ eventId: going.id, attending: !mine.attending })
+            }
+            style={styles.attendSlot}
+          >
+            <View style={styles.attendShadow} />
+            <Animated.View style={[styles.attend, attendPress.style]}>
               <Icon
-                name={mine.attending ? 'check' : 'people'}
-                size={19}
-                color={mine.attending ? INK : palette.ink}
-                accent={palette.accent}
+                name={mine.attending ? 'check' : 'ticket'}
+                size={18}
+                color={INK}
               />
               <Animated.Text
                 key={mine.attending ? 'on' : 'off'}
                 entering={SWAP}
-                style={[
-                  text(15, 'Bold', 1.2),
-                  { color: mine.attending ? INK : palette.ink, flexShrink: 1 }
-                ]}
+                style={[text(15, 'Bold', 1.2), { color: INK, flexShrink: 1 }]}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.85}
                 maxFontSizeMultiplier={1.3}
               >
-                {mine.attending ? 'Vou assistir aqui' : 'Vou assistir'}
+                {mine.attending ? 'Você vai' : 'Vou assistir aqui'}
               </Animated.Text>
-            </AnimatedPressable>
-          ) : null}
-          {reservable ? (
-            <Pressable
-              accessibilityRole="button"
-              onPressIn={reserve.onPressIn}
-              onPressOut={reserve.onPressOut}
-              onPress={() => soon.show('A reserva de mesa chega em breve')}
-              style={styles.reserveSlot}
-            >
-              <View style={styles.reserveShadow} />
-              <Animated.View style={[styles.reserve, reserve.style]}>
-                <Text
-                  style={[text(15, 'Bold', 1.2), { color: INK }]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  Reservar mesa
-                </Text>
-              </Animated.View>
-            </Pressable>
-          ) : null}
+            </Animated.View>
+          </Pressable>
         </Glass>
       ) : null}
       {soon.toast}
@@ -868,7 +835,7 @@ function Heading({
   )
 }
 
-/** A etiqueta cinza da lista de jogos ("Reserva"). */
+/** A etiqueta cinza da lista de jogos ("Vou"). */
 function Label({ palette, children }: { palette: Palette; children: string }) {
   return (
     <View style={[styles.label, { backgroundColor: palette.mark }]}>
@@ -1107,26 +1074,8 @@ const styles = StyleSheet.create({
     gap: 8,
     overflow: 'hidden'
   },
-  // O `flex: 1` / `flex: 1.2` do design no CSS: base zero, e o "Reservar
-  // mesa" soma o padding de 22 + 22. Dá 133 e 203 pt na tela de 390.
-  attend: {
-    flexGrow: 1,
-    flexBasis: 0,
-    height: 52,
-    borderRadius: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    backgroundColor: 'rgba(255,255,255,.55)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#fff'
-  },
-  attendDark: {
-    backgroundColor: 'rgba(255,255,255,.1)',
-    borderColor: 'rgba(255,255,255,.22)'
-  },
-  reserveShadow: {
+  attendSlot: { flex: 1 },
+  attendShadow: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -1135,12 +1084,14 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     backgroundColor: INK
   },
-  reserveSlot: { flexGrow: 1.2, flexBasis: 44 },
-  reserve: {
+  attend: {
     height: 52,
     borderRadius: 26,
+    paddingHorizontal: 22,
     backgroundColor: ACID,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    gap: 8
   }
 })
