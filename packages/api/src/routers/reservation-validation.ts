@@ -274,7 +274,7 @@ export const reservationValidationRouter = router({
         ) {
           throw new TRPCError({
             code: 'CONFLICT',
-            message: 'Não foi possível registrar esta chegada. Tente de novo.'
+            message: 'Não foi possível validar este código. Tente de novo.'
           })
         }
 
@@ -335,7 +335,7 @@ export const reservationValidationRouter = router({
         if (!use) {
           throw new TRPCError({
             code: 'NOT_FOUND',
-            message: 'Chegada não encontrada.'
+            message: 'Validação não encontrada.'
           })
         }
 
@@ -345,8 +345,8 @@ export const reservationValidationRouter = router({
             throw new TRPCError({
               code: 'PRECONDITION_FAILED',
               message: use.withinWindow
-                ? 'Só a última chegada pode ser desfeita.'
-                : 'O prazo para desfazer esta chegada acabou.'
+                ? 'Só a última validação pode ser desfeita.'
+                : 'O prazo para desfazer esta validação acabou.'
             })
           }
           await tx

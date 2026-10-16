@@ -498,7 +498,7 @@ integrationTest(
       )
       expect(notLast).toEqual({
         code: 'PRECONDITION_FAILED',
-        message: 'Só a última chegada pode ser desfeita.'
+        message: 'Só a última validação pode ser desfeita.'
       })
 
       const undone = await ctx.owner.undoArrival({ useId: second.useId })
@@ -555,7 +555,7 @@ integrationTest('desfazer depois do prazo é recusado', async () => {
     const late = await refusal(ctx.owner.undoArrival({ useId: arrival.useId }))
     expect(late).toEqual({
       code: 'PRECONDITION_FAILED',
-      message: 'O prazo para desfazer esta chegada acabou.'
+      message: 'O prazo para desfazer esta validação acabou.'
     })
     expect(await counterOf(ctx)).toBe(1)
   } finally {
