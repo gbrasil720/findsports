@@ -39,7 +39,7 @@ test('textos como o design escreve', () => {
   expect(formatKm(12.4)).toBe('12,4 km')
   expect(formatTime('2026-10-16T00:30:00Z')).toBe('21:30')
   expect(teamMark('Corinthians')).toBe('COR')
-  expect(teamMark('Grêmio')).toBe('GRE')
+  expect(teamMark('Grêmio')).toBe('GRÊ')
   expect(greeting(new Date('2026-10-16T00:30:00Z'))).toBe('Boa noite')
   expect(greeting(new Date('2026-10-16T13:00:00Z'))).toBe('Bom dia')
 })

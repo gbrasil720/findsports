@@ -44,13 +44,12 @@ export function formatTime(date: string | Date) {
   })
 }
 
-/** "COR", "PAL": a sigla no círculo do time, sem acento. */
+/** "COR", "GRÊ": a sigla no círculo do time, com acento, como no design. */
 export function teamMark(name: string) {
   return name
-    .normalize('NFD')
-    .replace(/[^A-Za-z]/g, '')
+    .replace(/[^\p{L}]/gu, '')
     .slice(0, 3)
-    .toUpperCase()
+    .toLocaleUpperCase('pt-BR')
 }
 
 /** Distância em linha reta (Haversine), para a página do bar. */
