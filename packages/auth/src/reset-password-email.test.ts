@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test'
-import { emailAssetUrls } from '@findsports_oficial/config/site'
 import {
   createResetPasswordEmail,
   sendResetPasswordEmailWithResend
@@ -7,21 +6,18 @@ import {
 import { publicEmailUrl } from './verification-email'
 
 describe('e-mail de redefinição de senha', () => {
-  it('mantém a identidade visual, o CTA e a alternativa em texto', () => {
+  it('mantém a marca, o CTA e a alternativa em texto', () => {
     const email = createResetPasswordEmail({
       name: 'Ana',
       resetUrl:
-        'https://onside.app/api/auth/reset-password/abc?callbackURL=%2Freset-password',
-      logoUrl: 'https://onside.app/onside-wordmark-paper.png',
-      heroImageUrl: 'https://onside.app/og-image.jpg'
+        'https://onside.app/api/auth/reset-password/abc?callbackURL=%2Freset-password'
     })
 
     expect(email.subject).toBe('Redefina a senha da sua conta Onside')
     expect(email.html).toContain('#12120f')
     expect(email.html).toContain('#c9f135')
     expect(email.html).toContain('Definir nova senha')
-    expect(email.html).toContain('onside-wordmark-paper.png')
-    expect(email.html).toContain('og-image.jpg')
+    expect(email.html).toContain('alt="Onside"')
     expect(email.html).toContain('copie e cole este endereço')
     expect(email.text).toContain(
       'https://onside.app/api/auth/reset-password/abc'
@@ -34,9 +30,7 @@ describe('e-mail de redefinição de senha', () => {
   it('declara uso único, prazo e queda das sessões — o que o fluxo garante', () => {
     const email = createResetPasswordEmail({
       name: 'Ana',
-      resetUrl: 'https://onside.app/api/auth/reset-password/abc',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/hero.jpg'
+      resetUrl: 'https://onside.app/api/auth/reset-password/abc'
     })
     expect(email.text).toContain('uso único')
     expect(email.text).toContain('expira em 30 minutos')
@@ -48,9 +42,7 @@ describe('e-mail de redefinição de senha', () => {
   it('cai para um tratamento genérico quando o nome vem vazio', () => {
     const email = createResetPasswordEmail({
       name: '   ',
-      resetUrl: 'https://onside.app/reset',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/hero.jpg'
+      resetUrl: 'https://onside.app/reset'
     })
     expect(email.text).toContain('Olá, torcedor.')
   })
@@ -58,14 +50,12 @@ describe('e-mail de redefinição de senha', () => {
   it('escapa conteúdo controlável no HTML', () => {
     const email = createResetPasswordEmail({
       name: '<img src=x>',
-      resetUrl: 'https://onside.app/reset?a=1&b=2',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/hero.jpg?a=1&b=2'
+      resetUrl: 'https://onside.app/reset?a=1&b=2'
     })
     expect(email.html).not.toContain('<img src=x>')
     expect(email.html).toContain('&lt;img src=x&gt;')
     expect(email.html).toContain('a=1&amp;b=2')
-    expect(email.html).not.toContain('hero.jpg?a=1&b=2')
+    expect(email.html).not.toContain('reset?a=1&b=2')
   })
 
   it('renderiza href e src somente no host público configurado', () => {
@@ -80,14 +70,13 @@ describe('e-mail de redefinição de senha', () => {
         'http://localhost:3001/api/auth/reset-password/abc?callbackURL=%2Freset-password',
         publicBaseUrl,
         'http://localhost:3001'
-      ),
-      ...emailAssetUrls(publicBaseUrl)
+      )
     })
     const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
       (match) => (match[1] ?? '').replaceAll('&amp;', '&')
     )
 
-    expect(urls).toHaveLength(4)
+    expect(urls).toHaveLength(3)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)
@@ -105,8 +94,6 @@ describe('e-mail de redefinição de senha', () => {
       to: 'ana@example.com',
       name: 'Ana',
       resetUrl: 'https://onside.app/api/auth/reset-password/abc',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/og-image.jpg',
       fetcher: async (input, init) => {
         request = new Request(input, init)
         return new Response(JSON.stringify({ id: 'email_1' }), { status: 200 })

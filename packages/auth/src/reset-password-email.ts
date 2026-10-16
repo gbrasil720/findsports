@@ -1,45 +1,37 @@
-import {
-  createOnsideEmailTemplate,
-  sendEmailWithResend
-} from './verification-email'
+import { createOnsideEmailTemplate } from './email-layout'
+import { sendEmailWithResend } from './verification-email'
 
 type ResetPasswordEmailInput = {
   name: string
   resetUrl: string
-  logoUrl: string
-  heroImageUrl: string
 }
 
 type EmailFetcher = (input: string, init?: RequestInit) => Promise<Response>
 
 /**
  * O e-mail de redefinição usa o mesmo template dos demais transacionais
- * (`createOnsideEmailTemplate`), então identidade visual, fallback em texto e
- * escape de HTML são exatamente os já cobertos por `verification-email`.
+ * (`createOnsideEmailTemplate`, em `email-layout`), então identidade visual,
+ * fallback em texto e escape de HTML são os mesmos da verificação de e-mail.
  * O que muda aqui é só a copy — e ela precisa dizer três coisas que o fluxo
  * de fato garante: uso único, prazo de 30 minutos e queda das sessões abertas.
  */
 export function createResetPasswordEmail({
   name,
-  resetUrl,
-  logoUrl,
-  heroImageUrl
+  resetUrl
 }: ResetPasswordEmailInput) {
   const template = createOnsideEmailTemplate({
-    preheader: 'Link de uso único para você definir uma nova senha na Onside.',
-    eyebrow: 'Redefinição de senha',
     heading: 'Defina uma nova senha',
     intro: `Olá, ${name.trim() || 'torcedor'}. Recebemos um pedido para redefinir a senha da sua conta Onside. Use o link abaixo para escolher uma nova.`,
-    highlights: [
+    steps: [
       'O link é de uso único: depois que a senha for definida, ele deixa de valer.',
       'Por segurança, este link expira em 30 minutos.',
       'Ao concluir, as sessões abertas são encerradas — entre de novo com a senha nova.'
     ],
     action: 'Definir nova senha',
     actionUrl: resetUrl,
-    logoUrl,
-    heroImageUrl,
-    note: 'Se você não pediu para redefinir sua senha, ignore esta mensagem. Sua senha atual continua valendo enquanto o link não for usado.'
+    note: 'Se você não pediu para redefinir sua senha, ignore esta mensagem. Sua senha atual continua valendo enquanto o link não for usado.',
+    reason:
+      'Você recebeu este e-mail porque alguém pediu a redefinição de senha desta conta na Onside.'
   })
 
   return {
@@ -55,8 +47,6 @@ export async function sendResetPasswordEmailWithResend(input: {
   to: string
   name: string
   resetUrl: string
-  logoUrl: string
-  heroImageUrl: string
   fetcher?: EmailFetcher
 }): Promise<void> {
   const email = createResetPasswordEmail(input)
