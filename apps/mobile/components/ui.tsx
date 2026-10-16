@@ -1065,10 +1065,11 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  // No escuro a base branca deixava o vidro leitoso, mais claro que o topo.
   roundBase: {
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,.55)',
-    shadowColor: INK,
+    backgroundColor: themed('rgba(255,255,255,.55)', 'rgba(241,238,230,.1)'),
+    shadowColor: themed(INK, '#000'),
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 }
