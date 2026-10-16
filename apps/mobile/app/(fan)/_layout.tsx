@@ -19,18 +19,20 @@ import { trpc } from '@/lib/trpc'
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
+// A IA no círculo acid do design: a cor do vidro da aba é do sistema, então
+// o acid vem no próprio ícone, um disco que enche a bolha.
+const AI_ICON = require('../../assets/images/tabs/ai.png')
+
 const TAB_ICONS = {
   light: {
     map: require('../../assets/images/tabs/map-light.png'),
     ranking: require('../../assets/images/tabs/ranking-light.png'),
-    you: require('../../assets/images/tabs/you-light.png'),
-    sparkle: require('../../assets/images/tabs/sparkle-light.png')
+    you: require('../../assets/images/tabs/you-light.png')
   },
   dark: {
     map: require('../../assets/images/tabs/map-dark.png'),
     ranking: require('../../assets/images/tabs/ranking-dark.png'),
-    you: require('../../assets/images/tabs/you-dark.png'),
-    sparkle: require('../../assets/images/tabs/sparkle-dark.png')
+    you: require('../../assets/images/tabs/you-dark.png')
   }
 }
 
@@ -147,10 +149,7 @@ export default function FanTabs() {
               tabPress: () => soon.show('A busca com IA chega em breve')
             }}
           >
-            <NativeTabs.Trigger.Icon
-              src={icons.sparkle}
-              renderingMode="original"
-            />
+            <NativeTabs.Trigger.Icon src={AI_ICON} renderingMode="original" />
             <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
         </NativeTabs>
