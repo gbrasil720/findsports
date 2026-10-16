@@ -82,7 +82,13 @@ export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
         ]}
       >
         {live ? <View style={styles.pinDot} /> : null}
-        <Text style={[text(live ? 13 : 12, 'Bold', 1.2), { color: fg }]}>
+        <Text
+          style={[
+            text(live ? 13 : 12, 'Bold', 1.2),
+            { color: fg, maxWidth: 150 }
+          ]}
+          numberOfLines={1}
+        >
           {later && game ? formatTime(game.startsAt) : bar.name}
         </Text>
       </View>
@@ -270,7 +276,8 @@ export function MatchRow({
   const live = isLive(game, now)
   const [home, away] = game.participants.map((p) => p.team.name)
   const center = (
-    <View style={{ alignItems: 'center' }}>
+    // Campeonato de nome longo corta em vez de espremer os times.
+    <View style={{ alignItems: 'center', maxWidth: 112 }}>
       <Text
         style={[
           styles.matchState,
@@ -416,7 +423,10 @@ export function BigBarCard({
         <View style={styles.bigFoot}>
           <View style={{ flexDirection: 'row', gap: 7, alignItems: 'center' }}>
             <Text
-              style={[text(17, 'Bold', 1.2), { color: palette.ink }]}
+              style={[
+                text(17, 'Bold', 1.2),
+                { color: palette.ink, flexShrink: 1 }
+              ]}
               numberOfLines={1}
             >
               {bar.name}
