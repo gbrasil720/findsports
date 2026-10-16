@@ -348,6 +348,38 @@ const ICONS = {
       <Path d="m10 8.4 6 3.6-6 3.6z" fill={c} />
     </>
   ),
+  calendar: (c: string, a: string) => (
+    <>
+      <Rect
+        x={3}
+        y={5}
+        width={18}
+        height={16}
+        rx={2.5}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V10H3z"
+        fill={c}
+      />
+      <Rect x={7} y={2.5} width={2.4} height={5} rx={1.2} fill={c} />
+      <Rect x={14.6} y={2.5} width={2.4} height={5} rx={1.2} fill={c} />
+      <Rect x={13} y={13.5} width={4.5} height={4.5} rx={1} fill={a} />
+    </>
+  ),
+  qr: (c: string, a: string) => (
+    <>
+      <Rect x={3} y={3} width={18} height={18} rx={3} fill={c} opacity={0.3} />
+      <Rect x={5.5} y={5.5} width={5} height={5} rx={1} fill={c} />
+      <Rect x={13.5} y={5.5} width={5} height={5} rx={1} fill={c} />
+      <Rect x={5.5} y={13.5} width={5} height={5} rx={1} fill={c} />
+      <Rect x={13.5} y={13.5} width={2.2} height={2.2} fill={c} />
+      <Rect x={16.3} y={16.3} width={2.2} height={2.2} fill={c} />
+      <Rect x={16.3} y={13.5} width={2.2} height={2.2} fill={a} />
+      <Rect x={13.5} y={16.3} width={2.2} height={2.2} fill={a} />
+    </>
+  ),
   ticket: (c: string) => (
     <>
       <Path
