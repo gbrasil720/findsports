@@ -1,5 +1,4 @@
 import { stripe } from '@better-auth/stripe'
-import { emailAssetUrls } from '@findsports_oficial/config/site'
 import { db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
@@ -249,8 +248,7 @@ export function createAuth() {
           name: user.name,
           // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
           // localhost e não abre na caixa de entrada de ninguém.
-          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL),
-          ...emailAssetUrls(publicAppUrl)
+          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
         })
       },
       customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
@@ -281,8 +279,7 @@ export function createAuth() {
             url,
             publicAppUrl,
             env.BETTER_AUTH_URL
-          ),
-          ...emailAssetUrls(publicAppUrl)
+          )
         })
       }
     },

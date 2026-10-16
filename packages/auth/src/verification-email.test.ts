@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'bun:test'
 import {
-  EMAIL_HERO_IMAGE_URL,
-  EMAIL_LOGO_URL,
-  emailAssetUrls
-} from '@findsports_oficial/config/site'
-import {
   createVerificationEmail,
   publicEmailUrl,
   sendEmailWithResend,
@@ -22,35 +17,35 @@ describe('e-mail de verificação Onside', () => {
     ).toBe('https://www.onside.sh/api/auth/verify-email?token=abc')
   })
 
-  it('mantém a identidade visual, CTA e alternativa em texto', () => {
+  it('mantém a marca, o CTA e a alternativa em texto', () => {
     const email = createVerificationEmail({
       name: 'Ana',
-      verificationUrl: 'https://onside.app/api/auth/verify-email?token=abc',
-      logoUrl: 'https://onside.app/onside-wordmark-paper.png',
-      heroImageUrl: 'https://onside.app/og-image.jpg'
+      verificationUrl: 'https://onside.app/api/auth/verify-email?token=abc'
     })
+    expect(email.subject).toBe('Confirme seu e-mail para entrar em campo')
     expect(email.html).toContain('#12120f')
     expect(email.html).toContain('#c9f135')
+    expect(email.html).toContain('ONSIDE')
     expect(email.html).toContain('Confirmar meu e-mail')
-    expect(email.html).toContain('onside-wordmark-paper.png')
-    expect(email.html).toContain('og-image.jpg')
-    expect(email.html).toContain('O que acontece agora')
     expect(email.html).toContain('copie e cole este endereço')
-    expect(email.text).toContain('https://onside.app/api/auth/verify-email')
+    expect(email.text).toContain(
+      'Olá, Ana. Falta um passo para entrar em campo'
+    )
+    expect(email.text).toContain(
+      'Confirmar meu e-mail:\nhttps://onside.app/api/auth/verify-email?token=abc'
+    )
     expect(email.text).toContain('• Por segurança, este link expira em 1 hora.')
   })
 
   it('escapa conteúdo controlável no HTML', () => {
     const email = createVerificationEmail({
       name: '<img src=x>',
-      verificationUrl: 'https://onside.app/verify?a=1&b=2',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/hero.jpg?a=1&b=2'
+      verificationUrl: 'https://onside.app/verify?a=1&b=2'
     })
     expect(email.html).not.toContain('<img src=x>')
     expect(email.html).toContain('&lt;img src=x&gt;')
     expect(email.html).toContain('a=1&amp;b=2')
-    expect(email.html).not.toContain('hero.jpg?a=1&b=2')
+    expect(email.html).not.toContain('verify?a=1&b=2')
   })
 
   it('renderiza href e src somente no host público configurado', () => {
@@ -58,14 +53,14 @@ describe('e-mail de verificação Onside', () => {
     const publicHost = new URL(publicBaseUrl).hostname
     const email = createVerificationEmail({
       name: 'Ana',
-      verificationUrl: new URL('/verify?token=abc', publicBaseUrl).toString(),
-      ...emailAssetUrls(publicBaseUrl)
+      verificationUrl: new URL('/verify?token=abc', publicBaseUrl).toString()
     })
     const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
       (match) => (match[1] ?? '').replaceAll('&amp;', '&')
     )
 
-    expect(urls).toHaveLength(4)
+    // Botão e link em texto: nenhuma imagem, nenhum outro destino.
+    expect(urls).toHaveLength(2)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)
@@ -80,8 +75,6 @@ describe('e-mail de verificação Onside', () => {
       to: 'ana@example.com',
       name: 'Ana',
       verificationUrl: 'https://onside.app/verify',
-      logoUrl: 'https://onside.app/logo.png',
-      heroImageUrl: 'https://onside.app/og-image.jpg',
       fetcher: async (input, init) => {
         request = new Request(input, init)
         return new Response(JSON.stringify({ id: 'email_1' }), { status: 200 })
@@ -90,12 +83,15 @@ describe('e-mail de verificação Onside', () => {
 
     expect(request?.url).toBe('https://api.resend.com/emails')
     expect(request?.headers.get('authorization')).toBe('Bearer re_test')
-    const body = await request?.json()
+    const body = (await request?.json()) as { text: string; html: string }
     expect(body).toMatchObject({
       from: 'Onside <contato@onside.app>',
       to: ['ana@example.com'],
-      reply_to: 'contato@onside.sh'
+      reply_to: 'contato@onside.sh',
+      subject: 'Confirme seu e-mail para entrar em campo'
     })
+    expect(body.text).toContain('https://onside.app/verify')
+    expect(body.html).toContain('https://onside.app/verify')
     expect(JSON.stringify(body)).not.toContain('re_test')
   })
 
@@ -254,15 +250,6 @@ describe('e-mail de verificação Onside', () => {
       console.log = log
       process.env.NODE_ENV = previous
       delete process.env.EMAIL_DELIVERY
-    }
-  })
-
-  it('usa assets de imagem públicos e estáveis nos e-mails', () => {
-    for (const assetUrl of [EMAIL_LOGO_URL, EMAIL_HERO_IMAGE_URL]) {
-      const url = new URL(assetUrl) // relativa lança TypeError
-      expect(url.protocol).toBe('https:')
-      expect(url.hostname).toBe('www.onside.sh')
-      expect(url.search).toContain('v=')
     }
   })
 })
