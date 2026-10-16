@@ -356,10 +356,13 @@ invente layout que o projeto não tem.
   `/admin/validate?code=`, que no web já abre buscando o código. `app/meus-jogos.tsx`
   (menu "Você") lista os próximos e os anteriores; "Avaliar" abre o pós-jogo
   `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
-  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). "O que pesou?" e a
-  contagem de resenhas do design não entraram: o servidor não guarda o motivo e não há
-  conquistas. A busca com IA (2h) também não: o que o design mostra e não existe avisa
-  "chega em breve" (`components/soon.tsx`).
+  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
+  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
+  pesou?" no pós-jogo (WEB-398), "Sua Nª resenha" e o rodapé de conquistas (WEB-403),
+  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405), o botão
+  de calendário (WEB-406) e Meus jogos dentro das abas, sem voltar (WEB-407). A busca com
+  IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
+  breve" (`components/soon.tsx`).
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
