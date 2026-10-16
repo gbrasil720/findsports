@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Platform,
   Pressable,
@@ -173,13 +173,17 @@ export default function Explore() {
       (kmPerPoint * width) / (111.32 * Math.cos((center.lat * Math.PI) / 180))
   }
   const map = useRef<MapView>(null)
-  // Enquadra quando o centro muda e quando chega a primeira resposta; não a
-  // cada filtro, que desfaria o arrasto que a pessoa fez no mapa.
+  // O mapa só aceita `animateToRegion` depois de pronto: a localização que
+  // chegava antes disso se perdia, e o Explorar ficava na cidade do perfil.
+  const [mapReady, setMapReady] = useState(false)
+  // Enquadra quando o mapa fica pronto, quando o centro muda e quando chega a
+  // primeira resposta; não a cada filtro, que desfaria o arrasto que a
+  // pessoa fez no mapa.
   const framed = search.data !== undefined
-  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, raio e primeira resposta
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, raio, mapa pronto e primeira resposta
   useEffect(() => {
-    map.current?.animateToRegion(region, reduced ? 0 : 400)
-  }, [center.lat, center.lng, radiusKm, framed])
+    if (mapReady) map.current?.animateToRegion(region, reduced ? 0 : 400)
+  }, [mapReady, center.lat, center.lng, radiusKm, framed])
 
   const y = useSharedValue(resting)
   // A outra aba pode ter movido a folha: esta acompanha ao voltar.
@@ -295,6 +299,7 @@ export default function Explore() {
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <MapView
         ref={map}
+        onMapReady={() => setMapReady(true)}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         mapPadding={padding}
@@ -311,7 +316,9 @@ export default function Explore() {
           <Marker
             coordinate={{ latitude: device.lat, longitude: device.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
+            // Um marcador só e parado: acompanhar a vista garante que o ponto
+            // apareça mesmo quando chega depois do mapa.
+            tracksViewChanges
           >
             <MeDot />
           </Marker>
