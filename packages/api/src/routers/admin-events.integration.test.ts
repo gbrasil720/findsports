@@ -94,69 +94,59 @@ async function seed(plan: 'elite' | 'starter' = 'elite') {
   }
 }
 
-integrationTest(
-  'avisos: duplicado, texto livre e reservas sem limite',
-  async () => {
-    const ctx = await seed()
-    try {
-      const clean = await ctx.addGame({}, [ctx.fla, ctx.vasco])
-      // O duplicado com campeonato escrito diferente fica fora da busca, e
-      // mesmo assim o aviso aparece no que ficou dentro.
-      await ctx.addGame({ championship: 'Brasileirão' }, [ctx.vasco, ctx.fla])
-      const freeText = await ctx.addGame(
-        {
-          startsAt: new Date(ctx.startsAt.getTime() + 3_600_000),
-          participantFreeText: 'flamengo x Vasco da Gama'
-        },
-        []
-      )
-      const vague = await ctx.addGame({
-        startsAt: new Date(ctx.startsAt.getTime() + 2 * 3_600_000),
-        participantFreeText: 'Fla × Vasco'
-      })
-      const uncapped = await ctx.addGame({
-        startsAt: new Date(ctx.startsAt.getTime() + 3 * 3_600_000),
-        acceptsReservations: true
-      })
-      const capped = await ctx.addGame({
-        startsAt: new Date(ctx.startsAt.getTime() + 4 * 3_600_000),
-        acceptsReservations: true,
-        reservationCap: 40
-      })
+integrationTest('avisos: duplicado e texto livre', async () => {
+  const ctx = await seed()
+  try {
+    const clean = await ctx.addGame({}, [ctx.fla, ctx.vasco])
+    // O duplicado com campeonato escrito diferente fica fora da busca, e
+    // mesmo assim o aviso aparece no que ficou dentro.
+    await ctx.addGame({ championship: 'Brasileirão' }, [ctx.vasco, ctx.fla])
+    const freeText = await ctx.addGame(
+      {
+        startsAt: new Date(ctx.startsAt.getTime() + 3_600_000),
+        participantFreeText: 'flamengo x Vasco da Gama'
+      },
+      []
+    )
+    const vague = await ctx.addGame({
+      startsAt: new Date(ctx.startsAt.getTime() + 2 * 3_600_000),
+      participantFreeText: 'Fla × Vasco'
+    })
+    const plain = await ctx.addGame({
+      startsAt: new Date(ctx.startsAt.getTime() + 4 * 3_600_000),
+      participantFreeText: null
+    })
 
-      const games = await ctx.list()
-      const byId = new Map(games.map((g) => [g.id, g]))
-      expect(byId.get(clean)?.warnings).toEqual([
-        { kind: 'duplicate', canDelete: true }
-      ])
-      expect(byId.get(freeText)?.warnings).toEqual([
-        {
-          kind: 'free_text',
-          text: 'flamengo x Vasco da Gama',
-          suggestion: [
-            { id: ctx.fla, name: 'Flamengo' },
-            { id: ctx.vasco, name: 'Vasco da Gama' }
-          ]
-        }
-      ])
-      expect(byId.get(vague)?.warnings).toMatchObject([
-        { kind: 'free_text', suggestion: null }
-      ])
-      expect(byId.get(uncapped)?.warnings).toEqual([{ kind: 'uncapped' }])
-      expect(byId.get(capped)?.warnings).toEqual([])
-      expect(byId.get(capped)?.effectiveCap).toBe(40)
+    const games = await ctx.list()
+    const byId = new Map(games.map((g) => [g.id, g]))
+    expect(byId.get(clean)?.warnings).toEqual([
+      { kind: 'duplicate', canDelete: true }
+    ])
+    expect(byId.get(freeText)?.warnings).toEqual([
+      {
+        kind: 'free_text',
+        text: 'flamengo x Vasco da Gama',
+        suggestion: [
+          { id: ctx.fla, name: 'Flamengo' },
+          { id: ctx.vasco, name: 'Vasco da Gama' }
+        ]
+      }
+    ])
+    expect(byId.get(vague)?.warnings).toMatchObject([
+      { kind: 'free_text', suggestion: null }
+    ])
+    expect(byId.get(plain)?.warnings).toEqual([])
 
-      const warned = await ctx.admin.adminEvents.list({
-        period: 'all',
-        search: ctx.token,
-        onlyWarnings: true
-      })
-      expect(warned.games.map((g) => g.id)).not.toContain(capped)
-    } finally {
-      await ctx.cleanup()
-    }
+    const warned = await ctx.admin.adminEvents.list({
+      period: 'all',
+      search: ctx.token,
+      onlyWarnings: true
+    })
+    expect(warned.games.map((g) => g.id)).not.toContain(plain)
+  } finally {
+    await ctx.cleanup()
   }
-)
+})
 
 integrationTest(
   'conserto: o duplicado sem reserva sai, o com reserva fica',
@@ -179,7 +169,7 @@ integrationTest(
       expect(games.get(booked)?.warnings).toEqual([
         { kind: 'duplicate', canDelete: false }
       ])
-      expect(games.get(booked)?.confirmedSeats).toBe(2)
+      expect(games.get(booked)?.codes).toBe(1)
 
       expect(
         await refusal(
@@ -248,9 +238,7 @@ integrationTest(
         eventId,
         startsAt: ctx.startsAt.toISOString(),
         endsAt: null,
-        championship: 'Brasileirão',
-        acceptsReservations: false,
-        reservationCap: null
+        championship: 'Brasileirão'
       }
 
       expect(
@@ -275,15 +263,6 @@ integrationTest(
         code: 'BAD_REQUEST',
         message: 'Esse horário já passou. Confira o dia e o ano.'
       })
-      // Ligar reservas exige Elite, como no painel do bar.
-      expect(
-        await refusal(
-          ctx.admin.adminEvents.update({ ...base, acceptsReservations: true })
-        )
-      ).toEqual({
-        code: 'FORBIDDEN',
-        message: 'Receber reservas é um recurso do plano Elite.'
-      })
 
       const later = new Date(ctx.startsAt.getTime() + 30 * 60_000)
       const ends = new Date(later.getTime() + 2 * 3_600_000)
@@ -291,18 +270,16 @@ integrationTest(
         await ctx.admin.adminEvents.update({
           ...base,
           startsAt: later.toISOString(),
-          endsAt: ends.toISOString(),
-          reservationCap: 30
+          endsAt: ends.toISOString()
         })
       ).toEqual({
-        changed: ['startsAt', 'endsAt', 'championship', 'reservationCap']
+        changed: ['startsAt', 'endsAt', 'championship']
       })
       const [row] = await ctx.db
         .select()
         .from(event)
         .where(eq(event.id, eventId))
       expect(row?.startsAt.getTime()).toBe(later.getTime())
-      expect(row?.reservationCap).toBe(30)
 
       const [entry] = await ctx.grimorio(eventId)
       expect(entry).toMatchObject({
@@ -310,14 +287,12 @@ integrationTest(
         before: {
           startsAt: ctx.startsAt.toISOString(),
           endsAt: null,
-          championship: `Campeonato ${ctx.token}`,
-          reservationCap: null
+          championship: `Campeonato ${ctx.token}`
         },
         after: {
           startsAt: later.toISOString(),
           endsAt: ends.toISOString(),
-          championship: 'Brasileirão',
-          reservationCap: 30
+          championship: 'Brasileirão'
         }
       })
     } finally {
