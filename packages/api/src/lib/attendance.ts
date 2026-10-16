@@ -1,4 +1,12 @@
-import { and, db, eq, inArray, type SQL, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  inArray,
+  isNull,
+  type SQL,
+  sql
+} from '@findsports_oficial/db'
 import {
   DEFAULT_EVENT_DURATION_INTERVAL,
   VALIDATION_WINDOW_MARGIN_HOURS
@@ -77,13 +85,16 @@ type FanAttendance = {
   attending: boolean
   /** `null` abaixo do piso. */
   count: number | null
+  /** O código do balcão, só em bar Elite (`attendance-ticket.ts`). */
+  code: string | null
+  /** O bar já validou o código: a oferta saiu e não dá mais para desmarcar. */
+  validated: boolean
 }
 
 /**
  * Estado de "Vou assistir aqui" por jogo, só onde o botão cabe: conta de
- * torcedor, jogo que não começou e sem pedido de reserva ativo (a reserva já
- * marcou presença). Nos demais jogos, e para qualquer outra conta, não há
- * entrada: nem a prévia do dono recebe a contagem.
+ * torcedor e jogo que não começou. Nos demais jogos, e para qualquer outra
+ * conta, não há entrada: nem a prévia do dono recebe a contagem.
  */
 export async function readFanAttendance(
   viewer: { id: string; role: string },
@@ -94,7 +105,7 @@ export async function readFanAttendance(
     .filter((game) => game.startsAt > now)
     .map((game) => game.id)
   if (viewer.role !== 'fan' || !eventIds.length) return new Map()
-  const [counts, reserved] = await Promise.all([
+  const [counts, tickets] = await Promise.all([
     db
       .select({
         eventId: attendance.eventId,
@@ -105,8 +116,19 @@ export async function readFanAttendance(
       .where(inArray(attendance.eventId, eventIds))
       .groupBy(attendance.eventId),
     db
-      .select({ eventId: reservation.eventId })
+      .select({
+        eventId: reservation.eventId,
+        code: reservationCode.code,
+        usedCount: reservationCode.usedCount
+      })
       .from(reservation)
+      .innerJoin(
+        reservationCode,
+        and(
+          eq(reservationCode.reservationId, reservation.id),
+          isNull(reservationCode.retiredAt)
+        )
+      )
       .where(
         and(
           eq(reservation.userId, viewer.id),
@@ -116,21 +138,22 @@ export async function readFanAttendance(
       )
   ])
   const byEvent = new Map(counts.map((row) => [row.eventId, row]))
-  const reservedIds = new Set(reserved.map((row) => row.eventId))
+  const byTicket = new Map(tickets.map((row) => [row.eventId, row]))
   return new Map(
-    eventIds
-      .filter((id) => !reservedIds.has(id))
-      .map((id) => {
-        const row = byEvent.get(id)
-        const count = row?.count ?? 0
-        return [
-          id,
-          {
-            attending: row?.attending ?? false,
-            count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null
-          }
-        ]
-      })
+    eventIds.map((id) => {
+      const row = byEvent.get(id)
+      const ticket = byTicket.get(id)
+      const count = row?.count ?? 0
+      return [
+        id,
+        {
+          attending: row?.attending ?? false,
+          count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
+          code: ticket?.code ?? null,
+          validated: (ticket?.usedCount ?? 0) > 0
+        }
+      ]
+    })
   )
 }
 

@@ -171,8 +171,9 @@ integrationTest(
       expect(await ctx.presences(future)).toHaveLength(1)
 
       const marked = await ctx.fan().pubs.getById({ id: ctx.barId })
+      // Bar sem Elite: presença sem código.
       expect(marked.events.find(({ id }) => id === future)?.attendance).toEqual(
-        { attending: true, count: null }
+        { attending: true, count: null, code: null, validated: false }
       )
 
       // Jogo que já começou não oferece o botão.
@@ -198,26 +199,54 @@ integrationTest(
 )
 
 integrationTest(
-  'reserva marca presença e esconde o botão; cancelar mantém a presença',
+  'no bar Elite, marcar emite um código só; desmarcar aposenta, e código validado trava',
   async () => {
     const ctx = await seed({ elite: true })
     const [future] = ctx.gameIds as [string]
+    const mine = async () =>
+      (await ctx.fan().pubs.getById({ id: ctx.barId })).events.find(
+        ({ id }) => id === future
+      )?.attendance
     try {
-      const created = await ctx.fan().reservations.create({
-        requestId: crypto.randomUUID(),
-        eventId: future,
-        partySize: 2
-      })
-      const reserved = await ctx.fan().pubs.getById({ id: ctx.barId })
-      expect(
-        reserved.events.find(({ id }) => id === future)?.attendance
-      ).toBeNull()
+      const api = ctx.fan().attendance
+      await api.set({ eventId: future, attending: true })
+      await api.set({ eventId: future, attending: true })
+      const marked = await mine()
+      expect(marked?.attending).toBe(true)
+      expect(marked?.code).toMatch(/^[A-Z0-9]{6}$/)
+      const tickets = await ctx.db
+        .select({
+          status: reservation.status,
+          partySize: reservation.partySize
+        })
+        .from(reservation)
+        .where(eq(reservation.eventId, future))
+      expect(tickets).toEqual([{ status: 'confirmed', partySize: 1 }])
 
-      await ctx.fan().reservations.cancel({ reservationId: created.id })
-      const cancelled = await ctx.fan().pubs.getById({ id: ctx.barId })
+      await api.set({ eventId: future, attending: false })
+      expect(await mine()).toEqual({
+        attending: false,
+        count: null,
+        code: null,
+        validated: false
+      })
+      expect(await ctx.presences(future)).toHaveLength(0)
+
+      // Marcar de novo emite outro código; validado, não desmarca mais.
+      await api.set({ eventId: future, attending: true })
+      const again = await mine()
+      expect(again?.code).not.toBe(marked?.code)
+      const [code] = await ctx.db
+        .select({ id: reservationCode.id })
+        .from(reservationCode)
+        .where(eq(reservationCode.code, again?.code as string))
+      await ctx.db
+        .insert(reservationCodeUse)
+        .values({ codeId: code?.id as string })
+      expect((await mine())?.validated).toBe(true)
       expect(
-        cancelled.events.find(({ id }) => id === future)?.attendance
-      ).toEqual({ attending: true, count: null })
+        (await refusal(api.set({ eventId: future, attending: false }))).code
+      ).toBe('CONFLICT')
       expect(await ctx.presences(future)).toHaveLength(1)
     } finally {
       await ctx.cleanup()
