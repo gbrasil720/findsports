@@ -2,13 +2,18 @@ import { useRouter } from 'expo-router'
 import { StyleSheet, Text, View } from 'react-native'
 import { OnboardingTop } from '@/components/onboarding'
 import {
-  ACCENT,
+  CARD,
+  DROP,
+  FG,
+  HOT,
   Icon,
-  MUTED,
+  LINE,
   PillButton,
   Screen,
+  SUB,
   Title,
-  text
+  text,
+  themed
 } from '@/components/ui'
 
 /*
@@ -38,7 +43,7 @@ export default function Welcome() {
     >
       <OnboardingTop step={1} />
       <View style={{ marginTop: 20, gap: 6 }}>
-        <Text style={[text(14, 'Bold'), { color: ACCENT }]}>
+        <Text style={[text(14, 'Bold'), { color: HOT }]}>
           É torcedor? Chegou no lugar certo.
         </Text>
         <Title
@@ -50,7 +55,7 @@ export default function Welcome() {
           size={42}
         />
       </View>
-      <Text style={[text(16.5, 'Regular', 1.48), { color: MUTED }]}>
+      <Text style={[text(16.5, 'Regular', 1.48), { color: SUB }]}>
         Em 3 passos a gente calibra sua busca: esportes favoritos, quem você
         acompanha e raio de localização.
       </Text>
@@ -65,13 +70,15 @@ export default function Welcome() {
                   left: 5,
                   right: -5,
                   bottom: -5,
-                  backgroundColor: 'rgba(232,50,12,.28)'
+                  backgroundColor: FIRST_DROP
                 }
               ]}
             />
             <View style={styles.feature}>
               <Icon name={feature.icon} size={26} />
-              <Text style={text(15, 'Bold')}>{feature.label}</Text>
+              <Text style={[text(15, 'Bold'), { color: FG }]}>
+                {feature.label}
+              </Text>
             </View>
           </View>
         ))}
@@ -80,6 +87,9 @@ export default function Welcome() {
   )
 }
 
+// O primeiro item ganha a sombra do destaque: vermelho no claro, acid no escuro.
+const FIRST_DROP = themed('rgba(232,50,12,.28)', 'rgba(201,241,53,.28)')
+
 const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
@@ -87,9 +97,9 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 14,
     borderRadius: 6,
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   shadow: {
     position: 'absolute',
@@ -98,6 +108,6 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   }
 })

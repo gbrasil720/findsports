@@ -6,12 +6,17 @@ import { ErrorText, haptic, POP_LATE } from '@/components/motion'
 import { OnboardingTop, useOnboarding } from '@/components/onboarding'
 import {
   ACID,
+  CARD,
+  DROP,
+  EDGE,
+  FG,
   Icon,
   INK,
+  LINE,
   LIVE,
-  MUTED,
   PillButton,
   Screen,
+  SUB,
   Title,
   text
 } from '@/components/ui'
@@ -35,7 +40,7 @@ function Chip({
       <View style={styles.chipShadow} />
       <View style={styles.chip}>
         <Icon name={icon} size={15} />
-        <Text style={text(13.5, 'SemiBold')}>{label}</Text>
+        <Text style={[text(13.5, 'SemiBold'), { color: FG }]}>{label}</Text>
       </View>
     </View>
   )
@@ -87,7 +92,7 @@ export default function Review() {
         <View style={styles.orbShadow} />
         <View style={styles.orb} />
         <Animated.View entering={POP_LATE} style={styles.check}>
-          <Icon name="check" size={90} />
+          <Icon name="check" size={90} color={INK} accent={LIVE} />
         </Animated.View>
       </View>
       <View style={{ alignItems: 'center', gap: 8 }}>
@@ -95,7 +100,7 @@ export default function Review() {
         <Text
           style={[
             text(15.5, 'Regular', 1.48),
-            { color: MUTED, textAlign: 'center', maxWidth: 320 }
+            { color: SUB, textAlign: 'center', maxWidth: 320 }
           ]}
         >
           Confira sua seleção. Ao continuar, salvamos preferências e abrimos o
@@ -113,7 +118,7 @@ export default function Review() {
         {choices.city ? <Chip icon="pin" label={choices.city.name} /> : null}
       </View>
       {choices.sportIds.length === 0 ? (
-        <Text style={[text(13.5), { color: MUTED, textAlign: 'center' }]}>
+        <Text style={[text(13.5), { color: SUB, textAlign: 'center' }]}>
           Volte e escolha pelo menos um esporte.
         </Text>
       ) : null}
@@ -147,7 +152,7 @@ const styles = StyleSheet.create({
     width: 190,
     height: 190,
     borderRadius: 95,
-    backgroundColor: INK,
+    backgroundColor: EDGE,
     transform: [{ translateX: 5 }]
   },
   check: {
@@ -169,9 +174,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#faf8f3',
+    backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   chipShadow: {
     position: 'absolute',
@@ -180,6 +185,6 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 4,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   }
 })

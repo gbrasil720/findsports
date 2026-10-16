@@ -7,7 +7,7 @@ import {
   SportTile,
   useOnboarding
 } from '@/components/onboarding'
-import { LIVE, MUTED, PillButton, Screen, Title, text } from '@/components/ui'
+import { LIVE, PillButton, Screen, SUB, Title, text } from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -66,9 +66,7 @@ export default function Sports() {
       <View style={{ marginTop: 8 }}>
         <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
       </View>
-      <Text
-        style={[text(15, 'Regular', 1.45), { color: MUTED, marginTop: -4 }]}
-      >
+      <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
         Marque tudo que você acompanha — a gente filtra os bares pra você.
       </Text>
       {query.isError ? (
@@ -91,7 +89,7 @@ export default function Sports() {
           </View>
         ))}
       </View>
-      <Text style={[text(13), { color: MUTED }]}>
+      <Text style={[text(13), { color: SUB }]}>
         {countLabel(choices.sportIds.length)}
       </Text>
     </Screen>

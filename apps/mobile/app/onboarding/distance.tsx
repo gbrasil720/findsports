@@ -2,7 +2,14 @@ import { useQuery } from '@tanstack/react-query'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View
+} from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -19,13 +26,19 @@ import {
 } from '@/components/onboarding'
 import {
   ACID,
+  DROP,
+  FG,
+  FIELD,
   Field,
   INK,
-  MUTED,
+  LINE,
+  LINE_STRONG,
   PillButton,
   Screen,
+  SUB,
   Title,
-  text
+  text,
+  themed
 } from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
@@ -53,6 +66,7 @@ function useDebounced(value: string) {
 
 export default function Distance() {
   const router = useRouter()
+  const dark = useColorScheme() === 'dark'
   const { choices, set } = useOnboarding()
   const label = (city: { name: string; uf: string }) =>
     `${city.name}, ${city.uf}`
@@ -111,9 +125,7 @@ export default function Distance() {
       <View style={{ marginTop: 8 }}>
         <Title lines={[['Quão longe você topa ir?']]} size={36} />
       </View>
-      <Text
-        style={[text(15, 'Regular', 1.45), { color: MUTED, marginTop: -4 }]}
-      >
+      <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
         Sua cidade e a distância definem quais bares aparecem pra você.
       </Text>
       <View style={{ gap: 6 }}>
@@ -141,16 +153,18 @@ export default function Distance() {
                 }}
                 style={({ pressed }) => [
                   styles.suggestion,
-                  pressed && { backgroundColor: 'rgba(18,18,15,.05)' }
+                  pressed && { backgroundColor: PRESSED }
                 ]}
               >
-                <Text style={text(15, 'SemiBold')}>{city.name}</Text>
-                <Text style={[text(13), { color: MUTED }]}>{city.uf}</Text>
+                <Text style={[text(15, 'SemiBold'), { color: FG }]}>
+                  {city.name}
+                </Text>
+                <Text style={[text(13), { color: SUB }]}>{city.uf}</Text>
               </Pressable>
             ))}
           </Animated.View>
         ) : null}
-        <Text style={[text(12.5), { color: MUTED }]}>
+        <Text style={[text(12.5), { color: SUB }]}>
           {pending
             ? 'Escolha a cidade na lista, ou apague para seguir sem ela.'
             : 'Opcional. Sem a localização do celular, a busca parte do centro dela.'}
@@ -160,7 +174,11 @@ export default function Distance() {
         <View style={styles.mapShadow} />
         <View style={styles.map}>
           <Image
-            source={require('../../assets/images/intro/map.jpg')}
+            source={
+              dark
+                ? require('../../assets/images/intro/map-dark.jpg')
+                : require('../../assets/images/intro/map.jpg')
+            }
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
@@ -168,11 +186,11 @@ export default function Distance() {
           <View style={styles.you} />
           {choices.city && count.data ? (
             <View style={styles.count}>
-              <Glass tone="light" style={styles.countGlass}>
+              <Glass tone={dark ? 'dark' : 'light'} style={styles.countGlass}>
                 <Animated.Text
                   key={count.data.bars}
                   entering={SWAP}
-                  style={text(13.5, 'SemiBold')}
+                  style={[text(13.5, 'SemiBold'), { color: FG }]}
                 >
                   <Text style={text(13.5, 'Bold')}>
                     {count.data.bars} {count.data.bars === 1 ? 'bar' : 'bares'}
@@ -198,12 +216,14 @@ export default function Distance() {
   )
 }
 
+const PRESSED = themed('rgba(18,18,15,.05)', 'rgba(241,238,230,.06)')
+
 const styles = StyleSheet.create({
   suggestions: {
     borderRadius: 5,
-    backgroundColor: '#fffdf8',
+    backgroundColor: FIELD,
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.14)',
+    borderColor: LINE_STRONG,
     overflow: 'hidden'
   },
   suggestion: {
@@ -221,7 +241,7 @@ const styles = StyleSheet.create({
     right: -4,
     bottom: -4,
     borderRadius: 6,
-    backgroundColor: 'rgba(18,18,15,.09)'
+    backgroundColor: DROP
   },
   map: {
     flex: 1,
@@ -230,13 +250,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
+    borderColor: LINE
   },
   circle: {
     position: 'absolute',
     backgroundColor: 'rgba(201,241,53,.22)',
     borderWidth: 2,
-    borderColor: INK
+    borderColor: FG
   },
   you: {
     position: 'absolute',

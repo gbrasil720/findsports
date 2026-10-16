@@ -10,11 +10,11 @@ import {
   useOnboarding
 } from '@/components/onboarding'
 import {
+  FG,
   Field,
-  INK,
-  MUTED,
   PillButton,
   Screen,
+  SUB,
   Title,
   text
 } from '@/components/ui'
@@ -132,7 +132,7 @@ export default function Teams() {
       <View style={{ marginTop: 8 }}>
         <Title lines={[['Quem você acompanha?']]} size={36} />
       </View>
-      <Text style={[text(15), { color: MUTED, marginTop: -4 }]}>
+      <Text style={[text(15), { color: SUB, marginTop: -4 }]}>
         Opcional — marque quantos quiser em cada esporte, ou pule.
       </Text>
       <Field
@@ -152,14 +152,16 @@ export default function Teams() {
               style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}
             >
               <SportBadge name={sport.name} />
-              <Text style={text(14, 'Bold')}>{sport.name}</Text>
+              <Text style={[text(14, 'Bold'), { color: FG }]}>
+                {sport.name}
+              </Text>
             </View>
             {sections.map((section, index) =>
               section.teams.length > 0 ? (
                 // biome-ignore lint/suspicious/noArrayIndexKey: seções fixas, sempre na mesma ordem
                 <View key={index} style={{ gap: 6 }}>
                   {section.label ? (
-                    <Text style={[text(12), { color: MUTED }]}>
+                    <Text style={[text(12), { color: SUB }]}>
                       {section.label}
                     </Text>
                   ) : null}
@@ -175,17 +177,15 @@ export default function Teams() {
         ) : null
       )}
       {searching && results.isError ? (
-        <Text style={[text(14), { color: MUTED }]}>
+        <Text style={[text(14), { color: SUB }]}>
           Não foi possível buscar. Confira a conexão.
         </Text>
       ) : searching && !results.data ? (
-        <Text style={[text(14), { color: MUTED }]}>Buscando…</Text>
+        <Text style={[text(14), { color: SUB }]}>Buscando…</Text>
       ) : searching && nothing ? (
-        <Text style={[text(14), { color: MUTED }]}>Nada com “{query}”.</Text>
+        <Text style={[text(14), { color: SUB }]}>Nada com “{query}”.</Text>
       ) : !searching && nothing && featured.every((list) => list.isSuccess) ? (
-        <Text style={[text(14), { color: MUTED }]}>
-          Busque pelo nome acima.
-        </Text>
+        <Text style={[text(14), { color: SUB }]}>Busque pelo nome acima.</Text>
       ) : null}
       {searching && results.data ? (
         <Suggest
@@ -205,10 +205,7 @@ function Suggest({ name, sports }: { name: string; sports: string[] }) {
   const send = useMutation(trpc.feedback.send.mutationOptions())
   if (send.isSuccess) {
     return (
-      <Text
-        style={[text(14), { color: MUTED }]}
-        accessibilityLiveRegion="polite"
-      >
+      <Text style={[text(14), { color: SUB }]} accessibilityLiveRegion="polite">
         Recebemos a sugestão de “{name}”. A gente revisa antes de incluir.
       </Text>
     )
@@ -217,7 +214,7 @@ function Suggest({ name, sports }: { name: string; sports: string[] }) {
     <View
       style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}
     >
-      <Text style={[text(14), { color: MUTED }]}>Não achou? </Text>
+      <Text style={[text(14), { color: SUB }]}>Não achou? </Text>
       <Pressable
         accessibilityRole="button"
         disabled={send.isPending}
@@ -232,14 +229,14 @@ function Suggest({ name, sports }: { name: string; sports: string[] }) {
         <Text
           style={[
             text(14, 'Bold'),
-            { color: INK, textDecorationLine: 'underline' }
+            { color: FG, textDecorationLine: 'underline' }
           ]}
         >
           Sugerir “{name}”
         </Text>
       </Pressable>
       {send.isError ? (
-        <Text style={[text(14), { color: MUTED }]}>
+        <Text style={[text(14), { color: SUB }]}>
           {' '}
           Não deu para enviar. Tente de novo.
         </Text>

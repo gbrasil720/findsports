@@ -1,19 +1,30 @@
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View
+} from 'react-native'
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { EASE, haptic } from '@/components/motion'
 import { useOnboarding } from '@/components/onboarding'
 import {
   ACID,
+  BG,
+  EDGE,
+  FG,
   Icon,
   INK,
-  MUTED,
-  PAPER,
+  LIVE,
   PillButton,
+  SUB,
   Title,
   text,
+  themed,
   useStatusBar
 } from '@/components/ui'
 
@@ -31,7 +42,8 @@ export default function LocationAsk() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { choices } = useOnboarding()
-  useStatusBar('dark')
+  useStatusBar('auto')
+  const dark = useColorScheme() === 'dark'
   const center = choices.city ? `de ${choices.city.name}` : 'da sua cidade'
 
   const proceed = () => router.replace('/onboarding/review')
@@ -42,9 +54,13 @@ export default function LocationAsk() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: PAPER }}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       <Image
-        source={require('../../assets/images/intro/map.jpg')}
+        source={
+          dark
+            ? require('../../assets/images/intro/map-dark.jpg')
+            : require('../../assets/images/intro/map.jpg')
+        }
         style={{ width: '100%', height: '100%', position: 'absolute' }}
         resizeMode="cover"
       />
@@ -66,14 +82,14 @@ export default function LocationAsk() {
           <View>
             <View style={styles.badgeShadow} />
             <View style={styles.badge}>
-              <Icon name="pin" size={26} />
+              <Icon name="pin" size={26} color={INK} accent={LIVE} />
             </View>
           </View>
           <View style={{ flex: 1 }}>
             <Title lines={[['Usar sua localização?']]} size={30} />
           </View>
         </View>
-        <Text style={[text(15.5, 'Regular', 1.48), { color: MUTED }]}>
+        <Text style={[text(15.5, 'Regular', 1.48), { color: SUB }]}>
           Com ela, a distância conta a partir de onde você está. Sem ela, a
           busca parte do centro {center}.
         </Text>
@@ -82,7 +98,7 @@ export default function LocationAsk() {
             (line) => (
               <View key={line} style={styles.point}>
                 <Icon name="check" size={15} />
-                <Text style={text(13.5)}>{line}</Text>
+                <Text style={[text(13.5), { color: FG }]}>{line}</Text>
               </View>
             )
           )}
@@ -96,7 +112,9 @@ export default function LocationAsk() {
           hitSlop={10}
           style={{ paddingVertical: 4 }}
         >
-          <Text style={[text(14.5, 'Bold'), { textAlign: 'center' }]}>
+          <Text
+            style={[text(14.5, 'Bold'), { color: FG, textAlign: 'center' }]}
+          >
             Agora não
           </Text>
         </Pressable>
@@ -122,7 +140,7 @@ const styles = StyleSheet.create({
     height: 230,
     borderRadius: 115,
     borderWidth: 2,
-    borderColor: 'rgba(18,18,15,.6)',
+    borderColor: themed('rgba(18,18,15,.6)', 'rgba(241,238,230,.6)'),
     backgroundColor: 'rgba(201,241,53,.12)'
   },
   // Os dois anéis acid em volta do ponto, como no design.
@@ -148,7 +166,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    backgroundColor: PAPER,
+    backgroundColor: BG,
     paddingTop: 12,
     paddingHorizontal: 20,
     gap: 12
@@ -159,7 +177,7 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     marginTop: 8,
-    backgroundColor: 'rgba(18,18,15,.18)'
+    backgroundColor: themed('rgba(18,18,15,.18)', 'rgba(241,238,230,.2)')
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
   badge: {
@@ -177,7 +195,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: INK
+    backgroundColor: EDGE
   },
   point: { flexDirection: 'row', alignItems: 'center', gap: 8 }
 })
