@@ -75,14 +75,14 @@ describe('EventDeleteDialog', () => {
     }
   })
 
-  test('diz o que vai junto, com número só nas reservas', () => {
+  test('diz o que vai junto, com número só nos códigos', () => {
     const { text, buttons } = renderizar({
       ...NOTHING,
       closedReservations: 2,
       hasAttendance: true
     })
     expect(text).toContain(
-      'Também apaga 2 reservas encerradas (recusadas, canceladas ou sem resposta) e o interesse que os torcedores marcaram neste jogo.'
+      'Também apaga 2 códigos desmarcados (de quem desistiu de ir) e o interesse que os torcedores marcaram neste jogo.'
     )
     expect(buttons).toEqual(['Excluir jogo', 'Cancelar'])
 
@@ -105,10 +105,10 @@ describe('EventDeleteDialog', () => {
     )
     expect(text).toContain('Este jogo não pode ser excluído')
     expect(text).toContain(
-      'Este jogo tem 1 pedido de reserva pendente, 2 reservas confirmadas e 1 avaliação.'
+      'Este jogo tem 1 pedido antigo de reserva, 2 códigos de quem vai e 1 avaliação.'
     )
-    expect(text).toContain('Recuse os pedidos pendentes na aba Reservas.')
-    expect(text).toContain('só o torcedor cancela, até o início do jogo.')
+    expect(text).toContain('expira sozinho no fim do jogo.')
+    expect(text).toContain('só a pessoa desmarca, até o início do jogo.')
     expect(text).toContain('não podem ser apagadas.')
     expect(text).not.toContain('Também apaga')
     expect(text).not.toContain('erro que não aparece')
