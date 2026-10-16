@@ -16,19 +16,13 @@ export async function soccerSportId(): Promise<string> {
 /**
  * Jogo de um bar. `startsAt` padrão: daqui a uma hora — dentro da janela de
  * validação do código (abre 3h antes do início). Esporte: futebol semeado.
- * `acceptsReservations` é a marcação "Aceitar reservas neste jogo".
  */
 export async function createEvent(
   barId: string,
   {
     startsAt = new Date(Date.now() + HOUR),
-    championship = `Campeonato E2E ${randomUUID().slice(0, 6)}`,
-    acceptsReservations = false
-  }: {
-    startsAt?: Date
-    championship?: string
-    acceptsReservations?: boolean
-  } = {}
+    championship = `Campeonato E2E ${randomUUID().slice(0, 6)}`
+  }: { startsAt?: Date; championship?: string } = {}
 ): Promise<{ eventId: string; championship: string }> {
   const eventId = randomUUID()
   await insert('event', {
@@ -36,46 +30,48 @@ export async function createEvent(
     bar_id: barId,
     sport_id: await soccerSportId(),
     championship,
-    starts_at: startsAt,
-    accepts_reservations: acceptsReservations
+    starts_at: startsAt
   })
   return { eventId, championship }
 }
 
 const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
-export type TestReservation = {
+export type TestTicket = {
   reservationId: string
   code: string
   guestName: string
 }
 
 /**
- * Pedido de reserva de um torcedor novo para `eventId`, com o código ativo
- * que o torcedor mostraria no bar (6 caracteres, `max_uses = party_size`,
- * como a migration 0034 exige).
+ * Torcedor novo que marcou "Vou assistir aqui" em `eventId` num bar Elite,
+ * como `attendance-ticket.ts` grava: presença, linha `confirmed` de uma
+ * pessoa em `reservation` e código de uso único. Direto no banco porque o
+ * `attendance.set` recusa jogo começado, e a validação precisa de jogo na
+ * janela ou já encerrado.
+ *
+ * `unmarked` é quem desmarcou: sem presença, linha `cancelled` e código
+ * aposentado.
  */
-export async function createReservation(
+export async function createTicket(
   eventId: string,
   {
-    status = 'confirmed',
-    partySize = 2,
+    unmarked = false,
     offerSnapshot = null
-  }: {
-    status?: 'pending' | 'confirmed' | 'declined' | 'cancelled'
-    partySize?: number
-    offerSnapshot?: string | null
-  } = {}
-): Promise<TestReservation> {
+  }: { unmarked?: boolean; offerSnapshot?: string | null } = {}
+): Promise<TestTicket> {
   const guestName = `Torcedor ${randomUUID().slice(0, 6)}`
   const fan = await createUser({ name: guestName })
+  if (!unmarked) {
+    await insert('attendance', { user_id: fan.id, event_id: eventId })
+  }
   const reservationId = randomUUID()
   await insert('reservation', {
     id: reservationId,
     event_id: eventId,
     user_id: fan.id,
-    party_size: partySize,
-    status,
+    party_size: 1,
+    status: unmarked ? 'cancelled' : 'confirmed',
     offer_snapshot: offerSnapshot
   })
   const code = Array.from(
@@ -86,7 +82,8 @@ export async function createReservation(
     id: randomUUID(),
     code,
     reservation_id: reservationId,
-    max_uses: partySize
+    max_uses: 1,
+    retired_at: unmarked ? new Date() : null
   })
   return { reservationId, code, guestName }
 }
