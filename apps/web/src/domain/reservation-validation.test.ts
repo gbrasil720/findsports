@@ -56,10 +56,10 @@ describe('getArrivalBlocker', () => {
   })
 
   test('cada estado não confirmado tem a própria explicação', () => {
-    expect(blocker('pending')?.title).toBe(
-      'Este código é de um pedido antigo'
+    expect(blocker('pending')?.title).toBe('Este código é de um pedido antigo')
+    expect(blocker('declined')?.title).toBe(
+      'Este código é de um pedido recusado'
     )
-    expect(blocker('declined')?.title).toBe('Este código é de um pedido recusado')
     expect(blocker('cancelled')?.title).toBe('O torcedor desmarcou')
   })
 
@@ -103,9 +103,7 @@ describe('contador', () => {
   })
 
   test('reserva completa', () => {
-    expect(getAllValidatedMessage(1)).toBe(
-      'Este código já foi validado.'
-    )
+    expect(getAllValidatedMessage(1)).toBe('Este código já foi validado.')
     expect(getAllValidatedMessage(4)).toBe(
       'As 4 pessoas deste código já foram validadas.'
     )
@@ -182,7 +180,7 @@ describe('mensagens de recusa', () => {
 
   test('desfazer fora do prazo', () => {
     expect(getUndoErrorMessage(trpcError('PRECONDITION_FAILED'))).toBe(
-      'O prazo para desfazer esta chegada acabou.'
+      'O prazo para desfazer esta validação acabou.'
     )
   })
 })

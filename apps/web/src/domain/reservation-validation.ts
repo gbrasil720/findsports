@@ -72,16 +72,16 @@ const STATUS_NOTICES: Record<
   pending: {
     title: 'Este código é de um pedido antigo',
     detail:
-      'O pedido de reserva ficou sem resposta. O código não registra chegadas.'
+      'O pedido de reserva ficou sem resposta. O código não pode ser validado.'
   },
   declined: {
     title: 'Este código é de um pedido recusado',
-    detail: 'O código não registra chegadas.'
+    detail: 'O código não pode ser validado.'
   },
   cancelled: {
     title: 'O torcedor desmarcou',
     detail:
-      'Ele tirou o “Vou assistir aqui” deste jogo. O código não registra chegadas.'
+      'Ele tirou o “Vou assistir aqui” deste jogo. O código não pode ser validado.'
   }
 }
 
@@ -194,15 +194,15 @@ export function getArrivalErrorMessage(
       UNPROCESSABLE_CONTENT:
         'Este código deixou de valer. Busque o código de novo.'
     },
-    'Não foi possível registrar a chegada. Tente novamente.'
+    'Não foi possível validar o código. Tente novamente.'
   )
 }
 
 export function getUndoErrorMessage(error: unknown): string {
-  const expired = 'O prazo para desfazer esta chegada acabou.'
+  const expired = 'O prazo para desfazer esta validação acabou.'
   return refusalMessage(
     error,
     { PRECONDITION_FAILED: expired, NOT_FOUND: expired },
-    'Não foi possível desfazer a chegada. Tente novamente.'
+    'Não foi possível desfazer a validação. Tente novamente.'
   )
 }
