@@ -12,6 +12,8 @@ import {
   readAttendanceQuestions,
   readUnregisteredAlerts
 } from '../lib/attendance'
+import { issueTicket, retireTicket } from '../lib/attendance-ticket'
+import { getCurrentPlan } from '../lib/current-plan'
 
 /** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
 async function openQuestion(userId: string, eventId: string) {
@@ -28,17 +30,29 @@ async function openQuestion(userId: string, eventId: string) {
 /**
  * "Vou assistir aqui" (WEB-127): o torcedor marca e desmarca presença num
  * jogo futuro. Vale para bar de qualquer plano (ADR 0003, "Recorte de
- * plano"). Repetir a mesma marcação devolve o mesmo estado.
+ * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
+ * oferta da casa (`attendance-ticket.ts`). Repetir a mesma marcação devolve
+ * o mesmo estado.
  */
 export const attendanceRouter = router({
   set: fanProcedure
     .input(z.object({ eventId: z.string().uuid(), attending: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
+      const now = new Date()
       const game = await db.query.event.findFirst({
         where: eq(event.id, input.eventId),
         columns: { startsAt: true },
-        with: { bar: { columns: { isActive: true } } }
+        with: {
+          bar: {
+            columns: { isActive: true, houseOffer: true },
+            with: {
+              subscription: {
+                columns: { plan: true, status: true, currentPeriodEnd: true }
+              }
+            }
+          }
+        }
       })
       if (!game?.bar.isActive) {
         throw new TRPCError({
@@ -47,33 +61,38 @@ export const attendanceRouter = router({
         })
       }
       // Jogo encerrado vira histórico do sinal de interesse do bar: não muda.
-      if (game.startsAt <= new Date()) {
+      if (game.startsAt <= now) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',
           message: 'Este jogo já começou.'
         })
       }
 
-      if (input.attending) {
-        // Marcar à mão vale mais que a presença que a reserva criou: vira
-        // `manual` e uma recusa do bar já não a apaga (WEB-296).
-        await db
-          .insert(attendance)
-          .values({ userId, eventId: input.eventId })
-          .onConflictDoUpdate({
-            target: [attendance.userId, attendance.eventId],
-            set: { source: 'manual' }
-          })
-      } else {
-        await db
-          .delete(attendance)
-          .where(
-            and(
-              eq(attendance.userId, userId),
-              eq(attendance.eventId, input.eventId)
+      await db.transaction(async (tx) => {
+        if (input.attending) {
+          await tx
+            .insert(attendance)
+            .values({ userId, eventId: input.eventId })
+            .onConflictDoUpdate({
+              target: [attendance.userId, attendance.eventId],
+              set: { source: 'manual' }
+            })
+          if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
+            await issueTicket(tx, userId, input.eventId, game.bar.houseOffer)
+          }
+        } else {
+          // O ingresso sai antes da presença: código validado recusa tudo.
+          await retireTicket(tx, userId, input.eventId)
+          await tx
+            .delete(attendance)
+            .where(
+              and(
+                eq(attendance.userId, userId),
+                eq(attendance.eventId, input.eventId)
+              )
             )
-          )
-      }
+        }
+      })
       return { attending: input.attending }
     }),
 
