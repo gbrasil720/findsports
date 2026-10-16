@@ -99,6 +99,14 @@ const SECTIONS: { title: string; items: Item[] }[] = [
         href: { pathname: '/legal', params: { doc: 'privacidade' } }
       }
     ]
+  },
+  {
+    title: '07 Explorar',
+    items: [
+      // Claro ou escuro pelo tema do sistema; a página do bar (2g) abre
+      // tocando num card ou num pino.
+      { code: '2d/2e', label: 'Explorar', href: '/explore' }
+    ]
   }
 ]
 
