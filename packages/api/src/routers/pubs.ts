@@ -583,6 +583,9 @@ export const pubsRouter = router({
         ),
         rating,
         houseOffer: elite ? houseOffer : null,
+        // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
+        // "Confirmar e gerar código" e só "Confirmar").
+        issuesCode: elite,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
           subscription ?? null,
