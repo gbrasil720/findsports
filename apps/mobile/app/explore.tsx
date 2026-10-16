@@ -194,15 +194,18 @@ export default function Explore() {
   const [resting, setResting] = useState(snaps[1])
   const expanded = resting === 0
 
-  // O mapa enquadra o raio da busca na faixa entre os chips e a folha (o
-  // centro fica nessa faixa, pelo `mapPadding`).
+  // O centro do mapa fica na faixa entre os chips e a folha (`mapPadding`).
   const padding = {
     top: insets.top + 196,
     right: 0,
     left: 0,
     bottom: height - (top + (resting === 0 ? snaps[1] : resting))
   }
-  const kmPerPoint = (radiusKm * 2.2) / width
+  // Escala de bairro, como o design (uns 2 km na largura da tela), aberta o
+  // bastante para os cinco primeiros bares caberem, sem passar do raio.
+  const spread = Math.max(0, ...bars.slice(0, 5).map((bar) => bar.distance_km))
+  const across = Math.min(radiusKm * 2.2, Math.max(1.8, spread * 2.5))
+  const kmPerPoint = across / width
   const region = {
     latitude: center.lat,
     longitude: center.lng,
@@ -214,7 +217,7 @@ export default function Explore() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: muda com o centro, o raio e a folha
   useEffect(() => {
     map.current?.animateToRegion(region, 400)
-  }, [center.lat, center.lng, radiusKm, resting])
+  }, [center.lat, center.lng, across, resting])
 
   const y = useSharedValue(snaps[1])
   const start = useSharedValue(0)
