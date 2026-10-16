@@ -4,7 +4,6 @@ import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -33,12 +32,7 @@ import {
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { useSoon } from '@/components/soon'
-import {
-  FanTabBar,
-  type MenuItem,
-  useTabBarSpace,
-  YouMenu
-} from '@/components/tab-bar'
+import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
   Icon,
@@ -56,7 +50,7 @@ import { trpc } from '@/lib/trpc'
 /*
  * "Explorar" (2d e 2e do design): o mapa dos bares com jogo por perto, o
  * cabeçalho com a saudação, os filtros em chips de vidro, a lista numa folha
- * que arrasta e a barra de vidro do torcedor, com o menu "Você" (2c). O mapa
+ * que arrasta; a barra de abas nativa e o menu "Você" ficam em `_layout`. O mapa
  * é o nativo: Apple Maps apagado no iOS, Google Maps com as cores da Onside
  * no Android (`lib/map-style.ts`).
  */
@@ -166,11 +160,6 @@ export default function Explore() {
     () => new Set(favorites.data?.map((item) => item.barId)),
     [favorites.data]
   )
-  const pending = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    retry: false,
-    meta: { errorToast: false }
-  })
   const refreshFavorites = () =>
     queryClient.invalidateQueries({
       queryKey: trpc.pubs.getFavorites.queryKey()
@@ -190,7 +179,7 @@ export default function Explore() {
 
   // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
   const top = insets.top + 8
-  const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace - 64]
+  const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace]
   const [resting, setResting] = useState(snaps[1])
   const expanded = resting === 0
 
@@ -262,40 +251,6 @@ export default function Explore() {
   const firstName = user?.name.split(' ')[0] ?? ''
   const initials = initialsOf(user?.name ?? '')
   const place = district ?? city.data?.name ?? 'São Paulo'
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuItems: MenuItem[] = [
-    { key: 'perfil', icon: 'you', label: 'Perfil' },
-    { key: 'conquistas', icon: 'medal', label: 'Conquistas' },
-    { key: 'reservas', icon: 'ticket', label: 'Minhas reservas' },
-    {
-      key: 'favoritos',
-      icon: 'fan',
-      label: 'Favoritos',
-      meta: favorites.data?.length ? String(favorites.data.length) : undefined
-    },
-    {
-      key: 'avaliacoes',
-      icon: 'star',
-      label: 'Avaliações',
-      meta: pending.data?.length
-        ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
-        : undefined
-    },
-    { key: 'preferencias', icon: 'sliders', label: 'Preferências' }
-  ]
-  // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
-  const settings = () =>
-    Alert.alert(user?.name ?? 'Conta', user?.email, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await authClient.signOut()
-          router.replace('/intro')
-        }
-      }
-    ])
 
   const title =
     todayCount > 0
@@ -503,7 +458,7 @@ export default function Explore() {
             paddingHorizontal: 16,
             paddingTop: 2,
             // A barra de vidro fica por cima: o último card sobe acima dela.
-            paddingBottom: tabSpace + 64 + 24 + top,
+            paddingBottom: tabSpace + 24 + top,
             gap: 12
           }}
           showsVerticalScrollIndicator={false}
@@ -565,31 +520,6 @@ export default function Explore() {
         </ScrollView>
       </Animated.View>
 
-      {menuOpen ? (
-        <YouMenu
-          palette={palette}
-          name={user?.name ?? ''}
-          initials={initials}
-          items={menuItems}
-          onClose={() => setMenuOpen(false)}
-          onItem={(item) => soon.show(item.label)}
-          onChat={() => soon.show('A conversa com a Onside')}
-          onSettings={settings}
-        />
-      ) : null}
-      <FanTabBar
-        active="explore"
-        palette={palette}
-        menuOpen={menuOpen}
-        onTab={(tab) => {
-          if (tab === 'you') setMenuOpen((on) => !on)
-          else {
-            setMenuOpen(false)
-            if (tab === 'ranking') soon.show('O ranking')
-          }
-        }}
-        onAi={() => soon.show('A busca com IA')}
-      />
       {soon.toast}
     </View>
   )
