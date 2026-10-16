@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, OfferCard } from '@/components/card'
@@ -33,8 +33,8 @@ import { trpc } from '@/lib/trpc'
  * nem resposta do bar (decisão do dono, 16/10/2026).
  */
 
-// ponytail: três jogos cabem na folha sem rolar; a página do bar lista o resto.
-const MAX_GAMES = 3
+// ponytail: seis jogos; a página do bar lista o resto.
+const MAX_GAMES = 6
 
 export default function GoingSheet() {
   const { barId, eventId } = useLocalSearchParams<{
@@ -76,7 +76,7 @@ export default function GoingSheet() {
   )
 
   if (!data || !game || !mine) {
-    return <View style={[styles.sheet, { backgroundColor: palette.bg }]} />
+    return <View style={[styles.sheet]} />
   }
 
   const confirm = () =>
@@ -96,25 +96,28 @@ export default function GoingSheet() {
         : 'Confirmar'
 
   return (
-    <View style={[styles.sheet, { backgroundColor: palette.bg }]}>
-      {/* Sem ScrollView: dentro do formSheet ele não desenha nada, e os
-          jogos (até três) cabem na folha. */}
-      <View style={styles.body}>
-        <View style={styles.head}>
-          <View style={{ flex: 1 }}>
-            <Text
-              accessibilityRole="header"
-              style={[styles.title, { color: palette.ink }]}
-            >
-              Vou assistir aqui
-            </Text>
-            <Text style={[text(14), { color: palette.muted }]}>
-              {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-          <BackButton icon="close" />
+    <View style={styles.sheet}>
+      {/* O título fica; o resto rola por baixo dele, recortado em reta (o
+          canto arredondado da folha não recorta). */}
+      <View style={styles.head}>
+        <View style={{ flex: 1 }}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.title, { color: palette.ink }]}
+          >
+            Vou assistir aqui
+          </Text>
+          <Text style={[text(14), { color: palette.muted }]}>
+            {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
+          </Text>
         </View>
-
+        <BackButton icon="close" />
+      </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.body, { paddingBottom: 120 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <Text
           style={[text(13, 'SemiBold'), { color: palette.muted, marginTop: 6 }]}
         >
@@ -188,7 +191,7 @@ export default function GoingSheet() {
             />
           </View>
         ) : null}
-      </View>
+      </ScrollView>
 
       <Glass
         tone={palette.dark ? 'dark' : 'light'}
@@ -327,8 +330,15 @@ function Faces({
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
-  body: { paddingHorizontal: 18, paddingTop: 30, gap: 14 },
-  head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  body: { paddingHorizontal: 18, paddingTop: 14, gap: 14 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 18,
+    paddingTop: 30,
+    paddingBottom: 8
+  },
   // Anton 34 do design, sem `lineHeight` (corta no iOS): margem negativa.
   title: {
     fontFamily: 'Anton',
