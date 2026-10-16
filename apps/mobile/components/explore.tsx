@@ -313,7 +313,10 @@ export function MatchRow({
             textAlign: right ? 'right' : 'left'
           }
         ]}
-        numberOfLines={2}
+        // Nome longo encolhe um pouco em vez de quebrar no meio da palavra.
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
       >
         {name}
       </Text>
