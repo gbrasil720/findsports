@@ -12,9 +12,9 @@ import {
   getAdminSections
 } from '@/components/admin/admin-tabs'
 import { getAnalyticsRange } from '@/components/admin/analytics-period'
+import { GoingTab } from '@/components/admin/going-tab'
 import { OverviewTab } from '@/components/admin/overview-tab'
 import { QueryError } from '@/components/admin/query-error'
-import { GoingTab } from '@/components/admin/going-tab'
 import { ScheduleTab } from '@/components/admin/schedule-tab'
 import { SpaceTab } from '@/components/admin/space-tab'
 import { AppShell } from '@/components/app/app-shell'
