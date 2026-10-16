@@ -21,7 +21,11 @@ export type PendingRating = {
   sport: { name: string; slug: string }
 }
 
-type Props = { pending: PendingRating[] }
+type Props = {
+  pending: PendingRating[]
+  /** O jogo que vem na frente (o "Avaliar" de Meus jogos). */
+  first?: string
+}
 
 /**
  * O card que pergunta, no dia seguinte ao jogo, se valeu a pena.
@@ -38,7 +42,7 @@ type Props = { pending: PendingRating[] }
  * A confirmação é um aviso com "Desfazer" (WEB-321), que guarda o jogo
  * respondido: desfazer nunca age sobre a pergunta que estiver na tela.
  */
-export function PendingRatingCard({ pending }: Props) {
+export function PendingRatingCard({ pending, first }: Props) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   // Por jogo, não por posição: a lista encolhe a cada resposta e cresce a
@@ -46,7 +50,7 @@ export function PendingRatingCard({ pending }: Props) {
   const [skipped, setSkipped] = useState<string[]>([])
   // A pergunta desfeita volta na frente das outras: é a que o torcedor quer
   // corrigir.
-  const [front, setFront] = useState<string | null>(null)
+  const [front, setFront] = useState<string | null>(first ?? null)
   const open = pending.filter(({ eventId }) => !skipped.includes(eventId))
   const item = open.find(({ eventId }) => eventId === front) ?? open[0]
 
