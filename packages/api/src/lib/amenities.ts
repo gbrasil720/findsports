@@ -19,6 +19,7 @@
 export const AMENITY_GROUPS = [
   { key: 'watch', label: 'Para ver o jogo' },
   { key: 'space', label: 'O espaço' },
+  { key: 'food', label: 'Comer e beber' },
   { key: 'practical', label: 'Chegar e ficar' }
 ] as const
 
@@ -49,6 +50,10 @@ export const AMENITIES: readonly Amenity[] = [
   { id: 5, slug: 'covered_area', label: 'Área coberta', group: 'space' },
   { id: 6, slug: 'accessible', label: 'Acessível', group: 'space' },
   { id: 7, slug: 'pet_friendly', label: 'Pet friendly', group: 'space' },
+  // 12 a 14 entraram com a página do bar do app (design 2g, "O que tem").
+  // A posição na lista é a ordem de exibição; o id só cresce.
+  { id: 12, slug: 'snacks', label: 'Petiscos', group: 'food' },
+  { id: 13, slug: 'draft_beer', label: 'Chopp', group: 'food' },
   {
     id: 8,
     slug: 'parking_onsite',
@@ -67,7 +72,8 @@ export const AMENITIES: readonly Amenity[] = [
     slug: 'late_kitchen',
     label: 'Cozinha até tarde',
     group: 'practical'
-  }
+  },
+  { id: 14, slug: 'pix_and_card', label: 'Pix e cartão', group: 'practical' }
 ] as const
 
 /** Quantas características a busca aceita de uma vez. */
