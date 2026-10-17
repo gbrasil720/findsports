@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -11,19 +11,19 @@ import {
 } from 'react-native'
 import Animated, {
   FadeIn,
+  FadeInDown,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
-  withTiming,
-  ZoomIn
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
 import { Glass } from '@/components/glass'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
-import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
+import { EASE, haptic, popFrom, SWAP, usePressScale } from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -312,13 +312,11 @@ const CONFETTI: [number, number, number, string, number][] = [
   [296, 380, 8, LIVE, 15],
   [150, 150, 6, LIVE, -30]
 ]
-const CONFETTI_IN = CONFETTI.map((_, i) =>
-  ZoomIn.delay(i * 40)
-    .duration(260)
-    .easing(EASE)
-    .withInitialValues({ transform: [{ scale: 0.6 }] })
-)
-const LINE_IN = FadeIn.delay(200).duration(260)
+const CONFETTI_IN = CONFETTI.map((_, i) => popFrom(0.6, i * 40))
+const LINE_IN = FadeInDown.delay(120)
+  .duration(260)
+  .easing(EASE)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 const DETAIL_IN = FadeIn.duration(220).easing(EASE)
 
 function Unlocked({
@@ -330,9 +328,21 @@ function Unlocked({
 }: ScreenProps & { onSee: () => void }) {
   const P = useMedalPalette()
   const next = nextInSeries(list, medal)
-  // Háptico e confete no quadro em que a medalha aparece, não ao montar a
-  // tela: a WebView leva uns 300 ms, e o háptico chegaria antes do visual.
+  // Háptico, confete e texto no quadro em que a medalha aparece, não ao
+  // montar a tela: a WebView leva uns 300 ms, e o resto chegaria antes dela.
+  // Se ela não avisar, a tela segue sozinha em 1,2 s.
   const [shown, setShown] = useState(false)
+  const revealed = useRef(false)
+  const reveal = useCallback(() => {
+    if (revealed.current) return
+    revealed.current = true
+    haptic.success()
+    setShown(true)
+  }, [])
+  useEffect(() => {
+    const timer = setTimeout(reveal, 1200)
+    return () => clearTimeout(timer)
+  }, [reveal])
   return (
     <>
       {shown &&
@@ -364,48 +374,47 @@ function Unlocked({
       {/* Sem fechar, como no design: a saída é "Ver medalha", no detalhe. */}
       <Medal3D
         medal={engraving(medal)}
-        onReady={() => {
-          haptic.success()
-          setShown(true)
-        }}
+        onReady={reveal}
         style={[styles.spin, { marginTop: insets.top + 49 }]}
       />
-      <Animated.View
-        entering={LINE_IN}
-        style={[styles.copy, { marginTop: 18 }]}
-      >
-        <Text style={[text(14, 'Bold'), { color: P.hot }]}>
-          Conquista desbloqueada
-        </Text>
-        <Title lines={[[medal.name]]} size={52} color={P.ink} />
-        <Text
-          style={[text(16, 'Regular', 1.45), styles.lead, { color: P.body }]}
+      {shown ? (
+        <Animated.View
+          entering={LINE_IN}
+          style={[styles.copy, { marginTop: 18 }]}
         >
-          {unlockedLine(medal)}
-        </Text>
-        {next ? (
-          <View style={styles.progress}>
-            <View style={styles.progressRow}>
-              <Text style={[text(12.5), { color: P.muted }]}>
-                Próxima: {next.name}
-              </Text>
-              <Text style={[styles.mono, { color: P.muted }]}>
-                {progressLabel(next)}
-              </Text>
+          <Text style={[text(14, 'Bold'), { color: P.hot }]}>
+            Conquista desbloqueada
+          </Text>
+          <Title lines={[[medal.name]]} size={52} color={P.ink} />
+          <Text
+            style={[text(16, 'Regular', 1.45), styles.lead, { color: P.body }]}
+          >
+            {unlockedLine(medal)}
+          </Text>
+          {next ? (
+            <View style={styles.progress}>
+              <View style={styles.progressRow}>
+                <Text style={[text(12.5), { color: P.muted }]}>
+                  Próxima: {next.name}
+                </Text>
+                <Text style={[styles.mono, { color: P.muted }]}>
+                  {progressLabel(next)}
+                </Text>
+              </View>
+              <View style={[styles.bar, { backgroundColor: P.track }]}>
+                <GrowBar
+                  from={
+                    Math.max(0, Math.min(next.progress, next.target) - 1) /
+                    next.target
+                  }
+                  to={progressShare(next)}
+                  color={P.fill}
+                />
+              </View>
             </View>
-            <View style={[styles.bar, { backgroundColor: P.track }]}>
-              <GrowBar
-                from={
-                  Math.max(0, Math.min(next.progress, next.target) - 1) /
-                  next.target
-                }
-                to={progressShare(next)}
-                color={P.fill}
-              />
-            </View>
-          </View>
-        ) : null}
-      </Animated.View>
+          ) : null}
+        </Animated.View>
+      ) : null}
       <View
         style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
       >
