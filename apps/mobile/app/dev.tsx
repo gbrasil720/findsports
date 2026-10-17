@@ -107,7 +107,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     items: [
       // Claro ou escuro pelo tema do sistema; a página do bar (2g) abre
       // tocando num card ou num pino.
-      { code: '2d/2e', label: 'Explorar', href: '/explore' }
+      { code: '2d/2e', label: 'Explorar', href: '/explore' },
+      { code: '2m', label: 'Favoritos', href: '/favoritos' }
     ]
   },
   {
