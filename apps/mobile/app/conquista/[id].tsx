@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -9,13 +9,21 @@ import {
   Text,
   View
 } from 'react-native'
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated'
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+  ZoomIn
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
 import { Glass } from '@/components/glass'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
-import { EASE, haptic, usePressScale } from '@/components/motion'
+import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -60,6 +68,9 @@ export default function Medal() {
   const list = mine.data?.achievements ?? []
   const [id, setId] = useState(params.id)
   const [fresh, setFresh] = useState(params.nova === '1')
+  // Vindo da desbloqueada ("Ver medalha"), o detalhe entra em fade: a troca
+  // da tela inteira de uma vez parece defeito.
+  const fromUnlock = useRef(params.nova === '1').current
   const medal = list.find((a) => a.id === id)
 
   if (!medal) {
@@ -102,13 +113,18 @@ export default function Medal() {
           onSee={() => setFresh(false)}
         />
       ) : (
-        <Detail
-          medal={medal}
-          list={list}
-          insets={insets}
-          share={share}
-          onPick={setId}
-        />
+        <Animated.View
+          style={{ flex: 1 }}
+          entering={fromUnlock ? DETAIL_IN : undefined}
+        >
+          <Detail
+            medal={medal}
+            list={list}
+            insets={insets}
+            share={share}
+            onPick={setId}
+          />
+        </Animated.View>
       )}
     </View>
   )
@@ -155,6 +171,7 @@ function Detail({
 }: ScreenProps & { onPick: (id: string) => void }) {
   const P = useMedalPalette()
   const router = useRouter()
+  const firstId = useRef(medal.id).current
   const next = nextInSeries(list, medal)
   const done = Boolean(medal.unlockedAt)
   const stats: [string, string][] = done
@@ -178,7 +195,15 @@ function Detail({
   return (
     <>
       <View style={[styles.top, { paddingTop: insets.top + 4 }]}>
-        <BackButton icon="close" />
+        {/* Aberta por link, sem tela atrás: fechar leva à estante. */}
+        <BackButton
+          icon="close"
+          onPress={() =>
+            router.canGoBack()
+              ? router.back()
+              : router.replace('/voce/conquistas')
+          }
+        />
         <Text style={[text(13), { color: P.muted }]}>
           {seriesLabel(list, medal)}
         </Text>
@@ -194,7 +219,12 @@ function Detail({
         </View>
       </View>
 
-      <View style={styles.copy}>
+      {/* Trocar de medalha na série: o texto troca em fade curto. */}
+      <Animated.View
+        key={medal.id}
+        entering={medal.id === firstId ? undefined : SWAP}
+        style={styles.copy}
+      >
         <Title lines={[[medal.name]]} size={48} color={P.ink} />
         <Text
           style={[text(15, 'Regular', 1.45), styles.lead, { color: P.body }]}
@@ -231,29 +261,19 @@ function Detail({
         </View>
         <View style={styles.series}>
           {series(list, medal.group).map((a) => (
-            <Pressable
+            <SeriesPick
               key={a.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: a.id === medal.id }}
-              accessibilityLabel={a.name}
+              medal={a}
+              on={a.id === medal.id}
               onPress={() => {
                 if (a.id === medal.id) return
                 haptic.select()
                 onPick(a.id)
               }}
-              style={[
-                styles.pick,
-                a.id === medal.id && [
-                  styles.pickOn,
-                  { backgroundColor: P.pick, borderColor: P.pickEdge }
-                ]
-              ]}
-            >
-              <MedalImage id={a.id} locked={!a.unlockedAt} size={52} />
-            </Pressable>
+            />
           ))}
         </View>
-      </View>
+      </Animated.View>
 
       <View
         style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -293,12 +313,13 @@ const CONFETTI: [number, number, number, string, number][] = [
   [150, 150, 6, LIVE, -30]
 ]
 const CONFETTI_IN = CONFETTI.map((_, i) =>
-  ZoomIn.delay(120 + i * 40)
+  ZoomIn.delay(i * 40)
     .duration(260)
     .easing(EASE)
     .withInitialValues({ transform: [{ scale: 0.6 }] })
 )
 const LINE_IN = FadeIn.delay(200).duration(260)
+const DETAIL_IN = FadeIn.duration(220).easing(EASE)
 
 function Unlocked({
   medal,
@@ -309,39 +330,44 @@ function Unlocked({
 }: ScreenProps & { onSee: () => void }) {
   const P = useMedalPalette()
   const next = nextInSeries(list, medal)
-  useEffect(() => {
-    haptic.success()
-  }, [])
+  // Háptico e confete no quadro em que a medalha aparece, não ao montar a
+  // tela: a WebView leva uns 300 ms, e o háptico chegaria antes do visual.
+  const [shown, setShown] = useState(false)
   return (
     <>
-      {CONFETTI.map(([x, y, size, color, rotate], i) => (
-        <Animated.View
-          key={`${x}-${y}`}
-          entering={CONFETTI_IN[i]}
-          style={[
-            styles.confetti,
-            {
-              left: `${(x / 390) * 100}%`,
-              top: insets.top - 47 + y
-            }
-          ]}
-        >
-          {/* O giro fica por dentro: a entrada anima a escala do de fora. */}
-          <View
-            style={{
-              width: size,
-              height: size,
-              borderRadius: 1.5,
-              // Os quadradinhos de papel viram tinta no claro.
-              backgroundColor: color === PAPER ? P.ink : color,
-              transform: [{ rotate: `${rotate}deg` }]
-            }}
-          />
-        </Animated.View>
-      ))}
+      {shown &&
+        CONFETTI.map(([x, y, size, color, rotate], i) => (
+          <Animated.View
+            key={`${x}-${y}`}
+            entering={CONFETTI_IN[i]}
+            style={[
+              styles.confetti,
+              {
+                left: `${(x / 390) * 100}%`,
+                top: insets.top - 47 + y
+              }
+            ]}
+          >
+            {/* O giro fica por dentro: a entrada anima a escala do de fora. */}
+            <View
+              style={{
+                width: size,
+                height: size,
+                borderRadius: 1.5,
+                // Os quadradinhos de papel viram tinta no claro.
+                backgroundColor: color === PAPER ? P.ink : color,
+                transform: [{ rotate: `${rotate}deg` }]
+              }}
+            />
+          </Animated.View>
+        ))}
       {/* Sem fechar, como no design: a saída é "Ver medalha", no detalhe. */}
       <Medal3D
         medal={engraving(medal)}
+        onReady={() => {
+          haptic.success()
+          setShown(true)
+        }}
         style={[styles.spin, { marginTop: insets.top + 49 }]}
       />
       <Animated.View
@@ -368,12 +394,13 @@ function Unlocked({
               </Text>
             </View>
             <View style={[styles.bar, { backgroundColor: P.track }]}>
-              <View
-                style={{
-                  width: `${Math.round(progressShare(next) * 100)}%`,
-                  height: '100%',
-                  backgroundColor: P.fill
-                }}
+              <GrowBar
+                from={
+                  Math.max(0, Math.min(next.progress, next.target) - 1) /
+                  next.target
+                }
+                to={progressShare(next)}
+                color={P.fill}
               />
             </View>
           </View>
@@ -393,6 +420,80 @@ function Unlocked({
         </View>
       </View>
     </>
+  )
+}
+
+/**
+ * A barra da próxima medalha enche o passo que acabou de ser dado (4/10 →
+ * 5/10), depois do texto: é a hora de celebrar. `scaleX` a partir da
+ * esquerda, não `width`. Com "Reduzir movimento", já chega cheia.
+ */
+function GrowBar({
+  from,
+  to,
+  color
+}: {
+  from: number
+  to: number
+  color: string
+}) {
+  const reduced = useReducedMotion()
+  const scale = useSharedValue(reduced || to === 0 ? 1 : from / to)
+  useEffect(() => {
+    scale.set(withDelay(450, withTiming(1, { duration: 500, easing: EASE })))
+  }, [scale])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scaleX: scale.get() }]
+  }))
+  return (
+    <Animated.View
+      style={[
+        {
+          width: `${Math.round(to * 100)}%`,
+          height: '100%',
+          backgroundColor: color,
+          transformOrigin: 'left'
+        },
+        style
+      ]}
+    />
+  )
+}
+
+/** Uma medalha da série, embaixo do detalhe. */
+function SeriesPick({
+  medal,
+  on,
+  onPress
+}: {
+  medal: Achievement
+  on: boolean
+  onPress: () => void
+}) {
+  const P = useMedalPalette()
+  const press = usePressScale()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={medal.name}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View
+        style={[
+          styles.pick,
+          on && [
+            styles.pickOn,
+            { backgroundColor: P.pick, borderColor: P.pickEdge }
+          ],
+          press.style
+        ]}
+      >
+        <MedalImage id={medal.id} locked={!medal.unlockedAt} size={52} />
+      </Animated.View>
+    </Pressable>
   )
 }
 

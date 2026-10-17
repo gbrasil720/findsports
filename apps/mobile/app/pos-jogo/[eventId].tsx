@@ -8,12 +8,18 @@ import {
   Text,
   View
 } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, { FadeOut } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { dayLabel, type Palette, Photo, usePalette } from '@/components/explore'
 import { MedalImage } from '@/components/medal'
-import { ErrorText, haptic, POP_FAST, usePressScale } from '@/components/motion'
+import {
+  ErrorText,
+  haptic,
+  POP_FAST,
+  SWAP,
+  usePressScale
+} from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -212,10 +218,13 @@ export default function AfterGame() {
         ) : null}
 
         {rating && achievements.data ? (
-          <ReviewCount
-            list={achievements.data.achievements}
-            palette={palette}
-          />
+          // Some e volta com "Não fui"/"Sim, fui": fade curto, sem salto.
+          <Animated.View entering={SWAP} exiting={CARD_OUT}>
+            <ReviewCount
+              list={achievements.data.achievements}
+              palette={palette}
+            />
+          </Animated.View>
         ) : null}
 
         <ErrorText style={[text(13.5, 'SemiBold'), { color: LIVE }]}>
@@ -235,6 +244,8 @@ export default function AfterGame() {
     </View>
   )
 }
+
+const CARD_OUT = FadeOut.duration(120)
 
 /** "Sua 7ª resenha. Faltam 3 para a medalha Crítico." (3g). */
 function ReviewCount({

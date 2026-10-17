@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -16,7 +16,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { MedalImage, useMedalPalette } from '@/components/medal'
-import { haptic, usePressScale } from '@/components/motion'
+import { haptic, SWAP, usePressScale } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
@@ -54,6 +54,7 @@ export default function Shelf() {
   useStatusBar('auto')
   const mine = useQuery(trpc.achievements.mine.queryOptions())
   const [group, setGroup] = useState<Group | null>(null)
+  const firstGroup = useRef(group).current
   const list = mine.data?.achievements ?? []
   const shown = group ? list.filter((a) => a.group === group) : list
   const star = latest(list)
@@ -127,7 +128,12 @@ export default function Shelf() {
                 />
               ))}
             </ScrollView>
-            <View style={styles.grid}>
+            {/* Trocar de filtro troca a grade em fade curto, sem salto. */}
+            <Animated.View
+              key={group ?? 'todas'}
+              entering={group === firstGroup ? undefined : SWAP}
+              style={styles.grid}
+            >
               {shown.map((a) => (
                 <Tile
                   key={a.id}
@@ -136,7 +142,7 @@ export default function Shelf() {
                   onPress={() => router.push(`/conquista/${a.id}`)}
                 />
               ))}
-            </View>
+            </Animated.View>
           </>
         )}
       </ScrollView>
@@ -170,7 +176,7 @@ function Level({
           <Bar share={share} height={6} style={{ marginTop: 8 }} />
           <Text style={[text(12.5), { color: P.muted, marginTop: 6 }]}>
             {level.nextAt
-              ? `${level.unlocked} de ${level.nextAt} conquistas para o nível ${level.level + 1}`
+              ? `${level.unlocked} de ${level.nextAt} ${level.nextAt === 1 ? 'conquista' : 'conquistas'} para o nível ${level.level + 1}`
               : `Nível máximo, com ${level.unlocked} conquistas`}
           </Text>
         </View>
@@ -219,6 +225,7 @@ function Filter({
   onPress: () => void
 }) {
   const P = useMedalPalette()
+  const press = usePressScale()
   return (
     <Pressable
       accessibilityRole="button"
@@ -228,14 +235,20 @@ function Filter({
         haptic.select()
         onPress()
       }}
-      style={[
-        styles.chip,
-        on ? styles.chipOn : { borderWidth: 1, borderColor: P.edge }
-      ]}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
     >
-      <Text style={[text(13, 'SemiBold', 1.2), { color: on ? INK : P.ink }]}>
-        {label}
-      </Text>
+      <Animated.View
+        style={[
+          styles.chip,
+          on ? styles.chipOn : { borderWidth: 1, borderColor: P.edge },
+          press.style
+        ]}
+      >
+        <Text style={[text(13, 'SemiBold', 1.2), { color: on ? INK : P.ink }]}>
+          {label}
+        </Text>
+      </Animated.View>
     </Pressable>
   )
 }
