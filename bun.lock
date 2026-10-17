@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "findsports_oficial",
@@ -41,6 +42,7 @@
         "better-auth": "catalog:",
         "expo": "~57.0.20",
         "expo-brightness": "~57.0.2",
+        "expo-calendar": "~57.0.5",
         "expo-constants": "~57.0.17",
         "expo-font": "~57.0.4",
         "expo-glass-effect": "~57.0.4",
@@ -1425,6 +1427,8 @@
     "expo-asset": ["expo-asset@57.0.19", "", { "dependencies": { "@expo/image-utils": "^0.11.6", "expo-constants": "~57.0.21" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-y9ymKidyPBDUFXljbvo7LNgivQvMhEJEoEXi6aLRugUxRDUvAKoZsy+KB5UXSjLMS7l7JNDwYKk5thovI0MLog=="],
 
     "expo-brightness": ["expo-brightness@57.0.2", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-X5x1qVeUGpb6GMe4AWjQSiJTfwgzRjQGMKnVy7w37xtUW6G2rML9rnddh7mId6ZaCgE+anbb6m66sOGdMGAkvQ=="],
+
+    "expo-calendar": ["expo-calendar@57.0.5", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-0qGJq8kIU7JmtMouKZhA89UOoAcCmOqKmPzTl+PxeKo1a9CIVbXu1w9H+XIhmmRzoSfnGXx/l5UpIiOE5eyJjA=="],
 
     "expo-constants": ["expo-constants@57.0.21", "", { "dependencies": { "@expo/env": "~2.4.3" }, "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-D5fV2GELYGbNkoiEVZZp5zrUXZDaAx6ZzErDzGirm3jCjOhaE8iU/GyJiB0ZQE+K4Bg8gY82nIQ/RZR8CJLVjA=="],
 
