@@ -525,7 +525,6 @@ function Saved({
                 count={`${week.idle.length} ${week.idle.length === 1 ? 'bar' : 'bares'}`}
               />
               {week.idle.map((s, i) => {
-                const next = s.bar.events[0]
                 return (
                   <Row
                     key={s.barId}
@@ -543,8 +542,8 @@ function Saved({
                     }
                     name={s.bar.name}
                     line={`${s.bar.neighborhood} · ${
-                      next
-                        ? `próximo ${gameWhen(next, now).day.toLowerCase()}`
+                      s.bar.events.length
+                        ? 'sem jogo esta semana'
                         : 'sem jogo publicado'
                     }`}
                     saved
