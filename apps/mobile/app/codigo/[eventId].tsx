@@ -127,6 +127,7 @@ export default function CounterCode() {
       <View style={styles.body}>
         <View>
           <View style={styles.shadow} />
+          {/* Sem recorte: o furo do picote passa por cima da sombra. */}
           <View style={styles.ticket}>
             <View style={styles.head}>
               <View style={{ flex: 1 }}>
@@ -159,7 +160,12 @@ export default function CounterCode() {
                 </Text>
               </View>
             </View>
-            <Perforation palette={TICKET} />
+            <Perforation
+              palette={TICKET}
+              shadow={{ color: ACID, offset: 6 }}
+              inset={20}
+              radius={10}
+            />
             <View style={styles.codeBox}>
               <Text style={[text(13, 'SemiBold'), { color: MUTED }]}>
                 Mostre no balcão ou deixe escanear
@@ -175,7 +181,7 @@ export default function CounterCode() {
               <View style={styles.qr}>
                 <QRCode
                   value={`${env.EXPO_PUBLIC_SERVER_URL}/admin/validate?code=${game.code}`}
-                  size={110}
+                  size={118}
                   bgColor="#ffffff"
                   fgColor={INK}
                 />
@@ -234,23 +240,23 @@ const styles = StyleSheet.create({
     left: 6,
     right: -6,
     bottom: -6,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: ACID
   },
-  ticket: { backgroundColor: PAPER, borderRadius: 8, overflow: 'hidden' },
+  ticket: { backgroundColor: PAPER, borderRadius: 10 },
   head: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 14
+    paddingBottom: 6
   },
   badge: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
   codeBox: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingTop: 8,
     paddingBottom: 22
   },
   // Anton 80 do design, sem `lineHeight` (corta no iOS): margem negativa.
@@ -263,8 +269,8 @@ const styles = StyleSheet.create({
     marginBottom: -14
   },
   qr: {
-    marginTop: 14,
-    padding: 10,
+    marginTop: 4,
+    padding: 8,
     borderRadius: 8,
     backgroundColor: '#ffffff',
     borderWidth: 1,
@@ -276,7 +282,9 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#e5e1d8'
+    backgroundColor: '#e5e1d8',
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10
   },
   offerText: { flex: 1, color: INK },
   foot: { color: '#aaa9a4', textAlign: 'center', paddingHorizontal: 36 }
