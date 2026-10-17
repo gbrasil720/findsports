@@ -122,6 +122,23 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       },
       { code: '3e', label: 'Meus jogos', href: '/voce/meus-jogos' }
     ]
+  },
+  {
+    title: '09 Conquistas',
+    items: [
+      // Com as medalhas de `scripts/conquistas.sql` para o torcedor logado.
+      { code: '2i', label: 'Estante', href: '/voce/conquistas' },
+      {
+        code: '2j',
+        label: 'Medalha',
+        href: { pathname: '/conquista/[id]', params: { id: 'bar5' } }
+      },
+      {
+        code: '2k',
+        label: 'Conquista desbloqueada',
+        href: { pathname: '/conquista/[id]', params: { id: 'bar5', nova: '1' } }
+      }
+    ]
   }
 ]
 
