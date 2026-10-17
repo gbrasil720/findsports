@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import Svg, { Line } from 'react-native-svg'
 import type { Palette } from '@/components/explore'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
@@ -14,6 +15,7 @@ export function Card({
   shadow,
   offset = 4,
   soft,
+  notched,
   style,
   children
 }: {
@@ -22,6 +24,11 @@ export function Card({
   offset?: number
   /** Mais a sombra longa e macia dos cartões de lista. */
   soft?: boolean
+  /**
+   * Ingresso com picote (`Perforation`): sem recorte, para o furo passar por
+   * cima da sombra. O topo do conteúdo arredonda os próprios cantos.
+   */
+  notched?: boolean
   style?: object
   children: ReactNode
 }) {
@@ -55,6 +62,7 @@ export function Card({
         style={[
           styles.card,
           { backgroundColor: palette.card, borderColor: palette.ring },
+          notched && { overflow: 'visible' },
           style
         ]}
       >
@@ -68,24 +76,55 @@ export function Card({
 export function OfferCard({
   palette,
   offer,
-  note
+  note,
+  compact
 }: {
   palette: Palette
   offer: string
   /** O que vem depois da oferta ("Vale com o seu código."). */
   note?: string
+  /** A versão menor da folha "Vou assistir aqui" (3d). */
+  compact?: boolean
 }) {
   return (
     <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
       <View style={styles.offer}>
-        <View style={styles.offerStub}>
+        <View style={[styles.offerStub, { width: compact ? 56 : 62 }]}>
           <Icon name="ticket" size={26} color={INK} accent={INK} />
+          {/* O picote do canhoto em SVG: no iOS o React Native não desenha
+              borda tracejada de um lado só. */}
+          <Svg width={2} style={styles.offerCut}>
+            <Line
+              x1={1}
+              y1={0}
+              x2={1}
+              y2="100%"
+              stroke="rgba(18,18,15,.25)"
+              strokeWidth={1.5}
+              strokeDasharray="4.5,4.5"
+            />
+          </Svg>
         </View>
-        <View style={styles.offerText}>
-          <Text style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}>
+        <View
+          style={[
+            styles.offerText,
+            compact && { paddingVertical: 11, paddingHorizontal: 13 }
+          ]}
+        >
+          <Text
+            style={[
+              text(compact ? 14 : 14.5, 'Bold', 1.4),
+              { color: palette.ink }
+            ]}
+          >
             Oferta da casa
           </Text>
-          <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
+          <Text
+            style={[
+              text(compact ? 12.5 : 13, 'Regular', 1.4),
+              { color: palette.muted }
+            ]}
+          >
             {note ? `${offer} ${note}` : offer}
           </Text>
         </View>
@@ -105,13 +144,10 @@ const styles = StyleSheet.create({
   },
   offer: { flexDirection: 'row' },
   offerStub: {
-    width: 62,
     backgroundColor: ACID,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRightWidth: 1.5,
-    borderRightColor: 'rgba(18,18,15,.25)',
-    borderStyle: 'dashed'
+    justifyContent: 'center'
   },
-  offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14, gap: 2 }
+  offerCut: { position: 'absolute', top: 0, bottom: 0, right: -1 },
+  offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14 }
 })
