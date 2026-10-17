@@ -19,17 +19,36 @@ import { trpc } from '@/lib/trpc'
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
+// Fora da aba, só o ícone; selecionada, o ícone com o nome ao lado (e as
+// setinhas no Você), como no design. A barra do sistema só põe o nome
+// embaixo, então o nome vai dentro da imagem e o rótulo nativo fica oculto.
+// O nome sai em 12,5 (o design usa 14): a lente de vidro da seleção desenha
+// por dentro a versão selecionada de todas as abas, e uma imagem mais larga
+// que a aba aparece na lente da vizinha. Favoritos, desligada, fica sem nome;
+// quando ligar, a imagem dela precisa caber em uns 70 pt.
 const TAB_ICONS = {
   light: {
-    map: require('../../assets/images/tabs/map-light.png'),
+    map: {
+      default: require('../../assets/images/tabs/map-light.png'),
+      selected: require('../../assets/images/tabs/map-light-on.png')
+    },
     fan: require('../../assets/images/tabs/fan-light.png'),
-    you: require('../../assets/images/tabs/you-light.png'),
+    you: {
+      default: require('../../assets/images/tabs/you-light.png'),
+      selected: require('../../assets/images/tabs/you-light-on.png')
+    },
     sparkle: require('../../assets/images/tabs/sparkle-light.png')
   },
   dark: {
-    map: require('../../assets/images/tabs/map-dark.png'),
+    map: {
+      default: require('../../assets/images/tabs/map-dark.png'),
+      selected: require('../../assets/images/tabs/map-dark-on.png')
+    },
     fan: require('../../assets/images/tabs/fan-dark.png'),
-    you: require('../../assets/images/tabs/you-dark.png'),
+    you: {
+      default: require('../../assets/images/tabs/you-dark.png'),
+      selected: require('../../assets/images/tabs/you-dark-on.png')
+    },
     sparkle: require('../../assets/images/tabs/sparkle-dark.png')
   }
 }
@@ -122,7 +141,7 @@ export default function FanTabs() {
         <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
           <NativeTabs.Trigger name="explore">
             <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
-            <NativeTabs.Trigger.Label>Explorar</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="favoritos"
@@ -132,7 +151,9 @@ export default function FanTabs() {
             }}
           >
             <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
-            <NativeTabs.Trigger.Label>Favoritos</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Label hidden>
+              Favoritos
+            </NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="voce"
@@ -141,7 +162,7 @@ export default function FanTabs() {
             listeners={{ tabPress: () => menuOpen && closeMenu() }}
           >
             <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
-            <NativeTabs.Trigger.Label>Você</NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="ia"
