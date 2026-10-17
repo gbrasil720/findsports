@@ -4,7 +4,7 @@
  * - `assets/medal/viewer.html`: o visualizador (`viewer.ts`) num arquivo só,
  *   com o three e as fontes embutidos, que a WebView abre sem rede;
  * - `assets/images/medals/*.webp`: a miniatura de cada medalha, ganha e
- *   bloqueada, tirada do próprio visualizador. A estante e o perfil mostram
+ *   bloqueada (a bloqueada também no cinza do tema claro), tirada do próprio visualizador. A estante e o perfil mostram
  *   a imagem: uma WebView por medalha pesaria.
  *
  *   bun apps/mobile/scripts/medals/generate.ts
@@ -66,7 +66,11 @@ await rm(thumbs, { recursive: true, force: true })
 await mkdir(thumbs, { recursive: true })
 let count = 0
 for (const a of ACHIEVEMENTS) {
-  for (const locked of [false, true]) {
+  for (const [locked, light] of [
+    [false, false],
+    [true, false],
+    [true, true]
+  ]) {
     await page.setContent(html)
     await page.evaluate(
       (medal) =>
@@ -84,7 +88,8 @@ for (const a of ACHIEVEMENTS) {
         locked,
         mode: 'spin' as const,
         yaw: YAW[a.id] ?? 0,
-        reduced: true
+        reduced: true,
+        light
       }
     )
     const png = await page.screenshot({ omitBackground: true })
@@ -100,7 +105,10 @@ for (const a of ACHIEVEMENTS) {
       return c.toDataURL('image/webp', 0.9).split(',')[1] ?? ''
     }, png.toString('base64'))
     await writeFile(
-      join(thumbs, `${a.id}${locked ? '-locked' : ''}.webp`),
+      join(
+        thumbs,
+        `${a.id}${locked ? '-locked' : ''}${light ? '-light' : ''}.webp`
+      ),
       Buffer.from(webp, 'base64')
     )
     count++

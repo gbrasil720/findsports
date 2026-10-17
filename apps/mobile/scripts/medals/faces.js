@@ -42,8 +42,14 @@ function star(ctx, x, y, r) {
 export function drawFront(ctx, s, locked, mask) {
   const S = 1024
   const c = 512
-  const fg = mask ? '#fff' : METAL[locked ? 'locked' : s.metal]
-  const bg = mask ? '#000' : locked ? '#24241f' : s.enamel
+  // Bloqueada: o metal escuro do design, ou o claro do tema claro
+  // (`lockedMetal`, `lockedEnamel`).
+  const fg = mask
+    ? '#fff'
+    : locked
+      ? (s.lockedMetal ?? METAL.locked)
+      : METAL[s.metal]
+  const bg = mask ? '#000' : locked ? (s.lockedEnamel ?? '#24241f') : s.enamel
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, S, S)
   ctx.fillStyle = fg
@@ -95,7 +101,11 @@ export function drawFront(ctx, s, locked, mask) {
 export function drawBack(ctx, s, locked, bump) {
   const S = 1024
   const c = 512
-  ctx.fillStyle = bump ? '#fff' : METAL[locked ? 'locked' : s.metal]
+  ctx.fillStyle = bump
+    ? '#fff'
+    : locked
+      ? (s.lockedMetal ?? METAL.locked)
+      : METAL[s.metal]
   ctx.fillRect(0, 0, S, S)
   ctx.fillStyle = bump ? '#000' : 'rgba(0,0,0,.28)'
   ctx.strokeStyle = ctx.fillStyle

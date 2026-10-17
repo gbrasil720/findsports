@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { MEDAL_LOOKS, type MedalId } from '../../lib/medals'
+import { LOCKED_LIGHT, MEDAL_LOOKS, type MedalId } from '../../lib/medals'
 import { drawBack, drawFront } from './faces.js'
 import {
   makeEnvironment,
@@ -31,6 +31,8 @@ type Medal = {
   /** Ângulo inicial, em graus. */
   yaw: number
   reduced: boolean
+  /** Tema claro: a bloqueada sai em cinza-pedra. */
+  light?: boolean
 }
 
 declare global {
@@ -71,7 +73,11 @@ let medal: THREE.Group | null = null
 const state = { yaw: 0, pitch: 0, velocity: 0, dragging: false }
 
 function build(next: Medal) {
-  const look = { ...MEDAL_LOOKS[next.id], ...next }
+  const look = {
+    ...MEDAL_LOOKS[next.id],
+    ...(next.light ? LOCKED_LIGHT : {}),
+    ...next
+  }
   if (medal) {
     scene.remove(medal)
     medal.traverse((o) => {

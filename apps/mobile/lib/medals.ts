@@ -103,3 +103,9 @@ export const MEDAL_LOOKS = {
 } satisfies Record<string, MedalLook>
 
 export type MedalId = keyof typeof MEDAL_LOOKS
+
+/**
+ * A bloqueada no tema claro: o design só tem a escura, que no papel vira uma
+ * mancha preta. Mesmo desenho, em cinza-pedra.
+ */
+export const LOCKED_LIGHT = { lockedMetal: '#aaa69c', lockedEnamel: '#dcd8cf' }

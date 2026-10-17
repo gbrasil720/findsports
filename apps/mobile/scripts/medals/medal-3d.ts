@@ -81,7 +81,7 @@ function plate(kind: MedalShape, r: number, ur: number) {
 }
 
 export function makeMedal(
-  look: { shape: MedalShape; metal: MedalMetal },
+  look: { shape: MedalShape; metal: MedalMetal; lockedMetal?: string },
   locked: boolean,
   tx: MedalTextures
 ) {
@@ -89,7 +89,7 @@ export function makeMedal(
   const r = 1
   const metal = locked
     ? new THREE.MeshPhysicalMaterial({
-        color: METAL.locked,
+        color: look.lockedMetal ?? METAL.locked,
         metalness: 0.55,
         roughness: 0.55
       })
