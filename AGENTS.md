@@ -360,10 +360,24 @@ invente layout que o projeto não tem.
   `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
   `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
   mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
-  pesou?" no pós-jogo (WEB-398), "Sua Nª resenha" e o rodapé de conquistas (WEB-403),
+  pesou?" no pós-jogo (WEB-398), o ranking no rodapé de Meus jogos (WEB-403),
   "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405). A busca com
   IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
   breve" (`components/soon.tsx`).
+- **Conquistas ("09", WEB-403):** `app/(fan)/voce/conquistas.tsx` (estante, 2i, no menu
+  "Você") e `app/conquista/[id].tsx` (a medalha, 2j; com `?nova=1`, a conquista
+  desbloqueada, 2k). Escuras nos dois temas, como o código no balcão. As regras são do
+  servidor (`packages/api/src/lib/achievements.ts`, `achievements.mine`): nada é gravado,
+  tudo sai do código validado no balcão (o check-in do WEB-408 entra em
+  `achievements-read.ts`) e das avaliações. A 2k abre sozinha quando sai medalha nova
+  (`components/achievement-watcher.tsx`; a tela do código pergunta a cada 5 s até o
+  balcão validar). **A medalha 3D é uma WebView**, não `expo-gl`: o three roda no WebGL
+  do Safari (`assets/medal/viewer.html`), porque o `expo-gl` congelava a tela quando uma
+  textura subia depois do primeiro quadro e não mostrava nada num segundo contexto. Estante,
+  perfil e listas usam a miniatura pronta (`assets/images/medals/*.webp`). Visualizador e
+  miniaturas saem do desenho do design (`o3d.js`) por `bun apps/mobile/scripts/medals/generate.ts`;
+  medalha nova é uma linha em `ACHIEVEMENTS` e outra em `lib/medals.ts`, e o gerador de
+  novo. Para ver com dados: `apps/mobile/scripts/conquistas.sql` (`-v fan=<e-mail>`).
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
