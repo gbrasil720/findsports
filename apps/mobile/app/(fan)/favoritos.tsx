@@ -2,7 +2,7 @@ import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type Href, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -10,379 +10,769 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from 'react-native'
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Line } from 'react-native-svg'
-import { Card, FilterChip } from '@/components/card'
+import Svg, { G, Path } from 'react-native-svg'
+import { Card } from '@/components/card'
+import { matchLine, type Palette, usePalette } from '@/components/explore'
+import { Glass } from '@/components/glass'
 import {
-  matchLine,
-  type Palette,
-  Photo,
-  usePalette
-} from '@/components/explore'
-import { useExploreState } from '@/components/explore-state'
-import { EASE, haptic, usePressScale } from '@/components/motion'
+  EASE,
+  haptic,
+  POP_FAST,
+  SWAP,
+  usePressScale
+} from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
+  ACCENT,
+  ACID,
+  GlassRound,
   Icon,
+  INK,
   LIVE,
   PillButton,
   Title,
   text,
   useStatusBar
 } from '@/components/ui'
-import {
-  distanceKm,
-  formatKm,
-  formatTime,
-  isLive,
-  searchCenter
-} from '@/lib/explore'
-import { nextGame, sortFavorites } from '@/lib/favorite-list'
 import { useFavorites } from '@/lib/favorites'
+import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
+import {
+  byMonth,
+  dayMonth,
+  gameWhen,
+  savedWeek,
+  visitGrid,
+  WEEK_COLUMNS,
+  WEEK_LETTERS
+} from '@/lib/your-bars'
 
 /*
- * Favoritos (2m do design): os bares que o torcedor guardou, com o próximo
- * jogo de cada um. Ordem por próximo jogo ou por distância. O coração tira
- * o bar da lista; tocar no cartão abre a página do bar. O design tem um
- * terceiro filtro, "Com reserva", que saiu com a reserva de mesa.
+ * Seus bares (17b e 17d do design), na aba Favoritos: os bares onde o
+ * torcedor já assistiu a um jogo pela Onside e os que ele salvou com o
+ * coração.
+ * - "Já fui": o calendário das últimas quatro semanas (cada quadrado acid é
+ *   um jogo com código validado) e as visitas por mês (`attendance.visits`).
+ * - "Salvos": a semana com os jogos dos salvos, agrupados por dia, e no fim
+ *   os bares sem jogo nesta semana (`pubs.getFavorites`).
+ * A lupa filtra as duas por nome, bairro ou jogo. No design a tela abre com
+ * voltar (vem do menu); aqui ela é a raiz da aba.
  */
 
-type Sort = 'game' | 'distance'
-type FavoriteRow = inferRouterOutputs<AppRouter>['pubs']['getFavorites'][number]
+type Outputs = inferRouterOutputs<AppRouter>
+type VisitRow = Outputs['attendance']['visits'][number]
+type SavedRow = Outputs['pubs']['getFavorites'][number]
+type Tab = 'visits' | 'saved'
 
-// O cartão que sai desliza junto dos outros, que fecham o buraco.
-const ROW_OUT = FadeOut.duration(160)
-const ROW_MOVE = LinearTransition.duration(220).easing(EASE)
-
-export default function Favorites() {
+export default function YourBars() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const tabBar = useTabBarSpace()
   const palette = usePalette()
   useStatusBar('auto')
-  const list = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const visits = useQuery(trpc.attendance.visits.queryOptions())
+  const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
   const favorites = useFavorites()
-  const { device } = useExploreState()
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const from = searchCenter(device, city.data)
-  const [sort, setSort] = useState<Sort>('game')
-  const rows = sortFavorites(list.data ?? [], sort, from, distanceKm)
+  const [picked, setPicked] = useState<Tab | null>(null)
+  const [search, setSearch] = useState<string | null>(null)
+  // Abre em "Já fui" quando há visita; senão nos salvos.
+  const tab: Tab = picked ?? (visits.data?.length ? 'visits' : 'saved')
   const now = Date.now()
+
+  const term = search?.trim().toLocaleLowerCase('pt-BR') ?? ''
+  const hit = (...values: (string | null | undefined)[]) =>
+    !term || values.some((v) => v?.toLocaleLowerCase('pt-BR').includes(term))
+  const visitRows = (visits.data ?? []).filter((v) =>
+    hit(v.barName, v.neighborhood, gameTitle(v))
+  )
+  const savedRows = (saved.data ?? []).filter((s) =>
+    hit(
+      s.bar.name,
+      s.bar.neighborhood,
+      ...s.bar.events.map((game) => matchLine(game))
+    )
+  )
+  const openBar = (barId: string) => router.push(`/bar/${barId}` as Href)
+  const toggleSaved = (barId: string) => {
+    haptic.select()
+    favorites.toggle(barId)
+  }
+  const query = tab === 'visits' ? visits : saved
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 7, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
         ]}
         refreshControl={
           <RefreshControl
-            refreshing={list.isRefetching}
-            onRefresh={() => list.refetch()}
+            refreshing={visits.isRefetching || saved.isRefetching}
+            onRefresh={() => {
+              visits.refetch()
+              saved.refetch()
+            }}
             tintColor={palette.muted}
           />
         }
       >
         <View style={styles.top}>
-          <Title lines={[['Favoritos']]} size={40} color={palette.ink} />
-          {rows.length ? (
-            <Text style={[text(14), styles.count, { color: palette.muted }]}>
-              {rows.length} {rows.length === 1 ? 'bar' : 'bares'}
-            </Text>
-          ) : null}
+          <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
+            hitSlop={8}
+            onPress={() => setSearch(search === null ? '' : null)}
+          >
+            <GlassRound>
+              <Icon
+                name={search === null ? 'search' : 'close'}
+                size={18}
+                color={palette.ink}
+              />
+            </GlassRound>
+          </Pressable>
         </View>
 
-        {list.isPending ? (
+        {search !== null ? (
+          <Animated.View entering={SWAP}>
+            <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.search}>
+              <Icon name="search" size={16} color={palette.muted} />
+              <TextInput
+                autoFocus
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Buscar por nome, bairro ou jogo"
+                placeholderTextColor={palette.muted}
+                returnKeyType="search"
+                style={[text(14.5), styles.searchInput, { color: palette.ink }]}
+              />
+            </Glass>
+          </Animated.View>
+        ) : null}
+
+        <Segments
+          palette={palette}
+          tab={tab}
+          visits={visits.data?.length ?? 0}
+          saved={saved.data?.length ?? 0}
+          onPick={(next) => {
+            if (next === tab) return
+            haptic.select()
+            setPicked(next)
+          }}
+        />
+
+        {query.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
-        ) : list.isError ? (
+        ) : query.isError ? (
           <View style={styles.empty}>
             <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seus favoritos.
-            </Text>
-            <PillButton label="Tentar de novo" onPress={() => list.refetch()} />
-          </View>
-        ) : !rows.length ? (
-          <View style={styles.empty}>
-            <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-              Nenhum bar favorito ainda.
-            </Text>
-            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-              Toque no coração de um bar, no mapa ou na página dele, para
-              guardar aqui e ver os próximos jogos de lá.
+              Não deu para abrir seus bares.
             </Text>
             <PillButton
-              label="Procurar bares"
-              onPress={() => router.navigate('/explore')}
+              label="Tentar de novo"
+              onPress={() => query.refetch()}
             />
           </View>
         ) : (
-          <>
-            <View style={styles.chips}>
-              <FilterChip
+          // Trocar de aba troca o conteúdo em fade curto, sem salto.
+          <Animated.View key={tab} entering={SWAP} style={styles.stack}>
+            {tab === 'visits' ? (
+              <Visits
                 palette={palette}
-                label="Próximo jogo"
-                on={sort === 'game'}
-                onPress={() => setSort('game')}
+                now={now}
+                all={visits.data ?? []}
+                rows={visitRows}
+                searching={Boolean(term)}
+                isSaved={(id) => favorites.ids.has(id)}
+                onOpen={openBar}
+                onToggle={toggleSaved}
               />
-              <FilterChip
+            ) : (
+              <Saved
                 palette={palette}
-                label="Distância"
-                on={sort === 'distance'}
-                onPress={() => setSort('distance')}
+                now={now}
+                rows={savedRows}
+                searching={Boolean(term)}
+                onOpen={openBar}
+                onToggle={toggleSaved}
+                onExplore={() => router.navigate('/explore')}
               />
-            </View>
-            {rows.map((row) => (
-              <Animated.View
-                key={row.barId}
-                exiting={ROW_OUT}
-                layout={ROW_MOVE}
-              >
-                <FavoriteCard
-                  row={row}
-                  palette={palette}
-                  now={now}
-                  km={
-                    row.bar.latitude === null || row.bar.longitude === null
-                      ? null
-                      : distanceKm(from, {
-                          lat: Number(row.bar.latitude),
-                          lng: Number(row.bar.longitude)
-                        })
-                  }
-                  onOpen={() => router.push(`/bar/${row.barId}` as Href)}
-                  onUnfavorite={() => {
-                    haptic.select()
-                    favorites.toggle(row.barId)
-                  }}
-                />
-              </Animated.View>
-            ))}
-          </>
+            )}
+          </Animated.View>
         )}
       </ScrollView>
     </View>
   )
 }
 
-/** "SÁB 16:00" fora de hoje; só a hora, hoje. */
-function when(startsAt: string | Date, now: number) {
-  const day = (d: number | string | Date) =>
-    new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-  if (day(startsAt) === day(now)) return formatTime(startsAt)
-  const weekday = new Date(startsAt)
-    .toLocaleDateString('pt-BR', {
-      weekday: 'short',
-      timeZone: 'America/Sao_Paulo'
-    })
-    .replace('.', '')
-    .toLocaleUpperCase('pt-BR')
-  return `${weekday} ${formatTime(startsAt)}`
-}
-
-function FavoriteCard({
-  row,
+/** "Já fui · 9" e "Salvos · 6", no vidro. */
+function Segments({
   palette,
-  now,
-  km,
-  onOpen,
-  onUnfavorite
+  tab,
+  visits,
+  saved,
+  onPick
 }: {
-  row: FavoriteRow
   palette: Palette
-  now: number
-  km: number | null
-  onOpen: () => void
-  onUnfavorite: () => void
+  tab: Tab
+  visits: number
+  saved: number
+  onPick: (tab: Tab) => void
 }) {
-  const press = usePressScale()
-  const game = nextGame(row)
-  const live = game ? isLive(game, now) : false
-  const place = [row.bar.neighborhood, km === null ? null : formatKm(km)]
-    .filter(Boolean)
-    .join(' · ')
+  const options: [Tab, string][] = [
+    ['visits', `Já fui · ${visits}`],
+    ['saved', `Salvos · ${saved}`]
+  ]
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${row.bar.name}, ${place}`}
-      onPress={onOpen}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      <Animated.View style={press.style}>
-        <Card
-          palette={palette}
-          shadow={live ? palette.liveShadow : undefined}
-          offset={live ? 5 : 4}
-          soft
-        >
-          <View style={styles.card}>
-            <Photo
-              uri={row.bar.photoUrl}
-              name={row.bar.name}
-              palette={palette}
-              style={styles.photo}
-            />
-            <View style={styles.info}>
-              <View style={styles.nameRow}>
-                <Text
-                  style={[
-                    text(17, 'Bold', 1.25),
-                    styles.name,
-                    { color: palette.ink }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {row.bar.name}
-                </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Tirar dos favoritos"
-                  hitSlop={10}
-                  onPress={onUnfavorite}
-                >
-                  <Icon
-                    name="fan"
-                    size={20}
-                    color={palette.ink}
-                    accent={palette.accent}
-                  />
-                </Pressable>
-              </View>
-              <Text
-                style={[text(12.5), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {place}
-              </Text>
-              <Cut palette={palette} />
-              {game ? (
-                <View style={styles.game}>
-                  {live ? (
-                    <View style={styles.live}>
-                      <View style={styles.dot}>
-                        <View style={styles.halo} />
-                      </View>
-                      <Text
-                        style={[text(12, 'Bold', 1.2), { color: palette.live }]}
-                      >
-                        Ao vivo
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={[styles.time, { color: palette.ink }]}>
-                      {when(game.startsAt, now)}
-                    </Text>
-                  )}
-                  <Text
-                    style={[
-                      text(13, 'Regular', 1.3),
-                      styles.match,
-                      { color: live ? palette.ink : palette.muted }
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {matchLine(game)}
-                  </Text>
-                </View>
-              ) : (
-                <Text
-                  style={[
-                    text(13, 'Regular', 1.3),
-                    styles.game,
-                    { color: palette.muted }
-                  ]}
-                >
-                  Sem jogo marcado
-                </Text>
-              )}
-            </View>
-          </View>
-        </Card>
-      </Animated.View>
-    </Pressable>
+    <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.segments}>
+      {options.map(([key, label]) => {
+        const on = key === tab
+        return (
+          <Pressable
+            key={key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            onPress={() => onPick(key)}
+            style={[
+              styles.segment,
+              on && [
+                styles.segmentOn,
+                {
+                  backgroundColor: palette.dark
+                    ? 'rgba(255,255,255,.14)'
+                    : 'rgba(255,255,255,.9)'
+                }
+              ]
+            ]}
+          >
+            <Text
+              style={[
+                text(14, on ? 'Bold' : 'Regular', 1.2),
+                { color: on ? palette.ink : palette.muted }
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </Glass>
   )
 }
 
-/**
- * O picote do ingresso, como no design: o tracejado no meio do texto e os
- * dois furos, um mordendo a foto e outro a borda do cartão.
- */
-function Cut({ palette }: { palette: Palette }) {
+/** As cores que mudam com o tema: acid no escuro, tinta e vermelho no claro. */
+function tones(palette: Palette) {
+  return {
+    glow: palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)',
+    off: palette.dark ? '#262621' : palette.mark,
+    // Acid em texto some no papel: no claro, o vermelho do app.
+    heading: palette.dark ? ACID : ACCENT,
+    mark: palette.dark ? ACID : INK
+  }
+}
+
+function Visits({
+  palette,
+  now,
+  all,
+  rows,
+  searching,
+  isSaved,
+  onOpen,
+  onToggle
+}: {
+  palette: Palette
+  now: number
+  all: VisitRow[]
+  rows: VisitRow[]
+  searching: boolean
+  isSaved: (barId: string) => boolean
+  onOpen: (barId: string) => void
+  onToggle: (barId: string) => void
+}) {
+  const t = tones(palette)
+  const grid = visitGrid(all, now)
   return (
-    <View style={styles.cut}>
-      <View style={[styles.hole, { left: -22, backgroundColor: palette.bg }]} />
-      <Svg height={2} style={styles.dash}>
-        <Line
-          x1={0}
-          y1={1}
-          x2="100%"
-          y2={1}
-          stroke={palette.dash}
-          strokeWidth={1.5}
-          strokeDasharray="4.5,4.5"
-        />
-      </Svg>
-      <View
-        style={[styles.hole, { right: -20, backgroundColor: palette.bg }]}
-      />
+    <>
+      <Card palette={palette} shadow={t.glow} offset={5}>
+        <View style={styles.panel}>
+          {WEEK_COLUMNS.map((column, col) => (
+            <View key={column.key} style={styles.column}>
+              <Text style={[styles.letter, { color: palette.muted }]}>
+                {column.letter}
+              </Text>
+              {grid.map((week) => {
+                const day = week[col]
+                return (
+                  <View
+                    key={day?.key}
+                    style={[
+                      styles.square,
+                      { backgroundColor: day?.on ? ACID : t.off }
+                    ]}
+                  />
+                )
+              })}
+            </View>
+          ))}
+        </View>
+      </Card>
+      <Text style={[text(12.5), styles.caption, { color: palette.muted }]}>
+        Cada quadrado verde é um jogo assistido com código validado.
+      </Text>
+
+      {!all.length ? (
+        <View style={styles.empty}>
+          <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+            Nenhum jogo com código validado ainda.
+          </Text>
+          <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+            Nos bares Elite, “Vou assistir aqui” dá um código que vale a oferta
+            da casa no balcão. Validado, o jogo entra aqui.
+          </Text>
+        </View>
+      ) : !rows.length && searching ? (
+        <NoMatch palette={palette} />
+      ) : (
+        byMonth(rows).map((group) => (
+          <View key={group.key}>
+            <Text style={[styles.heading, { color: t.heading }]}>
+              {group.label}
+            </Text>
+            {group.rows.map((visit, i) => {
+              const date = dayMonth(visit.startsAt)
+              return (
+                <Row
+                  key={visit.eventId}
+                  palette={palette}
+                  first={i === 0}
+                  side={
+                    <View style={styles.dateCol}>
+                      <Text style={[styles.day, { color: palette.ink }]}>
+                        {date.day}
+                      </Text>
+                      <Text style={[styles.mono, { color: palette.muted }]}>
+                        {date.month}
+                      </Text>
+                    </View>
+                  }
+                  name={visit.barName}
+                  line={gameTitle(visit)}
+                  saved={isSaved(visit.barId)}
+                  onOpen={
+                    visit.barActive ? () => onOpen(visit.barId) : undefined
+                  }
+                  onToggle={() => onToggle(visit.barId)}
+                />
+              )
+            })}
+          </View>
+        ))
+      )}
+    </>
+  )
+}
+
+function Saved({
+  palette,
+  now,
+  rows,
+  searching,
+  onOpen,
+  onToggle,
+  onExplore
+}: {
+  palette: Palette
+  now: number
+  rows: SavedRow[]
+  searching: boolean
+  onOpen: (barId: string) => void
+  onToggle: (barId: string) => void
+  onExplore: () => void
+}) {
+  const t = tones(palette)
+  const week = savedWeek(rows, now)
+  return (
+    <>
+      <Card palette={palette} shadow={t.glow} offset={5}>
+        <View style={styles.panel}>
+          {week.days.map((day, i) => (
+            <View key={day.key} style={styles.column}>
+              <Text style={[styles.letter, { color: palette.muted }]}>
+                {WEEK_LETTERS[i]}
+              </Text>
+              <View
+                style={[
+                  styles.date,
+                  { backgroundColor: day.today ? ACID : t.off },
+                  !day.today &&
+                    day.count > 0 && { borderWidth: 1.5, borderColor: t.mark }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dateText,
+                    {
+                      color: day.today
+                        ? INK
+                        : day.count
+                          ? palette.ink
+                          : palette.muted
+                    }
+                  ]}
+                >
+                  {Number(day.key.slice(8))}
+                </Text>
+              </View>
+              {/* Um ponto por jogo, até três: vermelho hoje, acid no resto. */}
+              <View style={styles.dots}>
+                {['a', 'b', 'c'].slice(0, day.count).map((k) => (
+                  <View
+                    key={k}
+                    style={[
+                      styles.dotSmall,
+                      { backgroundColor: day.today ? LIVE : t.mark }
+                    ]}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      </Card>
+      <Text style={[text(12.5), styles.caption, { color: palette.muted }]}>
+        {week.groups.length
+          ? `Jogos nos seus salvos esta semana.${week.today ? ` Hoje tem ${week.today}.` : ''}`
+          : 'Nenhum jogo nos seus salvos esta semana.'}
+      </Text>
+
+      {!rows.length && !searching ? (
+        <View style={styles.empty}>
+          <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+            Nenhum bar salvo ainda.
+          </Text>
+          <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+            Toque no coração de um bar, no mapa ou na página dele, para ver aqui
+            os jogos da semana de lá.
+          </Text>
+          <PillButton label="Procurar bares" onPress={onExplore} />
+        </View>
+      ) : !rows.length ? (
+        <NoMatch palette={palette} />
+      ) : (
+        <>
+          {week.groups.map((group) => (
+            <View key={group.key}>
+              <Header
+                palette={palette}
+                label={group.label}
+                count={`${group.games.length} ${group.games.length === 1 ? 'jogo' : 'jogos'}`}
+              />
+              {group.games.map(({ saved: s, game }, i) => {
+                const when = gameWhen(game, now)
+                return (
+                  <Row
+                    key={game.id}
+                    palette={palette}
+                    first={i === 0}
+                    side={
+                      <View style={styles.timeCol}>
+                        {when.live ? (
+                          <Text style={[styles.now, { color: palette.live }]}>
+                            {when.time}
+                          </Text>
+                        ) : (
+                          <>
+                            <Text style={[styles.time, { color: palette.ink }]}>
+                              {when.time}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.mono,
+                                { color: palette.muted, marginTop: 3 }
+                              ]}
+                            >
+                              {when.day}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    }
+                    name={s.bar.name}
+                    line={matchLine(game)}
+                    saved
+                    onOpen={() => onOpen(s.barId)}
+                    onToggle={() => onToggle(s.barId)}
+                  />
+                )
+              })}
+            </View>
+          ))}
+          {week.idle.length ? (
+            <View>
+              <Header
+                palette={palette}
+                label="Sem jogo"
+                count={`${week.idle.length} ${week.idle.length === 1 ? 'bar' : 'bares'}`}
+              />
+              {week.idle.map((s, i) => {
+                const next = s.bar.events[0]
+                return (
+                  <Row
+                    key={s.barId}
+                    palette={palette}
+                    first={i === 0}
+                    side={
+                      <View style={styles.timeCol}>
+                        <View
+                          style={[
+                            styles.dash,
+                            { backgroundColor: palette.muted }
+                          ]}
+                        />
+                      </View>
+                    }
+                    name={s.bar.name}
+                    line={`${s.bar.neighborhood} · ${
+                      next
+                        ? `próximo ${gameWhen(next, now).day.toLowerCase()}`
+                        : 'sem jogo publicado'
+                    }`}
+                    saved
+                    onOpen={() => onOpen(s.barId)}
+                    onToggle={() => onToggle(s.barId)}
+                  />
+                )
+              })}
+            </View>
+          ) : null}
+        </>
+      )}
+    </>
+  )
+}
+
+function Header({
+  palette,
+  label,
+  count
+}: {
+  palette: Palette
+  label: string
+  count: string
+}) {
+  return (
+    <View style={styles.headerRow}>
+      <Text
+        style={[
+          styles.heading,
+          styles.flush,
+          { color: tones(palette).heading }
+        ]}
+      >
+        {label}
+      </Text>
+      <Text style={[text(12.5), { color: palette.muted }]}>{count}</Text>
     </View>
+  )
+}
+
+function NoMatch({ palette }: { palette: Palette }) {
+  return (
+    <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+      Nada com esse nome, bairro ou jogo.
+    </Text>
+  )
+}
+
+const ROW_OUT = FadeOut.duration(160)
+const ROW_MOVE = LinearTransition.duration(220).easing(EASE)
+
+/** Uma linha das duas listas: a coluna da data ou da hora, o bar e o coração. */
+function Row({
+  palette,
+  first,
+  side,
+  name,
+  line,
+  saved,
+  onOpen,
+  onToggle
+}: {
+  palette: Palette
+  first: boolean
+  side: ReactNode
+  name: string
+  line: string
+  saved: boolean
+  /** Sem ela (bar fora do ar), a linha não abre nada. */
+  onOpen?: () => void
+  onToggle: () => void
+}) {
+  const press = usePressScale(0.98)
+  return (
+    // Tirar dos salvos: a linha sai em fade e as de baixo sobem.
+    <Animated.View exiting={ROW_OUT} layout={ROW_MOVE}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${line}`}
+        disabled={!onOpen}
+        onPress={onOpen}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+      >
+        <Animated.View
+          style={[
+            styles.row,
+            !first && { borderTopWidth: 1, borderTopColor: palette.line },
+            press.style
+          ]}
+        >
+          {side}
+          <View style={styles.rowText}>
+            <Text
+              style={[text(15.5, 'Bold', 1.3), { color: palette.ink }]}
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
+            <Text
+              style={[text(12.5), { color: palette.muted }]}
+              numberOfLines={1}
+            >
+              {line}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={saved ? 'Tirar dos salvos' : 'Salvar bar'}
+            accessibilityState={{ selected: saved }}
+            hitSlop={12}
+            onPress={onToggle}
+          >
+            {/* O coração estala ao mudar: a troca é a resposta do toque. */}
+            <Animated.View key={String(saved)} entering={POP_FAST}>
+              <SavedHeart on={saved} palette={palette} />
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+/** O coração do design: vermelho cheio salvo, apagado quando não. */
+function SavedHeart({ on, palette }: { on: boolean; palette: Palette }) {
+  const color = on ? palette.live : palette.muted
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <G opacity={on ? 1 : 0.25}>
+        <Path
+          d="M12 21s-8.6-5-8.6-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.6 3.2C20.6 16 12 21 12 21z"
+          fill={color}
+        />
+      </G>
+      <Path
+        d="M12 18.6s-6.4-3.9-6.4-8.5A3.2 3.2 0 0 1 12 8.9a3.2 3.2 0 0 1 6.4 1.2c0 4.6-6.4 8.5-6.4 8.5z"
+        fill={color}
+      />
+      <Path
+        d="M19.3 2.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"
+        fill={on ? palette.ink : palette.muted}
+      />
+    </Svg>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
+  stack: { gap: 14 },
   top: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end'
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
-  count: { paddingBottom: 6 },
-  chips: { flexDirection: 'row', gap: 6 },
-  empty: { gap: 16, marginTop: 24 },
-  card: { flexDirection: 'row', gap: 12, padding: 10 },
-  photo: { width: 84, height: 84, borderRadius: 3 },
-  info: { flex: 1, minWidth: 0, gap: 3 },
-  nameRow: {
+  search: {
+    height: 46,
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16
+  },
+  searchInput: { flex: 1, height: 46, paddingVertical: 0 },
+  segments: { flexDirection: 'row', padding: 4, borderRadius: 24 },
+  segment: {
+    flex: 1,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  segmentOn: {
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 }
+  },
+  panel: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8
+    paddingVertical: 12,
+    paddingHorizontal: 14
   },
-  name: { flex: 1 },
-  cut: { height: 18, justifyContent: 'center' },
-  hole: {
-    position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9
+  column: { alignItems: 'center', gap: 6 },
+  letter: { fontFamily: 'GeistMono-SemiBold', fontSize: 10 },
+  square: { width: 22, height: 22, borderRadius: 4 },
+  date: {
+    width: 34,
+    height: 40,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  dash: { marginHorizontal: 14 },
-  game: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -4 },
-  live: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: LIVE
+  dateText: { fontFamily: 'Anton', fontSize: 18 },
+  dots: { flexDirection: 'row', gap: 2, height: 5 },
+  dotSmall: { width: 5, height: 5, borderRadius: 2.5 },
+  caption: { marginTop: -6 },
+  empty: { gap: 16, marginTop: 10 },
+  heading: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginTop: 6,
+    marginBottom: 4
   },
-  halo: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(232,50,12,.22)'
+  flush: { marginTop: 0, marginBottom: 0 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 6,
+    marginBottom: 4
   },
-  time: { fontFamily: 'Anton', fontSize: 18, marginVertical: -4 },
-  match: { flex: 1 }
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 12
+  },
+  rowText: { flex: 1, minWidth: 0 },
+  dateCol: { width: 44, alignItems: 'center' },
+  timeCol: { width: 52, alignItems: 'center' },
+  day: { fontFamily: 'Anton', fontSize: 26, marginVertical: -5 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10, marginTop: 2 },
+  now: { fontFamily: 'Anton', fontSize: 20 },
+  time: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5 },
+  dash: { width: 12, height: 1.5, opacity: 0.6 }
 })
