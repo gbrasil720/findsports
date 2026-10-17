@@ -42,6 +42,12 @@ describe('conquistas', () => {
     )
     expect(nextInSeries(bares, bares[1] as Achievement)?.id).toBe('bar10')
     expect(nextInSeries(bares, bares[3] as Achievement)).toBeNull()
+    // Já ganha não é "próxima".
+    const ganhas = [
+      medal('esp2', 'esportes', 2, 4),
+      medal('esp4', 'esportes', 4, 4)
+    ]
+    expect(nextInSeries(ganhas, ganhas[0] as Achievement)).toBeNull()
   })
 
   it('datas no horário de Brasília', () => {
@@ -55,7 +61,7 @@ describe('conquistas', () => {
     )
     expect(describeMedal(bares[2] as Achievement)).toContain('Faltam 5 bares.')
     expect(unlockedLine(bares[1] as Achievement)).toBe(
-      'O Boteco Sete validou seu código. É o 5º bar diferente onde você assistiu a um jogo pela Onside.'
+      'Boteco Sete validou seu código. É o 5º bar diferente onde você assistiu a um jogo pela Onside.'
     )
   })
 

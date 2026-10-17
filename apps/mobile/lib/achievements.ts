@@ -61,10 +61,10 @@ export const fullDate = (date: string | Date) =>
 export const series = (list: Achievement[], group: Group) =>
   list.filter((a) => a.group === group)
 
-/** A próxima medalha da mesma série, se houver. */
+/** A próxima medalha da mesma série ainda por ganhar, se houver. */
 export function nextInSeries(list: Achievement[], a: Achievement) {
   const s = series(list, a.group)
-  return s[s.indexOf(a) + 1] ?? null
+  return s.slice(s.indexOf(a) + 1).find((m) => !m.unlockedAt) ?? null
 }
 
 export function seriesLabel(list: Achievement[], a: Achievement) {
@@ -117,19 +117,20 @@ const ordinal = (n: number, feminine = false) => `${n}${feminine ? 'ª' : 'º'}`
 export function unlockedLine(a: Achievement) {
   const where = a.where ?? ''
   const n = a.target
+  // Sem artigo antes do bar: "o Casa 92", "o Cervejaria" erram o gênero.
   if (a.group === 'bares')
     return n === 1
-      ? `O ${where} validou seu código. É o seu primeiro jogo num bar pela Onside.`
-      : `O ${where} validou seu código. É o ${ordinal(n)} bar diferente onde você assistiu a um jogo pela Onside.`
+      ? `${where} validou seu código. É o seu primeiro jogo num bar pela Onside.`
+      : `${where} validou seu código. É o ${ordinal(n)} bar diferente onde você assistiu a um jogo pela Onside.`
   if (a.group === 'bairros')
     return `${where} entrou na lista. É o ${ordinal(n)} bairro diferente onde você assistiu a um jogo pela Onside.`
   if (a.group === 'esportes') {
     const [sport, bar] = where.split(' · ')
-    return `${sport} no ${bar}. É o ${ordinal(n)} esporte diferente que você assistiu num bar pela Onside.`
+    return `${sport} em ${bar}. É o ${ordinal(n)} esporte diferente que você assistiu num bar pela Onside.`
   }
   return n === 1
-    ? `Você avaliou o jogo no ${where}. É a sua primeira resenha na Onside.`
-    : `Você avaliou o jogo no ${where}. É a sua ${ordinal(n, true)} resenha na Onside.`
+    ? `Você avaliou o jogo em ${where}. É a sua primeira resenha na Onside.`
+    : `Você avaliou o jogo em ${where}. É a sua ${ordinal(n, true)} resenha na Onside.`
 }
 
 /** O que mostrar quando a medalha ainda não saiu. */
