@@ -367,7 +367,8 @@ invente layout que o projeto não tem.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
-  (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`), IA na aba de papel
+  (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`; a aba selecionada
+  troca para `*-on`, o ícone com o nome ao lado, e o rótulo nativo fica oculto), IA na aba de papel
   `search` (o círculo à direita) e Favoritos e IA desabilitadas com `tabPress`. A barra tem Favoritos onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
   de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
   cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
