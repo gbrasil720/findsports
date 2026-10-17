@@ -1,7 +1,10 @@
 import { Asset } from 'expo-asset'
 import { useEffect, useRef, useState } from 'react'
 import { Image, type StyleProp, View, type ViewStyle } from 'react-native'
-import Animated, { useReducedMotion } from 'react-native-reanimated'
+import Animated, {
+  cubicBezier,
+  useReducedMotion
+} from 'react-native-reanimated'
 import { WebView } from 'react-native-webview'
 import { usePalette } from '@/components/explore'
 import { ACCENT, ACID, INK } from '@/components/ui'
@@ -113,6 +116,7 @@ export function Medal3D({
   medal,
   drag = false,
   yaw = -18,
+  onReady,
   style
 }: {
   medal: {
@@ -126,6 +130,8 @@ export function Medal3D({
   drag?: boolean
   /** Ângulo inicial, em graus. */
   yaw?: number
+  /** O primeiro quadro apareceu: hora do háptico e do confete. */
+  onReady?: () => void
   style?: StyleProp<ViewStyle>
 }) {
   const reduced = useReducedMotion()
@@ -160,7 +166,8 @@ export function Medal3D({
             flex: 1,
             opacity: ready ? 1 : 0,
             transitionProperty: 'opacity',
-            transitionDuration: 200
+            transitionDuration: 200,
+            transitionTimingFunction: EASE_OUT
           }}
         >
           <WebView
@@ -171,7 +178,9 @@ export function Medal3D({
             allowingReadAccessToURL={uri}
             injectedJavaScriptBeforeContentLoaded={`window.MEDAL=${first.current};true`}
             onMessage={(e) => {
-              if (e.nativeEvent.data === 'ready') setReady(true)
+              if (e.nativeEvent.data !== 'ready') return
+              setReady(true)
+              onReady?.()
             }}
             style={{ backgroundColor: 'transparent' }}
             containerStyle={{ backgroundColor: 'transparent' }}
@@ -189,6 +198,8 @@ export function Medal3D({
     </View>
   )
 }
+
+const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1)
 
 /** O arquivo do visualizador no aparelho (`file://`), que a WebView abre. */
 let viewerUri: Promise<string> | null = null
