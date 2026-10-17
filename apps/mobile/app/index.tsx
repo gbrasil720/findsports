@@ -1,0 +1,82 @@
+import { useQuery } from '@tanstack/react-query'
+import { Link, Redirect } from 'expo-router'
+import { Pressable, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useStatusBar } from '@/components/ui'
+import { authClient } from '@/lib/auth-client'
+import { trpc } from '@/lib/trpc'
+
+// Tela de partida do app: prova que as duas pontas estão ligadas — a API
+// (tRPC, pelo web) e a sessão (better-auth). As telas de verdade entram no
+// lugar desta.
+export default function Home() {
+  const insets = useSafeAreaInsets()
+  const session = authClient.useSession()
+  useStatusBar('light')
+  const api = useQuery(trpc.appConfig.getPublic.queryOptions())
+
+  // Sem sessão, o app começa pela apresentação.
+  // Só sem sessão de fato: logo depois de entrar (ou de confirmar o e-mail),
+  // a sessão nova ainda está sendo buscada e `data` vem vazio por um instante.
+  if (!session.isPending && !session.isRefetching && !session.data)
+    return <Redirect href="/intro" />
+  // Torcedor que ainda não escolheu esportes e distância faz o onboarding.
+  const user = session.data?.user
+  if (user?.role === 'fan' && !user.onboardingCompleted)
+    return <Redirect href="/onboarding" />
+  // Com o onboarding feito, o torcedor começa no Explorar. O bar continua
+  // nesta tela até o app ter o painel do dono (seções 16 e 17).
+  if (user?.role === 'fan') return <Redirect href="/explore" />
+
+  const apiStatus = api.isPending
+    ? 'Conectando à API…'
+    : api.isError
+      ? 'Sem conexão com a API'
+      : 'API conectada'
+
+  return (
+    <View
+      className="flex-1 bg-ink px-6"
+      style={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}
+    >
+      <Text className="font-bold text-5xl text-paper">
+        ONSIDE<Text className="text-live-on-ink">.</Text>
+      </Text>
+      <Text className="mt-3 text-lg text-muted-on-ink">
+        Onde vai passar o jogo?
+      </Text>
+
+      <View className="mt-10 gap-2">
+        <Text className={api.isError ? 'text-live-on-ink' : 'text-acid'}>
+          {apiStatus}
+        </Text>
+        <Text className="text-paper">
+          {session.data
+            ? `Sessão de ${session.data.user.name}`
+            : 'Você não entrou'}
+        </Text>
+      </View>
+
+      <View className="mt-auto">
+        {session.data ? (
+          <Pressable
+            accessibilityRole="button"
+            className="items-center border-2 border-paper px-5 py-4"
+            onPress={() => authClient.signOut()}
+          >
+            <Text className="font-bold text-paper">Sair</Text>
+          </Pressable>
+        ) : (
+          <Link href="/sign-in" asChild>
+            <Pressable
+              accessibilityRole="button"
+              className="items-center bg-acid px-5 py-4"
+            >
+              <Text className="font-bold text-ink">Entrar</Text>
+            </Pressable>
+          </Link>
+        )}
+      </View>
+    </View>
+  )
+}

@@ -117,62 +117,49 @@ encerramento efetivo e não autoriza excluir a conta do bar.
 
 ## Reserva de mesa
 
-Pedido do torcedor para um jogo futuro publicado por um bar, confirmado
-manualmente pelo dono. Promete mesa sem que exista inventário de mesas: a
-garantia vem do julgamento do dono, não da plataforma.
+Saiu do produto em 16/10/2026 (ADR 0003, "Revisão de 16/10/2026"). Era o
+pedido de mesa confirmado à mão pelo dono; deu lugar ao código de quem vai.
 
 ## Presença confirmada
 
-Declaração do torcedor de que pretende assistir a um jogo em um bar. Não gera
-código, não gera brinde e não exige ação do bar. Uma reserva implica presença;
-os dois números nunca se somam. É o termo interno: na interface do torcedor a
-ação se chama "Vou assistir aqui", e a reserva, "Reservar mesa". A contagem só
-aparece ao torcedor a partir de 15 pessoas.
+Declaração do torcedor de que pretende assistir a um jogo em um bar. É o termo
+interno: na interface a ação se chama "Vou assistir aqui". Em bar Elite gera o
+código de validação na hora, sem pedido nem confirmação do bar; nos outros
+planos não gera nada além da presença. A contagem só aparece ao torcedor a
+partir de 15 pessoas.
+
+## Quem vai
+
+Lista do bar Elite com quem marcou "Vou assistir aqui", jogo a jogo, pelo
+nome, e quantos já validaram o código. É a única tela em que o bar vê o número
+absoluto de presenças: o código validado mede o furo, que o sinal de interesse
+não media.
 
 ## Sinal de interesse
 
-Forma como a presença chega ao bar: posição relativa, nunca contagem absoluta.
-Existe porque marcar presença e furar são igualmente gratuitos, não há
-verificação possível e um número absoluto inflado levaria o dono a gastar
-estoque e equipe com demanda que não aparece. Compara o jogo com o histórico do
-próprio bar; sem histórico suficiente, o painel mostra que ainda está reunindo
-dados, sem número nem faixa. No painel se chama "Interesse".
-
-## Teto por jogo
-
-Número máximo de pessoas com reserva confirmada num jogo, definido pelo dono
-como padrão do bar e ajustável por jogo. Pedidos pendentes não contam. Ao
-atingir o teto o jogo para de receber pedidos; nada é confirmado sozinho.
+Forma como a presença chega ao painel em "Visão geral": posição relativa,
+nunca contagem absoluta. Compara o jogo com o histórico do próprio bar; sem
+histórico suficiente, o painel mostra que ainda está reunindo dados, sem número
+nem faixa. No painel se chama "Interesse".
 
 ## Oferta da casa
 
 Texto curto e opcional em que o bar decide o que oferece a quem chega pela
 Onside. É promessa do bar ao cliente dele: a Onside não define, sugere nem
-valida o conteúdo. Configurar exige plano Elite vigente (`active`, ou
-`trialing` dentro do período); exibir exige também que o bar receba reservas
-(algum jogo por vir marcado), porque o único resgate da oferta é o código de uma reserva. Sem uma das
-duas coisas o texto some do perfil público, mas continua guardado. Uma reserva
-copia o texto na criação e não acompanha mudanças posteriores.
-
-## Recebimento de reservas
-
-Marcação **por jogo** ("Aceitar reservas neste jogo", `event.accepts_reservations`)
-que diz se o bar **quer** receber pedidos de reserva pela Onside para aquele
-jogo. Desmarcada por padrão: assinar Elite dá a capacidade, não inscreve o bar
-numa operação que ele não pediu. Marcar exige Elite vigente; o jogo recebe
-pedidos com as duas coisas. O bar "recebe reservas" (aba Reservas, oferta da
-casa, "Aceita reserva" no perfil e na busca) enquanto tem Elite e algum jogo
-que ainda não acabou marcado. Desmarcar só barra pedidos novos — reservas já
-criadas continuam legíveis, canceláveis e com código válido dentro da janela.
-Não é teto por jogo (WEB-132). Até a migration 0056 era um interruptor do bar
-inteiro (`bar.accepts_reservations`, obsoleta).
+valida o conteúdo. Configurar e exibir exigem plano Elite vigente (`active`, ou
+`trialing` dentro do período), porque o único resgate da oferta é o código, e
+o código só sai no Elite. Sem o plano o texto some do perfil público, mas
+continua guardado. O código copia o texto quando o torcedor marca e não
+acompanha mudanças posteriores. Na busca, o filtro "Com oferta da casa" traz os
+bares Elite com oferta.
 
 ## Código de validação
 
-Código curto emitido com a reserva, digitado pelo bar para provar que o
-torcedor veio da Onside e liberar a oferta da casa. Resolve o bar sozinho, mas
-só é aceito de uma sessão dona daquele bar. Admite tantos usos quanto a
-quantidade de pessoas da reserva, porque o grupo chega escalonado.
+Código curto que o torcedor recebe ao marcar "Vou assistir aqui" num bar Elite
+e mostra no balcão para ganhar a oferta da casa. O bar o digita (ou, no app,
+escaneia) para provar que o torcedor veio da Onside. Resolve o bar sozinho, mas
+só é aceito de uma sessão dona daquele bar. Vale uma vez. Desmarcar o jogo
+aposenta o código; código validado não deixa desmarcar.
 
 ## Janela de validação
 
@@ -182,10 +169,9 @@ sobreviver a queda de rede em dia de clássico.
 
 ## Chegada
 
-Uma pessoa da reserva registrada pelo bar na página de validação — um `+1` no
-código. Só se registra em reserva confirmada e dentro da janela de validação.
-Pode ser desfeita por um prazo curto; desfazer devolve o uso ao código e
-mantém o registro para auditoria.
+A validação do código pelo bar, na página de validação. Só se registra dentro
+da janela de validação. Pode ser desfeita por um prazo curto; desfazer devolve
+o uso ao código e mantém o registro para auditoria.
 
 ## Cardápio e preço médio
 

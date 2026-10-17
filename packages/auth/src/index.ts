@@ -1,3 +1,4 @@
+import { expo } from '@better-auth/expo'
 import { stripe } from '@better-auth/stripe'
 import { db, eq } from '@findsports_oficial/db'
 import * as schema from '@findsports_oficial/db/schema/auth'
@@ -44,7 +45,7 @@ import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
 import { STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
-import { buildTrustedOrigins } from './trusted-origins'
+import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
 import {
   publicEmailUrl,
   sendVerificationEmailWithResend
@@ -221,7 +222,8 @@ export function createAuth() {
     trustedOrigins: buildTrustedOrigins({
       baseUrl: env.BETTER_AUTH_URL,
       nodeEnv: env.NODE_ENV,
-      developmentOrigin: env.AUTH_DEV_TRUSTED_ORIGIN
+      developmentOrigin: env.AUTH_DEV_TRUSTED_ORIGIN,
+      appScheme: APP_SCHEME
     }),
     emailAndPassword: {
       enabled: true,
@@ -421,6 +423,9 @@ export function createAuth() {
         }
       }),
       sessionTokenGuard(),
+      // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
+      // guardada no aparelho e aceita `onside://` como origem.
+      expo(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
       // (twoFactor, admin) teria o `Set-Cookie` perdido. É o nosso, e não o

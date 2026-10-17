@@ -34,11 +34,10 @@ const FILLED: EventForm = {
   startsAt: '2026-10-10T21:00',
   endsAt: '',
   participantIds: [],
-  participantFreeText: '',
-  acceptsReservations: false
+  participantFreeText: ''
 }
 
-function render(form: Partial<EventForm>, canEnableReservations = true) {
+function render(form: Partial<EventForm>) {
   const markup = renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <EventFormComponent
@@ -48,7 +47,6 @@ function render(form: Partial<EventForm>, canEnableReservations = true) {
         onCancel={() => {}}
         isSaving={false}
         loadingSports={false}
-        canEnableReservations={canEnableReservations}
       />
     </QueryClientProvider>
   )
@@ -63,7 +61,7 @@ function render(form: Partial<EventForm>, canEnableReservations = true) {
       (alert) => alert.textContent
     ),
     saveDisabled: save?.hasAttribute('disabled'),
-    reservations: doc.querySelector('[data-slot="checkbox"]')
+    checkbox: doc.querySelector('[data-slot="checkbox"]')
   }
 }
 
@@ -149,19 +147,8 @@ test('término igual ou anterior ao início avisa e trava o salvar', () => {
   expect(overnight.alerts).toEqual([])
 })
 
-test('"Aceitar reservas neste jogo": Elite marca; sem Elite, trava e diz por quê', () => {
-  const elite = render({ acceptsReservations: true })
-  expect(elite.text).toContain('Aceitar reservas neste jogo')
-  expect(elite.reservations?.hasAttribute('data-checked')).toBe(true)
-  expect(elite.reservations?.hasAttribute('data-disabled')).toBe(false)
-
-  const locked = render({}, false)
-  expect(locked.reservations?.hasAttribute('data-checked')).toBe(false)
-  expect(locked.reservations?.hasAttribute('data-disabled')).toBe(true)
-  expect(locked.text).toContain('Receber reservas é um recurso do plano Elite.')
-
-  // Perdeu o Elite com o jogo marcado: desmarcar continua possível.
-  const lapsed = render({ acceptsReservations: true }, false)
-  expect(lapsed.reservations?.hasAttribute('data-disabled')).toBe(false)
-  expect(lapsed.text).toContain('Desmarque')
+test('sem "Aceitar reservas neste jogo": a reserva de mesa saiu do produto', () => {
+  const form = render({})
+  expect(form.text).not.toContain('Aceitar reservas')
+  expect(form.checkbox).toBeNull()
 })

@@ -42,7 +42,7 @@ type Props = {
 const noop = () => {}
 
 /**
- * "Garanta seu lugar" como um torcedor qualquer vê o perfil: os mesmos
+ * Os contatos e o "Vou assistir aqui" como um torcedor qualquer vê o perfil: os mesmos
  * componentes e a mesma resposta do servidor, com a conta trocada por uma de
  * torcedor. A presença é a de quem ainda não marcou; a contagem não chega ao
  * dono (ADR 0003).
@@ -54,28 +54,27 @@ function FanActionsPreview({
 }) {
   const pub = normalizePub(profile)
   const heroEvent = resolveHeroEvent(pub.events, null)
-  const {
-    reservableEvents: _,
-    canReserve,
-    ...actions
-  } = resolveProfileActions(pub, heroEvent, 'fan')
+  const actions = resolveProfileActions(pub, heroEvent)
   return (
-    // Prévia não age: reservar ou marcar presença como dono não faz sentido.
+    // Prévia não age: marcar presença como dono não faz sentido.
     <div inert>
       <BarActions
         {...actions}
         onWhatsApp={noop}
         onDirections={noop}
         onPhone={noop}
-        onReserve={canReserve ? noop : null}
         presence={
           heroEvent &&
           // Presença só em jogo que não começou, como no servidor.
           heroEvent.startsAt.getTime() > Date.now() && (
             <HeroAttendance
               game={heroEvent}
-              attendance={{ attending: false, count: null }}
-              canReserve={canReserve}
+              attendance={{
+                attending: false,
+                count: null,
+                code: null,
+                validated: false
+              }}
             />
           )
         }

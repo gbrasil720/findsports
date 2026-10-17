@@ -14,6 +14,7 @@ copiar o conteúdo — duas cópias divergem na primeira edição.
 bun install          # install deps
 bun run dev          # all apps
 bun run dev:web      # web only
+bun run dev:mobile   # app nativo (Expo); fica fora do `bun run dev`
 bun run build        # full build
 bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
@@ -52,6 +53,7 @@ Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, sing
 ### Apps
 - **`apps/web`** — fullstack app: TanStack Start (SSR) + TanStack Router (file-based) + React 19. Runs on `localhost:3001`.
 - **`apps/e2e`** — Playwright E2E suite against `vite dev` and a disposable Postgres. See `docs/e2e.md`.
+- **`apps/mobile`** — app nativo: Expo SDK 57 + expo-router + Uniwind (Tailwind v4 no React Native). Ver "App mobile" abaixo.
 
 ### Packages
 | Package | Import | Purpose |
@@ -261,6 +263,175 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 "Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
 `components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
 (proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt).
+
+### App mobile
+
+`apps/mobile` (pacote `mobile`), montado como o Better-T-Stack monta `native-uniwind`, sem a
+HeroUI Native. Esquema `onside://`, identificador `sh.onside.app` (iOS e Android).
+
+**Design do app:** projeto no Claude Design,
+<https://claude.ai/design/p/5185ab40-42b3-4469-a0a7-9e96448d9e24> (a tela de entrada é o
+arquivo `Onside Selecao 1 Entrada.dc.html`). É a referência de desenho e de texto das telas:
+leia o arquivo da tela antes de implementá-la (`DesignSync`, depois de `/design-login`) e não
+invente layout que o projeto não tem.
+
+- **Não tem backend próprio.** Fala com a API do web: `EXPO_PUBLIC_SERVER_URL` + `/api/trpc` e
+  `/api/auth` (`apps/mobile/.env`, modelo em `.env.example`). Só o **tipo** do router cruza a
+  fronteira (`import type { AppRouter }` em `lib/trpc.ts`); código de servidor nunca entra no
+  bundle do app.
+- **Sessão:** `@better-auth/expo` guarda a sessão no SecureStore e a manda como cabeçalho
+  `Cookie`. No servidor, o plugin `expo()` e o esquema `onside://` em
+  `packages/auth/src/trusted-origins.ts` (`APP_SCHEME`, igual ao `scheme` do `app.json`).
+  `exp://` e `localhost:8081` só valem em `development`.
+- **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
+  e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
+  (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
+  chave pública em `EXPO_PUBLIC_TURNSTILE_SITE_KEY`. A WebView se apresenta com o host de
+  `EXPO_PUBLIC_SERVER_URL`, que precisa estar liberado na chave. **A chave de verdade recusa
+  `localhost` e IP de rede local** (Turnstile `110200`, e o servidor responde
+  `MISSING_RESPONSE`): em desenvolvimento, suba o web com o par de teste da Cloudflare, que
+  passa sempre (`TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA` e
+  `VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA` antes de `vite dev`), e o Metro com
+  `EXPO_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA`. Variável de ambiente ganha do
+  `.env`, então nenhum arquivo muda.
+- **Login por e-mail sem `callbackURL`:** com ele o servidor responde `redirect: true` e o
+  plugin do Expo abre a janela de login social do iOS ("deseja usar … para iniciar sessão").
+- **React próprio:** o app usa o React que o Expo exige (19.2.3), separado do web. Não suba a
+  versão à mão: `bunx expo install --check` diz o que o SDK aceita.
+- `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
+- Tokens da Onside em `apps/mobile/global.css` (`bg-ink`, `text-paper`, `bg-acid`...).
+- **Splash:** `apps/mobile/components/splash.tsx`, a tela "02 Splash" do design (agenda do dia
+  em faixas atrás do "ON / SIDE"), clara ou escura pelo tema do sistema. A splash nativa
+  (`app.json`) é só a cor de fundo e fica até as fontes carregarem (`app/_layout.tsx`). As
+  letras grandes são vetor (`splash-letters.ts`), não texto.
+- **Agenda da splash:** os jogos de hoje vêm de `pubs.todayGames` (pública: bares no ar, dia de
+  Brasília, o mesmo jogo em vários bares conta uma vez). A abertura espera a resposta por até
+  600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
+  contagem** "N jogos hoje".
+- **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
+  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
+  imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
+  da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
+  O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
+  trocados e o acid no lugar do vermelho (a regra da tab bar do design), e o mapa tem
+  versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida).
+- **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
+  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
+  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
+  redireciona para o app (`callbackURL: '/verified'`, que o cliente vira `onside://` ou
+  `exp://`) com a sessão em `?cookie=`, e `app/verified.tsx` a guarda (`adoptSessionCookie`):
+  o cliente do Expo só faz isso sozinho no login social. O reset usa `redirectTo` com
+  `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
+  com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
+  testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
+- **Onboarding do torcedor ("05", 4i–4n):** `app/onboarding/*`, escolhas num contexto
+  (`components/onboarding.tsx`) e um envio só no fim (`onboarding.completeFan`), como no web.
+  A tela inicial manda para lá o torcedor com `onboardingCompleted` falso. Cidade por
+  `pubs.searchCities` e a contagem "N bares com jogo hoje" por `pubs.countTodayNear`.
+  Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
+  corpo `{}`, senão 415) e relê com `disableCookieCache`. O banco local nasce sem times:
+  `NODE_ENV=development bun run db:catalog:sync` (o resolver fixa o Postgres local).
+- **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
+  O texto legal vem de `packages/legal`, o mesmo do site.
+- **Explorar ("07"):** `app/explore.tsx`, onde o torcedor com onboarding feito começa, e
+  `app/bar/[id].tsx` (página do bar); peças em `components/explore.tsx`, contas puras em
+  `lib/explore.ts`. O mapa é o nativo, pelo `react-native-maps` (decisão do dono em
+  15/10/2026): Apple Maps na versão apagada (`mutedStandard`, sem pontos de interesse) no
+  iOS, Google Maps com `customMapStyle` nas cores da Onside (`lib/map-style.ts`) no Android.
+  Roda no Expo Go. Os pinos, o raio e os cards são nossos. A busca é `pubs.search` a partir
+  do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
+  ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
+  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
+  o design até "O que dizem", menos "Horário" e as avaliações escritas, que não têm dado (o
+  bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
+  lista, dobra o raio só na visita. **Não existe reserva de mesa** (decisão do
+  dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
+  marca presença e, no bar Elite, o servidor já emite o código do balcão
+  (`packages/api/src/lib/attendance-ticket.ts`).
+- **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
+  (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
+  tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
+  `react-native-screens` o mede pelo caminho antigo e o conteúdo sai do lugar ou some), que marca a presença; no bar Elite (`pubs.getById` → `issuesCode`) ela dá lugar
+  ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
+  pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
+  `/admin/validate?code=`, que no web já abre buscando o código. `app/(fan)/voce/meus-jogos.tsx`
+  (menu "Você"; fica na pilha da aba, com a barra, e tocar "Você" volta ao menu) lista os próximos e os anteriores; "Avaliar" abre o pós-jogo
+  `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
+  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
+  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
+  pesou?" no pós-jogo (WEB-398), "Sua Nª resenha" e o rodapé de conquistas (WEB-403),
+  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405) e o botão
+  de calendário (WEB-406). A busca com
+  IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
+  breve" (`components/soon.tsx`).
+- **Abas do torcedor:** são a barra
+  nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
+  distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
+  (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`; a aba selecionada
+  troca para `*-on`, o ícone com o nome ao lado, e o rótulo nativo fica oculto), IA na aba de papel
+  `search` (o círculo à direita) e Favoritos e IA desabilitadas com `tabPress`. A barra tem Favoritos onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
+  de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
+  cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
+  localização) fica em `components/explore-state.tsx`. Borda tracejada de um
+  lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
+  eventos para hoje nos bares de teste para ver os pinos, ou rode
+  `apps/mobile/scripts/bar-do-ze.sql`, que monta o "Bar do Zé" completo da tela 2g (jogo ao
+  vivo, próximos jogos, oferta, nota, 34 presenças, todas as características). Publicar no Android vai pedir
+  chave do Maps SDK for Android em `app.json`.
+- **Tema escuro:** o design só desenha conta, onboarding e avulsas no claro; no escuro valem
+  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. As cores que
+  seguem o tema estão em `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`, `LINE`,
+  `DROP`, `EDGE`, `SPARK`, e `themed(claro, escuro)` para um valor avulso): são
+  `DynamicColorIOS`, trocam sozinhas e servem no `StyleSheet` de módulo e no SVG. Onde a cor
+  é calculada em JS (`interpolateColor`, gradiente, imagem, tom do `Glass`) use
+  `useColorScheme`. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
+  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as cores
+  dinâmicas ficam no claro.
+- **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
+  Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
+  `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
+  e mostra erro).
+- **Movimento das telas de conta:** `components/motion.tsx` (entrada em sequência pelo
+  `Screen`, pressão dos botões, erro que treme, háptico do `expo-haptics`). Animação de
+  entrada (`entering`) é **constante de módulo** (`POP`, `SWAP`...): o Reanimated 4
+  recomeça a entrada quando o objeto muda, e um `ZoomIn.delay(...)` escrito no JSX é um
+  objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
+- **Navegador de telas (só em desenvolvimento):** a aba "DEV" na borda direita
+  (`components/dev-tab.tsx`) abre `app/dev.tsx`, a lista das telas pelo código do design
+  (4b…4n, 2p, 11p…11x, 2d/2e; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
+  tela montada de novo; "Recarregar esta tela", ou segurar a aba, monta a atual outra vez
+  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`.
+- **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
+  `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
+  `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.
+- **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
+  `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
+  cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
+- **Busca com IA:** a quarta tela da apresentação anuncia uma busca que o produto ainda não
+  tem; o dono confirmou (14/10/2026) que ela vai existir e a tela fica como no design.
+- **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
+  não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
+  e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome
+  da fonte variável, e o iOS registra uma só das instâncias com nome repetido (os pesos
+  saem todos iguais). Texto em Anton ou Geist Mono não leva `lineHeight` menor que a altura
+  natural da fonte (1,505em e 1,3em), senão o iOS corta o topo das letras: use margem
+  vertical negativa (ver `title` em `app/intro.tsx`).
+- **Duas versões de React no repositório:** o Expo traz `react` e `react-dom` 19.2.3 próprios.
+  Pacote de `packages/*` que dependa de biblioteca de React **declara `react` e `react-dom`
+  na faixa do web** (`^19.2.5`), senão o bun liga a biblioteca à versão do Expo e o web quebra
+  com "Incompatible React versions". `@types/react` é um só, pelo catálogo da raiz. Por isso o
+  app não tem alvo web (`react-dom` próprio): quem confere é o aparelho.
+- Conferir sem aparelho: `cd apps/mobile && bunx expo export --platform ios --output-dir <pasta>`
+  empacota com o Metro. Mapa e outros módulos nativos vão exigir build de desenvolvimento
+  (`expo run:ios` / `expo run:android`), não Expo Go.
+- **Ver a tela no simulador** (Xcode 27, `xcode-select` já apontando para ele): o iPhone 16e
+  tem 390 x 844, a medida do design. `bunx expo start --ios --port 8082` instala o Expo Go e
+  abre o app; `xcrun simctl openurl booted "exp://<ip>:8082/--/intro?page=3"` leva a uma tela
+  e `xcrun simctl io booted screenshot <arquivo>.png` tira o print, para comparar lado a lado
+  com o design renderizado a 3x. O botão flutuante do Expo Go some com
+  `EXDevMenuShowFloatingActionButton = false` no plist de preferências do Expo Go no simulador.
+- `Image` com só `StyleSheet.absoluteFill` sai no tamanho original da imagem neste app: passe
+  `width` e `height` explícitos.
 
 ### Routing
 

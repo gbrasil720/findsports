@@ -1,10 +1,62 @@
 # ADR 0003: Reserva de mesa e presença confirmada como features distintas
 
-- Status: aceita
+- Status: aceita; **revista em 2026-10-16**: a reserva de mesa saiu do produto
+  (ver "Revisão de 16/10/2026" logo abaixo, que prevalece sobre o resto)
 - Data: 2026-09-13
 - Tickets: WEB-38 (guarda-chuva, precisa ser fatiado); decisões dos pontos em
   aberto em WEB-121, WEB-122, WEB-123 e WEB-132 (2026-09-29); decisões do QA
   de produção em WEB-255, WEB-259, WEB-296 e WEB-318 (2026-10-08)
+
+## Revisão de 16/10/2026: sem reserva de mesa
+
+Decisão do dono, registrada no card "Decisão de produto" da seção 08 do design
+do app (`Onside Selecao 2 Torcedor.dc.html`). O motivo: se alguém reserva para
+5 e só 1 aparece, o bar separou a mesa à toa; a frustração cai na conta da
+Onside e vira risco de churn.
+
+Como fica:
+
+1. O torcedor toca em **"Vou assistir aqui"**.
+2. No bar Elite, recebe na hora um **código** (número e, no app, QR). Sem
+   pedido, sem quantidade de pessoas, sem confirmação do bar.
+3. Mostra o código no balcão. O bar valida e libera a **oferta da casa**.
+
+Decisões tomadas com o dono na mesma data:
+
+- **Código só no bar Elite.** Fora do Elite, "Vou assistir aqui" continua
+  sendo só presença, sem código e sem oferta. Não existe mais disposição por
+  jogo ("Aceitar reservas neste jogo"): todo jogo de bar Elite emite código.
+- **O bar Elite vê quem vai, pelo nome e em número absoluto**, jogo a jogo, e
+  quantos validaram (aba "Quem vai" do painel, seção 17 do design). Isso
+  revoga, para o Elite, "o bar nunca vê o número absoluto de presenças" (ver
+  "Presença"): com o código validado o furo fica medível, que era o que
+  faltava para o número não enganar. Do torcedor sai só o nome; telefone e
+  e-mail continuam fora.
+- Produção não tinha nenhuma reserva quando a mudança entrou, então não houve
+  migração de dados.
+
+O que deixou de valer nesta ADR: "Reserva" (confirmação manual),
+"Cancelamento depois de chegada" e "Fim da reserva e presença" no que falam de
+pedido, recusa e cancelamento; "Aviso ao torcedor"; "Disposição do bar";
+"Nomenclatura na interface" (só existe "Vou assistir aqui"); "Teto por jogo";
+"O código admite tantos usos quanto a quantidade de pessoas" (agora é um uso);
+e "leitura por QR code" no fora de escopo, que o app passa a mostrar.
+
+O que continua: o código resolve o bar, a validação exige o dono do bar, o
+limite de tentativas, a resposta única para código inexistente ou desmarcado
+(WEB-255), a janela de validação, as duas fontes de comparecimento com a
+pergunta pós-jogo, a oferta congelada no momento em que o torcedor marca, o
+piso de 15 para a contagem que o torcedor vê e o sinal de interesse relativo
+no painel.
+
+Na implementação, o código mora nas tabelas da antiga reserva
+(`packages/api/src/lib/attendance-ticket.ts`): marcar em bar Elite grava uma
+linha `confirmed` de uma pessoa em `reservation` e o código em
+`reservation_code`, com um uso. Desmarcar cancela a linha e aposenta o código;
+código validado trava o desmarcar. Colunas e estados que só a reserva usava
+(`party_size` acima de 1, `note`, `pending`, `declined`,
+`event.accepts_reservations`, `reservation_cap`) ficam no banco sem uso até a
+limpeza.
 
 ## Contexto
 

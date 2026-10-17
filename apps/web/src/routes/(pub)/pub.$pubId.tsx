@@ -22,15 +22,14 @@ import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { HouseOfferSection } from '@/components/pub/house-offer-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
-import { ReservationRequestDialog } from '@/components/pub/reservation-request-dialog'
 import { buildBarFacts } from '@/domain/bar-facts'
+import { getOffAirBar } from '@/domain/my-games'
 import {
   formatMatchup,
   normalizePub,
   resolveHeroEvent,
   resolveProfileActions
 } from '@/domain/pub-profile'
-import { getOffAirBar } from '@/domain/reservations'
 import {
   canFavoriteBars,
   canRecordCommercialEvents,
@@ -164,7 +163,6 @@ function PubPage() {
   )
   const [isFavorited, setIsFavorited] = useState(false)
   const [favoritePending, setFavoritePending] = useState(false)
-  const [reserveOpen, setReserveOpen] = useState(false)
   const [recommendationRunId, setRecommendationRunId] = useState<string | null>(
     null
   )
@@ -224,24 +222,22 @@ function PubPage() {
 
   /*
    * Bar fora do ar responde como inexistente, e continua respondendo assim a
-   * quem não tem nada lá. Quem tem reserva nele já recebe o nome e a situação
-   * do bar em `reservations.mine`, e lê aqui que o bar saiu da Onside em vez
-   * de "Bar não encontrado." (WEB-360). O servidor decide: só as reservas da
+   * quem não tem nada lá. Quem marcou jogo nele já recebe o nome e a situação
+   * do bar em `attendance.mine`, e lê aqui que o bar saiu da Onside em vez de
+   * "Bar não encontrado." (WEB-360). O servidor decide: só os jogos da
    * própria sessão vêm nessa lista.
    *
    * `staleTime: 0` porque a lista em cache pode ser de antes de o bar sair.
    */
-  const ownReservations = useQuery({
-    ...trpc.reservations.mine.queryOptions(),
+  const ownGames = useQuery({
+    ...trpc.attendance.mine.queryOptions(),
     enabled: pubMissing && viewerRole === 'fan',
     staleTime: 0,
     meta: { errorToast: false }
   })
-  const offAirBar = pubMissing
-    ? getOffAirBar(ownReservations.data, pubId)
-    : null
+  const offAirBar = pubMissing ? getOffAirBar(ownGames.data, pubId) : null
   // Refetch com o aviso já na tela (volta do foco) não o troca por esqueleto.
-  const checkingReservations = ownReservations.isFetching && !offAirBar
+  const checkingGames = ownGames.isFetching && !offAirBar
 
   /*
    * Bar inexistente devolve quem estava olhando à casa do próprio papel. O
@@ -250,11 +246,11 @@ function PubPage() {
    * duplo terminando numa tela que não explica nada.
    */
   useEffect(() => {
-    if (pubMissing && !checkingReservations && !offAirBar) {
+    if (pubMissing && !checkingGames && !offAirBar) {
       toast.error('Bar não encontrado.')
       navigate({ to: viewerRole === 'pub' ? '/admin' : '/dashboard' })
     }
-  }, [pubMissing, checkingReservations, offAirBar, navigate, viewerRole])
+  }, [pubMissing, checkingGames, offAirBar, navigate, viewerRole])
 
   const canFavorite = canFavoriteBars(session?.user?.role)
 
@@ -343,14 +339,11 @@ function PubPage() {
   )
 
   const profileActions = useMemo(
-    () =>
-      normalizedPub &&
-      resolveProfileActions(normalizedPub, heroEvent, viewerRole),
-    [normalizedPub, heroEvent, viewerRole]
+    () => normalizedPub && resolveProfileActions(normalizedPub, heroEvent),
+    [normalizedPub, heroEvent]
   )
   const whatsappUrl = profileActions?.whatsappUrl ?? null
   const directionsUrl = profileActions?.directionsUrl ?? null
-  const canReserve = profileActions?.canReserve ?? false
 
   // O jogo de origem contextualiza toda ação comercial: o bar precisa saber
   // qual jogo trouxe o contato, não só que houve contato.
@@ -402,9 +395,7 @@ function PubPage() {
     phone: normalizedPub?.phone ?? null,
     onWhatsApp: handleWhatsAppClick,
     onDirections: handleOpenDirections,
-    onPhone: handlePhoneClick,
-    onReserve: canReserve ? () => setReserveOpen(true) : null,
-    reservationsSoldOut: profileActions?.reservationsSoldOut ?? false
+    onPhone: handlePhoneClick
   }
 
   return (
@@ -424,7 +415,7 @@ function PubPage() {
           inert={!isAuthed}
           aria-hidden={!isAuthed}
         >
-          {isLoadingPub || (pubMissing && checkingReservations) ? (
+          {isLoadingPub || (pubMissing && checkingGames) ? (
             <PubPageSkeleton />
           ) : offAirBar ? (
             <div className="onside-panel mx-auto max-w-xl p-6 text-center sm:p-8">
@@ -435,10 +426,10 @@ function PubPage() {
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
-                  to="/dashboard/reservations"
+                  to="/dashboard/games"
                   className="onside-btn onside-btn-acid"
                 >
-                  Ver minhas reservas
+                  Ver meus jogos
                 </Link>
                 <Link to="/dashboard" className="onside-btn onside-btn-outline">
                   Procurar bares
@@ -485,7 +476,6 @@ function PubPage() {
                     <HeroAttendance
                       game={heroEvent}
                       attendance={heroEvent.attendance}
-                      canReserve={canReserve}
                     />
                   )
                 }
@@ -519,6 +509,8 @@ function PubPage() {
                       eventId={game.id}
                       attending={game.attendance.attending}
                       count={game.attendance.count}
+                      code={game.attendance.code}
+                      validated={game.attendance.validated}
                       gameLabel={formatMatchup(game)}
                       compact
                     />
@@ -537,16 +529,6 @@ function PubPage() {
               />
 
               <BarActions {...actions} variant="bar" isOwner={isOwner} />
-
-              {reserveOpen && (
-                <ReservationRequestDialog
-                  onClose={() => setReserveOpen(false)}
-                  barName={normalizedPub.name}
-                  events={profileActions?.reservableEvents ?? []}
-                  initialEventId={heroEvent?.id ?? null}
-                  houseOffer={normalizedPub.houseOffer}
-                />
-              )}
             </div>
           ) : isError && pubErrorRetryable ? (
             <div

@@ -121,14 +121,14 @@ describe('translateArrivalWriteError', () => {
     expect(many).toBeInstanceOf(TRPCError)
     expect(many).toMatchObject({
       code: 'CONFLICT',
-      message: 'As 4 pessoas desta reserva já foram validadas.'
+      message: 'As 4 pessoas deste código já foram validadas.'
     })
     expect(
       translateArrivalWriteError(
         pgError('reservation_code_used_count_bounds'),
         1
       )?.message
-    ).toBe('A única pessoa desta reserva já foi validada.')
+    ).toBe('Este código já foi validado.')
   })
 
   test('código aposentado no meio do caminho responde como inexistente', () => {

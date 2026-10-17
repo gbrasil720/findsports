@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { toast } from 'sonner'
+import { formatCode } from '@/domain/my-games'
 import { formatMatchup, type ProfileEvent } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -11,6 +12,10 @@ type Props = {
   attending: boolean
   /** Já resolvida pelo servidor: `null` abaixo do piso. */
   count: number | null
+  /** O código do balcão, só em bar Elite. */
+  code?: string | null
+  /** Código validado: a oferta saiu e não dá mais para desmarcar. */
+  validated?: boolean
   /** Nome do jogo, para distinguir os botões na leitura por voz. */
   gameLabel: string
   compact?: boolean
@@ -18,13 +23,16 @@ type Props = {
 
 /**
  * "Vou assistir aqui" (WEB-127). Depois de marcar vira "Você vai assistir
- * aqui", com desfazer. É sempre o mesmo botão, com `aria-disabled` em vez de
+ * aqui", com desfazer, e no bar Elite mostra o código que vale a oferta da
+ * casa no balcão. É sempre o mesmo botão, com `aria-disabled` em vez de
  * `disabled` durante o envio: o foco do teclado nunca se perde.
  */
 export function AttendanceControl({
   eventId,
   attending,
   count,
+  code = null,
+  validated = false,
   gameLabel,
   compact = false
 }: Props) {
@@ -40,6 +48,9 @@ export function AttendanceControl({
             ? 'Pronto: você vai assistir aqui.'
             : 'Marcação desfeita.'
         )
+        void queryClient.invalidateQueries({
+          queryKey: trpc.attendance.mine.queryKey()
+        })
         return queryClient.invalidateQueries({
           queryKey: trpc.pubs.getById.queryKey()
         })
@@ -65,18 +76,31 @@ export function AttendanceControl({
           Você vai assistir aqui
         </span>
       )}
-      <button
-        type="button"
-        onClick={toggle}
-        aria-disabled={mutation.isPending}
-        aria-busy={mutation.isPending}
-        className={`onside-btn ${attending ? 'onside-btn-ghost' : compact ? 'onside-btn-outline' : 'onside-btn-ink'} aria-disabled:opacity-50`}
-      >
-        {attending ? 'Desfazer' : 'Vou assistir aqui'}
-      </button>
+      {!validated && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-disabled={mutation.isPending}
+          aria-busy={mutation.isPending}
+          className={`onside-btn ${attending ? 'onside-btn-ghost' : compact ? 'onside-btn-outline' : 'onside-btn-ink'} aria-disabled:opacity-50`}
+        >
+          {attending ? 'Desfazer' : 'Vou assistir aqui'}
+        </button>
+      )}
       {count !== null && (
         <span className="text-[var(--onside-muted)] text-xs">
           {count} pessoas vão assistir aqui
+        </span>
+      )}
+      {attending && code && (
+        <span className="basis-full text-sm">
+          Seu código:{' '}
+          <span className="font-[family-name:var(--onside-mono)] font-bold tracking-[0.15em]">
+            {formatCode(code)}
+          </span>
+          {validated
+            ? ' · validado no balcão'
+            : ' · mostre no balcão. Fica em Meus jogos.'}
         </span>
       )}
       <span className="sr-only" role="status">
@@ -87,33 +111,29 @@ export function AttendanceControl({
 }
 
 /**
- * "Vou assistir aqui" do jogo em destaque, dentro de "Garanta seu lugar". Com
- * a reserva à mão, avisa que marcar presença não guarda mesa. O perfil e a
- * prévia do dono usam este mesmo bloco.
+ * "Vou assistir aqui" do jogo em destaque. O perfil e a prévia do dono usam
+ * este mesmo bloco.
  */
 export function HeroAttendance({
   game,
-  attendance,
-  canReserve
+  attendance
 }: {
   game: ProfileEvent
-  attendance: { attending: boolean; count: number | null }
-  canReserve: boolean
+  attendance: {
+    attending: boolean
+    count: number | null
+    code: string | null
+    validated: boolean
+  }
 }) {
   return (
-    <>
-      <AttendanceControl
-        eventId={game.id}
-        attending={attendance.attending}
-        count={attendance.count}
-        gameLabel={formatMatchup(game)}
-      />
-      {canReserve && (
-        <p className="mt-2 text-[var(--onside-muted)] text-xs">
-          “Vou assistir aqui” não reserva mesa: só avisa ao bar que você vai.
-          Para garantir lugar, use “Reservar mesa”.
-        </p>
-      )}
-    </>
+    <AttendanceControl
+      eventId={game.id}
+      attending={attendance.attending}
+      count={attendance.count}
+      code={attendance.code}
+      validated={attendance.validated}
+      gameLabel={formatMatchup(game)}
+    />
   )
 }

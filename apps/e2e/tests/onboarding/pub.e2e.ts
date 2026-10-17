@@ -137,8 +137,8 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
   const telao = button(page, 'Telão / projetor')
   await telao.click()
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
-  // Não é escolha do bar: vem do recebimento de reservas.
-  await expect(button(page, 'Aceita reserva')).toHaveCount(0)
+  // Não é escolha do bar: é o filtro da busca para quem é Elite com oferta.
+  await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
   await page.getByLabel('Quantas telas?').fill('4')
   await page.getByLabel('Mais alguma coisa? (opcional)').fill('Sinuca no fundo')
   await button(page, 'Continuar').click()

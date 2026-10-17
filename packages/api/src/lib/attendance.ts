@@ -1,12 +1,23 @@
-import { and, db, eq, inArray, type SQL, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  inArray,
+  isNull,
+  type SQL,
+  sql
+} from '@findsports_oficial/db'
 import {
   DEFAULT_EVENT_DURATION_INTERVAL,
+  getEventEnd,
+  getValidationWindow,
   VALIDATION_WINDOW_MARGIN_HOURS
 } from '@findsports_oficial/db/event-window'
 import {
   attendance,
   attendanceReport
 } from '@findsports_oficial/db/schema/attendance'
+import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
@@ -34,17 +45,58 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
  */
 export const INTEREST_MIN_HISTORY = 5
 
+/**
+ * Quem vai a cada jogo, para o card do Explorar e o ingresso da página do
+ * bar: a contagem a partir do piso e a inicial do nome dos três que marcaram
+ * por último (design 2g: "M R J 34 vão"). Vale também para jogo já começado:
+ * o botão "Vou assistir aqui" não cabe mais, a contagem sim. Só a primeira
+ * letra: mostra que é gente de verdade sem identificar ninguém.
+ */
+export async function readGoing(
+  eventIds: string[]
+): Promise<Map<string, { count: number; initials: string[] }>> {
+  if (!eventIds.length) return new Map()
+  const rows = await db
+    .select({
+      eventId: attendance.eventId,
+      count: sql<number>`count(*)::int`,
+      initials: sql<
+        (string | null)[]
+      >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
+    })
+    .from(attendance)
+    .innerJoin(user, eq(user.id, attendance.userId))
+    .where(inArray(attendance.eventId, eventIds))
+    .groupBy(attendance.eventId)
+  return new Map(
+    rows
+      .filter((row) => row.count >= ATTENDANCE_DISPLAY_FLOOR)
+      .map((row) => [
+        row.eventId,
+        {
+          count: row.count,
+          initials: row.initials.filter((letter): letter is string =>
+            Boolean(letter)
+          )
+        }
+      ])
+  )
+}
+
 type FanAttendance = {
   attending: boolean
   /** `null` abaixo do piso. */
   count: number | null
+  /** O código do balcão, só em bar Elite (`attendance-ticket.ts`). */
+  code: string | null
+  /** O bar já validou o código: a oferta saiu e não dá mais para desmarcar. */
+  validated: boolean
 }
 
 /**
  * Estado de "Vou assistir aqui" por jogo, só onde o botão cabe: conta de
- * torcedor, jogo que não começou e sem pedido de reserva ativo (a reserva já
- * marcou presença). Nos demais jogos, e para qualquer outra conta, não há
- * entrada: nem a prévia do dono recebe a contagem.
+ * torcedor e jogo que não começou. Nos demais jogos, e para qualquer outra
+ * conta, não há entrada: nem a prévia do dono recebe a contagem.
  */
 export async function readFanAttendance(
   viewer: { id: string; role: string },
@@ -55,7 +107,7 @@ export async function readFanAttendance(
     .filter((game) => game.startsAt > now)
     .map((game) => game.id)
   if (viewer.role !== 'fan' || !eventIds.length) return new Map()
-  const [counts, reserved] = await Promise.all([
+  const [counts, tickets] = await Promise.all([
     db
       .select({
         eventId: attendance.eventId,
@@ -66,8 +118,19 @@ export async function readFanAttendance(
       .where(inArray(attendance.eventId, eventIds))
       .groupBy(attendance.eventId),
     db
-      .select({ eventId: reservation.eventId })
+      .select({
+        eventId: reservation.eventId,
+        code: reservationCode.code,
+        usedCount: reservationCode.usedCount
+      })
       .from(reservation)
+      .innerJoin(
+        reservationCode,
+        and(
+          eq(reservationCode.reservationId, reservation.id),
+          isNull(reservationCode.retiredAt)
+        )
+      )
       .where(
         and(
           eq(reservation.userId, viewer.id),
@@ -77,22 +140,89 @@ export async function readFanAttendance(
       )
   ])
   const byEvent = new Map(counts.map((row) => [row.eventId, row]))
-  const reservedIds = new Set(reserved.map((row) => row.eventId))
+  const byTicket = new Map(tickets.map((row) => [row.eventId, row]))
   return new Map(
-    eventIds
-      .filter((id) => !reservedIds.has(id))
-      .map((id) => {
-        const row = byEvent.get(id)
-        const count = row?.count ?? 0
-        return [
-          id,
-          {
-            attending: row?.attending ?? false,
-            count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null
-          }
-        ]
-      })
+    eventIds.map((id) => {
+      const row = byEvent.get(id)
+      const ticket = byTicket.get(id)
+      const count = row?.count ?? 0
+      return [
+        id,
+        {
+          attending: row?.attending ?? false,
+          count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
+          code: ticket?.code ?? null,
+          validated: (ticket?.usedCount ?? 0) > 0
+        }
+      ]
+    })
   )
+}
+
+// ponytail: sem paginação; o torcedor vê os 50 jogos mais recentes.
+const MY_GAMES_LIMIT = 50
+
+/**
+ * "Meus jogos": os jogos em que o torcedor marcou "Vou assistir aqui", com o
+ * código do balcão onde há (bar Elite). O código só sai enquanto vale, até a
+ * janela de validação fechar; depois, fica só se foi validado.
+ */
+export async function readMyGames(userId: string, now = new Date()) {
+  const rows = await db
+    .select({
+      eventId: event.id,
+      championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      barId: bar.id,
+      barName: bar.name,
+      neighborhood: bar.neighborhood,
+      photoUrl: bar.photoUrl,
+      // Bar fora do ar segue na lista, sem perfil para abrir (WEB-360).
+      barActive: bar.isActive,
+      offer: reservation.offerSnapshot,
+      code: reservationCode.code,
+      usedCount: reservationCode.usedCount
+    })
+    .from(attendance)
+    .innerJoin(event, eq(event.id, attendance.eventId))
+    .innerJoin(bar, eq(bar.id, event.barId))
+    .leftJoin(
+      reservation,
+      and(
+        eq(reservation.userId, attendance.userId),
+        eq(reservation.eventId, attendance.eventId),
+        inArray(reservation.status, ACTIVE_RESERVATION_STATUSES)
+      )
+    )
+    .leftJoin(
+      reservationCode,
+      and(
+        eq(reservationCode.reservationId, reservation.id),
+        isNull(reservationCode.retiredAt)
+      )
+    )
+    .where(eq(attendance.userId, userId))
+    .orderBy(sql`${event.startsAt} desc`)
+    .limit(MY_GAMES_LIMIT)
+
+  return rows.map(({ code, usedCount, endsAt, ...row }) => {
+    const window = getValidationWindow({ startsAt: row.startsAt, endsAt })
+    const validated = (usedCount ?? 0) > 0
+    return {
+      ...row,
+      ended: getEventEnd({ startsAt: row.startsAt, endsAt }) <= now,
+      // `null`: bar sem Elite quando o torcedor marcou, ou janela fechada sem
+      // validação.
+      code: code && (validated || window.closesAt >= now) ? code : null,
+      window: code ? window : null,
+      validated,
+      // Bar Elite que emitiu código e o jogo passou sem validação.
+      missed: code !== null && !validated && window.closesAt < now
+    }
+  })
 }
 
 export type InterestSignal =

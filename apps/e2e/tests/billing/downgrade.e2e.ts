@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { createEvent } from '../../fixtures/going'
 import { createPub, inDays } from '../../fixtures/pubs'
-import { createEvent } from '../../fixtures/reservations'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
@@ -36,10 +36,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
     user.id
   ])
   for (let day = 1; day <= 7; day++) {
-    await createEvent(barId, {
-      startsAt: inDays(day),
-      acceptsReservations: true
-    })
+    await createEvent(barId, { startsAt: inDays(day) })
   }
   // A assinatura existe no Stripe: é ela que faz a troca ir para o portal.
   const inStripe = (plan: 'elite' | 'starter') =>
@@ -84,9 +81,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   await expect(dialog).toContainText(
     'Sua oferta da casa sai do perfil e fica guardada.'
   )
-  await expect(dialog).toContainText(
-    'Seu bar para de receber novos pedidos de reserva.'
-  )
+  await expect(dialog).toContainText('Lista de quem vai assistir, jogo a jogo')
   await expect(dialog).toContainText(CREDIT_NOTICE)
   // O aviso de crédito mora na confirmação, não solto na página.
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(1)
@@ -165,7 +160,7 @@ test('teste grátis: plano menor também confirma, sem prometer crédito, e segu
   await expect(
     dialog.getByRole('heading', { name: 'Trocar para o Pro?' })
   ).toBeVisible()
-  await expect(dialog).toContainText('Reserva de mesa pela plataforma')
+  await expect(dialog).toContainText('Lista de quem vai assistir, jogo a jogo')
   await expect(dialog).not.toContainText('Jogos ilimitados na agenda')
   // Em teste grátis não há o que creditar (WEB-350).
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(0)

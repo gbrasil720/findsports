@@ -30,7 +30,7 @@ export function HouseOfferEditor({ houseOffer, plan, ...form }: Props) {
       id="admin-house-offer"
       tier="elite"
       title="Oferta da casa"
-      description="O que você oferece a quem chega pela Onside. Aparece no perfil público do seu bar enquanto algum jogo seu aceitar reservas. A promessa é sua com o cliente: a Onside não define nem confere o conteúdo."
+      description="O que você oferece a quem chega pela Onside. Aparece no perfil público do seu bar, e quem marca “Vou assistir aqui” ganha ao mostrar o código no balcão. A promessa é sua com o cliente: a Onside não define nem confere o conteúdo."
       plan={plan}
       loadingLabel="Carregando oferta da casa…"
       skeleton={
@@ -130,8 +130,8 @@ function HouseOfferForm({
       />
       <div className="mt-1.5 flex flex-wrap items-start justify-between gap-2">
         <p id={hintId} className="text-[var(--onside-muted)] text-xs">
-          Deixe em branco para não exibir oferta. Reservas já feitas mantêm o
-          texto que estava valendo quando foram criadas.
+          Deixe em branco para não exibir oferta. Quem já marcou que vai mantém
+          o texto que estava valendo quando marcou.
         </p>
         <p
           className={`font-[family-name:var(--onside-mono)] text-xs tabular-nums ${overLimit ? 'text-[var(--onside-live-text)]' : 'text-[var(--onside-muted)]'}`}

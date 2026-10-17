@@ -184,6 +184,7 @@ async function render(
     access?: ValidationAccess
     now?: number
     undoWindowMs?: number
+    initialCode?: string
   } = {}
 ) {
   const container = document.createElement('div')
@@ -200,6 +201,7 @@ async function render(
         registerArrival={api.registerArrival as never}
         undoArrival={api.undoArrival as never}
         undoWindowMs={options.undoWindowMs}
+        initialCode={options.initialCode}
       />
     )
   })
@@ -262,8 +264,8 @@ async function click(label: string, times = 1) {
 
 /** O `+1` abre a confirmação; a chegada só é enviada depois dela. */
 async function arrive(times = 1) {
-  await click('Registrar chegada')
-  await click('Confirmar chegada', times)
+  await click('Validar código')
+  await click('Sim, validar', times)
 }
 
 /** Os `requestId` enviados, na ordem das chamadas. */
@@ -295,7 +297,7 @@ describe('acesso', () => {
       access: { status: 'ready', eligible: true, elite: false }
     })
     expect(document.querySelector('input')).not.toBeNull()
-    expect(document.body.textContent).toContain('Reservas em aberto')
+    expect(document.body.textContent).toContain('Códigos em aberto')
     expect(document.body.textContent).not.toContain('Plano Elite')
   })
 
@@ -330,18 +332,34 @@ describe('busca do código', () => {
 
     expect(api.lookup).toHaveBeenCalledWith({ code: 'AB3K9X' })
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Reserva de Marina Souza')
+    expect(text).toContain('Marina Souza')
     expect(text).toContain('Corinthians × Palmeiras')
     expect(text).toContain('Chopp em dobro')
     expect(text).toContain('0 de 3 validados')
   })
 
+  // O QR do app abre `/admin/validate?code=`: a tela já chega buscando.
+  test('o código do link busca sozinho, uma vez', async () => {
+    const api = fakeApi()
+    await render(api, { initialCode: 'ab3-k9x' })
+    expect(api.lookup).toHaveBeenCalledTimes(1)
+    expect(api.lookup).toHaveBeenCalledWith({ code: 'AB3K9X' })
+    expect(document.body.textContent).toContain('Marina Souza')
+  })
+
+  test('código incompleto no link fica no campo, sem buscar', async () => {
+    const api = fakeApi()
+    await render(api, { initialCode: 'AB3' })
+    expect(api.lookup).not.toHaveBeenCalled()
+    expect(input().value).toBe('AB3')
+  })
+
   test('resultado é anunciado e o foco vai para o resumo', async () => {
     await find(fakeApi())
     expect(status()).toBe(
-      'Reserva de Marina Souza encontrada. 0 de 3 validados.'
+      'Código de Marina Souza encontrado. 0 de 3 validados.'
     )
-    expect(document.activeElement?.textContent).toBe('Reserva de Marina Souza')
+    expect(document.activeElement?.textContent).toBe('Marina Souza')
   })
 
   test('código malformado não vai ao servidor e o erro fica preso ao campo', async () => {
@@ -375,11 +393,11 @@ describe('busca do código', () => {
     await find(api)
 
     expect(alertText()).toBe(
-      'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
+      'Código não encontrado ou desmarcado. Confira com o torcedor.'
     )
     expect(document.body.textContent).not.toContain('texto do servidor')
     expect(document.activeElement).toBe(input())
-    expect(button('Registrar chegada')).toBeUndefined()
+    expect(button('Validar código')).toBeUndefined()
   })
 })
 
@@ -387,20 +405,20 @@ describe('confirmação da chegada', () => {
   test('+1 pede confirmação e não envia nada antes dela', async () => {
     const api = fakeApi()
     await find(api)
-    await click('Registrar chegada')
+    await click('Validar código')
 
     expect(api.registerArrival).not.toHaveBeenCalled()
     const dialog = document.querySelector('[role="dialog"]')
-    expect(dialog?.textContent).toContain('Registrar chegada?')
-    expect(dialog?.textContent).toContain('Reserva de Marina Souza')
-    expect(dialog?.textContent).toContain('1 de 3 validados')
+    expect(dialog?.textContent).toContain('Validar o código?')
+    expect(dialog?.textContent).toContain('Código de Marina Souza')
+    expect(dialog?.textContent).toContain('A oferta da casa fica liberada')
     expect(document.body.textContent).toContain('0 de 3 validados')
   })
 
   test('cancelar fecha sem registrar', async () => {
     const api = fakeApi()
     await find(api)
-    await click('Registrar chegada')
+    await click('Validar código')
     await click('Cancelar')
 
     expect(api.registerArrival).not.toHaveBeenCalled()
@@ -426,9 +444,9 @@ describe('registro de chegada', () => {
 
     expect(api.registerArrival).toHaveBeenCalledTimes(1)
     expect(document.body.textContent).toContain('1 de 3 validados')
-    expect(status()).toBe('Chegada registrada. 1 de 3 validados.')
-    expect(button('Desfazer a última chegada')).toBeDefined()
-    expect(document.activeElement).toBe(button('Registrar chegada') ?? null)
+    expect(status()).toBe('Validado. 1 de 3 validados.')
+    expect(button('Desfazer a validação')).toBeDefined()
+    expect(document.activeElement).toBe(button('Validar código') ?? null)
   })
 
   test('toque duplo envia um pedido só', async () => {
@@ -461,7 +479,7 @@ describe('registro de chegada', () => {
     })
     await find(api)
     await arrive()
-    expect(alertText()).toContain('Não foi possível registrar a chegada')
+    expect(alertText()).toContain('Não foi possível validar o código')
 
     await arrive()
     const [first, second] = requestIds(api)
@@ -479,7 +497,7 @@ describe('registro de chegada', () => {
     await find(api)
     await arrive()
 
-    expect(alertText()).toBe('As 3 pessoas desta reserva já foram validadas.')
+    expect(alertText()).toBe('As 3 pessoas deste código já foram validadas.')
   })
 
   test('reserva completa tira o +1, diz que acabou e mantém o desfazer', async () => {
@@ -495,15 +513,13 @@ describe('registro de chegada', () => {
     await find(api)
     await arrive()
 
-    expect(button('Registrar chegada')).toBeUndefined()
-    expect(document.body.textContent).toContain('Reserva completa')
+    expect(button('Validar código')).toBeUndefined()
+    expect(document.body.textContent).toContain('Código validado')
     expect(document.body.textContent).toContain(
-      'As 3 pessoas desta reserva já foram validadas.'
+      'As 3 pessoas deste código já foram validadas.'
     )
-    expect(status()).toBe(
-      'Chegada registrada. 3 de 3 validados. Reserva completa.'
-    )
-    expect(button('Desfazer a última chegada')).toBeDefined()
+    expect(status()).toBe('Código validado. Libere a oferta da casa.')
+    expect(button('Desfazer a validação')).toBeDefined()
     expect(document.activeElement).toBe(button('Validar outro código') ?? null)
   })
 })
@@ -514,24 +530,24 @@ describe('desfazer', () => {
     await find(api)
     await arrive()
     const [requestId] = requestIds(api)
-    await click('Desfazer a última chegada')
+    await click('Desfazer a validação')
 
     expect(api.undoArrival).toHaveBeenCalledWith({ useId: requestId })
     expect(document.body.textContent).toContain('0 de 3 validados')
-    expect(status()).toBe('Chegada desfeita. 0 de 3 validados.')
-    expect(button('Desfazer a última chegada')).toBeUndefined()
-    expect(document.activeElement).toBe(button('Registrar chegada') ?? null)
+    expect(status()).toBe('Validação desfeita. 0 de 3 validados.')
+    expect(button('Desfazer a validação')).toBeUndefined()
+    expect(document.activeElement).toBe(button('Validar código') ?? null)
   })
 
   test('some quando o prazo curto acaba', async () => {
     await find(fakeApi(), { undoWindowMs: 40 })
     await arrive()
-    expect(button('Desfazer a última chegada')).toBeDefined()
+    expect(button('Desfazer a validação')).toBeDefined()
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 1200))
     })
-    expect(button('Desfazer a última chegada')).toBeUndefined()
+    expect(button('Desfazer a validação')).toBeUndefined()
     expect(document.body.textContent).toContain('1 de 3 validados')
   })
 
@@ -543,10 +559,10 @@ describe('desfazer', () => {
     })
     await find(api)
     await arrive()
-    await click('Desfazer a última chegada')
+    await click('Desfazer a validação')
 
-    expect(alertText()).toBe('O prazo para desfazer esta chegada acabou.')
-    expect(button('Desfazer a última chegada')).toBeUndefined()
+    expect(alertText()).toBe('O prazo para desfazer esta validação acabou.')
+    expect(button('Desfazer a validação')).toBeUndefined()
   })
 })
 
@@ -557,14 +573,14 @@ describe('janela de validação', () => {
     const text = document.body.textContent ?? ''
     expect(text).toContain('Este código ainda não abriu')
     expect(text).toMatch(/Ele vale de .+\d{2}:\d{2} até .+\d{2}:\d{2}\./)
-    expect(button('Registrar chegada')).toBeUndefined()
+    expect(button('Validar código')).toBeUndefined()
   })
 
   test('reserva fora da janela é anunciada junto com o motivo', async () => {
     await find(fakeApi(), { now: NOW + 6 * HOUR })
 
     expect(status()).toMatch(
-      /^Reserva de Marina Souza encontrada\. 0 de 3 validados\. Este código expirou\. Ele valia até .+\.$/
+      /^Código de Marina Souza encontrado\. 0 de 3 validados\. Este código expirou\. Ele valia até .+\.$/
     )
   })
 
@@ -574,7 +590,7 @@ describe('janela de validação', () => {
     const text = document.body.textContent ?? ''
     expect(text).toContain('Este código expirou')
     expect(text).toMatch(/Ele valia até .+\d{2}:\d{2}\./)
-    expect(button('Registrar chegada')).toBeUndefined()
+    expect(button('Validar código')).toBeUndefined()
   })
 })
 
@@ -589,10 +605,10 @@ describe('estado da reserva', () => {
     await find(api)
 
     const text = document.body.textContent ?? ''
-    expect(text).toContain('Reserva de Marina Souza')
-    expect(text).toContain('Esta reserva ainda não foi confirmada')
-    expect(button('Registrar chegada')).toBeUndefined()
-    expect(status()).toContain('Esta reserva ainda não foi confirmada.')
+    expect(text).toContain('Marina Souza')
+    expect(text).toContain('Este código é de um pedido antigo')
+    expect(button('Validar código')).toBeUndefined()
+    expect(status()).toContain('Este código é de um pedido antigo.')
   })
 
   test('reserva cancelada com código ainda ativo não oferece +1', async () => {
@@ -604,8 +620,8 @@ describe('estado da reserva', () => {
     })
     await find(api)
 
-    expect(document.body.textContent).toContain('Esta reserva foi cancelada')
-    expect(button('Registrar chegada')).toBeUndefined()
+    expect(document.body.textContent).toContain('O torcedor desmarcou')
+    expect(button('Validar código')).toBeUndefined()
   })
 
   test('reserva que deixou de estar confirmada entre a busca e o +1', async () => {
@@ -618,7 +634,7 @@ describe('estado da reserva', () => {
     await arrive()
 
     expect(alertText()).toBe(
-      'Esta reserva não está confirmada. Busque o código de novo.'
+      'Este código deixou de valer. Busque o código de novo.'
     )
   })
 })

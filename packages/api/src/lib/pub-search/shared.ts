@@ -2,7 +2,7 @@ import { type SQL, sql } from '@findsports_oficial/db'
 import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
-import { declaredAmenityIds, RESERVATIONS_AMENITY_ID } from '../amenities'
+import { declaredAmenityIds, HOUSE_OFFER_AMENITY_ID } from '../amenities'
 import { classicRuleLateral } from '../classics'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
@@ -45,27 +45,25 @@ export const jogoNaoAcabou = (e: SQL) => sql`
   AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
 
 /**
- * O bar recebe reservas agora: Elite vigente e algum jogo que ainda não acabou
- * marcado para receber. É `barReceivesReservations` (`../reservation-intake`)
- * em SQL, e o teste de integração do filtro compara as duas.
- *
- * Lê `subscription`, e não `bar.plan`: a projeção só acompanha o relógio uma
- * vez por dia, e um trial vencido seguiria "recebendo" até a reconciliação.
+ * Elite vigente. Lê `subscription`, e não `bar.plan`: a projeção só acompanha
+ * o relógio uma vez por dia, e um trial vencido seguiria Elite até a
+ * reconciliação.
  */
-export const recebeReservas = (barAlias: SQL) => sql`(
-  EXISTS (
+export const eliteVigente = (barAlias: SQL) => sql`EXISTS (
     SELECT 1 FROM subscription assinatura
     WHERE assinatura.bar_id = ${barAlias}.id
       AND subscription_current_plan(
         assinatura.plan, assinatura.status, assinatura.current_period_end
       ) = 'elite'
-  )
-  AND EXISTS (
-    SELECT 1 FROM event jogo_reservavel
-    WHERE jogo_reservavel.bar_id = ${barAlias}.id
-      AND jogo_reservavel.accepts_reservations
-      AND ${jogoNaoAcabou(sql`jogo_reservavel`)}
-  ))`
+  )`
+
+/**
+ * "Com oferta da casa": Elite vigente e oferta cadastrada. É a mesma regra da
+ * página do bar (`houseOffer` em `pubs.getById`): o código do balcão, que
+ * resgata a oferta, só sai no Elite.
+ */
+export const temOfertaDaCasa = (barAlias: SQL) =>
+  sql`(${eliteVigente(barAlias)} AND ${barAlias}.house_offer IS NOT NULL)`
 
 export type SearchInput = {
   lat: number
@@ -237,10 +235,10 @@ export type FiltrosBusca = {
    * marcadas. É o que `@>` faz, e é por isso que ele foi escolhido em vez de
    * uma tabela de junção — ver migration 0021.
    *
-   * "Aceita reserva" é a exceção: não é marcada, é derivada do recebimento
-   * de fato, como no perfil (`publicAmenityIds`). Pedir essa característica
-   * é pedir `recebeReservas`, sem olhar o id em `amenities`; as demais
-   * continuam pelo `@>`, e as duas condições somam com E.
+   * "Com oferta da casa" é a exceção: não é marcada, é derivada do plano e
+   * da oferta. Pedir esse filtro é pedir `temOfertaDaCasa`, sem olhar o id em
+   * `amenities`; as demais continuam pelo `@>`, e as duas condições somam
+   * com E.
    *
    * O alias da tabela do bar muda entre os dois caminhos, então entra como
    * fragmento montado pelo chamador, igual ao filtro de campeonato.
@@ -336,8 +334,8 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
           ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
           : sql``
       } ${
-        amenities?.includes(RESERVATIONS_AMENITY_ID)
-          ? sql`AND ${recebeReservas(barAlias)}`
+        amenities?.includes(HOUSE_OFFER_AMENITY_ID)
+          ? sql`AND ${temOfertaDaCasa(barAlias)}`
           : sql``
       }`
   }

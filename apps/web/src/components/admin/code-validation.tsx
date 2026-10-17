@@ -1,6 +1,7 @@
 import {
   ARRIVAL_UNDO_WINDOW_MS,
   isReservationCodeComplete,
+  normalizeReservationCode,
   RESERVATION_CODE_LENGTH
 } from '@findsports_oficial/db/reservation-code'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
@@ -46,6 +47,11 @@ type Props = {
     requestId: string
   }) => Promise<ArrivalResult>
   undoArrival: (input: { useId: string }) => Promise<UndoResult>
+  /**
+   * O código que veio no link (`?code=`, o QR do app do torcedor): a tela já
+   * abre buscando.
+   */
+  initialCode?: string
   /** Só os testes mudam. */
   undoWindowMs?: number
 }
@@ -69,21 +75,19 @@ export function CodeValidation({ access, ...panel }: Props) {
       aria-busy={access.status === 'loading' || undefined}
     >
       <p className="onside-kicker">
-        {openOnly ? 'Reservas em aberto' : 'Plano Elite'}
+        {openOnly ? 'Códigos em aberto' : 'Plano Elite'}
       </p>
       <h2 id={TITLE_ID} className="onside-display text-2xl">
-        Código da reserva
+        Código do torcedor
       </h2>
       <p className="mt-1 max-w-2xl text-[var(--onside-muted)] text-sm">
-        Digite o código que o torcedor mostra no celular e registre cada pessoa
-        que chegar. O grupo pode chegar aos poucos: o mesmo código vale até
-        completar a reserva.
+        Digite o código que o torcedor mostra no celular. Validado, a oferta da
+        casa é dele. Cada código vale uma vez.
       </p>
       {openOnly ? (
         <p className="mt-2 max-w-2xl text-[var(--onside-muted)] text-sm">
-          Seu plano não recebe reservas novas. As que você já aceitou continuam
-          valendo, e dá para registrar a chegada até a janela de cada jogo
-          fechar.
+          Seu plano não emite códigos novos. Os que já saíram continuam valendo,
+          e dá para validar até a janela de cada jogo fechar.
         </p>
       ) : null}
 
@@ -159,13 +163,16 @@ function ValidationPanel({
   lookup,
   registerArrival,
   undoArrival,
+  initialCode,
   undoWindowMs = ARRIVAL_UNDO_WINDOW_MS
 }: Omit<Props, 'access'>) {
   const fieldId = useId()
   const hintId = `${fieldId}-hint`
   const errorId = `${fieldId}-error`
 
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(() =>
+    normalizeReservationCode(initialCode ?? '')
+  )
   const [reservation, setReservation] = useState<ValidatedReservation | null>(
     null
   )
@@ -242,7 +249,18 @@ function ValidationPanel({
 
   const handleLookup = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    lookupCode()
+  }
 
+  // O código do link busca sozinho, uma vez; incompleto, fica no campo.
+  const linkLookup = useRef(isReservationCodeComplete(code))
+  useEffect(() => {
+    if (!linkLookup.current) return
+    linkLookup.current = false
+    lookupCode()
+  })
+
+  const lookupCode = () => {
     // Código incompleto não gasta tentativa no servidor.
     if (!isReservationCodeComplete(code)) {
       setLookupError(
@@ -270,7 +288,7 @@ function ValidationPanel({
         const blocker = getArrivalBlocker(found, now)
         setAnnouncement(
           [
-            `Reserva de ${found.guestName} encontrada.`,
+            `Código de ${found.guestName} encontrado.`,
             `${getCounterLabel(found.usedCount, found.maxUses)}.`,
             blocker && `${blocker.title}. ${blocker.detail}`
           ]
@@ -309,8 +327,10 @@ function ValidationPanel({
         )
         setAnnouncement(
           result.undone
-            ? `Essa chegada já tinha sido desfeita. ${counter}.`
-            : `Chegada registrada. ${counter}.${result.usedCount >= result.maxUses ? ' Reserva completa.' : ''}`
+            ? `Essa validação já tinha sido desfeita. ${counter}.`
+            : result.usedCount >= result.maxUses
+              ? 'Código validado. Libere a oferta da casa.'
+              : `Validado. ${counter}.`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -327,7 +347,7 @@ function ValidationPanel({
         updateCounter(result)
         setLastArrival(null)
         setAnnouncement(
-          `Chegada desfeita. ${getCounterLabel(result.usedCount, result.maxUses)}.`
+          `Validação desfeita. ${getCounterLabel(result.usedCount, result.maxUses)}.`
         )
         setFocusTarget('action')
       } catch (error) {
@@ -375,7 +395,7 @@ function ValidationPanel({
             disabled={pending === 'lookup'}
             className="onside-btn onside-btn-ink"
           >
-            {pending === 'lookup' ? 'Buscando…' : 'Buscar reserva'}
+            {pending === 'lookup' ? 'Buscando…' : 'Buscar código'}
           </button>
         </div>
         <p id={hintId} className="mt-1.5 text-[var(--onside-muted)] text-xs">
@@ -418,9 +438,7 @@ function ValidationPanel({
               disabled={pending !== null}
               className="onside-btn onside-btn-acid"
             >
-              {pending === 'arrival'
-                ? 'Registrando…'
-                : 'Registrar chegada (+1)'}
+              {pending === 'arrival' ? 'Validando…' : 'Validar código'}
             </button>
           ) : null}
           {lastArrival ? (
@@ -429,7 +447,7 @@ function ValidationPanel({
               type="button"
               onClick={() => void handleUndo(lastArrival)}
               disabled={pending !== null}
-              aria-label="Desfazer a última chegada"
+              aria-label="Desfazer a validação"
               className="onside-btn onside-btn-outline"
             >
               {pending === 'undo' ? 'Desfazendo…' : 'Desfazer'}

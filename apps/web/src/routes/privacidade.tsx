@@ -1,7 +1,7 @@
+import { POLITICA_DE_PRIVACIDADE } from '@findsports_oficial/legal/politica-de-privacidade'
 import { createFileRoute } from '@tanstack/react-router'
 import { legalHead } from '@/components/legal/legal-head'
 import { LegalPage } from '@/components/legal/legal-page'
-import { POLITICA_DE_PRIVACIDADE } from '@/components/legal/politica-de-privacidade'
 
 export const Route = createFileRoute('/privacidade')({
   head: () =>

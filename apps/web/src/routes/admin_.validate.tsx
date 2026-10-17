@@ -8,9 +8,12 @@ import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin_/validate')({
+  // O QR do código no app do torcedor abre aqui com `?code=`.
+  validateSearch: (search: Record<string, unknown>): { code?: string } =>
+    typeof search.code === 'string' ? { code: search.code } : {},
   head: () => ({
     meta: [
-      { title: 'Validar código de reserva — Onside' },
+      { title: 'Validar código — Onside' },
       { name: 'robots', content: 'noindex' },
       ...PWA_META
     ],
@@ -22,6 +25,7 @@ export const Route = createFileRoute('/admin_/validate')({
 function ValidatePage() {
   const trpc = useTRPC()
   const now = useMinuteNow()
+  const { code } = Route.useSearch()
 
   // A tela desenha o próprio erro, com botão de tentar de novo.
   const subscriptionQuery = useQuery({
@@ -50,7 +54,8 @@ function ValidatePage() {
         </Link>
         <h1 className="onside-display text-3xl md:text-4xl">Validar código</h1>
         <p className="mt-2 text-[var(--onside-muted)] text-sm">
-          Registre quem chegou com reserva feita pela Onside.
+          Valide o código de quem marcou “Vou assistir aqui” e libere a oferta
+          da casa.
         </p>
       </div>
 
@@ -76,6 +81,7 @@ function ValidatePage() {
         lookup={reservationValidation.lookup.mutate}
         registerArrival={reservationValidation.registerArrival.mutate}
         undoArrival={reservationValidation.undoArrival.mutate}
+        initialCode={code}
       />
     </AppShell>
   )

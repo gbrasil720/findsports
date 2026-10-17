@@ -13,7 +13,8 @@ import { RATING_WINDOW_DAYS } from '../lib/rating'
 import { utcIso } from '../lib/utc-timestamp'
 
 /**
- * Tipos de evento comercial que contam como intenção de ir.
+ * Tipos de evento comercial que contam como intenção de ir. Marcar "Vou
+ * assistir aqui" (`attendance`) também conta, e é a intenção mais explícita.
  *
  * `profile_view` fica de fora: abrir a página de um bar não é dizer que você
  * pensou em ir lá. Sem esse corte, qualquer pessoa que passou os olhos num
@@ -34,10 +35,10 @@ const RATING_WINDOW_MS = RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000
  * Três condições, todas verificadas no servidor porque todas são a diferença
  * entre uma nota que significa alguma coisa e um placar de popularidade:
  *
- *   1. ele demonstrou intenção de ir — abriu rota, WhatsApp ou telefone
- *      DAQUELE bar, para AQUELE jogo. É o sinal mais próximo de presença que
- *      existe sem check-in, e `bar_commercial_event` já o registra com
- *      `actor_user_id` e `source_event_id`;
+ *   1. ele demonstrou intenção de ir — marcou "Vou assistir aqui" naquele
+ *      jogo, ou abriu rota, WhatsApp ou telefone DAQUELE bar, para AQUELE
+ *      jogo (`bar_commercial_event`, com `actor_user_id` e
+ *      `source_event_id`);
  *   2. o jogo já acabou. Avaliar antes seria avaliar expectativa;
  *   3. faz menos de `RATING_WINDOW_DAYS` que acabou. Depois disso é memória,
  *      não observação — e é onde mora a avaliação movida por raiva acumulada.
@@ -64,6 +65,9 @@ async function checkEligibility(input: {
             INTENT_TYPES.map((type) => sql`${type}`),
             sql`, `
           )})
+      ) OR EXISTS (
+        SELECT 1 FROM attendance a
+        WHERE a.user_id = ${input.userId} AND a.event_id = e.id
       ) AS has_intent
     FROM event e
     WHERE e.id = ${input.eventId} AND e.bar_id = ${input.barId}
@@ -116,7 +120,22 @@ export const ratingsRouter = router({
    * uma vez só, em SQL, porque aqui a pergunta é "quais", não "este pode".
    */
   getPending: fanProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
     const rows = await db.execute(sql`
+      WITH intent AS (
+        SELECT ce.bar_id, ce.source_event_id AS event_id
+        FROM bar_commercial_event ce
+        WHERE ce.actor_user_id = ${userId}
+          AND ce.type IN (${sql.join(
+            INTENT_TYPES.map((type) => sql`${type}`),
+            sql`, `
+          )})
+        UNION
+        SELECT ev.bar_id, a.event_id
+        FROM attendance a
+        JOIN event ev ON ev.id = a.event_id
+        WHERE a.user_id = ${userId}
+      )
       SELECT DISTINCT ON (e.id)
         e.id AS event_id,
         e.championship,
@@ -128,16 +147,11 @@ export const ratingsRouter = router({
         b.neighborhood,
         s.name AS sport_name,
         s.slug AS sport_slug
-      FROM bar_commercial_event ce
-      JOIN event e ON e.id = ce.source_event_id
-      JOIN bar b ON b.id = ce.bar_id
+      FROM intent i
+      JOIN event e ON e.id = i.event_id AND e.bar_id = i.bar_id
+      JOIN bar b ON b.id = i.bar_id
       JOIN sport s ON s.id = e.sport_id
-      WHERE ce.actor_user_id = ${ctx.session.user.id}
-        AND ce.type IN (${sql.join(
-          INTENT_TYPES.map((type) => sql`${type}`),
-          sql`, `
-        )})
-        AND b.is_active
+      WHERE b.is_active
         -- Jogo acabado: fim informado, ou início mais a janela ao vivo.
         AND COALESCE(
           e.ends_at,
@@ -149,9 +163,9 @@ export const ratingsRouter = router({
         ) > NOW() - ${`${RATING_WINDOW_DAYS} days`}::interval
         AND NOT EXISTS (
           SELECT 1 FROM bar_rating r
-          WHERE r.bar_id = ce.bar_id
-            AND r.actor_user_id = ce.actor_user_id
-            AND r.event_id = ce.source_event_id
+          WHERE r.bar_id = i.bar_id
+            AND r.actor_user_id = ${userId}
+            AND r.event_id = i.event_id
         )
       ORDER BY e.id, e.starts_at DESC
       LIMIT 5

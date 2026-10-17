@@ -12,9 +12,9 @@ import {
   getAdminSections
 } from '@/components/admin/admin-tabs'
 import { getAnalyticsRange } from '@/components/admin/analytics-period'
+import { GoingTab } from '@/components/admin/going-tab'
 import { OverviewTab } from '@/components/admin/overview-tab'
 import { QueryError } from '@/components/admin/query-error'
-import { ReservationsTab } from '@/components/admin/reservations-tab'
 import { ScheduleTab } from '@/components/admin/schedule-tab'
 import { SpaceTab } from '@/components/admin/space-tab'
 import { AppShell } from '@/components/app/app-shell'
@@ -205,13 +205,10 @@ function PubDashboard() {
 
   // O servidor confere o plano de novo; aqui só decide se a aba existe.
   const elite = subscription?.currentPlan === 'elite'
-  // Derivado no servidor: Elite e algum jogo por vir marcado para reservas.
-  const receivesReservations = bar.receivesReservations
-  // Reserva em aberto segura a aba de quem não recebe mais pedido novo: o
-  // torcedor continua com o código, e o bar precisa responder e validar
-  // (WEB-341).
-  const showsReservations = receivesReservations || hasOpenReservations === true
-  const sections = getAdminSections(showsReservations)
+  // Código em aberto segura a aba de quem perdeu o Elite: o torcedor
+  // continua com o código, e o bar precisa validar (WEB-341).
+  const showsGoing = elite || hasOpenReservations === true
+  const sections = getAdminSections(showsGoing)
   // Link para uma aba que não existe para este bar cai na Visão geral.
   const shownSection = sections.some(({ id }) => id === activeSection)
     ? activeSection
@@ -254,10 +251,9 @@ function PubDashboard() {
             active={shownSection === 'admin-espaco'}
             onCreateEvent={() => changeSection('admin-grade')}
           />
-          {showsReservations ? (
-            <ReservationsTab
-              active={shownSection === 'admin-reservas'}
-              receiving={receivesReservations}
+          {showsGoing ? (
+            <GoingTab
+              active={shownSection === 'admin-quem-vai'}
               elite={elite}
             />
           ) : null}

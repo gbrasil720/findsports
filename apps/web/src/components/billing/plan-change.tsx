@@ -33,14 +33,7 @@ function PlanLossList({
     (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   )
   const numbers =
-    bar && upcoming
-      ? {
-          ...bar,
-          upcomingEvents: upcoming.length,
-          reservableEvents: upcoming.filter((item) => item.acceptsReservations)
-            .length
-        }
-      : null
+    bar && upcoming ? { ...bar, upcomingEvents: upcoming.length } : null
 
   return (
     <ul

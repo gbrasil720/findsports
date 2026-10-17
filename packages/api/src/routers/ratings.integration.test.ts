@@ -49,7 +49,9 @@ integrationTest(
     const semIntencao = crypto.randomUUID()
     const extra1 = crypto.randomUUID()
     const extra2 = crypto.randomUUID()
-    const fanIds = [comIntencao, semIntencao, extra1, extra2]
+    // Só marcou "Vou assistir aqui".
+    const vaiAssistir = crypto.randomUUID()
+    const fanIds = [comIntencao, semIntencao, extra1, extra2, vaiAssistir]
 
     // Jogo que já acabou: começou há 6 h e a janela ao vivo é de 3 h.
     const jogoPassadoId = crypto.randomUUID()
@@ -248,6 +250,22 @@ integrationTest(
       expect(pendentes.map((item) => item.eventId)).toContain(jogoPassadoId)
       expect(pendentes[0]?.barName).toBe('Bar da avaliação')
       expect(pendentes[0]).toMatchObject(quemJoga)
+
+      // Marcar "Vou assistir aqui" também é intenção: entra nas pendências e
+      // libera a avaliação.
+      await db.execute(sql`
+        INSERT INTO attendance (user_id, event_id) VALUES (${vaiAssistir}, ${jogoPassadoId})
+      `)
+      const deQuemMarcou = await appRouter
+        .createCaller(contextFor(vaiAssistir, 'fan', now))
+        .ratings.getPending()
+      expect(deQuemMarcou.map((item) => item.eventId)).toEqual([jogoPassadoId])
+      await appRouter
+        .createCaller(contextFor(vaiAssistir, 'fan', now))
+        .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
+      await appRouter
+        .createCaller(contextFor(vaiAssistir, 'fan', now))
+        .ratings.remove({ barId, eventId: jogoPassadoId })
 
       // A lista de avaliações do dono nomeia o jogo do mesmo jeito.
       const doDono = await appRouter

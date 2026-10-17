@@ -92,13 +92,13 @@ apps/e2e/
 |---|---|
 | `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
 | `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
-| `tests/fan` | WEB-178 — busca, mapa, página do bar, reservas, perfil |
+| `tests/fan` | WEB-178 — busca, mapa, página do bar, Meus jogos, perfil |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
 | `tests/houdini` | WEB-181, WEB-393 — o Houdini (painel interno) |
 | `tests/feedback` | "Enviar feedback" no menu da conta, com imagem em anexo |
 
-Fixture nova (eventos, reservas…) entra num arquivo novo em `fixtures/`, em vez
+Fixture nova (eventos, códigos de quem vai…) entra num arquivo novo em `fixtures/`, em vez
 de crescer um arquivo central.
 
 ## Escrevendo teste

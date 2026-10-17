@@ -9,19 +9,13 @@ import { TRPCError } from '@trpc/server'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 
 /**
- * Recebimento de reservas (WEB-131). Três níveis decidem se o torcedor pode
- * pedir mesa para um jogo:
+ * O que o bar Elite tem por causa do código do balcão: a lista de quem vai e
+ * a validação (decisão do dono em 16/10/2026, que tirou a reserva de mesa).
+ * Quem perdeu o Elite com código em aberto continua podendo ver e validar,
+ * para honrar a oferta que o torcedor já tem na mão (WEB-341).
  *
- * - capacidade — o bar **pode**: Elite vigente, pela assinatura;
- * - disposição — o bar **quer**, jogo a jogo: `event.accepts_reservations`,
- *   desligado por padrão. Era um interruptor do bar inteiro (removido na
- *   WEB-382), que abria pedido até em jogo em que o bar não segura mesa;
- * - disponibilidade — ainda **cabe** neste jogo: teto de pessoas confirmadas
- *   (WEB-152, ADR 0003 "Teto por jogo").
- *
- * Só vale para pedido NOVO. Reserva já criada continua legível, cancelável e
- * com código validável dentro da janela: cancelar e validar não passam por
- * aqui.
+ * ponytail: os nomes ainda falam em "reservas" porque o código mora nas
+ * tabelas da antiga reserva (`attendance-ticket.ts`).
  */
 
 function canEnableReservations(
@@ -31,11 +25,6 @@ function canEnableReservations(
   return getCurrentPlan(subscription, now) === 'elite'
 }
 
-/**
- * Chamado antes de marcar um jogo para receber reservas. Desmarcar não passa
- * por aqui: um bar que perdeu o Elite com jogos marcados precisa conseguir
- * desmarcar.
- */
 export function assertCanEnableReservations(
   subscription: SubscriptionForPlan | null,
   now = new Date()
@@ -43,7 +32,7 @@ export function assertCanEnableReservations(
   if (!canEnableReservations(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'Receber reservas é um recurso do plano Elite.'
+      message: 'A lista de quem vai é um recurso do plano Elite.'
     })
   }
 }
@@ -108,103 +97,4 @@ export async function hasOpenReservations(
     )
     .limit(1)
   return open !== undefined
-}
-
-/**
- * O jogo recebe pedidos agora: o bar o marcou (`event.accepts_reservations`)
- * e pode.
- */
-export function receivesReservations(
-  acceptsReservations: boolean,
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return acceptsReservations && canEnableReservations(subscription, now)
-}
-
-/**
- * O bar "recebe reservas" — aba Reservas no painel, oferta da casa e "Aceita
- * reserva" no perfil e no filtro da busca: pode, e tem ao menos um jogo ainda
- * no perfil (`event-profile-window.ts`) marcado para receber. Quem chama já
- * passa só os jogos dessa janela. Em SQL é `recebeReservas`
- * (`./pub-search/shared`), e o teste de integração do filtro compara as duas.
- */
-export function barReceivesReservations(
-  visibleEvents: { acceptsReservations: boolean }[],
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return receivesReservations(
-    visibleEvents.some((game) => game.acceptsReservations),
-    subscription,
-    now
-  )
-}
-
-/**
- * Esconder o botão não é validação: o procedimento que cria reserva chama
- * isto antes de gravar.
- */
-export function assertReceivesReservations(
-  acceptsReservations: boolean,
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): void {
-  if (!receivesReservations(acceptsReservations, subscription, now)) {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message: 'Este bar não está recebendo reservas pela Onside no momento.'
-    })
-  }
-}
-
-/**
- * Disponibilidade de um jogo. O teto efetivo é o do jogo, ou então o padrão
- * do bar; sem nenhum dos dois, não há teto. Confirmadas no teto ou acima dele
- * fecham pedidos novos, e só isso: confirmar além do teto continua permitido.
- */
-export function seatAvailability(
-  gameCap: number | null,
-  barCap: number | null,
-  confirmedSeats: number
-) {
-  const effectiveCap = gameCap ?? barCap
-  return {
-    confirmedSeats,
-    effectiveCap,
-    soldOut: effectiveCap !== null && confirmedSeats >= effectiveCap
-  }
-}
-
-/**
- * Jogos de um mesmo bar com a disponibilidade de cada um. Só `confirmed`
- * ocupa lugar: uma rajada de pedidos sem resposta não pode trancar os pedidos
- * reais (ADR 0003). A soma usa `reservation_eventId_status_createdAt_idx`.
- */
-export async function withSeatAvailability<
-  T extends { id: string; reservationCap: number | null }
->(games: T[], barCap: number | null) {
-  const rows = games.length
-    ? await db
-        .select({
-          eventId: reservation.eventId,
-          seats: sql<number>`sum(${reservation.partySize})::int`
-        })
-        .from(reservation)
-        .where(
-          and(
-            inArray(
-              reservation.eventId,
-              games.map(({ id }) => id)
-            ),
-            eq(reservation.status, 'confirmed')
-          )
-        )
-        .groupBy(reservation.eventId)
-    : []
-  const seats = new Map(rows.map((row) => [row.eventId, row.seats]))
-  return games.map((game) => ({
-    ...game,
-    ...seatAvailability(game.reservationCap, barCap, seats.get(game.id) ?? 0)
-  }))
 }

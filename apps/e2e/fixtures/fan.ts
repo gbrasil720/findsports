@@ -32,7 +32,7 @@ export function north(spot: Spot, km: number): Spot {
 
 /**
  * Torcedor novo, logado e parado em `spot`. Os testes daqui mudam favoritos,
- * preferências e reservas, então nenhum usa a sessão compartilhada.
+ * preferências e presenças, então nenhum usa a sessão compartilhada.
  */
 export async function signInFanAt(
   page: Page,
@@ -90,8 +90,6 @@ type EventOptions = {
   /** Texto do confronto; também é o nome do jogo na tela quando não há times. */
   freeText?: string
   teamIds?: string[]
-  /** "Aceitar reservas neste jogo". */
-  acceptsReservations?: boolean
 }
 
 export async function createEvent(options: EventOptions): Promise<string> {
@@ -103,8 +101,7 @@ export async function createEvent(options: EventOptions): Promise<string> {
     championship: options.championship ?? 'Campeonato E2E',
     starts_at: options.startsAt,
     ends_at: options.endsAt ?? null,
-    participant_free_text: options.freeText ?? null,
-    accepts_reservations: options.acceptsReservations ?? false
+    participant_free_text: options.freeText ?? null
   })
   for (const teamId of options.teamIds ?? []) {
     await insert('event_participants', { event_id: id, team_id: teamId })

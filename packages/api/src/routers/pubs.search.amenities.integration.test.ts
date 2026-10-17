@@ -8,8 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { recebeReservas } from '../lib/pub-search/shared'
-import { barReceivesReservations } from '../lib/reservation-intake'
+import { temOfertaDaCasa } from '../lib/pub-search/shared'
 import { contextFor, load } from './integration-seed'
 
 /**
@@ -167,14 +166,13 @@ integrationTest(
 )
 
 /**
- * "Aceita reserva" (10) não é marcada: é a mesma coisa que receber reservas.
- * O filtro e o perfil a derivam da regra de `barReceivesReservations` (Elite
- * e algum jogo que não acabou marcado para receber), com o id gravado em
- * `bar.amenities` ou sem ele; a regra em SQL (`recebeReservas`) e a em
- * TypeScript têm de dizer a mesma coisa.
+ * "Com oferta da casa" (10) não é marcada: é o bar Elite com oferta
+ * cadastrada, a mesma regra que mostra a oferta na página do bar. A regra em
+ * SQL (`temOfertaDaCasa`) e a da página têm de dizer a mesma coisa, com o id
+ * gravado em `bar.amenities` (de quando era "Aceita reserva") ou sem ele.
  */
 integrationTest(
-  'filtro e perfil dão "Aceita reserva" a todo bar que recebe reservas, e só a eles, nos três caminhos',
+  'filtro "Com oferta da casa" traz todo bar Elite com oferta, e só eles, nos três caminhos',
   async () => {
     const [{ db, appRouter }, { resetAppConfig, setAppConfig }] =
       await Promise.all([load(), import('../lib/app-config')])
@@ -186,70 +184,59 @@ integrationTest(
     const now = new Date()
     const HOUR = 3_600_000
 
-    // 1 = telão, 10 = aceita reserva. Quem não recebe tem o id 10 gravado, de
-    // quando se marcava à mão; dos dois que recebem, um nunca o marcou.
-    // `accepts` marca o jogo que ainda vai acontecer; `encerradoMarcado` põe
-    // também um jogo já encerrado marcado, que não conta.
+    // 1 = telão. Quem não tem a oferta tem o id 10 gravado, de quando se
+    // marcava "Aceita reserva" à mão; dos dois que têm, um nunca o marcou.
     const casos: {
       rotulo: string
-      accepts: boolean
-      encerradoMarcado?: boolean
+      oferta: string | null
       assinatura?: Omit<typeof subscription.$inferInsert, 'barId'>
       amenities: number[]
-      recebe: boolean
+      tem: boolean
     }[] = [
       {
-        rotulo: 'Elite vigente, ligado, sem o id gravado',
-        accepts: true,
+        rotulo: 'Elite vigente com oferta, sem o id gravado',
+        oferta: 'Chopp em dobro',
         assinatura: { plan: 'elite', status: 'active' },
         amenities: [1],
-        recebe: true
+        tem: true
       },
       {
-        rotulo: 'Elite vigente, ligado, com o id gravado',
-        accepts: true,
+        rotulo: 'Elite vigente com oferta, com o id gravado',
+        oferta: 'Porção grátis',
         assinatura: { plan: 'elite', status: 'active' },
         amenities: [10],
-        recebe: true
+        tem: true
       },
       {
-        rotulo: 'Elite vigente, desligado',
-        accepts: false,
+        rotulo: 'Elite vigente sem oferta',
+        oferta: null,
         assinatura: { plan: 'elite', status: 'active' },
         amenities: [1, 10],
-        recebe: false
-      },
-      {
-        rotulo: 'Elite vigente, só um jogo encerrado marcado',
-        accepts: false,
-        encerradoMarcado: true,
-        assinatura: { plan: 'elite', status: 'active' },
-        amenities: [10],
-        recebe: false
+        tem: false
       },
       {
         rotulo: 'trial vencido',
-        accepts: true,
+        oferta: 'Chopp em dobro',
         assinatura: {
           plan: 'elite',
           status: 'trialing',
           currentPeriodEnd: new Date(now.getTime() - HOUR)
         },
         amenities: [10],
-        recebe: false
+        tem: false
       },
       {
-        rotulo: 'Pro vigente, ligado',
-        accepts: true,
+        rotulo: 'Pro vigente com oferta',
+        oferta: 'Chopp em dobro',
         assinatura: { plan: 'pro', status: 'active' },
         amenities: [10],
-        recebe: false
+        tem: false
       },
       {
         rotulo: 'sem assinatura',
-        accepts: true,
+        oferta: 'Chopp em dobro',
         amenities: [10],
-        recebe: false
+        tem: false
       }
     ]
     const fixtures = casos.map((caso, index) => ({
@@ -261,8 +248,8 @@ integrationTest(
 
     const barIds = fixtures.map((fixture) => fixture.barId)
     const ownerIds = fixtures.map((fixture) => fixture.ownerId)
-    const quemRecebe = fixtures
-      .filter((fixture) => fixture.recebe)
+    const comOferta = fixtures
+      .filter((fixture) => fixture.tem)
       .map((fixture) => fixture.barId)
       .sort()
     const semIdGravado = barIds[0] as string
@@ -290,7 +277,7 @@ integrationTest(
       await db.insert(sport).values({
         id: sportId,
         name: `Esporte ${sportId}`,
-        slug: `reservas-integration-${sportId}`
+        slug: `oferta-integration-${sportId}`
       })
 
       for (const fixture of fixtures) {
@@ -304,6 +291,7 @@ integrationTest(
           latitude: (lat + fixture.offset).toFixed(8),
           longitude: lng.toFixed(8),
           amenities: fixture.amenities,
+          houseOffer: fixture.oferta,
           isActive: true
         })
         if (fixture.assinatura) {
@@ -315,65 +303,35 @@ integrationTest(
           barId: fixture.barId,
           sportId,
           championship: `Jogo ${fixture.barId}`,
-          startsAt: new Date(now.getTime() + 60 * 60_000),
-          acceptsReservations: fixture.accepts
+          startsAt: new Date(now.getTime() + 60 * 60_000)
         })
-        if (fixture.encerradoMarcado) {
-          await db.insert(event).values({
-            barId: fixture.barId,
-            sportId,
-            championship: `Jogo encerrado ${fixture.barId}`,
-            startsAt: new Date(now.getTime() - 6 * HOUR),
-            acceptsReservations: true
-          })
-        }
       }
 
-      // As duas regras, lado a lado, para os mesmos bares.
+      const esperado = Object.fromEntries(
+        fixtures.map((fixture) => [fixture.barId, fixture.tem])
+      )
       const emSql = await db.execute(sql`
-        SELECT b.id, ${recebeReservas(sql`b`)} AS recebe
+        SELECT b.id, ${temOfertaDaCasa(sql`b`)} AS tem
         FROM bar b
         WHERE b.id IN (${sql.join(
           barIds.map((id) => sql`${id}`),
           sql`, `
         )})`)
-      // Como `pubs.getById`: só os jogos ainda na janela do perfil.
-      const emTypeScript = await db.query.bar.findMany({
-        where: inArray(bar.id, barIds),
-        columns: { id: true },
-        with: {
-          subscription: true,
-          events: {
-            columns: { acceptsReservations: true },
-            where: (game, { gte }) =>
-              gte(game.startsAt, new Date(now.getTime() - 3 * HOUR))
-          }
-        }
-      })
-      const esperado = Object.fromEntries(
-        fixtures.map((fixture) => [fixture.barId, fixture.recebe])
-      )
       expect(
-        Object.fromEntries(emSql.rows.map((row) => [row.id, row.recebe]))
-      ).toEqual(esperado)
-      expect(
-        Object.fromEntries(
-          emTypeScript.map((row) => [
-            row.id,
-            barReceivesReservations(row.events, row.subscription ?? null)
-          ])
-        )
+        Object.fromEntries(emSql.rows.map((row) => [row.id, row.tem]))
       ).toEqual(esperado)
 
       const caller = appRouter.createCaller(contextFor(fanId, 'fan', now))
 
-      // No perfil a característica segue o recebimento, não o que está gravado.
-      const noPerfil: Record<string, boolean> = {}
+      // Na página, a oferta segue a mesma regra, e o id 10 nunca aparece
+      // como característica.
+      const naPagina: Record<string, boolean> = {}
       for (const barId of barIds) {
-        const perfil = await caller.pubs.getById({ id: barId })
-        noPerfil[barId] = perfil.amenities.includes(10)
+        const pagina = await caller.pubs.getById({ id: barId })
+        expect(pagina.amenities).not.toContain(10)
+        naPagina[barId] = pagina.houseOffer !== null
       }
-      expect(noPerfil).toEqual(esperado)
+      expect(naPagina).toEqual(esperado)
 
       // Coordenada própria por busca, pelo mesmo motivo do teste acima.
       let passo = 0
@@ -394,18 +352,18 @@ integrationTest(
       }
 
       // Em camadas, depois por avaliação, depois o de emergência.
-      expect(await buscar([10])).toEqual(quemRecebe)
+      expect(await buscar([10])).toEqual(comOferta)
       expect(await buscar(undefined)).toEqual([...barIds].sort())
-      expect(await buscar([10], 'rating')).toEqual(quemRecebe)
+      expect(await buscar([10], 'rating')).toEqual(comOferta)
       expect(await buscar(undefined, 'rating')).toEqual([...barIds].sort())
 
       // Com outra característica continua sendo E: telão por `amenities`,
-      // reserva pelo recebimento. O Elite desligado tem as duas gravadas.
+      // oferta pelo plano. O Elite sem oferta tem as duas gravadas.
       expect(await buscar([1, 10])).toEqual([semIdGravado])
       expect(await buscar([1, 10], 'rating')).toEqual([semIdGravado])
 
       await setAppConfig('search.tiered_plan_query', false, null)
-      expect(await buscar([10])).toEqual(quemRecebe)
+      expect(await buscar([10])).toEqual(comOferta)
       expect(await buscar([1, 10])).toEqual([semIdGravado])
       expect(await buscar(undefined)).toEqual([...barIds].sort())
     } finally {

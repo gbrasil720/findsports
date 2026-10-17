@@ -3,7 +3,7 @@ import { TRPCError } from '@trpc/server'
 
 import type { Context } from '../context'
 import { appRouter } from '../routers/index'
-import { findSearchCity } from './search-city'
+import { findSearchCity, suggestSearchCities } from './search-city'
 
 async function esperarRecusa(work: () => Promise<unknown>) {
   try {
@@ -74,5 +74,30 @@ describe('cidade inexistente não é gravada (WEB-319)', () => {
         city: { name: 'Gotham', uf: 'SP' }
       })
     )
+  })
+})
+
+describe('suggestSearchCities', () => {
+  test('prefixo antes de "contém", sem acento e no máximo 8', async () => {
+    const sugestoes = await suggestSearchCities('sao p')
+    // Ordem alfabética dentro do prefixo, como o web: São Patrício antes.
+    expect(sugestoes.map((cidade) => cidade.name)).toContain('São Paulo')
+    expect(sugestoes.length).toBeLessThanOrEqual(8)
+    for (const cidade of sugestoes) {
+      expect(typeof cidade.lat).toBe('number')
+      expect(typeof cidade.lng).toBe('number')
+    }
+  })
+
+  test('busca no meio do nome quando não há prefixo', async () => {
+    const sugestoes = await suggestSearchCities('paulista')
+    expect(sugestoes.some((cidade) => cidade.name === 'Paulista')).toBe(true)
+    expect(sugestoes.some((cidade) => cidade.name.includes('Paulista'))).toBe(
+      true
+    )
+  })
+
+  test('nada para texto vazio', async () => {
+    expect(await suggestSearchCities('   ')).toEqual([])
   })
 })

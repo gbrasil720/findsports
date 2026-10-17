@@ -1,0 +1,25 @@
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Nativo
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro
+.metro-health-check*
+
+# Pastas nativas geradas pelo `expo prebuild`
+/ios
+/android
+
+# Tipos gerados pelo Uniwind
+uniwind-types.d.ts

@@ -1,0 +1,4 @@
+{
+  "extends": "@findsports_oficial/config/tsconfig.base.json",
+  "include": ["src"]
+}

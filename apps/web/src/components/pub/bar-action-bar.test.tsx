@@ -10,47 +10,23 @@ const base = {
   onWhatsApp: () => {},
   onDirections: () => {},
   onPhone: () => {},
-  reservationsSoldOut: false,
   isOwner: false
 }
 
 describe('BarActions', () => {
-  test('com reserva disponível, "Reservar mesa" é o primário e o WhatsApp continua', () => {
+  test('o título é "Fale com o bar", sem prometer lugar', () => {
     const markup = renderToStaticMarkup(
-      <BarActions {...base} onReserve={() => {}} variant="panel" />
+      <BarActions {...base} variant="panel" />
     )
-    expect(markup).toContain('Reservar mesa')
-    expect(markup).toContain('WhatsApp')
-    expect(markup).not.toContain('Falar com o bar')
-    expect(markup).toContain('Garanta seu lugar')
-  })
-
-  // WEB-353: o título não promete lugar quando não há reserva a fazer.
-  test('sem reserva, o título é "Fale com o bar", inclusive com reservas esgotadas', () => {
-    for (const reservationsSoldOut of [false, true]) {
-      const markup = renderToStaticMarkup(
-        <BarActions
-          {...base}
-          onReserve={null}
-          reservationsSoldOut={reservationsSoldOut}
-          variant="panel"
-        />
-      )
-      expect(markup).toContain('Fale com o bar')
-      expect(markup).not.toContain('Garanta seu lugar')
-    }
+    expect(markup).toContain('Fale com o bar')
+    expect(markup).not.toContain('Garanta seu lugar')
+    expect(markup).not.toContain('Reservar mesa')
   })
 
   // Sem WhatsApp e sem telefone não há como falar: o título descreve a rota.
   test('sem contato, o título é "Como chegar" em vez de "Fale com o bar"', () => {
     const markup = renderToStaticMarkup(
-      <BarActions
-        {...base}
-        whatsappUrl={null}
-        phone={null}
-        onReserve={null}
-        variant="panel"
-      />
+      <BarActions {...base} whatsappUrl={null} phone={null} variant="panel" />
     )
     expect(markup).toContain('<p class="onside-kicker">Como chegar</p>')
     expect(markup).not.toContain('Fale com o bar')
@@ -59,27 +35,24 @@ describe('BarActions', () => {
   test('com WhatsApp ou só telefone, o título segue "Fale com o bar"', () => {
     for (const contact of [{ phone: null }, { whatsappUrl: null }]) {
       const markup = renderToStaticMarkup(
-        <BarActions {...base} {...contact} onReserve={null} variant="panel" />
+        <BarActions {...base} {...contact} variant="panel" />
       )
       expect(markup).toContain('<p class="onside-kicker">Fale com o bar</p>')
     }
   })
 
-  test('sem reserva, volta ao WhatsApp e à rota, sem botão de reserva', () => {
+  test('o WhatsApp é o primário, com a rota ao lado', () => {
     const markup = renderToStaticMarkup(
-      <BarActions {...base} onReserve={null} variant="panel" />
+      <BarActions {...base} variant="panel" />
     )
-    expect(markup).not.toContain('Reservar mesa')
     expect(markup).toContain('Falar com o bar')
     expect(markup).toContain('Rota')
   })
 
   // WEB-370: três botões com texto não cabem na barra do celular.
-  test('na barra, dois secundários ou mais ficam só com ícone e o esgotado usa o texto curto', () => {
+  test('na barra, dois secundários ou mais ficam só com ícone', () => {
     const bar = (props: object) =>
-      renderToStaticMarkup(
-        <BarActions {...base} onReserve={null} {...props} variant="bar" />
-      )
+      renderToStaticMarkup(<BarActions {...base} {...props} variant="bar" />)
     const three = bar({})
     expect(three).toContain('<span>Falar com o bar</span>')
     expect(three).toContain('<span class="sr-only">Rota</span>')
@@ -88,25 +61,5 @@ describe('BarActions', () => {
     expect(bar({ whatsappUrl: null })).toContain(
       '<span class="ml-2">Ligar</span>'
     )
-    const soldOut = bar({ reservationsSoldOut: true })
-    expect(soldOut).toContain('Esgotado')
-    expect(soldOut).not.toContain('Reservas esgotadas para este jogo')
-  })
-
-  test('esgotado toma o lugar de "Reservar mesa", sem clique, e os contatos continuam', () => {
-    const markup = renderToStaticMarkup(
-      <BarActions
-        {...base}
-        onReserve={null}
-        reservationsSoldOut
-        variant="panel"
-      />
-    )
-    expect(markup).not.toContain('Reservar mesa')
-    expect(markup).toMatch(
-      /<button[^>]*disabled[^>]*>.*Reservas esgotadas para este jogo/
-    )
-    expect(markup).toContain('WhatsApp')
-    expect(markup).toContain('Rota')
   })
 })
