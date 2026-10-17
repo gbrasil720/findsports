@@ -120,7 +120,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
         label: 'Vou assistir aqui',
         href: { pathname: '/vou/[barId]', params: { barId: BAR_DO_ZE } }
       },
-      { code: '3e', label: 'Meus jogos', href: '/meus-jogos' }
+      { code: '3e', label: 'Meus jogos', href: '/voce/meus-jogos' }
     ]
   }
 ]

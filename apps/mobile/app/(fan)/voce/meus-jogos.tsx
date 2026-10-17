@@ -23,9 +23,9 @@ import {
 import { Glass } from '@/components/glass'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
-  BackButton,
   Icon,
   INK,
   PAPER,
@@ -55,6 +55,7 @@ import { trpc } from '@/lib/trpc'
 export default function MyGames() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
   const palette = usePalette()
   const soon = useSoon()
   useStatusBar('auto')
@@ -104,7 +105,7 @@ export default function MyGames() {
         ref={scroll}
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 }
         ]}
         refreshControl={
           <RefreshControl
@@ -118,9 +119,12 @@ export default function MyGames() {
           />
         }
       >
-        {/* No design não há voltar: Meus jogos fica dentro das abas (WEB-407). */}
+        {/* Dentro da aba "Você", sem voltar: o título divide a linha com a
+            agenda, como no design. */}
         <View style={styles.top}>
-          <BackButton />
+          <View style={{ flex: 1 }}>
+            <Title lines={[['Meus jogos']]} size={40} color={palette.ink} />
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Pôr na agenda do celular"
@@ -142,7 +146,6 @@ export default function MyGames() {
             </Glass>
           </Pressable>
         </View>
-        <Title lines={[['Meus jogos']]} size={40} color={palette.ink} />
 
         {mine.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
@@ -563,7 +566,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10
+    gap: 12,
+    marginBottom: 4
   },
   round: {
     width: 44,

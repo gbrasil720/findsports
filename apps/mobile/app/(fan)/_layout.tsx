@@ -70,7 +70,8 @@ export default function FanTabs() {
       icon: 'ticket',
       label: 'Meus jogos',
       soon: 'Meus jogos chega em breve',
-      open: () => router.push('/meus-jogos')
+      // Na pilha da própria aba: a barra fica e o menu some sozinho.
+      open: () => router.push('/voce/meus-jogos')
     },
     {
       key: 'ranking',
@@ -85,7 +86,10 @@ export default function FanTabs() {
       soon: 'As avaliações chegam em breve',
       // ponytail: sem a lista de avaliações (10), o item abre a mais recente.
       open: pending.data?.[0]
-        ? () => router.push(`/pos-jogo/${pending.data[0]?.eventId}`)
+        ? () => {
+            closeMenu()
+            router.push(`/pos-jogo/${pending.data[0]?.eventId}`)
+          }
         : undefined,
       meta: pending.data?.length
         ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
@@ -132,7 +136,8 @@ export default function FanTabs() {
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="voce"
-            // Tocar de novo com o menu aberto fecha.
+            // Tocar de novo com o menu aberto fecha; numa tela da pilha da
+            // aba, o sistema volta ao começo dela, que é o menu.
             listeners={{ tabPress: () => menuOpen && closeMenu() }}
           >
             <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
@@ -163,7 +168,6 @@ export default function FanTabs() {
             onClose={closeMenu}
             onItem={(item) => {
               if (!item.open) return soon.show(item.soon)
-              closeMenu()
               item.open()
             }}
             onChat={() => soon.show('A conversa com a Onside chega em breve')}
