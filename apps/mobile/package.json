@@ -21,6 +21,7 @@
     "@trpc/tanstack-react-query": "^11.16.0",
     "better-auth": "catalog:",
     "expo": "~57.0.20",
+    "expo-asset": "~57.0.19",
     "expo-brightness": "~57.0.2",
     "expo-calendar": "~57.0.5",
     "expo-constants": "~57.0.17",
@@ -55,6 +56,8 @@
   "devDependencies": {
     "@findsports_oficial/config": "workspace:*",
     "@types/react": "catalog:",
+    "@types/three": "0.184.0",
+    "three": "0.184.0",
     "babel-preset-expo": "~57.0.10",
     "typescript": "catalog:"
   }
