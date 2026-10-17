@@ -665,14 +665,34 @@ export function BackButton({
       onPress={onPress ?? (() => router.back())}
       style={{ alignSelf: 'flex-start' }}
     >
-      {/* Vidro só aparece com algo atrás; sobre o papel liso, a base branca
-          e a sombra do design (0 12px 30px -10px) fazem o círculo. */}
-      <View style={forced !== 'dark' && styles.roundBase}>
-        <Glass tone={tone} interactive style={styles.round}>
-          <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
-        </Glass>
-      </View>
+      <GlassRound tone={forced}>
+        <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
+      </GlassRound>
     </Pressable>
+  )
+}
+
+/**
+ * O botão redondo de vidro do design (40 pt). Vidro só aparece com algo
+ * atrás; sobre o papel liso, a base e a sombra do design (0 12px 30px -10px)
+ * fazem o círculo. Sem tom, segue o tema do sistema; `dark` é o de sobre
+ * foto ou fundo escuro, que dispensa a base.
+ */
+export function GlassRound({
+  tone: forced,
+  children
+}: {
+  tone?: 'light' | 'dark'
+  children: ReactNode
+}) {
+  const scheme = useColorScheme()
+  const tone = forced ?? (scheme === 'dark' ? 'dark' : 'light')
+  return (
+    <View style={forced !== 'dark' && styles.roundBase}>
+      <Glass tone={tone} interactive style={styles.round}>
+        {children}
+      </Glass>
+    </View>
   )
 }
 
@@ -1107,8 +1127,11 @@ export function authErrorMessage(
 
 const styles = StyleSheet.create({
   // No escuro a base branca deixava o vidro leitoso, mais claro que o topo.
+  // A borda fina e clara do vidro do design (inset 0 0 0 .5px).
   roundBase: {
     borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: themed('rgba(255,255,255,.75)', 'rgba(255,255,255,.28)'),
     backgroundColor: themed('rgba(255,255,255,.55)', 'rgba(241,238,230,.1)'),
     shadowColor: themed(INK, '#000'),
     shadowOpacity: 0.18,
