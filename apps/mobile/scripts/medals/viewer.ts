@@ -109,30 +109,43 @@ const fonts = Promise.all([
 
 window.setMedal = (next) => {
   fonts.then(() => {
+    const swap = medal !== null
     build(next)
     drawn = ''
+    // Outra medalha da série entra girando um quarto de volta e assenta
+    // com a mesma inércia do arraste: a troca seca parece defeito.
+    if (swap && !next.reduced) {
+      state.yaw += Math.PI / 2
+      state.velocity = (-Math.PI / 2) * (1 - 0.94)
+    }
   })
 }
 
 // Arraste: o mesmo do design (0,012 rad por ponto, inércia de 0,94).
 let px = 0
 let py = 0
+let pt = 0
 canvas.addEventListener('pointerdown', (e) => {
   if (config?.mode !== 'drag') return
   state.dragging = true
   state.velocity = 0
   px = e.clientX
   py = e.clientY
+  pt = e.timeStamp
   canvas.setPointerCapture(e.pointerId)
 })
 canvas.addEventListener('pointermove', (e) => {
   if (!state.dragging) return
   const dx = e.clientX - px
   const dy = e.clientY - py
+  // Velocidade no tempo, em "por quadro a 60 Hz" como a inércia: a taxa de
+  // eventos do toque varia, e a medalha tem que seguir no ritmo do dedo.
+  const ms = Math.max(1, e.timeStamp - pt)
   px = e.clientX
   py = e.clientY
+  pt = e.timeStamp
   state.yaw += dx * 0.012
-  state.velocity = dx * 0.012
+  state.velocity = dx * 0.012 * (1000 / 60 / ms)
   state.pitch = Math.max(-0.6, Math.min(0.6, state.pitch + dy * 0.008))
 })
 const release = () => {
@@ -151,8 +164,11 @@ const loop = (now: number) => {
     const still = config.reduced
     if (!state.dragging) {
       if (config.mode === 'spin' && !still) state.yaw += dt * 0.7
-      state.yaw += state.velocity
-      state.velocity *= 0.94
+      // A inércia do design (0,94 por quadro a 60 Hz) contada no tempo: a
+      // 120 Hz ela pararia na metade.
+      const frames = dt * 60
+      state.yaw += state.velocity * frames
+      state.velocity *= 0.94 ** frames
       if (Math.abs(state.velocity) < 0.0005) state.velocity = 0
     }
     const sway =

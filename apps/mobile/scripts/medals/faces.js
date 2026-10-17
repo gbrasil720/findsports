@@ -96,6 +96,21 @@ export function drawFront(ctx, s, locked, mask) {
   }
 }
 
+// Nome de bar vai a 100 caracteres: a linha encolhe até caber na placa e,
+// no tamanho mínimo, termina em reticências.
+function fitText(ctx, text, x, y, size, min, width) {
+  let px = size
+  ctx.font = `600 ${px}px "Geist Mono"`
+  while (px > min && ctx.measureText(text).width > width) {
+    px -= 1
+    ctx.font = `600 ${px}px "Geist Mono"`
+  }
+  let line = text
+  while (line.length > 1 && ctx.measureText(line).width > width)
+    line = `${line.slice(0, -2).trimEnd()}…`
+  ctx.fillText(line, x, y)
+}
+
 // O verso gravado: o nome, a data em que saiu e onde. Na bloqueada (ou na
 // miniatura, que não tem data), "EM PROGRESSO".
 export function drawBack(ctx, s, locked, bump) {
@@ -126,8 +141,7 @@ export function drawBack(ctx, s, locked, bump) {
   ctx.fillText(s.name.toUpperCase(), c, 520)
   ctx.font = '600 40px "Geist Mono"'
   ctx.fillText((!locked && s.date) || 'EM PROGRESSO', c, 600)
-  ctx.font = '600 34px "Geist Mono"'
-  ctx.fillText((!locked && s.where?.toUpperCase()) || '', c, 660)
+  fitText(ctx, (!locked && s.where?.toUpperCase()) || '', c, 660, 34, 20, 640)
   ctx.font = '54px Anton'
   arcText(ctx, 'ONSIDE · CONQUISTA', c, c, 392, true, 10)
 }
