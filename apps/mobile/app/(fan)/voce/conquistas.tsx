@@ -14,15 +14,13 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
+import { Card, FilterChip } from '@/components/card'
 import { MedalImage, useMedalPalette } from '@/components/medal'
-import { haptic, SWAP, usePressScale } from '@/components/motion'
+import { SWAP, usePressScale } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
-  ACID,
   GlassRound,
   Icon,
-  INK,
   PillButton,
   Title,
   text,
@@ -114,14 +112,16 @@ export default function Shelf() {
               style={styles.chipsScroll}
               contentContainerStyle={styles.chips}
             >
-              <Filter
+              <FilterChip
+                palette={P}
                 label={`Todas · ${list.length}`}
                 on={group === null}
                 onPress={() => setGroup(null)}
               />
               {GROUPS.map((g) => (
-                <Filter
+                <FilterChip
                   key={g.key}
+                  palette={P}
                   label={g.label}
                   on={group === g.key}
                   onPress={() => setGroup(g.key)}
@@ -212,44 +212,6 @@ function Bar({
         }}
       />
     </View>
-  )
-}
-
-function Filter({
-  label,
-  on,
-  onPress
-}: {
-  label: string
-  on: boolean
-  onPress: () => void
-}) {
-  const P = useMedalPalette()
-  const press = usePressScale()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
-      onPress={() => {
-        if (on) return
-        haptic.select()
-        onPress()
-      }}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      <Animated.View
-        style={[
-          styles.chip,
-          on ? styles.chipOn : { borderWidth: 1, borderColor: P.edge },
-          press.style
-        ]}
-      >
-        <Text style={[text(13, 'SemiBold', 1.2), { color: on ? INK : P.ink }]}>
-          {label}
-        </Text>
-      </Animated.View>
-    </Pressable>
   )
 }
 
@@ -345,13 +307,6 @@ const styles = StyleSheet.create({
   bar: { overflow: 'hidden' },
   chipsScroll: { marginHorizontal: -16, flexGrow: 0 },
   chips: { gap: 6, paddingHorizontal: 16 },
-  chip: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    justifyContent: 'center'
-  },
-  chipOn: { backgroundColor: ACID },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: {
     alignItems: 'center',

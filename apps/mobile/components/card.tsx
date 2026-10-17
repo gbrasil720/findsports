@@ -1,13 +1,68 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import type { Palette } from '@/components/explore'
+import { haptic, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*
  * Peças da página do bar que as telas de "Vou assistir" (08) também usam:
  * o cartão com sombra dura e a oferta da casa com o canhoto acid.
  */
+
+/**
+ * Chip de filtro sobre o papel (estante de conquistas, ordem dos favoritos):
+ * ligado em acid, desligado só com o contorno. Os do mapa são de vidro
+ * (`Chip`, em `explore.tsx`).
+ */
+export function FilterChip({
+  label,
+  on,
+  onPress,
+  palette
+}: {
+  label: string
+  on: boolean
+  onPress: () => void
+  palette: Palette
+}) {
+  const press = usePressScale()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      onPress={() => {
+        if (on) return
+        haptic.select()
+        onPress()
+      }}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View
+        style={[
+          styles.chip,
+          on
+            ? { backgroundColor: ACID }
+            : {
+                borderWidth: 1,
+                borderColor: palette.dark
+                  ? 'rgba(241,238,230,.10)'
+                  : 'rgba(18,18,15,.12)'
+              },
+          press.style
+        ]}
+      >
+        <Text
+          style={[text(13, 'SemiBold', 1.2), { color: on ? INK : palette.ink }]}
+        >
+          {label}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
 
 /** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
 export function Card({
@@ -134,6 +189,12 @@ export function OfferCard({
 }
 
 const styles = StyleSheet.create({
+  chip: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    justifyContent: 'center'
+  },
   card: { borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
   soft: {
     borderRadius: 6,
