@@ -74,14 +74,17 @@ export function YouMenu({
   onChat: () => void
   onSettings: () => void
 }) {
-  const bottom = useTabBarSpace() + 10
+  const bar = useTabBarSpace()
+  const bottom = bar + 10
   const tone = palette.dark ? 'dark' : 'light'
   return (
     <>
+      {/* O escurecido para acima da barra: tocar numa aba com o menu aberto
+          vai para a aba, não só fecha o menu. */}
       <Animated.View
         entering={DIM_IN}
         exiting={DIM_OUT}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { bottom: bar }]}
       >
         <Pressable
           accessibilityLabel="Fechar menu"
