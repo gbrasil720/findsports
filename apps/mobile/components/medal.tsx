@@ -165,7 +165,9 @@ export function Medal3D({
           style={{
             flex: 1,
             opacity: ready ? 1 : 0,
-            transitionProperty: 'opacity',
+            // Fade puro numa peça grande pisca; a escala dá corpo à entrada.
+            transform: [{ scale: ready || reduced ? 1 : 0.96 }],
+            transitionProperty: ['opacity', 'transform'],
             transitionDuration: 200,
             transitionTimingFunction: EASE_OUT
           }}

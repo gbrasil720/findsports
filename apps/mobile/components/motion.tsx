@@ -52,7 +52,10 @@ export const haptic = {
  * Estalo: nasce em `from` (nunca em zero: nada aparece do nada) e assenta
  * numa mola curta, com um pouco de passo além.
  */
-const popFrom = (from: number, delay = 0): EntryExitAnimationFunction => {
+export const popFrom = (
+  from: number,
+  delay = 0
+): EntryExitAnimationFunction => {
   return () => {
     'worklet'
     return {
