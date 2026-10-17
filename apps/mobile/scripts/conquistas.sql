@@ -11,15 +11,15 @@ begin;
 delete from bar where id like 'c0c0c0c0-%';
 delete from "user" where id like 'cq-%';
 
-create temp table cq (n int, name text, neighborhood text, sport text, at timestamp) on commit drop;
+create temp table cq (n int, name text, neighborhood text, sport text, at timestamp, game text) on commit drop;
 insert into cq values
- (1, 'Bar da Esquina', 'Vila Madalena', 'Futebol', '2026-09-12 22:00'),
- (2, 'Copo Sujo', 'Consolação', 'Futebol', '2026-09-14 22:00'),
- (3, 'Bar do Largo', 'Pinheiros', 'Futebol', '2026-09-21 22:00'),
- (4, 'Casa 92', 'Pinheiros', 'Basquete', '2026-09-28 23:30'),
- (5, 'Boteco Sete', 'Vila Madalena', 'Futebol', '2026-10-04 22:00'),
- (6, 'Rede Alta', 'Moema', 'Vôlei', '2026-10-09 22:00'),
- (7, 'Aspicuelta 40', 'Vila Madalena', 'Futebol', '2026-10-14 22:00');
+ (1, 'Bar da Esquina', 'Vila Madalena', 'Futebol', '2026-09-12 22:00', 'Corinthians × Santos'),
+ (2, 'Copo Sujo', 'Consolação', 'Futebol', '2026-09-14 22:00', 'Palmeiras × São Paulo'),
+ (3, 'Bar do Largo', 'Pinheiros', 'Futebol', '2026-09-21 22:00', 'Flamengo × Vasco'),
+ (4, 'Casa 92', 'Pinheiros', 'Basquete', '2026-09-28 23:30', 'Lakers × Warriors'),
+ (5, 'Boteco Sete', 'Vila Madalena', 'Futebol', '2026-10-04 22:00', 'Grêmio × Internacional'),
+ (6, 'Rede Alta', 'Moema', 'Vôlei', '2026-10-09 22:00', 'Brasil × Itália'),
+ (7, 'Aspicuelta 40', 'Vila Madalena', 'Futebol', '2026-10-14 22:00', 'Corinthians × Palmeiras');
 
 insert into "user" (id, name, email, email_verified, role, onboarding_completed)
 select 'cq-dono-' || n, 'Dono ' || n, 'cq-dono-' || n || '@onside.local', true, 'pub', true from cq;
@@ -30,9 +30,9 @@ select 'c0c0c0c0-0000-4000-8000-00000000000' || n, 'cq-dono-' || n, name, '', ''
   'Rua de teste, ' || n, neighborhood, 'São Paulo', 'SP', -23.56 - n * 0.002, -46.68, true, 'elite'
 from cq;
 
-insert into event (id, bar_id, sport_id, championship, starts_at)
+insert into event (id, bar_id, sport_id, championship, starts_at, participant_free_text)
 select 'c0c0c0c0-0000-4000-8000-00000000010' || n, 'c0c0c0c0-0000-4000-8000-00000000000' || n,
-  (select id from sport s where s.name = cq.sport), 'Teste', at
+  (select id from sport s where s.name = cq.sport), 'Teste', at, game
 from cq;
 
 insert into reservation (id, event_id, user_id, party_size, status, created_at)
