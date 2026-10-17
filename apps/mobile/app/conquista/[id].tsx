@@ -1,0 +1,479 @@
+import { useQuery } from '@tanstack/react-query'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native'
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { Card } from '@/components/card'
+import { PALETTE } from '@/components/explore'
+import { Glass } from '@/components/glass'
+import { Medal3D, MedalImage } from '@/components/medal'
+import { EASE, haptic, usePressScale } from '@/components/motion'
+import {
+  ACID,
+  BackButton,
+  GlassRound,
+  Icon,
+  LIVE,
+  PAPER,
+  PillButton,
+  Title,
+  text,
+  useStatusBar
+} from '@/components/ui'
+import {
+  type Achievement,
+  describe,
+  fullDate,
+  nextInSeries,
+  progressLabel,
+  progressShare,
+  series,
+  seriesLabel,
+  unit,
+  unlockedLine
+} from '@/lib/achievements'
+import { trpc } from '@/lib/trpc'
+
+/*
+ * Uma medalha (09 do design). Abre de dois jeitos:
+ * - da estante, o detalhe (2j): a medalha em 3D que gira com o dedo, o que
+ *   ela pede, quando e onde saiu, e as outras da mesma série;
+ * - logo depois de ganhar (`?nova=1`), a conquista desbloqueada (2k): a
+ *   medalha girando sozinha, o que a liberou e a próxima da série. "Ver
+ *   medalha" troca para o detalhe na mesma tela.
+ */
+
+const P = PALETTE.dark
+const BODY = '#d6d3cb'
+
+export default function Medal() {
+  const params = useLocalSearchParams<{ id: string; nova?: string }>()
+  const insets = useSafeAreaInsets()
+  useStatusBar('light')
+  const mine = useQuery(trpc.achievements.mine.queryOptions())
+  const list = mine.data?.achievements ?? []
+  const [id, setId] = useState(params.id)
+  const [fresh, setFresh] = useState(params.nova === '1')
+  const medal = list.find((a) => a.id === id)
+
+  if (!medal) {
+    return (
+      <View style={[styles.screen, styles.center]}>
+        {mine.isPending ? (
+          <ActivityIndicator color={P.ink} />
+        ) : (
+          <>
+            <Text style={[text(15, 'SemiBold'), { color: P.ink }]}>
+              Medalha não encontrada.
+            </Text>
+            <BackButton tone="dark" icon="close" />
+          </>
+        )}
+      </View>
+    )
+  }
+
+  const share = () =>
+    Share.share({
+      message: medal.unlockedAt
+        ? `Ganhei a medalha ${medal.name} na Onside. ${describe(medal)} https://onside.sh`
+        : `Estou atrás da medalha ${medal.name} na Onside: ${progressLabel(medal)}. https://onside.sh`
+    })
+
+  return (
+    <View style={styles.screen}>
+      <Glow strength={fresh ? 0.18 : 0.13} rx={fresh ? '60%' : '70%'} />
+      {fresh ? (
+        <Unlocked
+          medal={medal}
+          list={list}
+          insets={insets}
+          share={share}
+          onSee={() => setFresh(false)}
+        />
+      ) : (
+        <Detail
+          medal={medal}
+          list={list}
+          insets={insets}
+          share={share}
+          onPick={setId}
+        />
+      )}
+    </View>
+  )
+}
+
+/** O que a medalha 3D grava no verso: a data e o lugar em que saiu. */
+const engraving = (a: Achievement) => ({
+  id: a.id,
+  name: a.name,
+  locked: !a.unlockedAt,
+  date: a.unlockedAt ? fullDate(a.unlockedAt) : undefined,
+  where: a.where ?? undefined
+})
+
+/** O brilho acid atrás da medalha (radial-gradient do design). */
+function Glow({ strength, rx }: { strength: number; rx: string }) {
+  return (
+    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="glow" cx="50%" cy="32%" rx={rx} ry="45%">
+          <Stop offset="0" stopColor={ACID} stopOpacity={strength} />
+          <Stop offset="0.7" stopColor={P.bg} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#glow)" />
+    </Svg>
+  )
+}
+
+type ScreenProps = {
+  medal: Achievement
+  list: Achievement[]
+  insets: { top: number; bottom: number }
+  share: () => void
+}
+
+function Detail({
+  medal,
+  list,
+  insets,
+  share,
+  onPick
+}: ScreenProps & { onPick: (id: string) => void }) {
+  const router = useRouter()
+  const next = nextInSeries(list, medal)
+  const done = Boolean(medal.unlockedAt)
+  const stats: [string, string][] = done
+    ? [
+        ['Conquistada', fullDate(medal.unlockedAt as string)],
+        ['Onde', medal.where ?? ''],
+        ['Têm essa', `${medal.share}% dos torcedores`]
+      ]
+    : [
+        ['Progresso', progressLabel(medal)],
+        [
+          'Faltam',
+          unit(
+            medal.group,
+            medal.target - Math.min(medal.progress, medal.target)
+          )
+        ],
+        ['Têm essa', `${medal.share}% dos torcedores`]
+      ]
+
+  return (
+    <>
+      <View style={[styles.top, { paddingTop: insets.top + 4 }]}>
+        <BackButton tone="dark" icon="close" />
+        <Text style={[text(13), { color: P.muted }]}>
+          {seriesLabel(list, medal)}
+        </Text>
+        <ShareButton onPress={share} />
+      </View>
+
+      <Medal3D medal={engraving(medal)} drag style={styles.big} />
+      <View style={styles.hint}>
+        <Icon name="back" size={12} color={P.muted} />
+        <Text style={[text(12), { color: P.muted }]}>Arraste para girar</Text>
+        <View style={{ transform: [{ scaleX: -1 }] }}>
+          <Icon name="back" size={12} color={P.muted} />
+        </View>
+      </View>
+
+      <View style={styles.copy}>
+        <Title lines={[[medal.name]]} size={48} color={P.ink} />
+        <Text style={[text(15, 'Regular', 1.45), styles.lead]}>
+          {describe(medal)}
+        </Text>
+        <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
+          <Card palette={P} shadow="rgba(0,0,0,.6)">
+            <View style={styles.stats}>
+              {stats.map(([label, value], i) => (
+                <View
+                  key={label}
+                  style={[styles.stat, i > 0 && styles.statLine]}
+                >
+                  <Text style={[text(11), { color: P.muted }]}>{label}</Text>
+                  <Text
+                    style={[text(13, 'Bold'), styles.statValue]}
+                    numberOfLines={2}
+                  >
+                    {value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+        </View>
+        <View style={styles.series}>
+          {series(list, medal.group).map((a) => (
+            <Pressable
+              key={a.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: a.id === medal.id }}
+              accessibilityLabel={a.name}
+              onPress={() => {
+                if (a.id === medal.id) return
+                haptic.select()
+                onPick(a.id)
+              }}
+              style={[styles.pick, a.id === medal.id && styles.pickOn]}
+            >
+              <MedalImage id={a.id} locked={!a.unlockedAt} size={52} />
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View
+        style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
+      >
+        <GlassPill label="Compartilhar" onPress={share} />
+        <View style={{ flex: 1.2 }}>
+          <PillButton
+            label={
+              next ? `Próxima: ${unit(next.group, next.target)}` : 'Ver todas'
+            }
+            height={52}
+            edge="#000"
+            onPress={() => {
+              if (!next) return router.back()
+              haptic.select()
+              onPick(next.id)
+            }}
+          />
+        </View>
+      </View>
+    </>
+  )
+}
+
+// Os quadradinhos de confete do design (2k), parados no lugar dele. Entram
+// em sequência curta; o resto do movimento é a medalha girando.
+const CONFETTI: [number, number, number, string, number][] = [
+  [40, 130, 10, ACID, 20],
+  [330, 110, 12, LIVE, -15],
+  [60, 330, 8, PAPER, 35],
+  [336, 300, 9, ACID, 10],
+  [200, 100, 7, PAPER, 45],
+  [24, 230, 9, LIVE, -20],
+  [352, 200, 7, PAPER, 30],
+  [110, 190, 6, ACID, 60],
+  [296, 380, 8, LIVE, 15],
+  [150, 150, 6, LIVE, -30]
+]
+const CONFETTI_IN = CONFETTI.map((_, i) =>
+  ZoomIn.delay(120 + i * 40)
+    .duration(260)
+    .easing(EASE)
+    .withInitialValues({ transform: [{ scale: 0.6 }] })
+)
+const LINE_IN = FadeIn.delay(200).duration(260)
+
+function Unlocked({
+  medal,
+  list,
+  insets,
+  share,
+  onSee
+}: ScreenProps & { onSee: () => void }) {
+  const next = nextInSeries(list, medal)
+  useEffect(() => {
+    haptic.success()
+  }, [])
+  return (
+    <>
+      {CONFETTI.map(([x, y, size, color, rotate], i) => (
+        <Animated.View
+          key={`${x}-${y}`}
+          entering={CONFETTI_IN[i]}
+          style={[
+            styles.confetti,
+            {
+              left: `${(x / 390) * 100}%`,
+              top: insets.top - 47 + y
+            }
+          ]}
+        >
+          {/* O giro fica por dentro: a entrada anima a escala do de fora. */}
+          <View
+            style={{
+              width: size,
+              height: size,
+              borderRadius: 1.5,
+              backgroundColor: color,
+              transform: [{ rotate: `${rotate}deg` }]
+            }}
+          />
+        </Animated.View>
+      ))}
+      {/* Sem fechar, como no design: a saída é "Ver medalha", no detalhe. */}
+      <Medal3D
+        medal={engraving(medal)}
+        style={[styles.spin, { marginTop: insets.top + 49 }]}
+      />
+      <Animated.View
+        entering={LINE_IN}
+        style={[styles.copy, { marginTop: 18 }]}
+      >
+        <Text style={[text(14, 'Bold'), { color: ACID }]}>
+          Conquista desbloqueada
+        </Text>
+        <Title lines={[[medal.name]]} size={52} color={P.ink} />
+        <Text style={[text(16, 'Regular', 1.45), styles.lead]}>
+          {unlockedLine(medal)}
+        </Text>
+        {next ? (
+          <View style={styles.progress}>
+            <View style={styles.progressRow}>
+              <Text style={[text(12.5), { color: P.muted }]}>
+                Próxima: {next.name}
+              </Text>
+              <Text style={styles.mono}>{progressLabel(next)}</Text>
+            </View>
+            <View style={styles.bar}>
+              <View
+                style={{
+                  width: `${Math.round(progressShare(next) * 100)}%`,
+                  height: '100%',
+                  backgroundColor: ACID
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
+      </Animated.View>
+      <View
+        style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
+      >
+        <GlassPill label="Compartilhar" onPress={share} />
+        <View style={{ flex: 1.2 }}>
+          <PillButton
+            label="Ver medalha"
+            height={52}
+            edge="#000"
+            onPress={onSee}
+          />
+        </View>
+      </View>
+    </>
+  )
+}
+
+function ShareButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Compartilhar"
+      hitSlop={8}
+      onPress={onPress}
+    >
+      <GlassRound tone="dark">
+        <Icon name="share" size={18} color={P.ink} />
+      </GlassRound>
+    </Pressable>
+  )
+}
+
+/** "Compartilhar" em vidro, ao lado do botão acid do rodapé. */
+function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
+  const press = usePressScale()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={{ flex: 1 }}
+    >
+      <Animated.View style={press.style}>
+        <Glass tone="dark" interactive style={styles.glassPill}>
+          <Icon name="share" size={17} color={P.ink} />
+          <Text style={[text(15, 'Bold'), { color: P.ink }]}>{label}</Text>
+        </Glass>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: P.bg },
+  center: { alignItems: 'center', justifyContent: 'center', gap: 16 },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16
+  },
+  big: { height: 330, marginHorizontal: 20, marginTop: 4 },
+  spin: { width: 250, height: 280, alignSelf: 'center' },
+  hint: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8
+  },
+  copy: {
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    marginTop: 12
+  },
+  lead: { color: BODY, textAlign: 'center', maxWidth: 320 },
+  stats: { flexDirection: 'row' },
+  stat: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center'
+  },
+  statLine: { borderLeftWidth: 1, borderLeftColor: 'rgba(241,238,230,.08)' },
+  statValue: { color: P.ink, textAlign: 'center' },
+  series: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
+  pick: { padding: 4, borderRadius: 6 },
+  pickOn: {
+    backgroundColor: 'rgba(201,241,53,.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(201,241,53,.5)',
+    padding: 3
+  },
+  foot: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 10
+  },
+  glassPill: {
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  confetti: { position: 'absolute' },
+  progress: { width: '100%', maxWidth: 300, marginTop: 12 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5, color: P.muted },
+  bar: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2c2c27',
+    marginTop: 7,
+    overflow: 'hidden'
+  }
+})

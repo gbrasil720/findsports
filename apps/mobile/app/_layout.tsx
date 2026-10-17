@@ -100,6 +100,11 @@ export default function Layout() {
               name="pos-jogo/[eventId]"
               options={{ presentation: 'fullScreenModal' }}
             />
+            {/* A medalha (2j, 2k), no escuro como a estante. */}
+            <Stack.Screen
+              name="conquista/[id]"
+              options={{ presentation: 'fullScreenModal' }}
+            />
           </Stack>
         </SplashDone>
         <DevTab />
