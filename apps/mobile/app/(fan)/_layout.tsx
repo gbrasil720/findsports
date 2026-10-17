@@ -17,7 +17,7 @@ import { trpc } from '@/lib/trpc'
  * Favoritos; o dono trocou (16/10/2026), e o Ranking foi para o menu. É a barra nativa do iOS 26
  * (UITabBarController, pelo `NativeTabs`): o vidro distorce o que passa por
  * baixo e o destaque da aba se arrasta de uma para outra, como no sistema.
- * Favoritos e IA ainda não existem (avisam "em breve"); "Você" mostra o
+ * A IA ainda não existe (avisa "em breve"); "Você" mostra o
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
@@ -26,15 +26,17 @@ import { trpc } from '@/lib/trpc'
 // embaixo, então o nome vai dentro da imagem e o rótulo nativo fica oculto.
 // O nome sai em 12,5 (o design usa 14): a lente de vidro da seleção desenha
 // por dentro a versão selecionada de todas as abas, e uma imagem mais larga
-// que a aba aparece na lente da vizinha. Favoritos, desligada, fica sem nome;
-// quando ligar, a imagem dela precisa caber em uns 70 pt.
+// que a aba aparece na lente da vizinha (o "Favoritos" ficou com 80 pt).
 const TAB_ICONS = {
   light: {
     map: {
       default: require('../../assets/images/tabs/map-light.png'),
       selected: require('../../assets/images/tabs/map-light-on.png')
     },
-    fan: require('../../assets/images/tabs/fan-light.png'),
+    fan: {
+      default: require('../../assets/images/tabs/fan-light.png'),
+      selected: require('../../assets/images/tabs/fan-light-on.png')
+    },
     you: {
       default: require('../../assets/images/tabs/you-light.png'),
       selected: require('../../assets/images/tabs/you-light-on.png')
@@ -46,7 +48,10 @@ const TAB_ICONS = {
       default: require('../../assets/images/tabs/map-dark.png'),
       selected: require('../../assets/images/tabs/map-dark-on.png')
     },
-    fan: require('../../assets/images/tabs/fan-dark.png'),
+    fan: {
+      default: require('../../assets/images/tabs/fan-dark.png'),
+      selected: require('../../assets/images/tabs/fan-dark-on.png')
+    },
     you: {
       default: require('../../assets/images/tabs/you-dark.png'),
       selected: require('../../assets/images/tabs/you-dark-on.png')
@@ -153,13 +158,7 @@ export default function FanTabs() {
             <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
             <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="favoritos"
-            disabled
-            listeners={{
-              tabPress: () => soon.show('A lista de favoritos chega em breve')
-            }}
-          >
+          <NativeTabs.Trigger name="favoritos">
             <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
             <NativeTabs.Trigger.Label hidden>
               Favoritos
