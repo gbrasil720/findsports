@@ -349,7 +349,10 @@ export function Photo({
     return (
       <Image
         source={{ uri }}
-        style={style as never}
+        // O quadro do design enquanto a foto carrega (ou se ela não vem).
+        style={
+          [style, { backgroundColor: big ? '#2a2a25' : palette.mark }] as never
+        }
         onError={() => setFailed(true)}
       />
     )
@@ -454,15 +457,37 @@ export function MatchRow({
 }
 
 /** O picote entre o jogo e o bar, com os dois recortes na cor da folha. */
-export function Perforation({ palette }: { palette: Palette }) {
+export function Perforation({
+  palette,
+  shadow,
+  inset = 14,
+  radius = 9
+}: {
+  palette: Palette
+  /**
+   * A sombra dura do ingresso. Nos ingressos recortados do design (Meus
+   * jogos, código no balcão) a sombra tem o mesmo furo, deslocado: no furo
+   * da direita aparece um crescente dela.
+   */
+  shadow?: { color: string; offset: number }
+  /** Distância do tracejado até a borda. */
+  inset?: number
+  /** Raio do furo. */
+  radius?: number
+}) {
+  const size = radius * 2
+  const notch = {
+    width: size,
+    height: size,
+    borderRadius: radius,
+    backgroundColor: palette.sheet
+  }
   return (
-    <View style={styles.perforation}>
-      <View
-        style={[styles.notch, { left: -9, backgroundColor: palette.sheet }]}
-      />
+    <View style={[styles.perforation, { height: size }]}>
+      <View style={[styles.notch, notch, { left: -radius }]} />
       {/* Tracejado em SVG: no iOS o React Native não desenha borda
           tracejada de um lado só. */}
-      <Svg height={2} style={styles.dashed}>
+      <Svg height={2} style={[styles.dashed, { marginHorizontal: inset }]}>
         <Line
           x1={0}
           y1={1}
@@ -474,8 +499,35 @@ export function Perforation({ palette }: { palette: Palette }) {
         />
       </Svg>
       <View
-        style={[styles.notch, { right: -9, backgroundColor: palette.sheet }]}
-      />
+        style={[styles.notch, notch, { right: -radius, overflow: 'hidden' }]}
+      >
+        {shadow ? (
+          <>
+            {/* A sombra vai até a borda dela (offset além da do card)… */}
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: radius + shadow.offset,
+                backgroundColor: shadow.color
+              }}
+            />
+            {/* …menos o furo dela, deslocado como ela. */}
+            <View
+              style={[
+                notch,
+                {
+                  position: 'absolute',
+                  left: shadow.offset,
+                  top: shadow.offset
+                }
+              ]}
+            />
+          </>
+        ) : null}
+      </View>
     </View>
   )
 }
@@ -1037,9 +1089,9 @@ const styles = StyleSheet.create({
   },
   matchState: { fontFamily: 'Anton', fontSize: 22, marginVertical: -6 },
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, marginTop: 2 },
-  perforation: { height: 18, justifyContent: 'center' },
-  notch: { position: 'absolute', width: 18, height: 18, borderRadius: 9 },
-  dashed: { marginHorizontal: 14, alignSelf: 'stretch' },
+  perforation: { justifyContent: 'center' },
+  notch: { position: 'absolute' },
+  dashed: { alignSelf: 'stretch' },
   ticketFoot: {
     paddingHorizontal: 14,
     paddingBottom: 13,
