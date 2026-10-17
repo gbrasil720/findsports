@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { Alert, View } from 'react-native'
+import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
 import { ExploreStateProvider } from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
+import { INK, PAPER } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { trpc } from '@/lib/trpc'
 
@@ -58,6 +60,7 @@ export default function FanTabs() {
   const palette = usePalette()
   const soon = useSoon()
   const session = authClient.useSession()
+  useNewAchievement()
   // "Você" é uma aba de verdade (a barra a mantém marcada) que mostra o
   // mesmo Explorar com o menu por cima; fechar o menu volta para Explorar.
   const pathname = usePathname()
@@ -68,7 +71,9 @@ export default function FanTabs() {
     retry: false,
     meta: { errorToast: false }
   })
-  const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
+  // A estante de conquistas é escura nos dois temas: a barra vai junto.
+  const dark = palette.dark || pathname.startsWith('/voce/conquistas')
+  const icons = TAB_ICONS[dark ? 'dark' : 'light']
   const user = session.data?.user
 
   const items: MenuItem[] = [
@@ -82,7 +87,8 @@ export default function FanTabs() {
       key: 'conquistas',
       icon: 'medal',
       label: 'Conquistas',
-      soon: 'As conquistas chegam em breve'
+      soon: 'As conquistas chegam em breve',
+      open: () => router.push('/voce/conquistas')
     },
     {
       key: 'jogos',
@@ -138,7 +144,7 @@ export default function FanTabs() {
   return (
     <ExploreStateProvider>
       <View style={{ flex: 1 }}>
-        <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
+        <NativeTabs minimizeBehavior="never" tintColor={dark ? PAPER : INK}>
           <NativeTabs.Trigger name="explore">
             <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
             <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>

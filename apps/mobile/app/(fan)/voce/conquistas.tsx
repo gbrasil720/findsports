@@ -1,0 +1,343 @@
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
+import { useState } from 'react'
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
+} from 'react-native'
+import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Card } from '@/components/card'
+import { PALETTE } from '@/components/explore'
+import { MedalImage } from '@/components/medal'
+import { haptic, usePressScale } from '@/components/motion'
+import { useTabBarSpace } from '@/components/tab-bar'
+import {
+  ACID,
+  GlassRound,
+  Icon,
+  INK,
+  PillButton,
+  Title,
+  text,
+  useStatusBar
+} from '@/components/ui'
+import {
+  type Achievement,
+  type Achievements,
+  GROUPS,
+  type Group,
+  latest,
+  progressLabel,
+  progressShare,
+  shortDate
+} from '@/lib/achievements'
+import { trpc } from '@/lib/trpc'
+
+/*
+ * Estante de conquistas (2i do design): o nível, os filtros por série e a
+ * grade das dez medalhas. A seção 09 é escura nos dois temas, como o código
+ * no balcão: a medalha de metal é desenhada para o fundo de tinta. Tocar
+ * numa medalha abre o detalhe em 3D (`app/conquista/[id].tsx`).
+ */
+
+const P = PALETTE.dark
+/** A sombra dura do cartão comum e a acid do destaque. */
+const DROP = 'rgba(0,0,0,.6)'
+const GLOW = 'rgba(201,241,53,.22)'
+
+export default function Shelf() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
+  useStatusBar('light')
+  const mine = useQuery(trpc.achievements.mine.queryOptions())
+  const [group, setGroup] = useState<Group | null>(null)
+  const list = mine.data?.achievements ?? []
+  const shown = group ? list.filter((a) => a.group === group) : list
+  const star = latest(list)
+
+  const share = () => {
+    const level = mine.data?.level
+    if (!level) return
+    Share.share({
+      message: `Estou no nível ${level.level} da Onside, ${level.name}, com ${level.unlocked} ${level.unlocked === 1 ? 'conquista' : 'conquistas'}. https://onside.sh`
+    })
+  }
+
+  return (
+    <View style={[styles.screen, { backgroundColor: P.bg }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={mine.isRefetching}
+            onRefresh={() => mine.refetch()}
+            tintColor={P.muted}
+          />
+        }
+      >
+        <View style={styles.top}>
+          <Title lines={[['Conquistas']]} size={40} color={P.ink} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar seu nível"
+            hitSlop={8}
+            onPress={share}
+          >
+            <GlassRound tone="dark">
+              <Icon name="share" size={18} color={P.ink} />
+            </GlassRound>
+          </Pressable>
+        </View>
+
+        {mine.isPending ? (
+          <ActivityIndicator color={P.ink} style={{ marginTop: 40 }} />
+        ) : mine.isError || !mine.data ? (
+          <View style={styles.empty}>
+            <Text style={[text(15, 'SemiBold'), { color: P.ink }]}>
+              Não deu para abrir suas conquistas.
+            </Text>
+            <PillButton label="Tentar de novo" onPress={() => mine.refetch()} />
+          </View>
+        ) : (
+          <>
+            <Level data={mine.data} star={star} />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipsScroll}
+              contentContainerStyle={styles.chips}
+            >
+              <Filter
+                label={`Todas · ${list.length}`}
+                on={group === null}
+                onPress={() => setGroup(null)}
+              />
+              {GROUPS.map((g) => (
+                <Filter
+                  key={g.key}
+                  label={g.label}
+                  on={group === g.key}
+                  onPress={() => setGroup(g.key)}
+                />
+              ))}
+            </ScrollView>
+            <View style={styles.grid}>
+              {shown.map((a) => (
+                <Tile
+                  key={a.id}
+                  achievement={a}
+                  highlight={a.id === star?.id}
+                  onPress={() => router.push(`/conquista/${a.id}`)}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  )
+}
+
+function Level({
+  data,
+  star
+}: {
+  data: Achievements
+  star: Achievement | null
+}) {
+  const { level } = data
+  const share = level.nextAt ? level.unlocked / level.nextAt : 1
+  return (
+    <Card palette={P} shadow={GLOW} offset={5}>
+      <View style={styles.level}>
+        <View style={{ flex: 1 }}>
+          <Text style={[text(13), { color: P.muted }]}>Seu nível</Text>
+          <View style={styles.levelName}>
+            <Text style={styles.levelNumber}>{level.level}</Text>
+            <Text style={[text(19, 'Bold', 1.2), { color: P.ink }]}>
+              {level.name}
+            </Text>
+          </View>
+          <Bar share={share} height={6} style={{ marginTop: 8 }} />
+          <Text style={[text(12.5), { color: P.muted, marginTop: 6 }]}>
+            {level.nextAt
+              ? `${level.unlocked} de ${level.nextAt} conquistas para o nível ${level.level + 1}`
+              : `Nível máximo, com ${level.unlocked} conquistas`}
+          </Text>
+        </View>
+        {star ? <MedalImage id={star.id} size={96} /> : null}
+      </View>
+    </Card>
+  )
+}
+
+function Bar({
+  share,
+  height,
+  style
+}: {
+  share: number
+  height: number
+  style?: object
+}) {
+  return (
+    <View style={[styles.bar, { height, borderRadius: height / 2 }, style]}>
+      <View
+        style={{
+          width: `${Math.round(share * 100)}%`,
+          height: '100%',
+          backgroundColor: ACID
+        }}
+      />
+    </View>
+  )
+}
+
+function Filter({
+  label,
+  on,
+  onPress
+}: {
+  label: string
+  on: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      onPress={() => {
+        if (on) return
+        haptic.select()
+        onPress()
+      }}
+      style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
+    >
+      <Text style={[text(13, 'SemiBold', 1.2), { color: on ? INK : P.ink }]}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+function Tile({
+  achievement: a,
+  highlight,
+  onPress
+}: {
+  achievement: Achievement
+  highlight: boolean
+  onPress: () => void
+}) {
+  const press = usePressScale()
+  // Três por linha: a tela menos as margens (16) e os dois vãos (8).
+  const width = (useWindowDimensions().width - 32 - 16) / 3
+  const done = Boolean(a.unlockedAt)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${a.name}, ${done ? `conquistada em ${shortDate(a.unlockedAt as string)}` : `${progressLabel(a)}`}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={{ width }}
+    >
+      {/* Altura da linha: a medalha ganha fica do tamanho da que tem barra. */}
+      <Animated.View style={[{ flex: 1 }, press.style]}>
+        <Card
+          palette={P}
+          shadow={highlight ? GLOW : DROP}
+          offset={highlight ? 5 : 4}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.tile}>
+            <MedalImage id={a.id} locked={!done} size={96} />
+            <Text
+              style={[text(12.5, 'Bold', 1.2), styles.tileName]}
+              numberOfLines={2}
+            >
+              {a.name}
+            </Text>
+            {done ? (
+              <Text style={[text(11), { color: P.muted }]}>
+                {shortDate(a.unlockedAt as string)}
+              </Text>
+            ) : (
+              <>
+                <Bar
+                  share={progressShare(a)}
+                  height={4}
+                  style={{ width: '70%' }}
+                />
+                <Text style={styles.count}>{progressLabel(a)}</Text>
+              </>
+            )}
+          </View>
+        </Card>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  body: { paddingHorizontal: 16, gap: 14 },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  empty: { gap: 16, marginTop: 24 },
+  level: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16
+  },
+  levelName: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  levelNumber: {
+    fontFamily: 'Anton',
+    fontSize: 46,
+    // Sem lineHeight menor que a fonte: o iOS cortaria o topo (AGENTS.md).
+    marginVertical: -8,
+    color: ACID
+  },
+  bar: { backgroundColor: '#2c2c27', overflow: 'hidden' },
+  chipsScroll: { marginHorizontal: -16, flexGrow: 0 },
+  chips: { gap: 6, paddingHorizontal: 16 },
+  chip: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    justifyContent: 'center'
+  },
+  chipOn: { backgroundColor: ACID },
+  chipOff: { borderWidth: 1, borderColor: 'rgba(241,238,230,.10)' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 8,
+    paddingBottom: 10,
+    paddingHorizontal: 4
+  },
+  tileName: { color: PALETTE.dark.ink, textAlign: 'center' },
+  count: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    color: PALETTE.dark.muted
+  }
+})
