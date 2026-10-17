@@ -28,6 +28,7 @@ import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
+  GlassRound,
   Icon,
   INK,
   LIVE,
@@ -156,11 +157,7 @@ export default function MyGames() {
             hitSlop={8}
             onPress={pickForCalendar}
           >
-            <Glass
-              tone={palette.dark ? 'dark' : 'light'}
-              interactive
-              style={styles.round}
-            >
+            <GlassRound>
               <Icon
                 name="calendar"
                 size={18}
@@ -168,7 +165,7 @@ export default function MyGames() {
                 // O ponto vermelho do design, no claro e no escuro.
                 accent={LIVE}
               />
-            </Glass>
+            </GlassRound>
           </Pressable>
         </View>
 
@@ -602,14 +599,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 4
-  },
-  round: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
   },
   empty: { gap: 14, marginTop: 24 },
   tabs: { flexDirection: 'row', gap: 8, marginTop: 4 },
