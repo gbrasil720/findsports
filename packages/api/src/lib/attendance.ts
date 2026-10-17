@@ -211,9 +211,13 @@ export async function readMyGames(userId: string, now = new Date()) {
   return rows.map(({ code, usedCount, endsAt, ...row }) => {
     const window = getValidationWindow({ startsAt: row.startsAt, endsAt })
     const validated = (usedCount ?? 0) > 0
+    const end = getEventEnd({ startsAt: row.startsAt, endsAt })
     return {
       ...row,
-      ended: getEventEnd({ startsAt: row.startsAt, endsAt }) <= now,
+      // O fim já resolvido (o informado pelo bar, senão o padrão): a agenda
+      // do celular usa o mesmo que o servidor.
+      endsAt: end,
+      ended: end <= now,
       // `null`: bar sem Elite quando o torcedor marcou, ou janela fechada sem
       // validação.
       code: code && (validated || window.closesAt >= now) ? code : null,
