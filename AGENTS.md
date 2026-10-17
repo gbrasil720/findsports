@@ -355,7 +355,8 @@ invente layout que o projeto não tem.
   ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
   pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
   `/admin/validate?code=`, que no web já abre buscando o código. `app/(fan)/voce/meus-jogos.tsx`
-  (menu "Você"; fica na pilha da aba, com a barra, e tocar "Você" volta ao menu) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
+  (menu "Você"; fica na pilha da aba, com a barra; tocar "Você" numa tela da pilha abre o menu
+  por cima dela, com `disablePopToTop` na aba, e fechar deixa a pessoa onde estava) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
   do celular pelo formulário de evento do iOS (`expo-calendar/legacy`, sem pedir permissão); "Avaliar" abre o pós-jogo
   `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
   `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
