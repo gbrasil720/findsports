@@ -28,6 +28,7 @@ import {
   ACID,
   Icon,
   INK,
+  LIVE,
   PAPER,
   PillButton,
   Title,
@@ -141,7 +142,8 @@ export default function MyGames() {
                 name="calendar"
                 size={18}
                 color={palette.ink}
-                accent={palette.accent}
+                // O ponto vermelho do design, no claro e no escuro.
+                accent={LIVE}
               />
             </Glass>
           </Pressable>
@@ -308,15 +310,12 @@ function NextGame({
 }) {
   const show = usePressScale()
   const when = `${dayLabel(game.startsAt, now)} · ${formatTime(game.startsAt)}`
+  const shadow = palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
   return (
-    <Card
-      palette={palette}
-      shadow={palette.dark ? 'rgba(201,241,53,.32)' : 'rgba(201,241,53,.85)'}
-      offset={6}
-    >
+    <Card palette={palette} shadow={shadow} offset={5} notched>
       <View style={styles.band}>
-        <Icon name="check" size={15} color={INK} />
-        <Text style={[text(15, 'Bold', 1.2), { color: INK, flex: 1 }]}>
+        <Icon name="check" size={14} color={INK} />
+        <Text style={[text(13.5, 'Bold', 1.2), { color: INK, flex: 1 }]}>
           {game.validated ? 'Validado' : 'Você vai'}
         </Text>
         <Text style={[styles.mono, { color: INK }]}>{when}</Text>
@@ -358,7 +357,15 @@ function NextGame({
       ) : null}
       {game.code ? (
         <>
-          <Perforation palette={{ ...palette, sheet: palette.bg }} />
+          <Perforation
+            palette={{
+              ...palette,
+              sheet: palette.bg,
+              dash: palette.dark ? 'rgba(241,238,230,.18)' : palette.dash
+            }}
+            shadow={{ color: shadow, offset: 5 }}
+            inset={16}
+          />
           <View style={styles.codeRow}>
             <View style={{ flex: 1 }}>
               <Text style={[text(12), { color: palette.muted }]}>Código</Text>
@@ -370,7 +377,9 @@ function NextGame({
                 {formatCode(game.code)}
               </Text>
               {game.window ? (
-                <Text style={[text(12), { color: palette.muted }]}>
+                <Text
+                  style={[text(12), { color: palette.muted, marginTop: 4 }]}
+                >
                   Vale das {formatTime(game.window.opensAt)} às{' '}
                   {formatTime(game.window.closesAt)}
                 </Text>
@@ -395,7 +404,9 @@ function NextGame({
                     color={palette.ink}
                     accent={palette.dark ? ACID : palette.accent}
                   />
-                  <Text style={[text(15, 'Bold', 1.2), { color: palette.ink }]}>
+                  <Text
+                    style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}
+                  >
                     Mostrar
                   </Text>
                 </Glass>
@@ -436,8 +447,8 @@ function LaterGame({
       onPressOut={press.onPressOut}
     >
       <Animated.View style={press.style}>
-        <Card palette={palette}>
-          <View style={styles.barRow}>
+        <Card palette={palette} soft>
+          <View style={[styles.barRow, { paddingBottom: 14 }]}>
             <Photo
               uri={game.photoUrl}
               name={game.barName}
@@ -454,7 +465,7 @@ function LaterGame({
                 />
                 <Text
                   style={[
-                    text(13.5, 'Bold', 1.3),
+                    text(12.5, 'Bold', 1.3),
                     { color: palette.dark ? ACID : palette.ink }
                   ]}
                 >
@@ -585,13 +596,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1
   },
+  // Altura 38 do design; os cantos de cima são dele, já que o card do
+  // ingresso não recorta (o furo do picote passa por cima da sombra).
   band: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    backgroundColor: ACID
+    gap: 6,
+    height: 38,
+    marginTop: -1,
+    marginHorizontal: -1,
+    paddingHorizontal: 15,
+    backgroundColor: ACID,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6
   },
   mono: {
     fontFamily: 'GeistMono-SemiBold',
@@ -603,16 +620,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 13
+    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 4
   },
-  photo: { width: 52, height: 52, borderRadius: 4 },
+  photo: { width: 54, height: 54, borderRadius: 3 },
   offAir: { color: '#c92b0c', paddingHorizontal: 14, paddingBottom: 12 },
   codeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 12,
     paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 14
   },
   // Anton 40 do design, sem `lineHeight` (corta no iOS): margem negativa.
@@ -625,10 +644,10 @@ const styles = StyleSheet.create({
   show: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 22,
+    gap: 7,
+    height: 42,
+    paddingHorizontal: 15,
+    borderRadius: 21,
     overflow: 'hidden'
   },
   when: { flexDirection: 'row', alignItems: 'center', gap: 6 },
