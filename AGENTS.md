@@ -366,7 +366,9 @@ invente layout que o projeto não tem.
   breve" (`components/soon.tsx`).
 - **Conquistas ("09", WEB-403):** `app/(fan)/voce/conquistas.tsx` (estante, 2i, no menu
   "Você") e `app/conquista/[id].tsx` (a medalha, 2j; com `?nova=1`, a conquista
-  desbloqueada, 2k). Escuras nos dois temas, como o código no balcão. As regras são do
+  desbloqueada, 2k). O design só desenha o escuro; no claro, tinta e papel trocam, o
+  vermelho entra no lugar do acid em texto e a bloqueada sai em cinza-pedra
+  (`useMedalPalette` em `components/medal.tsx`, `LOCKED_LIGHT` em `lib/medals.ts`). As regras são do
   servidor (`packages/api/src/lib/achievements.ts`, `achievements.mine`): nada é gravado,
   tudo sai do código validado no balcão (o check-in do WEB-408 entra em
   `achievements-read.ts`) e das avaliações. A 2k abre sozinha quando sai medalha nova
