@@ -59,3 +59,37 @@ export function thisMonth(games: { startsAt: string | Date }[], now: number) {
   const count = games.filter((game) => month(game.startsAt) === current).length
   return count ? `${count} em ${current.split(' ')[0]}` : null
 }
+
+/**
+ * O jogo como evento da agenda do celular (WEB-406): título com o bar, o
+ * fim que o servidor resolveu, o código e a oferta nas notas, e um aviso
+ * uma hora antes.
+ */
+export function calendarEvent(
+  game: Pick<
+    MyGame,
+    | 'participants'
+    | 'participantFreeText'
+    | 'championship'
+    | 'barName'
+    | 'neighborhood'
+    | 'startsAt'
+    | 'endsAt'
+    | 'code'
+    | 'offer'
+  >
+) {
+  const notes = [
+    game.code ? `Código no balcão: ${formatCode(game.code)}` : null,
+    game.offer ? `Oferta da casa: ${game.offer}` : null
+  ].filter(Boolean)
+  return {
+    title: `${gameTitle(game)} no ${game.barName}`,
+    startDate: new Date(game.startsAt),
+    endDate: new Date(game.endsAt),
+    timeZone: 'America/Sao_Paulo',
+    location: [game.barName, game.neighborhood].filter(Boolean).join(', '),
+    notes: notes.length ? notes.join('\n') : undefined,
+    alarms: [{ relativeOffset: -60 }]
+  }
+}

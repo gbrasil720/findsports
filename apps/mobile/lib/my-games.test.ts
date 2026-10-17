@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import {
+  calendarEvent,
   formatCode,
   gameTitle,
   pastLabel,
@@ -46,4 +47,42 @@ test('conta só os jogos do mês corrente', () => {
     )
   ).toBe('2 em outubro')
   expect(thisMonth([{ startsAt: '2026-09-28T21:00:00Z' }], now)).toBeNull()
+})
+
+test('o jogo vira evento da agenda com o bar e o código', () => {
+  const event = calendarEvent({
+    participants: ['Corinthians', 'Palmeiras'],
+    participantFreeText: null,
+    championship: 'Brasileirão',
+    barName: 'Bar do Zé',
+    neighborhood: 'Vila Madalena',
+    startsAt: '2026-10-18T00:30:00.000Z',
+    endsAt: '2026-10-18T03:30:00.000Z',
+    code: 'A7K29X',
+    offer: 'Chopp em dobro até o intervalo.'
+  })
+  expect(event.title).toBe('Corinthians × Palmeiras no Bar do Zé')
+  expect(event.location).toBe('Bar do Zé, Vila Madalena')
+  expect(event.endDate.toISOString()).toBe('2026-10-18T03:30:00.000Z')
+  expect(event.notes).toBe(
+    'Código no balcão: A7K·29X\nOferta da casa: Chopp em dobro até o intervalo.'
+  )
+})
+
+test('sem código nem oferta, o evento sai sem notas', () => {
+  const event = calendarEvent({
+    participants: [],
+    participantFreeText: null,
+    championship: 'NBA',
+    barName: 'Casa 92',
+    neighborhood: '',
+    startsAt: '2026-10-18T00:30:00.000Z',
+    endsAt: '2026-10-18T02:00:00.000Z',
+    code: null,
+    offer: null
+  })
+  expect(event.title).toBe('NBA no Casa 92')
+  expect(event.location).toBe('Casa 92')
+  expect(event.endDate.toISOString()).toBe('2026-10-18T02:00:00.000Z')
+  expect(event.notes).toBeUndefined()
 })
