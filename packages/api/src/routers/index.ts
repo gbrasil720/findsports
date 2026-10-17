@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { achievementsRouter } from './achievements'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
 import { adminUsersRouter } from './admin-users'
@@ -41,6 +42,7 @@ export const appRouter = router({
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
+  achievements: achievementsRouter,
   feedback: feedbackRouter,
   grimorio: grimorioRouter,
   houdini: houdiniRouter
