@@ -11,7 +11,8 @@ import { adminProcedure, fanProcedure, router } from '../index'
 import {
   readAttendanceQuestions,
   readMyGames,
-  readUnregisteredAlerts
+  readUnregisteredAlerts,
+  readVisitedGames
 } from '../lib/attendance'
 import { issueTicket, retireTicket } from '../lib/attendance-ticket'
 import { getCurrentPlan } from '../lib/current-plan'
@@ -99,6 +100,10 @@ export const attendanceRouter = router({
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
+  /** Os jogos com código validado: o "Já fui" de Seus bares. */
+  visits: fanProcedure.query(({ ctx }) =>
+    readVisitedGames(ctx.session.user.id)
+  ),
 
   /**
    * Perguntas pós-jogo ainda sem resposta (WEB-128). Uma por jogo; a tela

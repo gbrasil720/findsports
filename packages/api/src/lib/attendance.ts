@@ -229,6 +229,43 @@ export async function readMyGames(userId: string, now = new Date()) {
   })
 }
 
+/**
+ * "Já fui" de Seus bares (17b do design): cada jogo em que o torcedor teve o
+ * código validado no balcão, do mais recente ao mais antigo. É a mesma visita
+ * das conquistas (`achievements-read.ts`); o check-in do WEB-408 entra nas
+ * duas. Bar fora do ar segue na lista, sem perfil para abrir.
+ */
+export async function readVisitedGames(userId: string) {
+  return db
+    .selectDistinctOn([event.id], {
+      eventId: event.id,
+      championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
+      startsAt: event.startsAt,
+      validatedAt: reservationCodeUse.usedAt,
+      barId: bar.id,
+      barName: bar.name,
+      neighborhood: bar.neighborhood,
+      barActive: bar.isActive
+    })
+    .from(reservationCodeUse)
+    .innerJoin(
+      reservationCode,
+      eq(reservationCode.id, reservationCodeUse.codeId)
+    )
+    .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
+    .innerJoin(event, eq(event.id, reservation.eventId))
+    .innerJoin(bar, eq(bar.id, event.barId))
+    .where(
+      and(eq(reservation.userId, userId), isNull(reservationCodeUse.undoneAt))
+    )
+    .orderBy(event.id, reservationCodeUse.usedAt)
+    .then((rows) =>
+      rows.sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())
+    )
+}
+
 export type InterestSignal =
   | { status: 'gathering' }
   | { status: 'ready'; events: { eventId: string; ratio: number }[] }
