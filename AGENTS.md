@@ -355,13 +355,13 @@ invente layout que o projeto não tem.
   ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
   pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
   `/admin/validate?code=`, que no web já abre buscando o código. `app/(fan)/voce/meus-jogos.tsx`
-  (menu "Você"; fica na pilha da aba, com a barra, e tocar "Você" volta ao menu) lista os próximos e os anteriores; "Avaliar" abre o pós-jogo
+  (menu "Você"; fica na pilha da aba, com a barra, e tocar "Você" volta ao menu) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
+  do celular pelo formulário de evento do iOS (`expo-calendar/legacy`, sem pedir permissão); "Avaliar" abre o pós-jogo
   `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
   `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
   mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
   pesou?" no pós-jogo (WEB-398), "Sua Nª resenha" e o rodapé de conquistas (WEB-403),
-  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405) e o botão
-  de calendário (WEB-406). A busca com
+  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405). A busca com
   IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
   breve" (`components/soon.tsx`).
 - **Abas do torcedor:** são a barra
