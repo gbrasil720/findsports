@@ -11,7 +11,7 @@
  *
  * Usa o Chromium do Playwright da raiz (o mesmo do E2E).
  */
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ACHIEVEMENTS } from '@findsports_oficial/api/lib/achievements'
 import { chromium } from 'playwright'
@@ -62,7 +62,7 @@ const page = await browser.newPage({
   viewport: { width: THUMB, height: THUMB },
   deviceScaleFactor: 1
 })
-await rm(thumbs, { recursive: true, force: true })
+// Sobrescreve no lugar: apagar a pasta quebra o Metro que estiver rodando.
 await mkdir(thumbs, { recursive: true })
 let count = 0
 for (const a of ACHIEVEMENTS) {

@@ -70,7 +70,9 @@ const face = (draw: (ctx: CanvasRenderingContext2D) => void, srgb: boolean) => {
 
 let config: Medal | null = null
 let medal: THREE.Group | null = null
-const state = { yaw: 0, pitch: 0, velocity: 0, dragging: false }
+// `decay`: 0,94 por quadro é a inércia do dedo; a troca de medalha usa uma
+// mais curta, porque é resposta do sistema.
+const state = { yaw: 0, pitch: 0, velocity: 0, decay: 0.94, dragging: false }
 
 function build(next: Medal) {
   const look = {
@@ -116,7 +118,8 @@ window.setMedal = (next) => {
     // com a mesma inércia do arraste: a troca seca parece defeito.
     if (swap && !next.reduced) {
       state.yaw += Math.PI / 2
-      state.velocity = (-Math.PI / 2) * (1 - 0.94)
+      state.decay = 0.88
+      state.velocity = (-Math.PI / 2) * (1 - state.decay)
     }
   })
 }
@@ -129,6 +132,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (config?.mode !== 'drag') return
   state.dragging = true
   state.velocity = 0
+  state.decay = 0.94
   px = e.clientX
   py = e.clientY
   pt = e.timeStamp
@@ -168,7 +172,7 @@ const loop = (now: number) => {
       // 120 Hz ela pararia na metade.
       const frames = dt * 60
       state.yaw += state.velocity * frames
-      state.velocity *= 0.94 ** frames
+      state.velocity *= state.decay ** frames
       if (Math.abs(state.velocity) < 0.0005) state.velocity = 0
     }
     const sway =
