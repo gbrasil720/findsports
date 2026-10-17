@@ -13,9 +13,8 @@ import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { PALETTE } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { Medal3D, MedalImage } from '@/components/medal'
+import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import { EASE, haptic, usePressScale } from '@/components/motion'
 import {
   ACID,
@@ -52,13 +51,11 @@ import { trpc } from '@/lib/trpc'
  *   medalha" troca para o detalhe na mesma tela.
  */
 
-const P = PALETTE.dark
-const BODY = '#d6d3cb'
-
 export default function Medal() {
+  const P = useMedalPalette()
   const params = useLocalSearchParams<{ id: string; nova?: string }>()
   const insets = useSafeAreaInsets()
-  useStatusBar('light')
+  useStatusBar('auto')
   const mine = useQuery(trpc.achievements.mine.queryOptions())
   const list = mine.data?.achievements ?? []
   const [id, setId] = useState(params.id)
@@ -67,7 +64,7 @@ export default function Medal() {
 
   if (!medal) {
     return (
-      <View style={[styles.screen, styles.center]}>
+      <View style={[styles.screen, styles.center, { backgroundColor: P.bg }]}>
         {mine.isPending ? (
           <ActivityIndicator color={P.ink} />
         ) : (
@@ -75,7 +72,7 @@ export default function Medal() {
             <Text style={[text(15, 'SemiBold'), { color: P.ink }]}>
               Medalha não encontrada.
             </Text>
-            <BackButton tone="dark" icon="close" />
+            <BackButton icon="close" />
           </>
         )}
       </View>
@@ -90,8 +87,12 @@ export default function Medal() {
     })
 
   return (
-    <View style={styles.screen}>
-      <Glow strength={fresh ? 0.18 : 0.13} rx={fresh ? '60%' : '70%'} />
+    <View style={[styles.screen, { backgroundColor: P.bg }]}>
+      {/* No papel o acid quase some: o brilho vem mais forte. */}
+      <Glow
+        strength={(fresh ? 0.18 : 0.13) * (P.dark ? 1 : 2.4)}
+        rx={fresh ? '60%' : '70%'}
+      />
       {fresh ? (
         <Unlocked
           medal={medal}
@@ -124,6 +125,7 @@ const engraving = (a: Achievement) => ({
 
 /** O brilho acid atrás da medalha (radial-gradient do design). */
 function Glow({ strength, rx }: { strength: number; rx: string }) {
+  const P = useMedalPalette()
   return (
     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
@@ -151,6 +153,7 @@ function Detail({
   share,
   onPick
 }: ScreenProps & { onPick: (id: string) => void }) {
+  const P = useMedalPalette()
   const router = useRouter()
   const next = nextInSeries(list, medal)
   const done = Boolean(medal.unlockedAt)
@@ -175,7 +178,7 @@ function Detail({
   return (
     <>
       <View style={[styles.top, { paddingTop: insets.top + 4 }]}>
-        <BackButton tone="dark" icon="close" />
+        <BackButton icon="close" />
         <Text style={[text(13), { color: P.muted }]}>
           {seriesLabel(list, medal)}
         </Text>
@@ -193,20 +196,30 @@ function Detail({
 
       <View style={styles.copy}>
         <Title lines={[[medal.name]]} size={48} color={P.ink} />
-        <Text style={[text(15, 'Regular', 1.45), styles.lead]}>
+        <Text
+          style={[text(15, 'Regular', 1.45), styles.lead, { color: P.body }]}
+        >
           {describe(medal)}
         </Text>
         <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
-          <Card palette={P} shadow="rgba(0,0,0,.6)">
+          <Card palette={P} shadow={P.drop}>
             <View style={styles.stats}>
               {stats.map(([label, value], i) => (
                 <View
                   key={label}
-                  style={[styles.stat, i > 0 && styles.statLine]}
+                  style={[
+                    styles.stat,
+                    i > 0 && styles.statLine,
+                    i > 0 && { borderLeftColor: P.line }
+                  ]}
                 >
                   <Text style={[text(11), { color: P.muted }]}>{label}</Text>
                   <Text
-                    style={[text(13, 'Bold'), styles.statValue]}
+                    style={[
+                      text(13, 'Bold'),
+                      styles.statValue,
+                      { color: P.ink }
+                    ]}
                     numberOfLines={2}
                   >
                     {value}
@@ -228,7 +241,13 @@ function Detail({
                 haptic.select()
                 onPick(a.id)
               }}
-              style={[styles.pick, a.id === medal.id && styles.pickOn]}
+              style={[
+                styles.pick,
+                a.id === medal.id && [
+                  styles.pickOn,
+                  { backgroundColor: P.pick, borderColor: P.pickEdge }
+                ]
+              ]}
             >
               <MedalImage id={a.id} locked={!a.unlockedAt} size={52} />
             </Pressable>
@@ -288,6 +307,7 @@ function Unlocked({
   share,
   onSee
 }: ScreenProps & { onSee: () => void }) {
+  const P = useMedalPalette()
   const next = nextInSeries(list, medal)
   useEffect(() => {
     haptic.success()
@@ -312,7 +332,8 @@ function Unlocked({
               width: size,
               height: size,
               borderRadius: 1.5,
-              backgroundColor: color,
+              // Os quadradinhos de papel viram tinta no claro.
+              backgroundColor: color === PAPER ? P.ink : color,
               transform: [{ rotate: `${rotate}deg` }]
             }}
           />
@@ -327,11 +348,13 @@ function Unlocked({
         entering={LINE_IN}
         style={[styles.copy, { marginTop: 18 }]}
       >
-        <Text style={[text(14, 'Bold'), { color: ACID }]}>
+        <Text style={[text(14, 'Bold'), { color: P.hot }]}>
           Conquista desbloqueada
         </Text>
         <Title lines={[[medal.name]]} size={52} color={P.ink} />
-        <Text style={[text(16, 'Regular', 1.45), styles.lead]}>
+        <Text
+          style={[text(16, 'Regular', 1.45), styles.lead, { color: P.body }]}
+        >
           {unlockedLine(medal)}
         </Text>
         {next ? (
@@ -340,14 +363,16 @@ function Unlocked({
               <Text style={[text(12.5), { color: P.muted }]}>
                 Próxima: {next.name}
               </Text>
-              <Text style={styles.mono}>{progressLabel(next)}</Text>
+              <Text style={[styles.mono, { color: P.muted }]}>
+                {progressLabel(next)}
+              </Text>
             </View>
-            <View style={styles.bar}>
+            <View style={[styles.bar, { backgroundColor: P.track }]}>
               <View
                 style={{
                   width: `${Math.round(progressShare(next) * 100)}%`,
                   height: '100%',
-                  backgroundColor: ACID
+                  backgroundColor: P.fill
                 }}
               />
             </View>
@@ -372,6 +397,7 @@ function Unlocked({
 }
 
 function ShareButton({ onPress }: { onPress: () => void }) {
+  const P = useMedalPalette()
   return (
     <Pressable
       accessibilityRole="button"
@@ -379,7 +405,7 @@ function ShareButton({ onPress }: { onPress: () => void }) {
       hitSlop={8}
       onPress={onPress}
     >
-      <GlassRound tone="dark">
+      <GlassRound>
         <Icon name="share" size={18} color={P.ink} />
       </GlassRound>
     </Pressable>
@@ -388,6 +414,7 @@ function ShareButton({ onPress }: { onPress: () => void }) {
 
 /** "Compartilhar" em vidro, ao lado do botão acid do rodapé. */
 function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
+  const P = useMedalPalette()
   const press = usePressScale()
   return (
     <Pressable
@@ -398,7 +425,11 @@ function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
       style={{ flex: 1 }}
     >
       <Animated.View style={press.style}>
-        <Glass tone="dark" interactive style={styles.glassPill}>
+        <Glass
+          tone={P.dark ? 'dark' : 'light'}
+          interactive
+          style={styles.glassPill}
+        >
           <Icon name="share" size={17} color={P.ink} />
           <Text style={[text(15, 'Bold'), { color: P.ink }]}>{label}</Text>
         </Glass>
@@ -408,7 +439,7 @@ function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: P.bg },
+  screen: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 16 },
   top: {
     flexDirection: 'row',
@@ -431,7 +462,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 12
   },
-  lead: { color: BODY, textAlign: 'center', maxWidth: 320 },
+  lead: { textAlign: 'center', maxWidth: 320 },
   stats: { flexDirection: 'row' },
   stat: {
     flex: 1,
@@ -439,14 +470,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems: 'center'
   },
-  statLine: { borderLeftWidth: 1, borderLeftColor: 'rgba(241,238,230,.08)' },
-  statValue: { color: P.ink, textAlign: 'center' },
+  statLine: { borderLeftWidth: 1 },
+  statValue: { textAlign: 'center' },
   series: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
   pick: { padding: 4, borderRadius: 6 },
   pickOn: {
-    backgroundColor: 'rgba(201,241,53,.1)',
     borderWidth: 1,
-    borderColor: 'rgba(201,241,53,.5)',
     padding: 3
   },
   foot: {
@@ -468,11 +497,10 @@ const styles = StyleSheet.create({
   confetti: { position: 'absolute' },
   progress: { width: '100%', maxWidth: 300, marginTop: 12 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5, color: P.muted },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
   bar: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2c2c27',
     marginTop: 7,
     overflow: 'hidden'
   }

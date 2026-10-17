@@ -7,7 +7,6 @@ import { initials, usePalette } from '@/components/explore'
 import { ExploreStateProvider } from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
-import { INK, PAPER } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { trpc } from '@/lib/trpc'
 
@@ -71,9 +70,7 @@ export default function FanTabs() {
     retry: false,
     meta: { errorToast: false }
   })
-  // A estante de conquistas é escura nos dois temas: a barra vai junto.
-  const dark = palette.dark || pathname.startsWith('/voce/conquistas')
-  const icons = TAB_ICONS[dark ? 'dark' : 'light']
+  const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
 
   const items: MenuItem[] = [
@@ -144,7 +141,7 @@ export default function FanTabs() {
   return (
     <ExploreStateProvider>
       <View style={{ flex: 1 }}>
-        <NativeTabs minimizeBehavior="never" tintColor={dark ? PAPER : INK}>
+        <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
           <NativeTabs.Trigger name="explore">
             <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
             <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>

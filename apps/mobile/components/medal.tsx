@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Image, type StyleProp, View, type ViewStyle } from 'react-native'
 import Animated, { useReducedMotion } from 'react-native-reanimated'
 import { WebView } from 'react-native-webview'
+import { usePalette } from '@/components/explore'
+import { ACCENT, ACID, INK } from '@/components/ui'
 import type { MedalId } from '@/lib/medals'
 
 /*
@@ -38,6 +40,44 @@ const LOCKED_THUMBS = {
   ava10: require('@/assets/images/medals/ava10-locked.webp')
 } satisfies Record<MedalId, number>
 
+const LOCKED_LIGHT_THUMBS = {
+  bar1: require('@/assets/images/medals/bar1-locked-light.webp'),
+  bar5: require('@/assets/images/medals/bar5-locked-light.webp'),
+  bar10: require('@/assets/images/medals/bar10-locked-light.webp'),
+  bar25: require('@/assets/images/medals/bar25-locked-light.webp'),
+  bai3: require('@/assets/images/medals/bai3-locked-light.webp'),
+  bai6: require('@/assets/images/medals/bai6-locked-light.webp'),
+  esp2: require('@/assets/images/medals/esp2-locked-light.webp'),
+  esp4: require('@/assets/images/medals/esp4-locked-light.webp'),
+  ava1: require('@/assets/images/medals/ava1-locked-light.webp'),
+  ava10: require('@/assets/images/medals/ava10-locked-light.webp')
+} satisfies Record<MedalId, number>
+
+/**
+ * As cores da seção 09. O design só desenha o escuro; no claro, tinta e papel
+ * trocam e o vermelho entra no lugar do acid em texto (a regra das outras
+ * telas). A barra de progresso fica em tinta: acid sobre papel some.
+ */
+export function useMedalPalette() {
+  const p = usePalette()
+  return {
+    ...p,
+    /** Sombra dura do cartão comum e a do destaque. */
+    drop: p.dark ? 'rgba(0,0,0,.6)' : p.shadow,
+    glow: p.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)',
+    fill: p.dark ? ACID : INK,
+    track: p.dark ? '#2c2c27' : p.mark,
+    /** Texto de destaque: o número do nível, "Conquista desbloqueada". */
+    hot: p.dark ? ACID : ACCENT,
+    body: p.dark ? '#d6d3cb' : '#3d3d38',
+    edge: p.dark ? 'rgba(241,238,230,.10)' : 'rgba(18,18,15,.12)',
+    pick: p.dark ? 'rgba(201,241,53,.1)' : 'rgba(201,241,53,.45)',
+    pickEdge: p.dark ? 'rgba(201,241,53,.5)' : 'rgba(18,18,15,.2)'
+  }
+}
+
+export type MedalPalette = ReturnType<typeof useMedalPalette>
+
 export function MedalImage({
   id,
   locked = false,
@@ -47,9 +87,12 @@ export function MedalImage({
   locked?: boolean
   size: number
 }) {
+  const dark = usePalette().dark
   return (
     <Image
-      source={(locked ? LOCKED_THUMBS : THUMBS)[id]}
+      source={
+        (locked ? (dark ? LOCKED_THUMBS : LOCKED_LIGHT_THUMBS) : THUMBS)[id]
+      }
       style={{ width: size, height: size }}
       accessibilityIgnoresInvertColors
     />
@@ -86,6 +129,7 @@ export function Medal3D({
   style?: StyleProp<ViewStyle>
 }) {
   const reduced = useReducedMotion()
+  const light = !usePalette().dark
   const uri = useViewer()
   const web = useRef<WebView>(null)
   const [ready, setReady] = useState(false)
@@ -93,7 +137,8 @@ export function Medal3D({
     ...medal,
     mode: drag ? 'drag' : 'spin',
     yaw,
-    reduced
+    reduced,
+    light
   })
   // A primeira vai antes de a página carregar; as seguintes trocam no lugar.
   const first = useRef(config)

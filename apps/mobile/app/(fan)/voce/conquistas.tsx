@@ -15,8 +15,7 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { PALETTE } from '@/components/explore'
-import { MedalImage } from '@/components/medal'
+import { MedalImage, useMedalPalette } from '@/components/medal'
 import { haptic, usePressScale } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
@@ -43,21 +42,16 @@ import { trpc } from '@/lib/trpc'
 
 /*
  * Estante de conquistas (2i do design): o nível, os filtros por série e a
- * grade das dez medalhas. A seção 09 é escura nos dois temas, como o código
- * no balcão: a medalha de metal é desenhada para o fundo de tinta. Tocar
- * numa medalha abre o detalhe em 3D (`app/conquista/[id].tsx`).
+ * grade das dez medalhas. Claro ou escuro pelo tema (`useMedalPalette`).
+ * Tocar numa medalha abre o detalhe em 3D (`app/conquista/[id].tsx`).
  */
-
-const P = PALETTE.dark
-/** A sombra dura do cartão comum e a acid do destaque. */
-const DROP = 'rgba(0,0,0,.6)'
-const GLOW = 'rgba(201,241,53,.22)'
 
 export default function Shelf() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const tabBar = useTabBarSpace()
-  useStatusBar('light')
+  const P = useMedalPalette()
+  useStatusBar('auto')
   const mine = useQuery(trpc.achievements.mine.queryOptions())
   const [group, setGroup] = useState<Group | null>(null)
   const list = mine.data?.achievements ?? []
@@ -95,7 +89,7 @@ export default function Shelf() {
             hitSlop={8}
             onPress={share}
           >
-            <GlassRound tone="dark">
+            <GlassRound>
               <Icon name="share" size={18} color={P.ink} />
             </GlassRound>
           </Pressable>
@@ -157,15 +151,18 @@ function Level({
   data: Achievements
   star: Achievement | null
 }) {
+  const P = useMedalPalette()
   const { level } = data
   const share = level.nextAt ? level.unlocked / level.nextAt : 1
   return (
-    <Card palette={P} shadow={GLOW} offset={5}>
+    <Card palette={P} shadow={P.glow} offset={5}>
       <View style={styles.level}>
         <View style={{ flex: 1 }}>
           <Text style={[text(13), { color: P.muted }]}>Seu nível</Text>
           <View style={styles.levelName}>
-            <Text style={styles.levelNumber}>{level.level}</Text>
+            <Text style={[styles.levelNumber, { color: P.hot }]}>
+              {level.level}
+            </Text>
             <Text style={[text(19, 'Bold', 1.2), { color: P.ink }]}>
               {level.name}
             </Text>
@@ -192,13 +189,20 @@ function Bar({
   height: number
   style?: object
 }) {
+  const P = useMedalPalette()
   return (
-    <View style={[styles.bar, { height, borderRadius: height / 2 }, style]}>
+    <View
+      style={[
+        styles.bar,
+        { height, borderRadius: height / 2, backgroundColor: P.track },
+        style
+      ]}
+    >
       <View
         style={{
           width: `${Math.round(share * 100)}%`,
           height: '100%',
-          backgroundColor: ACID
+          backgroundColor: P.fill
         }}
       />
     </View>
@@ -214,6 +218,7 @@ function Filter({
   on: boolean
   onPress: () => void
 }) {
+  const P = useMedalPalette()
   return (
     <Pressable
       accessibilityRole="button"
@@ -223,7 +228,10 @@ function Filter({
         haptic.select()
         onPress()
       }}
-      style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
+      style={[
+        styles.chip,
+        on ? styles.chipOn : { borderWidth: 1, borderColor: P.edge }
+      ]}
     >
       <Text style={[text(13, 'SemiBold', 1.2), { color: on ? INK : P.ink }]}>
         {label}
@@ -241,6 +249,7 @@ function Tile({
   highlight: boolean
   onPress: () => void
 }) {
+  const P = useMedalPalette()
   const press = usePressScale()
   // Três por linha: a tela menos as margens (16) e os dois vãos (8).
   const width = (useWindowDimensions().width - 32 - 16) / 3
@@ -258,14 +267,18 @@ function Tile({
       <Animated.View style={[{ flex: 1 }, press.style]}>
         <Card
           palette={P}
-          shadow={highlight ? GLOW : DROP}
+          shadow={highlight ? P.glow : P.drop}
           offset={highlight ? 5 : 4}
           style={{ flex: 1 }}
         >
           <View style={styles.tile}>
             <MedalImage id={a.id} locked={!done} size={96} />
             <Text
-              style={[text(12.5, 'Bold', 1.2), styles.tileName]}
+              style={[
+                text(12.5, 'Bold', 1.2),
+                styles.tileName,
+                { color: P.ink }
+              ]}
               numberOfLines={2}
             >
               {a.name}
@@ -281,7 +294,9 @@ function Tile({
                   height={4}
                   style={{ width: '70%' }}
                 />
-                <Text style={styles.count}>{progressLabel(a)}</Text>
+                <Text style={[styles.count, { color: P.muted }]}>
+                  {progressLabel(a)}
+                </Text>
               </>
             )}
           </View>
@@ -312,10 +327,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Anton',
     fontSize: 46,
     // Sem lineHeight menor que a fonte: o iOS cortaria o topo (AGENTS.md).
-    marginVertical: -8,
-    color: ACID
+    marginVertical: -8
   },
-  bar: { backgroundColor: '#2c2c27', overflow: 'hidden' },
+  bar: { overflow: 'hidden' },
   chipsScroll: { marginHorizontal: -16, flexGrow: 0 },
   chips: { gap: 6, paddingHorizontal: 16 },
   chip: {
@@ -325,7 +339,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   chipOn: { backgroundColor: ACID },
-  chipOff: { borderWidth: 1, borderColor: 'rgba(241,238,230,.10)' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: {
     alignItems: 'center',
@@ -334,10 +347,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     paddingHorizontal: 4
   },
-  tileName: { color: PALETTE.dark.ink, textAlign: 'center' },
+  tileName: { textAlign: 'center' },
   count: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
-    color: PALETTE.dark.muted
+    fontSize: 10.5
   }
 })
