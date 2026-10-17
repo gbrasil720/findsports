@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Brightness from 'expo-brightness'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -67,8 +67,24 @@ export default function CounterCode() {
   const insets = useSafeAreaInsets()
   useStatusBar('light')
   useMaxBrightness()
-  const mine = useQuery(trpc.attendance.mine.queryOptions())
+  const queryClient = useQueryClient()
+  // Enquanto o código espera o balcão, a tela pergunta de tempos em tempos:
+  // validado, ela troca para "Validado" e a conquista nova (se houver) abre.
+  const mine = useQuery({
+    ...trpc.attendance.mine.queryOptions(),
+    refetchInterval: (query) =>
+      query.state.data?.find((item) => item.eventId === eventId)?.validated
+        ? false
+        : 5000
+  })
   const game = mine.data?.find((item) => item.eventId === eventId)
+  const validated = Boolean(game?.validated)
+  useEffect(() => {
+    if (validated)
+      queryClient.invalidateQueries({
+        queryKey: trpc.achievements.mine.queryKey()
+      })
+  }, [validated, queryClient])
   const now = Date.now()
 
   const top = (
