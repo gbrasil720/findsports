@@ -792,20 +792,23 @@ export function PillButton({
   onPress,
   trailing,
   edge = EDGE,
-  disabled
+  disabled,
+  height = 56
 }: {
   label: string
   onPress: () => void
   trailing?: boolean
   edge?: string
   disabled?: boolean
+  /** 52 no vidro do rodapé de uma folha (3d); 56 no resto. */
+  height?: number
 }) {
   const press = usePress(0, 3)
   return (
     <View
       style={[
         styles.pillEdge,
-        { backgroundColor: edge },
+        { backgroundColor: edge, height: height + 3, borderRadius: height / 2 },
         disabled && { opacity: 0.45 }
       ]}
     >
@@ -817,7 +820,13 @@ export function PillButton({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
       >
-        <Animated.View style={[styles.pill, press.style]}>
+        <Animated.View
+          style={[
+            styles.pill,
+            { height, borderRadius: height / 2 },
+            press.style
+          ]}
+        >
           {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
           <Animated.View key={label} entering={SWAP} style={styles.row}>
             <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>

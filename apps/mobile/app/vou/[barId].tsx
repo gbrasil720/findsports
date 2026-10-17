@@ -95,31 +95,43 @@ export default function GoingSheet() {
         ? 'Confirmar e gerar código'
         : 'Confirmar'
 
+  // O ScrollView é filho direto da tela: é o único jeito de o
+  // react-native-screens o medir pelo tamanho da folha. Dentro de uma View
+  // ele cai no caminho antigo (RNSScreen.mm), que copia também a origem da
+  // folha, e o conteúdo sai do lugar ou some. Por isso o título rola junto.
   return (
-    <View style={styles.sheet}>
-      {/* O título fica; o resto rola por baixo dele, recortado em reta (o
-          canto arredondado da folha não recorta). */}
-      <View style={styles.head}>
-        <View style={{ flex: 1 }}>
-          <Text
-            accessibilityRole="header"
-            style={[styles.title, { color: palette.ink }]}
-          >
-            Vou assistir aqui
-          </Text>
-          <Text style={[text(14), { color: palette.muted }]}>
-            {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
-          </Text>
-        </View>
-        <BackButton icon="close" />
-      </View>
+    <>
       <ScrollView
-        style={{ flex: 1 }}
+        style={{
+          flex: 1,
+          // O papel do design, um pouco translúcido: o vidro do iOS 26 fica
+          // na borda da folha e o que está atrás não atrapalha a leitura.
+          backgroundColor: palette.dark
+            ? 'rgba(18,18,15,.86)'
+            : 'rgba(241,238,230,.86)'
+        }}
         contentContainerStyle={[styles.body, { paddingBottom: 120 }]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.head}>
+          <View style={{ flex: 1 }}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, { color: palette.ink }]}
+            >
+              Vou assistir aqui
+            </Text>
+            <Text style={[text(14), { color: palette.muted }]}>
+              {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+          <BackButton icon="close" />
+        </View>
         <Text
-          style={[text(13, 'SemiBold'), { color: palette.muted, marginTop: 6 }]}
+          style={[
+            text(13, 'SemiBold'),
+            { color: palette.muted, marginBottom: -6 }
+          ]}
         >
           Jogo
         </Text>
@@ -152,7 +164,7 @@ export default function GoingSheet() {
               />
               <Text
                 style={[
-                  text(14.5, 'Bold', 1.4),
+                  text(13.5, 'Bold', 1.35),
                   { color: palette.ink, flex: 1 }
                 ]}
               >
@@ -168,10 +180,11 @@ export default function GoingSheet() {
             palette={palette}
             offer={data.houseOffer}
             note="Vale com o seu código."
+            compact
           />
         ) : null}
 
-        <Text style={[text(13.5, 'Regular', 1.45), { color: palette.muted }]}>
+        <Text style={[text(12.5, 'Regular', 1.45), { color: palette.muted }]}>
           {data.issuesCode
             ? 'Não precisa de confirmação do bar. O código sai na hora e fica em Meus jogos.'
             : 'Não precisa de confirmação do bar. O jogo fica em Meus jogos.'}
@@ -194,19 +207,27 @@ export default function GoingSheet() {
         ) : null}
       </ScrollView>
 
-      <Glass
-        tone={palette.dark ? 'dark' : 'light'}
-        style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
+      {/* A cápsula de vidro do design: mais branca que o papel e com
+          sombra, senão some sobre ele. */}
+      <View
+        style={[styles.dockShadow, { bottom: Math.max(insets.bottom - 6, 14) }]}
       >
-        <View style={{ flex: 1 }}>
-          <PillButton
-            label={label}
-            onPress={confirm}
-            disabled={set.isPending || (mine.attending && !mine.code)}
-          />
-        </View>
-      </Glass>
-    </View>
+        <Glass
+          tone={palette.dark ? 'dark' : 'light'}
+          tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
+          style={styles.dock}
+        >
+          <View style={{ flex: 1 }}>
+            <PillButton
+              label={label}
+              height={52}
+              onPress={confirm}
+              disabled={set.isPending || (mine.attending && !mine.code)}
+            />
+          </View>
+        </Glass>
+      </View>
+    </>
   )
 }
 
@@ -246,10 +267,10 @@ function GameOption({
             backgroundColor: selected
               ? palette.dark
                 ? '#22221d'
-                : '#fffdf8'
+                : '#ffffff'
               : palette.card,
             borderColor: selected ? palette.ink : palette.ring,
-            borderWidth: selected ? 2 : 1
+            borderWidth: selected ? 1.5 : 1
           }
         ]}
       >
@@ -258,7 +279,11 @@ function GameOption({
             styles.radio,
             selected
               ? { backgroundColor: palette.ink, borderColor: palette.ink }
-              : { borderColor: palette.muted }
+              : {
+                  borderColor: palette.dark
+                    ? 'rgba(241,238,230,.3)'
+                    : 'rgba(18,18,15,.3)'
+                }
           ]}
         >
           {selected ? (
@@ -318,7 +343,7 @@ function Faces({
           ]}
         >
           <Text
-            style={[text(11, 'Bold', 1.2), { color: fg }]}
+            style={[text(12, 'Bold', 1.2), { color: fg }]}
             maxFontSizeMultiplier={1}
           >
             {label}
@@ -331,14 +356,13 @@ function Faces({
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
-  body: { paddingHorizontal: 18, paddingTop: 14, gap: 14 },
+  body: { paddingHorizontal: 18, gap: 14 },
+  // O topo do título fica a 31 pt da borda da folha, como no design.
   head: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    paddingHorizontal: 18,
-    paddingTop: 30,
-    paddingBottom: 8
+    paddingTop: 31
   },
   // Anton 34 do design, sem `lineHeight` (corta no iOS): margem negativa.
   title: {
@@ -349,22 +373,21 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: -6
   },
-  games: { gap: 12 },
+  games: { gap: 14 },
   optionShadow: {
     ...StyleSheet.absoluteFill,
-    top: 5,
-    left: 5,
-    right: -5,
-    bottom: -5,
+    top: 4,
+    left: 4,
+    right: -4,
+    bottom: -4,
     borderRadius: 6
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    paddingLeft: 14,
-    paddingRight: 16,
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 6
   },
   radio: {
@@ -386,21 +409,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12
+    paddingVertical: 11,
+    paddingHorizontal: 12
   },
   face: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  dock: {
+  dockShadow: {
     position: 'absolute',
     left: 14,
     right: 14,
-    borderRadius: 40,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,.01)',
+    shadowColor: INK,
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 12 }
+  },
+  dock: {
+    borderRadius: 35,
     padding: 9,
     flexDirection: 'row',
     overflow: 'hidden'
