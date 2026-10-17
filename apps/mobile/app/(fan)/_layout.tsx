@@ -158,8 +158,15 @@ export default function FanTabs() {
           <NativeTabs.Trigger
             name="voce"
             // Tocar de novo com o menu aberto fecha; numa tela da pilha da
-            // aba, o sistema volta ao começo dela, que é o menu.
-            listeners={{ tabPress: () => menuOpen && closeMenu() }}
+            // aba, o sistema volta ao começo dela, que é o menu. Vindo de
+            // outra aba, o sistema voltaria à última tela da pilha (Meus
+            // jogos): a aba sempre reabre no menu.
+            listeners={{
+              tabPress: () => {
+                if (menuOpen) closeMenu()
+                else if (!pathname.startsWith('/voce')) router.navigate('/voce')
+              }
+            }}
           >
             <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
             <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
