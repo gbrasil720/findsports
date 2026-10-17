@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -37,6 +39,7 @@ import {
 } from '@/components/ui'
 import { formatTime } from '@/lib/explore'
 import {
+  calendarEvent,
   formatCode,
   gameTitle,
   type MyGame,
@@ -97,6 +100,27 @@ export default function MyGames() {
   }
 
   const openCode = (game: MyGame) => router.push(`/codigo/${game.eventId}`)
+  // Agenda do celular (WEB-406): o formulário de evento do próprio iOS, já
+  // preenchido. Não pede permissão de calendário e a pessoa confirma lá.
+  const addToCalendar = (game: MyGame) =>
+    Calendar.createEventInCalendarAsync(calendarEvent(game))
+      .then(({ action }) => {
+        if (action === 'saved') haptic.success()
+      })
+      .catch(() => soon.show('Não deu para abrir a agenda'))
+  const pickForCalendar = () => {
+    const [only] = upcoming
+    if (!only) return soon.show('Marque um jogo para pôr na agenda')
+    if (upcoming.length === 1) return addToCalendar(only)
+    Alert.alert('Pôr na agenda', 'Qual jogo?', [
+      // ponytail: os quatro mais próximos; mais que isso o alerta não comporta.
+      ...upcoming.slice(0, 4).map((game) => ({
+        text: `${gameTitle(game)} · ${dayLabel(game.startsAt, Date.now()).toLowerCase()}`,
+        onPress: () => addToCalendar(game)
+      })),
+      { text: 'Cancelar', style: 'cancel' as const }
+    ])
+  }
   const openBar = (game: MyGame) =>
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
 
@@ -130,8 +154,7 @@ export default function MyGames() {
             accessibilityRole="button"
             accessibilityLabel="Pôr na agenda do celular"
             hitSlop={8}
-            // O que o botão faz ainda não foi decidido: WEB-406.
-            onPress={() => soon.show('A agenda do celular chega em breve')}
+            onPress={pickForCalendar}
           >
             <Glass
               tone={palette.dark ? 'dark' : 'light'}
