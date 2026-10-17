@@ -273,6 +273,17 @@ export default function MyGames() {
                 </Card>
               </View>
             ) : null}
+            {/* O design diz "e para o ranking do mês": o ranking ainda não
+                existe (WEB-403, seção 13). */}
+            <Text
+              style={[
+                text(12.5, 'Regular', 1.45),
+                styles.note,
+                { color: palette.muted }
+              ]}
+            >
+              Cada código validado conta para as conquistas.
+            </Text>
           </>
         )}
       </ScrollView>
@@ -670,6 +681,7 @@ const styles = StyleSheet.create({
     marginTop: 12
   },
   list: { paddingHorizontal: 14 },
+  note: { paddingHorizontal: 4 },
   past: {
     flexDirection: 'row',
     alignItems: 'center',

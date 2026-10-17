@@ -12,6 +12,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { dayLabel, type Palette, Photo, usePalette } from '@/components/explore'
+import { MedalImage } from '@/components/medal'
 import { ErrorText, haptic, POP_FAST, usePressScale } from '@/components/motion'
 import {
   ACID,
@@ -19,11 +20,13 @@ import {
   Icon,
   INK,
   LIVE,
+  PAPER,
   PillButton,
   Title,
   text,
   useStatusBar
 } from '@/components/ui'
+import { type Achievement, reviewLine } from '@/lib/achievements'
 import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
@@ -31,9 +34,9 @@ import { trpc } from '@/lib/trpc'
  * Pós-jogo (3g do design): "Você foi ao bar?" e "Voltaria?" numa tela só.
  * A primeira é a pergunta de presença (`attendance.report`, WEB-128), que só
  * existe para quem marcou "Vou assistir aqui"; a segunda é a avaliação
- * (`ratings.submit`). Faltam, do design: "O que pesou?" entre os cartões e o
- * "Enviar" (WEB-398: o servidor não guarda o motivo) e o cartão "Sua Nª
- * resenha" (WEB-403: não há conquistas).
+ * (`ratings.submit`), que conta para as medalhas de resenha (o cartão "Sua
+ * Nª resenha"). Falta, do design, "O que pesou?" entre os cartões e o
+ * "Enviar" (WEB-398: o servidor não guarda o motivo).
  */
 
 export default function AfterGame() {
@@ -46,6 +49,10 @@ export default function AfterGame() {
   const mine = useQuery(trpc.attendance.mine.queryOptions())
   const pending = useQuery(trpc.ratings.getPending.queryOptions())
   const reports = useQuery(trpc.attendance.pendingReports.queryOptions())
+  const achievements = useQuery({
+    ...trpc.achievements.mine.queryOptions(),
+    meta: { errorToast: false }
+  })
   // O jogo vem de Meus jogos; quem só abriu rota ou WhatsApp chega pela
   // lista de avaliações pendentes.
   const game =
@@ -83,7 +90,9 @@ export default function AfterGame() {
     await Promise.all(
       [
         trpc.ratings.getPending.queryKey(),
-        trpc.attendance.pendingReports.queryKey()
+        trpc.attendance.pendingReports.queryKey(),
+        // A resenha pode dar medalha: a conquista nova abre sozinha.
+        trpc.achievements.mine.queryKey()
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey }))
     )
     router.back()
@@ -202,6 +211,13 @@ export default function AfterGame() {
           </>
         ) : null}
 
+        {rating && achievements.data ? (
+          <ReviewCount
+            list={achievements.data.achievements}
+            palette={palette}
+          />
+        ) : null}
+
         <ErrorText style={[text(13.5, 'SemiBold'), { color: LIVE }]}>
           {error}
         </ErrorText>
@@ -217,6 +233,33 @@ export default function AfterGame() {
         />
       </View>
     </View>
+  )
+}
+
+/** "Sua 7ª resenha. Faltam 3 para a medalha Crítico." (3g). */
+function ReviewCount({
+  list,
+  palette
+}: {
+  list: Achievement[]
+  palette: Palette
+}) {
+  const { head, tail, next } = reviewLine(list)
+  return (
+    <Card
+      // Tinta no claro, como o design; no escuro, o cartão do tema.
+      palette={{ ...palette, card: palette.dark ? palette.card : INK }}
+      shadow="rgba(201,241,53,.85)"
+      offset={5}
+    >
+      <View style={styles.review}>
+        {next ? <MedalImage id={next.id} locked size={60} /> : null}
+        <Text style={[text(13, 'Regular', 1.4), styles.reviewText]}>
+          <Text style={[text(13, 'Bold', 1.4), { color: PAPER }]}>{head}</Text>
+          {tail ? ` ${tail}` : ''}
+        </Text>
+      </View>
+    </Card>
   )
 }
 
@@ -330,5 +373,14 @@ const styles = StyleSheet.create({
     padding: 14,
     justifyContent: 'space-between'
   },
-  foot: { paddingHorizontal: 16, paddingTop: 12 }
+  foot: { paddingHorizontal: 16, paddingTop: 12 },
+  review: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingLeft: 6,
+    paddingRight: 14
+  },
+  reviewText: { flex: 1, color: '#d6d3cb' }
 })
