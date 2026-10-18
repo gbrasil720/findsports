@@ -16,8 +16,14 @@ import {
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { G, Path } from 'react-native-svg'
-import { Card } from '@/components/card'
-import { matchLine, type Palette, usePalette } from '@/components/explore'
+import { Card, FilterChip } from '@/components/card'
+import {
+  matchLine,
+  type Palette,
+  Photo,
+  usePalette
+} from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
   EASE,
@@ -39,35 +45,42 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 import {
+  type BarSort,
+  barGroups,
   byMonth,
   dayMonth,
   gameWhen,
   savedWeek,
   visitGrid,
   WEEK_COLUMNS,
-  WEEK_LETTERS
+  WEEK_LETTERS,
+  type YourBar,
+  yourBars
 } from '@/lib/your-bars'
 
 /*
- * Seus bares (17b e 17d do design), na aba Favoritos: os bares onde o
+ * Seus bares (17b, 17d e 17e do design), na aba Favoritos: os bares onde o
  * torcedor já assistiu a um jogo pela Onside e os que ele salvou com o
  * coração.
  * - "Já fui": o calendário das últimas quatro semanas (cada quadrado acid é
  *   um jogo com código validado) e as visitas por mês (`attendance.visits`).
  * - "Salvos": a semana com os jogos dos salvos, agrupados por dia, e no fim
  *   os bares sem jogo nesta semana (`pubs.getFavorites`).
- * A lupa filtra as duas por nome, bairro ou jogo. No design a tela abre com
+ * - "Bares" (17e): os salvos e os visitados, uma vez cada, por bairro, perto
+ *   ou A–Z, com quantas vezes você foi.
+ * A lupa filtra as três por nome, bairro ou jogo. No design a tela abre com
  * voltar (vem do menu); aqui ela é a raiz da aba.
  */
 
 type Outputs = inferRouterOutputs<AppRouter>
 type VisitRow = Outputs['attendance']['visits'][number]
 type SavedRow = Outputs['pubs']['getFavorites'][number]
-type Tab = 'visits' | 'saved'
+type Tab = 'visits' | 'saved' | 'bars'
 
 export default function YourBars() {
   const router = useRouter()
@@ -102,7 +115,23 @@ export default function YourBars() {
     haptic.select()
     favorites.toggle(barId)
   }
-  const query = tab === 'visits' ? visits : saved
+  const { device } = useExploreState()
+  const city = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const from = searchCenter(device, city.data)
+  const mine = yourBars(visits.data ?? [], saved.data ?? [], from, distanceKm)
+  const barRows = mine.bars.filter((b) => hit(b.name, b.neighborhood))
+  // "Bares" junta as duas leituras; as outras abas dependem de uma só.
+  const query =
+    tab === 'visits'
+      ? visits
+      : tab === 'saved'
+        ? saved
+        : visits.isPending || visits.isError
+          ? visits
+          : saved
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
@@ -123,8 +152,9 @@ export default function YourBars() {
           />
         }
       >
+        {/* A linha dos botões do design, sobre o título. O voltar do
+            design não entra: aqui a tela é a raiz da aba. */}
         <View style={styles.top}>
-          <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
@@ -140,6 +170,7 @@ export default function YourBars() {
             </GlassRound>
           </Pressable>
         </View>
+        <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
 
         {search !== null ? (
           <Animated.View entering={SWAP}>
@@ -163,6 +194,7 @@ export default function YourBars() {
           tab={tab}
           visits={visits.data?.length ?? 0}
           saved={saved.data?.length ?? 0}
+          bars={mine.bars.length}
           onPick={(next) => {
             if (next === tab) return
             haptic.select()
@@ -185,7 +217,16 @@ export default function YourBars() {
         ) : (
           // Trocar de aba troca o conteúdo em fade curto, sem salto.
           <Animated.View key={tab} entering={SWAP} style={styles.stack}>
-            {tab === 'visits' ? (
+            {tab === 'bars' ? (
+              <Bars
+                palette={palette}
+                all={mine}
+                rows={barRows}
+                searching={Boolean(term)}
+                onOpen={openBar}
+                onToggle={toggleSaved}
+              />
+            ) : tab === 'visits' ? (
               <Visits
                 palette={palette}
                 now={now}
@@ -214,33 +255,37 @@ export default function YourBars() {
   )
 }
 
-/** "Já fui · 9" e "Salvos · 6", no vidro. */
+/** "Já fui 9", "Salvos 6", "Bares 8": as três abas no vidro, com o número num selo. */
 function Segments({
   palette,
   tab,
   visits,
   saved,
+  bars,
   onPick
 }: {
   palette: Palette
   tab: Tab
   visits: number
   saved: number
+  bars: number
   onPick: (tab: Tab) => void
 }) {
-  const options: [Tab, string][] = [
-    ['visits', `Já fui · ${visits}`],
-    ['saved', `Salvos · ${saved}`]
+  const options: [Tab, string, number][] = [
+    ['visits', 'Já fui', visits],
+    ['saved', 'Salvos', saved],
+    ['bars', 'Bares', bars]
   ]
   return (
     <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.segments}>
-      {options.map(([key, label]) => {
+      {options.map(([key, label, count]) => {
         const on = key === tab
         return (
           <Pressable
             key={key}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
+            accessibilityLabel={`${label}, ${count}`}
             onPress={() => onPick(key)}
             style={[
               styles.segment,
@@ -262,6 +307,29 @@ function Segments({
             >
               {label}
             </Text>
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: on
+                    ? ACID
+                    : palette.dark
+                      ? 'rgba(241,238,230,.1)'
+                      : 'rgba(18,18,15,.08)'
+                }
+              ]}
+            >
+              <Text
+                style={[
+                  styles.badgeText,
+                  {
+                    color: on ? INK : palette.dark ? palette.ink : palette.muted
+                  }
+                ]}
+              >
+                {count}
+              </Text>
+            </View>
           </Pressable>
         )
       })}
@@ -560,6 +628,188 @@ function Saved({
   )
 }
 
+/** A barra do resumo: acid o bairro com mais bares, papel o segundo, cinza o resto. */
+const segmentColor = (palette: Palette, i: number) =>
+  i === 0 ? ACID : i === 1 ? palette.ink : palette.dark ? '#55554f' : '#c9c5bc'
+
+function Bars({
+  palette,
+  all,
+  rows,
+  searching,
+  onOpen,
+  onToggle
+}: {
+  palette: Palette
+  all: ReturnType<typeof yourBars>
+  rows: YourBar[]
+  searching: boolean
+  onOpen: (barId: string) => void
+  onToggle: (barId: string) => void
+}) {
+  const t = tones(palette)
+  const [sort, setSort] = useState<BarSort>('bairro')
+  const sorts: [BarSort, string][] = [
+    ['bairro', 'Bairro'],
+    ['perto', 'Perto'],
+    ['az', 'A–Z']
+  ]
+  if (!all.bars.length)
+    return (
+      <View style={styles.empty}>
+        <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+          Nenhum bar por aqui ainda.
+        </Text>
+        <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+          Os bares que você salvar e os que tiverem seu código validado aparecem
+          aqui, por bairro.
+        </Text>
+      </View>
+    )
+  return (
+    <>
+      <Card palette={palette} shadow={t.glow} offset={5}>
+        <View style={styles.summary}>
+          <View style={styles.summaryTop}>
+            <Text style={[text(14, 'Bold'), { color: palette.ink }]}>
+              {all.bars.length} {all.bars.length === 1 ? 'bar' : 'bares'} em{' '}
+              {all.neighborhoods.length}{' '}
+              {all.neighborhoods.length === 1 ? 'bairro' : 'bairros'}
+            </Text>
+            {all.nearest !== null ? (
+              <Text style={[text(12), { color: palette.muted }]}>
+                Mais perto: {formatKm(all.nearest)}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.split}>
+            {all.neighborhoods.map((n, i) => (
+              <View
+                key={n.name}
+                style={[
+                  styles.splitPart,
+                  { flex: n.count, backgroundColor: segmentColor(palette, i) }
+                ]}
+              />
+            ))}
+          </View>
+          <View style={styles.legend}>
+            {all.neighborhoods.map((n, i) => (
+              <View key={n.name} style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: segmentColor(palette, i) }
+                  ]}
+                />
+                <Text
+                  style={[text(12.5, 'Regular', 1.2), { color: palette.ink }]}
+                >
+                  {n.name}
+                </Text>
+                <Text style={[styles.legendCount, { color: palette.ink }]}>
+                  {n.count}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Card>
+      <View style={styles.sortRow}>
+        <Text style={[text(12.5), { color: palette.muted }]}>
+          {sort === 'bairro'
+            ? 'Por bairro'
+            : sort === 'perto'
+              ? 'Mais perto primeiro'
+              : 'De A a Z'}
+        </Text>
+        <View style={styles.sorts}>
+          {sorts.map(([key, label]) => (
+            <FilterChip
+              key={key}
+              palette={palette}
+              label={label}
+              on={sort === key}
+              raised
+              onPress={() => setSort(key)}
+            />
+          ))}
+        </View>
+      </View>
+      {!rows.length && searching ? (
+        <NoMatch palette={palette} />
+      ) : (
+        barGroups(rows, all.neighborhoods, sort)
+          .filter((group) => group.bars.length)
+          .map((group) => (
+            <View key={group.key}>
+              {group.label ? (
+                <Header
+                  palette={palette}
+                  label={group.label}
+                  count={`${group.bars.length} ${group.bars.length === 1 ? 'bar' : 'bares'}`}
+                />
+              ) : null}
+              {group.bars.map((b, i) => (
+                <Row
+                  key={b.barId}
+                  palette={palette}
+                  first={i === 0}
+                  gap={13}
+                  pad={11}
+                  side={
+                    <Photo
+                      uri={b.photoUrl}
+                      name={b.name}
+                      palette={palette}
+                      style={styles.thumb}
+                    />
+                  }
+                  name={b.name}
+                  line={
+                    sort === 'bairro' || b.km === null
+                      ? b.km === null
+                        ? b.neighborhood
+                        : formatKm(b.km)
+                      : `${b.neighborhood} · ${formatKm(b.km)}`
+                  }
+                  extra={
+                    <View style={styles.times}>
+                      {b.visits ? (
+                        <>
+                          <Text
+                            style={[styles.timesNumber, { color: palette.ink }]}
+                          >
+                            {b.visits}×
+                          </Text>
+                          <Text
+                            style={[
+                              styles.timesLabel,
+                              { color: palette.muted }
+                            ]}
+                          >
+                            FOI
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={[styles.never, { color: palette.muted }]}>
+                          {'NUNCA\nFOI'}
+                        </Text>
+                      )}
+                    </View>
+                  }
+                  saved={b.saved}
+                  onOpen={b.active ? () => onOpen(b.barId) : undefined}
+                  onToggle={() => onToggle(b.barId)}
+                />
+              ))}
+            </View>
+          ))
+      )}
+    </>
+  )
+}
+
 function Header({
   palette,
   label,
@@ -605,7 +855,10 @@ function Row({
   line,
   saved,
   onOpen,
-  onToggle
+  onToggle,
+  extra,
+  gap = 14,
+  pad = 12
 }: {
   palette: Palette
   first: boolean
@@ -613,6 +866,10 @@ function Row({
   name: string
   line: string
   saved: boolean
+  /** Antes do coração: "2× FOI" na aba Bares. */
+  extra?: ReactNode
+  gap?: number
+  pad?: number
   /** Sem ela (bar fora do ar), a linha não abre nada. */
   onOpen?: () => void
   onToggle: () => void
@@ -632,6 +889,7 @@ function Row({
         <Animated.View
           style={[
             styles.row,
+            { gap, paddingVertical: pad },
             !first && { borderTopWidth: 1, borderTopColor: palette.line },
             press.style
           ]}
@@ -651,6 +909,7 @@ function Row({
               {line}
             </Text>
           </View>
+          {extra}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={saved ? 'Tirar dos salvos' : 'Salvar bar'}
@@ -696,11 +955,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
   stack: { gap: 14 },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
+  top: { flexDirection: 'row', justifyContent: 'flex-end' },
   search: {
     height: 46,
     borderRadius: 23,
@@ -715,8 +970,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 38,
     borderRadius: 19,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    gap: 6
+  },
+  badge: { paddingVertical: 3, paddingHorizontal: 5, borderRadius: 4 },
+  badgeText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    lineHeight: 13
   },
   segmentOn: {
     shadowColor: '#000',
@@ -760,12 +1023,36 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 4
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 12
+  row: { flexDirection: 'row', alignItems: 'center' },
+  thumb: { width: 50, height: 50, borderRadius: 3 },
+  times: { width: 40, alignItems: 'flex-end' },
+  timesNumber: { fontFamily: 'Anton', fontSize: 20, marginVertical: -4 },
+  timesLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 9.5, marginTop: 2 },
+  never: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    lineHeight: 12,
+    textAlign: 'right'
   },
+  summary: { padding: 14, gap: 12 },
+  summaryTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline'
+  },
+  split: { flexDirection: 'row', gap: 3, height: 12 },
+  splitPart: { borderRadius: 3 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 6, columnGap: 14 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 9, height: 9, borderRadius: 2 },
+  legendCount: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  sortRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -2
+  },
+  sorts: { flexDirection: 'row', gap: 6 },
   rowText: { flex: 1, minWidth: 0 },
   dateCol: { width: 44, alignItems: 'center' },
   timeCol: { width: 52, alignItems: 'center' },
