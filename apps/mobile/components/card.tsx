@@ -20,12 +20,15 @@ export function FilterChip({
   label,
   on,
   onPress,
-  palette
+  palette,
+  raised
 }: {
   label: string
   on: boolean
   onPress: () => void
   palette: Palette
+  /** Ligado, com a sombra dura e o canto 5 dos chips de ordem (17e). */
+  raised?: boolean
 }) {
   const press = usePressScale()
   return (
@@ -43,6 +46,8 @@ export function FilterChip({
       <Animated.View
         style={[
           styles.chip,
+          raised && { borderRadius: 5 },
+          on && raised && styles.raised,
           on
             ? { backgroundColor: ACID }
             : {
@@ -189,6 +194,12 @@ export function OfferCard({
 }
 
 const styles = StyleSheet.create({
+  raised: {
+    shadowColor: '#000',
+    shadowOpacity: 0.6,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
   chip: {
     height: 34,
     paddingHorizontal: 12,
