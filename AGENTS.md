@@ -28,7 +28,6 @@ os jobs `check` e `unit-test` pegariam; o E2E fica com o CI. Pular uma vez:
 `git push --no-verify`.
 
 ```bash
-
 bun run db:generate  # generate migration files
 bun run db:migrate   # run migrations (NODE_ENV=development localmente)
 bun run db:journal   # relatório do journal; --upto <tag> / --all reconciliam
