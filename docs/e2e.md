@@ -289,8 +289,8 @@ que falharam) como artifact.
 
 O job `e2e-worker` roda a suíte do Worker, também em todo PR, sem banco.
 
-O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
-projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os
+O job é uma matriz: `desktop` e `mobile` em 8 shards (`--shard=N/8`) e os
+projetos `*-serial` num job à parte, depois de `setup`, com `--no-deps`. Os
 serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
 Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
 servidor e o seu Postgres. Num job só, com auth e onboarding, a
