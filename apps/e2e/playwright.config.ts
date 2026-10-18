@@ -16,7 +16,7 @@ export default defineConfig({
   testMatch: /\.e2e\.ts$/,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  workers: CI ? 3 : undefined,
+  workers: CI ? 2 : undefined,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   reporter: CI ? [['github'], ['html', { open: 'never' }]] : 'list',
