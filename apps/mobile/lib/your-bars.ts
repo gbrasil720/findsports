@@ -171,3 +171,119 @@ export function gameWhen(game: Game, now: number) {
           .toLocaleUpperCase('pt-BR')
   return { live: false, time: formatTime(game.startsAt), day }
 }
+
+type Coords = { lat: number; lng: number }
+
+/** Um bar da aba "Bares" (17e): quem você salvou ou onde já foi. */
+export type YourBar = {
+  barId: string
+  name: string
+  neighborhood: string
+  photoUrl: string | null
+  km: number | null
+  /** Jogos com código validado lá. */
+  visits: number
+  saved: boolean
+  /** Bar fora do ar não abre a página. */
+  active: boolean
+}
+
+type BarInfo = {
+  name: string
+  neighborhood: string
+  photoUrl: string | null
+  latitude: string | number | null
+  longitude: string | number | null
+}
+
+/**
+ * Os bares de "Bares" (17e): os salvos e os visitados, cada um uma vez, com
+ * quantas vezes você foi e a distância; e o resumo por bairro do topo.
+ */
+export function yourBars(
+  visits: (Omit<BarInfo, 'name'> & {
+    barId: string
+    barName: string
+    barActive: boolean
+  })[],
+  saved: { barId: string; bar: BarInfo }[],
+  from: Coords,
+  distance: (a: Coords, b: Coords) => number
+) {
+  const km = (b: Pick<BarInfo, 'latitude' | 'longitude'>) =>
+    b.latitude === null || b.longitude === null
+      ? null
+      : distance(from, { lat: Number(b.latitude), lng: Number(b.longitude) })
+  const bars = new Map<string, YourBar>()
+  for (const s of saved)
+    bars.set(s.barId, {
+      barId: s.barId,
+      name: s.bar.name,
+      neighborhood: s.bar.neighborhood,
+      photoUrl: s.bar.photoUrl,
+      km: km(s.bar),
+      visits: 0,
+      saved: true,
+      active: true
+    })
+  for (const v of visits) {
+    const known = bars.get(v.barId)
+    if (known) known.visits++
+    else
+      bars.set(v.barId, {
+        barId: v.barId,
+        name: v.barName,
+        neighborhood: v.neighborhood,
+        photoUrl: v.photoUrl,
+        km: km(v),
+        visits: 1,
+        saved: false,
+        active: v.barActive
+      })
+  }
+  const list = [...bars.values()]
+  const counts = new Map<string, number>()
+  for (const b of list)
+    counts.set(b.neighborhood, (counts.get(b.neighborhood) ?? 0) + 1)
+  // Bairro com mais bares primeiro; empate pelo nome.
+  const neighborhoods = [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR'))
+  const near = list
+    .map((b) => b.km)
+    .filter((k): k is number => k !== null)
+    .sort((a, b) => a - b)[0]
+  return { bars: list, neighborhoods, nearest: near ?? null }
+}
+
+export type BarSort = 'bairro' | 'perto' | 'az'
+
+const byKm = (a: YourBar, b: YourBar) =>
+  (a.km ?? Number.POSITIVE_INFINITY) - (b.km ?? Number.POSITIVE_INFINITY) ||
+  a.name.localeCompare(b.name, 'pt-BR')
+
+/**
+ * A lista em grupos. "Bairro": um grupo por bairro, na ordem do resumo, do
+ * mais perto ao mais longe dentro dele. "Perto" e "A–Z": um grupo só.
+ */
+export function barGroups(
+  bars: YourBar[],
+  neighborhoods: { name: string }[],
+  sort: BarSort
+) {
+  if (sort === 'perto')
+    return [{ key: 'perto', label: null, bars: [...bars].sort(byKm) }]
+  if (sort === 'az')
+    return [
+      {
+        key: 'az',
+        label: null,
+        bars: [...bars].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+      }
+    ]
+  return neighborhoods.map((n) => ({
+    key: n.name,
+    label: n.name,
+    bars: bars.filter((b) => b.neighborhood === n.name).sort(byKm)
+  }))
+}

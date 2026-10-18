@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  barGroups,
   byMonth,
   dayMonth,
   gameWhen,
   savedWeek,
   visitGrid,
-  weekOf
+  weekOf,
+  yourBars
 } from './your-bars'
 
 // Sábado, 17/10/2026, 19h30 em Brasília.
@@ -83,5 +85,55 @@ describe('seus bares', () => {
       time: '16:00',
       day: 'DOM 18'
     })
+  })
+})
+
+describe('aba Bares', () => {
+  const bar = (name: string, neighborhood: string, lat: number) => ({
+    name,
+    neighborhood,
+    photoUrl: null,
+    latitude: String(lat),
+    longitude: '-46.68'
+  })
+  const from = { lat: -23.56, lng: -46.68 }
+  const km = (a: { lat: number }, b: { lat: number }) =>
+    Math.abs(a.lat - b.lat) * 100
+
+  it('junta salvos e visitados, conta as visitas e resume por bairro', () => {
+    const visit = (barId: string, b: ReturnType<typeof bar>) => ({
+      ...b,
+      barId,
+      barName: b.name,
+      barActive: true
+    })
+    const zé = bar('Bar do Zé', 'Vila Madalena', -23.561)
+    const casa = bar('Casa 92', 'Pinheiros', -23.57)
+    const sete = bar('Boteco Sete', 'Pinheiros', -23.58)
+    const result = yourBars(
+      [visit('ze', zé), visit('ze', zé), visit('sete', sete)],
+      [
+        { barId: 'ze', bar: zé },
+        { barId: 'casa', bar: casa }
+      ],
+      from,
+      km
+    )
+    const ze = result.bars.find((b) => b.barId === 'ze')
+    expect(ze).toMatchObject({ visits: 2, saved: true })
+    expect(result.bars.find((b) => b.barId === 'sete')).toMatchObject({
+      visits: 1,
+      saved: false
+    })
+    expect(result.neighborhoods).toEqual([
+      { name: 'Pinheiros', count: 2 },
+      { name: 'Vila Madalena', count: 1 }
+    ])
+    expect(result.nearest).toBeCloseTo(0.1)
+    const groups = barGroups(result.bars, result.neighborhoods, 'bairro')
+    expect(groups[0]?.bars.map((b) => b.name)).toEqual([
+      'Casa 92',
+      'Boteco Sete'
+    ])
   })
 })
