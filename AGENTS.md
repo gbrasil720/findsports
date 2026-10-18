@@ -24,7 +24,8 @@ bun run test:e2e     # Playwright (apps/e2e): desktop + mobile, banco e portas p
 
 `bun install` liga o hook `.githooks/pre-push` (`prepare` do package.json): Biome
 nos arquivos do branch, tipos dos pacotes afetados e `bun run test`, ~25 s. É o que
-os jobs `check` e `unit-test` pegariam; o E2E fica com o CI. Pular uma vez:
+os jobs `check` e `unit-test` pegariam; o E2E fica com o CI, que o pula em PR só de
+`apps/mobile`, `docs` ou `*.md`. Pular uma vez:
 `git push --no-verify`.
 
 ```bash
