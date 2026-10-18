@@ -230,7 +230,7 @@ export async function readMyGames(userId: string, now = new Date()) {
 }
 
 /**
- * "Já fui" de Seus bares (17b do design): cada jogo em que o torcedor teve o
+ * "Já fui" e "Bares" de Seus bares (17b, 17e do design): cada jogo em que o torcedor teve o
  * código validado no balcão, do mais recente ao mais antigo. É a mesma visita
  * das conquistas (`achievements-read.ts`); o check-in do WEB-408 entra nas
  * duas. Bar fora do ar segue na lista, sem perfil para abrir.
@@ -247,6 +247,10 @@ export async function readVisitedGames(userId: string) {
       barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
+      // A aba "Bares" (17e) mostra a foto e a distância de quem já foi.
+      photoUrl: bar.photoUrl,
+      latitude: bar.latitude,
+      longitude: bar.longitude,
       barActive: bar.isActive
     })
     .from(reservationCodeUse)
