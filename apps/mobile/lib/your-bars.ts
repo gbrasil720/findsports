@@ -174,7 +174,7 @@ export function gameWhen(game: Game, now: number) {
 
 type Coords = { lat: number; lng: number }
 
-/** Um bar da aba "Bares" (17e): quem você salvou ou onde já foi. */
+/** Um bar da aba "Bares" (17e): um dos que você salvou. */
 export type YourBar = {
   barId: string
   name: string
@@ -197,8 +197,9 @@ type BarInfo = {
 }
 
 /**
- * Os bares de "Bares" (17e): os salvos e os visitados, cada um uma vez, com
- * quantas vezes você foi e a distância; e o resumo por bairro do topo.
+ * Os bares de "Bares" (17e): os salvos, com quantas vezes você foi a cada um
+ * (código validado) e a distância; e o resumo por bairro do topo. Bar
+ * visitado e não salvo fica só em "Já fui" (pedido do dono, 17/10/2026).
  */
 export function yourBars(
   visits: (Omit<BarInfo, 'name'> & {
@@ -226,20 +227,10 @@ export function yourBars(
       saved: true,
       active: true
     })
+  // Só os salvos entram; as visitas contam quantas vezes você foi a cada um.
   for (const v of visits) {
     const known = bars.get(v.barId)
     if (known) known.visits++
-    else
-      bars.set(v.barId, {
-        barId: v.barId,
-        name: v.barName,
-        neighborhood: v.neighborhood,
-        photoUrl: v.photoUrl,
-        km: km(v),
-        visits: 1,
-        saved: false,
-        active: v.barActive
-      })
   }
   const list = [...bars.values()]
   const counts = new Map<string, number>()

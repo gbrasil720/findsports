@@ -71,8 +71,8 @@ import {
  *   um jogo com código validado) e as visitas por mês (`attendance.visits`).
  * - "Salvos": a semana com os jogos dos salvos, agrupados por dia, e no fim
  *   os bares sem jogo nesta semana (`pubs.getFavorites`).
- * - "Bares" (17e): os salvos e os visitados, uma vez cada, por bairro, perto
- *   ou A–Z, com quantas vezes você foi.
+ * - "Bares" (17e): só os salvos, por bairro, perto ou A–Z, com quantas vezes
+ *   você foi a cada um.
  * A lupa filtra as três por nome, bairro ou jogo. No design a tela abre com
  * voltar (vem do menu); aqui ela é a raiz da aba.
  */
@@ -658,10 +658,10 @@ function Bars({
     return (
       <View style={styles.empty}>
         <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-          Nenhum bar por aqui ainda.
+          Nenhum bar salvo ainda.
         </Text>
         <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-          Os bares que você salvar e os que tiverem seu código validado aparecem
+          Toque no coração de um bar, no mapa ou na página dele, para guardar
           aqui, por bairro.
         </Text>
       </View>

@@ -100,7 +100,7 @@ describe('aba Bares', () => {
   const km = (a: { lat: number }, b: { lat: number }) =>
     Math.abs(a.lat - b.lat) * 100
 
-  it('junta salvos e visitados, conta as visitas e resume por bairro', () => {
+  it('só os salvos, com as visitas contadas, e o resumo por bairro', () => {
     const visit = (barId: string, b: ReturnType<typeof bar>) => ({
       ...b,
       barId,
@@ -121,19 +121,17 @@ describe('aba Bares', () => {
     )
     const ze = result.bars.find((b) => b.barId === 'ze')
     expect(ze).toMatchObject({ visits: 2, saved: true })
-    expect(result.bars.find((b) => b.barId === 'sete')).toMatchObject({
-      visits: 1,
-      saved: false
+    // Visitado e não salvo não entra.
+    expect(result.bars.find((b) => b.barId === 'sete')).toBeUndefined()
+    expect(result.bars.find((b) => b.barId === 'casa')).toMatchObject({
+      visits: 0
     })
     expect(result.neighborhoods).toEqual([
-      { name: 'Pinheiros', count: 2 },
+      { name: 'Pinheiros', count: 1 },
       { name: 'Vila Madalena', count: 1 }
     ])
     expect(result.nearest).toBeCloseTo(0.1)
     const groups = barGroups(result.bars, result.neighborhoods, 'bairro')
-    expect(groups[0]?.bars.map((b) => b.name)).toEqual([
-      'Casa 92',
-      'Boteco Sete'
-    ])
+    expect(groups[0]?.bars.map((b) => b.name)).toEqual(['Casa 92'])
   })
 })
