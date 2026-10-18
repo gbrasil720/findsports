@@ -387,8 +387,9 @@ invente layout que o projeto não tem.
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`; a aba selecionada
   troca para `*-on`, o ícone com o nome ao lado, e o rótulo nativo fica oculto), IA na aba de papel
   `search` (o círculo à direita) e desabilitada com `tabPress`. Favoritos é "Seus bares"
-  (17b e 17d da Rodada 17), `app/(fan)/favoritos.tsx`: "Já fui" (calendário e visitas por
-  mês, `attendance.visits`, os códigos validados) e "Salvos" (a semana dos jogos dos salvos). As imagens selecionadas das abas
+  (17b, 17d e 17e da Rodada 17), `app/(fan)/favoritos.tsx`: "Já fui" (calendário e visitas
+  por mês, `attendance.visits`, os códigos validados), "Salvos" (a semana dos jogos dos
+  salvos) e "Bares" (salvos e visitados por bairro, perto ou A–Z, com quantas vezes foi). As imagens selecionadas das abas
   (`*-on`) têm no máximo ~72 pt: mais largas, a ponta aparece na lente da aba vizinha. A barra tem Favoritos onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
   de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
   cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
