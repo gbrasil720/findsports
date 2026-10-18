@@ -92,7 +92,7 @@ jobs:
   e2e:
     # Suíte Playwright (WEB-174, docs/e2e.md): `vite dev` contra um Postgres
     # descartável, Chromium desktop + Pixel 7, sem rede externa.
-    # `desktop`/`mobile` divididos em 8 shards (repo público: minuto de
+    # `desktop`/`mobile` divididos em 12 shards (repo público: minuto de
     # runner padrão não custa, e cada shard a mais corta o tempo do PR); os `*-serial` num job
     # à parte, porque como dependência eles puxariam a suíte inteira para cada shard.
     #
@@ -109,7 +109,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [1, 2, 3, 4, 5, 6, 7, 8, serial]
+        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, serial]
     env:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
@@ -138,7 +138,7 @@ jobs:
       - if: steps.scope.outputs.web == 'true'
         uses: ./.github/actions/setup-playwright
       - if: steps.scope.outputs.web == 'true' && matrix.part != 'serial'
-        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/8
+        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/12
         working-directory: apps/e2e
       - if: steps.scope.outputs.web == 'true' && matrix.part == 'serial'
         run: |
