@@ -1,0 +1,28 @@
+name: Escopo web do PR
+description: >-
+  `web=true` quando o PR mexe em algo fora de `apps/mobile/`, `docs/` e `*.md`.
+  Os E2E da web pulam os passos com `web=false`: o job termina verde, e não
+  pulado, porque matriz pulada inteira não publica os checks `e2e (N)`
+  obrigatórios da proteção de `master`. Na dúvida (API falhou), `web=true`.
+
+outputs:
+  web:
+    value: ${{ steps.scope.outputs.web }}
+
+runs:
+  using: composite
+  steps:
+    - id: scope
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate -q '.[].filename'); then
+          outside=$(echo "$files" | grep -cvE '^(apps/mobile|docs)/|\.md$' || true)
+          web=$([ "$outside" -gt 0 ] && echo true || echo false)
+        else
+          web=true
+        fi
+        echo "web=$web" >> "$GITHUB_OUTPUT"
+        [ "$web" = true ] || echo "::notice::Só apps/mobile, docs ou *.md mudaram: E2E da web pulado."
