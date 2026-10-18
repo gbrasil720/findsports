@@ -12,7 +12,7 @@ import { authClient } from '@/lib/auth-client'
 import { trpc } from '@/lib/trpc'
 
 /*
- * As abas do torcedor ("02 Navbar glass"): Explorar, Favoritos e Você, com a
+ * As abas do torcedor ("02 Navbar glass"): Explorar, Bares (Seus bares) e Você, com a
  * busca com IA no círculo à direita. O design põe o Ranking no lugar dos
  * Favoritos; o dono trocou (16/10/2026), e o Ranking foi para o menu. É a barra nativa do iOS 26
  * (UITabBarController, pelo `NativeTabs`): o vidro distorce o que passa por
@@ -26,7 +26,8 @@ import { trpc } from '@/lib/trpc'
 // embaixo, então o nome vai dentro da imagem e o rótulo nativo fica oculto.
 // O nome sai em 12,5 (o design usa 14): a lente de vidro da seleção desenha
 // por dentro a versão selecionada de todas as abas, e uma imagem mais larga
-// que a aba aparece na lente da vizinha (o "Favoritos" ficou com 80 pt).
+// que a aba aparece na lente da vizinha: cada imagem cabe em ~72 pt ("Seus
+// bares" não coube; a aba de Seus bares se chama "Bares").
 const TAB_ICONS = {
   light: {
     map: {
@@ -160,9 +161,7 @@ export default function FanTabs() {
           </NativeTabs.Trigger>
           <NativeTabs.Trigger name="favoritos">
             <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>
-              Favoritos
-            </NativeTabs.Trigger.Label>
+            <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
           </NativeTabs.Trigger>
           <NativeTabs.Trigger
             name="voce"
