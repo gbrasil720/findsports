@@ -1,0 +1,16 @@
+#!/bin/sh
+# O que os jobs `check` e `unit-test` do CI pegam, em ~25 s, antes do push.
+# Ligado pelo `prepare` do package.json (git config core.hooksPath .githooks).
+# Pular uma vez: git push --no-verify
+set -e
+
+# Só os arquivos do branch: pasta local não rastreada (brag-output/, etc.)
+# quebraria o `biome check .` sem ser defeito do repo.
+base=$(git merge-base origin/master HEAD)
+files=$(git diff --name-only --diff-filter=d "$base" --)
+[ -n "$files" ] && echo "$files" |
+  xargs bunx biome check --no-errors-on-unmatched --files-ignore-unknown=true
+bun scripts/check-onside-classes.ts
+
+bunx turbo run check-types --filter="...[$base]" --output-logs=errors-only
+bun run test
