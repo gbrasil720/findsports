@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# Push novo num PR cancela o run anterior dele. Em master cada push tem grupo
+# próprio (o SHA): nada cancela um deploy de produção.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
   # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
