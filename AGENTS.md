@@ -20,6 +20,14 @@ bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
 bun run test         # full test suite from repo root (env fake: raiz .env.test via bunfig preload)
 bun run test:e2e     # Playwright (apps/e2e): desktop + mobile, banco e portas próprios — docs/e2e.md
+```
+
+`bun install` liga o hook `.githooks/pre-push` (`prepare` do package.json): Biome
+nos arquivos do branch, tipos dos pacotes afetados e `bun run test`, ~25 s. É o que
+os jobs `check` e `unit-test` pegariam; o E2E fica com o CI. Pular uma vez:
+`git push --no-verify`.
+
+```bash
 
 bun run db:generate  # generate migration files
 bun run db:migrate   # run migrations (NODE_ENV=development localmente)
