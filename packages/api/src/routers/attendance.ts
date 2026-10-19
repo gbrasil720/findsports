@@ -46,7 +46,11 @@ export const attendanceRouter = router({
         columns: { startsAt: true },
         with: {
           bar: {
-            columns: { isActive: true, houseOffer: true },
+            columns: {
+              isActive: true,
+              houseOffer: true,
+              confirmsCodesLater: true
+            },
             with: {
               subscription: {
                 columns: { plan: true, status: true, currentPeriodEnd: true }
@@ -100,7 +104,9 @@ export const attendanceRouter = router({
       return {
         attending: input.attending,
         code: ticket?.code ?? null,
-        offer: ticket?.offer ?? null
+        offer: ticket?.offer ?? null,
+        // O diálogo do código fala com o garçom (WEB-412).
+        confirmsCodesLater: ticket ? game.bar.confirmsCodesLater : false
       }
     }),
 

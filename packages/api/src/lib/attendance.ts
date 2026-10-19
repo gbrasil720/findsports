@@ -26,6 +26,7 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { participantNames } from './game-participants'
+import { getLateEntryWindow } from './reservation-validation'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -182,6 +183,10 @@ export async function readMyGames(userId: string, now = new Date()) {
       photoUrl: bar.photoUrl,
       // Bar fora do ar segue na lista, sem perfil para abrir (WEB-360).
       barActive: bar.isActive,
+      // Bar que confirma pela comanda (WEB-412): o código vai anotado e o
+      // dono lança depois, então só conta como perdido quando o prazo dele
+      // acabar.
+      confirmsCodesLater: bar.confirmsCodesLater,
       offer: reservation.offerSnapshot,
       code: reservationCode.code,
       usedCount: reservationCode.usedCount
@@ -210,6 +215,9 @@ export async function readMyGames(userId: string, now = new Date()) {
 
   return rows.map(({ code, usedCount, endsAt, ...row }) => {
     const window = getValidationWindow({ startsAt: row.startsAt, endsAt })
+    const lastChance = row.confirmsCodesLater
+      ? getLateEntryWindow({ startsAt: row.startsAt, endsAt }).closesAt
+      : window.closesAt
     const validated = (usedCount ?? 0) > 0
     return {
       ...row,
@@ -220,7 +228,7 @@ export async function readMyGames(userId: string, now = new Date()) {
       window: code ? window : null,
       validated,
       // Bar Elite que emitiu código e o jogo passou sem validação.
-      missed: code !== null && !validated && window.closesAt < now
+      missed: code !== null && !validated && lastChance < now
     }
   })
 }
