@@ -809,3 +809,93 @@ integrationTest('torcedor não valida código', async () => {
     await ctx.cleanup()
   }
 })
+
+// --- Lançamento depois do jogo (WEB-412) -------------------------------------
+
+async function confirmsLater(ctx: Seeded) {
+  await ctx.db
+    .update(bar)
+    .set({ confirmsCodesLater: true })
+    .where(eq(bar.id, ctx.barId))
+}
+
+integrationTest(
+  'lançar depois exige o bar no modo "depois do jogo"',
+  async () => {
+    const ctx = await seed({ startsAt: new Date(Date.now() - 26 * HOUR) })
+    try {
+      await expect(ctx.owner.logLate({ codes: [ctx.code] })).rejects.toThrow(
+        'Depois do jogo'
+      )
+      expect(await counterOf(ctx)).toBe(0)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'código do jogo de ontem lançado no dia seguinte vira chegada marcada como tardia',
+  async () => {
+    const ctx = await seed({
+      startsAt: new Date(Date.now() - 26 * HOUR),
+      partySize: 1
+    })
+    try {
+      await confirmsLater(ctx)
+      // Anotado à mão: minúscula, espaço e o ponto do app.
+      const typed = `${ctx.code.slice(0, 3).toLowerCase()}·${ctx.code.slice(3)} `
+      const [result] = await ctx.owner.logLate({ codes: [typed, typed] })
+      expect(result).toMatchObject({
+        code: ctx.code,
+        status: 'logged',
+        guestName: 'Torcedora de integração'
+      })
+      expect(await counterOf(ctx)).toBe(1)
+      const [use] = await usesOf(ctx)
+      expect(use?.late).toBe(true)
+      expect(use?.validatedByUserId).toBe(ctx.ownerId)
+
+      // Lançar de novo não soma: o código vale uma vez.
+      const [again] = await ctx.owner.logLate({ codes: [ctx.code] })
+      expect(again?.status).toBe('used')
+      expect(await counterOf(ctx)).toBe(1)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'passadas 48 h do fim do jogo o código não entra mais',
+  async () => {
+    // Sem fim informado, o jogo dura 3 h: acabou há 57 h.
+    const ctx = await seed({ startsAt: new Date(Date.now() - 60 * HOUR) })
+    try {
+      await confirmsLater(ctx)
+      const [result] = await ctx.owner.logLate({ codes: [ctx.code] })
+      expect(result?.status).toBe('expired')
+      expect(await counterOf(ctx)).toBe(0)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'código de outro bar sai como não encontrado, sem dizer de quem é',
+  async () => {
+    const ctx = await seed({ startsAt: new Date(Date.now() - 26 * HOUR) })
+    try {
+      await ctx.db
+        .update(bar)
+        .set({ confirmsCodesLater: true })
+        .where(eq(bar.userId, ctx.rivalId))
+      const [result] = await ctx.rival.logLate({ codes: [ctx.code] })
+      expect(result).toEqual({ code: ctx.code, status: 'not_found' })
+      expect(await counterOf(ctx)).toBe(0)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
