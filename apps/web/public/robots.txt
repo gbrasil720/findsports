@@ -1,6 +1,13 @@
 User-agent: *
 Allow: /
 Disallow: /dashboard
+Disallow: /admin
+Disallow: /plan
+Disallow: /onboarding
+Disallow: /houdini
+# /app com $ (só a página): /apple-touch-icon.png também começa com /app.
+Disallow: /app$
+Disallow: /app/
 Disallow: /api/
 
 Sitemap: https://www.onside.sh/sitemap.xml
