@@ -108,6 +108,13 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS` de propósito. A reserva copia o valor em
     // `reservation.offer_snapshot` e nunca volta a ler esta coluna.
     houseOffer: text('house_offer'),
+    // Bar sem celular no balcão (WEB-412): a equipe anota o código na comanda
+    // e o dono lança no dia seguinte, até 48 h depois do jogo. Desligado por
+    // padrão: o normal é validar na hora. Fica fora de `PUBLIC_BAR_COLUMNS`;
+    // o torcedor só vê o efeito (o recado ao garçom na tela do código).
+    confirmsCodesLater: boolean('confirms_codes_later')
+      .default(false)
+      .notNull(),
     // Cardápio e gasto médio por pessoa (WEB-39), declarados pelo bar. Mesma
     // regra da oferta: perder Pro/Elite esconde do perfil sem apagar, quem
     // decide é `packages/api/src/lib/bar-menu.ts`, e as colunas ficam fora de
