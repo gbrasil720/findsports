@@ -350,6 +350,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
                 {item.label}
               </a>
             ))}
+            <Link to="/guia">Guia</Link>
           </div>
           <div className="onside-footer-column">
             <p>Conta</p>
