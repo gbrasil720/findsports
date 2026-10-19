@@ -166,7 +166,11 @@ integrationTest(
     const [future, past] = ctx.gameIds as [string, string]
     try {
       const api = ctx.fan().attendance
-      await api.set({ eventId: future, attending: true })
+      expect(await api.set({ eventId: future, attending: true })).toEqual({
+        attending: true,
+        code: null,
+        offer: null
+      })
       await api.set({ eventId: future, attending: true })
       expect(await ctx.presences(future)).toHaveLength(1)
 
@@ -216,11 +220,13 @@ integrationTest(
         true
       )
       const api = ctx.fan().attendance
-      await api.set({ eventId: future, attending: true })
-      await api.set({ eventId: future, attending: true })
+      const first = await api.set({ eventId: future, attending: true })
+      // Repetir devolve o mesmo código: a tela o mostra na hora.
+      expect(await api.set({ eventId: future, attending: true })).toEqual(first)
       const marked = await mine()
       expect(marked?.attending).toBe(true)
       expect(marked?.code).toMatch(/^[A-Z0-9]{6}$/)
+      expect(first).toMatchObject({ attending: true, code: marked?.code })
       const tickets = await ctx.db
         .select({
           status: reservation.status,
