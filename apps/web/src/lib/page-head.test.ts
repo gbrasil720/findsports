@@ -104,6 +104,19 @@ describe('o que cada página herda da raiz', () => {
   const ler = (caminho: string) =>
     Bun.file(new URL(caminho, import.meta.url)).text()
 
+  test('a raiz não põe título do cartão nem og:url (vazariam os da home)', async () => {
+    const raiz = await ler('../routes/__root.tsx')
+    for (const chave of [
+      "'og:url'",
+      "'og:title'",
+      "'og:description'",
+      "'twitter:title'",
+      "'twitter:description'"
+    ]) {
+      expect(raiz).not.toContain(chave)
+    }
+  })
+
   test('as telas de conta têm um só h1: o slogan do painel não é título', async () => {
     for (const arquivo of [
       '../routes/(auth)/login.tsx',

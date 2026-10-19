@@ -33,7 +33,7 @@ import {
   useAnalyticsConsent
 } from '../lib/analytics-consent'
 import { initPostHog, stopPostHog } from '../lib/posthog'
-import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
+import { OG_IMAGE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import {
   type AuthSession,
@@ -109,41 +109,21 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Onside — Ache o bar que está passando seu jogo' },
-      {
-        name: 'description',
-        content: ONSIDE_DESCRIPTION
-      },
+      { name: 'description', content: ONSIDE_DESCRIPTION },
       { name: 'author', content: 'Onside' },
       { name: 'theme-color', content: '#12120F' },
       { property: 'og:site_name', content: 'Onside' },
       { property: 'og:locale', content: 'pt_BR' },
       { property: 'og:type', content: 'website' },
-      {
-        property: 'og:title',
-        content: 'Onside — Ache o bar que está passando seu jogo'
-      },
-      {
-        property: 'og:description',
-        content:
-          'Conecte torcedores brasileiros aos bares que estão transmitindo o jogo certo. Encontre o lugar ideal para assistir futebol.'
-      },
+      // Título, descrição e `og:url` do cartão são de cada página
+      // (`lib/page-head.ts`): aqui eles vazariam os da home para as demais.
       {
         property: 'og:image',
         content: OG_IMAGE_URL
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
-      { property: 'og:url', content: `${SITE_URL}/` },
       { name: 'twitter:card', content: 'summary_large_image' },
-      {
-        name: 'twitter:title',
-        content: 'Onside — Ache o bar que está passando seu jogo'
-      },
-      {
-        name: 'twitter:description',
-        content:
-          'Conecte torcedores brasileiros aos bares que estão transmitindo o jogo certo. Encontre o lugar ideal para assistir futebol.'
-      },
       {
         name: 'twitter:image',
         content: OG_IMAGE_URL
