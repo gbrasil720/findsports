@@ -259,6 +259,10 @@ Nome do site no Google (JSON-LD `WebSite`/`Organization` da home), o que é
 indexável, `robots.txt` e favicons: **leia `docs/seo.md` antes de mexer em
 `<title>`, `head`, sitemap ou ícones.**
 
+Performance da home no celular (pôster com `srcset`, prioridade das fontes,
+o que não pode entrar no JavaScript de entrada) e como medir com Lighthouse:
+`docs/perf-home.md`.
+
 ### E2E
 
 Playwright em `apps/e2e`, job `e2e` no CI. **Antes de escrever ou rodar teste de
