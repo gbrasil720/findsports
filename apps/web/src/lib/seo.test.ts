@@ -110,3 +110,43 @@ describe('favicon para o Google', () => {
     }
   })
 })
+
+describe('llms.txt (llmstxt.org)', () => {
+  const llms = fs.readFileSync(path.join(PUBLIC, 'llms.txt'), 'utf8')
+  const links = [...llms.matchAll(/\]\((https?:\/\/[^)]+)\)/g)].map(
+    (m) => new URL(m[1] as string)
+  )
+
+  it('abre com o título H1 e o resumo em citação', () => {
+    const [titulo, , resumo] = llms.split('\n')
+    expect(titulo).toBe('# Onside')
+    expect(resumo?.startsWith('> ')).toBe(true)
+  })
+
+  it('só aponta para páginas públicas do host canônico e para as redes', () => {
+    const publicas = ['/', '/signup', '/login', '/termos', '/privacidade']
+    const redes: string[] = SOCIAL_LINKS.map((rede) => rede.href)
+    for (const link of links) {
+      if (link.hostname === 'www.onside.sh') {
+        expect(publicas).toContain(link.pathname)
+      } else {
+        expect(redes).toContain(link.href)
+      }
+    }
+  })
+
+  it('leva aos termos e à política de privacidade', () => {
+    const caminhos = links.map((link) => link.pathname)
+    expect(caminhos).toContain('/termos')
+    expect(caminhos).toContain('/privacidade')
+  })
+
+  it('sai como text/plain em UTF-8 e não é bloqueado pelo robots.txt', () => {
+    const headers = fs.readFileSync(path.join(PUBLIC, '_headers'), 'utf8')
+    expect(headers).toContain(
+      '/llms.txt\n  Access-Control-Allow-Origin: *\n  Content-Type: text/plain; charset=utf-8'
+    )
+    const robots = fs.readFileSync(path.join(PUBLIC, 'robots.txt'), 'utf8')
+    expect(bloqueado(robots, '/llms.txt')).toBe(false)
+  })
+})
