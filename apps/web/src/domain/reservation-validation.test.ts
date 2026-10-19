@@ -56,11 +56,11 @@ describe('getArrivalBlocker', () => {
   })
 
   test('cada estado não confirmado tem a própria explicação', () => {
-    expect(blocker('pending')?.title).toBe(
-      'Esta reserva ainda não foi confirmada'
+    expect(blocker('pending')?.title).toBe('Este código é de um pedido antigo')
+    expect(blocker('declined')?.title).toBe(
+      'Este código é de um pedido recusado'
     )
-    expect(blocker('declined')?.title).toBe('Esta reserva foi recusada')
-    expect(blocker('cancelled')?.title).toBe('Esta reserva foi cancelada')
+    expect(blocker('cancelled')?.title).toBe('O torcedor desmarcou')
   })
 
   test('reserva confirmada fora da janela explica a janela', () => {
@@ -74,7 +74,7 @@ describe('getArrivalBlocker', () => {
 
   test('o estado da reserva vem antes da janela', () => {
     expect(blocker('pending', at(window.closesAt) + 1)?.title).toBe(
-      'Esta reserva ainda não foi confirmada'
+      'Este código é de um pedido antigo'
     )
   })
 })
@@ -103,11 +103,9 @@ describe('contador', () => {
   })
 
   test('reserva completa', () => {
-    expect(getAllValidatedMessage(1)).toBe(
-      'A única pessoa desta reserva já foi validada.'
-    )
+    expect(getAllValidatedMessage(1)).toBe('Este código já foi validado.')
     expect(getAllValidatedMessage(4)).toBe(
-      'As 4 pessoas desta reserva já foram validadas.'
+      'As 4 pessoas deste código já foram validadas.'
     )
   })
 })
@@ -141,7 +139,7 @@ describe('mensagens de recusa', () => {
 
   test('busca: código desconhecido e limite de tentativas', () => {
     expect(getLookupErrorMessage(trpcError('NOT_FOUND'))).toBe(
-      'Código não encontrado, recusado ou cancelado. Confira com o torcedor.'
+      'Código não encontrado ou desmarcado. Confira com o torcedor.'
     )
     expect(getLookupErrorMessage(trpcError('TOO_MANY_REQUESTS'))).toBe(
       'Muitas tentativas seguidas. Aguarde um pouco e tente novamente.'
@@ -151,7 +149,7 @@ describe('mensagens de recusa', () => {
   test('chegada além da reserva diz quantas pessoas já entraram', () => {
     expect(
       getArrivalErrorMessage(trpcError('CONFLICT'), reservation, during)
-    ).toBe('As 4 pessoas desta reserva já foram validadas.')
+    ).toBe('As 4 pessoas deste código já foram validadas.')
   })
 
   test('chegada fora da janela diz quando o código vale', () => {
@@ -182,7 +180,7 @@ describe('mensagens de recusa', () => {
 
   test('desfazer fora do prazo', () => {
     expect(getUndoErrorMessage(trpcError('PRECONDITION_FAILED'))).toBe(
-      'O prazo para desfazer esta chegada acabou.'
+      'O prazo para desfazer esta validação acabou.'
     )
   })
 })

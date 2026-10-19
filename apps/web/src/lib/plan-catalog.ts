@@ -40,12 +40,7 @@ export interface PlanProfilePerk {
  * Recursos que o aviso de troca de plano precisa reconhecer (WEB-351): o selo,
  * que muda de plano para plano, e os que têm dado do próprio bar para citar.
  */
-export type PlanPerkKey =
-  | 'badge'
-  | 'events'
-  | 'menu'
-  | 'reservations'
-  | 'house_offer'
+export type PlanPerkKey = 'badge' | 'events' | 'menu' | 'going' | 'house_offer'
 
 export interface PlanAnalytics {
   historyDays: number | null
@@ -326,9 +321,9 @@ export const PLAN_CATALOG: Plan[] = [
         key: 'menu'
       },
       {
-        label: 'Reserva de mesa pela plataforma',
+        label: 'Lista de quem vai assistir, jogo a jogo',
         status: 'live',
-        key: 'reservations'
+        key: 'going'
       },
       // Sem exemplo de oferta: a Onside não sugere o conteúdo (WEB-120).
       {
@@ -431,8 +426,6 @@ export interface PlanLossBar {
   houseOffer: string | null
   menuUrl: string | null
   averageSpendCents: number | null
-  /** Jogos que ainda não acabaram marcados para receber reservas. */
-  reservableEvents: number
 }
 
 /**
@@ -466,10 +459,6 @@ export function getPlanLossNote(
     case 'house_offer':
       return bar.houseOffer
         ? 'Sua oferta da casa sai do perfil e fica guardada.'
-        : null
-    case 'reservations':
-      return bar.reservableEvents > 0
-        ? 'Seu bar para de receber novos pedidos de reserva.'
         : null
     default:
       return null

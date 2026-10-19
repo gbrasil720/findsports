@@ -556,8 +556,8 @@ function PerformanceColumns({
       <span className="hidden text-right sm:block">Taxa</span>
       {showReservations && (
         <>
-          <span className={RESERVATIONS_RULE}>Reservas</span>
-          <span className="hidden text-right lg:block">Chegadas</span>
+          <span className={RESERVATIONS_RULE}>Códigos</span>
+          <span className="hidden text-right lg:block">Validados</span>
         </>
       )}
       <span />
@@ -622,11 +622,11 @@ function EventPerformanceRow({
             <span
               className={`${RESERVATIONS_RULE} font-medium text-[var(--onside-ink)] tabular-nums`}
             >
-              <span className="sr-only">Reservas: </span>
+              <span className="sr-only">Códigos: </span>
               {formatAnalyticsValue(item.reservedPeople)}
             </span>
             <span className="hidden text-right font-medium text-[var(--onside-ink)] tabular-nums lg:block">
-              <span className="sr-only">Chegadas: </span>
+              <span className="sr-only">Validados: </span>
               {formatAnalyticsValue(item.arrivals)}
             </span>
           </>
@@ -675,17 +675,17 @@ function EventPerformanceRow({
           </div>
         </dl>
 
-        {/* Bloco à parte, com o próprio fio: é o resultado da reserva de
-            mesa, não mais um canal de interesse. */}
+        {/* Bloco à parte, com o próprio fio: é o resultado do código do
+            balcão, não mais um canal de interesse. */}
         <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-[var(--onside-line)] border-t pt-3 text-[var(--onside-ink)] text-sm sm:grid-cols-4">
           <div>
-            <dt className="onside-hint">Reservas</dt>
+            <dt className="onside-hint">Códigos</dt>
             <dd className="font-medium tabular-nums">
               {formatAnalyticsValue(item.reservedPeople)}
             </dd>
           </div>
           <div>
-            <dt className="onside-hint">Chegadas</dt>
+            <dt className="onside-hint">Validados</dt>
             <dd className="font-medium tabular-nums">
               {formatAnalyticsValue(item.arrivals)}
             </dd>
@@ -693,9 +693,8 @@ function EventPerformanceRow({
         </dl>
         {showReservations && (
           <p className="onside-hint mt-2">
-            Pessoas com reserva confirmada e chegadas que você registrou em
-            Validar código. São as mesmas pessoas, vistas pelo seu bar: não se
-            somam a Interesse nem entram na taxa.
+            Quem marcou “Vou assistir aqui” e recebeu o código, e os códigos que
+            você validou no balcão. Não se somam a Interesse nem entram na taxa.
           </p>
         )}
       </AccordionContent>

@@ -1,0 +1,153 @@
+import type { ReactNode } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
+import Svg, { Line } from 'react-native-svg'
+import type { Palette } from '@/components/explore'
+import { ACID, Icon, INK, text } from '@/components/ui'
+
+/*
+ * Peças da página do bar que as telas de "Vou assistir" (08) também usam:
+ * o cartão com sombra dura e a oferta da casa com o canhoto acid.
+ */
+
+/** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
+export function Card({
+  palette,
+  shadow,
+  offset = 4,
+  soft,
+  notched,
+  style,
+  children
+}: {
+  palette: Palette
+  shadow?: string
+  offset?: number
+  /** Mais a sombra longa e macia dos cartões de lista. */
+  soft?: boolean
+  /**
+   * Ingresso com picote (`Perforation`): sem recorte, para o furo passar por
+   * cima da sombra. O topo do conteúdo arredonda os próprios cantos.
+   */
+  notched?: boolean
+  style?: object
+  children: ReactNode
+}) {
+  return (
+    <View style={style && { flex: 1 }}>
+      {/* A sombra longa num fundo cheio: sem fundo o iOS a calcularia pelos
+          pixels dos filhos (o mapa) a cada quadro da rolagem. */}
+      {soft ? (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            styles.soft,
+            { backgroundColor: palette.card }
+          ]}
+        />
+      ) : null}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            top: offset,
+            left: offset,
+            right: -offset,
+            bottom: -offset,
+            borderRadius: 6,
+            backgroundColor: shadow ?? palette.shadow
+          }
+        ]}
+      />
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.card, borderColor: palette.ring },
+          notched && { overflow: 'visible' },
+          style
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  )
+}
+
+/** "Oferta da casa", com o canhoto acid do ingresso. */
+export function OfferCard({
+  palette,
+  offer,
+  note,
+  compact
+}: {
+  palette: Palette
+  offer: string
+  /** O que vem depois da oferta ("Vale com o seu código."). */
+  note?: string
+  /** A versão menor da folha "Vou assistir aqui" (3d). */
+  compact?: boolean
+}) {
+  return (
+    <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
+      <View style={styles.offer}>
+        <View style={[styles.offerStub, { width: compact ? 56 : 62 }]}>
+          <Icon name="ticket" size={26} color={INK} accent={INK} />
+          {/* O picote do canhoto em SVG: no iOS o React Native não desenha
+              borda tracejada de um lado só. */}
+          <Svg width={2} style={styles.offerCut}>
+            <Line
+              x1={1}
+              y1={0}
+              x2={1}
+              y2="100%"
+              stroke="rgba(18,18,15,.25)"
+              strokeWidth={1.5}
+              strokeDasharray="4.5,4.5"
+            />
+          </Svg>
+        </View>
+        <View
+          style={[
+            styles.offerText,
+            compact && { paddingVertical: 11, paddingHorizontal: 13 }
+          ]}
+        >
+          <Text
+            style={[
+              text(compact ? 14 : 14.5, 'Bold', 1.4),
+              { color: palette.ink }
+            ]}
+          >
+            Oferta da casa
+          </Text>
+          <Text
+            style={[
+              text(compact ? 12.5 : 13, 'Regular', 1.4),
+              { color: palette.muted }
+            ]}
+          >
+            {note ? `${offer} ${note}` : offer}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  )
+}
+
+const styles = StyleSheet.create({
+  card: { borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
+  soft: {
+    borderRadius: 6,
+    shadowColor: INK,
+    shadowOpacity: 0.3,
+    shadowRadius: 17,
+    shadowOffset: { width: 0, height: 14 }
+  },
+  offer: { flexDirection: 'row' },
+  offerStub: {
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  offerCut: { position: 'absolute', top: 0, bottom: 0, right: -1 },
+  offerText: { flex: 1, paddingVertical: 12, paddingHorizontal: 14 }
+})

@@ -15,7 +15,6 @@ import { formatDate, formatDateTime } from '@/components/houdini/format'
 import { GrimorioRow } from '@/components/houdini/grimorio'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
-import { RESERVATION_STATUS_LABEL } from '@/domain/reservations'
 import { appHref } from '@/lib/houdini-host'
 import { countLabel } from '@/lib/plural'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
@@ -35,7 +34,7 @@ type Ficha = inferRouterOutputs<AppRouter>['adminBars']['ficha']
 const TABS = [
   { id: 'resumo', label: 'Resumo' },
   { id: 'jogos', label: 'Jogos' },
-  { id: 'reservas', label: 'Reservas' },
+  { id: 'reservas', label: 'Códigos' },
   { id: 'avaliacoes', label: 'Avaliações' },
   { id: 'grimorio', label: 'Grimório' }
 ] as const
@@ -232,18 +231,18 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
             rows={ficha.games.map((g) => ({
               id: g.id,
               main: g.title,
-              sub: `${g.championship} · ${g.acceptsReservations ? 'aceita reservas' : 'sem reservas'}`,
-              right: `${formatDateTime(g.startsAt)} · ${seats(g)}`
+              sub: g.championship,
+              right: `${formatDateTime(g.startsAt)} · ${countLabel(g.reservations, 'código', 'códigos')}`
             }))}
           />
         ) : null}
         {tab === 'reservas' ? (
           <Rows
-            empty="Nenhuma reserva."
+            empty="Nenhum código."
             rows={ficha.reservations.map((r) => ({
               id: r.id,
-              main: `${r.guestName} · ${countLabel(r.partySize, 'pessoa', 'pessoas')}`,
-              sub: `${r.gameTitle} · ${RESERVATION_STATUS_LABEL[r.status].toLowerCase()}`,
+              main: r.guestName,
+              sub: `${r.gameTitle} · ${CODE_STATUS[r.status]}`,
               right: `jogo ${formatDateTime(r.startsAt)}`
             }))}
           />
@@ -275,10 +274,16 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
   )
 }
 
-function seats(game: Ficha['games'][number]) {
-  if (!game.acceptsReservations && game.reservations === 0) return '—'
-  const cap = game.reservationCap ? `/${game.reservationCap}` : ''
-  return `${game.people}${cap} pessoas`
+/**
+ * O código do balcão mora na antiga reserva: `confirmed` é o código em vigor
+ * e `cancelled` o desmarcado. Pendente e recusado só existem em pedido de
+ * antes de a reserva de mesa sair (16/10/2026).
+ */
+const CODE_STATUS: Record<Ficha['reservations'][number]['status'], string> = {
+  confirmed: 'em vigor',
+  cancelled: 'desmarcado',
+  pending: 'pedido antigo',
+  declined: 'pedido antigo recusado'
 }
 
 function Card({
@@ -319,9 +324,9 @@ function Resumo({ ficha }: { ficha: Ficha }) {
             : `próximo em ${countLabel(daysToNext, 'dia', 'dias')}`
     },
     {
-      label: 'Reservas em 30 dias',
+      label: 'Códigos em 30 dias',
       value: String(ficha.reservations30d.n),
-      sub: countLabel(ficha.reservations30d.people, 'pessoa', 'pessoas')
+      sub: 'de quem marcou que vai'
     },
     {
       label: 'Voltariam',
@@ -479,9 +484,7 @@ function Resumo({ ficha }: { ficha: Ficha }) {
                   className="hd-mono"
                   style={{ fontSize: 12, color: 'var(--hd-soft)' }}
                 >
-                  {g.acceptsReservations
-                    ? countLabel(g.reservations, 'reserva', 'reservas')
-                    : 'sem reservas'}
+                  {countLabel(g.reservations, 'código', 'códigos')}
                 </span>
               </div>
             ))

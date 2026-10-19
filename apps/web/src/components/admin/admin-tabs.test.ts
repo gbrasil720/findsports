@@ -11,9 +11,9 @@ describe('admin tabs keyboard navigation', () => {
     expect(getNextAdminSection('admin-visao', 'ArrowRight')).toBe('admin-grade')
     expect(getNextAdminSection('admin-grade', 'ArrowDown')).toBe('admin-espaco')
     expect(getNextAdminSection('admin-espaco', 'ArrowRight')).toBe(
-      'admin-reservas'
+      'admin-quem-vai'
     )
-    expect(getNextAdminSection('admin-reservas', 'ArrowRight')).toBe(
+    expect(getNextAdminSection('admin-quem-vai', 'ArrowRight')).toBe(
       'admin-configuracoes'
     )
     expect(getNextAdminSection('admin-configuracoes', 'ArrowRight')).toBe(
@@ -47,8 +47,8 @@ describe('admin tabs keyboard navigation', () => {
   test('shows the reservations tab only to bars that receive or still owe reservations', () => {
     const ids = (shows: boolean) =>
       getAdminSections(shows).map((section) => section.id)
-    expect(ids(true)).toContain('admin-reservas')
-    expect(ids(false)).not.toContain('admin-reservas')
+    expect(ids(true)).toContain('admin-quem-vai')
+    expect(ids(false)).not.toContain('admin-quem-vai')
     expect(ids(false)).toContain('admin-configuracoes')
   })
 })

@@ -17,7 +17,6 @@ import {
   bar,
   event,
   eventParticipants,
-  subscription,
   team
 } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
@@ -30,8 +29,6 @@ import {
   readEventDeletionImpact
 } from '../lib/event-deletion'
 import { gameTitle, participantNames } from '../lib/game-participants'
-import { assertCanEnableReservations } from '../lib/reservation-intake'
-import { reservationCapInput } from './bar-reservations'
 import { assertEventIntervalValid, assertEventStartInRange } from './pub'
 
 const PAGE_SIZE = 25
@@ -99,12 +96,7 @@ const isFreeText = sql<boolean>`(
   AND NOT EXISTS (SELECT 1 FROM event_participants ep WHERE ep.event_id = ${event.id})
 )`
 
-/** Aceita pedido sem teto em lugar nenhum: qualquer quantidade passa. */
-const isUncapped = sql<boolean>`(
-  ${event.acceptsReservations} AND ${event.reservationCap} IS NULL AND ${bar.reservationCap} IS NULL
-)`
-
-const hasWarning = sql`(${isDuplicate} OR ${isFreeText} OR ${isUncapped})`
+const hasWarning = sql`(${isDuplicate} OR ${isFreeText})`
 
 /** O jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
 const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
@@ -137,8 +129,6 @@ async function lockEvent(tx: Executor, eventId: string) {
       startsAt: event.startsAt,
       endsAt: event.endsAt,
       participantFreeText: event.participantFreeText,
-      acceptsReservations: event.acceptsReservations,
-      reservationCap: event.reservationCap,
       duplicate: isDuplicate,
       freeText: isFreeText
     })
@@ -157,9 +147,7 @@ type LockedEvent = Awaited<ReturnType<typeof lockEvent>>
 const snapshot = (row: LockedEvent) => ({
   startsAt: row.startsAt.toISOString(),
   endsAt: row.endsAt?.toISOString() ?? null,
-  championship: row.championship,
-  acceptsReservations: row.acceptsReservations,
-  reservationCap: row.reservationCap
+  championship: row.championship
 })
 
 const target = (row: LockedEvent) => ({
@@ -219,31 +207,25 @@ export const adminEventsRouter = router({
             id: event.id,
             barId: event.barId,
             barName: bar.name,
-            barCap: bar.reservationCap,
             sportId: event.sportId,
             championship: event.championship,
             startsAt: event.startsAt,
             endsAt: event.endsAt,
             participantFreeText: event.participantFreeText,
             participants: participantNames(sql`${event.id}`),
-            acceptsReservations: event.acceptsReservations,
-            reservationCap: event.reservationCap,
-            confirmedSeats: sql<number>`(
-              SELECT coalesce(sum(r.party_size), 0)::int FROM reservation r
+            // Códigos do balcão em vigor (quem marcou "Vou assistir aqui"
+            // num bar Elite).
+            codes: sql<number>`(
+              SELECT count(*)::int FROM reservation r
               WHERE r.event_id = ${event.id} AND r.status = 'confirmed'
             )`,
-            pendingReservations: sql<number>`(
-              SELECT count(*)::int FROM reservation r
-              WHERE r.event_id = ${event.id} AND r.status = 'pending'
-            )`,
-            // Qualquer reserva, até a recusada: o duplicado só sai sozinho
+            // Qualquer código, até o desmarcado: o duplicado só sai sozinho
             // quando não leva o histórico de ninguém junto.
             anyReservations: sql<number>`(
               SELECT count(*)::int FROM reservation r WHERE r.event_id = ${event.id}
             )`,
             duplicate: isDuplicate,
-            freeText: isFreeText,
-            uncapped: isUncapped
+            freeText: isFreeText
           })
           .from(event)
           .innerJoin(bar, eq(bar.id, event.barId))
@@ -267,7 +249,7 @@ export const adminEventsRouter = router({
       )
 
       return {
-        games: rows.map(({ duplicate, freeText, uncapped, ...row }) => {
+        games: rows.map(({ duplicate, freeText, ...row }) => {
           const warnings = []
           if (duplicate) {
             warnings.push({
@@ -286,16 +268,7 @@ export const adminEventsRouter = router({
                 )?.map(({ id, name }) => ({ id, name })) ?? null
             })
           }
-          if (uncapped) {
-            // Só existe com o bar sem teto padrão: não há limite seguro
-            // para aplicar sozinho, quem decide o número é o operador.
-            warnings.push({ kind: 'uncapped' as const })
-          }
-          return {
-            ...row,
-            effectiveCap: row.reservationCap ?? row.barCap,
-            warnings
-          }
+          return { ...row, warnings }
         }),
         total: totals?.total ?? 0,
         warned: totals?.warned ?? 0,
@@ -316,9 +289,7 @@ export const adminEventsRouter = router({
           .string()
           .trim()
           .min(EVENT_CHAMPIONSHIP_MIN_LENGTH)
-          .max(EVENT_CHAMPIONSHIP_MAX_LENGTH),
-        acceptsReservations: z.boolean(),
-        reservationCap: reservationCapInput
+          .max(EVENT_CHAMPIONSHIP_MAX_LENGTH)
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -328,25 +299,16 @@ export const adminEventsRouter = router({
 
       return db.transaction(async (tx) => {
         const row = await lockEvent(tx, input.eventId)
-        // As regras do painel do bar: o início só é conferido quando muda, e
-        // ligar reservas exige Elite vigente. Manter ligado, não.
+        // A regra do painel do bar: o início só é conferido quando muda.
         if (startsAt.getTime() !== row.startsAt.getTime()) {
           assertEventStartInRange(startsAt)
-        }
-        if (input.acceptsReservations && !row.acceptsReservations) {
-          const owner = await tx.query.subscription.findFirst({
-            where: eq(subscription.barId, row.barId)
-          })
-          assertCanEnableReservations(owner ?? null)
         }
 
         const before = snapshot(row)
         const after = {
           startsAt: startsAt.toISOString(),
           endsAt: endsAt?.toISOString() ?? null,
-          championship: input.championship,
-          acceptsReservations: input.acceptsReservations,
-          reservationCap: input.reservationCap
+          championship: input.championship
         }
         const changed = (Object.keys(after) as (keyof typeof after)[]).filter(
           (key) => after[key] !== before[key]
@@ -358,9 +320,7 @@ export const adminEventsRouter = router({
           .set({
             startsAt,
             endsAt,
-            championship: input.championship,
-            acceptsReservations: input.acceptsReservations,
-            reservationCap: input.reservationCap
+            championship: input.championship
           })
           .where(eq(event.id, row.id))
         await recordAdminAction(
@@ -463,7 +423,7 @@ export const adminEventsRouter = router({
             throw new TRPCError({
               code: 'PRECONDITION_FAILED',
               message:
-                'Este jogo tem reservas, avaliação ou presença. Apague o outro, ou edite à mão.'
+                'Este jogo tem código de quem vai, avaliação ou presença. Apague o outro, ou edite à mão.'
             })
           }
           await tx.delete(event).where(eq(event.id, row.id))

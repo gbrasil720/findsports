@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { TRPCError } from '@trpc/server'
-import {
-  assertCanEnableReservations,
-  assertReceivesReservations,
-  receivesReservations,
-  seatAvailability
-} from './reservation-intake'
+import { assertCanEnableReservations } from './reservation-intake'
 
 const now = new Date('2026-09-29T12:00:00.000Z')
 const tomorrow = new Date('2026-09-30T12:00:00.000Z')
@@ -50,55 +45,5 @@ describe('assertCanEnableReservations', () => {
     expect(codeOf(() => assertCanEnableReservations(sub, now))).toBe(
       'FORBIDDEN'
     )
-  })
-})
-
-describe('receivesReservations', () => {
-  test('precisa querer e poder', () => {
-    expect(receivesReservations(true, elite, now)).toBe(true)
-    expect(receivesReservations(false, elite, now)).toBe(false)
-    expect(
-      receivesReservations(
-        true,
-        { plan: 'pro', status: 'active', currentPeriodEnd: null },
-        now
-      )
-    ).toBe(false)
-    expect(receivesReservations(true, null, now)).toBe(false)
-  })
-})
-
-describe('assertReceivesReservations', () => {
-  test('recebimento desligado recusa pedido novo com erro útil', () => {
-    try {
-      assertReceivesReservations(false, elite, now)
-      throw new Error('deveria ter recusado')
-    } catch (error) {
-      expect(error).toBeInstanceOf(TRPCError)
-      expect((error as TRPCError).code).toBe('PRECONDITION_FAILED')
-      expect((error as TRPCError).message).toContain('não está recebendo')
-    }
-  })
-
-  test('recebimento ligado com Elite passa', () => {
-    expect(
-      codeOf(() => assertReceivesReservations(true, elite, now))
-    ).toBeNull()
-  })
-})
-
-describe('seatAvailability', () => {
-  test('sem teto no bar nem no jogo, nunca esgota', () => {
-    expect(seatAvailability(null, null, 10_000).soldOut).toBe(false)
-  })
-
-  test('o teto do jogo vence o padrão do bar', () => {
-    expect(seatAvailability(10, 4, 6)).toEqual({
-      confirmedSeats: 6,
-      effectiveCap: 10,
-      soldOut: false
-    })
-    expect(seatAvailability(4, 10, 6).soldOut).toBe(true)
-    expect(seatAvailability(null, 6, 6).soldOut).toBe(true)
   })
 })

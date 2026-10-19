@@ -21,7 +21,7 @@ type Props = {
   children: ReactNode
 }
 
-/** Resumo da reserva que o código resolveu: quem, qual jogo, quantos já chegaram. */
+/** Resumo do código: quem marcou, qual jogo, se já chegou. */
 export function ReservationSummary({
   titleId,
   titleRef,
@@ -50,7 +50,7 @@ export function ReservationSummary({
         tabIndex={-1}
         className="onside-display text-2xl [overflow-wrap:anywhere]"
       >
-        Reserva de {reservation.guestName}
+        {reservation.guestName}
       </h3>
 
       <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
@@ -66,20 +66,11 @@ export function ReservationSummary({
             ])}
           </dd>
         </div>
-        <div>
-          <dt className="text-[var(--onside-muted)] text-xs">
-            Pessoas na reserva
-          </dt>
-          <dd className="font-semibold tabular-nums">
-            {reservation.partySize}
-          </dd>
-        </div>
         <div className="sm:col-span-2">
-          <dt className="text-[var(--onside-muted)] text-xs">
-            Oferta da casa nesta reserva
-          </dt>
+          <dt className="text-[var(--onside-muted)] text-xs">Oferta da casa</dt>
           <dd className="font-semibold [overflow-wrap:anywhere]">
-            {reservation.offerSnapshot ?? 'Reserva feita sem oferta.'}
+            {reservation.offerSnapshot ??
+              'O bar não tinha oferta quando a pessoa marcou.'}
           </dd>
         </div>
       </dl>
@@ -113,7 +104,7 @@ export function ReservationSummary({
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
-            <p className="mb-0.5 font-semibold text-sm">Reserva completa</p>
+            <p className="mb-0.5 font-semibold text-sm">Código validado</p>
             <p className="text-sm opacity-90">
               {getAllValidatedMessage(reservation.maxUses)}
             </p>

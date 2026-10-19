@@ -107,6 +107,44 @@ Variáveis (`vars` no wrangler):
 
 Binding R2: `BUCKET` → `onside-maps`.
 
+### Ler o analytics: o 504 do Cache API não é erro
+
+No analytics HTTP da zona (`httpRequestsAdaptive`), **todo `cache.match()` que
+não acha o tile aparece como `504` com `cacheStatus: miss` e
+`requestSource: edgeWorkerCacheAPI`**. É o registro da consulta interna ao
+cache, não a resposta ao navegador; o tile sai em seguida do R2 com 200 ou 204.
+Do mesmo jeito, `cache.put()` aparece como `204` nessa origem. Quem conta erro
+do mapa filtra **`requestSource = eyeball`**:
+
+| `requestSource` | O que é | Status que aparece |
+|---|---|---|
+| `eyeball` | resposta ao navegador — **é esta que conta** | 200, 204, 404, 499 (MapLibre cancelou o tile ao mover o mapa) |
+| `edgeWorkerCacheAPI` | `cache.match` / `cache.put` do Worker | 200 + `hit`, **504 + `miss`**, 204 (put) |
+
+Os "66 504 em cache miss" de 12 a 19/10/2026 eram exatamente os 66 misses dessa
+semana (53 na anterior): nenhuma resposta 5xx ao navegador, nenhum erro nem
+exceção no analytics do Worker. Parar "depois de 16/10 17h" foi falta de tile
+novo pedido, não correção.
+
+### Falha no R2 e logs
+
+Cada leitura por faixa no R2 tem prazo de 2,5 s e até três tentativas, com
+espera exponencial e jitter (`apps/tiles/src/r2-read.ts`). Esgotadas, o Worker
+responde **503 com `Retry-After: 2` e `Cache-Control: no-store`**, com CORS, em
+vez de lançar exceção (que viraria 500 opaco, erro 1101). O 503 nunca vai para
+o Cache API.
+
+Todo cache miss deixa uma linha JSON no Workers Observability:
+
+```json
+{"evento":"tiles.miss","caminho":"/onside-br-20260906/14/6068/9296.mvt","status":200,"ms":412,"leiturasR2":3,"msNoR2":398}
+```
+
+`leiturasR2` é 1 a 2 com o header e o diretório já em memória no isolate, e 3
+ou mais num isolate novo (header, diretório folha, tile). Falha sai em
+`console.error`, com o campo `erro`. Para um alerta de verdade: `status >= 500`
+nesses eventos, ou `edgeResponseStatus >= 500` com `requestSource = eyeball`.
+
 ### Migração para o Worker (Infra — ordem obrigatória)
 
 **Hoje:** `tiles.onside.sh` é custom domain do **bucket R2** `onside-maps`.

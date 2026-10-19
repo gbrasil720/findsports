@@ -19,15 +19,14 @@ import { createUser } from '../../fixtures/users'
 // Página pública do bar, `/pub/$pubId` (WEB-178).
 
 /**
- * O painel de ações: "Garanta seu lugar" com reserva disponível, "Fale com o
- * bar" sem (WEB-353), e "Como chegar" quando o bar não deixou WhatsApp nem
- * telefone. No celular o título e os botões dele somem: os botões estão na
+ * O painel de ações: "Fale com o bar" (WEB-353), ou "Como chegar" quando o bar
+ * não deixou WhatsApp nem telefone. No celular o título e os botões dele somem: os botões estão na
  * barra presa ao pé da janela (WEB-370).
  */
 const actionsPanel = (page: Page) =>
   page.locator('section', {
     has: page.locator('p.onside-kicker', {
-      hasText: /Garanta seu lugar|Fale com o bar|Como chegar/
+      hasText: /Fale com o bar|Como chegar/
     })
   })
 
@@ -101,11 +100,7 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({
       phone_accepts_whatsapp: true
     }
   })
-  await createEvent({
-    barId: pub.barId,
-    startsAt: days(2),
-    acceptsReservations: true
-  })
+  await createEvent({ barId: pub.barId, startsAt: days(2) })
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
@@ -120,7 +115,7 @@ test('torcedor favorita e vê oferta, cardápio e contatos', async ({
   ).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
 
-  // Oferta da casa (Elite recebendo reservas) e cardápio (Pro/Elite)
+  // Oferta da casa (todo Elite com oferta) e cardápio (Pro/Elite)
   const offer = page.getByRole('region', { name: 'Oferta da casa' })
   await expect(offer).toContainText('Chopp em dobro no intervalo')
   await expect(page.locator(`a[href="${menuUrl}"]`)).toBeVisible()
@@ -200,85 +195,34 @@ test('"Vou assistir aqui" só em jogo futuro', async ({ page }) => {
     .toBe(1)
 })
 
-test('reserva em bar Elite: 1 a 20 pessoas, observação e código', async ({
+test('oferta só no Elite, e sem contato o painel é só "Como chegar"', async ({
   page,
   isMobile
 }) => {
   const spot = uniqueSpot()
-  const pub = await pubAt(spot)
-  // O primeiro jogo não aceita reserva: fica fora do pedido.
-  const unmarked = `Sem reserva ${randomUUID().slice(0, 6)}`
-  await createEvent({ barId: pub.barId, startsAt: days(2), freeText: unmarked })
-  const eventId = await createEvent({
-    barId: pub.barId,
-    startsAt: days(3),
-    acceptsReservations: true
+  // O Pro guarda a oferta de quando era Elite; o Elite não cadastrou nenhuma.
+  const pro = await pubAt(spot, {
+    subscription: { plan: 'pro' },
+    bar: { house_offer: 'Oferta guardada' }
   })
-  const fan = await signInFanAt(page, spot)
-
-  await page.goto(`/pub/${pub.barId}`)
-  await expect(actionsPanel(page)).toContainText('Garanta seu lugar')
-  // Pelo teclado, pelo mesmo motivo das devtools.
-  await actionButtons(page, isMobile)
-    .getByRole('button', { name: 'Reservar mesa' })
-    .press('Enter')
-
-  const dialog = page.getByRole('dialog', { name: 'Reservar mesa' })
-  await expect(dialog.getByRole('radio')).toHaveCount(1)
-  await expect(dialog).not.toContainText(unmarked)
-  const people = dialog.getByLabel('Quantas pessoas')
-  const send = dialog.getByRole('button', { name: 'Enviar pedido' })
-  await people.fill('21')
-  await expect(people).toHaveAttribute('aria-invalid', 'true')
-  await expect(send).toBeDisabled()
-  await people.fill('0')
-  await expect(send).toBeDisabled()
-  await people.fill('4')
-  await expect(send).toBeEnabled()
-  await dialog.getByLabel('Observação (opcional)').fill('Mesa perto do telão')
-  await send.click()
-
-  const sent = page.getByRole('dialog', { name: 'Pedido enviado' })
-  await expect(sent.getByText(/^[A-Z0-9]{6}$/)).toBeVisible()
-  const [row] = await query<{
-    party_size: number
-    note: string
-    status: string
-  }>(
-    'SELECT party_size, note, status FROM reservation WHERE user_id = $1 AND event_id = $2',
-    [fan.id, eventId]
-  )
-  expect(row).toEqual({
-    party_size: 4,
-    note: 'Mesa perto do telão',
-    status: 'pending'
-  })
-})
-
-test('reserva não aparece fora do Elite ou sem jogo que aceite reservas', async ({
-  page,
-  isMobile
-}) => {
-  const spot = uniqueSpot()
-  const pro = await pubAt(spot, { subscription: { plan: 'pro' } })
-  const off = await pubAt(spot)
-  await createEvent({
-    barId: pro.barId,
-    startsAt: days(2),
-    acceptsReservations: true
-  })
-  await createEvent({ barId: off.barId, startsAt: days(2) })
+  const elite = await pubAt(spot)
+  for (const { barId } of [pro, elite]) {
+    await createEvent({ barId, startsAt: days(2) })
+  }
   await signInFanAt(page, spot)
 
-  for (const { barId, name } of [pro, off]) {
+  for (const { barId, name } of [pro, elite]) {
     await page.goto(`/pub/${barId}`)
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
-    // Sem reserva, o título não promete lugar (WEB-353); e estes bares não
-    // têm WhatsApp nem telefone, então também não promete conversa.
+    await expect(
+      page.getByRole('region', { name: 'Oferta da casa' })
+    ).toHaveCount(0)
+    await expect(page.getByText('Oferta guardada')).toHaveCount(0)
+    // O título não promete lugar (WEB-353); e estes bares não têm WhatsApp
+    // nem telefone, então também não promete conversa.
     await expect(actionsPanel(page).locator('p.onside-kicker')).toHaveText(
       'Como chegar'
     )
-    await expect(actionsPanel(page)).not.toContainText('Garanta seu lugar')
     await expect(actionsPanel(page)).not.toContainText('Fale com o bar')
     // Um "Como chegar" só: o do painel some onde a barra fixa existe.
     const directions = page.getByRole('link', { name: 'Como chegar' })
@@ -286,9 +230,6 @@ test('reserva não aparece fora do Elite ou sem jogo que aceite reservas', async
     await expect(
       actionButtons(page, isMobile).getByRole('link', { name: 'Como chegar' })
     ).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Reservar mesa' })
-    ).toHaveCount(0)
   }
 })
 

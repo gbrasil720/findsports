@@ -29,22 +29,22 @@ export function getDeleteBlock(
     reasons.push(
       countLabel(
         pendingReservations,
-        'pedido de reserva pendente',
-        'pedidos de reserva pendentes'
+        'pedido antigo de reserva',
+        'pedidos antigos de reserva'
       )
     )
-    wayOut.push('Recuse os pedidos pendentes na aba Reservas.')
+    wayOut.push('Pedido antigo de reserva expira sozinho no fim do jogo.')
   }
   if (confirmedReservations > 0) {
     reasons.push(
       countLabel(
         confirmedReservations,
-        'reserva confirmada',
-        'reservas confirmadas'
+        'código de quem vai',
+        'códigos de quem vai'
       )
     )
     wayOut.push(
-      'Reserva confirmada não pode ser desfeita pelo bar: só o torcedor cancela, até o início do jogo.'
+      'Quem marcou “Vou assistir aqui” já tem o código: só a pessoa desmarca, até o início do jogo.'
     )
   }
   if (ratings > 0) {
@@ -68,9 +68,9 @@ export function getDeleteConsequences(deletion: Deletion): string | null {
     items.push(
       `${countLabel(
         deletion.closedReservations,
-        'reserva encerrada',
-        'reservas encerradas'
-      )} (recusadas, canceladas ou sem resposta)`
+        'código desmarcado',
+        'códigos desmarcados'
+      )} (de quem desistiu de ir)`
     )
   }
   if (deletion.hasAttendance) {
@@ -88,7 +88,7 @@ type Props = {
 }
 
 /**
- * Excluir jogo pede confirmação e diz o que vai junto. Jogo com reserva ativa
+ * Excluir jogo pede confirmação e diz o que vai junto. Jogo com código ativo
  * ou avaliação não é excluído: o diálogo explica o motivo em vez de confirmar.
  */
 export function EventDeleteDialog({

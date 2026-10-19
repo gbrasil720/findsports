@@ -92,13 +92,13 @@ apps/e2e/
 |---|---|
 | `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
 | `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
-| `tests/fan` | WEB-178 — busca, mapa, página do bar, reservas, perfil |
+| `tests/fan` | WEB-178 — busca, mapa, página do bar, Meus jogos, perfil |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
 | `tests/houdini` | WEB-181, WEB-393 — o Houdini (painel interno) |
 | `tests/feedback` | "Enviar feedback" no menu da conta, com imagem em anexo |
 
-Fixture nova (eventos, reservas…) entra num arquivo novo em `fixtures/`, em vez
+Fixture nova (eventos, códigos de quem vai…) entra num arquivo novo em `fixtures/`, em vez
 de crescer um arquivo central.
 
 ## Escrevendo teste
@@ -289,8 +289,13 @@ que falharam) como artifact.
 
 O job `e2e-worker` roda a suíte do Worker, também em todo PR, sem banco.
 
-O job é uma matriz: `desktop` e `mobile` em 4 shards (`--shard=N/4`) e os
-projetos `*-serial` num quinto job, depois de `setup`, com `--no-deps`. Os
+PR que só mexe em `apps/mobile/`, `docs/` ou `*.md` não roda E2E nenhum: a action
+`.github/actions/web-scope` lê os arquivos do PR e os passos de `e2e` e `e2e-worker`
+pulam, com o job verde. Não é `if:` no job porque matriz pulada inteira não
+publica os checks `e2e (N)` obrigatórios, e o PR ficaria esperando para sempre.
+
+O job é uma matriz: `desktop` e `mobile` em 12 shards (`--shard=N/12`) e os
+projetos `*-serial` num job à parte, depois de `setup`, com `--no-deps`. Os
 serial não podem entrar nos shards: como dependem de `desktop`/`mobile`, o
 Playwright puxaria a suíte inteira para cada shard. Cada job tem o seu
 servidor e o seu Postgres. Num job só, com auth e onboarding, a

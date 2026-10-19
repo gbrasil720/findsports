@@ -407,7 +407,7 @@ export const adminBarsRouter = router({
       participantFreeText: sql`${event.participantFreeText}`,
       championship: sql`${event.championship}`
     })
-    // Reserva que ocupa lugar, como na lotação (WEB-152).
+    // Código do balcão em vigor (ou pedido antigo ainda aberto).
     const seated = sql`${reservation.status} IN ('pending', 'confirmed')`
     // ponytail: listas com teto fixo, sem paginação; paginar quando um bar passar disso.
     const [games, reservations, ratings, grimorio, [recent]] =
@@ -418,10 +418,6 @@ export const adminBarsRouter = router({
             title,
             championship: event.championship,
             startsAt: event.startsAt,
-            acceptsReservations: event.acceptsReservations,
-            reservationCap: sql<
-              number | null
-            >`COALESCE(${event.reservationCap}, ${bar.reservationCap})`,
             reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}

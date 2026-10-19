@@ -3,9 +3,9 @@ import type { Locator, Page } from '@playwright/test'
 import { MEDIA_PUBLIC_ORIGIN, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
+import { createEvent } from '../../fixtures/going'
 import { interceptMediaUploads } from '../../fixtures/media'
 import { createPub } from '../../fixtures/pubs'
-import { createEvent } from '../../fixtures/reservations'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -325,10 +325,11 @@ test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
   expect(after?.phone_accepts_whatsapp).toBe(true)
 })
 
-test('"Aceita reserva" não se marca no checklist, e a que já estava gravada sobrevive ao salvar', async ({
+test('"Com oferta da casa" não se marca no checklist, e o antigo "Aceita reserva" gravado sai ao salvar', async ({
   page
 }) => {
-  // 10 = "Aceita reserva", de quando o bar a marcava à mão.
+  // 10 era "Aceita reserva", de quando o bar a marcava à mão; hoje é o filtro
+  // "Com oferta da casa" da busca, que ninguém marca.
   const pub = await createPub({ bar: { amenities: [10] } })
   await signIn(page, pub.user)
   await page.goto('/admin#admin-espaco')
@@ -337,19 +338,16 @@ test('"Aceita reserva" não se marca no checklist, e a que já estava gravada so
   await expect(
     editor(page).getByRole('button', { name: 'Estacionamento próximo' })
   ).toBeVisible()
-  await expect(
-    editor(page).getByRole('button', { name: 'Aceita reserva' })
-  ).toHaveCount(0)
-  await expect(
-    editor(page).getByText(/“Aceita reserva” aparece sozinha no perfil/)
-  ).toBeVisible()
+  for (const name of ['Com oferta da casa', 'Aceita reserva']) {
+    await expect(editor(page).getByRole('button', { name })).toHaveCount(0)
+  }
 
   await editor(page).getByRole('button', { name: 'Telão / projetor' }).click()
   expect((await save(page)).ok()).toBe(true)
   const [bar] = await query('SELECT amenities FROM bar WHERE id = $1', [
     pub.barId
   ])
-  expect(bar?.amenities).toEqual([1, 10])
+  expect(bar?.amenities).toEqual([1])
 })
 
 test('Elite salva cardápio, preço médio e oferta', async ({ page }) => {

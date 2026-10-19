@@ -25,16 +25,22 @@ import { recommendationEvent } from '@findsports_oficial/db/schema/recommendatio
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
-import { fanProcedure, protectedProcedure, router } from '../index'
 import {
+  fanProcedure,
+  protectedProcedure,
+  publicProcedure,
+  router
+} from '../index'
+import {
+  declaredAmenityIds,
   MAX_AMENITY_FILTER,
-  normalizeAmenityIds,
-  publicAmenityIds
+  normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { readFanAttendance } from '../lib/attendance'
+import { readFanAttendance, readGoing } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
+  getCurrentPlan,
   getSubscriptionStanding,
   type SubscriptionStanding
 } from '../lib/current-plan'
@@ -43,7 +49,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
-import { byMatchOrder } from '../lib/game-participants'
+import { byMatchOrder, gameTitle } from '../lib/game-participants'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import {
   executarBuscaEmCamadas,
@@ -53,16 +59,12 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
-import {
-  barReceivesReservations,
-  receivesReservations,
-  withSeatAvailability
-} from '../lib/reservation-intake'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
   searchCityColumns,
-  searchCitySchema
+  searchCitySchema,
+  suggestSearchCities
 } from '../lib/search-city'
 import { searchRadiusKmSchema } from '../lib/search-radius'
 import { createSharedCache } from '../lib/shared-cache'
@@ -276,7 +278,85 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
   }))
 }
 
+/**
+ * O que o card do bar no app mostra além da busca (07 do design): as
+ * características declaradas e quantos marcaram presença no próximo jogo.
+ * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
+ * segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele sai `null`,
+ * e jogo vazio não vira número na tela; junto vão as iniciais de quem vai.
+ */
+async function comCaracteristicasEPresenca<
+  T extends { id: string; nextEvent?: { id: string } | undefined }
+>(bars: T[]) {
+  const eventIds = bars.flatMap((achado) =>
+    achado.nextEvent ? [achado.nextEvent.id] : []
+  )
+  const [declarados, vao] = await Promise.all([
+    bars.length
+      ? db
+          .select({ id: bar.id, amenities: bar.amenities })
+          .from(bar)
+          .where(
+            inArray(
+              bar.id,
+              bars.map((achado) => achado.id)
+            )
+          )
+      : [],
+    readGoing(eventIds)
+  ])
+  const caracteristicas = new Map(
+    declarados.map((row) => [row.id, declaredAmenityIds(row.amenities)])
+  )
+  return bars.map((achado) => {
+    const going = achado.nextEvent ? vao.get(achado.nextEvent.id) : undefined
+    return {
+      ...achado,
+      amenities: caracteristicas.get(achado.id) ?? [],
+      goingCount: going?.count ?? null,
+      goingInitials: going?.initials ?? []
+    }
+  })
+}
+
+/** Teto da agenda do dia: é cenário de splash, não listagem. */
+const TODAY_GAMES_LIMIT = 30
+
 export const pubsRouter = router({
+  /**
+   * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
+   * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
+   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez.
+   * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
+   */
+  todayGames: publicProcedure.query(async () => {
+    const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+    const games = await db.execute<{ title: string; starts_at: string }>(sql`
+      SELECT g.title, g.starts_at
+      FROM (
+        SELECT
+          ${gameTitle({
+            id: sql`e.id`,
+            participantFreeText: sql`e.participant_free_text`,
+            championship: sql`e.championship`
+          })} AS title,
+          e.starts_at
+        FROM event e
+        JOIN bar b ON b.id = e.bar_id
+        WHERE b.is_active
+          AND e.starts_at >= ${dayStart}
+          AND e.starts_at < ${dayStart} + interval '1 day'
+      ) g
+      GROUP BY g.title, g.starts_at
+      ORDER BY g.starts_at, g.title
+      LIMIT ${TODAY_GAMES_LIMIT}
+    `)
+    return games.rows.map((game) => ({
+      title: game.title,
+      startsAt: utcIso(game.starts_at)
+    }))
+  }),
+
   search: protectedProcedure
     .input(
       z.object({
@@ -339,7 +419,9 @@ export const pubsRouter = router({
       // depois de a exibição ser desligada — e desligar exibição costuma ser
       // a reação a um problema, ou seja, exatamente a hora em que a demora
       // não é aceitável.
-      const bars = await comGastoMedio(pagina.bars)
+      const bars = await comCaracteristicasEPresenca(
+        await comGastoMedio(pagina.bars)
+      )
       return {
         ...pagina,
         bars: notaPublica
@@ -394,8 +476,7 @@ export const pubsRouter = router({
           ratingPositive: true,
           houseOffer: true,
           menuUrl: true,
-          averageSpendCents: true,
-          reservationCap: true
+          averageSpendCents: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -447,9 +528,8 @@ export const pubsRouter = router({
       // recebe os contadores crus. Deixar a decisão na tela significaria
       // mandar pela rede o número que a regra existe para não mostrar.
       //
-      // Recebimento de reservas e oferta da casa seguem a mesma lógica: o
-      // cliente recebe o efetivo (quer E pode), nunca o interruptor cru nem o
-      // texto com um aviso para esconder. Vale também para a prévia do dono —
+      // A oferta da casa segue a mesma lógica: o cliente recebe o efetivo,
+      // nunca o texto com um aviso para esconder. Vale também para a prévia do dono —
       // ela mostra o que o torcedor vê. Cardápio e gasto médio idem, com Pro
       // ou Elite.
       const {
@@ -459,7 +539,6 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
-        reservationCap: defaultCap,
         subscription,
         events,
         ...publicBar
@@ -475,49 +554,38 @@ export const pubsRouter = router({
             }
           : null
 
-      // `events` já vem na janela do perfil: é a mesma regra da busca.
-      const receiving = barReceivesReservations(
-        events,
-        subscription ?? null,
-        now
-      )
-      // Como o recebimento, o teto sai resolvido: o torcedor sabe se o jogo
-      // esgotou, não quantos lugares o dono definiu.
-      const games = await withSeatAvailability(events, defaultCap)
-      const attendance = await readFanAttendance(ctx.session.user, events, now)
+      // O código do balcão, e com ele a oferta da casa, é do Elite: fora
+      // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
+      const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
+      const fan = ctx.session.user.role === 'fan'
+      const [attendance, going] = await Promise.all([
+        readFanAttendance(ctx.session.user, events, now),
+        // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
+        // só para torcedor.
+        fan ? readGoing(events.map((game) => game.id)) : new Map()
+      ])
       return {
         ...publicBar,
-        amenities: publicAmenityIds(publicBar.amenities, receiving),
-        events: games.map(
+        amenities: declaredAmenityIds(publicBar.amenities),
+        events: events.map(
+          // Colunas da antiga reserva de mesa: não saem mais.
           ({
-            reservationCap,
-            confirmedSeats,
-            effectiveCap,
-            soldOut,
-            acceptsReservations,
+            reservationCap: _cap,
+            acceptsReservations: _accepts,
             ...game
-          }) => {
-            // Por jogo: o bar marca em quais recebe pedido.
-            const gameReceiving = receivesReservations(
-              acceptsReservations,
-              subscription ?? null,
-              now
-            )
-            return {
-              ...game,
-              acceptsReservations: gameReceiving,
-              reservationsSoldOut: gameReceiving && soldOut,
-              // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
-              attendance: attendance.get(game.id) ?? null
-            }
-          }
+          }) => ({
+            ...game,
+            // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
+            attendance: attendance.get(game.id) ?? null,
+            // `null`: abaixo do piso, ou conta que não é de torcedor.
+            going: going.get(game.id) ?? null
+          })
         ),
         rating,
-        // O único resgate da oferta é o código de uma reserva: sem
-        // recebimento, anunciar a oferta seria prometer sem caminho (WEB-131).
-        houseOffer: receiving ? houseOffer : null,
-        // Efetivo e derivado dos jogos: algum jogo no perfil recebe pedido.
-        acceptsReservations: receiving,
+        houseOffer: elite ? houseOffer : null,
+        // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
+        // "Confirmar e gerar código" e só "Confirmar").
+        issuesCode: elite,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
           subscription ?? null,
@@ -650,8 +718,7 @@ export const pubsRouter = router({
                   and(isNotNull(event.endsAt), gte(event.endsAt, now)),
                   and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
                 ),
-              // O teto do dono não vai para o torcedor (WEB-152), nem a
-              // marcação crua de reservas: o efetivo sai só no perfil.
+              // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
               with: {
                 sport: true,
@@ -784,6 +851,47 @@ export const pubsRouter = router({
         executarBuscaLocal(input)
       )
       return { ...pagina, bars: await comGastoMedio(pagina.bars) }
+    }),
+
+  /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
+  searchCities: protectedProcedure
+    .input(z.object({ query: z.string().trim().min(1).max(100) }))
+    .query(({ input }) => suggestSearchCities(input.query)),
+
+  /**
+   * Quantos bares no ar, dentro do raio, têm jogo hoje (dia de Brasília). É
+   * o "12 bares com jogo hoje" do passo de distância do onboarding do app:
+   * mostra o que a escolha do raio muda antes de salvar.
+   */
+  countTodayNear: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: z.union([
+          z.literal(1),
+          z.literal(3),
+          z.literal(5),
+          z.literal(10)
+        ])
+      })
+    )
+    .query(async ({ input }) => {
+      const origin = sql`ST_SetSRID(ST_MakePoint(${input.lng}, ${input.lat}), 4326)::geography`
+      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+      const result = await db.execute<{ bars: string }>(sql`
+        SELECT count(*) AS bars
+        FROM bar b
+        WHERE b.is_active
+          AND ST_DWithin(b.geo, ${origin}, ${input.radiusKm * 1000})
+          AND EXISTS (
+            SELECT 1 FROM event e
+            WHERE e.bar_id = b.id
+              AND e.starts_at >= ${dayStart}
+              AND e.starts_at < ${dayStart} + interval '1 day'
+          )
+      `)
+      return { bars: Number(result.rows[0]?.bars ?? 0) }
     }),
 
   getSports: protectedProcedure.query(async () => {

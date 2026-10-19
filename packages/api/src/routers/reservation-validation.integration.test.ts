@@ -447,7 +447,7 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
 
     const extra = await refusal(arrive())
     expect(extra.code).toBe('CONFLICT')
-    expect(extra.message).toBe('As 2 pessoas desta reserva já foram validadas.')
+    expect(extra.message).toBe('As 2 pessoas deste código já foram validadas.')
     expect(await counterOf(ctx)).toBe(2)
     expect(await usesOf(ctx)).toHaveLength(2)
 
@@ -468,7 +468,7 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
       const lost = race.find((r) => r.status === 'rejected')
       expect((lost as PromiseRejectedResult).reason).toMatchObject({
         code: 'CONFLICT',
-        message: 'A única pessoa desta reserva já foi validada.'
+        message: 'Este código já foi validado.'
       })
       expect(await counterOf(last)).toBe(1)
     } finally {
@@ -498,7 +498,7 @@ integrationTest(
       )
       expect(notLast).toEqual({
         code: 'PRECONDITION_FAILED',
-        message: 'Só a última chegada pode ser desfeita.'
+        message: 'Só a última validação pode ser desfeita.'
       })
 
       const undone = await ctx.owner.undoArrival({ useId: second.useId })
@@ -555,7 +555,7 @@ integrationTest('desfazer depois do prazo é recusado', async () => {
     const late = await refusal(ctx.owner.undoArrival({ useId: arrival.useId }))
     expect(late).toEqual({
       code: 'PRECONDITION_FAILED',
-      message: 'O prazo para desfazer esta chegada acabou.'
+      message: 'O prazo para desfazer esta validação acabou.'
     })
     expect(await counterOf(ctx)).toBe(1)
   } finally {
@@ -724,7 +724,7 @@ integrationTest('validar exige benefício Elite vigente', async () => {
       ]) {
         expect(await refusal(attempt())).toEqual({
           code: 'FORBIDDEN',
-          message: 'A validação de reservas é um recurso do plano Elite.'
+          message: 'A validação de códigos é um recurso do plano Elite.'
         })
       }
       expect(await counterOf(ctx)).toBe(0)
@@ -761,7 +761,7 @@ integrationTest(
       // A margem é só da validação: a fila segue fechando no fim do jogo.
       expect(await queue.hasValidatable()).toBe(true)
       expect(await queue.hasOpen()).toBe(false)
-      expect((await refusal(queue.list())).code).toBe('FORBIDDEN')
+      expect((await refusal(queue.going())).code).toBe('FORBIDDEN')
 
       // Janela fechada há 1 h: volta a recusa de quem não é Elite.
       await ctx.db
@@ -779,7 +779,7 @@ integrationTest(
       ]) {
         expect(await refusal(attempt())).toEqual({
           code: 'FORBIDDEN',
-          message: 'A validação de reservas é um recurso do plano Elite.'
+          message: 'A validação de códigos é um recurso do plano Elite.'
         })
       }
       expect(await counterOf(ctx)).toBe(1)

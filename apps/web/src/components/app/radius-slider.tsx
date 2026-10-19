@@ -49,10 +49,7 @@ export function RadiusSlider({
         <label htmlFor={id} className="onside-kicker">
           {label}
         </label>
-        <output
-          htmlFor={id}
-          className="onside-display text-xl tabular-nums leading-none"
-        >
+        <output htmlFor={id} className="onside-display text-xl tabular-nums">
           {draft} km
         </output>
       </div>

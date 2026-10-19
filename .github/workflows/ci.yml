@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# Push novo num PR cancela o run anterior dele. Em master cada push tem grupo
+# próprio (o SHA): nada cancela um deploy de produção.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
   # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
@@ -36,6 +42,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-monorepo
+      - name: Lint (Biome + classes onside-*)
+        run: bun run check
       - name: Fetch base branch (affected)
         if: github.event_name == 'pull_request'
         run: git fetch origin master --no-tags
@@ -84,21 +92,24 @@ jobs:
   e2e:
     # Suíte Playwright (WEB-174, docs/e2e.md): `vite dev` contra um Postgres
     # descartável, Chromium desktop + Pixel 7, sem rede externa.
-    # `desktop`/`mobile` divididos em 4 shards; os `*-serial` num job
+    # `desktop`/`mobile` divididos em 12 shards (repo público: minuto de
+    # runner padrão não custa, e cada shard a mais corta o tempo do PR); os `*-serial` num job
     # à parte, porque como dependência eles puxariam a suíte inteira para cada shard.
     #
     # Só em PR: o push em `master` é o merge de uma PR que já passou por
     # aqui, e rodar de novo dobrava os minutos e atrasava o deploy (WEB-236).
+    # PR só de `apps/mobile`, `docs` ou `*.md` pula os passos (`web-scope`).
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
+      pull-requests: read
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        part: [1, 2, 3, 4, serial]
+        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, serial]
     env:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
@@ -120,12 +131,16 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-monorepo
-      - uses: ./.github/actions/setup-playwright
-      - if: matrix.part != 'serial'
-        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/4
+      - id: scope
+        uses: ./.github/actions/web-scope
+      - if: steps.scope.outputs.web == 'true'
+        uses: ./.github/actions/setup-monorepo
+      - if: steps.scope.outputs.web == 'true'
+        uses: ./.github/actions/setup-playwright
+      - if: steps.scope.outputs.web == 'true' && matrix.part != 'serial'
+        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/12
         working-directory: apps/e2e
-      - if: matrix.part == 'serial'
+      - if: steps.scope.outputs.web == 'true' && matrix.part == 'serial'
         run: |
           bunx playwright test --project=setup
           bunx playwright test --project=desktop-serial --no-deps
@@ -148,15 +163,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-monorepo
-      - uses: ./.github/actions/setup-playwright
+      - id: scope
+        uses: ./.github/actions/web-scope
+      - if: steps.scope.outputs.web == 'true'
+        uses: ./.github/actions/setup-monorepo
+      - if: steps.scope.outputs.web == 'true'
+        uses: ./.github/actions/setup-playwright
       - name: Build do Worker
+        if: steps.scope.outputs.web == 'true'
         working-directory: apps/web
         run: bun run build:cf
-      - run: bunx playwright test -c playwright.worker.config.ts
+      - if: steps.scope.outputs.web == 'true'
+        run: bunx playwright test -c playwright.worker.config.ts
         working-directory: apps/e2e
 
   # WEB-204: deploy no Cloudflare Workers (produção = Worker `onside-web`, preview =

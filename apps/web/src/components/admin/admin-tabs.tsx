@@ -6,7 +6,7 @@ export const ADMIN_SECTIONS = [
   { id: 'admin-visao', label: 'Visão geral' },
   { id: 'admin-grade', label: 'Minha grade' },
   { id: 'admin-espaco', label: 'Meu espaço' },
-  { id: 'admin-reservas', label: 'Reservas' },
+  { id: 'admin-quem-vai', label: 'Quem vai' },
   { id: 'admin-configuracoes', label: 'Configurações' }
 ] as const
 
@@ -14,16 +14,13 @@ export type AdminSectionId = (typeof ADMIN_SECTIONS)[number]['id']
 type AdminSection = (typeof ADMIN_SECTIONS)[number]
 
 /**
- * A fila de reservas (WEB-125) existe para bar que recebe reservas (Elite
- * vigente e interruptor ligado) e para o que ainda tem reserva em aberto para
- * honrar (WEB-341). Para o resto, a aba não aparece.
+ * "Quem vai" existe para o bar Elite e para o que ainda tem código em aberto
+ * para honrar (WEB-341). Para o resto, a aba não aparece.
  */
-export function getAdminSections(
-  showsReservations: boolean
-): readonly AdminSection[] {
-  return showsReservations
+export function getAdminSections(showsGoing: boolean): readonly AdminSection[] {
+  return showsGoing
     ? ADMIN_SECTIONS
-    : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-reservas')
+    : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-quem-vai')
 }
 
 const ADMIN_SECTION_IDS = ADMIN_SECTIONS.map(

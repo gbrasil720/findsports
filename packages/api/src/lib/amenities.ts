@@ -19,6 +19,7 @@
 export const AMENITY_GROUPS = [
   { key: 'watch', label: 'Para ver o jogo' },
   { key: 'space', label: 'O espaço' },
+  { key: 'food', label: 'Comer e beber' },
   { key: 'practical', label: 'Chegar e ficar' }
 ] as const
 
@@ -49,6 +50,10 @@ export const AMENITIES: readonly Amenity[] = [
   { id: 5, slug: 'covered_area', label: 'Área coberta', group: 'space' },
   { id: 6, slug: 'accessible', label: 'Acessível', group: 'space' },
   { id: 7, slug: 'pet_friendly', label: 'Pet friendly', group: 'space' },
+  // 12 a 14 entraram com a página do bar do app (design 2g, "O que tem").
+  // A posição na lista é a ordem de exibição; o id só cresce.
+  { id: 12, slug: 'snacks', label: 'Petiscos', group: 'food' },
+  { id: 13, slug: 'draft_beer', label: 'Chopp', group: 'food' },
   {
     id: 8,
     slug: 'parking_onsite',
@@ -61,13 +66,20 @@ export const AMENITIES: readonly Amenity[] = [
     label: 'Estacionamento próximo',
     group: 'practical'
   },
-  { id: 10, slug: 'reservations', label: 'Aceita reserva', group: 'practical' },
+  {
+    id: 10,
+    slug: 'house_offer',
+    label: 'Com oferta da casa',
+    group: 'practical'
+  },
   {
     id: 11,
     slug: 'late_kitchen',
     label: 'Cozinha até tarde',
     group: 'practical'
-  }
+  },
+  { id: 15, slug: 'wifi', label: 'Wi-fi', group: 'practical' },
+  { id: 14, slug: 'pix_and_card', label: 'Pix e cartão', group: 'practical' }
 ] as const
 
 /** Quantas características a busca aceita de uma vez. */
@@ -111,51 +123,22 @@ export function normalizeAmenityIds(ids: readonly number[]): number[] {
   return [...new Set(ids.filter((id) => BY_ID.has(id)))].sort((a, b) => a - b)
 }
 
-export const RESERVATIONS_AMENITY_ID = 10
+export const HOUSE_OFFER_AMENITY_ID = 10
 
 /**
- * O que o bar declara no checklist: tudo menos "Aceita reserva". Aceitar
- * reserva e receber reservas pela Onside são a mesma coisa (decisão de
- * 10/10/2026), então essa característica não se marca: é derivada do
- * recebimento de fato (Elite vigente e interruptor ligado), no perfil
- * (`publicAmenityIds`) e no filtro da busca (`amenityFilter`).
- *
- * O id segue no vocabulário, porque o filtro do torcedor o usa, e segue
- * gravado em `bar.amenities` de quem o marcou antes. Nenhuma leitura pública
- * olha para ele.
+ * O que o bar declara no checklist: tudo menos "Com oferta da casa", que não
+ * se marca: é o bar Elite com oferta cadastrada, e só o filtro da busca o
+ * usa (`amenityFilter`). O id era "Aceita reserva" até a reserva de mesa sair
+ * do produto (16/10/2026); quem o marcou antes ainda o tem gravado em
+ * `bar.amenities`, e nenhuma leitura olha para ele.
  */
 export function declaredAmenityIds(ids: readonly number[]): number[] {
-  return ids.filter((id) => id !== RESERVATIONS_AMENITY_ID)
+  return ids.filter((id) => id !== HOUSE_OFFER_AMENITY_ID)
 }
 
-/**
- * O que o perfil público mostra: o que o bar declarou, mais "Aceita reserva"
- * se, e só se, ele recebe reservas — tenha ou não o id gravado. Sem
- * recebimento a característica prometeria um botão que não existe (WEB-341).
- */
-export function publicAmenityIds(
-  ids: readonly number[],
-  receivesReservations: boolean
-): number[] {
-  const declared = declaredAmenityIds(ids)
-  return receivesReservations
-    ? [...declared, RESERVATIONS_AMENITY_ID]
-    : declared
-}
-
-/**
- * O que a escrita grava. "Aceita reserva" que vier do cliente (aba antiga,
- * rascunho antigo) é ignorada, não recusada; a que já estava gravada
- * (`stored`) fica onde está, sem apagar nem regravar.
- */
-export function writableAmenityIds(
-  ids: readonly number[],
-  stored: readonly number[] = []
-): number[] {
-  return normalizeAmenityIds([
-    ...declaredAmenityIds(ids),
-    ...stored.filter((id) => id === RESERVATIONS_AMENITY_ID)
-  ])
+/** O que a escrita grava: o filtro que vier do cliente é ignorado. */
+export function writableAmenityIds(ids: readonly number[]): number[] {
+  return normalizeAmenityIds(declaredAmenityIds(ids))
 }
 
 export function amenitiesByGroup(ids: readonly number[]) {

@@ -85,7 +85,7 @@ for (const status of ['pending', 'confirmed'] as const) {
 
         expect(await refusal(ctx.owner.pub.deleteEvent({ eventId }))).toEqual({
           code: 'PRECONDITION_FAILED',
-          message: 'Este jogo tem 1 reserva ativa e não pode ser excluído.'
+          message: 'Este jogo tem 1 código de quem vai e não pode ser excluído.'
         })
         expect(await ctx.exists(eventId)).toBe(true)
         expect(
@@ -141,7 +141,7 @@ integrationTest(
 
       expect(await deletion).toEqual({
         code: 'PRECONDITION_FAILED',
-        message: 'Este jogo tem 1 reserva ativa e não pode ser excluído.'
+        message: 'Este jogo tem 1 código de quem vai e não pode ser excluído.'
       })
       expect(await ctx.exists(eventId)).toBe(true)
     } finally {

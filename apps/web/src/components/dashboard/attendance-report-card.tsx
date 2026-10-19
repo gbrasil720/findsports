@@ -19,7 +19,8 @@ type Answer = { attended: boolean; offerReceived?: boolean }
  * (WEB-321), que guarda o jogo respondido: desfazer nunca age sobre a
  * pergunta que estiver na tela.
  */
-export function AttendanceReportCard() {
+/** `first`: o jogo que vem na frente (o "Avaliar" de Meus jogos). */
+export function AttendanceReportCard({ first }: { first?: string } = {}) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const query = useQuery({
@@ -30,7 +31,7 @@ export function AttendanceReportCard() {
   const [skipped, setSkipped] = useState<string[]>([])
   // A pergunta desfeita volta na frente das outras: é a que o torcedor quer
   // corrigir.
-  const [front, setFront] = useState<string | null>(null)
+  const [front, setFront] = useState<string | null>(first ?? null)
   const [error, setError] = useState<string | null>(null)
   // Os botões clicados trocam de pergunta; o foco vai para o título, que é o
   // mesmo nó de uma pergunta para a outra.

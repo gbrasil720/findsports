@@ -1,7 +1,7 @@
+import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import { createFileRoute } from '@tanstack/react-router'
 import { legalHead } from '@/components/legal/legal-head'
 import { LegalPage } from '@/components/legal/legal-page'
-import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
 
 export const Route = createFileRoute('/termos')({
   head: () =>

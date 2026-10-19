@@ -5,7 +5,6 @@ import type { Context } from '../context'
 import { appRouter } from './index'
 import { pubRouter } from './pub'
 import { recommendationsRouter } from './recommendations'
-import { reservationsRouter } from './reservations'
 
 function context(role: 'fan' | 'pub' | 'admin'): Context {
   return {
@@ -51,7 +50,6 @@ const pubOnly: [string, string][] = [
 // avaliação do /dashboard, que também chama `remove`, só existe para torcedor.
 // Resposta vazia para bar ou admin escondia um cliente chamando o que não devia.
 const fanOnly: [string, string][] = [
-  ...all('reservations', reservationsRouter._def.procedures),
   ...all('recommendations', recommendationsRouter._def.procedures).filter(
     ([, procedure]) => procedure !== 'getMyBarQualityStatus'
   ),

@@ -20,7 +20,7 @@ describe('getEventDeletionBlock', () => {
         pendingReservations: 1,
         confirmedReservations: 1
       })
-    ).toBe('Este jogo tem 2 reservas ativas e não pode ser excluído.')
+    ).toBe('Este jogo tem 2 códigos de quem vai e não pode ser excluído.')
     expect(getEventDeletionBlock({ ...NOTHING, ratings: 1 })).toBe(
       'Este jogo tem 1 avaliação e não pode ser excluído.'
     )
@@ -31,7 +31,7 @@ describe('getEventDeletionBlock', () => {
         ratings: 3
       })
     ).toBe(
-      'Este jogo tem 1 reserva ativa e 3 avaliações e não pode ser excluído.'
+      'Este jogo tem 1 código de quem vai e 3 avaliações e não pode ser excluído.'
     )
   })
 

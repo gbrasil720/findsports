@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { TERMOS_DE_USO } from '@/components/legal/termos-de-uso'
+import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
@@ -475,9 +475,9 @@ describe('profilePerks', () => {
     ).toBe(false)
   })
 
-  test('reserva de mesa e oferta da casa são entregues só no Elite', () => {
+  test('lista de quem vai e oferta da casa são entregues só no Elite', () => {
     for (const [label, key] of [
-      ['Reserva de mesa pela plataforma', 'reservations'],
+      ['Lista de quem vai assistir, jogo a jogo', 'going'],
       ['Oferta da casa para quem chega pela Onside', 'house_offer']
     ] as const) {
       expect(getPlan('elite').profilePerks).toContainEqual({
@@ -515,7 +515,7 @@ describe('getPlanLosses (WEB-351)', () => {
       { label: 'Inteligência avançada' },
       { label: 'Comparação avançada' },
       { label: 'Selo Elite no topo do perfil', key: 'badge' },
-      { label: 'Reserva de mesa pela plataforma', key: 'reservations' },
+      { label: 'Lista de quem vai assistir, jogo a jogo', key: 'going' },
       {
         label: 'Oferta da casa para quem chega pela Onside',
         key: 'house_offer'
@@ -553,7 +553,7 @@ describe('getPlanLosses (WEB-351)', () => {
         'Capa em destaque, o dobro da altura',
         'Link do cardápio e preço médio no perfil',
         'Selo Elite no topo do perfil',
-        'Reserva de mesa pela plataforma',
+        'Lista de quem vai assistir, jogo a jogo',
         'Oferta da casa para quem chega pela Onside'
       ])
     )
@@ -596,15 +596,13 @@ describe('getPlanLossNote (WEB-351)', () => {
     upcomingEvents: 7,
     houseOffer: 'Chopp em dobro',
     menuUrl: 'https://bar.example/cardapio',
-    averageSpendCents: 6000,
-    reservableEvents: 2
+    averageSpendCents: 6000
   }
   const empty = {
     upcomingEvents: 0,
     houseOffer: null,
     menuUrl: null,
-    averageSpendCents: null,
-    reservableEvents: 0
+    averageSpendCents: null
   }
 
   test('jogos: os do bar contra o limite do Starter, e os já cadastrados continuam (WEB-352)', () => {
@@ -623,7 +621,7 @@ describe('getPlanLossNote (WEB-351)', () => {
     )
   })
 
-  test('cardápio, oferta e reservas só falam do que o bar tem', () => {
+  test('cardápio e oferta só falam do que o bar tem', () => {
     expect(getPlanLossNote('menu', bar)).toBe(
       'Seu link do cardápio e seu gasto médio saem do perfil e ficam guardados.'
     )
@@ -633,10 +631,9 @@ describe('getPlanLossNote (WEB-351)', () => {
     expect(getPlanLossNote('house_offer', bar)).toBe(
       'Sua oferta da casa sai do perfil e fica guardada.'
     )
-    expect(getPlanLossNote('reservations', bar)).toBe(
-      'Seu bar para de receber novos pedidos de reserva.'
-    )
-    for (const key of ['menu', 'house_offer', 'reservations'] as const) {
+    // A lista de quem vai não tem nada do bar para citar.
+    expect(getPlanLossNote('going', bar)).toBeNull()
+    for (const key of ['menu', 'house_offer'] as const) {
       expect(getPlanLossNote(key, empty)).toBeNull()
     }
     expect(getPlanLossNote('badge', bar)).toBeNull()

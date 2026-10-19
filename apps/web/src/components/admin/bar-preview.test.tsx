@@ -70,7 +70,6 @@ function perfil(overrides: Partial<Profile> = {}): ProfileState {
       isActive: true,
       rating: null,
       houseOffer: null,
-      acceptsReservations: true,
       menuUrl: null,
       averageSpendCents: 6000,
       isOwner: true,
@@ -81,8 +80,6 @@ function perfil(overrides: Partial<Profile> = {}): ProfileState {
           startsAt: AMANHA,
           endsAt: null,
           participantFreeText: 'Time A × Time B',
-          acceptsReservations: true,
-          reservationsSoldOut: false,
           // O dono nunca recebe presença; a prévia monta a do torcedor.
           attendance: null,
           sport: { name: 'Futebol', slug: 'futebol' },
@@ -164,37 +161,19 @@ describe('prévia do perfil em /admin', () => {
     expect(doc.body.textContent).not.toContain('por pessoa')
   })
 
-  test('mostra "Reservar mesa" e "Vou assistir aqui" como o torcedor vê', () => {
+  test('mostra "Vou assistir aqui" e o WhatsApp como o torcedor vê', () => {
     const texto = renderizar('elite', perfil()).body.textContent
-    expect(texto).toContain('Reservar mesa')
-    expect(texto).toContain('Vou assistir aqui')
-    expect(texto).toContain('WhatsApp')
-  })
-
-  test('sem recebimento efetivo, não há "Reservar mesa"', () => {
-    const base = perfil()
-    if (base.status !== 'ready') throw new Error('perfil pronto')
-    const texto = renderizar(
-      'pro',
-      perfil({
-        acceptsReservations: false,
-        events: base.profile.events.map((jogo) => ({
-          ...jogo,
-          acceptsReservations: false
-        }))
-      })
-    ).body.textContent
     expect(texto).not.toContain('Reservar mesa')
-    expect(texto).toContain('Falar com o bar')
     expect(texto).toContain('Vou assistir aqui')
+    expect(texto).toContain('Falar com o bar')
   })
 
   test('as ações da prévia não disparam nada: ficam inertes', () => {
     const doc = renderizar('elite', perfil())
-    const reservar = Array.from(doc.querySelectorAll('button')).find((botao) =>
-      botao.textContent?.includes('Reservar mesa')
+    const vou = Array.from(doc.querySelectorAll('button')).find((botao) =>
+      botao.textContent?.includes('Vou assistir aqui')
     )
-    expect(reservar?.closest('[inert]')).toBeTruthy()
+    expect(vou?.closest('[inert]')).toBeTruthy()
   })
 
   test('falha ao ler o perfil vira aviso na prévia', () => {

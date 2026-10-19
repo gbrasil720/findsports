@@ -219,67 +219,24 @@ describe('getBarInitials', () => {
 })
 
 describe('resolveProfileActions', () => {
-  const game = (
-    startsAt: Date,
-    reservationsSoldOut = false,
-    acceptsReservations = true
-  ) => ({
-    ...makeEvent({ startsAt }),
-    acceptsReservations,
-    reservationsSoldOut,
-    attendance: null
-  })
-  const pub = (events: NormalizedPub['events']): NormalizedPub =>
-    ({
-      name: 'Bar',
-      phone: '+5511999999999',
-      phoneAcceptsWhatsapp: true,
-      latitude: '-23.56',
-      longitude: '-46.68',
-      address: 'Rua 1',
-      events
-    }) as NormalizedPub
-  const future = new Date(NOW.getTime() + HOUR)
-  const started = new Date(NOW.getTime() - HOUR)
-  const at = NOW.getTime()
+  const pub = {
+    name: 'Bar',
+    phone: '+5511999999999',
+    phoneAcceptsWhatsapp: true,
+    latitude: '-23.56',
+    longitude: '-46.68',
+    address: 'Rua 1',
+    events: []
+  } as unknown as NormalizedPub
 
-  it('oferece reserva ao torcedor quando há jogo futuro com lugar', () => {
-    const actions = resolveProfileActions(pub([game(future)]), null, 'fan', at)
-    expect(actions.canReserve).toBe(true)
-    expect(actions.reservationsSoldOut).toBe(false)
-  })
-
-  it('não oferece reserva a quem não é torcedor nem sem jogo marcado', () => {
-    expect(
-      resolveProfileActions(pub([game(future)]), null, 'pub', at).canReserve
-    ).toBe(false)
-    expect(
-      resolveProfileActions(pub([game(future, false, false)]), null, 'fan', at)
-        .canReserve
-    ).toBe(false)
-  })
-
-  it('só jogo marcado para reserva entra no pedido', () => {
-    const marked = game(future)
-    const actions = resolveProfileActions(
-      pub([game(future, false, false), marked]),
-      null,
-      'fan',
-      at
-    )
-    expect(actions.reservableEvents).toEqual([marked])
-    expect(actions.canReserve).toBe(true)
-  })
-
-  it('jogo já começado não entra; todos esgotados viram esgotado', () => {
-    const actions = resolveProfileActions(
-      pub([game(started), game(future, true)]),
-      null,
-      'fan',
-      at
-    )
-    expect(actions.reservableEvents).toHaveLength(1)
-    expect(actions.canReserve).toBe(false)
-    expect(actions.reservationsSoldOut).toBe(true)
+  it('monta WhatsApp, rota e telefone, sem reserva de mesa', () => {
+    const actions = resolveProfileActions(pub, null)
+    expect(Object.keys(actions).sort()).toEqual([
+      'directionsUrl',
+      'phone',
+      'whatsappUrl'
+    ])
+    expect(actions.whatsappUrl).toContain('wa.me')
+    expect(actions.phone).toBe('+5511999999999')
   })
 })

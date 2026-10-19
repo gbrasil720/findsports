@@ -42,8 +42,7 @@ const EMPTY_FORM: EventForm = {
   startsAt: '',
   endsAt: '',
   participantIds: [],
-  participantFreeText: '',
-  acceptsReservations: false
+  participantFreeText: ''
 }
 
 type ManagerProps = {
@@ -76,9 +75,9 @@ export function getCreateBlockReason(
 }
 
 export function getDeleteErrorMessage(error: unknown): string {
-  // Chegou reserva ou avaliação depois que a grade carregou.
+  // Chegou código ou avaliação depois que a grade carregou.
   if (getErrorCode(error) === 'PRECONDITION_FAILED') {
-    return 'Este jogo recebeu reserva ou avaliação e não pode mais ser excluído.'
+    return 'Este jogo já tem código de quem vai ou avaliação e não pode mais ser excluído.'
   }
   return getUserFacingMessage(
     error,
@@ -118,7 +117,6 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   // Sem a assinatura lida, vale o texto do Starter: o limite é o mesmo.
   const { data: subscription } = useMySubscription()
   const lapsedPlan = getLapsedPaidPlan(subscription)
-  const canEnableReservations = subscription?.currentPlan === 'elite'
   const policyBlockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const sportsErrorMessage = sportsError
     ? getUserFacingMessage(
@@ -137,8 +135,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
     queryClient.invalidateQueries({
       queryKey: trpc.pub.getMyEvents.queryKey()
     })
-  // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`, e
-  // `pub.getMe` diz se o bar recebe reservas, pelos jogos marcados.
+  // A prévia do perfil em "Meu Espaço" lê a agenda por `pubs.getById`.
   const invalidateEvents = () =>
     Promise.all([
       invalidateMyEvents(),
@@ -200,8 +197,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           startsAt,
           endsAt,
           participantIds,
-          participantFreeText: form.participantFreeText || undefined,
-          acceptsReservations: form.acceptsReservations
+          participantFreeText: form.participantFreeText || undefined
         },
         {
           onSuccess: () => {
@@ -222,8 +218,7 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         startsAt,
         endsAt: endsAt ?? null,
         participantIds,
-        participantFreeText: form.participantFreeText,
-        acceptsReservations: form.acceptsReservations
+        participantFreeText: form.participantFreeText
       })
     }
   }
@@ -440,20 +435,15 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   participantIds:
                     editingEvent.participants?.map((item) => item.team.id) ??
                     [],
-                  participantFreeText: editingEvent.participantFreeText ?? '',
-                  acceptsReservations: editingEvent.acceptsReservations
+                  participantFreeText: editingEvent.participantFreeText ?? ''
                 }
-              : // Bar Elite quase sempre aceita reserva: o jogo novo já vem
-                // marcado, e o dono desmarca o que não der.
-                { ...EMPTY_FORM, acceptsReservations: canEnableReservations }
+              : EMPTY_FORM
           }
           initialParticipants={editingEvent?.participants?.map(
             (item) => item.team
           )}
           sports={sports}
           loadingSports={loadingSports}
-          // O servidor confere o plano de novo ao gravar.
-          canEnableReservations={canEnableReservations}
           onSave={handleSave}
           onCancel={closeModal}
           isSaving={isSaving}

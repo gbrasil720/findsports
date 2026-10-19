@@ -30,8 +30,8 @@ import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
+import { Route as dashboardDashboardGamesRouteImport } from './routes/(dashboard)/dashboard_.games'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
-import { Route as dashboardDashboardReservationsRouteImport } from './routes/(dashboard)/dashboard_.reservations'
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
@@ -156,16 +156,15 @@ const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
   path: '/plan/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardDashboardGamesRoute = dashboardDashboardGamesRouteImport.update({
+  id: '/(dashboard)/dashboard_/games',
+  path: '/dashboard/games',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const dashboardDashboardProfileRoute =
   dashboardDashboardProfileRouteImport.update({
     id: '/(dashboard)/dashboard_/profile',
     path: '/dashboard/profile',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const dashboardDashboardReservationsRoute =
-  dashboardDashboardReservationsRouteImport.update({
-    id: '/(dashboard)/dashboard_/reservations',
-    path: '/dashboard/reservations',
     getParentRoute: () => rootRouteImport,
   } as any)
 const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
@@ -285,8 +284,8 @@ export interface FileRoutesByFullPath {
   '/admin/validate': typeof AdminValidateRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
-  '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -328,8 +327,8 @@ export interface FileRoutesByTo {
   '/admin/validate': typeof AdminValidateRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
-  '/dashboard/reservations': typeof dashboardDashboardReservationsRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -372,8 +371,8 @@ export interface FileRoutesById {
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
+  '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
-  '/(dashboard)/dashboard_/reservations': typeof dashboardDashboardReservationsRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
@@ -417,8 +416,8 @@ export interface FileRouteTypes {
     | '/admin/validate'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/dashboard/games'
     | '/dashboard/profile'
-    | '/dashboard/reservations'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -460,8 +459,8 @@ export interface FileRouteTypes {
     | '/admin/validate'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/dashboard/games'
     | '/dashboard/profile'
-    | '/dashboard/reservations'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -503,8 +502,8 @@ export interface FileRouteTypes {
     | '/houdini/_app'
     | '/houdini/entrar'
     | '/plan_/confirmed'
+    | '/(dashboard)/dashboard_/games'
     | '/(dashboard)/dashboard_/profile'
-    | '/(dashboard)/dashboard_/reservations'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
@@ -546,8 +545,8 @@ export interface RootRouteChildren {
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
+  dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
-  dashboardDashboardReservationsRoute: typeof dashboardDashboardReservationsRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
@@ -707,18 +706,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanConfirmedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(dashboard)/dashboard_/games': {
+      id: '/(dashboard)/dashboard_/games'
+      path: '/dashboard/games'
+      fullPath: '/dashboard/games'
+      preLoaderRoute: typeof dashboardDashboardGamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(dashboard)/dashboard_/profile': {
       id: '/(dashboard)/dashboard_/profile'
       path: '/dashboard/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof dashboardDashboardProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(dashboard)/dashboard_/reservations': {
-      id: '/(dashboard)/dashboard_/reservations'
-      path: '/dashboard/reservations'
-      fullPath: '/dashboard/reservations'
-      preLoaderRoute: typeof dashboardDashboardReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(onboarding)/onboarding/fan': {
@@ -922,8 +921,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
+  dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
-  dashboardDashboardReservationsRoute: dashboardDashboardReservationsRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,

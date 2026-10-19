@@ -1,13 +1,13 @@
-import { Link } from '@tanstack/react-router'
-import { Fragment, useEffect, useRef, useState } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
-import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
 import type {
   LegalBlock,
   LegalDocument,
   LegalInline,
   LegalRich
-} from './legal-types'
+} from '@findsports_oficial/legal/legal-types'
+import { Link } from '@tanstack/react-router'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import ArrowRight from 'reicon-react/icons/ArrowRight'
+import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
 
 const CONTACT_EMAIL = 'contato@onside.sh'
 const HERO_ID = 'top'

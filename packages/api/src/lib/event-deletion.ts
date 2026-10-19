@@ -6,11 +6,13 @@ import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-wi
  * `attendance`, `attendance_report` e `bar_rating` apagam em cascata com
  * `event`; quem decide se o jogo pode sumir é `getEventDeletionBlock`.
  *
- * - Bloqueiam: pedido pendente de jogo que ainda não acabou, reserva
- *   confirmada (em qualquer tempo: depois do jogo ela é o histórico do
- *   torcedor e a prova de comparecimento) e avaliação.
- * - Vão junto: reservas encerradas (recusadas, canceladas ou pendentes que
- *   expiraram no fim do jogo) e presenças.
+ * - Bloqueiam: código de quem marcou "Vou assistir aqui" num bar Elite (em
+ *   qualquer tempo: depois do jogo ele é o histórico do torcedor e a prova
+ *   de comparecimento), pedido antigo de reserva pendente de jogo que ainda
+ *   não acabou, e avaliação. O código mora em `reservation`
+ *   (`attendance-ticket.ts`).
+ * - Vão junto: códigos de quem desmarcou, pedidos antigos encerrados e
+ *   presenças.
  *
  * Da presença sai só "tem ou não tem": o bar nunca vê o número absoluto
  * (ADR 0003, "Presença").
@@ -87,7 +89,7 @@ export function getEventDeletionBlock(
 ): string | null {
   const active = impact.pendingReservations + impact.confirmedReservations
   const reasons = [
-    active > 0 && count(active, 'reserva ativa', 'reservas ativas'),
+    active > 0 && count(active, 'código de quem vai', 'códigos de quem vai'),
     impact.ratings > 0 && count(impact.ratings, 'avaliação', 'avaliações')
   ].filter(Boolean)
   if (reasons.length === 0) return null
