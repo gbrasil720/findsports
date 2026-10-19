@@ -75,7 +75,8 @@ test.describe('deslogado', () => {
 const HOME: Record<Role, string> = {
   fan: '/dashboard',
   pub: '/admin',
-  admin: '/houdini'
+  // O Houdini só abre quando pedido; a casa do admin no app é a busca.
+  admin: '/dashboard'
 }
 
 for (const role of ['fan', 'pub', 'admin'] as const) {
@@ -89,9 +90,8 @@ for (const role of ['fan', 'pub', 'admin'] as const) {
     expectRedirect('/app', HOME[role])
     // Concluído no onboarding volta para casa (pub vai escolher plano). Admin
     // fica no /dashboard, sem ser mandado ao Houdini.
-    const done = role === 'pub' ? '/plan' : '/dashboard'
-    expectRedirect('/onboarding/fan', done)
-    expectRedirect('/onboarding/pub', done)
+    expectRedirect('/onboarding/fan', role === 'pub' ? '/plan' : HOME[role])
+    expectRedirect('/onboarding/pub', role === 'pub' ? '/plan' : HOME[role])
   })
 }
 
