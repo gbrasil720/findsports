@@ -144,6 +144,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
           {
             src: 'https://static.cloudflareinsights.com/beacon.min.js',
             type: 'module',
+            // Medição, não conteúdo: baixa depois do que a primeira tela usa.
+            fetchPriority: 'low',
             'data-cf-beacon': '{"token": "84a6d0356bc9416cb0e64e8c38c2d5b4"}'
           }
         ],
