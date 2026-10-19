@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { legalHead } from '@/components/legal/legal-head'
 import { pageHead } from './page-head'
 
 type Meta = {
@@ -78,5 +79,23 @@ describe('pageHead', () => {
     expect(head.meta[0]).toEqual({ title: 'Onside — Onde assistir' })
     expect(conteudo(head.meta, 'og:title')).toEqual(['Cartão'])
     expect(conteudo(head.meta, 'twitter:description')).toEqual(['Social.'])
+  })
+})
+
+describe('legalHead', () => {
+  test('termos saem como artigo indexável, com cartão do X completo', () => {
+    const head = legalHead({
+      path: '/termos',
+      title: 'Termos de uso',
+      description: 'As regras.'
+    })
+    expect(conteudo(head.meta, 'og:type')).toEqual(['article'])
+    expect(conteudo(head.meta, 'twitter:title')).toEqual([
+      'Termos de uso — Onside'
+    ])
+    expect(conteudo(head.meta, 'twitter:description')).toEqual(['As regras.'])
+    expect(head.links).toEqual([
+      { rel: 'canonical', href: 'https://www.onside.sh/termos' }
+    ])
   })
 })
