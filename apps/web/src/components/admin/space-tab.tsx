@@ -124,6 +124,12 @@ export function SpaceTab({
     })
   )
 
+  const updateCodeConfirmationMutation = useMutation(
+    trpc.pub.updateCodeConfirmation.mutationOptions({
+      onSuccess: invalidateBar
+    })
+  )
+
   const updateMenuInfoMutation = useMutation(
     trpc.pub.updateMenuInfo.mutationOptions({
       onMutate: () => {
@@ -285,6 +291,20 @@ export function SpaceTab({
         onSave={(houseOffer) =>
           updateHouseOfferMutation.mutateAsync({ houseOffer })
         }
+        codeConfirmation={{
+          // Enquanto grava, a escolha nova já aparece marcada.
+          later: updateCodeConfirmationMutation.isPending
+            ? updateCodeConfirmationMutation.variables.later
+            : bar.confirmsCodesLater,
+          isSaving: updateCodeConfirmationMutation.isPending,
+          saveError: updateCodeConfirmationMutation.error
+            ? getUserFacingMessage(
+                updateCodeConfirmationMutation.error,
+                'Não foi possível salvar. Tente novamente.'
+              )
+            : null,
+          onChange: (later) => updateCodeConfirmationMutation.mutate({ later })
+        }}
       />
 
       <RatingsPanel
