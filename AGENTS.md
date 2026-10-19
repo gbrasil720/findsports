@@ -253,6 +253,12 @@ Worker `apps/tiles` em `tiles.onside.sh` (WEB-218). Componente em
 runbook, deploy do Worker e armadilhas (URL absoluta para sprite/glyphs,
 `maplibre-gl` fora do `optimizeDeps` do Vite).
 
+### SEO
+
+Nome do site no Google (JSON-LD `WebSite`/`Organization` da home), o que é
+indexável, `robots.txt` e favicons: **leia `docs/seo.md` antes de mexer em
+`<title>`, `head`, sitemap ou ícones.**
+
 ### E2E
 
 Playwright em `apps/e2e`, job `e2e` no CI. **Antes de escrever ou rodar teste de
