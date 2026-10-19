@@ -54,8 +54,9 @@ desatualizada na primeira edição da landing ou dos termos.
 | Página | Indexa | Como |
 |---|---|---|
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
-| `/login`, `/signup`, recuperação de senha | não | `noindex` |
-| `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`) |
+| `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
+| `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`). Id que não existe, sem sessão: 404 |
+| rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
 
@@ -72,6 +73,34 @@ As páginas saem renderizadas do servidor (TanStack Start no Worker): o
 crawler recebe o texto da landing sem rodar JavaScript.
 
 `apps/web/src/lib/seo.test.ts` confere o JSON-LD, o `robots.txt` e os favicons.
+
+## Head de cada página
+
+Toda página pública monta o `head` com `pageHead` (`apps/web/src/lib/page-head.ts`):
+título, descrição, `robots`, `og:title`, `og:description`, `og:url`, `og:type`,
+`twitter:title` e `twitter:description` saem de um só lugar, e `og:url` é sempre
+a URL da própria página, sem query. `social` troca só o texto do cartão (a home
+usa). A raiz (`__root.tsx`) põe apenas o que vale para o site inteiro:
+`og:site_name`, `og:locale`, `og:type` padrão, `og:image` com medidas,
+`twitter:card` e `twitter:image`. Se ela pusesse título do cartão ou `og:url`, a
+página que esquecesse de sobrescrever sairia com os da home (era o que
+acontecia em `/login`, `/signup` e no 404). `page-head.test.ts` impede a volta.
+
+Regras:
+
+- **Canônica só em página indexável**, absoluta no `www`. Em página `noindex` ela
+  não ajuda (a página não entra no índice) e, se apontasse para outra URL,
+  contradiria o `noindex`.
+- **Um `h1` por página, sem pular nível.** O slogan do painel escuro das telas de
+  conta ("O JOGO COMEÇA AQUI.") é `<p>` com as mesmas classes, não `h2`: vinha
+  antes do `h1` do formulário.
+- **`alt` em toda imagem.** A marca e as fotos de fundo são decorativas
+  (`alt=""`); o link da marca tem nome pelo `aria-label`. Foto com conteúdo
+  leva descrição em português (a do hero da home).
+- **404 é status 404.** A rota curinga (`$.tsx`) e o `notFound()` lançado por
+  rota existente usam `NOT_FOUND_META` (`components/not-found/not-found-head.ts`);
+  no segundo caso o `head` da rota não roda, e é a raiz que põe o `noindex`
+  (`isNotFound` no `error` do match).
 
 ## Favicon
 
