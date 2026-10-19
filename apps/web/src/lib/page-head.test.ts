@@ -99,3 +99,22 @@ describe('legalHead', () => {
     ])
   })
 })
+
+describe('o que cada página herda da raiz', () => {
+  const ler = (caminho: string) =>
+    Bun.file(new URL(caminho, import.meta.url)).text()
+
+  test('as telas de conta têm um só h1: o slogan do painel não é título', async () => {
+    for (const arquivo of [
+      '../routes/(auth)/login.tsx',
+      '../routes/(auth)/forgot-password.tsx',
+      '../routes/(auth)/reset-password.tsx',
+      '../routes/(auth)/two-factor.tsx',
+      '../components/auth-brand-copy.tsx'
+    ]) {
+      const fonte = await ler(arquivo)
+      expect(fonte).not.toContain('<h2 className="onside-display mb-6')
+      if (arquivo.includes('routes')) expect(fonte).toContain('pageHead(')
+    }
+  })
+})
