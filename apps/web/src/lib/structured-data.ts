@@ -1,13 +1,18 @@
-import { SOCIAL_LINKS } from '@/components/landing/onside-landing-content'
+import {
+  FAQ_ITEMS,
+  SOCIAL_LINKS
+} from '@/components/landing/onside-landing-content'
 import { SITE_URL } from '@/lib/site'
 
 /**
- * JSON-LD da home: `WebSite` e `Organization`.
+ * JSON-LD da home: `WebSite`, `Organization` e `FAQPage`.
  *
  * É o `WebSite` na home que faz o Google mostrar "Onside" como nome do site no
  * resultado, em vez de "onside.sh" (developers.google.com/search/docs/
  * appearance/site-names). O `url` tem de ser a home canônica, com a barra.
- * O `Organization` dá o logo e liga os perfis das redes à marca.
+ * O `Organization` dá o logo e liga os perfis das redes à marca. O `FAQPage`
+ * sai de `FAQ_ITEMS`, a mesma lista que a seção "Dúvidas" mostra: o Google
+ * exige que pergunta e resposta do JSON-LD estejam visíveis na página.
  */
 const HOME_URL = `${SITE_URL}/`
 const ORGANIZATION_ID = `${HOME_URL}#organization`
@@ -44,6 +49,16 @@ export const HOME_STRUCTURED_DATA = {
         'A Onside mostra aos torcedores os bares que vão passar o jogo, com ambiente, preço médio e distância.',
       areaServed: 'BR',
       sameAs: SOCIAL_LINKS.map((rede) => rede.href)
+    },
+    {
+      '@type': 'FAQPage',
+      '@id': `${HOME_URL}#duvidas`,
+      inLanguage: 'pt-BR',
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer }
+      }))
     }
   ]
 } as const
