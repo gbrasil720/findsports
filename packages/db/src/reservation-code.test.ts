@@ -52,6 +52,12 @@ describe('generateReservationCode', () => {
     }
   })
 
+  test('não usa caracteres que se confundem anotados à mão (WEB-412)', () => {
+    for (let i = 0; i < 500; i++) {
+      expect(generateReservationCode()).not.toMatch(/[O0I1L]/)
+    }
+  })
+
   test('não se repete numa amostra pequena', () => {
     const codes = new Set(
       Array.from({ length: 1000 }, () => generateReservationCode())

@@ -21,9 +21,12 @@ export const RESERVATION_CODE_LENGTH = 6
 
 const RESERVATION_CODE_REGEX = new RegExp(RESERVATION_CODE_PATTERN)
 
-const CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+// Sem O/0, I/1 e L: o bar que confirma pela comanda (WEB-412) anota o código
+// à mão e redigita no dia seguinte. Código antigo, com esses caracteres,
+// continua valendo: o formato gravado (`RESERVATION_CODE_PATTERN`) não mudou.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 // Maior múltiplo do alfabeto que cabe num byte: bytes acima disso são
-// descartados, senão `byte % 36` favoreceria os primeiros caracteres.
+// descartados, senão o resto da divisão favoreceria os primeiros caracteres.
 const UNBIASED_BYTE_LIMIT = 256 - (256 % CODE_ALPHABET.length)
 
 /**
