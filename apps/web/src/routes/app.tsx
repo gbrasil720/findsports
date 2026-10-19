@@ -13,14 +13,14 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
  *
  * A rota está em `AUTHENTICATED_PREFIXES`: abrir o ícone sem sessão cai no
  * login, e não numa tela vazia.
+ *
+ * Admin abre na busca, como torcedor: é também o "Ir para o app" da landing,
+ * e o Houdini tem ícone e endereço próprios.
  */
 export const Route = createFileRoute('/app')({
   beforeLoad: ({ context }) => {
-    const role = context.session?.user.role
-
     throw redirect({
-      to:
-        role === 'pub' ? '/admin' : role === 'admin' ? '/houdini' : '/dashboard'
+      to: context.session?.user.role === 'pub' ? '/admin' : '/dashboard'
     })
   }
 })

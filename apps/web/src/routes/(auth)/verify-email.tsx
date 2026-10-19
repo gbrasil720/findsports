@@ -113,7 +113,6 @@ function VerifyEmailPage() {
       }
 
       if (data.user.role === 'pub') navigate({ to: '/plan' })
-      else if (data.user.role === 'admin') navigate({ to: '/houdini' })
       else if (data.user.onboardingCompleted) navigate({ to: callbackUrl })
       else navigate({ to: withCallbackUrl('/onboarding/fan', callbackUrl) })
     } catch {
