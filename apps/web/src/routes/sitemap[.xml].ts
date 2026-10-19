@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { GUIA_ARTICLES } from '@/components/guia/guia-articles'
+import { GUIA_PATH } from '@/components/guia/guia-head'
 import { SITE_URL } from '@/lib/site'
 import { buildSitemap, type SitemapEntry } from '@/lib/sitemap'
 
@@ -23,7 +25,16 @@ export const Route = createFileRoute('/sitemap.xml')({
         const entradas: SitemapEntry[] = [
           { path: '/', changeFrequency: 'daily', priority: 1 },
           { path: '/termos', changeFrequency: 'monthly', priority: 0.3 },
-          { path: '/privacidade', changeFrequency: 'monthly', priority: 0.3 }
+          { path: '/privacidade', changeFrequency: 'monthly', priority: 0.3 },
+          { path: GUIA_PATH, changeFrequency: 'weekly', priority: 0.6 },
+          ...GUIA_ARTICLES.map(
+            (article): SitemapEntry => ({
+              path: `${GUIA_PATH}/${article.slug}`,
+              lastModified: article.modified,
+              changeFrequency: 'monthly',
+              priority: 0.6
+            })
+          )
         ]
 
         return new Response(buildSitemap(SITE_URL, entradas), {
