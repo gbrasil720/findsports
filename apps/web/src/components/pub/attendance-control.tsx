@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { toast } from 'sonner'
 import { formatCode } from '@/domain/my-games'
 import { formatMatchup, type ProfileEvent } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { AttendanceCodeDialog } from './attendance-code-dialog'
 
 type Props = {
   eventId: string
@@ -25,7 +26,8 @@ type Props = {
  * "Vou assistir aqui" (WEB-127). Depois de marcar vira "Você vai assistir
  * aqui", com desfazer, e no bar Elite mostra o código que vale a oferta da
  * casa no balcão. É sempre o mesmo botão, com `aria-disabled` em vez de
- * `disabled` durante o envio: o foco do teclado nunca se perde.
+ * `disabled` durante o envio: o foco do teclado nunca se perde. O código que
+ * acabou de sair abre num diálogo, que devolve o foco ao botão ao fechar.
  */
 export function AttendanceControl({
   eventId,
@@ -39,6 +41,11 @@ export function AttendanceControl({
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [announcement, setAnnouncement] = useState('')
+  const [issued, setIssued] = useState<{
+    code: string
+    offer: string | null
+  } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const mutation = useMutation(
     trpc.attendance.set.mutationOptions({
       // Devolver a promessa mantém o botão ocupado até o perfil recarregar.
@@ -48,6 +55,9 @@ export function AttendanceControl({
             ? 'Pronto: você vai assistir aqui.'
             : 'Marcação desfeita.'
         )
+        if (result.attending && result.code) {
+          setIssued({ code: result.code, offer: result.offer })
+        }
         void queryClient.invalidateQueries({
           queryKey: trpc.attendance.mine.queryKey()
         })
@@ -78,6 +88,7 @@ export function AttendanceControl({
       )}
       {!validated && (
         <button
+          ref={buttonRef}
           type="button"
           onClick={toggle}
           aria-disabled={mutation.isPending}
@@ -106,6 +117,14 @@ export function AttendanceControl({
       <span className="sr-only" role="status">
         {announcement}
       </span>
+      {issued ? (
+        <AttendanceCodeDialog
+          code={issued.code}
+          offer={issued.offer}
+          onClose={() => setIssued(null)}
+          returnFocus={buttonRef}
+        />
+      ) : null}
     </fieldset>
   )
 }

@@ -96,6 +96,11 @@ test('bar Elite: marcar dá o código na hora, Meus jogos o mostra e desmarcar o
   await page.goto(`/pub/${pub.barId}`)
   const game = page.getByRole('group', { name: freeText })
   await game.getByRole('button', { name: 'Vou assistir aqui' }).click()
+  // O código abre num diálogo; fechado, segue na linha do jogo.
+  const dialog = page.getByRole('dialog', { name: 'Seu código para o balcão' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Fechar' }).click()
+  await expect(dialog).toHaveCount(0)
   await expect(
     game.getByText('Você vai assistir aqui', { exact: true })
   ).toBeVisible()
