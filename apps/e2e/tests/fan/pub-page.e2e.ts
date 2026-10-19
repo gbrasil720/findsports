@@ -179,6 +179,11 @@ test('"Vou assistir aqui" só em jogo futuro', async ({ page }) => {
 
   const game = page.getByRole('group', { name: future })
   await game.getByRole('button', { name: 'Vou assistir aqui' }).click()
+  // Bar Elite: o código abre num diálogo, que esconde a página até fechar.
+  const dialog = page.getByRole('dialog', { name: 'Seu código para o balcão' })
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
   await expect(
     game.getByText('Você vai assistir aqui', { exact: true })
   ).toBeVisible()
