@@ -1,4 +1,4 @@
-import { and, db, eq } from '@findsports_oficial/db'
+import { db, eq } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { createServerFn } from '@tanstack/react-start'
 
@@ -8,13 +8,19 @@ import { createServerFn } from '@tanstack/react-start'
  * É o único dado de bar que sai sem sessão: quem recebe o link e o robô que
  * monta a prévia não estão logados. Só o nome, só de bar publicado — o resto
  * do perfil continua atrás do login, em `pubs.getById`.
+ *
+ * `exists` separa o id que nunca existiu (a página responde 404) do bar fora
+ * do ar, que o dono ainda abre logado: esse segue 200, sem nome.
  */
 export const getPubName = createServerFn({ method: 'GET' })
   .inputValidator((pubId: string) => String(pubId))
   .handler(async ({ data: pubId }) => {
     const row = await db.query.bar.findFirst({
-      where: and(eq(bar.id, pubId), eq(bar.isActive, true)),
-      columns: { name: true }
+      where: eq(bar.id, pubId),
+      columns: { name: true, isActive: true }
     })
-    return row?.name ?? null
+    return {
+      exists: Boolean(row),
+      name: row?.isActive ? row.name : null
+    }
   })
