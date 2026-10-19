@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   createRootRouteWithContext,
   HeadContent,
+  isNotFound,
   Outlet,
   Scripts,
   useRouterState
@@ -18,6 +19,7 @@ import type { CSSProperties } from 'react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
+import { NOT_FOUND_META } from '../components/not-found/not-found-head'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
 import {
@@ -108,8 +110,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Onside — Ache o bar que está passando seu jogo' },
-      { name: 'description', content: ONSIDE_DESCRIPTION },
+      ...(matches.some((m) => m.status === 'notFound' || isNotFound(m.error))
+        ? NOT_FOUND_META
+        : [
+            { title: 'Onside — Ache o bar que está passando seu jogo' },
+            { name: 'description', content: ONSIDE_DESCRIPTION }
+          ]),
       { name: 'author', content: 'Onside' },
       { name: 'theme-color', content: '#12120F' },
       { property: 'og:site_name', content: 'Onside' },
