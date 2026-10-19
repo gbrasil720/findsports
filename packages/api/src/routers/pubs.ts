@@ -476,7 +476,8 @@ export const pubsRouter = router({
           ratingPositive: true,
           houseOffer: true,
           menuUrl: true,
-          averageSpendCents: true
+          averageSpendCents: true,
+          confirmsCodesLater: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -539,6 +540,7 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
+        confirmsCodesLater,
         subscription,
         events,
         ...publicBar
@@ -586,6 +588,9 @@ export const pubsRouter = router({
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
         // "Confirmar e gerar código" e só "Confirmar").
         issuesCode: elite,
+        // Bar que confirma o código depois do jogo, pela comanda (WEB-412): a
+        // tela do código fala com o garçom em vez de mandar ao balcão.
+        confirmsCodesLater: elite && confirmsCodesLater,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
           subscription ?? null,
