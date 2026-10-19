@@ -2,6 +2,8 @@ import { describe, expect, it } from 'bun:test'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { GUIA_ARTICLES } from '@/components/guia/guia-articles'
+import { GUIA_PATH } from '@/components/guia/guia-head'
 import { SOCIAL_LINKS } from '@/components/landing/onside-landing-content'
 import { HOME_STRUCTURED_DATA, jsonLd } from './structured-data'
 
@@ -66,6 +68,9 @@ describe('robots.txt', () => {
       '/',
       '/termos',
       '/privacidade',
+      '/guia',
+      '/guia/onde-assistir-futebol-em-sao-paulo',
+      '/llms.txt',
       '/sitemap.xml',
       '/favicon.ico',
       '/favicon-48x48.png',
@@ -124,7 +129,15 @@ describe('llms.txt (llmstxt.org)', () => {
   })
 
   it('só aponta para páginas públicas do host canônico e para as redes', () => {
-    const publicas = ['/', '/signup', '/login', '/termos', '/privacidade']
+    const publicas = [
+      '/',
+      '/signup',
+      '/login',
+      '/termos',
+      '/privacidade',
+      GUIA_PATH,
+      ...GUIA_ARTICLES.map((article) => `${GUIA_PATH}/${article.slug}`)
+    ]
     const redes: string[] = SOCIAL_LINKS.map((rede) => rede.href)
     for (const link of links) {
       if (link.hostname === 'www.onside.sh') {
@@ -132,6 +145,14 @@ describe('llms.txt (llmstxt.org)', () => {
       } else {
         expect(redes).toContain(link.href)
       }
+    }
+  })
+
+  it('lista o guia e todos os artigos', () => {
+    const caminhos = links.map((link) => link.pathname)
+    expect(caminhos).toContain(GUIA_PATH)
+    for (const article of GUIA_ARTICLES) {
+      expect(caminhos).toContain(`${GUIA_PATH}/${article.slug}`)
     }
   })
 
