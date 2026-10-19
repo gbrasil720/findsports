@@ -16,6 +16,7 @@ import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import {
   createTwoFactorChallenge,
@@ -25,17 +26,14 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
-  head: () => ({
-    meta: [
-      { title: 'Entrar — Onside' },
-      {
-        name: 'description',
-        content:
-          'Entre na sua conta Onside e encontre o bar certo pro seu jogo.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/login',
+      title: 'Entrar — Onside',
+      description:
+        'Entre na sua conta Onside e encontre o bar certo pro seu jogo.',
+      indexable: false
+    }),
   component: LoginPage
 })
 

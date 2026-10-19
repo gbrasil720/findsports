@@ -11,6 +11,7 @@ import { AuthInputField } from '@/components/auth-input-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 /**
@@ -22,17 +23,14 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 const REDIRECT_APOS_TOKEN = '/reset-password'
 
 export const Route = createFileRoute('/(auth)/forgot-password')({
-  head: () => ({
-    meta: [
-      { title: 'Recuperar senha — Onside' },
-      {
-        name: 'description',
-        content:
-          'Receba um link para definir uma nova senha da sua conta Onside.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/forgot-password',
+      title: 'Recuperar senha — Onside',
+      description:
+        'Receba um link para definir uma nova senha da sua conta Onside.',
+      indexable: false
+    }),
   component: ForgotPasswordPage
 })
 
