@@ -13,7 +13,7 @@ import {
   readMyGames,
   readUnregisteredAlerts
 } from '../lib/attendance'
-import { issueTicket, retireTicket } from '../lib/attendance-ticket'
+import { issueTicket, readTicket, retireTicket } from '../lib/attendance-ticket'
 import { getCurrentPlan } from '../lib/current-plan'
 
 /** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
@@ -69,7 +69,7 @@ export const attendanceRouter = router({
         })
       }
 
-      await db.transaction(async (tx) => {
+      const ticket = await db.transaction(async (tx) => {
         if (input.attending) {
           await tx
             .insert(attendance)
@@ -80,6 +80,7 @@ export const attendanceRouter = router({
             })
           if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
             await issueTicket(tx, userId, input.eventId, game.bar.houseOffer)
+            return readTicket(tx, userId, input.eventId)
           }
         } else {
           // O ingresso sai antes da presença: código validado recusa tudo.
@@ -93,8 +94,14 @@ export const attendanceRouter = router({
               )
             )
         }
+        return null
       })
-      return { attending: input.attending }
+      // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
+      return {
+        attending: input.attending,
+        code: ticket?.code ?? null,
+        offer: ticket?.offer ?? null
+      }
     }),
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */

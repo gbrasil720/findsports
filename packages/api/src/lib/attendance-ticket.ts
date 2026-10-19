@@ -73,6 +73,26 @@ export async function issueTicket(
 }
 
 /**
+ * O código ativo do torcedor no jogo, com a oferta copiada na emissão. É o
+ * que `attendance.set` devolve, para a tela mostrar o código na hora.
+ */
+export async function readTicket(tx: Tx, userId: string, eventId: string) {
+  const [ticket] = await tx
+    .select({ code: reservationCode.code, offer: reservation.offerSnapshot })
+    .from(reservation)
+    .innerJoin(
+      reservationCode,
+      and(
+        eq(reservationCode.reservationId, reservation.id),
+        isNull(reservationCode.retiredAt)
+      )
+    )
+    .where(activeTicket(userId, eventId))
+    .limit(1)
+  return ticket ?? null
+}
+
+/**
  * Desmarcar aposenta o ingresso. Código já validado trava: a oferta saiu, e
  * desmarcar apagaria a chegada que o bar registrou (ADR 0003, WEB-259).
  *
