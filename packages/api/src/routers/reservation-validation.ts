@@ -30,6 +30,7 @@ import {
   assertReservationConfirmed,
   assertWindowOpen,
   codeNotFoundError,
+  getLateEntryWindow,
   translateArrivalWriteError,
   VALIDATION_ATTEMPT_LIMIT,
   validationAttemptKey
@@ -140,6 +141,23 @@ const hasLaterArrival = sql<boolean>`EXISTS (
     AND later.undone_at IS NULL
     AND (later.used_at, later.id) > (${reservationCodeUse.usedAt}, ${reservationCodeUse.id})
 )`
+
+/** Teto de códigos por envio do lançamento depois do jogo. */
+const LATE_ENTRY_MAX_CODES = 80
+
+/**
+ * O que aconteceu com cada código lançado depois do jogo (WEB-412). Um
+ * código que não é do bar sai como `not_found`, igual ao inexistente: a
+ * mesma regra de não entregar oráculo de enumeração da busca.
+ */
+type LateEntryStatus =
+  | 'logged'
+  | 'not_found'
+  | 'used'
+  | 'not_confirmed'
+  | 'too_early'
+  | 'expired'
+  | 'limited'
 
 export const reservationValidationRouter = router({
   /**
@@ -358,5 +376,109 @@ export const reservationValidationRouter = router({
         const counter = await readCounter(tx, use.codeId)
         return { useId: use.useId, ...counter }
       })
+    }),
+
+  /**
+   * Lançamento depois do jogo (WEB-412), para o bar que confirma pela
+   * comanda: o dono cola os códigos anotados e cada um vira uma chegada com
+   * `late`, até 48 h depois do fim do jogo. Mesmas regras de `registerArrival`
+   * (do próprio bar, reserva confirmada, uso único); a diferença é o prazo.
+   *
+   * Cada código que não resolve conta no mesmo limite de tentativas da busca:
+   * colar uma lista não vira atalho para varrer códigos. Estourado o limite,
+   * o resto da lista volta como `limited`, sem ser conferido.
+   */
+  logLate: validatorProcedure
+    .input(
+      z.object({
+        codes: z.array(z.string().max(64)).min(1).max(LATE_ENTRY_MAX_CODES)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      const ownBar = await db.query.bar.findFirst({
+        where: eq(bar.userId, userId),
+        columns: { confirmsCodesLater: true }
+      })
+      if (!ownBar?.confirmsCodesLater) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'Para lançar códigos depois do jogo, escolha "Depois do jogo, pela comanda" na oferta da casa.'
+        })
+      }
+
+      const attemptKey = validationAttemptKey(userId)
+      const codes = [
+        ...new Set(input.codes.map(normalizeReservationCode).filter(Boolean))
+      ]
+      const results: {
+        code: string
+        status: LateEntryStatus
+        guestName?: string
+        event?: {
+          championship: string
+          participantFreeText: string | null
+          startsAt: Date
+        }
+      }[] = []
+      let limited = false
+
+      for (const code of codes) {
+        if (limited) {
+          results.push({ code, status: 'limited' })
+          continue
+        }
+        const found = isReservationCodeShaped(code)
+          ? await findOwnCode(db, eq(reservationCode.code, code), userId)
+          : undefined
+        if (!found) {
+          const attempt = await incrementWindow(
+            attemptKey,
+            VALIDATION_ATTEMPT_LIMIT
+          )
+          if (!attempt.allowed) limited = true
+          results.push({ code, status: limited ? 'limited' : 'not_found' })
+          continue
+        }
+
+        const about = {
+          guestName: found.guestName,
+          event: {
+            championship: found.championship,
+            participantFreeText: found.participantFreeText,
+            startsAt: found.startsAt
+          }
+        }
+        const now = new Date()
+        const window = getLateEntryWindow(found)
+        const status: LateEntryStatus =
+          found.reservationStatus !== 'confirmed'
+            ? 'not_confirmed'
+            : now < window.opensAt
+              ? 'too_early'
+              : now > window.closesAt
+                ? 'expired'
+                : found.usedCount >= found.maxUses
+                  ? 'used'
+                  : await db
+                      .insert(reservationCodeUse)
+                      .values({
+                        id: crypto.randomUUID(),
+                        codeId: found.codeId,
+                        validatedByUserId: userId,
+                        late: true
+                      })
+                      .then(() => 'logged' as const)
+                      .catch((error: unknown) => {
+                        // Validado entre a busca e o insert: já usado.
+                        if (translateArrivalWriteError(error, found.maxUses))
+                          return 'used' as const
+                        throw error
+                      })
+        results.push({ code, status, ...about })
+      }
+
+      return results
     })
 })
