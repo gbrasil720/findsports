@@ -32,26 +32,32 @@ export const Route = createFileRoute('/')({
 
     links: [
       ...HOME_HEAD.links,
+      // A Anton é a do título, que disputa o LCP com o pôster: vai na frente.
+      // Archivo e Geist Mono continuam pré-carregadas, mas sem tirar banda do
+      // pôster e da Anton no celular.
       {
         rel: 'preload',
         href: '/fonts/onside/anton-latin-400.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'high'
       },
       {
         rel: 'preload',
         href: '/fonts/onside/archivo-latin-wght.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'low'
       },
       {
         rel: 'preload',
         href: '/fonts/onside/geist-mono-latin-wght.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'low'
       }
     ]
   }),
