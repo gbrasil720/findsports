@@ -100,10 +100,10 @@ function ForgotPasswordPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Recuperação de acesso
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           ESQUECEU?{' '}
           <span className="text-[var(--onside-acid)]">SEM DRAMA.</span>
-        </h2>
+        </p>
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
           Mandamos um link no seu e-mail e você volta a campo em um minuto.
         </p>

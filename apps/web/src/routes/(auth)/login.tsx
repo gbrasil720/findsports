@@ -132,9 +132,9 @@ function LoginPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Área exclusiva
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           O JOGO <span className="text-[var(--onside-acid)]">COMEÇA AQUI.</span>
-        </h2>
+        </p>
         {/*
          * "o maior mapa de bares esportivos do Brasil" era superlativo que o
          * produto ainda não sustenta. A frase que fica é a que ele já cumpre.

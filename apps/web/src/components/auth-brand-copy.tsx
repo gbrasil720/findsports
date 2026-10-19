@@ -50,9 +50,9 @@ export function AuthBrandCopy({ role }: AuthBrandCopyProps) {
         <span className="onside-live-dot" aria-hidden="true" />
         {c.badge}
       </div>
-      <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+      <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
         {c.title}
-      </h2>
+      </p>
       <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
         {c.description}
       </p>
