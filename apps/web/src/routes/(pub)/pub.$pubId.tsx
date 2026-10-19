@@ -482,6 +482,7 @@ function PubPage() {
                     <HeroAttendance
                       game={heroEvent}
                       attendance={heroEvent.attendance}
+                      forWaiter={normalizedPub.confirmsCodesLater}
                     />
                   )
                 }
@@ -517,6 +518,7 @@ function PubPage() {
                       count={game.attendance.count}
                       code={game.attendance.code}
                       validated={game.attendance.validated}
+                      forWaiter={normalizedPub.confirmsCodesLater}
                       gameLabel={formatMatchup(game)}
                       compact
                     />

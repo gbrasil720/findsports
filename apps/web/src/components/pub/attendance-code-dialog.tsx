@@ -12,6 +12,11 @@ type Props = {
   code: string
   /** A oferta copiada na emissão do código. */
   offer?: string | null
+  /**
+   * Bar que confirma pela comanda (WEB-412): quem pega o código é o garçom,
+   * que anota e o dono lança depois. A tela fala com ele.
+   */
+  forWaiter?: boolean
   onClose: () => void
   /** Quem abriu o diálogo: o foco volta para lá ao fechar. */
   returnFocus?: RefObject<HTMLElement | null>
@@ -21,10 +26,12 @@ type Props = {
  * O código do balcão logo depois do "Vou assistir aqui" num bar Elite. Na
  * linha embaixo do botão ele passava despercebido; aqui ele vem grande, com o
  * que fazer com ele e onde achá-lo depois (Meus jogos, `/dashboard/games`).
+ * No bar que confirma pela comanda, o recado é para o garçom.
  */
 export function AttendanceCodeDialog({
   code,
   offer = null,
+  forWaiter = false,
   onClose,
   returnFocus
 }: Props) {
@@ -44,10 +51,15 @@ export function AttendanceCodeDialog({
       >
         <p className="onside-kicker onside-kicker-live">Presença marcada</p>
         <DialogTitle className="onside-display text-2xl">
-          Seu código para o balcão
+          {forWaiter ? 'Seu código para o garçom' : 'Seu código para o balcão'}
         </DialogTitle>
 
         <div className="mt-4 border-[1.5px] border-[var(--onside-ink)] px-4 py-5 text-center">
+          {forWaiter ? (
+            <p className="onside-kicker mb-2">
+              Para o garçom: anote na comanda
+            </p>
+          ) : null}
           <p
             aria-hidden="true"
             className="font-[family-name:var(--onside-mono)] font-bold text-4xl tracking-[0.2em] sm:text-5xl"
@@ -59,8 +71,9 @@ export function AttendanceCodeDialog({
         </div>
 
         <DialogDescription className="mt-4 text-[var(--onside-ink)] text-sm">
-          Mostre este código no balcão do bar no dia do jogo para ganhar a
-          oferta da casa. Ele vale uma vez só.
+          {forWaiter
+            ? 'No dia do jogo, mostre este código ao garçom: ele anota na comanda e a oferta da casa sai na hora. Ele vale uma vez só.'
+            : 'Mostre este código no balcão do bar no dia do jogo para ganhar a oferta da casa. Ele vale uma vez só.'}
         </DialogDescription>
         {offer ? (
           <p className="mt-2 text-sm [overflow-wrap:anywhere]">

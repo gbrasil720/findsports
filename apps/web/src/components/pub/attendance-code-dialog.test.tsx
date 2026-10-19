@@ -27,9 +27,14 @@ mock.module('@tanstack/react-router', () => ({
   )
 }))
 
-function renderizar(offer?: string | null) {
+function renderizar(offer?: string | null, forWaiter = false) {
   const markup = renderToStaticMarkup(
-    <AttendanceCodeDialog code="A7K29Q" offer={offer} onClose={() => {}} />
+    <AttendanceCodeDialog
+      code="A7K29Q"
+      offer={offer}
+      forWaiter={forWaiter}
+      onClose={() => {}}
+    />
   )
   const doc = new JSDOM(markup).window.document
   return {
@@ -40,6 +45,19 @@ function renderizar(offer?: string | null) {
 }
 
 describe('AttendanceCodeDialog', () => {
+  test('no bar que confirma pela comanda, fala com o garçom (WEB-412)', () => {
+    const { doc, text } = renderizar('Chopp em dobro', true)
+    expect(doc.querySelector('h2')?.textContent).toBe(
+      'Seu código para o garçom'
+    )
+    expect(text).toContain('Para o garçom: anote na comanda')
+    expect(text).toContain(
+      'ele anota na comanda e a oferta da casa sai na hora'
+    )
+    expect(text).not.toContain('balcão')
+    expect(text).toContain('Chopp em dobro')
+  })
+
   test('abre com o código grande, o uso no balcão e onde ele fica', () => {
     const { doc, dialog, text } = renderizar()
     expect(dialog).not.toBeNull()
