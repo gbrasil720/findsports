@@ -65,37 +65,21 @@ const getSession = createServerFn()
 const ONSIDE_DESCRIPTION =
   'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
 
+// O Google só usa favicon quadrado com lado múltiplo de 48 px (48, 96, 192);
+// 16 e 32 ficam para a aba do navegador. Arte em `public/onside-app-icon.png`.
 const ONSIDE_ICONS = [
   {
     rel: 'icon',
-    href: '/favicon-32x32.png?v=3',
-    type: 'image/png',
-    sizes: '32x32'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-16x16.png?v=3',
-    type: 'image/png',
-    sizes: '16x16'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-64x64.png?v=3',
-    type: 'image/png',
-    sizes: '64x64'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-512x512.png?v=3',
-    type: 'image/png',
-    sizes: '512x512'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon.ico?v=3',
+    href: '/favicon.ico?v=4',
     type: 'image/x-icon',
-    sizes: 'any'
+    sizes: '16x16 32x32 48x48 64x64'
   },
+  ...[48, 96, 192, 32, 16].map((lado) => ({
+    rel: 'icon',
+    href: `/favicon-${lado}x${lado}.png?v=4`,
+    type: 'image/png',
+    sizes: `${lado}x${lado}`
+  })),
   {
     rel: 'apple-touch-icon',
     href: '/apple-touch-icon.png?v=3',
@@ -132,6 +116,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       { name: 'author', content: 'Onside' },
       { name: 'theme-color', content: '#12120F' },
       { property: 'og:site_name', content: 'Onside' },
+      { property: 'og:locale', content: 'pt_BR' },
       { property: 'og:type', content: 'website' },
       {
         property: 'og:title',
