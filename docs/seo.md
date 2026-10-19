@@ -49,11 +49,31 @@ Não há `llms-full.txt`: o conteúdo público é a home e as páginas legais, q
 saem renderizadas no servidor; uma cópia do texto num arquivo estático ficaria
 desatualizada na primeira edição da landing ou dos termos.
 
+## Guia (`/guia`)
+
+Artigos de marketing em `apps/web/src/components/guia/guia-articles.ts`, um
+objeto por artigo (slug, título, descrição, datas, texto). Saem no visual das
+páginas legais (`LegalPage`, `legal.css`, cabeçalho e rodapé da home): nenhum
+estilo próprio. O texto aceita link interno (`{ link, to }`) além dos trechos
+das páginas legais.
+
+- **Regra de conteúdo:** só o que a Onside faz hoje e conselho prático. Nada de
+  bar, número ou estatística que não dê para conferir.
+- **Head e JSON-LD:** `guia-head.ts`. O head sai do `pageHead` (ver "Head de
+  cada página"): título, descrição, canônica e `og:url` próprios,
+  `og:type=article` e as datas `article:*`. O JSON-LD é um `@graph` com
+  `Article` (autor e publisher = a `Organization` da home) e `BreadcrumbList`.
+- **Artigo novo:** acrescente em `GUIA_ARTICLES`. Sitemap e índice saem dele
+  sozinhos; o `llms.txt` é estático e `seo.test.ts` falha se faltar o link.
+  `guia.test.ts` confere título e descrição únicos e no tamanho, e que todo link
+  interno existe.
+
 ## O que é indexável
 
 | Página | Indexa | Como |
 |---|---|---|
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
+| `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
 | `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`). Id que não existe, sem sessão: 404 |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
