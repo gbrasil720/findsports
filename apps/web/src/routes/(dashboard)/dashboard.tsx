@@ -118,6 +118,10 @@ function FanDashboard() {
    * dashboard e via outro valor marcado.
    */
   const preferredRadiusKm = normalizeRadiusKm(session?.user.searchRadiusKm)
+  // Admin também abre a busca, mas times, cidade, favoritos e avaliações são
+  // do torcedor (`fanProcedure`): para ele as leituras nem saem, em vez de
+  // voltar 403 e virar toast.
+  const isFan = session?.user.role === 'fan'
   const [radiusKm, setRadiusKm] = useState<RadiusKm>(preferredRadiusKm)
   const [amenities, setAmenities] = useState<number[]>([])
   const [teamIds, setTeamIds] = useState<string[]>([])
@@ -237,15 +241,17 @@ function FanDashboard() {
   // Falha aqui só esconde o filtro de times; a busca segue.
   const myTeamsQuery = useQuery({
     ...trpc.pubs.getMyTeams.queryOptions(),
+    enabled: isFan,
     meta: { errorToast: false }
   })
   const myTeams = myTeamsQuery.data ?? []
   // Um link compartilhado pode trazer time que este torcedor não acompanha.
   // Sem chip nem botão para desligar, o filtro ficaria preso: só vale o time
   // que a tela consegue mostrar.
-  const activeTeamIds = myTeamsQuery.isPending
-    ? teamIds
-    : teamIds.filter((id) => myTeams.some((team) => team.id === id))
+  const activeTeamIds =
+    isFan && myTeamsQuery.isPending
+      ? teamIds
+      : teamIds.filter((id) => myTeams.some((team) => team.id === id))
 
   // A ordenação por nota só existe quando a nota é pública. Falha de leitura
   // cai no lado conservador — sem o controle — porque um botão que ordena
@@ -260,8 +266,12 @@ function FanDashboard() {
    */
   const cityQuery = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
+    enabled: isFan,
     meta: { errorToast: false }
   })
+  // Query desligada fica `isPending` para sempre: sem perfil, não há cidade
+  // para esperar.
+  const cityPending = isFan && cityQuery.isPending
   const profileCity = cityQuery.data ?? null
   const searchCenter = resolveSearchCenter(coords, profileCity)
   const primaryQuery = useQuery({
@@ -280,7 +290,7 @@ function FanDashboard() {
     // mostraria São Paulo a quem informou outra cidade, para trocar em seguida.
     enabled:
       hashRead &&
-      (coords !== null || !cityQuery.isPending) &&
+      (coords !== null || !cityPending) &&
       !(sportSlug && sportsQuery.isLoading),
     meta: { errorToast: false }
   })
@@ -301,13 +311,17 @@ function FanDashboard() {
     enabled: primaryEmpty && !hasSearchIntent,
     meta: { errorToast: false }
   })
-  const favoritesQuery = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const favoritesQuery = useQuery({
+    ...trpc.pubs.getFavorites.queryOptions(),
+    enabled: isFan
+  })
 
   // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
   // busca — o card some e a tela segue fazendo o trabalho principal. Só
-  // torcedor chega aqui: `applyAuthGuards` tira admin e bar do /dashboard.
+  // torcedor as tem; bar nem chega aqui (`applyAuthGuards` o manda ao /admin).
   const pendingRatingsQuery = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
+    enabled: isFan,
     retry: false
   })
 
@@ -610,7 +624,7 @@ function FanDashboard() {
         locationState={locationState}
         fallbackCityName={(profileCity ?? SAO_PAULO_CITY).name}
       />
-      <AttendanceReportCard first={avaliar} />
+      {isFan ? <AttendanceReportCard first={avaliar} /> : null}
       <PendingRatingCard
         pending={pendingRatingsQuery.data ?? []}
         first={avaliar}
