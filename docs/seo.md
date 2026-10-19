@@ -23,6 +23,32 @@ Os quatro dizem "Onside":
 A troca de nome não é imediata: o Google só lê o JSON-LD na próxima vez que
 rastrear a home. Pedir a indexação no Search Console encurta a espera.
 
+## FAQPage
+
+O mesmo `@graph` da home leva um `FAQPage` gerado de `FAQ_ITEMS`
+(`onside-landing-content.ts`), a lista que a seção "Dúvidas" mostra pelo
+`OnsideFaqList` (`components/landing/onside-faq.tsx`). O Google exige que
+pergunta e resposta do JSON-LD estejam visíveis na página, palavra por palavra:
+`onside-faq.test.tsx` renderiza a lista e compara com o JSON-LD. Pergunta nova
+entra em `FAQ_ITEMS` e vale para os dois; não escreva o FAQ à mão em outro lugar.
+
+Desde 2023 o Google só mostra o resultado rico de FAQ para sites de governo e
+saúde; o `FAQPage` continua valendo como dado estruturado para outros buscadores
+e para assistentes de IA.
+
+## llms.txt
+
+`apps/web/public/llms.txt`, no formato de [llmstxt.org](https://llmstxt.org/):
+título, resumo em citação, e listas de links (páginas públicas, termos e
+privacidade, redes em `## Optional`). Arquivo estático; `public/_headers` manda
+`text/plain; charset=utf-8`. `seo.test.ts` confere o formato e que todo link do
+host aponta para uma página pública. Mudou o produto, uma página pública ou as
+redes, atualize o arquivo.
+
+Não há `llms-full.txt`: o conteúdo público é a home e as páginas legais, que já
+saem renderizadas no servidor; uma cópia do texto num arquivo estático ficaria
+desatualizada na primeira edição da landing ou dos termos.
+
 ## O que é indexável
 
 | Página | Indexa | Como |
@@ -30,12 +56,17 @@ rastrear a home. Pedir a indexação no Search Console encurta a espera.
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/login`, `/signup`, recuperação de senha | não | `noindex` |
 | `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`) |
+| `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
 
 Fora de `www.onside.sh` (o `workers.dev` do `onside-web`, o preview por PR e
 `houdini.onside.sh`) o Worker manda `X-Robots-Tag: noindex, nofollow`
 (`applyHostIndexing`, em `apps/web/src/start.ts`): a mesma home em dois hosts seria conteúdo
 duplicado.
+
+Não existe página pública de bar nem de jogo: a do bar exige login, e jogo não
+tem página própria (cada bar cadastra o seu `event`). Por isso o sitemap tem só
+a home e as páginas legais.
 
 As páginas saem renderizadas do servidor (TanStack Start no Worker): o
 crawler recebe o texto da landing sem rodar JavaScript.
