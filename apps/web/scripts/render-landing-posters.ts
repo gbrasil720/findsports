@@ -56,6 +56,11 @@ type Shot = {
   camera?: Camera
   /** Só no `marca`: quanto o bar já girou com a rolagem (0 a 1). */
   progress?: number
+  /**
+   * Larguras menores gravadas junto (`<arquivo>-<largura>.webp`), para o
+   * `srcset`: o celular não precisa baixar a imagem de 3x.
+   */
+  smaller?: number[]
 }
 
 const SHOTS: Record<string, Shot> = {
@@ -79,7 +84,9 @@ const SHOTS: Record<string, Shot> = {
     width: 1170,
     height: 936,
     quality: 0.8,
-    camera: { target: [15.5, 0.5, -20], yaw: 0.142, pitch: 0.38, radius: 50 }
+    camera: { target: [15.5, 0.5, -20], yaw: 0.142, pitch: 0.38, radius: 50 },
+    // 390 px de tela a 1,5x, 2x e 2,3x; a de 1170 fica para 3x.
+    smaller: [600, 750, 900]
   },
   final: {
     file: 'final-bar.webp',
@@ -161,6 +168,21 @@ html,body{margin:0;background:#12120f}
 canvas{display:block;width:100vw;height:100vh}
 </style>
 <canvas></canvas>`
+
+function smallerFile(shot: Shot, width: number) {
+  return shot.file.replace(/\.webp$/, `-${width}.webp`)
+}
+
+/** `srcset` com as larguras menores e a original. */
+function srcSet(shot: Shot) {
+  return [...(shot.smaller ?? []), shot.width]
+    .map((width) =>
+      width === shot.width
+        ? `/landing/${shot.file} ${width}w`
+        : `/landing/${smallerFile(shot, width)} ${width}w`
+    )
+    .join(', ')
+}
 
 async function render(shot: Shot) {
   const page = await browser.newPage({
@@ -299,10 +321,23 @@ async function render(shot: Shot) {
       context.fillStyle = '#12120f'
       context.fillRect(0, 0, flat.width, flat.height)
       context.drawImage(canvas, 0, 0)
+      const smaller = (shot.smaller ?? []).map((width) => {
+        const small = document.createElement('canvas')
+        small.width = width
+        small.height = Math.round((flat.height * width) / flat.width)
+        const ctx = small.getContext('2d') as CanvasRenderingContext2D
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(flat, 0, 0, small.width, small.height)
+        return {
+          width,
+          webp: small.toDataURL('image/webp', shot.quality).split(',')[1]
+        }
+      })
       return {
         spots,
         size: [flat.width, flat.height],
-        webp: flat.toDataURL('image/webp', shot.quality).split(',')[1]
+        webp: flat.toDataURL('image/webp', shot.quality).split(',')[1],
+        smaller
       }
     },
     { shot }
@@ -317,6 +352,12 @@ async function render(shot: Shot) {
   console.log(
     `${shot.file}  ${shot.width}×${shot.height}  ${(bytes.length / 1024).toFixed(1)} KB`
   )
+  for (const small of result.smaller) {
+    const file = smallerFile(shot, small.width)
+    const smallBytes = Buffer.from(small.webp ?? '', 'base64')
+    writeFileSync(resolve(imageDir, file), smallBytes)
+    console.log(`${file}  ${(smallBytes.length / 1024).toFixed(1)} KB`)
+  }
   return result.spots as Spot[]
 }
 
@@ -331,6 +372,7 @@ for (const [name, shot] of Object.entries(SHOTS)) {
   }
   data[name] = {
     src: `/landing/${shot.file}`,
+    ...(shot.smaller ? { srcSet: srcSet(shot) } : {}),
     width: shot.width,
     height: shot.height,
     ...(shot.scene === 'mapa' ? { spots: cycle(fits) } : {})

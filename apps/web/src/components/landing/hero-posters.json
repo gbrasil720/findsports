@@ -56,6 +56,7 @@
   },
   "portrait": {
     "src": "/landing/hero-mapa-retrato.webp",
+    "srcSet": "/landing/hero-mapa-retrato-600.webp 600w, /landing/hero-mapa-retrato-750.webp 750w, /landing/hero-mapa-retrato-900.webp 900w, /landing/hero-mapa-retrato.webp 1170w",
     "width": 1170,
     "height": 936,
     "spots": [
