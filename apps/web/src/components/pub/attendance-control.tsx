@@ -17,6 +17,8 @@ type Props = {
   code?: string | null
   /** Código validado: a oferta saiu e não dá mais para desmarcar. */
   validated?: boolean
+  /** Bar que confirma pela comanda (WEB-412): o código vai para o garçom. */
+  forWaiter?: boolean
   /** Nome do jogo, para distinguir os botões na leitura por voz. */
   gameLabel: string
   compact?: boolean
@@ -35,6 +37,7 @@ export function AttendanceControl({
   count,
   code = null,
   validated = false,
+  forWaiter = false,
   gameLabel,
   compact = false
 }: Props) {
@@ -44,6 +47,7 @@ export function AttendanceControl({
   const [issued, setIssued] = useState<{
     code: string
     offer: string | null
+    forWaiter: boolean
   } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const mutation = useMutation(
@@ -56,7 +60,11 @@ export function AttendanceControl({
             : 'Marcação desfeita.'
         )
         if (result.attending && result.code) {
-          setIssued({ code: result.code, offer: result.offer })
+          setIssued({
+            code: result.code,
+            offer: result.offer,
+            forWaiter: result.confirmsCodesLater
+          })
         }
         void queryClient.invalidateQueries({
           queryKey: trpc.attendance.mine.queryKey()
@@ -110,8 +118,12 @@ export function AttendanceControl({
             {formatCode(code)}
           </span>
           {validated
-            ? ' · validado no balcão'
-            : ' · mostre no balcão. Fica em Meus jogos.'}
+            ? forWaiter
+              ? ' · validado'
+              : ' · validado no balcão'
+            : forWaiter
+              ? ' · mostre ao garçom, que anota na comanda. Fica em Meus jogos.'
+              : ' · mostre no balcão. Fica em Meus jogos.'}
         </span>
       )}
       <span className="sr-only" role="status">
@@ -121,6 +133,7 @@ export function AttendanceControl({
         <AttendanceCodeDialog
           code={issued.code}
           offer={issued.offer}
+          forWaiter={issued.forWaiter}
           onClose={() => setIssued(null)}
           returnFocus={buttonRef}
         />
@@ -135,9 +148,11 @@ export function AttendanceControl({
  */
 export function HeroAttendance({
   game,
-  attendance
+  attendance,
+  forWaiter = false
 }: {
   game: ProfileEvent
+  forWaiter?: boolean
   attendance: {
     attending: boolean
     count: number | null
@@ -152,6 +167,7 @@ export function HeroAttendance({
       count={attendance.count}
       code={attendance.code}
       validated={attendance.validated}
+      forWaiter={forWaiter}
       gameLabel={formatMatchup(game)}
     />
   )
