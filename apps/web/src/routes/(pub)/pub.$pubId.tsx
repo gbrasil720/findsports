@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   Link,
+  notFound,
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
@@ -39,7 +40,7 @@ import { getPubName } from '@/functions/get-pub-name'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
-import { SITE_URL } from '@/lib/site'
+import { pageHead } from '@/lib/page-head'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -52,18 +53,23 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
   // link lê o título dali, sem sessão e sem rodar JS (WEB-312). Custa uma ida
   // ao servidor por abertura de bar; se falhar, fica o título genérico — a
   // página tem o próprio tratamento de erro e não pode cair por causa dele.
-  loader: ({ params }) => getPubName({ data: params.pubId }).catch(() => null),
+  //
+  // Id que não existe é 404 de verdade para quem chega sem sessão (o robô
+  // incluso). Logado, a tela mantém o fluxo do WEB-360: avisa "Bar não
+  // encontrado." e volta ao dashboard.
+  loader: async ({ params, context }) => {
+    const pub = await getPubName({ data: params.pubId }).catch(() => null)
+    if (pub && !pub.exists && !context.session) throw notFound()
+    return pub?.name ?? null
+  },
   head: ({ loaderData, params }) => {
-    const title = `${loaderData ?? 'Bar'} — Onside`
-    return {
-      meta: [
-        { title },
-        { name: 'robots', content: 'noindex' },
-        { property: 'og:title', content: title },
-        { property: 'og:url', content: `${SITE_URL}/pub/${params.pubId}` },
-        { name: 'twitter:title', content: title }
-      ]
-    }
+    const name = loaderData ?? 'Bar'
+    return pageHead({
+      path: `/pub/${params.pubId}`,
+      title: `${name} — Onside`,
+      description: `${name}: jogos, estrutura e preço médio na Onside.`,
+      indexable: false
+    })
   },
   component: PubPage
 })
