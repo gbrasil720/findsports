@@ -20,6 +20,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import {
   isTwoFactorChallengeCurrent,
   TWO_FACTOR_CHALLENGE_KEY,
@@ -28,12 +29,14 @@ import {
 import { getUserFacingError } from '@/lib/user-facing-error'
 
 export const Route = createFileRoute('/(auth)/two-factor')({
-  head: () => ({
-    meta: [
-      { title: 'Confirmar acesso — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/two-factor',
+      title: 'Confirmar acesso — Onside',
+      description:
+        'Confirme o acesso à sua conta Onside com o código de verificação.',
+      indexable: false
+    }),
   component: TwoFactorPage
 })
 

@@ -10,6 +10,7 @@ import { revalidateShownError } from '@/components/auth-field-change'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   // O better-auth redireciona para cá com `?token=...` quando o link ainda
@@ -27,12 +28,13 @@ export const Route = createFileRoute('/(auth)/reset-password')({
       ...(error ? { error } : {})
     }
   },
-  head: () => ({
-    meta: [
-      { title: 'Definir nova senha — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/reset-password',
+      title: 'Definir nova senha — Onside',
+      description: 'Defina uma nova senha para a sua conta Onside.',
+      indexable: false
+    }),
   component: ResetPasswordPage
 })
 

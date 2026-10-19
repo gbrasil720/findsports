@@ -15,6 +15,7 @@ import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
+import { pageHead } from '@/lib/page-head'
 import {
   PENDING_VERIFICATION_KEY,
   readPendingEmail
@@ -29,12 +30,13 @@ import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(auth)/verify-email')({
-  head: () => ({
-    meta: [
-      { title: 'Confirme seu e-mail — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/verify-email',
+      title: 'Confirme seu e-mail — Onside',
+      description: 'Confirme seu e-mail para começar a usar a Onside.',
+      indexable: false
+    }),
   component: VerifyEmailPage
 })
 
