@@ -5,10 +5,7 @@ import { useEffect, useState } from 'react'
 import { Alert, View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
-import {
-  ExploreStateProvider,
-  useExploreState
-} from '@/components/explore-state'
+import { useExploreState } from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
@@ -71,15 +68,9 @@ const MENU_SCREENS: Record<string, string> = {
   '/voce/meus-jogos': 'jogos'
 }
 
+// O estado do Explorar (`ExploreStateProvider`) mora em `app/_layout.tsx`:
+// a folha de filtros (19d) fica fora das abas e mexe nele também.
 export default function FanTabs() {
-  return (
-    <ExploreStateProvider>
-      <Tabs />
-    </ExploreStateProvider>
-  )
-}
-
-function Tabs() {
   const explore = useExploreState()
   const router = useRouter()
   const palette = usePalette()

@@ -1,4 +1,5 @@
 import * as Location from 'expo-location'
+import * as SecureStore from 'expo-secure-store'
 import {
   createContext,
   type ReactNode,
@@ -10,6 +11,7 @@ import {
 import type { View } from 'react-native'
 import { captureRef } from 'react-native-view-shot'
 import type { Coordinates } from '@/lib/explore'
+import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
 
 /*
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
@@ -25,13 +27,15 @@ type ExploreState = {
   district: string | null
   liveOnly: boolean
   setLiveOnly: (on: boolean) => void
-  todayOnly: boolean
-  setTodayOnly: (on: boolean) => void
-  amenities: number[]
-  setAmenities: (ids: number[]) => void
-  /** O raio ampliado no fim da lista; `null` usa o do perfil. */
-  radius: number | null
-  setRadius: (km: number) => void
+  /** Dia, esporte, características e raio (19d); o raio vale só na visita. */
+  filters: Filters
+  setFilters: (filters: Filters) => void
+  /**
+   * Os atalhos fixados no topo do mapa (19e), guardados no aparelho. `null`:
+   * a pessoa nunca mexeu, e a fileira é a padrão (`defaultShortcuts`).
+   */
+  shortcuts: Shortcut[] | null
+  setShortcuts: (list: Shortcut[]) => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
@@ -43,15 +47,29 @@ type ExploreState = {
   takeShot: () => Promise<void>
 }
 
+const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
+
 const Context = createContext<ExploreState | null>(null)
 
 export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<Coordinates | null>(null)
   const [district, setDistrict] = useState<string | null>(null)
   const [liveOnly, setLiveOnly] = useState(false)
-  const [todayOnly, setTodayOnly] = useState(false)
-  const [amenities, setAmenities] = useState<number[]>([])
-  const [radius, setRadius] = useState<number | null>(null)
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+  const [shortcuts, saveShortcuts] = useState<Shortcut[] | null>(null)
+  useEffect(() => {
+    SecureStore.getItemAsync(SHORTCUTS_KEY)
+      .then((raw) => {
+        if (raw) saveShortcuts(JSON.parse(raw))
+      })
+      .catch(() => {})
+  }, [])
+  const setShortcuts = (list: Shortcut[]) => {
+    saveShortcuts(list)
+    SecureStore.setItemAsync(SHORTCUTS_KEY, JSON.stringify(list)).catch(
+      () => {}
+    )
+  }
   const [resting, setResting] = useState<number | null>(null)
   // A aba "Você" mostra o Explorar parado sob o menu. Uma segunda cópia viva
   // montava outro mapa, que recarregava os tiles na primeira vez que aparecia.
@@ -95,12 +113,10 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         district,
         liveOnly,
         setLiveOnly,
-        todayOnly,
-        setTodayOnly,
-        amenities,
-        setAmenities,
-        radius,
-        setRadius,
+        filters,
+        setFilters,
+        shortcuts,
+        setShortcuts,
         resting,
         setResting,
         screen,

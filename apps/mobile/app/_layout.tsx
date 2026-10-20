@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
+import { ExploreStateProvider } from '@/components/explore-state'
 import { Splash, SplashDone } from '@/components/splash'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -79,33 +80,50 @@ export default function Layout() {
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SplashDone value={splashDone}>
-          <Stack screenOptions={{ headerShown: false }}>
-            {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
+          <ExploreStateProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
-            <Stack.Screen
-              name="vou/[barId]"
-              options={{
-                presentation: 'formSheet',
-                sheetAllowedDetents: [0.88],
-                sheetGrabberVisible: true,
-                contentStyle: { backgroundColor: 'transparent' }
-              }}
-            />
-            {/* O código no balcão cobre tudo, no escuro (3f). */}
-            <Stack.Screen
-              name="codigo/[eventId]"
-              options={{ presentation: 'fullScreenModal' }}
-            />
-            <Stack.Screen
-              name="pos-jogo/[eventId]"
-              options={{ presentation: 'fullScreenModal' }}
-            />
-            {/* A medalha (2j, 2k), no escuro como a estante. */}
-            <Stack.Screen
-              name="conquista/[id]"
-              options={{ presentation: 'fullScreenModal' }}
-            />
-          </Stack>
+              <Stack.Screen
+                name="vou/[barId]"
+                options={{
+                  presentation: 'formSheet',
+                  sheetAllowedDetents: [0.88],
+                  sheetGrabberVisible: true,
+                  contentStyle: { backgroundColor: 'transparent' }
+                }}
+              />
+              {/* O código no balcão cobre tudo, no escuro (3f). */}
+              <Stack.Screen
+                name="codigo/[eventId]"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              <Stack.Screen
+                name="pos-jogo/[eventId]"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              {/* A medalha (2j, 2k), no escuro como a estante. */}
+              <Stack.Screen
+                name="conquista/[id]"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              {/* Todos os filtros (19d): folha alta sobre o Explorar. */}
+              <Stack.Screen
+                name="filtros"
+                options={{
+                  presentation: 'formSheet',
+                  sheetAllowedDetents: [0.9],
+                  sheetGrabberVisible: true,
+                  sheetCornerRadius: 30
+                }}
+              />
+              {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
+              <Stack.Screen
+                name="atalhos"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+            </Stack>
+          </ExploreStateProvider>
         </SplashDone>
         <DevTab />
         {splashDone ? null : (
