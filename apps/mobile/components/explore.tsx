@@ -149,10 +149,13 @@ export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
 /** A etiqueta do pino, sem a regra de qual cor: o mapa de "Onde fica" a usa. */
 export function PinTag({
   label,
-  kind
+  kind,
+  big = kind === 'live'
 }: {
   label: string
   kind: 'live' | 'later' | 'idle'
+  /** Maior: o ao vivo de "Onde fica" e o bar tocado no mapa (20c). */
+  big?: boolean
 }) {
   const live = kind === 'live'
   const bg = live ? LIVE : kind === 'later' ? ACID : INK
@@ -162,14 +165,14 @@ export function PinTag({
       <View
         style={[
           styles.pinLabel,
-          live && styles.pinLive,
+          big && styles.pinLive,
           { backgroundColor: bg }
         ]}
       >
         {live ? <View style={styles.pinDot} /> : null}
         <Text
           style={[
-            text(live ? 13 : 12, 'Bold', 1.2),
+            text(big ? 13 : 12, 'Bold', 1.2),
             { color: fg, maxWidth: 150 }
           ]}
           numberOfLines={1}
@@ -213,10 +216,12 @@ export function MapPoint({
 
 /** O grupo (20a): bares colados na tela viram um número; o selo conta os ao vivo. */
 export function MapGroup({ count, live }: { count: number; live: number }) {
+  // Grupo grande (5 ou mais) é um pouco maior, como na 20a.
+  const big = count >= 5
   return (
     <View style={styles.groupHit}>
-      <View style={styles.group}>
-        <Text style={styles.groupText}>{count}</Text>
+      <View style={[styles.group, big && styles.groupBig]}>
+        <Text style={[styles.groupText, big && { fontSize: 22 }]}>{count}</Text>
       </View>
       {live ? (
         <View style={styles.groupLive}>
@@ -291,7 +296,7 @@ export function Chip({
   palette: Palette
   onPress: () => void
 }) {
-  const fg = on ? INK : palette.ink
+  const fg = on || live ? INK : palette.ink
   const press = usePressScale()
   return (
     <Pressable
@@ -309,9 +314,11 @@ export function Chip({
       <Animated.View style={LIQUID ? undefined : press.style}>
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
-          tint={on ? 'rgba(201,241,53,.66)' : undefined}
+          // "Ao vivo" vem sempre em acid, como no design (19e, 20a); ligado,
+          // ganha o contorno de tinta.
+          tint={on || live ? 'rgba(201,241,53,.66)' : undefined}
           interactive
-          style={styles.chip}
+          style={[styles.chip, live && on && styles.chipLiveOn]}
         >
           {live ? <View style={styles.liveDot} /> : null}
           {icon ? (
@@ -894,8 +901,12 @@ export function BarRow({
   bar,
   now,
   palette,
-  onPress
-}: Omit<CardProps, 'favorite' | 'onFavorite'>) {
+  onPress,
+  compact
+}: Omit<CardProps, 'favorite' | 'onFavorite'> & {
+  /** O card da folha baixa do Explorar (20a): sem a coluna da hora. */
+  compact?: boolean
+}) {
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const press = usePressScale(0.985)
@@ -970,7 +981,7 @@ export function BarRow({
               {bar.rating ? <Tag>{bar.rating.percentage}%</Tag> : null}
             </View>
           </View>
-          {game ? (
+          {game && !compact ? (
             <View style={styles.rowWhen}>
               <Text
                 style={[
@@ -1001,62 +1012,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  // Halo de 32 pt: 7 pt para cada lado do ponto, como o `inset: -7px`.
   pointHalo: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(232,50,12,.22)'
   },
   point: {
     width: 18,
     height: 18,
-    borderRadius: 4,
-    borderWidth: 2,
+    borderRadius: 5,
+    borderWidth: 2.5,
     shadowColor: INK,
-    shadowOpacity: 1,
+    shadowOpacity: 0.35,
     shadowRadius: 0,
-    shadowOffset: { width: 2, height: 2 }
+    shadowOffset: { width: 2, height: 3 }
   },
   groupHit: {
-    width: 56,
-    height: 56,
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center'
   },
   group: {
-    width: 40,
-    height: 40,
-    borderRadius: 7,
+    width: 42,
+    height: 42,
+    borderRadius: 9,
     backgroundColor: INK,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: PAPER,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: INK,
     shadowOpacity: 0.3,
     shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
+    shadowOffset: { width: 4, height: 5 }
   },
-  groupText: { fontFamily: 'Anton', fontSize: 20, color: PAPER },
+  groupBig: { width: 48, height: 48 },
+  groupText: { fontFamily: 'Anton', fontSize: 19, color: PAPER },
   groupLive: {
     position: 'absolute',
-    top: 2,
-    right: 0,
+    top: 1,
+    right: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    height: 18,
-    paddingHorizontal: 5,
-    borderRadius: 9,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
     backgroundColor: LIVE,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: PAPER
   },
   groupLiveDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
     backgroundColor: PAPER
   },
   // 22 pt com o anel de 2 pt da cor do cartão por fora, como o box-shadow.
@@ -1117,6 +1130,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: INK
   },
+  chipLiveOn: { borderWidth: 1.5, borderColor: INK },
   chip: {
     height: 38,
     paddingHorizontal: 15,
