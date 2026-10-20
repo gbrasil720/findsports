@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MapView from 'react-native-maps'
 import Animated, {
-  type SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring
@@ -324,9 +323,6 @@ function Sortable({
   onMove: (list: Shortcut[]) => void
   onRemove: (key: Shortcut) => void
 }) {
-  // Onde cada linha está agora; muda durante o arraste, antes de soltar.
-  const order = useSharedValue<Shortcut[]>(list)
-  if (order.value.join() !== list.join()) order.value = list
   return (
     <View style={{ height: list.length * ROW }}>
       {list.map((key, index) => (
@@ -335,7 +331,6 @@ function Sortable({
           id={key}
           index={index}
           count={list.length}
-          order={order}
           palette={palette}
           label={shortcutLabel(key, sportList)}
           sub={key === `esporte:${mainSport}` ? 'Seu esporte principal' : null}
@@ -354,7 +349,6 @@ function SortRow({
   id,
   index,
   count,
-  order,
   palette,
   label,
   sub,
@@ -364,7 +358,6 @@ function SortRow({
   id: Shortcut
   index: number
   count: number
-  order: SharedValue<Shortcut[]>
   palette: Palette
   label: ReturnType<typeof shortcutLabel>
   sub: string | null
@@ -377,7 +370,7 @@ function SortRow({
   const pan = Gesture.Pan()
     .onBegin(() => {
       dragging.set(true)
-      start.set(order.value.indexOf(id) * ROW)
+      start.set(index * ROW)
     })
     .onUpdate((e) => {
       y.set(
@@ -391,11 +384,11 @@ function SortRow({
       dragging.set(false)
       if (to !== from) scheduleOnRN(onDrop, from, to)
     })
-  // Fora do arraste, a linha vai para a posição da lista.
+  // Trocou de lugar na lista: desliza até a posição nova.
+  useEffect(() => {
+    y.set(withSpring(index * ROW, { damping: 20, stiffness: 260 }))
+  }, [index, y])
   const style = useAnimatedStyle(() => {
-    const target = dragging.value ? y.value : index * ROW
-    if (!dragging.value && y.value !== target)
-      y.set(withSpring(target, { damping: 20, stiffness: 260 }))
     return {
       transform: [
         { translateY: y.value },
