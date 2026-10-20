@@ -899,3 +899,43 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'lançar com o limite estourado não resolve nem código certo',
+  async () => {
+    const ctx = await seed({ startsAt: new Date(Date.now() - 26 * HOUR) })
+    try {
+      await confirmsLater(ctx)
+      const wrong = Array.from(
+        { length: VALIDATION_ATTEMPT_LIMIT.max },
+        (_, i) => `ZZZZ${String.fromCharCode(65 + i)}Z`
+      )
+      await ctx.owner.logLate({ codes: wrong })
+      // Um por pedido: com o limite gasto, o certo também volta `limited`.
+      const [result] = await ctx.owner.logLate({ codes: [ctx.code] })
+      expect(result).toEqual({ code: ctx.code, status: 'limited' })
+      expect(await counterOf(ctx)).toBe(0)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'pela comanda é do Elite: o bar que perdeu o plano não lança depois',
+  async () => {
+    const ctx = await seed({
+      plan: 'pro',
+      startsAt: new Date(Date.now() - 26 * HOUR)
+    })
+    try {
+      await confirmsLater(ctx)
+      await expect(ctx.owner.logLate({ codes: [ctx.code] })).rejects.toThrow(
+        'plano Elite'
+      )
+      expect(await counterOf(ctx)).toBe(0)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)

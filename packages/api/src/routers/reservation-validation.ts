@@ -384,9 +384,9 @@ export const reservationValidationRouter = router({
    * `late`, até 48 h depois do fim do jogo. Mesmas regras de `registerArrival`
    * (do próprio bar, reserva confirmada, uso único); a diferença é o prazo.
    *
-   * Cada código que não resolve conta no mesmo limite de tentativas da busca:
-   * colar uma lista não vira atalho para varrer códigos. Estourado o limite,
-   * o resto da lista volta como `limited`, sem ser conferido.
+   * Cada código conta no mesmo limite de tentativas da busca, devolvido quando
+   * resolve: colar uma lista não vira atalho para varrer códigos. Estourado o
+   * limite, o resto da lista volta como `limited`, sem ser conferido.
    */
   logLate: validatorProcedure
     .input(
@@ -398,8 +398,12 @@ export const reservationValidationRouter = router({
       const userId = ctx.session.user.id
       const ownBar = await db.query.bar.findFirst({
         where: eq(bar.userId, userId),
-        columns: { confirmsCodesLater: true }
+        columns: { confirmsCodesLater: true },
+        with: { subscription: true }
       })
+      // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
+      // plano fica só com a validação na hora, na janela de sempre.
+      assertCanValidateReservations(ownBar?.subscription ?? null)
       if (!ownBar?.confirmsCodesLater) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -429,18 +433,25 @@ export const reservationValidationRouter = router({
           results.push({ code, status: 'limited' })
           continue
         }
+        // Cobra antes de olhar, como `lookup`: bloqueado, nem código certo
+        // resolve, senão uma lista de um código por vez seguiria varrendo.
+        const attempt = await incrementWindow(
+          attemptKey,
+          VALIDATION_ATTEMPT_LIMIT
+        )
+        if (!attempt.allowed) {
+          limited = true
+          results.push({ code, status: 'limited' })
+          continue
+        }
         const found = isReservationCodeShaped(code)
           ? await findOwnCode(db, eq(reservationCode.code, code), userId)
           : undefined
         if (!found) {
-          const attempt = await incrementWindow(
-            attemptKey,
-            VALIDATION_ATTEMPT_LIMIT
-          )
-          if (!attempt.allowed) limited = true
-          results.push({ code, status: limited ? 'limited' : 'not_found' })
+          results.push({ code, status: 'not_found' })
           continue
         }
+        await refundWindowAttempt(attemptKey)
 
         const about = {
           guestName: found.guestName,
