@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Palette } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
-import { ACID, Icon, INK, text, UpDown } from '@/components/ui'
+import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*
  * O menu "Você" (2c do design): vidro acima da barra de abas, com o
@@ -119,16 +119,13 @@ export function YouMenu({
               >
                 {name}
               </Text>
-              <View
-                style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}
+              {/* Sem as setas do design (⇅): trocar para o perfil de bar não
+                  existe no app, o lado do bar é só no site. */}
+              <Text
+                style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
               >
-                <Text
-                  style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-                >
-                  Torcedor
-                </Text>
-                <UpDown color={palette.muted} />
-              </View>
+                Torcedor
+              </Text>
             </View>
             <RoundButton label="Fale com a gente" tone={tone} onPress={onChat}>
               <Icon name="chat" size={19} color={palette.ink} />

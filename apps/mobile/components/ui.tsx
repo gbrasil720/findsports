@@ -132,15 +132,6 @@ export function Icon({
   )
 }
 
-/** As setinhas de "abre menu" (⇅), ao lado de um rótulo. */
-export function UpDown({ color = FG }: { color?: string }) {
-  return (
-    <Svg width={8} height={14} viewBox="0 0 8 14">
-      <Path d="M4 1 7.4 5H.6zM4 13 .6 9h6.8z" fill={color} opacity={0.7} />
-    </Svg>
-  )
-}
-
 const ICONS = {
   back: (c: string) => (
     <Path d="M15.6 3.4 17.4 5.2 10.6 12l6.8 6.8-1.8 1.8L7 12z" fill={c} />

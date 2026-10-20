@@ -42,15 +42,7 @@ import { Glass } from '@/components/glass'
 import { EASE, haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import {
-  ACID,
-  Icon,
-  INK,
-  LIVE,
-  text,
-  UpDown,
-  useStatusBar
-} from '@/components/ui'
+import { ACID, Icon, INK, LIVE, text, useStatusBar } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { greeting, isLive, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
@@ -417,7 +409,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 >
                   {place}
                 </Text>
-                <UpDown color={palette.muted} />
+                {/* Sem as setas do design (⇅): escolher outro lugar de busca
+                    ainda não existe. */}
               </View>
             </View>
           </View>
