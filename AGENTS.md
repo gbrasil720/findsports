@@ -419,8 +419,25 @@ invente layout que o projeto não tem.
   o que já existe (`achievements.mine`, `attendance.visits` e `mine`, `pubs.getFavorites`,
   `getMyPreferences`, `getMyCity`, `ratings.getPending`); as contas ficam em `lib/profile.ts`.
   "Suas comunidades" do design não entrou (comunidades não existem), "Tenho um bar"
-  saiu a pedido do dono, e "Raio de busca" e
-  "Esportes" avisam "chega em breve" até as Preferências.
+  saiu a pedido do dono; a engrenagem, "Raio de busca" e "Esportes" abrem as
+  Configurações.
+- **Configurações (11f–11i, escolhidas pelo dono em 20/10/2026):** `app/configuracoes.tsx`
+  (`?aba=preferencias|avisos|conta|privacidade`), pela engrenagem do menu "Você" e do
+  Perfil, por "Preferências" no menu e pelo sino de Avisos. Contas puras em
+  `lib/settings.ts`. Preferências: a frase do perfil, "Recomeçar sugestões"
+  (`recommendations.reset`), esportes e times ("Editar" abre `onboarding/sports` e
+  `teams` com `?edit=1`, que começam do que a pessoa tem e salvam no fim por
+  `updateMyPreferences` e `updateMyTeams`; voltar sai da edição, porque o expo-router
+  põe as boas-vindas por baixo) e o raio (`updateUser({ searchRadiusKm })`). Conta:
+  nome (`updateUser`), cidade (`app/cidade.tsx`, `updateMyCity`), senha
+  (`app/senha.tsx`, `changePassword`, derruba os outros aparelhos), sessões
+  (`listSessions`, revogar por `/revoke-session-by-id`; a lista pede login de menos de
+  um dia, `freshAge`, senão pede para entrar de novo), sair e excluir (`deleteUser` com
+  a senha). Foto e ligar a verificação em duas etapas avisam "em breve". Avisos e
+  Privacidade seguem o desenho com os controles desligados e o aviso de "em breve"
+  (não há notificação, amigos, comunidades, ranking nem exportação de dados); só
+  "Recomeçar sugestões" funciona ali. "Reservas" do 11g virou "Vou assistir", porque
+  não existe reserva de mesa.
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
