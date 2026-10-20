@@ -177,7 +177,7 @@ export default function FanTabs() {
           name="voce"
           // Tocar de novo com o menu aberto fecha. Numa tela da pilha da
           // aba, o menu abre por cima dela: o sistema voltaria ao começo
-          // da pilha (`disablePopToTop` impede). Vindo de outra aba, a aba
+          // da pilha (`disablePopToTop` impede). Vindo do Explorar, a aba
           // reabre no menu, não na última tela da pilha.
           disablePopToTop
           // Desabilitada no nativo: a troca de aba fica com o JS, que tira
@@ -186,9 +186,11 @@ export default function FanTabs() {
           listeners={{
             tabPress: async () => {
               if (menuOpen) closeMenu()
-              else if (pathname.startsWith('/voce/')) setOver(true)
+              // Fora do Explorar (pilha do Você, Bares), o menu abre por cima
+              // da tela aberta: trocar de aba mostraria o Explorar atrás.
+              else if (pathname !== '/explore') setOver(true)
               else {
-                if (pathname === '/explore') await explore.takeShot()
+                await explore.takeShot()
                 router.navigate('/voce')
               }
             }
