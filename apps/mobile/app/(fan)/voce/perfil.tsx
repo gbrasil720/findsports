@@ -3,7 +3,6 @@ import { type Href, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -38,7 +37,6 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
-import { env } from '@/lib/env'
 import { formatTime } from '@/lib/explore'
 import { gameTitle, shortDate } from '@/lib/my-games'
 import {
@@ -54,7 +52,7 @@ import { trpc } from '@/lib/trpc'
  * Perfil (2l do design, seção 10): quem você é na Onside, seus números e os
  * atalhos para o resto da aba "Você". Fica na pilha da aba, com a barra.
  * "Suas comunidades" do design não entrou: comunidades ainda não existem
- * (seção 14).
+ * (seção 14). "Tenho um bar" saiu a pedido do dono (20/10/2026).
  */
 
 export default function Profile() {
@@ -452,18 +450,6 @@ export default function Profile() {
                     })
                   }
                 />
-                <Row
-                  palette={palette}
-                  icon="bar"
-                  title="Tenho um bar"
-                  sub="Cadastrar meu estabelecimento"
-                  // O lado do bar é só no site.
-                  onPress={() =>
-                    Linking.openURL(
-                      `${env.EXPO_PUBLIC_SERVER_URL}/signup?role=pub`
-                    )
-                  }
-                />
               </View>
             </Card>
           </>
@@ -565,7 +551,7 @@ function Row({
 }: {
   palette: Palette
   first?: boolean
-  icon: 'star' | 'chat' | 'doc' | 'bar'
+  icon: 'star' | 'chat' | 'doc'
   title: string
   sub?: string
   /** Botão acid no fim ("Avaliar"); sem ele, a seta. */

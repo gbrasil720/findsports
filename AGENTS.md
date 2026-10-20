@@ -416,7 +416,8 @@ invente layout que o projeto não tem.
 - **Perfil (10, tela 2l):** `app/(fan)/voce/perfil.tsx`, aberto pelo menu "Você". Só lê
   o que já existe (`achievements.mine`, `attendance.visits` e `mine`, `pubs.getFavorites`,
   `getMyPreferences`, `getMyCity`, `ratings.getPending`); as contas ficam em `lib/profile.ts`.
-  "Suas comunidades" do design não entrou (comunidades não existem) e "Raio de busca" e
+  "Suas comunidades" do design não entrou (comunidades não existem), "Tenho um bar"
+  saiu a pedido do dono, e "Raio de busca" e
   "Esportes" avisam "chega em breve" até as Preferências.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
