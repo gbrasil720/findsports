@@ -182,6 +182,54 @@ export function PinTag({
   )
 }
 
+/**
+ * O ponto do bar (20d): o padrão do mapa. Tinta; vermelho com halo se ao
+ * vivo; acid se Elite. 18 pt, com 44 pt de área de toque.
+ */
+export function MapPoint({
+  live,
+  elite,
+  dark
+}: {
+  live: boolean
+  elite: boolean
+  dark: boolean
+}) {
+  return (
+    <View style={styles.pointHit}>
+      {live ? <View style={styles.pointHalo} /> : null}
+      <View
+        style={[
+          styles.point,
+          {
+            backgroundColor: live ? LIVE : elite ? ACID : dark ? PAPER : INK,
+            borderColor: dark ? INK : PAPER
+          }
+        ]}
+      />
+    </View>
+  )
+}
+
+/** O grupo (20a): bares colados na tela viram um número; o selo conta os ao vivo. */
+export function MapGroup({ count, live }: { count: number; live: number }) {
+  return (
+    <View style={styles.groupHit}>
+      <View style={styles.group}>
+        <Text style={styles.groupText}>{count}</Text>
+      </View>
+      {live ? (
+        <View style={styles.groupLive}>
+          <View style={styles.groupLiveDot} />
+          <Text style={[text(10.5, 'Bold', 1.1), { color: PAPER }]}>
+            {live}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 /** Você no mapa: o ponto acid com dois halos. */
 export function MeDot() {
   return (
@@ -947,6 +995,70 @@ export function BarRow({
 
 const styles = StyleSheet.create({
   pin: { alignItems: 'center' },
+  pointHit: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  pointHalo: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(232,50,12,.22)'
+  },
+  point: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 2,
+    shadowColor: INK,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 2, height: 2 }
+  },
+  groupHit: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  group: {
+    width: 40,
+    height: 40,
+    borderRadius: 7,
+    backgroundColor: INK,
+    borderWidth: 2,
+    borderColor: PAPER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  groupText: { fontFamily: 'Anton', fontSize: 20, color: PAPER },
+  groupLive: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: LIVE,
+    borderWidth: 1.5,
+    borderColor: PAPER
+  },
+  groupLiveDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: PAPER
+  },
   // 22 pt com o anel de 2 pt da cor do cartão por fora, como o box-shadow.
   goer: {
     width: 26,
