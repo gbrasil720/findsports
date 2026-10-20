@@ -483,6 +483,13 @@ const ICONS = {
       <Circle cx={16} cy={10} r={1.6} fill={c} />
     </>
   ),
+  // Termos e privacidade (2l): a folha com o canto dobrado.
+  doc: (c: string) => (
+    <>
+      <Path d="M5 2.5h9.5L19 7v14.5H5z" fill={c} opacity={0.35} />
+      <Path d="M14.5 2.5V7H19zM8 11h8v2H8zM8 15h6v2H8z" fill={c} />
+    </>
+  ),
   star: (c: string) => (
     <Path
       d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"
