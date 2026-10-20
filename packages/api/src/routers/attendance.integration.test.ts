@@ -318,6 +318,18 @@ integrationTest(
         [yesterday]: false,
         [lastWeek]: true
       })
+
+      // Sem o Elite, o bar não lança mais: volta o prazo de sempre.
+      await ctx.db
+        .update(subscription)
+        .set({ plan: 'pro' })
+        .where(eq(subscription.barId, ctx.barId))
+      expect(await missed()).toMatchObject({ [yesterday]: true })
+      expect(
+        (await ctx.fan().attendance.mine()).every(
+          (game) => !game.confirmsCodesLater
+        )
+      ).toBe(true)
     } finally {
       await ctx.cleanup()
     }
