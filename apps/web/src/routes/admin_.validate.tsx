@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
+import { LateCodeEntry } from '@/components/admin/late-code-entry'
 import { AppShell } from '@/components/app/app-shell'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
@@ -40,6 +41,12 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
   const elite = subscriptionQuery.data?.currentPlan === 'elite'
+  // Bar que confirma pela comanda lança aqui o que a equipe anotou (WEB-412).
+  const barQuery = useQuery({
+    ...trpc.pub.getMe.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const confirmsLater = elite && barQuery.data?.confirmsCodesLater === true
 
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
@@ -58,6 +65,10 @@ function ValidatePage() {
           da casa.
         </p>
       </div>
+
+      {confirmsLater ? (
+        <LateCodeEntry logLate={reservationValidation.logLate.mutate} />
+      ) : null}
 
       <CodeValidation
         access={
