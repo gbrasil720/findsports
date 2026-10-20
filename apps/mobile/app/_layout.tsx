@@ -124,6 +124,11 @@ export default function Layout() {
               />
               {/* Avisos (19c): aberto pelo sino do Explorar, com voltar. */}
               <Stack.Screen name="avisos" />
+              {/* Configurações (11f–11i): com voltar, sem a barra de abas.
+                Cidade e senha empilham por cima. */}
+              <Stack.Screen name="configuracoes" />
+              <Stack.Screen name="cidade" />
+              <Stack.Screen name="senha" />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"
