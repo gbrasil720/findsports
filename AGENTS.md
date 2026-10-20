@@ -445,9 +445,12 @@ invente layout que o projeto não tem.
   gota com a ponta reta da marca (`MapDrop` em `components/explore.tsx`): tinta com copo,
   vermelha com telão e halo na ponta se ao vivo, acid com estrela se Elite. Só o ao vivo
   ganha a pílula com o nome à direita; o bar tocado vira a gota maior com o balão de nome e
-  "HOJE 21:30" e os outros não apagam. Grupo é um círculo com selo. A caixa do desenho é
-  centrada na ponta (`dropBox`), então o `anchor` do marcador é fixo; o tocado nasce como
-  marcador novo porque o iOS só aplica o `zIndex` na criação.
+  "HOJE 21:30" e os outros não apagam. Grupo é um círculo com selo. No Apple Maps o `anchor` é
+  ignorado: a ponta cai no bar pelo `centerOffset` que `dropBox` calcula (o `anchor` fica
+  para o Android). Cada tipo de marcador (gota, gota com pílula, tocado) tem chave própria
+  e nasce de novo ao trocar: mudar tamanho e `centerOffset` de um marcador vivo o deixava
+  fora do lugar, e o `zIndex` só vale na criação. O halo do ao vivo passa da caixa por
+  baixo para não roubar o toque da gota vizinha.
 - **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
   60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
   vermelho se ao vivo, acid se Elite) ou rótulo (só ao vivo e Elite, por prioridade, que

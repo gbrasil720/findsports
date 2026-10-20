@@ -298,29 +298,34 @@ export function MapDrop({
  * outro lado.
  */
 export function dropBox({
-  live,
   label,
   callout
 }: {
-  live: boolean
+  live?: boolean
   label?: string
   callout?: { name: string; when: string | null }
 }) {
   const big = Boolean(callout)
-  const half = label
-    ? 14 + 6 + label.length * 6.6 + 18
-    : callout
-      ? Math.max(24, callout.name.length * 3.7 + 11, 52)
-      : // 44 pt de largura para o dedo, mesmo na gota de 28.
-        22
-  const below = live ? 26 : 8
+  // A gota tem 44 pt de largura para o dedo (22 de cada lado da ponta); a
+  // pílula do ao vivo vem à direita, sem área vazia do outro lado, para não
+  // roubar o toque de um vizinho.
+  const left = callout ? Math.max(24, callout.name.length * 3.7 + 11, 52) : 22
+  const right = label ? 14 + 6 + label.length * 6.6 + 18 + 4 : left
+  // O halo do ao vivo passa da caixa por baixo (o iOS não recorta): assim
+  // ele não rouba o toque da gota vizinha.
+  const below = 8
   const above = big ? 51 + 8 + 46 : 36
+  const width = left + right
+  const height = above + below
   return {
-    width: half * 2,
-    height: above + below,
-    tipX: half,
+    width,
+    height,
+    tipX: left,
     tipY: above,
-    anchor: { x: 0.5, y: above / (above + below) }
+    // Android (Google Maps) usa `anchor`; o Apple Maps ignora e posiciona
+    // pelo centro do desenho, deslocado por `centerOffset`, em pt.
+    anchor: { x: left / width, y: above / height },
+    centerOffset: { x: width / 2 - left, y: height / 2 - above }
   }
 }
 

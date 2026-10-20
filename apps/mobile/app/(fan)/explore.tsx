@@ -308,7 +308,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       ((view.latitude + view.latitudeDelta / 2 - Number(bar.latitude)) /
         view.latitudeDelta) *
       height
-    const ceiling = insets.top + 236 + 50
+    // Abaixo dos chips sobra lugar para a gota grande e o balão (105 pt).
+    const ceiling = insets.top + 260 + 105
     const floor = height - 336 - 24
     if (y < ceiling || y > floor) {
       const target = (ceiling + floor) / 2
@@ -600,15 +601,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             </MapMarker>
           ) : (
             <MapMarker
-              // O tocado nasce de novo: o iOS só aplica o `zIndex` na criação,
-              // e ele precisa ficar por cima de tudo (o balão cobre vizinhos).
-              key={
-                layer.kind === 'selected' ? `selected:${layer.id}` : layer.id
-              }
+              // Mudou o tipo (gota, gota com pílula, tocado), nasce outro
+              // marcador: no Apple Maps, mudar o tamanho e o `centerOffset` de
+              // um marcador vivo o deixava fora do lugar, e o `zIndex` só vale
+              // na criação (o tocado precisa ficar por cima de tudo).
+              key={`${layer.kind}:${layer.id}`}
               // Mudou o desenho (gota virou rótulo, o tema): redesenha.
               draw={`${layer.kind}:${layer.bar.live}:${layer.bar.elite}:${palette.dark}`}
               coordinate={{ latitude: layer.bar.lat, longitude: layer.bar.lng }}
               anchor={dropBox(dropProps(layer)).anchor}
+              centerOffset={dropBox(dropProps(layer)).centerOffset}
               zIndex={
                 layer.kind === 'selected' ? 3 : layer.kind === 'label' ? 2 : 1
               }

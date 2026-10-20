@@ -700,6 +700,8 @@ function HoodMap({
               longitude: Number(bar.longitude)
             }}
             anchor={big ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
+            // Apple Maps ignora `anchor`: sobe meia etiqueta para a ponta cair no bar.
+            centerOffset={big ? { x: 0, y: -18 } : undefined}
             tracksViewChanges={false}
           >
             {big ? (
