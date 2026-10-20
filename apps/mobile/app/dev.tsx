@@ -125,6 +125,27 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     ]
   },
   {
+    title: '11 Configurações',
+    items: [
+      { code: '11f', label: 'Preferências', href: '/configuracoes' },
+      {
+        code: '11g',
+        label: 'Avisos',
+        href: { pathname: '/configuracoes', params: { aba: 'avisos' } }
+      },
+      {
+        code: '11h',
+        label: 'Conta',
+        href: { pathname: '/configuracoes', params: { aba: 'conta' } }
+      },
+      {
+        code: '11i',
+        label: 'Privacidade',
+        href: { pathname: '/configuracoes', params: { aba: 'privacidade' } }
+      }
+    ]
+  },
+  {
     title: '09 Conquistas',
     items: [
       // Com as medalhas de `scripts/conquistas.sql` para o torcedor logado.

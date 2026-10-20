@@ -181,7 +181,12 @@ export default function Notices() {
             accessibilityRole="button"
             accessibilityLabel="Ajustes dos avisos"
             hitSlop={8}
-            onPress={() => soon.show('Os ajustes dos avisos chegam em breve')}
+            onPress={() =>
+              router.push({
+                pathname: '/configuracoes',
+                params: { aba: 'avisos' }
+              })
+            }
           >
             <GlassRound>
               <Icon name="gear" size={18} color={palette.ink} />

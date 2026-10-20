@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useEffect, useRef, useState } from 'react'
-import { Alert, View } from 'react-native'
+import { View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
 import { useSoon } from '@/components/soon'
@@ -150,22 +150,18 @@ export default function FanTabs() {
       key: 'preferencias',
       icon: 'sliders',
       label: 'Preferências',
-      soon: 'As preferências chegam em breve'
+      soon: 'As preferências chegam em breve',
+      open: () => {
+        closeMenu()
+        router.push('/configuracoes')
+      }
     }
   ]
-  // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
-  const settings = () =>
-    Alert.alert(user?.name ?? 'Conta', user?.email, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await authClient.signOut()
-          router.replace('/intro')
-        }
-      }
-    ])
+  // As Configurações (11f–11i) abrem por cima, sem a barra.
+  const settings = () => {
+    closeMenu()
+    router.push({ pathname: '/configuracoes', params: { aba: 'conta' } })
+  }
 
   return (
     <View style={{ flex: 1 }}>

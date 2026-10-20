@@ -52,7 +52,8 @@ import { trpc } from '@/lib/trpc'
  * Perfil (2l do design, seção 10): quem você é na Onside, seus números e os
  * atalhos para o resto da aba "Você". Fica na pilha da aba, com a barra.
  * "Suas comunidades" do design não entrou: comunidades ainda não existem
- * (seção 14). "Tenho um bar" saiu a pedido do dono (20/10/2026).
+ * (seção 14). "Tenho um bar" saiu a pedido do dono (20/10/2026). A
+ * engrenagem, o raio e os esportes abrem as Configurações (11f–11i).
  */
 
 export default function Profile() {
@@ -111,17 +112,7 @@ export default function Profile() {
   }
   // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
   const settings = () =>
-    Alert.alert(user?.name ?? 'Conta', user?.email, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await authClient.signOut()
-          router.replace('/intro')
-        }
-      }
-    ])
+    router.push({ pathname: '/configuracoes', params: { aba: 'conta' } })
   // ponytail: Alert.prompt só existe no iOS; no Android o item avisa.
   const help = () =>
     Alert.prompt('Ajuda e suporte', 'Conte o que aconteceu ou o que falta.', [
@@ -299,14 +290,14 @@ export default function Profile() {
                 icon="map"
                 value={`${user?.searchRadiusKm ?? 3} km`}
                 label="Raio de busca"
-                onPress={() => soon.show('As preferências chegam em breve')}
+                onPress={() => router.push('/configuracoes')}
               />
               <Tile
                 palette={palette}
                 icon="tv"
                 value={String(sports.data?.length ?? 0)}
                 label={sports.data?.length === 1 ? 'Esporte' : 'Esportes'}
-                onPress={() => soon.show('As preferências chegam em breve')}
+                onPress={() => router.push('/configuracoes')}
               />
             </View>
 
