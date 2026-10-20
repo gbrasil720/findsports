@@ -32,10 +32,11 @@ import { Card, OfferCard } from '@/components/card'
 import {
   BarTicket,
   dayLabel,
+  dropBox,
+  MapDrop,
   matchLine,
   type Palette,
   PhotoPill,
-  PinTag,
   usePalette
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
@@ -59,7 +60,7 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
-import { formatKm, formatTime } from '@/lib/explore'
+import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
@@ -281,6 +282,21 @@ export default function BarPage() {
     km ? formatKm(Number(km)) : null,
     minutes && minutes <= 30 ? `${minutes} min a pé` : null
   ].filter(Boolean)
+
+  const pinLive = next ? isLive(next, now) : false
+  const pinCallout = {
+    name: data?.name ?? '',
+    when: !next
+      ? null
+      : pinLive
+        ? 'AO VIVO'
+        : `${dayLabel(next.startsAt, now).split(',')[0]?.replace('.', '').toLocaleUpperCase('pt-BR')} ${formatTime(next.startsAt)}`
+  }
+  const pin = {
+    live: pinLive,
+    callout: pinCallout,
+    box: dropBox({ callout: pinCallout })
+  }
 
   const toggleFavorite = () => {
     haptic.select()
@@ -567,9 +583,9 @@ export default function BarPage() {
                           latitudeDelta: 0.006,
                           longitudeDelta: 0.012
                         }}
-                        // O centro fica 15 pt abaixo do meio: a ponta do pino cai
-                        // em 80 de 130, como no design.
-                        mapPadding={{ top: 30, right: 0, bottom: 0, left: 0 }}
+                        // O bar fica em 112 de 130 (o centro da faixa abaixo
+                        // dos 94 pt): cabe a gota grande com o balão em cima.
+                        mapPadding={{ top: 94, right: 0, bottom: 0, left: 0 }}
                         mapType={
                           Platform.OS === 'ios' ? 'mutedStandard' : 'standard'
                         }
@@ -585,8 +601,18 @@ export default function BarPage() {
                         toolbarEnabled={false}
                       />
                     </View>
-                    <View style={styles.mapPin} pointerEvents="none">
-                      <PinTag label={data.name} kind="live" />
+                    {/* A gota do bar tocado no Explorar (21a): a ponta em
+                        112 de 130, o balão com o nome e o próximo jogo. */}
+                    <View
+                      style={[styles.mapPin, { top: 112 - pin.box.tipY }]}
+                      pointerEvents="none"
+                    >
+                      <MapDrop
+                        live={pin.live}
+                        elite={data.plan === 'elite'}
+                        dark={palette.dark}
+                        callout={pin.callout}
+                      />
                     </View>
                   </AnimatedPressable>
                   <View style={styles.where}>
@@ -889,7 +915,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 50,
     alignItems: 'center'
   },
   where: {
