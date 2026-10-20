@@ -24,7 +24,9 @@ import { createTtlCache } from './ttl-cache'
 async function readVisits(userId: string) {
   return db
     .select({
-      at: reservationCodeUse.usedAt,
+      // A visita é do dia do jogo, não do lançamento: o bar que confirma pela
+      // comanda lança até 48 h depois (WEB-412).
+      at: event.startsAt,
       barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
