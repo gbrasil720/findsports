@@ -33,8 +33,10 @@ import {
   BarTicket,
   Chip,
   initials as initialsOf,
+  MapGroup,
+  MapPoint,
   MeDot,
-  Pin,
+  PinTag,
   type SearchBar,
   usePalette
 } from '@/components/explore'
@@ -53,15 +55,23 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
-import { greeting, isLive, searchCenter } from '@/lib/explore'
+import { formatTime, greeting, isLive, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import {
   activeCount,
   applyShortcut,
+  dayKey,
   defaultShortcuts,
   shortcutLabel,
   shortcutOn
 } from '@/lib/filters'
+import {
+  type Layer,
+  type MapBar,
+  mapLayers,
+  type Region,
+  zoomInto
+} from '@/lib/map-layers'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
@@ -167,36 +177,94 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       }
     })
 
-  // A folha: alta (lista inteira), no meio (como abre) e baixa (só o título).
+  // A folha: alta (lista inteira), no meio (como abre: só o título e um
+  // card, para sobrar mapa, 20d) e baixa (só o título).
   const top = insets.top + 8
-  const snaps = [0, height * 0.54 - top, height - top - 150 - tabSpace]
+  const snaps = [
+    0,
+    height - tabSpace - 232 - top,
+    height - top - 150 - tabSpace
+  ]
   const resting = state.resting ?? snaps[1]
   const { setResting } = state
   const expanded = resting === 0
   const reduced = useReducedMotion()
 
-  // O centro do mapa fica na faixa entre os chips e a folha no meio
-  // (`mapPadding`). Fixo: mudar o enquadramento a cada ponto da folha
-  // recentrava o mapa por cima da mola.
+  // A faixa livre do mapa, entre os chips e a folha no meio. Fixa: mudar o
+  // enquadramento a cada ponto da folha recentrava o mapa por cima da mola.
   const padding = {
     top: insets.top + 196,
     right: 0,
     left: 0,
     bottom: height - (top + snaps[1])
   }
-  // Escala de bairro, como o design (uns 2 km na largura da tela), aberta o
-  // bastante para os cinco primeiros bares caberem, sem passar do raio.
-  const spread = Math.max(0, ...bars.slice(0, 5).map((bar) => bar.distance_km))
-  const across = Math.min(radiusKm * 2.2, Math.max(1.8, spread * 2.5))
-  const kmPerPoint = across / width
+  // A câmera abre no raio da pessoa (20d): o círculo inteiro na faixa livre
+  // entre os chips e a folha, com folga. Nunca a cidade inteira. A região é
+  // da tela toda, com o centro deslocado para o círculo cair na faixa: o
+  // `mapPadding` e o `edgePadding` do iOS abriam três vezes mais longe.
+  const band = height - padding.top - padding.bottom
+  const metersPerPoint = Math.max(
+    (radiusKm * 2000 * 1.15) / band,
+    (radiusKm * 2000 * 1.15) / width
+  )
+  const shift = height / 2 - (padding.top + band / 2)
+  const cosLat = Math.cos((center.lat * Math.PI) / 180)
   const region = {
-    latitude: center.lat,
+    latitude: center.lat - (shift * metersPerPoint) / 111_000,
     longitude: center.lng,
-    latitudeDelta: (kmPerPoint * (height - padding.top - padding.bottom)) / 111,
-    longitudeDelta:
-      (kmPerPoint * width) / (111.32 * Math.cos((center.lat * Math.PI) / 180))
+    latitudeDelta: (height * metersPerPoint) / 111_000,
+    longitudeDelta: (width * metersPerPoint) / (111_320 * cosLat)
   }
   const map = useRef<MapView>(null)
+  const frameRadius = () =>
+    map.current?.animateToRegion(region, reduced ? 0 : 400)
+  // A região à vista decide grupos, pontos e rótulos (Rodada 20).
+  const [view, setView] = useState<Region>(region)
+  const [selected, setSelected] = useState<string | null>(null)
+  const chosen = bars.find((bar) => bar.id === selected) ?? null
+  const mapBars: MapBar[] = bars.map((bar) => {
+    const game = bar.nextEvent
+    const live = game ? isLive(game, now) : false
+    const later =
+      game && !live && dayKey(now) === dayKey(Date.parse(game.startsAt))
+    return {
+      id: bar.id,
+      name: bar.name,
+      lat: Number(bar.latitude),
+      lng: Number(bar.longitude),
+      live,
+      elite: bar.plan === 'elite',
+      distanceKm: bar.distance_km,
+      next: game ? Date.parse(game.startsAt) : Number.POSITIVE_INFINITY,
+      label:
+        bar.id === selected && game && !live
+          ? `${bar.name} · ${formatTime(game.startsAt)}`
+          : later && game
+            ? formatTime(game.startsAt)
+            : bar.name
+    }
+  })
+  const layers = mapLayers(mapBars, view, { width, height }, selected)
+  const tapLayer = (layer: Layer) => {
+    haptic.select()
+    if (layer.kind === 'group') {
+      // Aproxima com o grupo na faixa livre, não no meio da tela (atrás da
+      // folha), com o mesmo deslocamento da câmera de abertura.
+      const next = zoomInto(layer, view)
+      return map.current?.animateToRegion(
+        {
+          ...next,
+          latitude: next.latitude - (shift * next.latitudeDelta) / height
+        },
+        reduced ? 0 : 350
+      )
+    }
+    const bar = bars.find((b) => b.id === layer.id)
+    if (!bar) return
+    if (layer.kind === 'selected') return open(bar)
+    setSelected(bar.id)
+    settle(snaps[1])
+  }
   // O mapa só aceita `animateToRegion` depois de pronto: a localização que
   // chegava antes disso se perdia, e o Explorar ficava na cidade do perfil.
   const [mapReady, setMapReady] = useState(false)
@@ -206,7 +274,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const framed = search.data !== undefined
   // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, mapa pronto e primeira resposta
   useEffect(() => {
-    if (mapReady) map.current?.animateToRegion(region, reduced ? 0 : 400)
+    if (mapReady) frameRadius()
   }, [mapReady, center.lat, center.lng, framed])
   // "Ver no mapa" da busca (19b): leva o mapa até o bairro escolhido.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando o foco muda
@@ -232,7 +300,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     if (!mapReady || search.isPlaceholderData) return
     if (framedRadius.current === radiusKm) return
     framedRadius.current = radiusKm
-    map.current?.animateToRegion(region, reduced ? 0 : 400)
+    frameRadius()
   }, [mapReady, search.data, radiusKm])
 
   // Enquanto a busca nova não chega, a lista de antes fica esmaecida: diz que
@@ -345,8 +413,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const initials = initialsOf(user?.name ?? '')
   const place = district ?? city.data?.name ?? 'São Paulo'
 
-  const title =
-    todayCount > 0
+  const title = chosen
+    ? chosen.name
+    : todayCount > 0
       ? `${todayCount} ${todayCount === 1 ? 'bar' : 'bares'} com jogo hoje`
       : bars.length > 0
         ? `${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} com jogo`
@@ -363,9 +432,27 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       <MapView
         ref={map}
         onMapReady={() => setMapReady(true)}
+        // A região que o mapa informa vem com o `mapPadding` misturado; os
+        // cantos de verdade da tela vêm de `getMapBoundaries`.
+        onRegionChangeComplete={() => {
+          map.current
+            ?.getMapBoundaries()
+            .then(({ northEast: ne, southWest: sw }) =>
+              setView({
+                latitude: (ne.latitude + sw.latitude) / 2,
+                longitude: (ne.longitude + sw.longitude) / 2,
+                latitudeDelta: ne.latitude - sw.latitude,
+                longitudeDelta: ne.longitude - sw.longitude
+              })
+            )
+            .catch(() => {})
+        }}
+        // Tocar no mapa fora de um marcador solta o bar escolhido.
+        onPress={(e) => {
+          if (e.nativeEvent.action !== 'marker-press') setSelected(null)
+        }}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        mapPadding={padding}
         mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
         customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
         userInterfaceStyle={palette.dark ? 'dark' : 'light'}
@@ -386,20 +473,57 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             <MeDot />
           </Marker>
         ) : null}
-        {bars.map((bar) => (
-          <Marker
-            key={bar.id}
-            coordinate={{
-              latitude: Number(bar.latitude),
-              longitude: Number(bar.longitude)
-            }}
-            anchor={{ x: 0.5, y: 1 }}
-            tracksViewChanges={false}
-            onPress={() => open(bar)}
-          >
-            <Pin bar={bar} now={now} />
-          </Marker>
-        ))}
+        {layers.map((layer) =>
+          layer.kind === 'group' ? (
+            <Marker
+              key={layer.id}
+              coordinate={{ latitude: layer.lat, longitude: layer.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              onPress={() => tapLayer(layer)}
+            >
+              <MapGroup count={layer.count} live={layer.live} />
+            </Marker>
+          ) : (
+            <Marker
+              // O tipo vai na chave: com `tracksViewChanges` desligado, o
+              // desenho só muda quando o marcador é outro.
+              key={`${layer.kind}:${layer.id}`}
+              coordinate={{ latitude: layer.bar.lat, longitude: layer.bar.lng }}
+              anchor={
+                layer.kind === 'point' ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 1 }
+              }
+              tracksViewChanges={false}
+              // Com um bar tocado, os outros apagam para 45%.
+              opacity={selected && layer.kind !== 'selected' ? 0.45 : 1}
+              zIndex={
+                layer.kind === 'selected' ? 3 : layer.kind === 'label' ? 2 : 1
+              }
+              onPress={() => tapLayer(layer)}
+            >
+              {layer.kind === 'point' ? (
+                <MapPoint
+                  live={layer.bar.live}
+                  elite={layer.bar.elite}
+                  dark={palette.dark}
+                />
+              ) : (
+                <PinTag
+                  label={layer.bar.label}
+                  kind={
+                    layer.kind === 'selected'
+                      ? 'idle'
+                      : layer.bar.live
+                        ? 'live'
+                        : layer.bar.label === layer.bar.name
+                          ? 'idle'
+                          : 'later'
+                  }
+                />
+              )}
+            </Marker>
+          )
+        )}
       </MapView>
 
       {/* O papel cobre o topo e se desfaz até o mapa, como no design: opaco
@@ -569,6 +693,27 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           sheet
         ]}
       >
+        {/* Volta para o seu raio (20a): fica acima da folha e anda com ela. */}
+        {expanded ? null : (
+          <ScalePress
+            accessibilityRole="button"
+            accessibilityLabel="Voltar para perto de você"
+            containerStyle={styles.recenter}
+            onPress={() => {
+              setSelected(null)
+              frameRadius()
+            }}
+          >
+            <Glass tone={glassTone} interactive style={styles.round}>
+              <Icon
+                name="pin"
+                size={18}
+                color={palette.ink}
+                accent={palette.dark ? ACID : LIVE}
+              />
+            </Glass>
+          </ScalePress>
+        )}
         <GestureDetector gesture={pan}>
           <View>
             <View
@@ -585,6 +730,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 accessibilityRole="button"
                 hitSlop={10}
                 onPress={() => {
+                  // Com um bar tocado, "Lista" volta para todos.
+                  if (chosen) setSelected(null)
                   settle(expanded ? snaps[1] : 0)
                 }}
                 style={styles.listButton}
@@ -645,18 +792,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 </Text>
               ) : (
                 <Animated.View style={[{ gap: 12 }, listFade]}>
-                  {bars.map((bar, index) =>
-                    index === 0 ? (
+                  {/* Bar tocado no mapa (20c): a folha troca para o card dele. */}
+                  {chosen ? (
+                    <Animated.View key={chosen.id} entering={SWAP}>
                       <BarTicket
-                        key={bar.id}
-                        bar={bar}
+                        bar={chosen}
                         now={now}
                         palette={palette}
-                        favorite={favorites.ids.has(bar.id)}
-                        onFavorite={() => favorites.toggle(bar.id)}
-                        onPress={() => open(bar)}
+                        favorite={favorites.ids.has(chosen.id)}
+                        onFavorite={() => favorites.toggle(chosen.id)}
+                        onPress={() => open(chosen)}
                       />
-                    ) : (
+                    </Animated.View>
+                  ) : (
+                    bars.map((bar) => (
                       <BarRow
                         key={bar.id}
                         bar={bar}
@@ -664,7 +813,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                         palette={palette}
                         onPress={() => open(bar)}
                       />
-                    )
+                    ))
                   )}
                 </Animated.View>
               )}
@@ -726,6 +875,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
 const CHIP_OUT = FadeOut.duration(120)
 
 const styles = StyleSheet.create({
+  recenter: { position: 'absolute', top: -58, right: 16 },
   filterButton: {
     width: 40,
     height: 40,

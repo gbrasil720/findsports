@@ -441,6 +441,16 @@ invente layout que o projeto não tem.
     perto (`pubs.search` com `teamIds`) e conquista desbloqueada. As abas são Tudo, Jogos e
     Conquistas: amigos, ranking e comunidades do design ainda não existem. "Lido" fica no
     aparelho. Não há notificação no celular.
+- **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
+  60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
+  vermelho se ao vivo, acid se Elite) ou rótulo (só os de maior prioridade que cabem sem
+  encostar: ao vivo, Elite, mais perto, próximo jogo; longe nenhum, médio até 3, perto
+  todos que couberem). Tocar num bar o seleciona: os outros apagam para 45% e a folha
+  troca para o card dele; tocar no mapa solta. Contas em `lib/map-layers.ts`, sobre os
+  cantos reais da tela (`getMapBoundaries`). A câmera abre no raio da pessoa, com a
+  região da tela toda e o centro deslocado para a faixa livre: `mapPadding` e
+  `edgePadding` no iOS abriam três vezes mais longe. A folha abre mais baixa (título e
+  um card) e o botão de alfinete acima dela volta ao raio.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
