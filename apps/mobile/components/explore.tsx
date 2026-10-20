@@ -237,7 +237,7 @@ export function Chip({
   onPress
 }: {
   label: string
-  icon?: 'tv' | 'outdoor'
+  icon?: 'tv' | 'outdoor' | 'sound' | 'ticket' | 'premiere' | 'person'
   live?: boolean
   on: boolean
   palette: Palette

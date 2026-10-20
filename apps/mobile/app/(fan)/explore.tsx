@@ -42,10 +42,25 @@ import { Glass } from '@/components/glass'
 import { EASE, haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import { ACID, Icon, INK, LIVE, text, useStatusBar } from '@/components/ui'
+import {
+  ACID,
+  Icon,
+  INK,
+  LIVE,
+  PAPER,
+  text,
+  useStatusBar
+} from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { greeting, isLive, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
+import {
+  activeCount,
+  applyShortcut,
+  defaultShortcuts,
+  shortcutLabel,
+  shortcutOn
+} from '@/lib/filters'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
@@ -56,9 +71,6 @@ import { trpc } from '@/lib/trpc'
  * é o nativo: Apple Maps apagado no iOS, Google Maps com as cores da Onside
  * no Android (`lib/map-style.ts`).
  */
-
-const TELAO = 1
-const AREA_EXTERNA = 4
 
 /** O dia de hoje em Brasília, como `pubs.search` recebe (`AAAA-MM-DD`). */
 const today = () =>
@@ -82,29 +94,23 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // perfil ou São Paulo. Localização, filtros e folha vêm do estado que as
   // abas dividem (a aba "Você" mostra este mesmo Explorar sob o menu).
   const state = useExploreState()
-  const { device, district, liveOnly, todayOnly, amenities } = state
+  const { device, district, liveOnly, filters } = state
   const city = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
     meta: { errorToast: false }
   })
   const center = searchCenter(device, city.data)
-  const radiusKm = state.radius ?? session.data?.user.searchRadiusKm ?? 3
+  const radiusKm = filters.radius ?? session.data?.user.searchRadiusKm ?? 3
   // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
   const wider = Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)
-
-  const toggleAmenity = (id: number) =>
-    state.setAmenities(
-      amenities.includes(id)
-        ? amenities.filter((item) => item !== id)
-        : [...amenities, id]
-    )
 
   const search = useQuery({
     ...trpc.pubs.search.queryOptions({
       ...center,
       radiusKm,
-      date: todayOnly ? today() : undefined,
-      amenities: amenities.length ? amenities : undefined,
+      date: filters.date ?? undefined,
+      sportId: filters.sportId ?? undefined,
+      amenities: filters.amenities.length ? filters.amenities : undefined,
       limit: 30
     }),
     enabled: device !== null || !city.isPending,
@@ -131,6 +137,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   ).length
 
   const favorites = useFavorites()
+  // Atalhos do topo do mapa (19e): os da pessoa, ou os padrão com o esporte
+  // principal dela.
+  const sportList = useQuery({
+    ...trpc.pubs.getSports.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const prefs = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const sports = sportList.data ?? []
+  const shortcuts =
+    state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)
+  const active = activeCount(filters)
 
   const open = (bar: SearchBar) =>
     router.push({
@@ -454,33 +474,70 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         style={[styles.chips, { top: insets.top + 159 }]}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
       >
-        <Chip
-          live
-          label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
-          on={liveOnly}
-          palette={palette}
-          onPress={() => state.setLiveOnly(!liveOnly)}
-        />
-        <Chip
-          label="Hoje"
-          on={todayOnly}
-          palette={palette}
-          onPress={() => state.setTodayOnly(!todayOnly)}
-        />
-        <Chip
-          icon="tv"
-          label="Telão"
-          on={amenities.includes(TELAO)}
-          palette={palette}
-          onPress={() => toggleAmenity(TELAO)}
-        />
-        <Chip
-          icon="outdoor"
-          label="Área externa"
-          on={amenities.includes(AREA_EXTERNA)}
-          palette={palette}
-          onPress={() => toggleAmenity(AREA_EXTERNA)}
-        />
+        {/* Todos os filtros (19d), com quantos estão ligados. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={active ? `Filtros, ${active} ligados` : 'Filtros'}
+          onPress={() => {
+            haptic.select()
+            router.push('/filtros')
+          }}
+          // No escuro o acid assume o destaque, como no design (19i).
+          style={[
+            styles.filterButton,
+            palette.dark && { backgroundColor: ACID }
+          ]}
+        >
+          <Icon
+            name="sliders"
+            size={19}
+            color={palette.dark ? INK : PAPER}
+            accent={palette.dark ? INK : ACID}
+          />
+          {active ? (
+            <View
+              style={[
+                styles.filterBadge,
+                palette.dark && { backgroundColor: INK, borderColor: ACID }
+              ]}
+            >
+              <Text
+                style={[
+                  text(10.5, 'Bold', 1.1),
+                  { color: palette.dark ? ACID : INK }
+                ]}
+              >
+                {active}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
+        {/* "Ao vivo" é fixo, e só aparece com jogo rolando (19e). */}
+        {liveCount || liveOnly ? (
+          <Chip
+            live
+            label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
+            on={liveOnly}
+            palette={palette}
+            onPress={() => state.setLiveOnly(!liveOnly)}
+          />
+        ) : null}
+        {shortcuts.map((key) => {
+          const shown = shortcutLabel(key, sports)
+          if (!shown) return null
+          return (
+            <Chip
+              key={key}
+              icon={shown.icon}
+              label={shown.label}
+              on={shortcutOn(key, filters, sports, now)}
+              palette={palette}
+              onPress={() =>
+                state.setFilters(applyShortcut(key, filters, sports, now))
+              }
+            />
+          )
+        })}
       </ScrollView>
 
       <Animated.View
@@ -620,7 +677,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                       hitSlop={12}
                       onPress={() => {
                         haptic.select()
-                        state.setRadius(wider)
+                        state.setFilters({ ...filters, radius: wider })
                       }}
                     >
                       <Text
@@ -646,6 +703,28 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: ACID,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   fade: { position: 'absolute', top: 0, left: 0, right: 0 },
   head: { position: 'absolute', left: 16, right: 16, gap: 12 },
   topRow: {
