@@ -4,6 +4,7 @@ import {
   getLateEntryLabel,
   getRetryableCodes,
   type LateEntryResult,
+  type NotLoggedGame,
   splitLateCodes
 } from '@/domain/code-confirmation'
 import { formatCode } from '@/domain/my-games'
@@ -12,6 +13,10 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 type Props = {
   logLate: (input: { codes: string[] }) => Promise<LateEntryResult[]>
+  /** "Faltou lançar?": quem marcou e ainda não foi lançado, por jogo. */
+  missing?: NotLoggedGame[]
+  /** Depois de lançar, para "Faltou lançar?" se atualizar. */
+  onLogged?: () => void
 }
 
 /** O teto do servidor (`LATE_ENTRY_MAX_CODES`). */
@@ -22,7 +27,7 @@ const MAX_CODES = 80
  * depois do jogo. O dono digita ou cola a lista; cada código vira visita na
  * data do jogo. Os que não resolvem voltam para a caixa, para corrigir a letra.
  */
-export function LateCodeEntry({ logLate }: Props) {
+export function LateCodeEntry({ logLate, missing = [], onLogged }: Props) {
   const fieldId = useId()
   const hintId = `${fieldId}-hint`
   const [draft, setDraft] = useState('')
@@ -34,6 +39,7 @@ export function LateCodeEntry({ logLate }: Props) {
     onSuccess: (answer) => {
       setResults(answer)
       setDraft(getRetryableCodes(answer).map(formatCode).join('\n'))
+      onLogged?.()
     }
   })
   const logged = results?.filter(({ status }) => status === 'logged') ?? []
@@ -58,6 +64,8 @@ export function LateCodeEntry({ logLate }: Props) {
         Digite os códigos que a equipe anotou, um por linha. Vale até 48 h
         depois do fim do jogo, e cada código conta como visita no dia do jogo.
       </p>
+
+      {missing.length ? <MissingList games={missing} /> : null}
 
       <form method="post" onSubmit={handleSubmit} noValidate className="mt-4">
         <label htmlFor={fieldId} className="onside-label">
@@ -162,6 +170,45 @@ function ResultList({
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+/**
+ * Quem marcou que ia e não tem código lançado, só pelo nome: o código está na
+ * comanda. Não usa o que o torcedor respondeu no pós-jogo.
+ */
+function MissingList({ games }: { games: NotLoggedGame[] }) {
+  return (
+    <div className="onside-callout mt-4">
+      <div className="w-full">
+        <p className="font-semibold text-sm">Faltou lançar?</p>
+        <p className="mt-1 text-[var(--onside-muted)] text-xs">
+          Marcaram que iam e ainda não têm código lançado. Confira nas comandas.
+        </p>
+        <ul className="mt-3 space-y-3">
+          {games.map((game) => {
+            const startsAt = new Date(game.startsAt)
+            const closesAt = new Date(game.closesAt)
+            return (
+              <li key={game.id} className="text-sm">
+                <p className="font-semibold">
+                  {game.participantFreeText ?? game.championship} ·{' '}
+                  {formatDayLabel(startsAt)}, {formatEventTime(startsAt)}
+                </p>
+                <p className="[overflow-wrap:anywhere]">
+                  {game.names.join(', ')}
+                </p>
+                <p className="text-[var(--onside-muted)] text-xs">
+                  Dá para lançar até {/* "Hoje" e "Amanhã" no meio da frase. */}
+                  {formatDayLabel(closesAt).toLowerCase()},{' '}
+                  {formatEventTime(closesAt)}.
+                </p>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
     </div>
   )
 }
