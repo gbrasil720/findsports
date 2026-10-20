@@ -66,11 +66,12 @@ import {
   shortcutOn
 } from '@/lib/filters'
 import {
+  buildIndex,
+  expandGroup,
   type Layer,
   type MapBar,
   mapLayers,
-  type Region,
-  zoomInto
+  type Region
 } from '@/lib/map-layers'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
@@ -244,13 +245,22 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             : bar.name
     }
   })
-  const layers = mapLayers(mapBars, view, { width, height }, selected)
+  // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
+  const index = buildIndex(mapBars.filter((b) => b.id !== selected))
+  const chosenBar = mapBars.find((b) => b.id === selected) ?? null
+  const layers = mapLayers(
+    index,
+    chosenBar,
+    view,
+    { width, height },
+    insets.top + 180
+  )
   const tapLayer = (layer: Layer) => {
     haptic.select()
     if (layer.kind === 'group') {
       // Aproxima com o grupo na faixa livre, não no meio da tela (atrás da
       // folha), com o mesmo deslocamento da câmera de abertura.
-      const next = zoomInto(layer, view)
+      const next = expandGroup(index, layer, view, width)
       return map.current?.animateToRegion(
         {
           ...next,

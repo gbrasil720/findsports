@@ -446,8 +446,10 @@ invente layout que o projeto não tem.
   vermelho se ao vivo, acid se Elite) ou rótulo (só os de maior prioridade que cabem sem
   encostar: ao vivo, Elite, mais perto, próximo jogo; longe nenhum, médio até 3, perto
   todos que couberem). Tocar num bar o seleciona: os outros apagam para 45% e a folha
-  troca para o card dele; tocar no mapa solta. Contas em `lib/map-layers.ts`, sobre os
-  cantos reais da tela (`getMapBoundaries`). A câmera abre no raio da pessoa, com a
+  troca para o card dele; tocar no mapa solta. Grupos pela `supercluster` (tocar abre no zoom em que o
+  grupo se separa) e o resto em `lib/map-layers.ts`, sobre os cantos reais da tela
+  (`getMapBoundaries`); debaixo do cabeçalho não sai rótulo. A camada nativa do MapLibre
+  faria isso sozinha, mas sai do Expo Go: WEB-417, sem compromisso. A câmera abre no raio da pessoa, com a
   região da tela toda e o centro deslocado para a faixa livre: `mapPadding` e
   `edgePadding` no iOS abriam três vezes mais longe. A folha abre mais baixa (título e
   um card) e o botão de alfinete acima dela volta ao raio.

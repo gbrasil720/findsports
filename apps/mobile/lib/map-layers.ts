@@ -1,8 +1,14 @@
+import Supercluster from 'supercluster'
+
 /*
  * Mapa sem amontoado (Rodada 20 do design, 20a a 20d): o que cada bar vira
- * na tela. Grupo (bares a menos de ~60 px), ponto (o padrão) ou rótulo (só os
+ * na tela. Grupo (bares a menos de ~60 pt), ponto (o padrão) ou rótulo (só os
  * de maior prioridade que cabem sem encostar). O bar tocado é o selecionado.
- * Contas puras sobre a região visível; a tela fica em `app/(fan)/explore.tsx`.
+ * Os grupos vêm da `supercluster`, por nível de zoom; o resto são contas
+ * puras sobre a região visível. A tela fica em `app/(fan)/explore.tsx`.
+ *
+ * A camada nativa do mapa (MapLibre com `cluster: true` e colisão de
+ * símbolos) faria o mesmo sem esta conta, mas sai do Expo Go: WEB-417.
  */
 
 export type Region = {
@@ -30,16 +36,16 @@ export type Layer =
   | {
       kind: 'group'
       id: string
+      clusterId: number
       lat: number
       lng: number
       count: number
       live: number
-      ids: string[]
     }
   | { kind: 'point' | 'label' | 'selected'; id: string; bar: MapBar }
 
-/** Distância na tela abaixo da qual os bares viram um grupo. */
-export const GROUP_PX = 60
+/** Distância na tela, em pt, abaixo da qual os bares viram um grupo. */
+export const GROUP_PT = 60
 
 /** Ao vivo, depois Elite, depois o mais perto, depois o próximo jogo. */
 export function byPriority(a: MapBar, b: MapBar) {
@@ -66,6 +72,39 @@ export function labelBudget(r: Region) {
   return Number.POSITIVE_INFINITY
 }
 
+/** O zoom da escala da web (tile de 256 pt) para a largura da tela. */
+export const zoomOf = (r: Region, width: number) =>
+  Math.log2((360 * width) / (256 * r.longitudeDelta))
+
+type Props = { bar: MapBar }
+type GroupProps = { live: number }
+
+export type BarIndex = Supercluster<Props, GroupProps>
+
+/**
+ * O índice dos grupos. `extent` 512 por tile de 256 pt: o raio em unidades
+ * do índice é o dobro do raio em pt.
+ */
+export function buildIndex(bars: MapBar[]): BarIndex {
+  const index = new Supercluster<Props, GroupProps>({
+    radius: GROUP_PT * 2,
+    extent: 512,
+    maxZoom: 19,
+    map: (props) => ({ live: props.bar.live ? 1 : 0 }),
+    reduce: (acc, props) => {
+      acc.live += props.live
+    }
+  })
+  index.load(
+    bars.map((bar) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [bar.lng, bar.lat] },
+      properties: { bar }
+    }))
+  )
+  return index
+}
+
 type Box = { x1: number; y1: number; x2: number; y2: number }
 const touches = (a: Box, b: Box) =>
   a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2
@@ -76,86 +115,90 @@ function labelBox(x: number, y: number, label: string): Box {
   return { x1: x - w / 2, y1: y - 46, x2: x + w / 2, y2: y - 12 }
 }
 
+/**
+ * O que desenhar. `index` é o dos bares sem o selecionado (que nunca entra
+ * em grupo e fica por cima de tudo).
+ */
 export function mapLayers(
-  bars: MapBar[],
+  index: BarIndex,
+  selected: MapBar | null,
   region: Region,
   size: { width: number; height: number },
-  selectedId: string | null
+  /** Faixa coberta pelo cabeçalho e pelos chips: rótulo ali não se lê. */
+  covered = 0
 ): Layer[] {
   const left = region.longitude - region.longitudeDelta / 2
   const topLat = region.latitude + region.latitudeDelta / 2
-  const at = (b: { lat: number; lng: number }) => ({
-    x: ((b.lng - left) / region.longitudeDelta) * size.width,
-    y: ((topLat - b.lat) / region.latitudeDelta) * size.height
+  const at = (lat: number, lng: number) => ({
+    x: ((lng - left) / region.longitudeDelta) * size.width,
+    y: ((topLat - lat) / region.latitudeDelta) * size.height
   })
-
-  const sorted = [...bars].sort(byPriority)
-  const selected = sorted.find((b) => b.id === selectedId) ?? null
-  // O selecionado nunca entra em grupo: fica por cima de tudo.
-  const rest = sorted.filter((b) => b !== selected)
-
-  const groups: { x: number; y: number; members: MapBar[] }[] = []
-  for (const bar of rest) {
-    const p = at(bar)
-    const near = groups.find((g) => Math.hypot(g.x - p.x, g.y - p.y) < GROUP_PX)
-    if (near) near.members.push(bar)
-    else groups.push({ ...p, members: [bar] })
-  }
+  // Um pouco além da borda: o bar que entra arrastando já vem desenhado.
+  const pad = 0.25
+  const features = index.getClusters(
+    [
+      left - region.longitudeDelta * pad,
+      region.latitude - region.latitudeDelta * (0.5 + pad),
+      left + region.longitudeDelta * (1 + pad),
+      topLat + region.latitudeDelta * pad
+    ],
+    Math.round(zoomOf(region, size.width))
+  )
 
   const layers: Layer[] = []
   const taken: Box[] = []
   if (selected) {
-    const p = at(selected)
+    const p = at(selected.lat, selected.lng)
     taken.push(labelBox(p.x, p.y, selected.label))
   }
-  // Grupos ocupam a tela antes dos rótulos.
-  for (const g of groups)
-    if (g.members.length > 1)
-      taken.push({ x1: g.x - 22, y1: g.y - 22, x2: g.x + 22, y2: g.y + 22 })
-
-  let budget = selected ? 0 : labelBudget(region)
-  // Com um bar tocado, os outros só aparecem como ponto (apagados).
-  for (const g of groups) {
-    const [first] = g.members
-    if (!first) continue
-    if (g.members.length > 1) {
-      const lat = g.members.reduce((s, b) => s + b.lat, 0) / g.members.length
-      const lng = g.members.reduce((s, b) => s + b.lng, 0) / g.members.length
+  const singles: MapBar[] = []
+  for (const f of features) {
+    const [lng = 0, lat = 0] = f.geometry.coordinates
+    if ('cluster' in f.properties && f.properties.cluster) {
+      const p = at(lat, lng)
+      taken.push({ x1: p.x - 22, y1: p.y - 22, x2: p.x + 22, y2: p.y + 22 })
       layers.push({
         kind: 'group',
-        id: `group:${g.members
-          .map((b) => b.id)
-          .sort()
-          .join(',')}`,
+        id: `group:${f.properties.cluster_id}`,
+        clusterId: f.properties.cluster_id,
         lat,
         lng,
-        count: g.members.length,
-        live: g.members.filter((b) => b.live).length,
-        ids: g.members.map((b) => b.id)
+        count: f.properties.point_count,
+        live: f.properties.live
       })
-      continue
-    }
-    const box = labelBox(g.x, g.y, first.label)
-    if (budget > 0 && !taken.some((t) => touches(t, box))) {
+    } else singles.push((f.properties as Props).bar)
+  }
+
+  // Rótulo por prioridade enquanto houver vaga e não encostar; o resto é
+  // ponto. Com um bar tocado, nenhum outro ganha rótulo.
+  let budget = selected ? 0 : labelBudget(region)
+  for (const bar of singles.sort(byPriority)) {
+    const p = at(bar.lat, bar.lng)
+    const box = labelBox(p.x, p.y, bar.label)
+    if (budget > 0 && box.y1 > covered && !taken.some((t) => touches(t, box))) {
       taken.push(box)
       budget -= 1
-      layers.push({ kind: 'label', id: first.id, bar: first })
-    } else layers.push({ kind: 'point', id: first.id, bar: first })
+      layers.push({ kind: 'label', id: bar.id, bar })
+    } else layers.push({ kind: 'point', id: bar.id, bar })
   }
   if (selected)
     layers.push({ kind: 'selected', id: selected.id, bar: selected })
   return layers
 }
 
-/** Região que aproxima o grupo até os bares se separarem. */
-export function zoomInto(
-  group: { lat: number; lng: number },
-  region: Region
+/** A região que abre o grupo: o zoom em que ele se separa, centrado nele. */
+export function expandGroup(
+  index: BarIndex,
+  group: { clusterId: number; lat: number; lng: number },
+  region: Region,
+  width: number
 ): Region {
+  const zoom = Math.min(index.getClusterExpansionZoom(group.clusterId), 19)
+  const scale = 2 ** (zoom - zoomOf(region, width))
   return {
     latitude: group.lat,
     longitude: group.lng,
-    latitudeDelta: Math.max(region.latitudeDelta / 3, 0.002),
-    longitudeDelta: Math.max(region.longitudeDelta / 3, 0.002)
+    latitudeDelta: region.latitudeDelta / scale,
+    longitudeDelta: region.longitudeDelta / scale
   }
 }
