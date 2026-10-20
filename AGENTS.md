@@ -484,7 +484,10 @@ invente layout que o projeto não tem.
   de cada mudança na tela em foco: a aba troca no nativo, sem esperar o JS (com a
   aba desabilitada e o JS fotografando no toque, a lente da barra ia, voltava e ia
   de novo no aparelho), e uma segunda cópia viva montava outro mapa, que recarregava.
-  Ao sair da aba "Você", a pilha dela volta ao menu (`voce/_layout.tsx`). O menu só destaca o item da tela aberta
+  Ao sair da aba "Você", a pilha dela volta ao menu (`voce/_layout.tsx`). A barra leva
+  `rejectStaleNavStateUpdates` (via `unstable_nativeProps`): sem ele, no aparelho, um
+  pedido de seleção antigo do JS chegava depois do toque e a lente ia, voltava e ia
+  de novo. O simulador não mostra esse pulo; confira no celular. O menu só destaca o item da tela aberta
   (`MENU_SCREENS`). Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos, ou rode
