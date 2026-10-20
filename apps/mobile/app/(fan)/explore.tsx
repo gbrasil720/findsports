@@ -501,6 +501,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             tracksViewChanges
             // Por baixo dos bares, como no design.
             zIndex={0}
+            // O halo é largo (74 pt): tocar nele passa para o mapa, que solta
+            // o bar tocado, em vez de engolir o toque.
+            onPress={() => setSelected(null)}
           >
             <MeDot />
           </Marker>
@@ -516,11 +519,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           { width, height },
           insets.top + 236
         ).map((hood) => (
-          <Marker
+          <MapMarker
             key={`hood:${hood.name}`}
+            draw={`${palette.dark}`}
             coordinate={{ latitude: hood.lat, longitude: hood.lng }}
             anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
             tappable={false}
             zIndex={0}
           >
@@ -536,30 +539,29 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             >
               {hood.name}
             </Text>
-          </Marker>
+          </MapMarker>
         ))}
         {layers.map((layer) =>
           layer.kind === 'group' ? (
-            <Marker
+            <MapMarker
               key={layer.id}
+              draw={`${layer.count}:${layer.live}`}
               coordinate={{ latitude: layer.lat, longitude: layer.lng }}
               anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
               zIndex={2}
               onPress={() => tapLayer(layer)}
             >
               <MapGroup count={layer.count} live={layer.live} />
-            </Marker>
+            </MapMarker>
           ) : (
-            <Marker
-              // O tipo vai na chave: com `tracksViewChanges` desligado, o
-              // desenho só muda quando o marcador é outro.
-              key={`${layer.kind}:${layer.id}`}
+            <MapMarker
+              key={layer.id}
+              // Mudou o desenho (ponto virou rótulo, o texto, o tema): redesenha.
+              draw={`${layer.kind}:${layer.bar.label}:${layer.bar.live}:${palette.dark}`}
               coordinate={{ latitude: layer.bar.lat, longitude: layer.bar.lng }}
               anchor={
                 layer.kind === 'point' ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 1 }
               }
-              tracksViewChanges={false}
               // Com um bar tocado, os outros apagam para 45%.
               opacity={selected && layer.kind !== 'selected' ? 0.45 : 1}
               zIndex={
@@ -587,7 +589,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   big={layer.kind === 'selected'}
                 />
               )}
-            </Marker>
+            </MapMarker>
           )
         )}
       </MapView>
@@ -1095,3 +1097,24 @@ const styles = StyleSheet.create({
     paddingVertical: 8
   }
 })
+
+/**
+ * Marcador que redesenha quando muda (`draw`). Com `tracksViewChanges`
+ * desligado o iOS guarda uma foto do desenho: tirada cedo demais, o
+ * marcador novo aparecia em branco até o mapa mexer, e um rótulo que mudava
+ * de texto ficava com o antigo. Fica acompanhando só um instante depois de
+ * nascer ou mudar.
+ */
+function MapMarker({
+  draw,
+  ...props
+}: React.ComponentProps<typeof Marker> & { draw: string }) {
+  const [tracking, setTracking] = useState(true)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: redesenha quando `draw` muda
+  useEffect(() => {
+    setTracking(true)
+    const stop = setTimeout(() => setTracking(false), 500)
+    return () => clearTimeout(stop)
+  }, [draw])
+  return <Marker {...props} tracksViewChanges={tracking} />
+}

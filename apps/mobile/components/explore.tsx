@@ -199,7 +199,9 @@ export function MapPoint({
   dark: boolean
 }) {
   return (
-    <View style={styles.pointHit}>
+    // `collapsable`: sem ele o React Native achata a caixa de toque (44 pt)
+    // e sobra só o quadradinho de 18 pt para acertar.
+    <View style={styles.pointHit} collapsable={false}>
       {live ? <View style={styles.pointHalo} /> : null}
       <View
         style={[
@@ -219,7 +221,7 @@ export function MapGroup({ count, live }: { count: number; live: number }) {
   // Grupo grande (5 ou mais) é um pouco maior, como na 20a.
   const big = count >= 5
   return (
-    <View style={styles.groupHit}>
+    <View style={styles.groupHit} collapsable={false}>
       <View style={[styles.group, big && styles.groupBig]}>
         <Text style={[styles.groupText, big && { fontSize: 22 }]}>{count}</Text>
       </View>
