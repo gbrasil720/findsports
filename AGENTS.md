@@ -230,6 +230,18 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 
+### Código do balcão pela comanda (WEB-412)
+
+Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
+no card "Oferta da casa" do `/admin` (Na hora / Depois do jogo, pela comanda), por
+`pub.updateCodeConfirmation`. Ligada, a tela do código do torcedor fala com o garçom
+("anote na comanda"), o card traz o recado pronto para a equipe, e o dono lança os
+códigos anotados em `/admin/validate` por `reservationValidation.logLate`, até 48 h
+depois do fim do jogo (`getLateEntryWindow`). O uso fica com `late = true` e `used_at` na
+hora do lançamento: quem conta visita usa a data do jogo (`event.starts_at`). A Onside não confere se o cliente estava no bar: fraude é risco do bar,
+decisão do dono. Bar "na hora" não lança depois. O alfabeto do código não tem O, 0,
+I, 1 nem L (`CODE_ALPHABET`), para não confundir anotado à mão.
+
 ### UI / Styling
 
 Global styles and design tokens: `packages/ui/src/styles/globals.css`. Tailwind v4.
