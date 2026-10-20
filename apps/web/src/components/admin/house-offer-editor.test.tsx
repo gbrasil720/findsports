@@ -41,6 +41,38 @@ function renderizar(
 }
 
 describe('HouseOfferEditor', () => {
+  test('no Elite, escolhe como o código é conferido; pela comanda traz o recado à equipe (WEB-412)', () => {
+    const render = (later: boolean) =>
+      new JSDOM(
+        renderToStaticMarkup(
+          <HouseOfferEditor
+            houseOffer="Chopp em dobro"
+            plan={{ status: 'ready', plan: 'elite', standing: 'current' }}
+            isSaving={false}
+            saveError={null}
+            onSave={async () => undefined}
+            codeConfirmation={{
+              later,
+              isSaving: false,
+              saveError: null,
+              onChange: () => {}
+            }}
+          />
+        )
+      ).window.document
+    const now = render(false)
+    expect(now.body.textContent).toContain('Como o código é conferido')
+    expect(now.body.textContent).toContain('Depois do jogo, pela comanda')
+    expect(now.body.textContent).not.toContain('Recado para a equipe')
+
+    const later = render(true).body.textContent ?? ''
+    expect(later).toContain('Recado para a equipe')
+    expect(later).toContain('ganha a oferta da casa: Chopp em dobro.')
+    expect(
+      render(true).querySelector('a[href="/admin/validate"]')
+    ).not.toBeNull()
+  })
+
   test('sem Elite não oferece campo e aponta para os planos', () => {
     const doc = renderizar(
       { status: 'ready', plan: 'pro', standing: 'current' },

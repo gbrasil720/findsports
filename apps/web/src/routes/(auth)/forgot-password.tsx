@@ -11,6 +11,7 @@ import { AuthInputField } from '@/components/auth-input-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 /**
@@ -22,17 +23,14 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 const REDIRECT_APOS_TOKEN = '/reset-password'
 
 export const Route = createFileRoute('/(auth)/forgot-password')({
-  head: () => ({
-    meta: [
-      { title: 'Recuperar senha — Onside' },
-      {
-        name: 'description',
-        content:
-          'Receba um link para definir uma nova senha da sua conta Onside.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/forgot-password',
+      title: 'Recuperar senha — Onside',
+      description:
+        'Receba um link para definir uma nova senha da sua conta Onside.',
+      indexable: false
+    }),
   component: ForgotPasswordPage
 })
 
@@ -102,10 +100,10 @@ function ForgotPasswordPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Recuperação de acesso
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           ESQUECEU?{' '}
           <span className="text-[var(--onside-acid)]">SEM DRAMA.</span>
-        </h2>
+        </p>
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
           Mandamos um link no seu e-mail e você volta a campo em um minuto.
         </p>

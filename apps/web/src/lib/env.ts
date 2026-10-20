@@ -1,5 +1,5 @@
 import { createEnv } from '@t3-oss/env-core'
-import { z } from 'zod'
+import * as z from 'zod/mini'
 
 /**
  * Variáveis de ambiente do cliente.
@@ -28,6 +28,13 @@ import { z } from 'zod'
  * inteira não abre" — regressão, não proteção. Só entra como obrigatório o
  * que, faltando, não deixa nada de pé.
  *
+ * ## Por que `zod/mini`
+ *
+ * Este módulo entra no JavaScript inicial de toda página (o PostHog e o aviso
+ * de cookies o leem). O `zod` clássico arrasta a biblioteca inteira, uns 64 KB
+ * minificados no chunk de entrada; o `zod/mini` só traz o que o esquema usa.
+ * As regras são as mesmas, escritas com funções em vez de métodos.
+ *
  * ## Como acrescentar
  *
  * Declare no esquema E em `runtimeEnv`. O objeto é escrito à mão de
@@ -46,30 +53,30 @@ export const env = createEnv({
      *
      * Não é segredo: substituiu o par Google Maps (`VITE_GOOGLE_MAPS_*`).
      */
-    VITE_MAP_TILES_URL: z.url().optional(),
+    VITE_MAP_TILES_URL: z.optional(z.url()),
 
     /**
      * Projeto do PostHog. Ausente = sem analytics, que é o estado normal em
      * desenvolvimento. `initPostHog` já trata.
      */
-    VITE_POSTHOG_KEY: z.string().min(1).optional(),
+    VITE_POSTHOG_KEY: z.optional(z.string().check(z.minLength(1))),
 
     /** Região da instância. O padrão é o mesmo que estava embutido no código. */
-    VITE_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
+    VITE_POSTHOG_HOST: z._default(z.url(), 'https://eu.i.posthog.com'),
 
     /**
      * Site key do Cloudflare Turnstile (pública). Ausente = sem widget, que é
      * o estado de dev e do E2E; o servidor só exige o token quando tem
      * `TURNSTILE_SECRET_KEY`.
      */
-    VITE_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    VITE_TURNSTILE_SITE_KEY: z.optional(z.string().check(z.minLength(1))),
 
     /**
      * Só da suíte E2E (`apps/e2e/env.ts`): mostra o aviso de cookies em
      * `vite dev`, onde não há análise, para a suíte conseguir testá-lo. O
      * PostHog continua desligado; ver `consentBannerEnabled`.
      */
-    VITE_E2E_CONSENT_BANNER: z.string().optional()
+    VITE_E2E_CONSENT_BANNER: z.optional(z.string())
   },
   runtimeEnv: {
     VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,

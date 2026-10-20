@@ -155,6 +155,26 @@ export function assertWindowOpen(
   }
 }
 
+/**
+ * Até quando o bar que confirma pela comanda lança o código (WEB-412): 48 h
+ * depois do fim do jogo, a partir da mesma abertura da janela de hoje. O dono
+ * fecha o caixa no dia seguinte; dois dias cobrem o jogo de sábado lançado na
+ * segunda.
+ */
+export const LATE_ENTRY_HOURS = 48
+
+export function getLateEntryWindow(event: {
+  startsAt: Date
+  endsAt: Date | null
+}) {
+  return {
+    opensAt: getValidationWindow(event).opensAt,
+    closesAt: new Date(
+      getEventEnd(event).getTime() + LATE_ENTRY_HOURS * 3_600_000
+    )
+  }
+}
+
 const CHECK_VIOLATION = '23514'
 
 export function pgField(error: unknown, field: 'code' | 'constraint') {

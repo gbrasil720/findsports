@@ -1,5 +1,13 @@
 const ONSIDE_ICON_SRC = '/onside-icone-preto.png'
 const ONSIDE_WORDMARK_SRC = '/onside-wordmark-paper.png'
+/**
+ * O wordmark aparece com 28 a 32 px de altura em toda tela; o arquivo cheio
+ * (845×256, também o logo dos e-mails) é 6x isso. Por densidade, cada tela
+ * baixa a altura de 32 px vezes a própria densidade.
+ */
+const ONSIDE_WORDMARK_SRCSET = [32, 64, 96]
+  .map((altura, i) => `/onside-wordmark-paper-${altura}.png ${i + 1}x`)
+  .join(', ')
 
 type MarkProps = {
   className?: string
@@ -44,6 +52,7 @@ export function OnsideBrand({
       <img
         className="onside-brand-wordmark"
         src={ONSIDE_WORDMARK_SRC}
+        srcSet={ONSIDE_WORDMARK_SRCSET}
         alt=""
         width={wordmarkWidth}
         height={wordmarkHeight}

@@ -10,7 +10,6 @@ import {
   useRef,
   useState
 } from 'react'
-import Add from 'reicon-react/icons/Add'
 import ArrowDown from 'reicon-react/icons/ArrowDown'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import ArrowUpRight from 'reicon-react/icons/ArrowUpRight'
@@ -26,9 +25,9 @@ import {
   fitHeroToConsentBar,
   HERO_CONSENT_FIT_SCRIPT
 } from './hero-consent-fit'
+import { OnsideFaqList } from './onside-faq'
 import {
   DEFINITION_POINTS,
-  FAQ_ITEMS,
   JOURNEY_STEPS,
   type JourneyStep,
   LANDING_COPY,
@@ -351,6 +350,7 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
                 {item.label}
               </a>
             ))}
+            <Link to="/guia">Guia</Link>
           </div>
           <div className="onside-footer-column">
             <p>Conta</p>
@@ -938,19 +938,7 @@ export function OnsideLanding() {
                 <em>{LANDING_COPY.faq.title[1]}</em>
               </h2>
             </div>
-            <div className="onside-faq-list" data-motion="reveal">
-              {FAQ_ITEMS.map((item, index) => (
-                <details key={item.id} open={index === 0 || undefined}>
-                  <summary>
-                    {item.question}
-                    <span className="onside-faq-icon" aria-hidden="true">
-                      <Add size={18} aria-hidden="true" focusable="false" />
-                    </span>
-                  </summary>
-                  <p>{item.answer}</p>
-                </details>
-              ))}
-            </div>
+            <OnsideFaqList />
           </div>
         </section>
 

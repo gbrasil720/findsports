@@ -15,6 +15,7 @@ import {
   tileTypeExt
 } from 'pmtiles'
 import { chaveDeCache, podeGravarNoCache } from './cache-policy'
+import { lerComRetry } from './r2-read'
 import { pmtiles_path, tile_path } from './tile-path'
 
 interface Env {
@@ -47,6 +48,9 @@ const HEADER_CACHE = new ResolvedValueCache(25, undefined, nativeDecompress)
 class R2Source implements Source {
   env: Env
   archiveName: string
+  /** Para o log do miss: quantas leituras e quanto tempo no R2. */
+  leituras = 0
+  msNoR2 = 0
 
   constructor(env: Env, archiveName: string) {
     this.env = env
@@ -63,26 +67,33 @@ class R2Source implements Source {
     _signal?: AbortSignal,
     etag?: string
   ): Promise<RangeResponse> {
-    const resp = await this.env.BUCKET.get(
-      pmtiles_path(this.archiveName, this.env.PMTILES_PATH),
-      {
-        range: { offset, length },
-        onlyIf: { etagMatches: etag }
-      }
-    )
-    if (!resp) {
+    const inicio = Date.now()
+    this.leituras++
+    const lido = await lerComRetry(async () => {
+      const resp = await this.env.BUCKET.get(
+        pmtiles_path(this.archiveName, this.env.PMTILES_PATH),
+        {
+          range: { offset, length },
+          onlyIf: { etagMatches: etag }
+        }
+      )
+      const o = resp as R2ObjectBody | null
+      // O corpo também é lido dentro do prazo: é onde uma leitura lenta trava.
+      return o?.body ? { o, data: await o.arrayBuffer() } : { o, data: null }
+    }).finally(() => {
+      this.msNoR2 += Date.now() - inicio
+    })
+
+    const { o, data } = lido
+    if (!o) {
       throw new KeyNotFoundError('Archive not found')
     }
-
-    const o = resp as R2ObjectBody
-
-    if (!o.body) {
+    if (!data) {
       throw new EtagMismatch()
     }
 
-    const a = await o.arrayBuffer()
     return {
-      data: a,
+      data,
       etag: o.etag,
       cacheControl: o.httpMetadata?.cacheControl,
       expires: o.httpMetadata?.cacheExpiry?.toISOString()
@@ -102,6 +113,25 @@ function origemPermitida(env: Env, request: Request): string {
     }
   }
   return allowedOrigin
+}
+
+/** Segundos que o cliente espera antes de pedir de novo um tile que falhou. */
+const ESPERA_APOS_FALHA_S = '2'
+
+function indisponivel(allowedOrigin: string): Response {
+  const headers = new Headers({
+    'Cache-Control': 'no-store',
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Retry-After': ESPERA_APOS_FALHA_S,
+    Vary: 'Origin'
+  })
+  if (allowedOrigin) {
+    headers.set('Access-Control-Allow-Origin', allowedOrigin)
+  }
+  return new Response('Tile temporariamente indisponível', {
+    headers,
+    status: 503
+  })
 }
 
 export default {
@@ -170,70 +200,101 @@ export default {
     const cacheableHeaders = new Headers()
     const source = new R2Source(env, name)
     const p = new PMTiles(source, HEADER_CACHE, nativeDecompress)
-    try {
-      const pHeader = await p.getHeader()
+    const gerar = async (): Promise<Response> => {
+      try {
+        const pHeader = await p.getHeader()
 
-      if (!tile) {
-        cacheableHeaders.set('Content-Type', 'application/json')
-        const t = await p.getTileJson(
-          `https://${env.PUBLIC_HOSTNAME || url.hostname}/${name}`
-        )
-        return cacheableResponse(JSON.stringify(t), cacheableHeaders, 200)
-      }
+        if (!tile) {
+          cacheableHeaders.set('Content-Type', 'application/json')
+          const t = await p.getTileJson(
+            `https://${env.PUBLIC_HOSTNAME || url.hostname}/${name}`
+          )
+          return cacheableResponse(JSON.stringify(t), cacheableHeaders, 200)
+        }
 
-      if (tile[0] < pHeader.minZoom || tile[0] > pHeader.maxZoom) {
-        return cacheableResponse(undefined, cacheableHeaders, 404)
-      }
+        if (tile[0] < pHeader.minZoom || tile[0] > pHeader.maxZoom) {
+          return cacheableResponse(undefined, cacheableHeaders, 404)
+        }
 
-      const extToType: Record<string, TileType> = {
-        mvt: TileType.Mvt,
-        pbf: TileType.Mvt,
-        png: TileType.Png,
-        jpg: TileType.Jpeg,
-        webp: TileType.Webp,
-        avif: TileType.Avif
-      }
+        const extToType: Record<string, TileType> = {
+          mvt: TileType.Mvt,
+          pbf: TileType.Mvt,
+          png: TileType.Png,
+          jpg: TileType.Jpeg,
+          webp: TileType.Webp,
+          avif: TileType.Avif
+        }
 
-      const expectedType = extToType[ext]
-      if (
-        pHeader.tileType !== expectedType &&
-        tileTypeExt(pHeader.tileType) !== ''
-      ) {
-        return cacheableResponse(
-          `Bad request: requested .${ext} but archive has type ${tileTypeExt(
-            pHeader.tileType
-          )}`,
-          cacheableHeaders,
-          400
-        )
-      }
+        const expectedType = extToType[ext]
+        if (
+          pHeader.tileType !== expectedType &&
+          tileTypeExt(pHeader.tileType) !== ''
+        ) {
+          return cacheableResponse(
+            `Bad request: requested .${ext} but archive has type ${tileTypeExt(
+              pHeader.tileType
+            )}`,
+            cacheableHeaders,
+            400
+          )
+        }
 
-      const tiledata = await p.getZxy(tile[0], tile[1], tile[2])
+        const tiledata = await p.getZxy(tile[0], tile[1], tile[2])
 
-      switch (pHeader.tileType) {
-        case TileType.Mvt:
-          cacheableHeaders.set('Content-Type', 'application/x-protobuf')
-          break
-        case TileType.Png:
-          cacheableHeaders.set('Content-Type', 'image/png')
-          break
-        case TileType.Jpeg:
-          cacheableHeaders.set('Content-Type', 'image/jpeg')
-          break
-        case TileType.Webp:
-          cacheableHeaders.set('Content-Type', 'image/webp')
-          break
-      }
+        switch (pHeader.tileType) {
+          case TileType.Mvt:
+            cacheableHeaders.set('Content-Type', 'application/x-protobuf')
+            break
+          case TileType.Png:
+            cacheableHeaders.set('Content-Type', 'image/png')
+            break
+          case TileType.Jpeg:
+            cacheableHeaders.set('Content-Type', 'image/jpeg')
+            break
+          case TileType.Webp:
+            cacheableHeaders.set('Content-Type', 'image/webp')
+            break
+        }
 
-      if (tiledata) {
-        return cacheableResponse(tiledata.data, cacheableHeaders, 200)
+        if (tiledata) {
+          return cacheableResponse(tiledata.data, cacheableHeaders, 200)
+        }
+        return cacheableResponse(undefined, cacheableHeaders, 204)
+      } catch (e) {
+        if (e instanceof KeyNotFoundError) {
+          return cacheableResponse('Archive not found', cacheableHeaders, 404)
+        }
+        throw e
       }
-      return cacheableResponse(undefined, cacheableHeaders, 204)
-    } catch (e) {
-      if (e instanceof KeyNotFoundError) {
-        return cacheableResponse('Archive not found', cacheableHeaders, 404)
-      }
-      throw e
     }
+
+    // Daqui para baixo é sempre cache miss: o log diz quanto do tempo foi R2.
+    const inicio = Date.now()
+    let resposta: Response
+    let erro: string | undefined
+    try {
+      resposta = await gerar()
+    } catch (e) {
+      // R2 fora ou lento depois das novas tentativas. Sem isto a exceção vira
+      // 500 opaco (erro 1101) e nada diz ao cliente que pode tentar de novo.
+      erro = e instanceof Error ? e.message : String(e)
+      resposta = indisponivel(allowedOrigin)
+    }
+
+    const registro = {
+      evento: 'tiles.miss',
+      caminho: url.pathname,
+      status: resposta.status,
+      ms: Date.now() - inicio,
+      leiturasR2: source.leituras,
+      msNoR2: source.msNoR2,
+      ...(erro ? { erro } : {})
+    }
+    if (erro) {
+      console.error(JSON.stringify(registro))
+    } else {
+      console.log(JSON.stringify(registro))
+    }
+    return resposta
   }
 }

@@ -27,6 +27,7 @@ import { LegalConsent } from '@/components/legal/legal-consent'
 import { useTurnstile } from '@/components/turnstile'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
@@ -40,16 +41,14 @@ export const Route = createFileRoute('/(auth)/signup')({
       ? { callbackUrl: search.callbackUrl }
       : {})
   }),
-  head: () => ({
-    meta: [
-      { title: 'Criar conta — Onside' },
-      {
-        name: 'description',
-        content: 'Crie sua conta no Onside e nunca mais perca o apito inicial.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/signup',
+      title: 'Criar conta — Onside',
+      description:
+        'Crie sua conta no Onside e nunca mais perca o apito inicial.',
+      indexable: false
+    }),
   component: SignupPage
 })
 

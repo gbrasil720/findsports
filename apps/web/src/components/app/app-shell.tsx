@@ -19,6 +19,7 @@ import ChevronDown from 'reicon-react/icons/ChevronDown'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Logout from 'reicon-react/icons/Logout'
 import Settings from 'reicon-react/icons/Settings'
+import Shield from 'reicon-react/icons/Shield'
 import Ticket from 'reicon-react/icons/Ticket'
 import User from 'reicon-react/icons/User'
 import { OnsideBrand } from '@/components/brand/onside-brand'
@@ -41,6 +42,11 @@ export function AppShell({ variant, userMeta, children }: Props) {
   const signOut = useSignOut()
   const session = useSession()
   const hasUser = Boolean(session?.user)
+  // Admin anda pela busca como torcedor, mas perfil e "Meus jogos" são de
+  // torcedor (`fanProcedure`). O Houdini, para ele, é um item do menu: abre
+  // quando pedido, nunca por redirect.
+  const isAdmin = session?.user?.role === 'admin'
+  const fanMenu = variant === 'fan' && !isAdmin
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const accountMenuButton = useRef<HTMLButtonElement>(null)
   const accountLabel =
@@ -148,7 +154,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
             </div>
 
             <DropdownMenuGroup className="py-1">
-              {variant === 'fan' ? (
+              {fanMenu ? (
                 <DropdownMenuItem
                   className={accountMenuItemClass}
                   render={<Link to="/dashboard/profile" />}
@@ -162,7 +168,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 </DropdownMenuItem>
               ) : null}
 
-              {variant === 'fan' ? (
+              {fanMenu ? (
                 <DropdownMenuItem
                   className={accountMenuItemClass}
                   render={<Link to="/dashboard/games" />}
@@ -225,6 +231,20 @@ export function AppShell({ variant, userMeta, children }: Props) {
                     aria-hidden="true"
                   />
                   Ir para o app
+                </DropdownMenuItem>
+              ) : null}
+
+              {isAdmin ? (
+                <DropdownMenuItem
+                  className={accountMenuItemClass}
+                  render={<Link to="/houdini" />}
+                >
+                  <Shield
+                    size={16}
+                    className="text-[var(--onside-muted)]"
+                    aria-hidden="true"
+                  />
+                  Houdini
                 </DropdownMenuItem>
               ) : null}
 

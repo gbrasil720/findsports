@@ -176,9 +176,12 @@ export function OnsideHeroStage() {
     >
       <div className="onside-hero-frame">
         <picture>
+          {/* Em retrato a arte ocupa a largura da tela: o celular baixa a
+              largura que a densidade dele pede, não a de 3x. */}
           <source
             media={PORTRAIT_MEDIA}
-            srcSet={PORTRAIT.src}
+            srcSet={PORTRAIT.srcSet}
+            sizes="100vw"
             width={PORTRAIT.width}
             height={PORTRAIT.height}
           />

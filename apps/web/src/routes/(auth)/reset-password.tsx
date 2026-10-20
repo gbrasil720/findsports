@@ -10,6 +10,7 @@ import { revalidateShownError } from '@/components/auth-field-change'
 import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   // O better-auth redireciona para cá com `?token=...` quando o link ainda
@@ -27,12 +28,13 @@ export const Route = createFileRoute('/(auth)/reset-password')({
       ...(error ? { error } : {})
     }
   },
-  head: () => ({
-    meta: [
-      { title: 'Definir nova senha — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/reset-password',
+      title: 'Definir nova senha — Onside',
+      description: 'Defina uma nova senha para a sua conta Onside.',
+      indexable: false
+    }),
   component: ResetPasswordPage
 })
 
@@ -67,10 +69,10 @@ function ResetPasswordPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Recuperação de acesso
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           ÚLTIMO PASSO{' '}
           <span className="text-[var(--onside-acid)]">ANTES DO APITO.</span>
-        </h2>
+        </p>
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
           Escolha uma senha nova e sua conta volta a ser só sua.
         </p>

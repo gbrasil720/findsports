@@ -20,7 +20,15 @@ bun run check-types  # TypeScript across monorepo
 bun run check        # Biome lint + format (auto-fix)
 bun run test         # full test suite from repo root (env fake: raiz .env.test via bunfig preload)
 bun run test:e2e     # Playwright (apps/e2e): desktop + mobile, banco e portas próprios — docs/e2e.md
+```
 
+`bun install` liga o hook `.githooks/pre-push` (`prepare` do package.json): Biome
+nos arquivos do branch, tipos dos pacotes afetados e `bun run test`, ~25 s. É o que
+os jobs `check` e `unit-test` pegariam; o E2E fica com o CI, que o pula em PR só de
+`apps/mobile`, `docs` ou `*.md`. Pular uma vez:
+`git push --no-verify`.
+
+```bash
 bun run db:generate  # generate migration files
 bun run db:migrate   # run migrations (NODE_ENV=development localmente)
 bun run db:journal   # relatório do journal; --upto <tag> / --all reconciliam
@@ -222,6 +230,20 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 
+### Código do balcão pela comanda (WEB-412)
+
+Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
+no card "Oferta da casa" do `/admin` (Na hora / Depois do jogo, pela comanda), por
+`pub.updateCodeConfirmation`. Ligada, a tela do código do torcedor fala com o garçom
+("anote na comanda"), o card traz o recado pronto para a equipe, e o dono lança os
+códigos anotados em `/admin/validate` por `reservationValidation.logLate`, até 48 h
+depois do fim do jogo (`getLateEntryWindow`). Acima da caixa, "Faltou lançar?"
+(`reservationValidation.notLogged`) lista pelo nome quem marcou e não foi lançado, sem
+ler `attendance_report`. O uso fica com `late = true` e `used_at` na
+hora do lançamento: quem conta visita usa a data do jogo (`event.starts_at`). A Onside não confere se o cliente estava no bar: fraude é risco do bar,
+decisão do dono. Bar "na hora" não lança depois. O alfabeto do código não tem O, 0,
+I, 1 nem L (`CODE_ALPHABET`), para não confundir anotado à mão.
+
 ### UI / Styling
 
 Global styles and design tokens: `packages/ui/src/styles/globals.css`. Tailwind v4.
@@ -244,6 +266,16 @@ Worker `apps/tiles` em `tiles.onside.sh` (WEB-218). Componente em
 **Antes de mexer em tiles, estilo ou rebuild, leia `docs/map-tiles.md`** —
 runbook, deploy do Worker e armadilhas (URL absoluta para sprite/glyphs,
 `maplibre-gl` fora do `optimizeDeps` do Vite).
+
+### SEO
+
+Nome do site no Google (JSON-LD `WebSite`/`Organization` da home), o que é
+indexável, `robots.txt` e favicons: **leia `docs/seo.md` antes de mexer em
+`<title>`, `head`, sitemap ou ícones.**
+
+Performance da home no celular (pôster com `srcset`, prioridade das fontes,
+o que não pode entrar no JavaScript de entrada) e como medir com Lighthouse:
+`docs/perf-home.md`.
 
 ### E2E
 

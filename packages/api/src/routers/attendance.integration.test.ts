@@ -166,7 +166,12 @@ integrationTest(
     const [future, past] = ctx.gameIds as [string, string]
     try {
       const api = ctx.fan().attendance
-      await api.set({ eventId: future, attending: true })
+      expect(await api.set({ eventId: future, attending: true })).toEqual({
+        attending: true,
+        code: null,
+        offer: null,
+        confirmsCodesLater: false
+      })
       await api.set({ eventId: future, attending: true })
       expect(await ctx.presences(future)).toHaveLength(1)
 
@@ -216,11 +221,13 @@ integrationTest(
         true
       )
       const api = ctx.fan().attendance
-      await api.set({ eventId: future, attending: true })
-      await api.set({ eventId: future, attending: true })
+      const first = await api.set({ eventId: future, attending: true })
+      // Repetir devolve o mesmo código: a tela o mostra na hora.
+      expect(await api.set({ eventId: future, attending: true })).toEqual(first)
       const marked = await mine()
       expect(marked?.attending).toBe(true)
       expect(marked?.code).toMatch(/^[A-Z0-9]{6}$/)
+      expect(first).toMatchObject({ attending: true, code: marked?.code })
       const tickets = await ctx.db
         .select({
           status: reservation.status,
@@ -269,6 +276,60 @@ integrationTest(
         (await refusal(api.set({ eventId: future, attending: false }))).code
       ).toBe('CONFLICT')
       expect(await ctx.presences(future)).toHaveLength(1)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'bar que confirma pela comanda avisa o torcedor e só dá o código como perdido depois do prazo de lançar',
+  async () => {
+    const ctx = await seed({ elite: true, offsets: [DAY, -DAY, -4 * DAY] })
+    const [future, yesterday, lastWeek] = ctx.gameIds as [
+      string,
+      string,
+      string
+    ]
+    const missed = async () =>
+      Object.fromEntries(
+        (await ctx.fan().attendance.mine()).map((game) => [
+          game.eventId,
+          game.missed
+        ])
+      )
+    try {
+      await ctx.reserve(yesterday, ctx.fanIds[0] as string)
+      await ctx.reserve(lastWeek, ctx.fanIds[0] as string)
+      expect(await missed()).toMatchObject({
+        [yesterday]: true,
+        [lastWeek]: true
+      })
+
+      await ctx.owner.pub.updateCodeConfirmation({ later: true })
+      expect(
+        (await ctx.fan().pubs.getById({ id: ctx.barId })).confirmsCodesLater
+      ).toBe(true)
+      expect(
+        await ctx.fan().attendance.set({ eventId: future, attending: true })
+      ).toMatchObject({ confirmsCodesLater: true })
+      // Ontem ainda dá para o dono lançar; o da semana passada, não.
+      expect(await missed()).toMatchObject({
+        [yesterday]: false,
+        [lastWeek]: true
+      })
+
+      // Sem o Elite, o bar não lança mais: volta o prazo de sempre.
+      await ctx.db
+        .update(subscription)
+        .set({ plan: 'pro' })
+        .where(eq(subscription.barId, ctx.barId))
+      expect(await missed()).toMatchObject({ [yesterday]: true })
+      expect(
+        (await ctx.fan().attendance.mine()).every(
+          (game) => !game.confirmsCodesLater
+        )
+      ).toBe(true)
     } finally {
       await ctx.cleanup()
     }

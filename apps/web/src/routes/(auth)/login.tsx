@@ -16,6 +16,7 @@ import { AuthPasswordField } from '@/components/auth-password-field'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import {
   createTwoFactorChallenge,
@@ -25,17 +26,14 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
-  head: () => ({
-    meta: [
-      { title: 'Entrar — Onside' },
-      {
-        name: 'description',
-        content:
-          'Entre na sua conta Onside e encontre o bar certo pro seu jogo.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/login',
+      title: 'Entrar — Onside',
+      description:
+        'Entre na sua conta Onside e encontre o bar certo pro seu jogo.',
+      indexable: false
+    }),
   component: LoginPage
 })
 
@@ -134,9 +132,9 @@ function LoginPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Área exclusiva
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           O JOGO <span className="text-[var(--onside-acid)]">COMEÇA AQUI.</span>
-        </h2>
+        </p>
         {/*
          * "o maior mapa de bares esportivos do Brasil" era superlativo que o
          * produto ainda não sustenta. A frase que fica é a que ele já cumpre.

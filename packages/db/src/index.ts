@@ -67,6 +67,7 @@ export {
   inArray,
   isNull,
   like,
+  lte,
   notInArray,
   or,
   type SQL,

@@ -65,6 +65,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
+import { assertCanValidateReservations } from '../lib/reservation-validation'
 import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
 import { utcIso } from '../lib/utc-timestamp'
 
@@ -417,6 +418,25 @@ export const pubRouter = router({
         .returning({ houseOffer: bar.houseOffer })
 
       return { houseOffer: updated?.houseOffer ?? null }
+    }),
+
+  /**
+   * Como o bar confere o código do balcão (WEB-412): na hora, em "Validar
+   * código" (o padrão), ou depois do jogo, pela comanda. No segundo modo a
+   * equipe anota o código e o dono lança no dia seguinte
+   * (`reservationValidation.logLate`). Recurso do Elite, como o código.
+   */
+  updateCodeConfirmation: pubProcedure
+    .input(z.object({ later: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      assertCanValidateReservations(existingBar.subscription ?? null)
+      const [updated] = await db
+        .update(bar)
+        .set({ confirmsCodesLater: input.later })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ confirmsCodesLater: bar.confirmsCodesLater })
+      return { later: updated?.confirmsCodesLater ?? input.later }
     }),
 
   /**

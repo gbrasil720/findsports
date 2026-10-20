@@ -29,18 +29,22 @@ aponta os nameservers da Cloudflare, e nenhum tráfego passa pela Vercel.
 ## DMARC — publicado
 
 ```text
-_dmarc.onside.sh  TXT  "v=DMARC1; p=none; rua=mailto:contato@onside.sh; fo=1"
+_dmarc.onside.sh  TXT  "v=DMARC1; p=quarantine; pct=100; rua=mailto:contato@onside.sh; fo=1"
 ```
 
-Publicado em 29/09/2026 (WEB-109), quando o DNS ainda era da Vercel; a zona
-passou para a Cloudflare em 03/10/2026 com o registro. `contato@onside.sh` recebe
-de fato: `onside.sh` tem MX do Google Workspace (`1 smtp.google.com`). O
+Publicado em 29/09/2026 (WEB-109) com `p=none`; a zona DNS está na Cloudflare
+desde 03/10/2026 (WEB-101/WEB-205). Em 16/10/2026 (WEB-227) o registro foi
+atualizado na Cloudflare para `p=quarantine` (antes `p=none`). `contato@onside.sh`
+recebe de fato: `onside.sh` tem MX do Google Workspace (`1 smtp.google.com`). O
 registro vale também para `mail.onside.sh`, que não tem `_dmarc` próprio: sem
 `sp=`, o subdomínio herda o `p=` do domínio organizacional.
 
-Após algumas semanas lendo os relatórios, e confirmando que só o Resend (DKIM
-`mail.onside.sh`) e o Google Workspace assinam pelo domínio, apertar para
-`p=quarantine` e depois `p=reject`.
+Validação em 16/10/2026: testes de envio pelo Google Workspace (DKIM
+`d=onside.sh`, seletor `google`) e pelo Resend (DKIM `d=mail.onside.sh`, seletor
+`resend`) passaram em SPF, DKIM e DMARC e caíram na caixa de entrada.
+
+Próximo passo: após algumas semanas de relatórios limpos, subir para
+`p=reject`. Rollback: voltar para `p=none`.
 
 ## Domínio de envio: `mail.onside.sh`
 

@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   createRootRouteWithContext,
   HeadContent,
+  isNotFound,
   Outlet,
   Scripts,
   useRouterState
@@ -18,6 +19,7 @@ import type { CSSProperties } from 'react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
+import { NOT_FOUND_META } from '../components/not-found/not-found-head'
 import { NotFoundPage } from '../components/not-found/not-found-page'
 import appCss from '../index.css?url'
 import {
@@ -33,7 +35,7 @@ import {
   useAnalyticsConsent
 } from '../lib/analytics-consent'
 import { initPostHog, stopPostHog } from '../lib/posthog'
-import { OG_IMAGE_URL, SITE_URL } from '../lib/site'
+import { OG_IMAGE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
 import {
   type AuthSession,
@@ -65,37 +67,21 @@ const getSession = createServerFn()
 const ONSIDE_DESCRIPTION =
   'Onside conecta torcedores brasileiros aos bares e pubs que estão transmitindo o jogo que você quer assistir. Encontre o lugar certo para torcer.'
 
+// O Google só usa favicon quadrado com lado múltiplo de 48 px (48, 96, 192);
+// 16 e 32 ficam para a aba do navegador. Arte em `public/onside-app-icon.png`.
 const ONSIDE_ICONS = [
   {
     rel: 'icon',
-    href: '/favicon-32x32.png?v=3',
-    type: 'image/png',
-    sizes: '32x32'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-16x16.png?v=3',
-    type: 'image/png',
-    sizes: '16x16'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-64x64.png?v=3',
-    type: 'image/png',
-    sizes: '64x64'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon-512x512.png?v=3',
-    type: 'image/png',
-    sizes: '512x512'
-  },
-  {
-    rel: 'icon',
-    href: '/favicon.ico?v=3',
+    href: '/favicon.ico?v=4',
     type: 'image/x-icon',
-    sizes: 'any'
+    sizes: '16x16 32x32 48x48 64x64'
   },
+  ...[48, 96, 192, 32, 16].map((lado) => ({
+    rel: 'icon',
+    href: `/favicon-${lado}x${lado}.png?v=4`,
+    type: 'image/png',
+    sizes: `${lado}x${lado}`
+  })),
   {
     rel: 'apple-touch-icon',
     href: '/apple-touch-icon.png?v=3',
@@ -124,41 +110,26 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Onside — Ache o bar que está passando seu jogo' },
-      {
-        name: 'description',
-        content: ONSIDE_DESCRIPTION
-      },
+      ...(matches.some((m) => m.status === 'notFound' || isNotFound(m.error))
+        ? NOT_FOUND_META
+        : [
+            { title: 'Onside — Ache o bar que está passando seu jogo' },
+            { name: 'description', content: ONSIDE_DESCRIPTION }
+          ]),
       { name: 'author', content: 'Onside' },
       { name: 'theme-color', content: '#12120F' },
       { property: 'og:site_name', content: 'Onside' },
+      { property: 'og:locale', content: 'pt_BR' },
       { property: 'og:type', content: 'website' },
-      {
-        property: 'og:title',
-        content: 'Onside — Ache o bar que está passando seu jogo'
-      },
-      {
-        property: 'og:description',
-        content:
-          'Conecte torcedores brasileiros aos bares que estão transmitindo o jogo certo. Encontre o lugar ideal para assistir futebol.'
-      },
+      // Título, descrição e `og:url` do cartão são de cada página
+      // (`lib/page-head.ts`): aqui eles vazariam os da home para as demais.
       {
         property: 'og:image',
         content: OG_IMAGE_URL
       },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
-      { property: 'og:url', content: `${SITE_URL}/` },
       { name: 'twitter:card', content: 'summary_large_image' },
-      {
-        name: 'twitter:title',
-        content: 'Onside — Ache o bar que está passando seu jogo'
-      },
-      {
-        name: 'twitter:description',
-        content:
-          'Conecte torcedores brasileiros aos bares que estão transmitindo o jogo certo. Encontre o lugar ideal para assistir futebol.'
-      },
       {
         name: 'twitter:image',
         content: OG_IMAGE_URL
@@ -173,6 +144,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
           {
             src: 'https://static.cloudflareinsights.com/beacon.min.js',
             type: 'module',
+            // Medição, não conteúdo: baixa depois do que a primeira tela usa.
+            fetchPriority: 'low',
             'data-cf-beacon': '{"token": "84a6d0356bc9416cb0e64e8c38c2d5b4"}'
           }
         ],

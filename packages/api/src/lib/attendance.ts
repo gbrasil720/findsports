@@ -18,14 +18,20 @@ import {
   attendanceReport
 } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, event } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  event,
+  subscription
+} from '@findsports_oficial/db/schema/platform'
 import {
   ACTIVE_RESERVATION_STATUSES,
   reservation,
   reservationCode,
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
+import { getCurrentPlan } from './current-plan'
 import { participantNames } from './game-participants'
+import { getLateEntryWindow } from './reservation-validation'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -182,6 +188,13 @@ export async function readMyGames(userId: string, now = new Date()) {
       photoUrl: bar.photoUrl,
       // Bar fora do ar segue na lista, sem perfil para abrir (WEB-360).
       barActive: bar.isActive,
+      // Bar que confirma pela comanda (WEB-412): o código vai anotado e o
+      // dono lança depois, então só conta como perdido quando o prazo dele
+      // acabar.
+      confirmsCodesLater: bar.confirmsCodesLater,
+      plan: subscription.plan,
+      planStatus: subscription.status,
+      currentPeriodEnd: subscription.currentPeriodEnd,
       offer: reservation.offerSnapshot,
       code: reservationCode.code,
       usedCount: reservationCode.usedCount
@@ -189,6 +202,7 @@ export async function readMyGames(userId: string, now = new Date()) {
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))
     .innerJoin(bar, eq(bar.id, event.barId))
+    .leftJoin(subscription, eq(subscription.barId, bar.id))
     .leftJoin(
       reservation,
       and(
@@ -208,25 +222,48 @@ export async function readMyGames(userId: string, now = new Date()) {
     .orderBy(sql`${event.startsAt} desc`)
     .limit(MY_GAMES_LIMIT)
 
-  return rows.map(({ code, usedCount, endsAt, ...row }) => {
-    const window = getValidationWindow({ startsAt: row.startsAt, endsAt })
-    const validated = (usedCount ?? 0) > 0
-    const end = getEventEnd({ startsAt: row.startsAt, endsAt })
-    return {
-      ...row,
-      // O fim já resolvido (o informado pelo bar, senão o padrão): a agenda
-      // do celular usa o mesmo que o servidor.
-      endsAt: end,
-      ended: end <= now,
-      // `null`: bar sem Elite quando o torcedor marcou, ou janela fechada sem
-      // validação.
-      code: code && (validated || window.closesAt >= now) ? code : null,
-      window: code ? window : null,
-      validated,
-      // Bar Elite que emitiu código e o jogo passou sem validação.
-      missed: code !== null && !validated && window.closesAt < now
+  return rows.map(
+    ({
+      code,
+      usedCount,
+      endsAt,
+      plan,
+      planStatus,
+      currentPeriodEnd,
+      ...row
+    }) => {
+      const window = getValidationWindow({ startsAt: row.startsAt, endsAt })
+      // Pela comanda só vale com o Elite: o bar que perdeu o plano não lança mais.
+      const confirmsCodesLater =
+        row.confirmsCodesLater &&
+        getCurrentPlan(
+          plan && planStatus
+            ? { plan, status: planStatus, currentPeriodEnd }
+            : null,
+          now
+        ) === 'elite'
+      const lastChance = confirmsCodesLater
+        ? getLateEntryWindow({ startsAt: row.startsAt, endsAt }).closesAt
+        : window.closesAt
+      const validated = (usedCount ?? 0) > 0
+      const end = getEventEnd({ startsAt: row.startsAt, endsAt })
+      return {
+        ...row,
+        confirmsCodesLater,
+        // O fim já resolvido (o informado pelo bar, senão o padrão): a agenda
+        // do celular usa o mesmo que o servidor.
+        endsAt: end,
+        ended: end <= now,
+        // `null`: bar sem Elite quando o torcedor marcou, ou janela fechada sem
+        // validação.
+        code: code && (validated || window.closesAt >= now) ? code : null,
+        window: code ? window : null,
+        validated,
+        // Bar Elite que emitiu código e o jogo passou sem validação.
+        missed: code !== null && !validated && lastChance < now
+      }
     }
-  })
+  )
 }
 
 /**

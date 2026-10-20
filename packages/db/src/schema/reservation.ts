@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
   pgEnum,
@@ -192,7 +193,10 @@ export const reservationCodeUse = pgTable(
       onDelete: 'set null'
     }),
     usedAt: timestamp('used_at', { withTimezone: true }).defaultNow().notNull(),
-    undoneAt: timestamp('undone_at', { withTimezone: true })
+    undoneAt: timestamp('undone_at', { withTimezone: true }),
+    // Lançado depois do jogo pelo bar que confirma pela comanda (WEB-412):
+    // `used_at` é quando o dono lançou, não quando o torcedor esteve lá.
+    late: boolean('late').default(false).notNull()
   },
   (table) => [
     index('reservation_code_use_codeId_usedAt_idx').on(

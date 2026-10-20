@@ -75,7 +75,8 @@ test.describe('deslogado', () => {
 const HOME: Record<Role, string> = {
   fan: '/dashboard',
   pub: '/admin',
-  admin: '/houdini'
+  // O Houdini só abre quando pedido; a casa do admin no app é a busca.
+  admin: '/dashboard'
 }
 
 for (const role of ['fan', 'pub', 'admin'] as const) {
@@ -88,7 +89,7 @@ for (const role of ['fan', 'pub', 'admin'] as const) {
     // Start page do PWA.
     expectRedirect('/app', HOME[role])
     // Concluído no onboarding volta para casa (pub vai escolher plano). Admin
-    // passa por /dashboard e de lá vai para o Houdini.
+    // fica no /dashboard, sem ser mandado ao Houdini.
     expectRedirect('/onboarding/fan', role === 'pub' ? '/plan' : HOME[role])
     expectRedirect('/onboarding/pub', role === 'pub' ? '/plan' : HOME[role])
   })
@@ -124,10 +125,10 @@ test.describe('papel errado cai na casa certa', () => {
 
   test.describe('admin', () => {
     test.use({ storageState: storageState('admin') })
-    expectRedirect('/dashboard', '/houdini')
-    expectRedirect('/dashboard/games', '/houdini')
-    // /plan manda para /dashboard, que manda admin para o Houdini.
-    expectRedirect('/plan', '/houdini')
+    // Admin navega pelo app; o Houdini só abre quando pedido.
+    expectRedirect('/dashboard', '/dashboard')
+    expectRedirect('/dashboard/games', '/dashboard/games')
+    expectRedirect('/plan', '/dashboard')
   })
 })
 

@@ -1,20 +1,13 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
+import { NOT_FOUND_META } from '@/components/not-found/not-found-head'
 import { NotFoundPage } from '@/components/not-found/not-found-page'
-
-const NOT_FOUND_DESCRIPTION =
-  'Essa página saiu de campo. O link pode estar quebrado ou a página não existe mais.'
 
 export const Route = createFileRoute('/$')({
   beforeLoad: () => {
     throw notFound()
   },
   head: () => ({
-    meta: [
-      { title: 'Página não encontrada — Onside' },
-      { name: 'description', content: NOT_FOUND_DESCRIPTION },
-      { name: 'robots', content: 'noindex, nofollow' },
-      { name: 'theme-color', content: '#F1EEE6' }
-    ],
+    meta: [...NOT_FOUND_META, { name: 'theme-color', content: '#F1EEE6' }],
     links: [
       {
         rel: 'preload',

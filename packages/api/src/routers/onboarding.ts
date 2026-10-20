@@ -195,10 +195,10 @@ export const onboardingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      await assertOnboardingPending(userId)
-
-      // Antes da transação: cidade fora da lista recusa sem gravar nada.
+      // Antes de tocar o banco: cidade fora da lista recusa sem gravar nada.
       const city = input.city ? await findSearchCity(input.city) : null
+
+      await assertOnboardingPending(userId)
 
       await db.transaction(async (tx) => {
         await tx

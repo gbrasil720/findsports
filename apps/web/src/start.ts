@@ -6,6 +6,7 @@ import {
 import { getSessionCookie } from 'better-auth/cookies'
 
 import { HOUDINI_PREFIX, isHoudiniHost } from './lib/houdini-host'
+import { SITE_URL } from './lib/site'
 import { requiresAuthentication } from './utils/auth-guards'
 
 /**
@@ -42,6 +43,18 @@ export function applyHoudiniHeaders(request: Request, headers: Headers) {
   headers.set('Cache-Control', 'private, no-store')
 }
 
+const CANONICAL_HOST = new URL(SITE_URL).hostname
+
+/**
+ * SEO: só `www.onside.sh` entra no índice. O mesmo Worker responde no
+ * `workers.dev` dele (depuração), e o preview por PR é uma cópia em outro
+ * `workers.dev`: sem isto, as duas são a home duplicada com `index, follow`.
+ */
+export function applyHostIndexing(request: Request, headers: Headers) {
+  if (new URL(request.url).hostname === CANONICAL_HOST) return
+  headers.set('X-Robots-Tag', 'noindex, nofollow')
+}
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     // O padrão do Start quando não há `start.ts`; declará-lo aqui o mantém.
@@ -50,6 +63,7 @@ export const startInstance = createStart(() => ({
     // h3 devolve sem mesclar os headers do evento.
     createMiddleware().server(async ({ next, request }) => {
       const result = await next()
+      applyHostIndexing(request, result.response.headers)
       applyHoudiniHeaders(request, result.response.headers)
       applyPrivateCache(request, result.response.headers)
       return result

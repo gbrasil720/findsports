@@ -179,13 +179,27 @@ describe('applyAuthGuards', () => {
       applyAuthGuards(session('pub'), '/plan/confirmed')
     ).not.toThrow()
     expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
+  })
 
+  test('admin navega pelo app sem ser mandado ao Houdini', () => {
+    for (const path of [
+      '/',
+      '/dashboard',
+      '/dashboard/profile',
+      '/dashboard/games',
+      '/pub/bar-123'
+    ]) {
+      expect(() => applyAuthGuards(session('admin'), path), path).not.toThrow()
+    }
+  })
+
+  test('admin no /plan vai para o /dashboard, não para o Houdini', () => {
     try {
-      applyAuthGuards(session('admin'), '/dashboard/profile')
+      applyAuthGuards(session('admin'), '/plan')
       throw new Error('admin deveria ser redirecionado')
     } catch (error) {
       expect((error as { options?: { to?: string } }).options?.to).toBe(
-        '/houdini'
+        '/dashboard'
       )
     }
   })

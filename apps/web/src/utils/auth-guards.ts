@@ -78,7 +78,7 @@ export function applyAuthGuards(
 
   // WEB-278: quem já tem sessão não vê o formulário de login nem o de
   // cadastro; segue para o destino que a URL levava. `/dashboard` é o padrão
-  // de `getCallbackUrl`, e os guards abaixo levam bar e admin à casa deles.
+  // de `getCallbackUrl`, e o guard abaixo leva o bar à casa dele.
   if (pathname === '/login' || pathname === '/signup') {
     throw redirect({ to: getCallbackUrl(href) })
   }
@@ -106,11 +106,9 @@ export function applyAuthGuards(
     throw redirect({ to: '/admin' })
   }
 
-  // Admin tentando acessar área do fan vai para o Houdini. No `www` o portão
-  // dele manda admin para `houdini.onside.sh`; no preview e local é o caminho.
-  if (session.user.role === 'admin' && pathname.startsWith('/dashboard')) {
-    throw redirect({ to: '/houdini' })
-  }
+  // Admin navega pelo app como qualquer conta: a busca do /dashboard é a casa
+  // dele aqui. O Houdini só abre quando pedido (link, `callbackUrl`); mandar
+  // para lá a cada rota deixava o admin sem home nem dashboard.
 
   // /plan é exclusivo para pub — fan vai pro dashboard, não autenticado vai pro sign-in
   if (pathname.startsWith('/plan') && session.user.role !== 'pub') {

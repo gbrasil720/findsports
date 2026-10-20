@@ -6,6 +6,7 @@ import {
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { type FormEvent, useId, useState } from 'react'
 import type { PlanState } from './admin-model'
+import { CodeConfirmationMode } from './code-confirmation-mode'
 import { PaidFeatureCard } from './paid-feature-card'
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   saveError: string | null
   /** `null` limpa a oferta. Rejeita quando o servidor recusa. */
   onSave: (houseOffer: string | null) => Promise<unknown>
+  /** Na hora ou pela comanda (WEB-412). Sem ela, o card não mostra a escolha. */
+  codeConfirmation?: Omit<Parameters<typeof CodeConfirmationMode>[0], 'offer'>
 }
 
 /**
@@ -24,7 +27,12 @@ type Props = {
  * Sem exemplos no placeholder de propósito: a Onside não sugere o que o bar
  * oferece. O texto de apoio diz só onde aparece e de quem é a promessa.
  */
-export function HouseOfferEditor({ houseOffer, plan, ...form }: Props) {
+export function HouseOfferEditor({
+  houseOffer,
+  plan,
+  codeConfirmation,
+  ...form
+}: Props) {
   return (
     <PaidFeatureCard
       id="admin-house-offer"
@@ -55,13 +63,20 @@ export function HouseOfferEditor({ houseOffer, plan, ...form }: Props) {
       }
     >
       {(eligible) =>
-        eligible ? <HouseOfferForm houseOffer={houseOffer} {...form} /> : null
+        eligible ? (
+          <>
+            <HouseOfferForm houseOffer={houseOffer} {...form} />
+            {codeConfirmation ? (
+              <CodeConfirmationMode offer={houseOffer} {...codeConfirmation} />
+            ) : null}
+          </>
+        ) : null
       }
     </PaidFeatureCard>
   )
 }
 
-type FormProps = Omit<Props, 'plan'>
+type FormProps = Omit<Props, 'plan' | 'codeConfirmation'>
 
 function HouseOfferForm({
   houseOffer,

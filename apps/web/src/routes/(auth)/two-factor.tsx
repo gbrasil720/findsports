@@ -20,6 +20,7 @@ import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { OnsideBrand } from '@/components/brand/onside-brand'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import {
   isTwoFactorChallengeCurrent,
   TWO_FACTOR_CHALLENGE_KEY,
@@ -28,12 +29,14 @@ import {
 import { getUserFacingError } from '@/lib/user-facing-error'
 
 export const Route = createFileRoute('/(auth)/two-factor')({
-  head: () => ({
-    meta: [
-      { title: 'Confirmar acesso — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    pageHead({
+      path: '/two-factor',
+      title: 'Confirmar acesso — Onside',
+      description:
+        'Confirme o acesso à sua conta Onside com o código de verificação.',
+      indexable: false
+    }),
   component: TwoFactorPage
 })
 
@@ -106,9 +109,9 @@ function TwoFactorPage() {
           <span className="onside-live-dot" aria-hidden="true" />
           Segundo tempo
         </div>
-        <h2 className="onside-display mb-6 text-4xl text-[var(--onside-paper)] xl:text-5xl">
+        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
           PROTEÇÃO <span className="text-[var(--onside-acid)]">EM CAMPO.</span>
-        </h2>
+        </p>
         <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
           Sua senha passou. Agora confirme o código que só você possui.
         </p>

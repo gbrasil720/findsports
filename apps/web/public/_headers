@@ -14,3 +14,9 @@
 /robots.txt
   Access-Control-Allow-Origin: *
   Content-Type: text/plain; charset=utf-8
+
+# llms.txt (llmstxt.org) tem acento: sem o charset, o leitor pode decodificar
+# como Latin-1.
+/llms.txt
+  Access-Control-Allow-Origin: *
+  Content-Type: text/plain; charset=utf-8

@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { toast } from 'sonner'
 import { formatCode } from '@/domain/my-games'
 import { formatMatchup, type ProfileEvent } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { AttendanceCodeDialog } from './attendance-code-dialog'
 
 type Props = {
   eventId: string
@@ -16,6 +17,8 @@ type Props = {
   code?: string | null
   /** Código validado: a oferta saiu e não dá mais para desmarcar. */
   validated?: boolean
+  /** Bar que confirma pela comanda (WEB-412): o código vai para o garçom. */
+  forWaiter?: boolean
   /** Nome do jogo, para distinguir os botões na leitura por voz. */
   gameLabel: string
   compact?: boolean
@@ -25,7 +28,8 @@ type Props = {
  * "Vou assistir aqui" (WEB-127). Depois de marcar vira "Você vai assistir
  * aqui", com desfazer, e no bar Elite mostra o código que vale a oferta da
  * casa no balcão. É sempre o mesmo botão, com `aria-disabled` em vez de
- * `disabled` durante o envio: o foco do teclado nunca se perde.
+ * `disabled` durante o envio: o foco do teclado nunca se perde. O código que
+ * acabou de sair abre num diálogo, que devolve o foco ao botão ao fechar.
  */
 export function AttendanceControl({
   eventId,
@@ -33,12 +37,19 @@ export function AttendanceControl({
   count,
   code = null,
   validated = false,
+  forWaiter = false,
   gameLabel,
   compact = false
 }: Props) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [announcement, setAnnouncement] = useState('')
+  const [issued, setIssued] = useState<{
+    code: string
+    offer: string | null
+    forWaiter: boolean
+  } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const mutation = useMutation(
     trpc.attendance.set.mutationOptions({
       // Devolver a promessa mantém o botão ocupado até o perfil recarregar.
@@ -48,6 +59,13 @@ export function AttendanceControl({
             ? 'Pronto: você vai assistir aqui.'
             : 'Marcação desfeita.'
         )
+        if (result.attending && result.code) {
+          setIssued({
+            code: result.code,
+            offer: result.offer,
+            forWaiter: result.confirmsCodesLater
+          })
+        }
         void queryClient.invalidateQueries({
           queryKey: trpc.attendance.mine.queryKey()
         })
@@ -78,6 +96,7 @@ export function AttendanceControl({
       )}
       {!validated && (
         <button
+          ref={buttonRef}
           type="button"
           onClick={toggle}
           aria-disabled={mutation.isPending}
@@ -99,13 +118,26 @@ export function AttendanceControl({
             {formatCode(code)}
           </span>
           {validated
-            ? ' · validado no balcão'
-            : ' · mostre no balcão. Fica em Meus jogos.'}
+            ? forWaiter
+              ? ' · validado'
+              : ' · validado no balcão'
+            : forWaiter
+              ? ' · mostre ao garçom, que anota na comanda. Fica em Meus jogos.'
+              : ' · mostre no balcão. Fica em Meus jogos.'}
         </span>
       )}
       <span className="sr-only" role="status">
         {announcement}
       </span>
+      {issued ? (
+        <AttendanceCodeDialog
+          code={issued.code}
+          offer={issued.offer}
+          forWaiter={issued.forWaiter}
+          onClose={() => setIssued(null)}
+          returnFocus={buttonRef}
+        />
+      ) : null}
     </fieldset>
   )
 }
@@ -116,9 +148,11 @@ export function AttendanceControl({
  */
 export function HeroAttendance({
   game,
-  attendance
+  attendance,
+  forWaiter = false
 }: {
   game: ProfileEvent
+  forWaiter?: boolean
   attendance: {
     attending: boolean
     count: number | null
@@ -133,6 +167,7 @@ export function HeroAttendance({
       count={attendance.count}
       code={attendance.code}
       validated={attendance.validated}
+      forWaiter={forWaiter}
       gameLabel={formatMatchup(game)}
     />
   )

@@ -1,4 +1,13 @@
-import { and, db, eq, isNull, type SQL, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  gte,
+  isNull,
+  lte,
+  type SQL,
+  sql
+} from '@findsports_oficial/db'
 import { getValidationWindow } from '@findsports_oficial/db/event-window'
 import {
   ARRIVAL_UNDO_WINDOW_MS,
@@ -30,6 +39,7 @@ import {
   assertReservationConfirmed,
   assertWindowOpen,
   codeNotFoundError,
+  getLateEntryWindow,
   translateArrivalWriteError,
   VALIDATION_ATTEMPT_LIMIT,
   validationAttemptKey
@@ -114,6 +124,25 @@ async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
   return row
 }
 
+/** `logLate` e `notLogged` só servem ao bar que confirma pela comanda. */
+async function assertConfirmsCodesLater(ownerId: string) {
+  const ownBar = await db.query.bar.findFirst({
+    where: eq(bar.userId, ownerId),
+    columns: { confirmsCodesLater: true },
+    with: { subscription: true }
+  })
+  // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
+  // plano fica só com a validação na hora, na janela de sempre.
+  assertCanValidateReservations(ownBar?.subscription ?? null)
+  if (!ownBar?.confirmsCodesLater) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message:
+        'Para lançar códigos depois do jogo, escolha "Depois do jogo, pela comanda" na oferta da casa.'
+    })
+  }
+}
+
 async function readCounter(reader: Reader, codeId: string) {
   const [row] = await reader
     .select({
@@ -140,6 +169,23 @@ const hasLaterArrival = sql<boolean>`EXISTS (
     AND later.undone_at IS NULL
     AND (later.used_at, later.id) > (${reservationCodeUse.usedAt}, ${reservationCodeUse.id})
 )`
+
+/** Teto de códigos por envio do lançamento depois do jogo. */
+const LATE_ENTRY_MAX_CODES = 80
+
+/**
+ * O que aconteceu com cada código lançado depois do jogo (WEB-412). Um
+ * código que não é do bar sai como `not_found`, igual ao inexistente: a
+ * mesma regra de não entregar oráculo de enumeração da busca.
+ */
+type LateEntryStatus =
+  | 'logged'
+  | 'not_found'
+  | 'used'
+  | 'not_confirmed'
+  | 'too_early'
+  | 'expired'
+  | 'limited'
 
 export const reservationValidationRouter = router({
   /**
@@ -358,5 +404,173 @@ export const reservationValidationRouter = router({
         const counter = await readCounter(tx, use.codeId)
         return { useId: use.useId, ...counter }
       })
-    })
+    }),
+
+  /**
+   * Lançamento depois do jogo (WEB-412), para o bar que confirma pela
+   * comanda: o dono cola os códigos anotados e cada um vira uma chegada com
+   * `late`, até 48 h depois do fim do jogo. Mesmas regras de `registerArrival`
+   * (do próprio bar, reserva confirmada, uso único); a diferença é o prazo.
+   *
+   * Cada código conta no mesmo limite de tentativas da busca, devolvido quando
+   * resolve: colar uma lista não vira atalho para varrer códigos. Estourado o
+   * limite, o resto da lista volta como `limited`, sem ser conferido.
+   */
+  logLate: validatorProcedure
+    .input(
+      z.object({
+        codes: z.array(z.string().max(64)).min(1).max(LATE_ENTRY_MAX_CODES)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      await assertConfirmsCodesLater(userId)
+
+      const attemptKey = validationAttemptKey(userId)
+      const codes = [
+        ...new Set(input.codes.map(normalizeReservationCode).filter(Boolean))
+      ]
+      const results: {
+        code: string
+        status: LateEntryStatus
+        guestName?: string
+        event?: {
+          championship: string
+          participantFreeText: string | null
+          startsAt: Date
+        }
+      }[] = []
+      let limited = false
+
+      for (const code of codes) {
+        if (limited) {
+          results.push({ code, status: 'limited' })
+          continue
+        }
+        // Cobra antes de olhar, como `lookup`: bloqueado, nem código certo
+        // resolve, senão uma lista de um código por vez seguiria varrendo.
+        const attempt = await incrementWindow(
+          attemptKey,
+          VALIDATION_ATTEMPT_LIMIT
+        )
+        if (!attempt.allowed) {
+          limited = true
+          results.push({ code, status: 'limited' })
+          continue
+        }
+        const found = isReservationCodeShaped(code)
+          ? await findOwnCode(db, eq(reservationCode.code, code), userId)
+          : undefined
+        if (!found) {
+          results.push({ code, status: 'not_found' })
+          continue
+        }
+        await refundWindowAttempt(attemptKey)
+
+        const about = {
+          guestName: found.guestName,
+          event: {
+            championship: found.championship,
+            participantFreeText: found.participantFreeText,
+            startsAt: found.startsAt
+          }
+        }
+        const now = new Date()
+        const window = getLateEntryWindow(found)
+        const status: LateEntryStatus =
+          found.reservationStatus !== 'confirmed'
+            ? 'not_confirmed'
+            : now < window.opensAt
+              ? 'too_early'
+              : now > window.closesAt
+                ? 'expired'
+                : found.usedCount >= found.maxUses
+                  ? 'used'
+                  : await db
+                      .insert(reservationCodeUse)
+                      .values({
+                        id: crypto.randomUUID(),
+                        codeId: found.codeId,
+                        validatedByUserId: userId,
+                        late: true
+                      })
+                      .then(() => 'logged' as const)
+                      .catch((error: unknown) => {
+                        // Validado entre a busca e o insert: já usado.
+                        if (translateArrivalWriteError(error, found.maxUses))
+                          return 'used' as const
+                        throw error
+                      })
+        results.push({ code, status, ...about })
+      }
+
+      return results
+    }),
+
+  /**
+   * "Faltou lançar?" (WEB-412): por jogo com o prazo de lançar aberto, quem
+   * marcou que ia e ainda não tem código lançado. Sai o nome, como em "Quem
+   * vai", nunca o código: o dono confere na comanda. Não lê a resposta do
+   * torcedor no pós-jogo (`attendance_report`), que nenhuma tela do bar lê.
+   */
+  notLogged: validatorProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+    await assertConfirmsCodesLater(userId)
+    const now = new Date()
+    // O prazo (48 h depois do fim) se confere abaixo; o corte só limita a busca.
+    const since = new Date(now.getTime() - 7 * 24 * 3_600_000)
+    const rows = await db
+      .select({
+        eventId: event.id,
+        championship: event.championship,
+        participantFreeText: event.participantFreeText,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        name: user.name
+      })
+      .from(reservationCode)
+      .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
+      .innerJoin(event, eq(event.id, reservation.eventId))
+      .innerJoin(bar, eq(bar.id, event.barId))
+      .innerJoin(user, eq(user.id, reservation.userId))
+      .where(
+        and(
+          eq(bar.userId, userId),
+          isNull(reservationCode.retiredAt),
+          eq(reservationCode.usedCount, 0),
+          eq(reservation.status, 'confirmed'),
+          lte(event.startsAt, now),
+          gte(event.startsAt, since)
+        )
+      )
+      .orderBy(event.startsAt, user.name)
+
+    const games = new Map<
+      string,
+      {
+        id: string
+        championship: string
+        participantFreeText: string | null
+        startsAt: Date
+        closesAt: Date
+        names: string[]
+      }
+    >()
+    for (const { eventId, name, endsAt, ...game } of rows) {
+      const { closesAt } = getLateEntryWindow({
+        startsAt: game.startsAt,
+        endsAt
+      })
+      if (closesAt < now) continue
+      const entry = games.get(eventId) ?? {
+        id: eventId,
+        ...game,
+        closesAt,
+        names: []
+      }
+      entry.names.push(name)
+      games.set(eventId, entry)
+    }
+    return [...games.values()]
+  })
 })

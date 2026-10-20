@@ -4,17 +4,31 @@ import type {
   LegalInline,
   LegalRich
 } from '@findsports_oficial/legal/legal-types'
-import { Link } from '@tanstack/react-router'
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
 
 const CONTACT_EMAIL = 'contato@onside.sh'
 const HERO_ID = 'top'
 
-function Inline({ part }: { part: LegalInline }) {
+/**
+ * Trechos do texto longo do site: os dos documentos legais e, no guia, link
+ * para outra página do site.
+ */
+export type PageInline = LegalInline | { link: string; to: string }
+type PageRich = LegalRich<PageInline>
+export type PageDocument = LegalDocument<PageInline, string>
+
+function Inline({ part }: { part: PageInline }) {
   if (typeof part === 'string') return part
   if ('b' in part) return <strong>{part.b}</strong>
+  if ('link' in part) {
+    return (
+      <a className="onside-legal-link" href={part.to}>
+        {part.link}
+      </a>
+    )
+  }
   if ('email' in part) {
     return (
       <a className="onside-legal-link" href={`mailto:${part.email}`}>
@@ -25,7 +39,7 @@ function Inline({ part }: { part: LegalInline }) {
   return <span className="onside-legal-link">{part.mark}</span>
 }
 
-function Rich({ content }: { content: LegalRich }) {
+function Rich({ content }: { content: PageRich }) {
   if (typeof content === 'string') return content
   return content.map((part, index) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: texto estático, nunca reordenado
@@ -35,7 +49,7 @@ function Rich({ content }: { content: LegalRich }) {
   ))
 }
 
-function Block({ block }: { block: LegalBlock }) {
+function Block({ block }: { block: LegalBlock<PageInline> }) {
   switch (block.type) {
     case 'h3':
       return (
@@ -188,7 +202,29 @@ function useReadingProgress(firstSectionId: string | undefined) {
   return { activeId, contentRef, progressRef }
 }
 
-export function LegalPage({ document: doc }: { document: LegalDocument }) {
+/** Fecho da página: por padrão, o contato; no guia, o convite para a conta. */
+export type PageClosing = {
+  kicker: string
+  title: string
+  href: string
+  label: ReactNode
+}
+
+const CONTACT_CLOSING: PageClosing = {
+  kicker: 'Ficou alguma dúvida?',
+  title: 'A gente responde em até 15 dias.',
+  href: `mailto:${CONTACT_EMAIL}`,
+  label: CONTACT_EMAIL
+}
+
+/** Texto longo no visual das páginas legais: termos, privacidade e o guia. */
+export function LegalPage({
+  document: doc,
+  closing = CONTACT_CLOSING
+}: {
+  document: PageDocument
+  closing?: PageClosing
+}) {
   const { activeId, contentRef, progressRef } = useReadingProgress(
     doc.sections[0]?.id
   )
@@ -241,25 +277,27 @@ export function LegalPage({ document: doc }: { document: LegalDocument }) {
                 </div>
               </dl>
 
-              <Link className="onside-legal-other" to={doc.other.to}>
+              <a className="onside-legal-other" href={doc.other.to}>
                 <span>
                   <span>Leia também</span>
                   <b>{doc.other.label}</b>
                   <span>{doc.other.blurb}</span>
                 </span>
                 <ArrowRight size={16} aria-hidden="true" focusable="false" />
-              </Link>
+              </a>
             </div>
           </div>
         </section>
 
-        <div className="onside-legal-company">
-          <div className="onside-shell">
-            {doc.company.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
+        {doc.company.length > 0 ? (
+          <div className="onside-legal-company">
+            <div className="onside-shell">
+              {doc.company.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="onside-shell onside-legal-body">
           <aside>
@@ -300,11 +338,11 @@ export function LegalPage({ document: doc }: { document: LegalDocument }) {
         <section className="onside-legal-contact">
           <div className="onside-shell">
             <div>
-              <p>Ficou alguma dúvida?</p>
-              <h2>A gente responde em até 15 dias.</h2>
+              <p>{closing.kicker}</p>
+              <h2>{closing.title}</h2>
             </div>
-            <a href={`mailto:${CONTACT_EMAIL}`}>
-              {CONTACT_EMAIL}
+            <a href={closing.href}>
+              {closing.label}
               <ArrowRight size={16} aria-hidden="true" focusable="false" />
             </a>
           </div>

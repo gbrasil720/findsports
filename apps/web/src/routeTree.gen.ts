@@ -27,6 +27,8 @@ import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-emai
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as GuiaIndexRouteImport } from './routes/guia.index'
+import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
@@ -140,6 +142,16 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
 const AdminValidateRoute = AdminValidateRouteImport.update({
   id: '/admin_/validate',
   path: '/admin/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuiaIndexRoute = GuiaIndexRouteImport.update({
+  id: '/guia/',
+  path: '/guia/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuiaSlugRoute = GuiaSlugRouteImport.update({
+  id: '/guia/$slug',
+  path: '/guia/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoudiniAppRoute = HoudiniAppRouteImport.update({
@@ -282,8 +294,10 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/guia/': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -325,8 +339,10 @@ export interface FileRoutesByTo {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/guia': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -368,9 +384,11 @@ export interface FileRoutesById {
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/admin_/validate': typeof AdminValidateRoute
+  '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
+  '/guia/': typeof GuiaIndexRoute
   '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
@@ -414,8 +432,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/guia/'
     | '/dashboard/games'
     | '/dashboard/profile'
     | '/onboarding/fan'
@@ -457,8 +477,10 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/guia'
     | '/dashboard/games'
     | '/dashboard/profile'
     | '/onboarding/fan'
@@ -499,9 +521,11 @@ export interface FileRouteTypes {
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/admin_/validate'
+    | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
     | '/plan_/confirmed'
+    | '/guia/'
     | '/(dashboard)/dashboard_/games'
     | '/(dashboard)/dashboard_/profile'
     | '/(onboarding)/onboarding/fan'
@@ -544,7 +568,9 @@ export interface RootRouteChildren {
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
+  GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
+  GuiaIndexRoute: typeof GuiaIndexRoute
   dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
@@ -683,6 +709,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/validate'
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guia/': {
+      id: '/guia/'
+      path: '/guia'
+      fullPath: '/guia/'
+      preLoaderRoute: typeof GuiaIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guia/$slug': {
+      id: '/guia/$slug'
+      path: '/guia/$slug'
+      fullPath: '/guia/$slug'
+      preLoaderRoute: typeof GuiaSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/houdini/_app': {
@@ -920,7 +960,9 @@ const rootRouteChildren: RootRouteChildren = {
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
+  GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
+  GuiaIndexRoute: GuiaIndexRoute,
   dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,

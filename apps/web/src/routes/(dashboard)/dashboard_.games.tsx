@@ -254,7 +254,12 @@ function UpcomingCard({
 
       {game.code ? (
         <div className="mt-3 border-[1.5px] border-[var(--onside-line)] p-3">
-          <p className="onside-kicker">Código</p>
+          <p className="onside-kicker">
+            {/* Bar que confirma pela comanda (WEB-412). */}
+            {game.confirmsCodesLater
+              ? 'Para o garçom: anote na comanda'
+              : 'Código'}
+          </p>
           <p className="font-[family-name:var(--onside-mono)] font-bold text-2xl tracking-[0.2em]">
             {formatCode(game.code)}
           </p>

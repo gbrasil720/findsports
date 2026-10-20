@@ -44,7 +44,8 @@
     "db:catalog:sync": "cd packages/db && NODE_ENV=${NODE_ENV:-development} bun run src/catalog/sync.ts",
     "catalog:propose": "cd packages/db && bun run src/catalog/propose.ts",
     "check": "biome check . && bun scripts/check-onside-classes.ts",
-    "fix": "biome check --write ."
+    "fix": "biome check --write .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

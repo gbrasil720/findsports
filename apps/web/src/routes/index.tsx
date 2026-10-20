@@ -1,125 +1,63 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { OnsideLanding } from '@/components/landing/onside-landing'
-import { OG_IMAGE_URL, SITE_URL } from '@/lib/site'
+import { pageHead } from '@/lib/page-head'
+import { HOME_STRUCTURED_DATA, jsonLd } from '@/lib/structured-data'
 
-const HOMEPAGE_SCHEMA = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'Onside',
-  applicationCategory: 'LifestyleApplication',
-  operatingSystem: 'Web',
-  description:
-    'A Onside ajuda torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.',
-  url: SITE_URL,
-  inLanguage: 'pt-BR',
-  audience: {
-    '@type': 'Audience',
-    audienceType: 'Torcedores e bares esportivos no Brasil'
+// Marca primeiro e a busca que a home responde: "onde assistir ao jogo".
+const TITLE = 'Onside — Onde assistir ao jogo no bar perto de você'
+const DESCRIPTION =
+  'Onde assistir ao jogo? A Onside mostra os bares perto de você que vão passar a partida, com ambiente, telão, preço médio e distância. Grátis para torcedores.'
+
+const HOME_HEAD = pageHead({
+  path: '/',
+  title: TITLE,
+  description: DESCRIPTION,
+  indexable: true,
+  social: {
+    title: 'Onde seu jogo vai passar? A Onside vai mostrar.',
+    description:
+      'Compare bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
   }
-}
+})
 
 export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
-      {
-        title: 'Onside — Saiba onde assistir ao seu jogo'
-      },
-      {
-        name: 'description',
-        content:
-          'A Onside ajuda torcedores a encontrar e comparar bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
-      },
+      ...HOME_HEAD.meta,
       {
         name: 'theme-color',
         content: '#C9F135'
-      },
-      {
-        name: 'robots',
-        content: 'index, follow'
-      },
-
-      {
-        property: 'og:title',
-        content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
-      },
-      {
-        property: 'og:description',
-        content:
-          'Compare bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
-      },
-      {
-        property: 'og:type',
-        content: 'website'
-      },
-      {
-        property: 'og:url',
-        content: `${SITE_URL}/`
-      },
-      {
-        property: 'og:image',
-        content: OG_IMAGE_URL
-      },
-      {
-        property: 'og:image:width',
-        content: '1200'
-      },
-      {
-        property: 'og:image:height',
-        content: '630'
-      },
-      {
-        property: 'og:site_name',
-        content: 'Onside'
-      },
-      {
-        property: 'og:locale',
-        content: 'pt_BR'
-      },
-
-      {
-        name: 'twitter:card',
-        content: 'summary_large_image'
-      },
-      {
-        name: 'twitter:title',
-        content: 'Onde seu jogo vai passar? A Onside vai mostrar.'
-      },
-      {
-        name: 'twitter:description',
-        content:
-          'Compare bares por jogo, infraestrutura, preço médio e distância. Crie sua conta, de torcedor ou de bar.'
-      },
-      {
-        name: 'twitter:image',
-        content: OG_IMAGE_URL
       }
     ],
 
     links: [
-      {
-        rel: 'canonical',
-        href: `${SITE_URL}/`
-      },
+      ...HOME_HEAD.links,
+      // A Anton é a do título, que disputa o LCP com o pôster: vai na frente.
+      // Archivo e Geist Mono continuam pré-carregadas, mas sem tirar banda do
+      // pôster e da Anton no celular.
       {
         rel: 'preload',
         href: '/fonts/onside/anton-latin-400.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'high'
       },
       {
         rel: 'preload',
         href: '/fonts/onside/archivo-latin-wght.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'low'
       },
       {
         rel: 'preload',
         href: '/fonts/onside/geist-mono-latin-wght.woff2?v=2',
         as: 'font',
         type: 'font/woff2',
-        crossOrigin: 'anonymous'
+        crossOrigin: 'anonymous',
+        fetchPriority: 'low'
       }
     ]
   }),
@@ -131,7 +69,7 @@ function StructuredData({ schema }: { schema: object }) {
     <script
       type="application/ld+json"
       // biome-ignore lint/security/noDangerouslySetInnerHtml: structured data is static and safe
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: jsonLd(schema) }}
     />
   )
 }
@@ -139,7 +77,7 @@ function StructuredData({ schema }: { schema: object }) {
 function Landing() {
   return (
     <>
-      <StructuredData schema={HOMEPAGE_SCHEMA} />
+      <StructuredData schema={HOME_STRUCTURED_DATA} />
       <OnsideLanding />
     </>
   )
