@@ -267,6 +267,23 @@ const ICONS = {
       />
     </>
   ),
+  eye: (c: string) => (
+    <>
+      <Path
+        d="M12 5c5.2 0 9 4.4 10 7-1 2.6-4.8 7-10 7S3 14.6 2 12c1-2.6 4.8-7 10-7z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Circle cx={12} cy={12} r={3.6} fill={c} />
+    </>
+  ),
+  camera: (c: string) => (
+    <Path
+      fillRule="evenodd"
+      d="M8.6 4h6.8l1.5 2.4H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2h3.1zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
+      fill={c}
+    />
+  ),
   pin: (c: string) => (
     <Path
       fillRule="evenodd"
