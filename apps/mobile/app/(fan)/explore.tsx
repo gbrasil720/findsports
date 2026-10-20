@@ -41,7 +41,7 @@ import {
   type SearchBar,
   usePalette
 } from '@/components/explore'
-import { useExploreState } from '@/components/explore-state'
+import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, POP_FAST, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
@@ -107,6 +107,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // perfil ou São Paulo. Localização, filtros e folha vêm do estado que as
   // abas dividem (a aba "Você" mostra este mesmo Explorar sob o menu).
   const state = useExploreState()
+  const shotSource = useShotSource('explore', capture)
   const { device, district, liveOnly, filters } = state
   const city = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
@@ -497,7 +498,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
 
   return (
     <View
-      ref={capture ? state.screen : undefined}
+      ref={shotSource.ref}
       collapsable={false}
       style={{ flex: 1, backgroundColor: palette.bg }}
     >

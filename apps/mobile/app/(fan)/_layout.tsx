@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert, View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
-import { useExploreState } from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
@@ -71,7 +70,6 @@ const MENU_SCREENS: Record<string, string> = {
 // O estado do Explorar (`ExploreStateProvider`) mora em `app/_layout.tsx`:
 // a folha de filtros (19d) fica fora das abas e mexe nele também.
 export default function FanTabs() {
-  const explore = useExploreState()
   const router = useRouter()
   const palette = usePalette()
   const soon = useSoon()
@@ -83,13 +81,18 @@ export default function FanTabs() {
   // o menu por cima dela (`over`), e fechar deixa a pessoa onde estava.
   const pathname = usePathname()
   const [over, setOver] = useState(false)
-  // A aba de onde se abriu o menu: fechar volta para ela.
-  const [from, setFrom] = useState<'/explore' | '/favoritos'>('/explore')
+  // A última aba fora do "Você": fechar o menu volta para ela.
+  const from = useRef<'/explore' | '/favoritos'>('/explore')
+  useEffect(() => {
+    if (pathname === '/explore' || pathname === '/favoritos')
+      from.current = pathname
+  }, [pathname])
   // Trocar de tela ou de aba fecha o menu aberto por cima.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
   useEffect(() => setOver(false), [pathname])
   const menuOpen = pathname === '/voce' || over
-  const closeMenu = () => (over ? setOver(false) : router.navigate(from))
+  const closeMenu = () =>
+    over ? setOver(false) : router.navigate(from.current)
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
     retry: false,
@@ -177,28 +180,16 @@ export default function FanTabs() {
         </NativeTabs.Trigger>
         <NativeTabs.Trigger
           name="voce"
-          // Tocar de novo com o menu aberto fecha. Numa tela da pilha da
-          // aba, o menu abre por cima dela: o sistema voltaria ao começo
-          // da pilha (`disablePopToTop` impede). Vindo de outra aba, a aba
-          // reabre no menu, não na última tela da pilha.
+          // A troca vem do nativo, sem esperar o JS (a foto sob o menu já
+          // está pronta). Tocar de novo com o menu aberto fecha. Numa tela
+          // da pilha da aba, o menu abre por cima dela: o sistema voltaria
+          // ao começo da pilha (`disablePopToTop` impede). Vindo de outra
+          // aba, a pilha já voltou ao menu (`voce/_layout.tsx`).
           disablePopToTop
-          // Desabilitada no nativo: a troca de aba fica com o JS, que tira
-          // a foto do Explorar antes de abrir a aba (ver `voce/index.tsx`).
-          disabled
           listeners={{
-            tabPress: async () => {
+            tabPress: () => {
               if (menuOpen) closeMenu()
               else if (pathname.startsWith('/voce/')) setOver(true)
-              else {
-                // A aba "Você" põe a foto da tela de onde se veio sob o menu.
-                const tab =
-                  pathname === '/favoritos' ? '/favoritos' : '/explore'
-                await explore.takeShot(
-                  tab === '/favoritos' ? 'bars' : 'explore'
-                )
-                setFrom(tab)
-                router.navigate('/voce')
-              }
             }
           }}
         >

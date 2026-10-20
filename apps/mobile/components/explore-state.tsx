@@ -1,4 +1,5 @@
 import * as Location from 'expo-location'
+import { useIsFocused } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import {
   createContext,
@@ -6,10 +7,11 @@ import {
   useContext,
   useEffect,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from 'react'
 import type { View } from 'react-native'
-import { captureRef } from 'react-native-view-shot'
+import { captureRef, releaseCapture } from 'react-native-view-shot'
 import type { Coordinates } from '@/lib/explore'
 import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
 
@@ -17,8 +19,8 @@ import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
  * mesmo Explorar por baixo do menu (2c), então filtros, posição da folha e
  * localização precisam ser os mesmos nas duas, senão trocar de aba mudaria
- * a tela de baixo. A tela de baixo da "Você" é uma foto (`shot`) da aba de
- * onde a pessoa veio: o Explorar ou Seus bares.
+ * a tela de baixo. A tela de baixo da "Você" é uma foto da aba de onde a
+ * pessoa veio (`useShot`, mais abaixo).
  */
 
 type ExploreState = {
@@ -46,13 +48,6 @@ type ExploreState = {
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
-  /** As telas do Explorar e de Seus bares, para a foto que a aba "Você" mostra. */
-  screen: React.RefObject<View | null>
-  barsScreen: React.RefObject<View | null>
-  /** A última foto; `null` antes da primeira. */
-  shot: string | null
-  /** Tira a foto da tela como está agora. Falhou, fica a anterior. */
-  takeShot: (from: 'explore' | 'bars') => Promise<void>
 }
 
 const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
@@ -80,20 +75,6 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
     )
   }
   const [resting, setResting] = useState<number | null>(null)
-  // A aba "Você" mostra o Explorar parado sob o menu. Uma segunda cópia viva
-  // montava outro mapa, que recarregava os tiles na primeira vez que aparecia.
-  const screen = useRef<View>(null)
-  const barsScreen = useRef<View>(null)
-  const [shot, setShot] = useState<string | null>(null)
-  // ~70 ms no simulador: abaixo do que se percebe entre o toque e o menu.
-  const takeShot = (from: 'explore' | 'bars') =>
-    captureRef(from === 'bars' ? barsScreen : screen, {
-      format: 'jpg',
-      quality: 0.9,
-      result: 'tmpfile'
-    })
-      .then(setShot)
-      .catch(() => {})
 
   useEffect(() => {
     Location.getForegroundPermissionsAsync()
@@ -134,11 +115,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         focus,
         setFocus,
         resting,
-        setResting,
-        screen,
-        barsScreen,
-        shot,
-        takeShot
+        setResting
       }}
     >
       {children}
@@ -150,4 +127,62 @@ export function useExploreState() {
   const value = useContext(Context)
   if (!value) throw new Error('useExploreState fora de app/(fan)')
   return value
+}
+
+/*
+ * A foto que a aba "Você" põe sob o menu: a da última aba vista (Explorar ou
+ * Seus bares). Uma segunda cópia viva do Explorar montava outro mapa, que
+ * recarregava os tiles. A aba troca no nativo, sem esperar o JS (esperar
+ * fazia a lente da barra ir, voltar e ir de novo), então a foto já tem de
+ * estar pronta: a tela em foco se fotografa meio segundo depois de cada
+ * mudança. Fica fora do contexto para a foto nova não renderizar as telas.
+ */
+type ShotSource = 'explore' | 'bars'
+const shots: Partial<Record<ShotSource, string>> = {}
+// A aba que a pessoa viu por último: é ela que vai sob o menu.
+let lastSource: ShotSource = 'explore'
+const shotListeners = new Set<() => void>()
+const notify = () => {
+  for (const listener of shotListeners) listener()
+}
+
+/** A foto da última aba vista; `undefined` antes da primeira. */
+export function useShot() {
+  return useSyncExternalStore(
+    (listener) => {
+      shotListeners.add(listener)
+      return () => shotListeners.delete(listener)
+    },
+    () => shots[lastSource]
+  )
+}
+
+/**
+ * A tela a fotografar (`ref`). `again` pede outra foto onde a mudança não
+ * renderiza nada (rolagem).
+ */
+export function useShotSource(source: ShotSource, enabled = true) {
+  const ref = useRef<View>(null)
+  const focused = useIsFocused()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!enabled || !focused) return
+    if (lastSource !== source) {
+      lastSource = source
+      notify()
+    }
+    // ~70 ms no simulador: parado há meio segundo, não pesa num gesto.
+    const timer = setTimeout(() => {
+      captureRef(ref, { format: 'jpg', quality: 0.9, result: 'tmpfile' })
+        .then((uri) => {
+          const old = shots[source]
+          if (old) releaseCapture(old)
+          shots[source] = uri
+          notify()
+        })
+        .catch(() => {})
+    }, 500)
+    return () => clearTimeout(timer)
+  })
+  return { ref, again: () => setTick((t) => t + 1) }
 }

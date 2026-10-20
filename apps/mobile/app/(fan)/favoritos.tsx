@@ -23,7 +23,7 @@ import {
   Photo,
   usePalette
 } from '@/components/explore'
-import { useExploreState } from '@/components/explore-state'
+import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
   EASE,
@@ -115,7 +115,9 @@ export default function YourBars() {
     haptic.select()
     favorites.toggle(barId)
   }
-  const { device, barsScreen } = useExploreState()
+  const { device } = useExploreState()
+  // A aba "Você" mostra esta tela sob o menu quando se vem daqui.
+  const shotSource = useShotSource('bars')
   const city = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
     meta: { errorToast: false }
@@ -135,12 +137,14 @@ export default function YourBars() {
 
   return (
     <View
-      ref={barsScreen}
+      ref={shotSource.ref}
       collapsable={false}
       style={[styles.screen, { backgroundColor: palette.bg }]}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        onScrollEndDrag={shotSource.again}
+        onMomentumScrollEnd={shotSource.again}
         contentContainerStyle={[
           styles.body,
           { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
