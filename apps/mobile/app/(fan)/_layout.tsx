@@ -169,7 +169,14 @@ export default function FanTabs() {
 
   return (
     <View style={{ flex: 1 }}>
-      <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
+      <NativeTabs
+        minimizeBehavior="never"
+        tintColor={palette.ink}
+        // No aparelho, uma renderização do JS feita antes do toque chegava
+        // ao nativo depois dele e devolvia a seleção à aba anterior: a lente
+        // ia ao "Você", voltava e ia de novo. Recusa o pedido antigo.
+        unstable_nativeProps={{ rejectStaleNavStateUpdates: true }}
+      >
         <NativeTabs.Trigger name="explore">
           <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
           <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
