@@ -1,6 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import type { ReactNode } from 'react'
-import { Image, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View
+} from 'react-native'
+import MapView from 'react-native-maps'
 import type { SharedValue } from 'react-native-reanimated'
 import Svg, {
   Circle,
@@ -12,8 +20,10 @@ import Svg, {
   Rect,
   Stop
 } from 'react-native-svg'
+import { dropBox, MapDrop, MeDot } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { Enter, type Frame } from '@/components/intro-motion'
+import { MAP_STYLE } from '@/lib/map-style'
 
 /*
  * As ilustrações das quatro telas de "03 Apresentação" (projeto "Onside
@@ -25,9 +35,9 @@ import { Enter, type Frame } from '@/components/intro-motion'
  * porque o liquid glass com transparência animada sai errado no iOS 26.
  *
  * O design só desenha o tema claro. No escuro valem as mesmas formas com a
- * tinta e o papel trocados (a regra do design para a tab bar): o mapa tem
- * versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida) e as
- * telas 2 e 3 já são escuras nos dois temas.
+ * tinta e o papel trocados (a regra do design para a tab bar); as telas 2 e 3
+ * já são escuras nos dois temas. A 4b segue o Explorar de hoje (mapa nativo,
+ * gotas da Rodada 21, raio tracejado), não o desenho antigo da apresentação.
  */
 
 const INK = '#12120f'
@@ -66,6 +76,7 @@ const MOTION = {
     { at: 0.52 }
   ],
   you: pop(0.5),
+  radius: [{ at: 0.5, scale: 0.92, opacity: 0 }, { at: 0.62 }],
   youPulse: [
     { at: 0.61, opacity: 0 }, // sp-pulse
     { at: 0.62, opacity: 0.7 },
@@ -108,44 +119,49 @@ const scale = ({ width, height }: ArtProps) => ({
   sy: height / 476
 })
 
-/** Pino de bar no mapa: a ponta fica em (x, y). */
+/** A gota do Explorar (21a): a ponta fica em (x, y); o ao vivo leva o nome. */
 function Pin({
   x,
   y,
-  label,
-  live,
+  name,
+  live = false,
+  elite = false,
   progress,
   frames
 }: {
   x: number
   y: number
-  label: string
+  name: string
   live?: boolean
+  elite?: boolean
   progress: SharedValue<number>
   frames: Frame[]
 }) {
-  const color = live ? LIVE : INK
+  const dark = useColorScheme() === 'dark'
+  const label = live ? name : undefined
+  const box = dropBox({ live, label })
   return (
     <Enter
       progress={progress}
       frames={frames}
-      style={[styles.pin, { left: x - 100, top: y - 60 }]}
+      style={{ position: 'absolute', left: x - box.tipX, top: y - box.tipY }}
       pointerEvents="none"
     >
-      <View
-        style={[
-          styles.pinLabel,
-          live && styles.pinLabelLive,
-          { backgroundColor: color }
-        ]}
-      >
-        {live ? <View style={styles.pinDot} /> : null}
-        <Text style={[styles.pinText, live && size(13)]}>{label}</Text>
-      </View>
-      <View style={[styles.pinTip, { backgroundColor: color }]} />
+      <MapDrop live={live} elite={elite} dark={dark} label={label} />
     </Enter>
   )
 }
+
+/** Vila Madalena, no zoom de rua do Explorar. */
+const INTRO_REGION = {
+  latitude: -23.5545,
+  longitude: -46.6895,
+  latitudeDelta: 0.016,
+  longitudeDelta: 0.011
+}
+
+/** Raio do tracejado em volta de você, no desenho de 390 pt. */
+const RADIUS = 120
 
 /** 4b, "O jogo é aqui": o mapa com os bares que passam a partida. */
 export function MapArt(props: ArtProps) {
@@ -155,36 +171,66 @@ export function MapArt(props: ArtProps) {
   return (
     <View style={StyleSheet.absoluteFill}>
       <Enter progress={progress} frames={MOTION.mapPan}>
-        <Image
-          source={
-            dark
-              ? require('../assets/images/intro/map-dark.jpg')
-              : require('../assets/images/intro/map.jpg')
-          }
-          // Tamanho explícito: só com `absoluteFill` a imagem sai no tamanho
-          // original, sem o `cover` reduzir.
-          style={{ width: props.width, height: props.height }}
-          resizeMode="cover"
-        />
+        {/* O mapa do Explorar, parado: o toque passa para a paginação. */}
+        <View pointerEvents="none">
+          <MapView
+            style={{ width: props.width, height: props.height }}
+            initialRegion={INTRO_REGION}
+            mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+            customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
+            userInterfaceStyle={dark ? 'dark' : 'light'}
+            showsPointsOfInterests={false}
+            showsCompass={false}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            toolbarEnabled={false}
+          />
+        </View>
+      </Enter>
+      {/* O raio de busca em volta de você, tracejado como no Explorar. */}
+      <Enter
+        progress={progress}
+        frames={MOTION.radius}
+        style={{
+          position: 'absolute',
+          left: 193 * sx - RADIUS * sx,
+          top: 375 * sy - RADIUS * sx
+        }}
+        pointerEvents="none"
+      >
+        <Svg width={RADIUS * 2 * sx} height={RADIUS * 2 * sx}>
+          <Circle
+            cx={RADIUS * sx}
+            cy={RADIUS * sx}
+            r={RADIUS * sx - 1}
+            stroke={dark ? ACID : INK}
+            strokeWidth={1.5}
+            strokeDasharray="6 6"
+            fill="rgba(201,241,53,.1)"
+          />
+        </Svg>
       </Enter>
       <Pin
         x={110 * sx}
         y={250 * sy}
-        label="Casa 92"
+        name="Casa 92"
         progress={progress}
         frames={MOTION.pins[0]}
       />
       <Pin
         x={300 * sx}
         y={226 * sy}
-        label="Boteco Sete"
+        name="Boteco Sete"
+        elite
         progress={progress}
         frames={MOTION.pins[1]}
       />
       <Pin
         x={206 * sx}
         y={312 * sy}
-        label="Bar do Zé"
+        name="Bar do Zé"
         live
         progress={progress}
         frames={MOTION.livePin}
@@ -236,26 +282,9 @@ export function MapArt(props: ArtProps) {
           style={[styles.youRing, styles.youPulse]}
         />
         <Enter progress={progress} frames={MOTION.you} style={styles.youBody}>
-          <View style={[styles.youRing, { width: 80, height: 80 }]} />
-          <View
-            style={[
-              styles.youRing,
-              {
-                width: 44,
-                height: 44,
-                backgroundColor: 'rgba(201,241,53,.25)'
-              }
-            ]}
-          />
-          <View style={styles.youDot} />
+          <MeDot />
         </Enter>
       </View>
-      {/* Condição da ODbL: o mapa é OpenStreetMap, pelos tiles da Onside. */}
-      <Text
-        style={[styles.attribution, dark && { color: 'rgba(241,238,230,.45)' }]}
-      >
-        © OpenStreetMap
-      </Text>
     </View>
   )
 }
@@ -587,32 +616,6 @@ const styles = StyleSheet.create({
   body: { fontFamily: 'Archivo-Regular' },
   semibold: { fontFamily: 'Archivo-SemiBold' },
   bold: { fontFamily: 'Archivo-Bold' },
-  pin: {
-    position: 'absolute',
-    width: 200,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'flex-end'
-  },
-  pinLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 9,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: PAPER
-  },
-  pinLabelLive: { paddingVertical: 8, paddingHorizontal: 12 },
-  pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
-  pinText: { fontFamily: 'Archivo-Bold', ...size(12), color: PAPER },
-  pinTip: {
-    width: 9,
-    height: 9,
-    marginTop: -6,
-    transform: [{ rotate: '45deg' }]
-  },
   you: {
     position: 'absolute',
     width: 80,
@@ -640,14 +643,6 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     backgroundColor: 'rgba(201,241,53,.10)'
   },
-  youDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 3,
-    borderColor: INK,
-    backgroundColor: ACID
-  },
   matchCard: { position: 'absolute', left: 18, right: 18, bottom: 22 },
   matchGlass: {
     paddingVertical: 14,
@@ -664,14 +659,6 @@ const styles = StyleSheet.create({
     backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  attribution: {
-    position: 'absolute',
-    right: 22,
-    bottom: 5,
-    fontFamily: 'Archivo-Regular',
-    fontSize: 9,
-    color: 'rgba(18,18,15,.45)'
   },
   goingCard: { position: 'absolute', left: 18, right: 18, bottom: 22 },
   goingGlass: {
