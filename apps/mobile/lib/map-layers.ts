@@ -62,13 +62,13 @@ export const kmAcross = (r: Region) =>
   r.longitudeDelta * 111.32 * Math.cos((r.latitude * Math.PI) / 180)
 
 /**
- * Longe: grupos e pontos, sem rótulo. Médio: até 3 rótulos. Perto: rótulos
- * em todos que couberem.
+ * Bairro (mais de 4 km na tela, 20a): grupos e pontos, sem rótulo. Rua
+ * (20b): até 3 rótulos. Mais perto que 1,5 km: rótulos em todos que couberem.
  */
 export function labelBudget(r: Region) {
   const km = kmAcross(r)
-  if (km > 8) return 0
-  if (km > 2.5) return 3
+  if (km > 4) return 0
+  if (km > 1.5) return 3
   return Number.POSITIVE_INFINITY
 }
 
@@ -125,7 +125,9 @@ export function mapLayers(
   region: Region,
   size: { width: number; height: number },
   /** Faixa coberta pelo cabeçalho e pelos chips: rótulo ali não se lê. */
-  covered = 0
+  covered = 0,
+  /** Onde a folha começa: rótulo atrás dela também não. */
+  floor = size.height
 ): Layer[] {
   const left = region.longitude - region.longitudeDelta / 2
   const topLat = region.latitude + region.latitudeDelta / 2
@@ -142,7 +144,9 @@ export function mapLayers(
       left + region.longitudeDelta * (1 + pad),
       topLat + region.latitudeDelta * pad
     ],
-    Math.round(zoomOf(region, size.width))
+    // Grupo só no zoom de bairro (20a); na rua já é tudo ponto ou rótulo
+    // (20b, regra 04).
+    labelBudget(region) === 0 ? Math.round(zoomOf(region, size.width)) : 20
   )
 
   const layers: Layer[] = []
@@ -169,13 +173,22 @@ export function mapLayers(
     } else singles.push((f.properties as Props).bar)
   }
 
-  // Rótulo por prioridade enquanto houver vaga e não encostar; o resto é
-  // ponto. Com um bar tocado, nenhum outro ganha rótulo.
+  // Rótulo só para ao vivo e Elite (20b), por prioridade, enquanto houver
+  // vaga e não encostar; o resto é ponto. Com um bar tocado, nenhum outro
+  // ganha rótulo.
   let budget = selected ? 0 : labelBudget(region)
   for (const bar of singles.sort(byPriority)) {
     const p = at(bar.lat, bar.lng)
     const box = labelBox(p.x, p.y, bar.label)
-    if (budget > 0 && box.y1 > covered && !taken.some((t) => touches(t, box))) {
+    if (
+      budget > 0 &&
+      (bar.live || bar.elite) &&
+      box.y1 > covered &&
+      box.y2 < floor &&
+      box.x1 > 4 &&
+      box.x2 < size.width - 4 &&
+      !taken.some((t) => touches(t, box))
+    ) {
       taken.push(box)
       budget -= 1
       layers.push({ kind: 'label', id: bar.id, bar })
@@ -186,19 +199,132 @@ export function mapLayers(
   return layers
 }
 
-/** A região que abre o grupo: o zoom em que ele se separa, centrado nele. */
+/**
+ * A região que abre o grupo no zoom de rua (20b): os bares dele com folga,
+ * uns 1,6 km na largura, ou mais perto se for preciso para se separarem.
+ */
 export function expandGroup(
   index: BarIndex,
   group: { clusterId: number; lat: number; lng: number },
   region: Region,
   width: number
 ): Region {
-  const zoom = Math.min(index.getClusterExpansionZoom(group.clusterId), 19)
-  const scale = 2 ** (zoom - zoomOf(region, width))
+  const leaves = index
+    .getLeaves(group.clusterId, Number.POSITIVE_INFINITY)
+    .map((f) => f.properties.bar)
+  const lats = leaves.map((b) => b.lat)
+  const lngs = leaves.map((b) => b.lng)
+  const lat = (Math.min(...lats) + Math.max(...lats)) / 2
+  const lng = (Math.min(...lngs) + Math.max(...lngs)) / 2
+  const cos = Math.cos((lat * Math.PI) / 180)
+  const spanKm = Math.max(
+    1.6,
+    (Math.max(...lngs) - Math.min(...lngs)) * 111.32 * cos * 2.5,
+    (Math.max(...lats) - Math.min(...lats)) * 111 * 2.5
+  )
+  // Nunca mais longe do que já estava, e perto o bastante para o grupo se
+  // separar num toque só ("tocar aproxima até separar", 20d).
+  const splitKm =
+    (kmAcross(region) * 2 ** zoomOf(region, width)) /
+    2 ** Math.min(index.getClusterExpansionZoom(group.clusterId), 19)
+  const km = Math.min(spanKm, splitKm, kmAcross(region) / 2)
+  const scale = kmAcross(region) / km
   return {
-    latitude: group.lat,
-    longitude: group.lng,
+    latitude: lat,
+    longitude: lng,
     latitudeDelta: region.latitudeDelta / scale,
     longitudeDelta: region.longitudeDelta / scale
   }
+}
+
+/**
+ * Os nomes de bairro no zoom de bairro (20a): no meio dos bares de cada um,
+ * em Anton apagado, só onde não encostam num grupo, num rótulo ou noutro
+ * nome. No zoom de rua (20b) somem.
+ */
+export function hoodNames(
+  bars: { neighborhood: string; lat: number; lng: number }[],
+  layers: Layer[],
+  region: Region,
+  size: { width: number; height: number },
+  covered = 0
+) {
+  // Só no zoom de bairro, o dos grupos (20a); no de rua (20b), não.
+  if (labelBudget(region) !== 0) return []
+  const left = region.longitude - region.longitudeDelta / 2
+  const topLat = region.latitude + region.latitudeDelta / 2
+  const at = (lat: number, lng: number) => ({
+    x: ((lng - left) / region.longitudeDelta) * size.width,
+    y: ((topLat - lat) / region.latitudeDelta) * size.height
+  })
+  const hoods = new Map<
+    string,
+    { name: string; lat: number; lng: number; n: number }
+  >()
+  for (const bar of bars) {
+    const name = bar.neighborhood.trim()
+    if (!name) continue
+    const key = name.toLocaleLowerCase('pt-BR')
+    const hood = hoods.get(key) ?? { name, lat: 0, lng: 0, n: 0 }
+    hood.lat += bar.lat
+    hood.lng += bar.lng
+    hood.n += 1
+    hoods.set(key, hood)
+  }
+  // O que já ocupa a tela: grupos, rótulos e pontos.
+  const taken: Box[] = layers.map((l) => {
+    const p = l.kind === 'group' ? at(l.lat, l.lng) : at(l.bar.lat, l.bar.lng)
+    if (l.kind === 'group')
+      return { x1: p.x - 34, y1: p.y - 34, x2: p.x + 34, y2: p.y + 34 }
+    if (l.kind === 'point')
+      return { x1: p.x - 18, y1: p.y - 18, x2: p.x + 18, y2: p.y + 18 }
+    return labelBox(p.x, p.y, l.bar.label)
+  })
+  const out: { name: string; lat: number; lng: number }[] = []
+  // Os bairros com mais bares primeiro.
+  // Bairro de um bar só não ganha nome: ele cairia em cima do próprio ponto.
+  for (const h of [...hoods.values()]
+    .filter((h) => h.n > 1)
+    .sort((a, b) => b.n - a.n)) {
+    const lat = h.lat / h.n
+    const lng = h.lng / h.n
+    const p = at(lat, lng)
+    const w = h.name.length * 8 + 8
+    // Tenta acima, abaixo e dos lados do meio dos bares; fica na primeira
+    // posição livre. O nome vai centrado no ponto escolhido.
+    const spot = [
+      { dx: 0, dy: -50 },
+      { dx: 0, dy: 50 },
+      { dx: -(w / 2 + 40), dy: 0 },
+      { dx: w / 2 + 40, dy: 0 }
+    ]
+      .map(({ dx, dy }) => ({ x: p.x + dx, y: p.y + dy }))
+      .find((c) => {
+        const box = {
+          x1: c.x - w / 2,
+          y1: c.y - 12,
+          x2: c.x + w / 2,
+          y2: c.y + 12
+        }
+        return (
+          box.y1 > covered &&
+          box.x1 > 0 &&
+          box.x2 < size.width &&
+          !taken.some((t) => touches(t, box))
+        )
+      })
+    if (!spot) continue
+    taken.push({
+      x1: spot.x - w / 2,
+      y1: spot.y - 10,
+      x2: spot.x + w / 2,
+      y2: spot.y + 10
+    })
+    out.push({
+      name: h.name,
+      lat: topLat - (spot.y / size.height) * region.latitudeDelta,
+      lng: left + (spot.x / size.width) * region.longitudeDelta
+    })
+  }
+  return out
 }

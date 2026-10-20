@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildIndex,
   expandGroup,
+  hoodNames,
   labelBudget,
   type MapBar,
   mapLayers,
@@ -53,12 +54,20 @@ const layersOf = (
   )
 
 describe('mapa sem amontoado (20d)', () => {
-  test('perto, separados: todos viram rótulo', () => {
+  test('perto: rótulo só para ao vivo e Elite; o resto é ponto (20b)', () => {
     const layers = layersOf(
-      [bar('a', -23.555, -46.685), bar('b', -23.565, -46.675)],
+      [
+        bar('vivo', -23.555, -46.685, { live: true }),
+        bar('elite', -23.565, -46.675, { elite: true }),
+        bar('comum', -23.552, -46.672)
+      ],
       NEAR
     )
-    expect(kinds(layers)).toEqual({ a: 'label', b: 'label' })
+    expect(kinds(layers)).toEqual({
+      vivo: 'label',
+      elite: 'label',
+      comum: 'point'
+    })
   })
 
   test('longe: bares colados viram grupo com o selo de ao vivo', () => {
@@ -81,7 +90,7 @@ describe('mapa sem amontoado (20d)', () => {
     const dx = (70 / SIZE.width) * NEAR.longitudeDelta
     const layers = layersOf(
       [
-        bar('perto', -23.56, -46.68, { distanceKm: 0.5 }),
+        bar('perto', -23.56, -46.68, { elite: true, distanceKm: 0.5 }),
         bar('vivo', -23.56, -46.68 + dx, { live: true, distanceKm: 2 })
       ],
       NEAR
@@ -98,8 +107,9 @@ describe('mapa sem amontoado (20d)', () => {
     expect(kinds(layers)).toEqual({ a: 'point', b: 'selected' })
   })
 
-  test('tocar no grupo abre no zoom em que ele se separa', () => {
-    const bars = [bar('a', -23.56, -46.68), bar('b', -23.5605, -46.6805)]
+  test('tocar no grupo abre no zoom de rua, onde os bares se separam', () => {
+    // A ~400 m um do outro: juntos de longe, separados na rua.
+    const bars = [bar('a', -23.56, -46.68), bar('b', -23.563, -46.683)]
     const index = buildIndex(bars)
     const [group] = mapLayers(index, null, FAR, SIZE)
     if (group?.kind !== 'group') throw new Error('sem grupo')
@@ -111,7 +121,7 @@ describe('mapa sem amontoado (20d)', () => {
 
   test('debaixo do cabeçalho não ganha rótulo', () => {
     const layers = mapLayers(
-      buildIndex([bar('alto', -23.547, -46.68)]),
+      buildIndex([bar('alto', -23.547, -46.68, { live: true })]),
       null,
       NEAR,
       SIZE,
@@ -120,9 +130,33 @@ describe('mapa sem amontoado (20d)', () => {
     expect(kinds(layers)).toEqual({ alto: 'point' })
   })
 
+  test('nome de bairro só longe e onde não encosta em nada', () => {
+    const bars = [bar('a', -23.56, -46.68), bar('b', -23.5605, -46.6805)]
+    const hood = (b: MapBar, n: string) => ({ ...b, neighborhood: n })
+    const named = [
+      hood(bars[0] as MapBar, 'Pinheiros'),
+      hood(bars[1] as MapBar, 'Pinheiros')
+    ]
+    const far = mapLayers(buildIndex(bars), null, FAR, SIZE)
+    // O nome desvia do grupo: sai, mas não em cima dele.
+    const [moved] = hoodNames(named, far, FAR, SIZE)
+    const group = far.find((l) => l.kind === 'group')
+    expect(moved?.name).toBe('Pinheiros')
+    expect(group && moved && Math.abs(moved.lat - group.lat)).toBeGreaterThan(
+      0.005
+    )
+    // Sem nada por perto, sai; no zoom de rua, não.
+    expect(hoodNames(named, [], FAR, SIZE).map((h) => h.name)).toEqual([
+      'Pinheiros'
+    ])
+    expect(hoodNames(named, [], NEAR, SIZE)).toEqual([])
+  })
+
   test('orçamento de rótulos por zoom', () => {
     expect(labelBudget(FAR)).toBe(0)
-    expect(labelBudget({ ...NEAR, longitudeDelta: 0.04 })).toBe(3)
-    expect(labelBudget(NEAR)).toBe(Number.POSITIVE_INFINITY)
+    expect(labelBudget(NEAR)).toBe(3)
+    expect(labelBudget({ ...NEAR, longitudeDelta: 0.01 })).toBe(
+      Number.POSITIVE_INFINITY
+    )
   })
 })

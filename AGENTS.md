@@ -443,9 +443,10 @@ invente layout que o projeto não tem.
     aparelho. Não há notificação no celular.
 - **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
   60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
-  vermelho se ao vivo, acid se Elite) ou rótulo (só os de maior prioridade que cabem sem
-  encostar: ao vivo, Elite, mais perto, próximo jogo; longe nenhum, médio até 3, perto
-  todos que couberem). Tocar num bar o seleciona: os outros apagam para 45% e a folha
+  vermelho se ao vivo, acid se Elite) ou rótulo (só ao vivo e Elite, por prioridade, que
+  caibam sem encostar e fora do cabeçalho e da folha). Zoom de bairro (mais de 4 km na
+  tela): grupos, pontos e nomes de bairro, sem rótulo; de rua: sem grupo, até 3 rótulos;
+  mais perto que 1,5 km: rótulo em todos que couberem. Tocar num bar o seleciona: os outros apagam para 45% e a folha
   troca para o card dele; tocar no mapa solta. Grupos pela `supercluster` (tocar abre no zoom em que o
   grupo se separa) e o resto em `lib/map-layers.ts`, sobre os cantos reais da tela
   (`getMapBoundaries`); debaixo do cabeçalho não sai rótulo. A camada nativa do MapLibre

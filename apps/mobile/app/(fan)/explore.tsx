@@ -17,7 +17,6 @@ import MapView, { Marker } from 'react-native-maps'
 import Animated, {
   cancelAnimation,
   Extrapolation,
-  FadeOut,
   interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -42,7 +41,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { EASE, haptic, POP_FAST, ScalePress, SWAP } from '@/components/motion'
+import { EASE, haptic, POP_FAST, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
@@ -68,6 +67,7 @@ import {
 import {
   buildIndex,
   expandGroup,
+  hoodNames,
   type Layer,
   type MapBar,
   mapLayers,
@@ -181,9 +181,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // A folha: alta (lista inteira), no meio (como abre: só o título e um
   // card, para sobrar mapa, 20d) e baixa (só o título).
   const top = insets.top + 8
+  const [selected, setSelected] = useState<string | null>(null)
+  // No meio, a borda da folha fica a 296 pt do pé da tela (20a, 20b); com um
+  // bar tocado, a 336 pt, para o card dele caber (20c).
   const snaps = [
     0,
-    height - tabSpace - 232 - top,
+    height - top - (selected ? 336 : 296),
     height - top - 150 - tabSpace
   ]
   const resting = state.resting ?? snaps[1]
@@ -199,14 +202,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     left: 0,
     bottom: height - (top + snaps[1])
   }
-  // A câmera abre no raio da pessoa (20d): o círculo inteiro na faixa livre
-  // entre os chips e a folha, com folga. Nunca a cidade inteira. A região é
-  // da tela toda, com o centro deslocado para o círculo cair na faixa: o
-  // `mapPadding` e o `edgePadding` do iOS abriam três vezes mais longe.
+  // A câmera abre no raio da pessoa (20d, regra 01): o círculo do raio na
+  // faixa livre entre os chips e a folha. Nunca a cidade inteira. Abre no
+  // zoom de bairro (20a); tocar num grupo leva ao de rua (20b). A região é
+  // da tela toda, com o centro deslocado para o círculo cair na faixa:
+  // `mapPadding` e `edgePadding` no iOS abriam três vezes mais longe.
   const band = height - padding.top - padding.bottom
   const metersPerPoint = Math.max(
-    (radiusKm * 2000 * 1.15) / band,
-    (radiusKm * 2000 * 1.15) / width
+    (radiusKm * 2000) / band,
+    (radiusKm * 2000) / width
   )
   const shift = height / 2 - (padding.top + band / 2)
   const cosLat = Math.cos((center.lat * Math.PI) / 180)
@@ -221,7 +225,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     map.current?.animateToRegion(region, reduced ? 0 : 400)
   // A região à vista decide grupos, pontos e rótulos (Rodada 20).
   const [view, setView] = useState<Region>(region)
-  const [selected, setSelected] = useState<string | null>(null)
   const chosen = bars.find((bar) => bar.id === selected) ?? null
   const mapBars: MapBar[] = bars.map((bar) => {
     const game = bar.nextEvent
@@ -237,10 +240,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       elite: bar.plan === 'elite',
       distanceKm: bar.distance_km,
       next: game ? Date.parse(game.startsAt) : Number.POSITIVE_INFINITY,
+      // Ao vivo leva o nome; Elite, a hora do jogo de hoje (20b); o tocado,
+      // os dois (20c).
       label:
         bar.id === selected && game && !live
           ? `${bar.name} · ${formatTime(game.startsAt)}`
-          : later && game
+          : later && game && !live
             ? formatTime(game.startsAt)
             : bar.name
     }
@@ -253,7 +258,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     chosenBar,
     view,
     { width, height },
-    insets.top + 180
+    insets.top + 236,
+    top + snaps[1]
   )
   const tapLayer = (layer: Layer) => {
     haptic.select()
@@ -273,7 +279,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     if (!bar) return
     if (layer.kind === 'selected') return open(bar)
     setSelected(bar.id)
-    settle(snaps[1])
   }
   // O mapa só aceita `animateToRegion` depois de pronto: a localização que
   // chegava antes disso se perdia, e o Explorar ficava na cidade do perfil.
@@ -410,6 +415,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     transform: [{ translateY: y.get() }]
   }))
   // A seta de "Lista" vira com a folha, não depois dela.
+  const rest = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      y.get(),
+      [snaps[1] - 120, snaps[1] - 8],
+      [1, 0],
+      Extrapolation.CLAMP
+    )
+  }))
+  // Tocar num bar sobe a folha um pouco, para o card dele caber (20c);
+  // soltar volta (20a, 20b). Aberta como lista, fica onde está.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a escolha muda
+  useEffect(() => {
+    if (!expanded) settle(snaps[1])
+  }, [selected])
   const arrow = useAnimatedStyle(() => ({
     transform: [
       {
@@ -459,7 +478,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         }}
         // Tocar no mapa fora de um marcador solta o bar escolhido.
         onPress={(e) => {
-          if (e.nativeEvent.action !== 'marker-press') setSelected(null)
+          if (e.nativeEvent.action === 'marker-press' || !selected) return
+          setSelected(null)
         }}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
@@ -479,10 +499,45 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             // Um marcador só e parado: acompanhar a vista garante que o ponto
             // apareça mesmo quando chega depois do mapa.
             tracksViewChanges
+            // Por baixo dos bares, como no design.
+            zIndex={0}
           >
             <MeDot />
           </Marker>
         ) : null}
+        {hoodNames(
+          bars.map((bar) => ({
+            neighborhood: bar.neighborhood,
+            lat: Number(bar.latitude),
+            lng: Number(bar.longitude)
+          })),
+          layers,
+          view,
+          { width, height },
+          insets.top + 236
+        ).map((hood) => (
+          <Marker
+            key={`hood:${hood.name}`}
+            coordinate={{ latitude: hood.lat, longitude: hood.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+            tappable={false}
+            zIndex={0}
+          >
+            <Text
+              style={[
+                styles.hoodName,
+                {
+                  color: palette.dark
+                    ? 'rgba(241,238,230,.5)'
+                    : 'rgba(18,18,15,.55)'
+                }
+              ]}
+            >
+              {hood.name}
+            </Text>
+          </Marker>
+        ))}
         {layers.map((layer) =>
           layer.kind === 'group' ? (
             <Marker
@@ -490,6 +545,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               coordinate={{ latitude: layer.lat, longitude: layer.lng }}
               anchor={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={false}
+              zIndex={2}
               onPress={() => tapLayer(layer)}
             >
               <MapGroup count={layer.count} live={layer.live} />
@@ -520,15 +576,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               ) : (
                 <PinTag
                   label={layer.bar.label}
+                  // Tocado: tinta e maior. Ao vivo: vermelho. Elite: acid.
                   kind={
                     layer.kind === 'selected'
                       ? 'idle'
                       : layer.bar.live
                         ? 'live'
-                        : layer.bar.label === layer.bar.name
-                          ? 'idle'
-                          : 'later'
+                        : 'later'
                   }
+                  big={layer.kind === 'selected'}
                 />
               )}
             </Marker>
@@ -666,16 +722,14 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         </ScalePress>
         {/* "Ao vivo" é fixo, e só aparece com jogo rolando (19e). */}
         {liveCount || liveOnly ? (
-          // Aparece quando um jogo começa: entra e sai sem empurrar seco.
-          <Animated.View entering={SWAP} exiting={CHIP_OUT}>
-            <Chip
-              live
-              label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
-              on={liveOnly}
-              palette={palette}
-              onPress={() => state.setLiveOnly(!liveOnly)}
-            />
-          </Animated.View>
+          // Sem fade de entrada: vidro com transparência animada some no iOS.
+          <Chip
+            live
+            label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
+            on={liveOnly}
+            palette={palette}
+            onPress={() => state.setLiveOnly(!liveOnly)}
+          />
         ) : null}
         {shortcuts.map((key) => {
           const shown = shortcutLabel(key, sports)
@@ -714,7 +768,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               frameRadius()
             }}
           >
-            <Glass tone={glassTone} interactive style={styles.round}>
+            <Glass
+              tone={glassTone}
+              interactive
+              style={[styles.round, styles.round44]}
+            >
               <Icon
                 name="pin"
                 size={18}
@@ -804,26 +862,40 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 <Animated.View style={[{ gap: 12 }, listFade]}>
                   {/* Bar tocado no mapa (20c): a folha troca para o card dele. */}
                   {chosen ? (
-                    <Animated.View key={chosen.id} entering={SWAP}>
-                      <BarTicket
-                        bar={chosen}
-                        now={now}
-                        palette={palette}
-                        favorite={favorites.ids.has(chosen.id)}
-                        onFavorite={() => favorites.toggle(chosen.id)}
-                        onPress={() => open(chosen)}
-                      />
-                    </Animated.View>
+                    // Sem fade: o card tem vidro, e vidro com transparência animada some.
+                    <BarTicket
+                      key={chosen.id}
+                      bar={chosen}
+                      now={now}
+                      palette={palette}
+                      favorite={favorites.ids.has(chosen.id)}
+                      onFavorite={() => favorites.toggle(chosen.id)}
+                      onPress={() => open(chosen)}
+                    />
                   ) : (
-                    bars.map((bar) => (
-                      <BarRow
-                        key={bar.id}
-                        bar={bar}
-                        now={now}
-                        palette={palette}
-                        onPress={() => open(bar)}
-                      />
-                    ))
+                    // Na abertura, só o primeiro card, sem a hora (20a); os
+                    // outros aparecem conforme a folha sobe.
+                    bars.map((bar, index) =>
+                      index === 0 ? (
+                        <BarRow
+                          key={bar.id}
+                          bar={bar}
+                          now={now}
+                          palette={palette}
+                          compact={!expanded}
+                          onPress={() => open(bar)}
+                        />
+                      ) : (
+                        <Animated.View key={bar.id} style={rest}>
+                          <BarRow
+                            bar={bar}
+                            now={now}
+                            palette={palette}
+                            onPress={() => open(bar)}
+                          />
+                        </Animated.View>
+                      )
+                    )
                   )}
                 </Animated.View>
               )}
@@ -882,14 +954,19 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   )
 }
 
-const CHIP_OUT = FadeOut.duration(120)
-
 const styles = StyleSheet.create({
-  recenter: { position: 'absolute', top: -58, right: 16 },
+  recenter: { position: 'absolute', top: -58, right: 14 },
+  round44: { width: 44, height: 44, borderRadius: 22 },
+  hoodName: {
+    fontFamily: 'Anton',
+    fontSize: 13,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
+  },
   filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center'
