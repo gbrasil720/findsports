@@ -15,10 +15,13 @@ export type LateEntryResult =
  * oferta escrita, fala da "oferta da casa" em geral.
  */
 export function getTeamMessage(offer: string | null): string {
-  const reward = offer ? `ganha: ${offer}` : 'ganha a oferta da casa'
+  // A oferta é texto do dono: ponto final só se ele não pôs.
+  const reward = offer
+    ? `ganha a oferta da casa: ${/[.!?…]$/.test(offer) ? offer : `${offer}.`}`
+    : 'ganha a oferta da casa.'
   return [
     'Pessoal, a partir de agora:',
-    `Cliente que mostrar um código da Onside no celular (6 letras e números, tipo A7K·29) ${reward}.`,
+    `Cliente que mostrar um código da Onside no celular (6 letras e números, tipo K7M·R4P) ${reward}`,
     'Anotem o código na comanda dele. Não precisa conferir nada na hora: eu lanço depois do jogo.'
   ].join('\n')
 }

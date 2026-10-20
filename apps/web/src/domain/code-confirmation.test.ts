@@ -9,8 +9,9 @@ import {
 describe('código pela comanda (WEB-412)', () => {
   test('o recado à equipe leva a oferta escrita, ou a da casa em geral', () => {
     expect(getTeamMessage('Chopp em dobro')).toContain(
-      'tipo A7K·29) ganha: Chopp em dobro.'
+      'tipo K7M·R4P) ganha a oferta da casa: Chopp em dobro.\n'
     )
+    expect(getTeamMessage('Chopp em dobro!')).toContain('Chopp em dobro!\n')
     expect(getTeamMessage(null)).toContain('ganha a oferta da casa.')
     expect(getTeamMessage(null)).toContain('Anotem o código na comanda dele.')
   })
