@@ -413,6 +413,11 @@ invente layout que o projeto não tem.
   miniaturas saem do desenho do design (`o3d.js`) por `bun apps/mobile/scripts/medals/generate.ts`;
   medalha nova é uma linha em `ACHIEVEMENTS` e outra em `lib/medals.ts`, e o gerador de
   novo. Para ver com dados: `apps/mobile/scripts/conquistas.sql` (`-v fan=<e-mail>`).
+- **Perfil (10, tela 2l):** `app/(fan)/voce/perfil.tsx`, aberto pelo menu "Você". Só lê
+  o que já existe (`achievements.mine`, `attendance.visits` e `mine`, `pubs.getFavorites`,
+  `getMyPreferences`, `getMyCity`, `ratings.getPending`); as contas ficam em `lib/profile.ts`.
+  "Suas comunidades" do design não entrou (comunidades não existem) e "Raio de busca" e
+  "Esportes" avisam "chega em breve" até as Preferências.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
