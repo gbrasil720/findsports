@@ -5,16 +5,23 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MapView from 'react-native-maps'
 import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
-  withSpring
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { Card } from '@/components/card'
 import { Chip, type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { haptic } from '@/components/motion'
+import { EASE, haptic } from '@/components/motion'
 import {
   ACID,
   GlassRound,
@@ -30,7 +37,6 @@ import {
   BAR_ITEMS,
   defaultShortcuts,
   MAX_SHORTCUTS,
-  moveShortcut,
   type Shortcut,
   shortcutLabel,
   toggleShortcut
@@ -304,9 +310,32 @@ export default function ShortcutsScreen() {
   )
 }
 
+/** A mola de quem assenta no lugar: curta, sem balanço. */
+const SETTLE = { damping: 22, stiffness: 280 }
+// Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
+const ROW_IN = FadeIn.duration(150)
+const ROW_OUT = FadeOut.duration(120)
+const HEIGHT = LinearTransition.duration(200).easing(EASE)
+
+/** Leva `id` para a posição `to`; quem estava no caminho anda uma casa. */
+function shift(positions: Record<string, number>, id: string, to: number) {
+  'worklet'
+  const from = positions[id] ?? to
+  const next: Record<string, number> = {}
+  for (const key of Object.keys(positions)) {
+    const at = positions[key] ?? 0
+    if (key === id) next[key] = to
+    else if (from < to && at > from && at <= to) next[key] = at - 1
+    else if (from > to && at < from && at >= to) next[key] = at + 1
+    else next[key] = at
+  }
+  return next
+}
+
 /**
- * A lista que se arrasta: cada linha fica numa posição absoluta e troca de
- * lugar quando a arrastada passa da metade da vizinha. Altura fixa (58).
+ * A lista que se arrasta: cada linha fica numa posição absoluta. Enquanto a
+ * arrastada passa da metade de uma vizinha, a vizinha já desliza para o
+ * lugar livre; soltar grava a ordem. Altura fixa (58).
  */
 function Sortable({
   palette,
@@ -323,25 +352,31 @@ function Sortable({
   onMove: (list: Shortcut[]) => void
   onRemove: (key: Shortcut) => void
 }) {
+  const positions = useSharedValue<Record<string, number>>(
+    Object.fromEntries(list.map((key, i) => [key, i]))
+  )
+  // A lista mudou (pôs, tirou, gravou a ordem): as posições seguem.
+  useEffect(() => {
+    positions.set(Object.fromEntries(list.map((key, i) => [key, i])))
+  }, [list, positions])
   return (
-    <View style={{ height: list.length * ROW }}>
+    <Animated.View layout={HEIGHT} style={{ height: list.length * ROW }}>
       {list.map((key, index) => (
         <SortRow
           key={key}
           id={key}
           index={index}
           count={list.length}
+          positions={positions}
           palette={palette}
           label={shortcutLabel(key, sportList)}
           sub={key === `esporte:${mainSport}` ? 'Seu esporte principal' : null}
-          onDrop={(from, to) => {
-            haptic.select()
-            onMove(moveShortcut(list, from, to))
-          }}
+          onTick={haptic.select}
+          onCommit={onMove}
           onRemove={() => onRemove(key)}
         />
       ))}
-    </View>
+    </Animated.View>
   )
 }
 
@@ -349,80 +384,102 @@ function SortRow({
   id,
   index,
   count,
+  positions,
   palette,
   label,
   sub,
-  onDrop,
+  onTick,
+  onCommit,
   onRemove
 }: {
   id: Shortcut
   index: number
   count: number
+  positions: SharedValue<Record<string, number>>
   palette: Palette
   label: ReturnType<typeof shortcutLabel>
   sub: string | null
-  onDrop: (from: number, to: number) => void
+  onTick: () => void
+  onCommit: (order: Shortcut[]) => void
   onRemove: () => void
 }) {
+  const reduced = useReducedMotion()
   const dragging = useSharedValue(false)
+  /** 0 no lugar, 1 levantada: escala, giro e o cartão por trás. */
+  const lift = useSharedValue(0)
   const y = useSharedValue(index * ROW)
   const start = useSharedValue(0)
+  // Outra linha passou por cima desta: desliza para a casa nova.
+  useAnimatedReaction(
+    () => positions.value[id],
+    (at, before) => {
+      if (at === undefined || at === before || dragging.value) return
+      y.set(withSpring(at * ROW, SETTLE))
+    }
+  )
   const pan = Gesture.Pan()
-    .onBegin(() => {
+    .onStart(() => {
       dragging.set(true)
-      start.set(index * ROW)
+      start.set(y.value)
+      lift.set(withTiming(1, { duration: 140, easing: EASE }))
+      scheduleOnRN(onTick)
     })
     .onUpdate((e) => {
-      y.set(
-        Math.max(0, Math.min((count - 1) * ROW, start.value + e.translationY))
+      const next = Math.max(
+        0,
+        Math.min((count - 1) * ROW, start.value + e.translationY)
       )
+      y.set(next)
+      const to = Math.round(next / ROW)
+      if (positions.value[id] !== to) {
+        positions.set(shift(positions.value, id, to))
+        scheduleOnRN(onTick)
+      }
     })
     .onFinalize(() => {
-      const from = index
-      const to = Math.round(y.value / ROW)
-      y.set(withSpring(to * ROW, { damping: 20, stiffness: 260 }))
+      if (!dragging.value) return
       dragging.set(false)
-      if (to !== from) scheduleOnRN(onDrop, from, to)
+      lift.set(withTiming(0, { duration: 180, easing: EASE }))
+      const at = positions.value[id] ?? 0
+      y.set(withSpring(at * ROW, SETTLE))
+      const order = Object.keys(positions.value).sort(
+        (a, b) => (positions.value[a] ?? 0) - (positions.value[b] ?? 0)
+      )
+      scheduleOnRN(onCommit, order)
     })
-  // Trocou de lugar na lista: desliza até a posição nova.
-  useEffect(() => {
-    y.set(withSpring(index * ROW, { damping: 20, stiffness: 260 }))
-  }, [index, y])
-  const style = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateY: y.value },
-        { rotate: dragging.value ? '-1deg' : '0deg' }
-      ],
-      zIndex: dragging.value ? 2 : 1
-    }
-  })
-  const lift = useAnimatedStyle(() =>
-    dragging.value
-      ? {
-          backgroundColor: palette.dark ? palette.card : '#fff',
-          borderColor: palette.dark ? ACID : INK,
-          borderWidth: 1.5,
-          marginHorizontal: -6,
-          shadowColor: ACID,
-          shadowOpacity: 1,
-          shadowRadius: 0,
-          shadowOffset: { width: 5, height: 5 }
-        }
-      : {
-          backgroundColor: 'transparent',
-          borderWidth: 0,
-          marginHorizontal: 0,
-          shadowOpacity: 0
-        }
-  )
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: y.value },
+      { scale: 1 + 0.02 * lift.value },
+      // O giro é enfeite: some com "Reduzir movimento".
+      { rotate: `${reduced ? 0 : -1 * lift.value}deg` }
+    ],
+    zIndex: lift.value > 0 ? 2 : 1
+  }))
+  const card = useAnimatedStyle(() => ({ opacity: lift.value }))
   return (
-    <Animated.View style={[styles.sortRow, style]}>
+    <Animated.View
+      entering={ROW_IN}
+      exiting={ROW_OUT}
+      style={[styles.sortRow, style]}
+    >
+      {/* O cartão de quem está na mão: só a opacidade anima. */}
       <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          styles.liftCard,
+          {
+            backgroundColor: palette.dark ? palette.card : '#fff',
+            borderColor: palette.dark ? ACID : INK
+          },
+          card
+        ]}
+      />
+      <View
         style={[
           styles.row,
-          { borderTopWidth: 1, borderTopColor: palette.line, borderRadius: 6 },
-          lift
+          { borderTopWidth: 1, borderTopColor: palette.line }
         ]}
       >
         <GestureDetector gesture={pan}>
@@ -470,7 +527,7 @@ function SortRow({
         >
           <View style={styles.minusBar} />
         </Pressable>
-      </Animated.View>
+      </View>
     </Animated.View>
   )
 }
@@ -512,6 +569,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14
   },
   sortRow: { position: 'absolute', left: 0, right: 0, top: 0 },
+  liftCard: {
+    borderRadius: 6,
+    borderWidth: 1.5,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 5, height: 5 }
+  },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LIVE },
   handle: { width: 16, gap: 3 },
   handleBar: { height: 2, borderRadius: 1 },
