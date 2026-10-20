@@ -47,6 +47,11 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
   const confirmsLater = elite && barQuery.data?.confirmsCodesLater === true
+  const notLoggedQuery = useQuery({
+    ...trpc.reservationValidation.notLogged.queryOptions(),
+    enabled: confirmsLater,
+    meta: { errorToast: false }
+  })
 
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
@@ -67,7 +72,11 @@ function ValidatePage() {
       </div>
 
       {confirmsLater ? (
-        <LateCodeEntry logLate={reservationValidation.logLate.mutate} />
+        <LateCodeEntry
+          logLate={reservationValidation.logLate.mutate}
+          missing={notLoggedQuery.data}
+          onLogged={() => void notLoggedQuery.refetch()}
+        />
       ) : null}
 
       <CodeValidation

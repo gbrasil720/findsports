@@ -10,6 +10,9 @@ import type { inferRouterOutputs } from '@trpc/server'
 export type LateEntryResult =
   inferRouterOutputs<AppRouter>['reservationValidation']['logLate'][number]
 
+export type NotLoggedGame =
+  inferRouterOutputs<AppRouter>['reservationValidation']['notLogged'][number]
+
 /**
  * O recado que o dono manda à equipe (WhatsApp ou meia folha no balcão). Sem
  * oferta escrita, fala da "oferta da casa" em geral.
