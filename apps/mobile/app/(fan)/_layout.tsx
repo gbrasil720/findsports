@@ -83,11 +83,13 @@ export default function FanTabs() {
   // o menu por cima dela (`over`), e fechar deixa a pessoa onde estava.
   const pathname = usePathname()
   const [over, setOver] = useState(false)
+  // A aba de onde se abriu o menu: fechar volta para ela.
+  const [from, setFrom] = useState<'/explore' | '/favoritos'>('/explore')
   // Trocar de tela ou de aba fecha o menu aberto por cima.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
   useEffect(() => setOver(false), [pathname])
   const menuOpen = pathname === '/voce' || over
-  const closeMenu = () => (over ? setOver(false) : router.navigate('/explore'))
+  const closeMenu = () => (over ? setOver(false) : router.navigate(from))
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
     retry: false,
@@ -177,7 +179,7 @@ export default function FanTabs() {
           name="voce"
           // Tocar de novo com o menu aberto fecha. Numa tela da pilha da
           // aba, o menu abre por cima dela: o sistema voltaria ao começo
-          // da pilha (`disablePopToTop` impede). Vindo do Explorar, a aba
+          // da pilha (`disablePopToTop` impede). Vindo de outra aba, a aba
           // reabre no menu, não na última tela da pilha.
           disablePopToTop
           // Desabilitada no nativo: a troca de aba fica com o JS, que tira
@@ -186,11 +188,15 @@ export default function FanTabs() {
           listeners={{
             tabPress: async () => {
               if (menuOpen) closeMenu()
-              // Fora do Explorar (pilha do Você, Bares), o menu abre por cima
-              // da tela aberta: trocar de aba mostraria o Explorar atrás.
-              else if (pathname !== '/explore') setOver(true)
+              else if (pathname.startsWith('/voce/')) setOver(true)
               else {
-                await explore.takeShot()
+                // A aba "Você" põe a foto da tela de onde se veio sob o menu.
+                const tab =
+                  pathname === '/favoritos' ? '/favoritos' : '/explore'
+                await explore.takeShot(
+                  tab === '/favoritos' ? 'bars' : 'explore'
+                )
+                setFrom(tab)
                 router.navigate('/voce')
               }
             }

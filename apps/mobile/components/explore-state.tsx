@@ -17,7 +17,8 @@ import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
  * mesmo Explorar por baixo do menu (2c), então filtros, posição da folha e
  * localização precisam ser os mesmos nas duas, senão trocar de aba mudaria
- * a tela de baixo. A tela de baixo da "Você" é uma foto do Explorar (`shot`).
+ * a tela de baixo. A tela de baixo da "Você" é uma foto (`shot`) da aba de
+ * onde a pessoa veio: o Explorar ou Seus bares.
  */
 
 type ExploreState = {
@@ -45,12 +46,13 @@ type ExploreState = {
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
-  /** A tela do Explorar, para a foto que a aba "Você" mostra. */
+  /** As telas do Explorar e de Seus bares, para a foto que a aba "Você" mostra. */
   screen: React.RefObject<View | null>
-  /** A última foto do Explorar; `null` antes da primeira. */
+  barsScreen: React.RefObject<View | null>
+  /** A última foto; `null` antes da primeira. */
   shot: string | null
-  /** Tira a foto do Explorar como está agora. Falhou, fica a anterior. */
-  takeShot: () => Promise<void>
+  /** Tira a foto da tela como está agora. Falhou, fica a anterior. */
+  takeShot: (from: 'explore' | 'bars') => Promise<void>
 }
 
 const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
@@ -81,10 +83,15 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
   // A aba "Você" mostra o Explorar parado sob o menu. Uma segunda cópia viva
   // montava outro mapa, que recarregava os tiles na primeira vez que aparecia.
   const screen = useRef<View>(null)
+  const barsScreen = useRef<View>(null)
   const [shot, setShot] = useState<string | null>(null)
   // ~70 ms no simulador: abaixo do que se percebe entre o toque e o menu.
-  const takeShot = () =>
-    captureRef(screen, { format: 'jpg', quality: 0.9, result: 'tmpfile' })
+  const takeShot = (from: 'explore' | 'bars') =>
+    captureRef(from === 'bars' ? barsScreen : screen, {
+      format: 'jpg',
+      quality: 0.9,
+      result: 'tmpfile'
+    })
       .then(setShot)
       .catch(() => {})
 
@@ -129,6 +136,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         resting,
         setResting,
         screen,
+        barsScreen,
         shot,
         takeShot
       }}

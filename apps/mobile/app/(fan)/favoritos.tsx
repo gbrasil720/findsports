@@ -115,7 +115,7 @@ export default function YourBars() {
     haptic.select()
     favorites.toggle(barId)
   }
-  const { device } = useExploreState()
+  const { device, barsScreen } = useExploreState()
   const city = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
     meta: { errorToast: false }
@@ -134,7 +134,11 @@ export default function YourBars() {
           : saved
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      ref={barsScreen}
+      collapsable={false}
+      style={[styles.screen, { backgroundColor: palette.bg }]}
+    >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
