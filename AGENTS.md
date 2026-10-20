@@ -469,7 +469,8 @@ invente layout que o projeto não tem.
   para o Android). Cada tipo de marcador (gota, gota com pílula, tocado) tem chave própria
   e nasce de novo ao trocar: mudar tamanho e `centerOffset` de um marcador vivo o deixava
   fora do lugar, e o `zIndex` só vale na criação. O halo do ao vivo passa da caixa por
-  baixo para não roubar o toque da gota vizinha. As mesmas gotas valem nos recortes de mapa da busca, e
+  baixo para não roubar o toque da gota vizinha. As mesmas gotas valem nos recortes de mapa da busca e no mapa da
+  página do bar (a gota grande com o balão, como a do bar tocado), e
   o raio de busca aparece como círculo tracejado no Explorar (`RadiusCircle`, também nos
   filtros e na busca, com miolo mais forte).
 - **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
@@ -493,7 +494,8 @@ invente layout que o projeto não tem.
   `search` (o círculo à direita) e desabilitada com `tabPress`. Bares (a antiga Favoritos) é "Seus bares"
   (17b, 17d e 17e da Rodada 17), `app/(fan)/favoritos.tsx`: "Já fui" (calendário e visitas
   por mês, `attendance.visits`, os códigos validados), "Salvos" (a semana dos jogos dos
-  salvos) e "Bares" (só os salvos, por bairro, perto ou A–Z, com quantas vezes foi a cada um). As imagens selecionadas das abas
+  salvos) e "Bares" (só os salvos, por bairro, perto ou A–Z, com quantas vezes foi a cada um). Seus bares leva `disableAutomaticContentInsets` na aba: sem ele o
+  iOS somava o topo seguro ao `paddingTop` e o título descia 48 pt. As imagens selecionadas das abas
   (`*-on`) têm no máximo ~72 pt: mais largas, a ponta aparece na lente da aba vizinha. A barra tem Bares onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
   de verdade (a barra a mantém marcada): mostra a aba de onde se veio (Explorar ou
   Seus bares) com o menu de vidro por cima (`components/tab-bar.tsx`), e fechar volta
