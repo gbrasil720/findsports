@@ -37,6 +37,7 @@ import {
   MapDrop,
   MapGroup,
   MeDot,
+  RadiusCircle,
   type SearchBar,
   usePalette
 } from '@/components/explore'
@@ -534,6 +535,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         pitchEnabled={false}
         toolbarEnabled={false}
       >
+        {/* O raio de busca em volta de onde a busca parte (você, ou a
+            cidade do perfil). */}
+        <RadiusCircle
+          center={{ latitude: center.lat, longitude: center.lng }}
+          km={radiusKm}
+          dark={palette.dark}
+        />
         {device ? (
           <Marker
             coordinate={{ latitude: device.lat, longitude: device.lng }}

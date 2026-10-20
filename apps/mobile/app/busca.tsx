@@ -12,14 +12,16 @@ import {
   useWindowDimensions,
   View
 } from 'react-native'
-import MapView, { Circle, Marker } from 'react-native-maps'
+import MapView, { Marker } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import {
   dayLabel,
+  dropBox,
+  MapDrop,
   type Palette,
   Photo,
-  PinTag,
+  RadiusCircle,
   usePalette
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
@@ -663,6 +665,9 @@ function HoodMap({
     0.006
   )
   const center = { latitude: avg(lats), longitude: avg(lngs) }
+  const firstLive = hood.bars.find(
+    (bar) => bar.nextEvent && isLive(bar.nextEvent, now)
+  )
   return (
     <MapView
       style={StyleSheet.absoluteFill}
@@ -682,16 +687,20 @@ function HoodMap({
       pointerEvents="none"
     >
       {big ? (
-        <Circle
+        <RadiusCircle
           center={center}
-          radius={span * 111_000 * 0.7}
-          strokeWidth={2}
-          strokeColor={palette.dark ? ACID : INK}
-          fillColor="rgba(201,241,53,.2)"
+          km={span * 111 * 0.7}
+          dark={palette.dark}
+          strong
         />
       ) : null}
+      {/* As mesmas gotas do Explorar (21a); no cartão grande, o primeiro ao
+          vivo leva a pílula com o nome. */}
       {hood.bars.slice(0, big ? 4 : 8).map((bar) => {
         const live = bar.nextEvent ? isLive(bar.nextEvent, now) : false
+        const label =
+          big && live && bar.id === firstLive?.id ? bar.name : undefined
+        const box = dropBox({ live, label })
         return (
           <Marker
             key={bar.id}
@@ -699,18 +708,16 @@ function HoodMap({
               latitude: Number(bar.latitude),
               longitude: Number(bar.longitude)
             }}
-            anchor={big ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
-            // Apple Maps ignora `anchor`: sobe meia etiqueta para a ponta cair no bar.
-            centerOffset={big ? { x: 0, y: -18 } : undefined}
+            anchor={box.anchor}
+            centerOffset={box.centerOffset}
             tracksViewChanges={false}
           >
-            {big ? (
-              <PinTag label={bar.name} kind={live ? 'live' : 'idle'} />
-            ) : (
-              <View
-                style={[styles.square, { backgroundColor: live ? LIVE : ACID }]}
-              />
-            )}
+            <MapDrop
+              live={live}
+              elite={bar.plan === 'elite'}
+              dark={palette.dark}
+              label={label}
+            />
           </Marker>
         )
       })}
@@ -1018,13 +1025,6 @@ const styles = StyleSheet.create({
     fontSize: 19,
     textTransform: 'uppercase',
     flex: 1
-  },
-  square: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    borderWidth: 2,
-    borderColor: PAPER
   },
   ai: { backgroundColor: ACID, padding: 16, gap: 10 },
   aiHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },

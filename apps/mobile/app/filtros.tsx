@@ -10,10 +10,10 @@ import {
   useWindowDimensions,
   View
 } from 'react-native'
-import MapView, { Circle } from 'react-native-maps'
+import MapView from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { type Palette, usePalette } from '@/components/explore'
+import { type Palette, RadiusCircle, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
@@ -362,12 +362,11 @@ export default function FiltersSheet() {
               pitchEnabled={false}
               pointerEvents="none"
             >
-              <Circle
+              <RadiusCircle
                 center={{ latitude: center.lat, longitude: center.lng }}
-                radius={radiusKm * 1000}
-                strokeWidth={2}
-                strokeColor={palette.dark ? ACID : INK}
-                fillColor="rgba(201,241,53,.2)"
+                km={radiusKm}
+                dark={palette.dark}
+                strong
               />
             </MapView>
             <View style={styles.mapCount}>

@@ -450,7 +450,9 @@ invente layout que o projeto não tem.
   para o Android). Cada tipo de marcador (gota, gota com pílula, tocado) tem chave própria
   e nasce de novo ao trocar: mudar tamanho e `centerOffset` de um marcador vivo o deixava
   fora do lugar, e o `zIndex` só vale na criação. O halo do ao vivo passa da caixa por
-  baixo para não roubar o toque da gota vizinha.
+  baixo para não roubar o toque da gota vizinha. As mesmas gotas valem nos recortes de mapa da busca, e
+  o raio de busca aparece como círculo tracejado no Explorar (`RadiusCircle`, também nos
+  filtros e na busca, com miolo mais forte).
 - **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
   60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
   vermelho se ao vivo, acid se Elite) ou rótulo (só ao vivo e Elite, por prioridade, que

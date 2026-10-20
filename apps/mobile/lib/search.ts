@@ -24,6 +24,7 @@ export type NearBar = {
   longitude: string | number
   photo_url: string | null
   distance_km: number
+  plan?: string | null
   nextEvent?: Game
 }
 

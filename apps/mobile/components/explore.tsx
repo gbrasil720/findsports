@@ -12,6 +12,7 @@ import {
   View,
   type ViewStyle
 } from 'react-native'
+import { Circle } from 'react-native-maps'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -373,6 +374,34 @@ export function MapGroup({
 }
 
 const DROP_IN = popFrom(0.8)
+
+/**
+ * O raio de busca no mapa: o mesmo círculo no Explorar, nos filtros e nos
+ * recortes da busca. Tinta no claro, acid no escuro, miolo acid bem leve.
+ */
+export function RadiusCircle({
+  center,
+  km,
+  dark,
+  strong
+}: {
+  center: { latitude: number; longitude: number }
+  km: number
+  dark: boolean
+  /** Recorte pequeno (filtros, busca): miolo mais forte, como no design. */
+  strong?: boolean
+}) {
+  return (
+    <Circle
+      center={center}
+      radius={km * 1000}
+      strokeWidth={strong ? 2 : 1.5}
+      strokeColor={dark ? ACID : INK}
+      fillColor={strong ? 'rgba(201,241,53,.2)' : 'rgba(201,241,53,.1)'}
+      lineDashPattern={strong ? undefined : [6, 6]}
+    />
+  )
+}
 
 /** Você no mapa: o ponto acid com dois halos. */
 export function MeDot() {
