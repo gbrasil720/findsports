@@ -1,6 +1,13 @@
 import * as Haptics from 'expo-haptics'
 import { type ReactNode, useEffect } from 'react'
-import { type StyleProp, Text, type TextStyle } from 'react-native'
+import {
+  Pressable,
+  type PressableProps,
+  type StyleProp,
+  Text,
+  type TextStyle,
+  type ViewStyle
+} from 'react-native'
 import Animated, {
   Easing,
   type EntryExitAnimationFunction,
@@ -134,6 +141,43 @@ export function usePressScale(to = 0.97) {
       down.set(withTiming(0, { duration: 160, easing: EASE }))
     }
   }
+}
+
+/**
+ * Algo tocável que afunda de leve no toque (0,97 em 120 ms, volta em 160 ms):
+ * cartões e tiles das telas de busca, filtros e avisos. `style` vai na parte
+ * que afunda.
+ */
+export function ScalePress({
+  to = 0.97,
+  style,
+  containerStyle,
+  children,
+  ...props
+}: Omit<PressableProps, 'style' | 'children'> & {
+  to?: number
+  style?: StyleProp<ViewStyle>
+  /** Layout do lado de fora (um `flex: 1` numa fileira). */
+  containerStyle?: StyleProp<ViewStyle>
+  children: ReactNode
+}) {
+  const press = usePressScale(to)
+  return (
+    <Pressable
+      {...props}
+      style={containerStyle}
+      onPressIn={(e) => {
+        press.onPressIn()
+        props.onPressIn?.(e)
+      }}
+      onPressOut={(e) => {
+        press.onPressOut()
+        props.onPressOut?.(e)
+      }}
+    >
+      <Animated.View style={[style, press.style]}>{children}</Animated.View>
+    </Pressable>
+  )
 }
 
 /** Tremida curta de erro, para chamar `shake()` quando algo falha. */
