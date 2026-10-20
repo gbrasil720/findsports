@@ -480,9 +480,11 @@ invente layout que o projeto não tem.
   Seus bares) com o menu de vidro por cima (`components/tab-bar.tsx`), e fechar volta
   para ela, e o estado que as duas dividem (filtros, folha,
   localização) fica em `components/explore-state.tsx`. Por baixo do menu vai uma foto
-  dessa aba (`react-native-view-shot`) tirada no toque em "Você", que é desabilitada
-  no nativo para o JS fotografar antes de trocar de aba: uma segunda cópia viva
-  montava outro mapa, que recarregava. O menu só destaca o item da tela aberta
+  dessa aba (`react-native-view-shot`, `useShotSource`), tirada meio segundo depois
+  de cada mudança na tela em foco: a aba troca no nativo, sem esperar o JS (com a
+  aba desabilitada e o JS fotografando no toque, a lente da barra ia, voltava e ia
+  de novo no aparelho), e uma segunda cópia viva montava outro mapa, que recarregava.
+  Ao sair da aba "Você", a pilha dela volta ao menu (`voce/_layout.tsx`). O menu só destaca o item da tela aberta
   (`MENU_SCREENS`). Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos, ou rode
