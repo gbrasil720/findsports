@@ -939,3 +939,30 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  '"Faltou lançar?" mostra quem marcou e não foi lançado, só pelo nome e só no prazo',
+  async () => {
+    const ctx = await seed({ startsAt: new Date(Date.now() - 26 * HOUR) })
+    const late = await seed({ startsAt: new Date(Date.now() - 60 * HOUR) })
+    try {
+      await expect(ctx.owner.notLogged()).rejects.toThrow('Depois do jogo')
+      await confirmsLater(ctx)
+      await confirmsLater(late)
+
+      const [game, ...others] = await ctx.owner.notLogged()
+      expect(others).toEqual([])
+      expect(game?.names).toEqual(['Torcedora de integração'])
+      // O código não sai: o dono confere na comanda.
+      expect(JSON.stringify(game)).not.toContain(ctx.code)
+      // Jogo de outro bar não aparece, e passadas 48 h não há o que lançar.
+      expect(await late.owner.notLogged()).toEqual([])
+
+      await ctx.owner.logLate({ codes: [ctx.code] })
+      expect(await ctx.owner.notLogged()).toEqual([])
+    } finally {
+      await ctx.cleanup()
+      await late.cleanup()
+    }
+  }
+)
