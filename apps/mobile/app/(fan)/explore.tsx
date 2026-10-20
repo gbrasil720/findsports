@@ -17,6 +17,7 @@ import MapView, { Marker } from 'react-native-maps'
 import Animated, {
   cancelAnimation,
   Extrapolation,
+  FadeOut,
   interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -39,7 +40,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { EASE, haptic } from '@/components/motion'
+import { EASE, haptic, POP_FAST, ScalePress, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
@@ -491,7 +492,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
       >
         {/* Todos os filtros (19d), com quantos estão ligados. */}
-        <Pressable
+        <ScalePress
           accessibilityRole="button"
           accessibilityLabel={active ? `Filtros, ${active} ligados` : 'Filtros'}
           onPress={() => {
@@ -511,7 +512,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             accent={palette.dark ? INK : ACID}
           />
           {active ? (
-            <View
+            <Animated.View
+              entering={POP_FAST}
               style={[
                 styles.filterBadge,
                 palette.dark && { backgroundColor: INK, borderColor: ACID }
@@ -525,18 +527,21 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               >
                 {active}
               </Text>
-            </View>
+            </Animated.View>
           ) : null}
-        </Pressable>
+        </ScalePress>
         {/* "Ao vivo" é fixo, e só aparece com jogo rolando (19e). */}
         {liveCount || liveOnly ? (
-          <Chip
-            live
-            label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
-            on={liveOnly}
-            palette={palette}
-            onPress={() => state.setLiveOnly(!liveOnly)}
-          />
+          // Aparece quando um jogo começa: entra e sai sem empurrar seco.
+          <Animated.View entering={SWAP} exiting={CHIP_OUT}>
+            <Chip
+              live
+              label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
+              on={liveOnly}
+              palette={palette}
+              onPress={() => state.setLiveOnly(!liveOnly)}
+            />
+          </Animated.View>
         ) : null}
         {shortcuts.map((key) => {
           const shown = shortcutLabel(key, sports)
@@ -717,6 +722,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     </View>
   )
 }
+
+const CHIP_OUT = FadeOut.duration(120)
 
 const styles = StyleSheet.create({
   filterButton: {
