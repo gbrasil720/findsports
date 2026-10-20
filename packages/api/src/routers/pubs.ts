@@ -55,6 +55,7 @@ import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
   executarBuscaPorNota,
+  montarFiltrosBusca,
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
@@ -897,6 +898,59 @@ export const pubsRouter = router({
           )
       `)
       return { bars: Number(result.rows[0]?.bars ?? 0) }
+    }),
+
+  /**
+   * "Quando" dos filtros do app (19d): quantos jogos começam em cada um dos
+   * próximos sete dias (de Brasília, a partir de hoje) nos bares no ar do
+   * raio. Esporte e características são os da busca, para a contagem bater
+   * com o que a busca devolveria naquele dia.
+   */
+  gameDays: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(3),
+        sportId: z.string().uuid().optional(),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional()
+      })
+    )
+    .query(async ({ input }) => {
+      const filtros = montarFiltrosBusca({
+        ...input,
+        limit: 1,
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
+      })
+      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+      const result = await db.execute<{ day: string; games: number }>(sql`
+        SELECT to_char(
+            (e.starts_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo',
+            'YYYY-MM-DD'
+          ) AS day,
+          count(*)::int AS games
+        FROM event e
+        JOIN bar b ON b.id = e.bar_id
+        WHERE b.is_active
+          AND ST_DWithin(b.geo, ${filtros.origin}, ${filtros.radiusMeters})
+          AND e.starts_at >= ${dayStart}
+          AND e.starts_at < ${dayStart} + interval '7 days'
+          ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
+          ${filtros.amenityFilter(sql`b`)}
+        GROUP BY 1
+      `)
+      const games = new Map(result.rows.map((row) => [row.day, row.games]))
+      const today = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'America/Sao_Paulo'
+      })
+      return Array.from({ length: 7 }, (_, i) => {
+        const day = new Date(`${today}T12:00:00Z`)
+        day.setUTCDate(day.getUTCDate() + i)
+        const key = day.toISOString().slice(0, 10)
+        return { day: key, games: games.get(key) ?? 0 }
+      })
     }),
 
   getSports: protectedProcedure.query(async () => {
