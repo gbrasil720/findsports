@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import { type Href, useRouter } from 'expo-router'
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useDeferredValue, useEffect, useState } from 'react'
 import {
@@ -77,7 +77,9 @@ export default function Search() {
   const soon = useSoon()
   const state = useExploreState()
   useStatusBar('auto')
-  const [query, setQuery] = useState('')
+  // Um aviso de jogo (19c) abre a busca já com o jogo digitado.
+  const params = useLocalSearchParams<{ q?: string }>()
+  const [query, setQuery] = useState(params.q ?? '')
   const deferred = useDeferredValue(query.trim())
   const [recent, setRecent] = useState<string[]>([])
   useEffect(() => {

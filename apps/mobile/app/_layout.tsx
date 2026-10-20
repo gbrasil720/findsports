@@ -122,6 +122,8 @@ export default function Layout() {
                 name="busca"
                 options={{ presentation: 'fullScreenModal', animation: 'fade' }}
               />
+              {/* Avisos (19c): aberto pelo sino do Explorar, com voltar. */}
+              <Stack.Screen name="avisos" />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"

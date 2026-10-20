@@ -463,7 +463,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Avisos"
-              onPress={() => soon.show('Os avisos chegam em breve')}
+              onPress={() => router.push('/avisos')}
             >
               <Glass tone={glassTone} interactive style={styles.round}>
                 <Icon
