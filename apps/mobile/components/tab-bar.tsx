@@ -60,6 +60,7 @@ export function YouMenu({
   name,
   initials,
   items,
+  current,
   onClose,
   onItem,
   onChat,
@@ -69,6 +70,8 @@ export function YouMenu({
   name: string
   initials: string
   items: MenuItem[]
+  /** O item da tela aberta sob o menu (Perfil, Conquistas...); nenhum no Explorar. */
+  current?: string
   onClose: () => void
   onItem: (item: MenuItem) => void
   onChat: () => void
@@ -134,8 +137,8 @@ export function YouMenu({
               <Icon name="gear" size={19} color={palette.ink} />
             </RoundButton>
           </View>
-          {items.map((item, index) => {
-            const on = index === 0
+          {items.map((item) => {
+            const on = item.key === current
             return (
               <Pressable
                 key={item.key}
