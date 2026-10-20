@@ -67,7 +67,7 @@ describe('HouseOfferEditor', () => {
 
     const later = render(true).body.textContent ?? ''
     expect(later).toContain('Recado para a equipe')
-    expect(later).toContain('ganha: Chopp em dobro.')
+    expect(later).toContain('ganha a oferta da casa: Chopp em dobro.')
     expect(
       render(true).querySelector('a[href="/admin/validate"]')
     ).not.toBeNull()
