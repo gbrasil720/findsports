@@ -237,7 +237,9 @@ no card "Oferta da casa" do `/admin` (Na hora / Depois do jogo, pela comanda), p
 `pub.updateCodeConfirmation`. Ligada, a tela do código do torcedor fala com o garçom
 ("anote na comanda"), o card traz o recado pronto para a equipe, e o dono lança os
 códigos anotados em `/admin/validate` por `reservationValidation.logLate`, até 48 h
-depois do fim do jogo (`getLateEntryWindow`). O uso fica com `late = true` e `used_at` na
+depois do fim do jogo (`getLateEntryWindow`). Acima da caixa, "Faltou lançar?"
+(`reservationValidation.notLogged`) lista pelo nome quem marcou e não foi lançado, sem
+ler `attendance_report`. O uso fica com `late = true` e `used_at` na
 hora do lançamento: quem conta visita usa a data do jogo (`event.starts_at`). A Onside não confere se o cliente estava no bar: fraude é risco do bar,
 decisão do dono. Bar "na hora" não lança depois. O alfabeto do código não tem O, 0,
 I, 1 nem L (`CODE_ALPHABET`), para não confundir anotado à mão.
