@@ -419,6 +419,28 @@ invente layout que o projeto não tem.
   "Suas comunidades" do design não entrou (comunidades não existem), "Tenho um bar"
   saiu a pedido do dono, e "Raio de busca" e
   "Esportes" avisam "chega em breve" até as Preferências.
+- **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
+  - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
+    do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
+    `pubs.search` com o rascunho). "Quando" conta jogos por dia com `pubs.gameDays`. Ficaram
+    de fora "Só bares com jogo publicado" (a busca já só traz bar com jogo), Pix, Cartão e
+    Vale-refeição separados (o cadastro tem "Pix e cartão" junto).
+  - **Atalhos (19e):** `app/atalhos.tsx`. Até cinco filtros fixados no topo do mapa, mais o
+    "Ao vivo", que é fixo e só aparece com jogo rolando. Guardados no aparelho (SecureStore);
+    sem nada salvo, a fileira é Hoje, Telão, Área externa e o esporte principal. Contas em
+    `lib/filters.ts`; o estado (`filters`, `shortcuts`, `focus`) mora em
+    `components/explore-state.tsx`, montado em `app/_layout.tsx` para a folha alcançar.
+    "Fim de semana" não entrou: a busca filtra um dia só.
+  - **Busca (19a, 19b):** `app/busca.tsx`, pela lupa do Explorar. Contas em `lib/search.ts`
+    sobre os bares num raio de 10 km; time e campeonato vão também ao servidor
+    (`pubs.search` com `championship`). Recentes no aparelho. "Ver no mapa" põe `focus` no
+    estado e o Explorar leva o mapa até o bairro. "Pedido mais específico?" é a busca com IA
+    (WEB-400) e avisa "chega em breve".
+  - **Avisos (19c):** `app/avisos.tsx`, pelo sino. Montados do que já existe
+    (`lib/notices.ts`): oferta liberada (código validado com oferta), jogo dos seus times
+    perto (`pubs.search` com `teamIds`) e conquista desbloqueada. As abas são Tudo, Jogos e
+    Conquistas: amigos, ranking e comunidades do design ainda não existem. "Lido" fica no
+    aparelho. Não há notificação no celular.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
