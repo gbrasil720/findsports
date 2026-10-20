@@ -36,6 +36,12 @@ type ExploreState = {
    */
   shortcuts: Shortcut[] | null
   setShortcuts: (list: Shortcut[]) => void
+  /**
+   * "Ver no mapa" da busca (19b): o Explorar leva o mapa até lá e limpa.
+   * `km` é o tamanho da área a mostrar.
+   */
+  focus: (Coordinates & { km: number }) | null
+  setFocus: (focus: (Coordinates & { km: number }) | null) => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
@@ -57,6 +63,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [liveOnly, setLiveOnly] = useState(false)
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [shortcuts, saveShortcuts] = useState<Shortcut[] | null>(null)
+  const [focus, setFocus] = useState<ExploreState['focus']>(null)
   useEffect(() => {
     SecureStore.getItemAsync(SHORTCUTS_KEY)
       .then((raw) => {
@@ -117,6 +124,8 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setFilters,
         shortcuts,
         setShortcuts,
+        focus,
+        setFocus,
         resting,
         setResting,
         screen,

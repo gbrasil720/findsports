@@ -207,6 +207,22 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   useEffect(() => {
     if (mapReady) map.current?.animateToRegion(region, reduced ? 0 : 400)
   }, [mapReady, center.lat, center.lng, framed])
+  // "Ver no mapa" da busca (19b): leva o mapa até o bairro escolhido.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando o foco muda
+  useEffect(() => {
+    const { focus } = state
+    if (!mapReady || !focus) return
+    map.current?.animateToRegion(
+      {
+        latitude: focus.lat,
+        longitude: focus.lng,
+        latitudeDelta: focus.km / 111,
+        longitudeDelta: focus.km / 111
+      },
+      reduced ? 0 : 500
+    )
+    state.setFocus(null)
+  }, [mapReady, state.focus])
   // "Ampliar" reenquadra quando os bares do raio novo chegam, não no toque:
   // antes disso a região sairia dos bares antigos.
   const framedRadius = useRef(radiusKm)
@@ -438,7 +454,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Buscar"
-              onPress={() => soon.show('A busca chega em breve')}
+              onPress={() => router.push('/busca')}
             >
               <Glass tone={glassTone} interactive style={styles.round}>
                 <Icon name="search" size={19} color={palette.ink} />
