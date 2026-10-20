@@ -186,51 +186,171 @@ export function PinTag({
 }
 
 /**
- * O ponto do bar (20d): o padrão do mapa. Tinta; vermelho com halo se ao
- * vivo; acid se Elite. 18 pt, com 44 pt de área de toque.
+ * A gota do bar (21a): pin clássico com a ponta reta da marca. Tinta com
+ * copo (o padrão); vermelha com telão e halo na ponta se ao vivo; acid com
+ * estrela se Elite. Ao vivo pode levar a pílula com o nome à direita; o bar
+ * tocado vira a gota maior com o balão de nome e hora acima. A ponta da gota
+ * é o lugar do bar: `dropAnchor` diz onde ela cai na caixa do desenho.
  */
-export function MapPoint({
+export function MapDrop({
   live,
   elite,
-  dark
+  dark,
+  label,
+  callout
 }: {
   live: boolean
   elite: boolean
   dark: boolean
+  /** A pílula do ao vivo. */
+  label?: string
+  /** O bar tocado: nome e quando. */
+  callout?: { name: string; when: string | null }
 }) {
+  const big = Boolean(callout)
+  const size = big ? 40 : 28
+  const color = live ? LIVE : elite ? ACID : INK
+  const fg = elite && !live ? INK : PAPER
+  const box = dropBox({ live, label, callout })
   return (
-    // `collapsable`: sem ele o React Native achata a caixa de toque (44 pt)
-    // e sobra só o quadradinho de 18 pt para acertar.
-    <View style={styles.pointHit} collapsable={false}>
-      {live ? <View style={styles.pointHalo} /> : null}
+    <View collapsable={false} style={{ width: box.width, height: box.height }}>
+      {callout ? (
+        <View style={[styles.callout, { top: 0, left: 0, right: 0 }]}>
+          <View style={styles.calloutBody}>
+            <Text style={[text(13, 'Bold', 1.25), { color: PAPER }]}>
+              {callout.name}
+            </Text>
+            {callout.when ? (
+              <Text style={styles.calloutWhen}>{callout.when}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+      {/* A gota: a ponta fica em (box.tipX, box.tipY). */}
       <View
-        style={[
-          styles.point,
-          {
-            backgroundColor: live ? LIVE : elite ? ACID : dark ? PAPER : INK,
-            borderColor: dark ? INK : PAPER
-          }
-        ]}
-      />
+        style={{
+          position: 'absolute',
+          left: box.tipX - size / 2,
+          top: box.tipY - (big ? 51 : 36),
+          width: size,
+          height: big ? 51 : 36
+        }}
+      >
+        {live ? (
+          <View
+            style={[
+              styles.dropHalo,
+              { left: size / 2 - 18.6, top: (big ? 51 : 36) + 6 - 18.6 }
+            ]}
+          />
+        ) : null}
+        <View
+          style={[
+            styles.drop,
+            {
+              width: size,
+              height: size,
+              borderTopLeftRadius: size / 2,
+              borderTopRightRadius: size / 2,
+              borderBottomRightRadius: size / 2,
+              backgroundColor: color,
+              borderColor: dark ? '#1c1c18' : PAPER
+            }
+          ]}
+        />
+        <View style={[styles.dropIcon, { width: size, height: size }]}>
+          {live ? (
+            <Icon name="tv" size={big ? 20 : 14} color={PAPER} accent={PAPER} />
+          ) : elite ? (
+            <Icon name="star" size={big ? 20 : 14} color={INK} />
+          ) : (
+            <Icon name="bar" size={big ? 20 : 14} color={PAPER} accent={ACID} />
+          )}
+        </View>
+      </View>
+      {label ? (
+        <View
+          style={[
+            styles.dropPill,
+            {
+              left: box.tipX + 14 + 6,
+              top: box.tipY - 36 + 14 - 12,
+              backgroundColor: color,
+              borderColor: dark ? 'rgba(241,238,230,.12)' : 'rgba(18,18,15,.08)'
+            }
+          ]}
+        >
+          <Text
+            style={[text(12, 'Bold', 1.1), { color: fg }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+      ) : null}
     </View>
   )
 }
 
-/** O grupo (20a): bares colados na tela viram um número; o selo conta os ao vivo. */
-export function MapGroup({ count, live }: { count: number; live: number }) {
-  // Grupo grande (5 ou mais) é um pouco maior, como na 20a.
-  const big = count >= 5
+/**
+ * A caixa do desenho da gota e onde a ponta cai nela. Centrada na ponta,
+ * para o `anchor` do marcador ser fixo: o lado da pílula sobra vazio do
+ * outro lado.
+ */
+export function dropBox({
+  live,
+  label,
+  callout
+}: {
+  live: boolean
+  label?: string
+  callout?: { name: string; when: string | null }
+}) {
+  const big = Boolean(callout)
+  const half = label
+    ? 14 + 6 + label.length * 6.6 + 18
+    : callout
+      ? Math.max(24, callout.name.length * 3.7 + 11, 52)
+      : // 44 pt de largura para o dedo, mesmo na gota de 28.
+        22
+  const below = live ? 26 : 8
+  const above = big ? 51 + 8 + 46 : 36
+  return {
+    width: half * 2,
+    height: above + below,
+    tipX: half,
+    tipY: above,
+    anchor: { x: 0.5, y: above / (above + below) }
+  }
+}
+
+/** O grupo (21a): círculo com o número; o selo vermelho conta os ao vivo. */
+export function MapGroup({
+  count,
+  live,
+  dark
+}: {
+  count: number
+  live: number
+  dark: boolean
+}) {
   return (
     <View style={styles.groupHit} collapsable={false}>
-      <View style={[styles.group, big && styles.groupBig]}>
-        <Text style={[styles.groupText, big && { fontSize: 22 }]}>{count}</Text>
+      <View
+        style={[
+          styles.groupRing,
+          dark && { backgroundColor: 'rgba(0,0,0,.25)' }
+        ]}
+      >
+        <View style={[styles.group, { borderColor: dark ? '#1c1c18' : PAPER }]}>
+          <Text style={styles.groupText}>{count}</Text>
+        </View>
       </View>
       {live ? (
-        <View style={styles.groupLive}>
-          <View style={styles.groupLiveDot} />
-          <Text style={[text(10.5, 'Bold', 1.1), { color: PAPER }]}>
-            {live}
-          </Text>
+        <View
+          style={[styles.groupLive, { borderColor: dark ? '#1c1c18' : PAPER }]}
+        >
+          <Text style={styles.groupLiveText}>{live}</Text>
         </View>
       ) : null}
     </View>
@@ -1014,23 +1134,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  // Halo de 32 pt: 7 pt para cada lado do ponto, como o `inset: -7px`.
-  pointHalo: {
+  drop: {
     position: 'absolute',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(232,50,12,.22)'
-  },
-  point: {
-    width: 18,
-    height: 18,
-    borderRadius: 5,
+    left: 0,
+    top: 0,
+    borderBottomLeftRadius: 3,
     borderWidth: 2.5,
+    transform: [{ rotate: '-45deg' }],
     shadowColor: INK,
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: -1 }
+  },
+  dropIcon: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  // Halo do ao vivo na ponta: 25 pt de vermelho com 6 pt mais claros em volta.
+  dropHalo: {
+    position: 'absolute',
+    width: 37.2,
+    height: 37.2,
+    borderRadius: 18.6,
+    borderWidth: 6,
+    borderColor: 'rgba(232,50,12,.1)',
+    backgroundColor: 'rgba(232,50,12,.2)'
+  },
+  dropPill: {
+    position: 'absolute',
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOpacity: 0.22,
     shadowRadius: 0,
     shadowOffset: { width: 2, height: 3 }
+  },
+  callout: { position: 'absolute', alignItems: 'center' },
+  calloutBody: {
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+    backgroundColor: INK,
+    alignItems: 'center',
+    gap: 2,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 4 }
+  },
+  calloutWhen: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    color: ACID
   },
   groupHit: {
     width: 64,
@@ -1038,42 +1199,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  // O anel claro de 4 pt por fora do anel de papel (`0 0 0 7px`).
+  groupRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(18,18,15,.12)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   group: {
-    width: 42,
-    height: 42,
-    borderRadius: 9,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: INK,
     borderWidth: 3,
-    borderColor: PAPER,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: INK,
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 0,
-    shadowOffset: { width: 4, height: 5 }
+    shadowOffset: { width: 3, height: 4 }
   },
-  groupBig: { width: 48, height: 48 },
   groupText: { fontFamily: 'Anton', fontSize: 19, color: PAPER },
   groupLive: {
     position: 'absolute',
-    top: 1,
-    right: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
+    top: 7,
+    right: 7,
+    width: 20,
     height: 20,
-    paddingHorizontal: 6,
     borderRadius: 10,
-    backgroundColor: LIVE,
     borderWidth: 2,
-    borderColor: PAPER
+    backgroundColor: LIVE,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  groupLiveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: PAPER
-  },
+  groupLiveText: { ...text(9.5, 'Bold', 1), color: PAPER },
   // 22 pt com o anel de 2 pt da cor do cartão por fora, como o box-shadow.
   goer: {
     width: 26,
