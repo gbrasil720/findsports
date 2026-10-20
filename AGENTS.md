@@ -341,9 +341,11 @@ invente layout que o projeto não tem.
   600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
   contagem** "N jogos hoje".
 - **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
-  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
-  imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
-  da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
+  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela (4b) é o do Explorar de hoje, parado: o
+  `MapView` nativo, as gotas da Rodada 21 (`MapDrop`), o raio tracejado e o seu ponto
+  (`MeDot`), por cima em posições fixas para a entrada animar. A distância e a
+  localização do onboarding ainda usam a imagem antiga (`assets/images/intro/map.jpg`,
+  dos tiles da Onside, com "© OpenStreetMap").
   O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
   trocados e o acid no lugar do vermelho (a regra da tab bar do design), e o mapa tem
   versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida).
