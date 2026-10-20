@@ -399,7 +399,12 @@ function NextGame({
           />
           <View style={styles.codeRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[text(12), { color: palette.muted }]}>Código</Text>
+              <Text style={[text(12), { color: palette.muted }]}>
+                {/* Bar que confirma pela comanda (WEB-412). */}
+                {game.confirmsCodesLater
+                  ? 'Para o garçom: anote na comanda'
+                  : 'Código'}
+              </Text>
               <Text
                 style={[styles.code, { color: palette.ink }]}
                 numberOfLines={1}

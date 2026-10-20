@@ -184,7 +184,10 @@ export default function CounterCode() {
             />
             <View style={styles.codeBox}>
               <Text style={[text(13, 'SemiBold'), { color: MUTED }]}>
-                Mostre no balcão ou deixe escanear
+                {/* Bar que confirma pela comanda (WEB-412): fala com o garçom. */}
+                {game.confirmsCodesLater
+                  ? 'Para o garçom: anote na comanda'
+                  : 'Mostre no balcão ou deixe escanear'}
               </Text>
               <Text
                 style={styles.code}
@@ -224,7 +227,9 @@ export default function CounterCode() {
       >
         {game.validated
           ? 'Código validado. A oferta da casa é sua.'
-          : `${window ?? ''} Quando o bar valida, a oferta da casa é sua.`.trim()}
+          : game.confirmsCodesLater
+            ? 'Mostre ao garçom: ele anota na comanda e a oferta da casa sai na hora. O bar confirma depois do jogo.'
+            : `${window ?? ''} Quando o bar valida, a oferta da casa é sua.`.trim()}
       </Text>
     </View>
   )
