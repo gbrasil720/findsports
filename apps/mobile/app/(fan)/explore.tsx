@@ -32,11 +32,11 @@ import {
   BarTicket,
   Chip,
   dayLabel,
+  dropBox,
   initials as initialsOf,
+  MapDrop,
   MapGroup,
-  MapPoint,
   MeDot,
-  PinTag,
   type SearchBar,
   usePalette
 } from '@/components/explore'
@@ -60,7 +60,6 @@ import { useFavorites } from '@/lib/favorites'
 import {
   activeCount,
   applyShortcut,
-  dayKey,
   defaultShortcuts,
   shortcutLabel,
   shortcutOn
@@ -230,8 +229,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const mapBars: MapBar[] = bars.map((bar) => {
     const game = bar.nextEvent
     const live = game ? isLive(game, now) : false
-    const later =
-      game && !live && dayKey(now) === dayKey(Date.parse(game.startsAt))
     return {
       id: bar.id,
       name: bar.name,
@@ -241,15 +238,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       elite: bar.plan === 'elite',
       distanceKm: bar.distance_km,
       next: game ? Date.parse(game.startsAt) : Number.POSITIVE_INFINITY,
-      // Ao vivo leva o nome; Elite, a hora do jogo de hoje (20b); o tocado,
-      // os dois (20c).
-      label:
-        bar.id === selected && game && !live
-          ? // Jogo de outro dia leva o dia: "21:30" sozinho seria hoje.
-            `${bar.name} · ${later ? '' : `${dayLabel(game.startsAt, now).toLowerCase()} `}${formatTime(game.startsAt)}`
-          : later && game && !live
-            ? formatTime(game.startsAt)
-            : bar.name
+      // A pílula do ao vivo leva o nome (21a).
+      label: bar.name
     }
   })
   // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
@@ -263,6 +253,36 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     insets.top + 236,
     top + snaps[1]
   )
+  // O que vai na gota: a pílula do ao vivo, ou o balão do bar tocado.
+  const dropProps = (
+    layer: Exclude<Layer, { kind: 'group' }>
+  ): {
+    live: boolean
+    label?: string
+    callout?: { name: string; when: string | null }
+  } => {
+    if (layer.kind === 'label') return { live: true, label: layer.bar.name }
+    if (layer.kind !== 'selected') return { live: layer.bar.live }
+    const game = bars.find((b) => b.id === layer.id)?.nextEvent
+    // "HOJE 21:30", "AMANHÃ 21:30", "SÁB 21:30" ou "AO VIVO" (21a).
+    const day = game
+      ? dayLabel(game.startsAt, now)
+          .split(',')[0]
+          ?.replace('.', '')
+          .toLocaleUpperCase('pt-BR')
+      : null
+    return {
+      live: layer.bar.live,
+      callout: {
+        name: layer.bar.name,
+        when: !game
+          ? null
+          : layer.bar.live
+            ? 'AO VIVO'
+            : `${day} ${formatTime(game.startsAt)}`
+      }
+    }
+  }
   const tapLayer = (layer: Layer) => {
     haptic.select()
     if (layer.kind === 'group') {
@@ -572,44 +592,33 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               zIndex={2}
               onPress={() => tapLayer(layer)}
             >
-              <MapGroup count={layer.count} live={layer.live} />
+              <MapGroup
+                count={layer.count}
+                live={layer.live}
+                dark={palette.dark}
+              />
             </MapMarker>
           ) : (
             <MapMarker
-              key={layer.id}
-              // Mudou o desenho (ponto virou rótulo, o texto, o tema): redesenha.
-              draw={`${layer.kind}:${layer.bar.label}:${layer.bar.live}:${palette.dark}`}
-              coordinate={{ latitude: layer.bar.lat, longitude: layer.bar.lng }}
-              anchor={
-                layer.kind === 'point' ? { x: 0.5, y: 0.5 } : { x: 0.5, y: 1 }
+              // O tocado nasce de novo: o iOS só aplica o `zIndex` na criação,
+              // e ele precisa ficar por cima de tudo (o balão cobre vizinhos).
+              key={
+                layer.kind === 'selected' ? `selected:${layer.id}` : layer.id
               }
-              // Com um bar tocado, os outros apagam para 45%.
-              opacity={selected && layer.kind !== 'selected' ? 0.45 : 1}
+              // Mudou o desenho (gota virou rótulo, o tema): redesenha.
+              draw={`${layer.kind}:${layer.bar.live}:${layer.bar.elite}:${palette.dark}`}
+              coordinate={{ latitude: layer.bar.lat, longitude: layer.bar.lng }}
+              anchor={dropBox(dropProps(layer)).anchor}
               zIndex={
                 layer.kind === 'selected' ? 3 : layer.kind === 'label' ? 2 : 1
               }
               onPress={() => tapLayer(layer)}
             >
-              {layer.kind === 'point' ? (
-                <MapPoint
-                  live={layer.bar.live}
-                  elite={layer.bar.elite}
-                  dark={palette.dark}
-                />
-              ) : (
-                <PinTag
-                  label={layer.bar.label}
-                  // Tocado: tinta e maior. Ao vivo: vermelho. Elite: acid.
-                  kind={
-                    layer.kind === 'selected'
-                      ? 'idle'
-                      : layer.bar.live
-                        ? 'live'
-                        : 'later'
-                  }
-                  big={layer.kind === 'selected'}
-                />
-              )}
+              <MapDrop
+                elite={layer.bar.elite}
+                dark={palette.dark}
+                {...dropProps(layer)}
+              />
             </MapMarker>
           )
         )}

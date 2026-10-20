@@ -109,10 +109,32 @@ type Box = { x1: number; y1: number; x2: number; y2: number }
 const touches = (a: Box, b: Box) =>
   a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2
 
-/** Caixa do rótulo: centrada acima do ponto, largura pelo texto. */
+/*
+ * Geometria da gota (21a): a ponta fica no bar; o corpo, 28 x 36 pt acima
+ * dela. O rótulo do ao vivo é uma pílula à direita do corpo; o do bar tocado,
+ * um balão acima da gota maior (40 x 51).
+ */
+
+/** Largura estimada do texto do rótulo (Archivo Bold 12). */
+export const pillWidth = (label: string) => label.length * 6.6 + 18
+
+/** A gota sozinha. */
+const dropBox = (x: number, y: number): Box => ({
+  x1: x - 14,
+  y1: y - 36,
+  x2: x + 14,
+  y2: y
+})
+
+/** A gota com a pílula à direita (ao vivo). */
 function labelBox(x: number, y: number, label: string): Box {
-  const w = label.length * 7.2 + 30
-  return { x1: x - w / 2, y1: y - 46, x2: x + w / 2, y2: y - 12 }
+  return { x1: x - 14, y1: y - 36, x2: x + 20 + pillWidth(label), y2: y }
+}
+
+/** A gota grande e o balão acima dela (bar tocado). */
+function selectedBox(x: number, y: number, label: string): Box {
+  const w = Math.max(48, label.length * 7.4 + 22)
+  return { x1: x - w / 2, y1: y - 51 - 52, x2: x + w / 2, y2: y }
 }
 
 /**
@@ -153,14 +175,14 @@ export function mapLayers(
   const taken: Box[] = []
   if (selected) {
     const p = at(selected.lat, selected.lng)
-    taken.push(labelBox(p.x, p.y, selected.label))
+    taken.push(selectedBox(p.x, p.y, selected.name))
   }
   const singles: MapBar[] = []
   for (const f of features) {
     const [lng = 0, lat = 0] = f.geometry.coordinates
     if ('cluster' in f.properties && f.properties.cluster) {
       const p = at(lat, lng)
-      taken.push({ x1: p.x - 22, y1: p.y - 22, x2: p.x + 22, y2: p.y + 22 })
+      taken.push({ x1: p.x - 25, y1: p.y - 25, x2: p.x + 25, y2: p.y + 25 })
       layers.push({
         kind: 'group',
         id: `group:${f.properties.cluster_id}`,
@@ -173,16 +195,16 @@ export function mapLayers(
     } else singles.push((f.properties as Props).bar)
   }
 
-  // Rótulo só para ao vivo e Elite (20b), por prioridade, enquanto houver
-  // vaga e não encostar; o resto é ponto. Com um bar tocado, nenhum outro
-  // ganha rótulo.
+  // Rótulo (a pílula) só no ao vivo (21a), por prioridade, enquanto houver
+  // vaga e não encostar; Elite já se distingue pela gota acid com estrela.
+  // O resto é gota sem rótulo. Com um bar tocado, nenhum outro ganha rótulo.
   let budget = selected ? 0 : labelBudget(region)
   for (const bar of singles.sort(byPriority)) {
     const p = at(bar.lat, bar.lng)
     const box = labelBox(p.x, p.y, bar.label)
     if (
       budget > 0 &&
-      (bar.live || bar.elite) &&
+      bar.live &&
       box.y1 > covered &&
       box.y2 < floor &&
       box.x1 > 4 &&
@@ -275,9 +297,9 @@ export function hoodNames(
   const taken: Box[] = layers.map((l) => {
     const p = l.kind === 'group' ? at(l.lat, l.lng) : at(l.bar.lat, l.bar.lng)
     if (l.kind === 'group')
-      return { x1: p.x - 34, y1: p.y - 34, x2: p.x + 34, y2: p.y + 34 }
-    if (l.kind === 'point')
-      return { x1: p.x - 18, y1: p.y - 18, x2: p.x + 18, y2: p.y + 18 }
+      return { x1: p.x - 32, y1: p.y - 32, x2: p.x + 32, y2: p.y + 32 }
+    if (l.kind === 'point') return dropBox(p.x, p.y)
+    if (l.kind === 'selected') return selectedBox(p.x, p.y, l.bar.name)
     return labelBox(p.x, p.y, l.bar.label)
   })
   const out: { name: string; lat: number; lng: number }[] = []

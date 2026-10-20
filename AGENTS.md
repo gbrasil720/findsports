@@ -441,6 +441,13 @@ invente layout que o projeto não tem.
     perto (`pubs.search` com `teamIds`) e conquista desbloqueada. As abas são Tudo, Jogos e
     Conquistas: amigos, ranking e comunidades do design ainda não existem. "Lido" fica no
     aparelho. Não há notificação no celular.
+- **Pins do mapa (Rodada 21, família Gota, 21a, escolhida pelo dono em 20/10/2026):**
+  gota com a ponta reta da marca (`MapDrop` em `components/explore.tsx`): tinta com copo,
+  vermelha com telão e halo na ponta se ao vivo, acid com estrela se Elite. Só o ao vivo
+  ganha a pílula com o nome à direita; o bar tocado vira a gota maior com o balão de nome e
+  "HOJE 21:30" e os outros não apagam. Grupo é um círculo com selo. A caixa do desenho é
+  centrada na ponta (`dropBox`), então o `anchor` do marcador é fixo; o tocado nasce como
+  marcador novo porque o iOS só aplica o `zIndex` na criação.
 - **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
   60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
   vermelho se ao vivo, acid se Elite) ou rótulo (só ao vivo e Elite, por prioridade, que

@@ -54,7 +54,7 @@ const layersOf = (
   )
 
 describe('mapa sem amontoado (20d)', () => {
-  test('perto: rótulo só para ao vivo e Elite; o resto é ponto (20b)', () => {
+  test('perto: rótulo só no ao vivo; Elite e comum são gota (21a)', () => {
     const layers = layersOf(
       [
         bar('vivo', -23.555, -46.685, { live: true }),
@@ -65,7 +65,7 @@ describe('mapa sem amontoado (20d)', () => {
     )
     expect(kinds(layers)).toEqual({
       vivo: 'label',
-      elite: 'label',
+      elite: 'point',
       comum: 'point'
     })
   })
@@ -90,8 +90,12 @@ describe('mapa sem amontoado (20d)', () => {
     const dx = (70 / SIZE.width) * NEAR.longitudeDelta
     const layers = layersOf(
       [
-        bar('perto', -23.56, -46.68, { elite: true, distanceKm: 0.5 }),
-        bar('vivo', -23.56, -46.68 + dx, { live: true, distanceKm: 2 })
+        bar('perto', -23.56, -46.68, { live: true, distanceKm: 0.5 }),
+        bar('vivo', -23.56, -46.68 + dx, {
+          live: true,
+          elite: true,
+          distanceKm: 2
+        })
       ],
       NEAR
     )
