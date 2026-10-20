@@ -428,9 +428,13 @@ invente layout que o projeto não tem.
   por mês, `attendance.visits`, os códigos validados), "Salvos" (a semana dos jogos dos
   salvos) e "Bares" (só os salvos, por bairro, perto ou A–Z, com quantas vezes foi a cada um). As imagens selecionadas das abas
   (`*-on`) têm no máximo ~72 pt: mais largas, a ponta aparece na lente da aba vizinha. A barra tem Bares onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
-  de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
+  de verdade (a barra a mantém marcada): mostra o Explorar com o menu de vidro por
   cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
-  localização) fica em `components/explore-state.tsx`. Borda tracejada de um
+  localização) fica em `components/explore-state.tsx`. Por baixo do menu vai uma foto
+  do Explorar (`react-native-view-shot`) tirada no toque em "Você", que é desabilitada
+  no nativo para o JS fotografar antes de trocar de aba: uma segunda cópia viva
+  montava outro mapa, que recarregava. O menu só destaca o item da tela aberta
+  (`MENU_SCREENS`). Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos, ou rode
   `apps/mobile/scripts/jogos-hoje.sql` (oito jogos de hoje nos bares de teste; o simulador

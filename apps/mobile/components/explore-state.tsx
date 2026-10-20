@@ -4,15 +4,18 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState
 } from 'react'
+import type { View } from 'react-native'
+import { captureRef } from 'react-native-view-shot'
 import type { Coordinates } from '@/lib/explore'
 
 /*
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
  * mesmo Explorar por baixo do menu (2c), então filtros, posição da folha e
  * localização precisam ser os mesmos nas duas, senão trocar de aba mudaria
- * a tela de baixo.
+ * a tela de baixo. A tela de baixo da "Você" é uma foto do Explorar (`shot`).
  */
 
 type ExploreState = {
@@ -32,6 +35,12 @@ type ExploreState = {
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
+  /** A tela do Explorar, para a foto que a aba "Você" mostra. */
+  screen: React.RefObject<View | null>
+  /** A última foto do Explorar; `null` antes da primeira. */
+  shot: string | null
+  /** Tira a foto do Explorar como está agora. Falhou, fica a anterior. */
+  takeShot: () => Promise<void>
 }
 
 const Context = createContext<ExploreState | null>(null)
@@ -44,6 +53,15 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [amenities, setAmenities] = useState<number[]>([])
   const [radius, setRadius] = useState<number | null>(null)
   const [resting, setResting] = useState<number | null>(null)
+  // A aba "Você" mostra o Explorar parado sob o menu. Uma segunda cópia viva
+  // montava outro mapa, que recarregava os tiles na primeira vez que aparecia.
+  const screen = useRef<View>(null)
+  const [shot, setShot] = useState<string | null>(null)
+  // ~70 ms no simulador: abaixo do que se percebe entre o toque e o menu.
+  const takeShot = () =>
+    captureRef(screen, { format: 'jpg', quality: 0.9, result: 'tmpfile' })
+      .then(setShot)
+      .catch(() => {})
 
   useEffect(() => {
     Location.getForegroundPermissionsAsync()
@@ -84,7 +102,10 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         radius,
         setRadius,
         resting,
-        setResting
+        setResting,
+        screen,
+        shot,
+        takeShot
       }}
     >
       {children}

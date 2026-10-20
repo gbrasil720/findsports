@@ -5,7 +5,10 @@ import { useEffect, useState } from 'react'
 import { Alert, View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
-import { ExploreStateProvider } from '@/components/explore-state'
+import {
+  ExploreStateProvider,
+  useExploreState
+} from '@/components/explore-state'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
@@ -61,7 +64,23 @@ const TAB_ICONS = {
   }
 }
 
+/** A tela da pilha "Você" e o item do menu que a abre. */
+const MENU_SCREENS: Record<string, string> = {
+  '/voce/perfil': 'perfil',
+  '/voce/conquistas': 'conquistas',
+  '/voce/meus-jogos': 'jogos'
+}
+
 export default function FanTabs() {
+  return (
+    <ExploreStateProvider>
+      <Tabs />
+    </ExploreStateProvider>
+  )
+}
+
+function Tabs() {
+  const explore = useExploreState()
   const router = useRouter()
   const palette = usePalette()
   const soon = useSoon()
@@ -153,69 +172,76 @@ export default function FanTabs() {
     ])
 
   return (
-    <ExploreStateProvider>
-      <View style={{ flex: 1 }}>
-        <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
-          <NativeTabs.Trigger name="explore">
-            <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger name="favoritos">
-            <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="voce"
-            // Tocar de novo com o menu aberto fecha. Numa tela da pilha da
-            // aba, o menu abre por cima dela: o sistema voltaria ao começo
-            // da pilha (`disablePopToTop` impede). Vindo de outra aba, a aba
-            // reabre no menu, não na última tela da pilha.
-            disablePopToTop
-            listeners={{
-              tabPress: () => {
-                if (menuOpen) closeMenu()
-                else if (pathname.startsWith('/voce/')) setOver(true)
-                else router.navigate('/voce')
+    <View style={{ flex: 1 }}>
+      <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
+        <NativeTabs.Trigger name="explore">
+          <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="favoritos">
+          <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="voce"
+          // Tocar de novo com o menu aberto fecha. Numa tela da pilha da
+          // aba, o menu abre por cima dela: o sistema voltaria ao começo
+          // da pilha (`disablePopToTop` impede). Vindo de outra aba, a aba
+          // reabre no menu, não na última tela da pilha.
+          disablePopToTop
+          // Desabilitada no nativo: a troca de aba fica com o JS, que tira
+          // a foto do Explorar antes de abrir a aba (ver `voce/index.tsx`).
+          disabled
+          listeners={{
+            tabPress: async () => {
+              if (menuOpen) closeMenu()
+              else if (pathname.startsWith('/voce/')) setOver(true)
+              else {
+                if (pathname === '/explore') await explore.takeShot()
+                router.navigate('/voce')
               }
-            }}
-          >
-            <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="ia"
-            role="search"
-            disabled
-            accessibilityLabel="Busca com IA"
-            listeners={{
-              tabPress: () => soon.show('A busca com IA chega em breve')
-            }}
-          >
-            <NativeTabs.Trigger.Icon
-              src={icons.sparkle}
-              renderingMode="original"
-            />
-            <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-        </NativeTabs>
-        {menuOpen ? (
-          <YouMenu
-            palette={palette}
-            name={user?.name ?? ''}
-            initials={initials(user?.name ?? '')}
-            items={items}
-            onClose={closeMenu}
-            onItem={(item) => {
-              if (!item.open) return soon.show(item.soon)
-              setOver(false)
-              item.open()
-            }}
-            onChat={() => soon.show('A conversa com a Onside chega em breve')}
-            onSettings={settings}
+            }
+          }}
+        >
+          <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="ia"
+          role="search"
+          disabled
+          accessibilityLabel="Busca com IA"
+          listeners={{
+            tabPress: () => soon.show('A busca com IA chega em breve')
+          }}
+        >
+          <NativeTabs.Trigger.Icon
+            src={icons.sparkle}
+            renderingMode="original"
           />
-        ) : null}
-        {soon.toast}
-      </View>
-    </ExploreStateProvider>
+          <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
+      {menuOpen ? (
+        <YouMenu
+          palette={palette}
+          name={user?.name ?? ''}
+          initials={initials(user?.name ?? '')}
+          items={items}
+          // Destaca a tela de baixo; sobre o Explorar, nenhum item, para não
+          // sugerir um toque.
+          current={MENU_SCREENS[pathname]}
+          onClose={closeMenu}
+          onItem={(item) => {
+            if (!item.open) return soon.show(item.soon)
+            setOver(false)
+            item.open()
+          }}
+          onChat={() => soon.show('A conversa com a Onside chega em breve')}
+          onSettings={settings}
+        />
+      ) : null}
+      {soon.toast}
+    </View>
   )
 }

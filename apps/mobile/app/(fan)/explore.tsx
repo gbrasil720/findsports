@@ -72,7 +72,11 @@ const AREA_EXTERNA = 4
 const today = () =>
   new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 
-export default function Explore() {
+/**
+ * `capture`: esta é a tela que a aba "Você" fotografa para pôr sob o menu.
+ * A cópia de reserva da "Você" (antes da primeira foto) não se fotografa.
+ */
+export default function Explore({ capture = true }: { capture?: boolean }) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
@@ -322,7 +326,11 @@ export default function Explore() {
   const fade = palette.dark ? '18,18,15' : '241,238,230'
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View
+      ref={capture ? state.screen : undefined}
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
       <MapView
         ref={map}
         onMapReady={() => setMapReady(true)}
