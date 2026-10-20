@@ -177,7 +177,9 @@ export default function FanTabs() {
           <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
           <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="favoritos">
+        {/* Sem o recuo automático: a aba somava o topo seguro ao
+            `paddingTop` da tela, e o título descia 48 pt. */}
+        <NativeTabs.Trigger name="favoritos" disableAutomaticContentInsets>
           <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
           <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>

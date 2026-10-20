@@ -147,7 +147,7 @@ export default function YourBars() {
         onMomentumScrollEnd={shotSource.again}
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 4, paddingBottom: tabBar + 24 }
         ]}
         refreshControl={
           <RefreshControl
@@ -160,9 +160,10 @@ export default function YourBars() {
           />
         }
       >
-        {/* A linha dos botões do design, sobre o título. O voltar do
-            design não entra: aqui a tela é a raiz da aba. */}
+        {/* O título com a lupa ao lado, na altura das outras telas. O
+            voltar do design não entra: aqui a tela é a raiz da aba. */}
         <View style={styles.top}>
+          <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
@@ -178,7 +179,6 @@ export default function YourBars() {
             </GlassRound>
           </Pressable>
         </View>
-        <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
 
         {search !== null ? (
           <Animated.View entering={SWAP}>
@@ -963,7 +963,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
   stack: { gap: 14 },
-  top: { flexDirection: 'row', justifyContent: 'flex-end' },
+  top: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
   search: {
     height: 46,
     borderRadius: 23,
