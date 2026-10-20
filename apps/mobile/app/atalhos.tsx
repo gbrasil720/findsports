@@ -1,11 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MapView from 'react-native-maps'
 import Animated, {
   FadeIn,
+  FadeInDown,
   FadeOut,
   LinearTransition,
   type SharedValue,
@@ -47,7 +55,8 @@ import { trpc } from '@/lib/trpc'
 /*
  * Atalhos do mapa (19e do design): a fileira de filtros no topo do Explorar.
  * Arrastar reordena, o "–" tira, o "+" põe (até cinco). "Ao vivo" é fixo e
- * fica fora da conta. "Salvar" grava no aparelho; o "×" descarta.
+ * fica fora da conta. "Salvar" grava no aparelho; com alteração não salva,
+ * um aviso aparece e o "×" pergunta antes de descartar.
  * "Fim de semana" do design não entrou: a busca filtra um dia só.
  */
 
@@ -72,9 +81,13 @@ export default function ShortcutsScreen() {
     meta: { errorToast: false }
   })
   const mainSport = prefs.data?.[0]?.sport.slug ?? null
-  const [list, setList] = useState<Shortcut[]>(
-    state.shortcuts ?? defaultShortcuts(mainSport)
-  )
+  const saved = state.shortcuts ?? defaultShortcuts(mainSport)
+  const [draft, setList] = useState<Shortcut[] | null>(null)
+  // Até a pessoa mexer, a lista é a salva (que muda quando o esporte
+  // principal chega do servidor). Mexeu e não salvou: o aviso aparece e o
+  // "×" pergunta antes de sair.
+  const list = draft ?? saved
+  const dirty = draft !== null && draft.join() !== saved.join()
   const sportList = sports.data ?? []
   const full = list.length >= MAX_SHORTCUTS
   const center = searchCenter(state.device, city.data)
@@ -82,11 +95,11 @@ export default function ShortcutsScreen() {
   const add = (key: Shortcut) => {
     if (full) return haptic.error()
     haptic.select()
-    setList((l) => toggleShortcut(l, key))
+    setList(toggleShortcut(list, key))
   }
   const remove = (key: Shortcut) => {
     haptic.select()
-    setList((l) => l.filter((k) => k !== key))
+    setList(list.filter((k) => k !== key))
   }
   const save = () => {
     haptic.success()
@@ -114,9 +127,24 @@ export default function ShortcutsScreen() {
         <View style={styles.head}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Fechar sem salvar"
+            accessibilityLabel="Fechar"
             hitSlop={8}
-            onPress={() => router.back()}
+            onPress={() => {
+              if (!dirty) return router.back()
+              haptic.error()
+              Alert.alert(
+                'Descartar alterações?',
+                'A ordem e os atalhos que você mexeu ainda não foram salvos.',
+                [
+                  { text: 'Continuar editando', style: 'cancel' },
+                  {
+                    text: 'Descartar',
+                    style: 'destructive',
+                    onPress: () => router.back()
+                  }
+                ]
+              )
+            }}
           >
             <GlassRound>
               <Icon name="close" size={16} color={palette.ink} />
@@ -129,12 +157,48 @@ export default function ShortcutsScreen() {
           >
             Atalhos do mapa
           </Text>
-          <Pressable accessibilityRole="button" hitSlop={10} onPress={save}>
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={save}
+            style={dirty && styles.saveOn}
+          >
+            <Text
+              style={[text(15, 'Bold'), { color: dirty ? INK : palette.ink }]}
+            >
               Salvar
             </Text>
           </Pressable>
         </View>
+
+        {dirty ? (
+          <Animated.View
+            entering={NOTE_IN}
+            exiting={NOTE_OUT}
+            accessibilityRole="alert"
+            style={[
+              styles.unsaved,
+              {
+                backgroundColor: palette.dark
+                  ? 'rgba(243,66,29,.14)'
+                  : 'rgba(232,50,12,.08)',
+                borderColor: palette.dark
+                  ? 'rgba(243,66,29,.4)'
+                  : 'rgba(232,50,12,.3)'
+              }
+            ]}
+          >
+            <View style={styles.unsavedDot} />
+            <Text
+              style={[
+                text(13, 'SemiBold', 1.3),
+                { color: palette.ink, flex: 1 }
+              ]}
+            >
+              Alterações não salvas. Toque em Salvar para manter.
+            </Text>
+          </Animated.View>
+        ) : null}
 
         {/* Prévia: a fileira como vai ficar sobre o mapa. */}
         <Card
@@ -315,6 +379,8 @@ const SETTLE = { damping: 22, stiffness: 280 }
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
 const ROW_IN = FadeIn.duration(150)
 const ROW_OUT = FadeOut.duration(120)
+const NOTE_IN = FadeInDown.duration(180).easing(EASE)
+const NOTE_OUT = FadeOut.duration(120)
 const HEIGHT = LinearTransition.duration(200).easing(EASE)
 
 /** Leva `id` para a posição `to`; quem estava no caminho anda uma casa. */
@@ -569,6 +635,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14
   },
   sortRow: { position: 'absolute', left: 0, right: 0, top: 0 },
+  saveOn: {
+    backgroundColor: ACID,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginVertical: -7,
+    marginRight: -4
+  },
+  unsaved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  unsavedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LIVE },
   liftCard: {
     borderRadius: 6,
     borderWidth: 1.5,
