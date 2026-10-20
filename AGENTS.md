@@ -433,6 +433,8 @@ invente layout que o projeto não tem.
   localização) fica em `components/explore-state.tsx`. Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos, ou rode
+  `apps/mobile/scripts/jogos-hoje.sql` (oito jogos de hoje nos bares de teste; o simulador
+  precisa da localização na Vila Madalena) ou
   `apps/mobile/scripts/bar-do-ze.sql`, que monta o "Bar do Zé" completo da tela 2g (jogo ao
   vivo, próximos jogos, oferta, nota, 34 presenças, todas as características). Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
