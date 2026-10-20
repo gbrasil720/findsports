@@ -56,9 +56,10 @@ export function AttendanceCodeDialog({
 
         <div className="mt-4 border-[1.5px] border-[var(--onside-ink)] px-4 py-5 text-center">
           {forWaiter ? (
-            <p className="onside-kicker mb-2">
-              Para o garçom: anote na comanda
-            </p>
+            // O `margin: 0` do kicker ganha de `mb-*`: o espaço vem do bloco.
+            <div className="mb-2">
+              <p className="onside-kicker">Para o garçom: anote na comanda</p>
+            </div>
           ) : null}
           <p
             aria-hidden="true"
