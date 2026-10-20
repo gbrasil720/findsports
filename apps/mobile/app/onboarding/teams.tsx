@@ -7,11 +7,13 @@ import {
   SportBadge,
   type Team,
   TeamChip,
+  useEditing,
   useOnboarding
 } from '@/components/onboarding'
 import {
   FG,
   Field,
+  LIVE,
   PillButton,
   Screen,
   SUB,
@@ -40,6 +42,7 @@ function countLabel(teams: Team[]) {
 export default function Teams() {
   const router = useRouter()
   const { choices, set } = useOnboarding()
+  const edit = useEditing()
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   useEffect(() => {
@@ -120,15 +123,28 @@ export default function Teams() {
       gap={14}
       padding={18}
       footer={
-        <PillButton
-          label={
-            count === 0 ? 'Pular' : `Continuar · ${countLabel(choices.teams)}`
-          }
-          onPress={() => router.push('/onboarding/distance')}
-        />
+        edit.editing ? (
+          <PillButton
+            label={edit.saving ? 'Salvando…' : 'Salvar'}
+            disabled={!edit.ready || edit.saving}
+            onPress={() => edit.save().catch(() => {})}
+          />
+        ) : (
+          <PillButton
+            label={
+              count === 0 ? 'Pular' : `Continuar · ${countLabel(choices.teams)}`
+            }
+            onPress={() => router.push('/onboarding/distance')}
+          />
+        )
       }
     >
-      <OnboardingTop step={3} />
+      {edit.back ?? <OnboardingTop step={3} />}
+      {edit.failed ? (
+        <Text style={[text(13.5), { color: LIVE }]}>
+          Não foi possível salvar. Tente de novo.
+        </Text>
+      ) : null}
       <View style={{ marginTop: 8 }}>
         <Title lines={[['Quem você acompanha?']]} size={36} />
       </View>

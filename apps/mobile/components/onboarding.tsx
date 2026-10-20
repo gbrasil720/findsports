@@ -1,3 +1,5 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import {
   createContext,
   type ReactNode,
@@ -30,6 +32,7 @@ import {
   SUB,
   text
 } from '@/components/ui'
+import { trpc } from '@/lib/trpc'
 
 /*
  * Peças do onboarding do torcedor ("05 Onboarding do torcedor" do design,
@@ -81,6 +84,74 @@ export function useOnboarding() {
   const value = useContext(Context)
   if (!value) throw new Error('useOnboarding fora de app/onboarding')
   return value
+}
+
+/**
+ * Esportes e times pelas Configurações ("Editar", 11f): as mesmas telas do
+ * onboarding com `?edit=1`, começando do que a pessoa já tem e salvando no
+ * fim dos times, sem passar por distância e revisão.
+ */
+export function useEditing() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>()
+  const editing = edit === '1'
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const { choices, set } = useOnboarding()
+  const sports = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    enabled: editing
+  })
+  const teams = useQuery({
+    ...trpc.pubs.getMyTeams.queryOptions(),
+    enabled: editing
+  })
+  // Uma vez, quando as duas chegam e o contexto ainda está vazio. Em efeito:
+  // o contexto é do layout, e mudá-lo durante a renderização da tela erra.
+  const ready = Boolean(sports.data && teams.data)
+  const [filled, setFilled] = useState(false)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao chegar
+  useEffect(() => {
+    if (!editing || !ready || filled) return
+    setFilled(true)
+    if (choices.sportIds.length === 0)
+      set({
+        sportIds: (sports.data ?? []).map((p) => p.sportId),
+        teams: (teams.data ?? []).map((t) => ({ ...t, kind: 'team' as const }))
+      })
+  }, [editing, ready, filled])
+  const savePrefs = useMutation(trpc.pubs.updateMyPreferences.mutationOptions())
+  const saveTeams = useMutation(trpc.pubs.updateMyTeams.mutationOptions())
+  const save = async () => {
+    await savePrefs.mutateAsync({ sportIds: choices.sportIds })
+    await saveTeams.mutateAsync({ teamIds: choices.teams.map((t) => t.id) })
+    haptic.success()
+    for (const key of [
+      trpc.pubs.getMyPreferences.queryKey(),
+      trpc.pubs.getMyTeams.queryKey(),
+      trpc.recommendations.get.queryKey()
+    ])
+      queryClient.invalidateQueries({ queryKey: key })
+    router.dismissTo('/configuracoes')
+  }
+  // Por baixo da primeira tela da edição o expo-router põe as boas-vindas:
+  // voltar (botão ou gesto) sai da edição, menos dos times para os esportes.
+  const { from } = useLocalSearchParams<{ from?: string }>()
+  const leave = () =>
+    from === 'sports' ? router.back() : router.dismissTo('/configuracoes')
+  const back = editing ? (
+    <>
+      <Stack.Screen options={{ gestureEnabled: from === 'sports' }} />
+      <BackButton onPress={leave} />
+    </>
+  ) : null
+  return {
+    editing,
+    back,
+    ready: !editing || filled,
+    save,
+    saving: savePrefs.isPending || saveTeams.isPending,
+    failed: savePrefs.isError || saveTeams.isError
+  }
 }
 
 /** "FU", "BA", "F1", "MMA": a sigla grande atrás do nome do esporte. */

@@ -5,6 +5,7 @@ import { ErrorText } from '@/components/motion'
 import {
   OnboardingTop,
   SportTile,
+  useEditing,
   useOnboarding
 } from '@/components/onboarding'
 import { LIVE, PillButton, Screen, SUB, Title, text } from '@/components/ui'
@@ -29,6 +30,7 @@ const countLabel = (count: number) =>
 export default function Sports() {
   const router = useRouter()
   const { choices, set } = useOnboarding()
+  const edit = useEditing()
   const query = useQuery(trpc.pubs.getSports.queryOptions())
   const sports = [...(query.data ?? [])].sort(
     (a, b) => rank(a.slug) - rank(b.slug) || a.name.localeCompare(b.name)
@@ -58,11 +60,20 @@ export default function Sports() {
         <PillButton
           label="Continuar"
           disabled={choices.sportIds.length === 0}
-          onPress={() => router.push('/onboarding/teams')}
+          onPress={() =>
+            router.push(
+              edit.editing
+                ? {
+                    pathname: '/onboarding/teams',
+                    params: { edit: '1', from: 'sports' }
+                  }
+                : '/onboarding/teams'
+            )
+          }
         />
       }
     >
-      <OnboardingTop step={2} />
+      {edit.back ?? <OnboardingTop step={2} />}
       <View style={{ marginTop: 8 }}>
         <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
       </View>
