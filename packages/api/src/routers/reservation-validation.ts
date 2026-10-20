@@ -1,4 +1,13 @@
-import { and, db, eq, isNull, type SQL, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  gte,
+  isNull,
+  lte,
+  type SQL,
+  sql
+} from '@findsports_oficial/db'
 import { getValidationWindow } from '@findsports_oficial/db/event-window'
 import {
   ARRIVAL_UNDO_WINDOW_MS,
@@ -113,6 +122,25 @@ async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
     )
     .limit(1)
   return row
+}
+
+/** `logLate` e `notLogged` só servem ao bar que confirma pela comanda. */
+async function assertConfirmsCodesLater(ownerId: string) {
+  const ownBar = await db.query.bar.findFirst({
+    where: eq(bar.userId, ownerId),
+    columns: { confirmsCodesLater: true },
+    with: { subscription: true }
+  })
+  // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
+  // plano fica só com a validação na hora, na janela de sempre.
+  assertCanValidateReservations(ownBar?.subscription ?? null)
+  if (!ownBar?.confirmsCodesLater) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message:
+        'Para lançar códigos depois do jogo, escolha "Depois do jogo, pela comanda" na oferta da casa.'
+    })
+  }
 }
 
 async function readCounter(reader: Reader, codeId: string) {
@@ -396,21 +424,7 @@ export const reservationValidationRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      const ownBar = await db.query.bar.findFirst({
-        where: eq(bar.userId, userId),
-        columns: { confirmsCodesLater: true },
-        with: { subscription: true }
-      })
-      // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
-      // plano fica só com a validação na hora, na janela de sempre.
-      assertCanValidateReservations(ownBar?.subscription ?? null)
-      if (!ownBar?.confirmsCodesLater) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message:
-            'Para lançar códigos depois do jogo, escolha "Depois do jogo, pela comanda" na oferta da casa.'
-        })
-      }
+      await assertConfirmsCodesLater(userId)
 
       const attemptKey = validationAttemptKey(userId)
       const codes = [
@@ -491,5 +505,72 @@ export const reservationValidationRouter = router({
       }
 
       return results
-    })
+    }),
+
+  /**
+   * "Faltou lançar?" (WEB-412): por jogo com o prazo de lançar aberto, quem
+   * marcou que ia e ainda não tem código lançado. Sai o nome, como em "Quem
+   * vai", nunca o código: o dono confere na comanda. Não lê a resposta do
+   * torcedor no pós-jogo (`attendance_report`), que nenhuma tela do bar lê.
+   */
+  notLogged: validatorProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+    await assertConfirmsCodesLater(userId)
+    const now = new Date()
+    // O prazo (48 h depois do fim) se confere abaixo; o corte só limita a busca.
+    const since = new Date(now.getTime() - 7 * 24 * 3_600_000)
+    const rows = await db
+      .select({
+        eventId: event.id,
+        championship: event.championship,
+        participantFreeText: event.participantFreeText,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        name: user.name
+      })
+      .from(reservationCode)
+      .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
+      .innerJoin(event, eq(event.id, reservation.eventId))
+      .innerJoin(bar, eq(bar.id, event.barId))
+      .innerJoin(user, eq(user.id, reservation.userId))
+      .where(
+        and(
+          eq(bar.userId, userId),
+          isNull(reservationCode.retiredAt),
+          eq(reservationCode.usedCount, 0),
+          eq(reservation.status, 'confirmed'),
+          lte(event.startsAt, now),
+          gte(event.startsAt, since)
+        )
+      )
+      .orderBy(event.startsAt, user.name)
+
+    const games = new Map<
+      string,
+      {
+        id: string
+        championship: string
+        participantFreeText: string | null
+        startsAt: Date
+        closesAt: Date
+        names: string[]
+      }
+    >()
+    for (const { eventId, name, endsAt, ...game } of rows) {
+      const { closesAt } = getLateEntryWindow({
+        startsAt: game.startsAt,
+        endsAt
+      })
+      if (closesAt < now) continue
+      const entry = games.get(eventId) ?? {
+        id: eventId,
+        ...game,
+        closesAt,
+        names: []
+      }
+      entry.names.push(name)
+      games.set(eventId, entry)
+    }
+    return [...games.values()]
+  })
 })
