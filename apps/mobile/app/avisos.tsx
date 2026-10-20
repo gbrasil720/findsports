@@ -27,6 +27,7 @@ import {
   LIVE,
   PAPER,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
 import {
@@ -146,6 +147,10 @@ export default function Notices() {
     else router.push({ pathname: '/busca', params: { q: notice.title } })
   }
 
+  const pull = usePullRefresh(() =>
+    Promise.all([mine.refetch(), medals.refetch(), teamBars.refetch()])
+  )
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
@@ -153,17 +158,7 @@ export default function Notices() {
           styles.body,
           { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={mine.isRefetching}
-            onRefresh={() => {
-              mine.refetch()
-              medals.refetch()
-              teamBars.refetch()
-            }}
-            tintColor={palette.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
         <View style={styles.head}>
           <Pressable

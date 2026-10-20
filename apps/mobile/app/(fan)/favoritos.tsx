@@ -43,6 +43,7 @@ import {
   PillButton,
   Title,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
@@ -135,6 +136,10 @@ export default function YourBars() {
           ? visits
           : saved
 
+  const pull = usePullRefresh(() =>
+    Promise.all([visits.refetch(), saved.refetch()])
+  )
+
   return (
     <View
       ref={shotSource.ref}
@@ -149,16 +154,7 @@ export default function YourBars() {
           styles.body,
           { paddingTop: insets.top + 4, paddingBottom: tabBar + 24 }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={visits.isRefetching || saved.isRefetching}
-            onRefresh={() => {
-              visits.refetch()
-              saved.refetch()
-            }}
-            tintColor={palette.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
         {/* O título com a lupa ao lado, na altura das outras telas. O
             voltar do design não entra: aqui a tela é a raiz da aba. */}

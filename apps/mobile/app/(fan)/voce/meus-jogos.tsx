@@ -36,6 +36,7 @@ import {
   PillButton,
   Title,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
 import { formatTime } from '@/lib/explore'
@@ -125,6 +126,10 @@ export default function MyGames() {
   const openBar = (game: MyGame) =>
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
 
+  const pull = usePullRefresh(() =>
+    Promise.all([mine.refetch(), ratings.refetch(), reports.refetch()])
+  )
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
@@ -133,17 +138,7 @@ export default function MyGames() {
           styles.body,
           { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={mine.isRefetching}
-            onRefresh={() => {
-              mine.refetch()
-              ratings.refetch()
-              reports.refetch()
-            }}
-            tintColor={palette.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
         {/* Dentro da aba "Você", sem voltar: o título divide a linha com a
             agenda, como no design. */}

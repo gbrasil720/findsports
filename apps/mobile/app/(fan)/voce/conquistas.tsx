@@ -24,6 +24,7 @@ import {
   PillButton,
   Title,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
 import {
@@ -65,6 +66,8 @@ export default function Shelf() {
     })
   }
 
+  const pull = usePullRefresh(() => mine.refetch())
+
   return (
     <View style={[styles.screen, { backgroundColor: P.bg }]}>
       <ScrollView
@@ -72,13 +75,7 @@ export default function Shelf() {
           styles.body,
           { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={mine.isRefetching}
-            onRefresh={() => mine.refetch()}
-            tintColor={P.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={P.muted} />}
       >
         <View style={styles.top}>
           <Title lines={[['Conquistas']]} size={40} color={P.ink} />

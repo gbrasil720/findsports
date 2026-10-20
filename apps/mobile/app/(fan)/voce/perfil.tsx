@@ -34,6 +34,7 @@ import {
   PAPER,
   PillButton,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
@@ -139,6 +140,10 @@ export default function Profile() {
     ])
   const openBar = (barId: string) => router.push(`/bar/${barId}` as Href)
 
+  const pull = usePullRefresh(() =>
+    Promise.all([...queries.map((q) => q.refetch()), pending.refetch()])
+  )
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
@@ -146,16 +151,7 @@ export default function Profile() {
           styles.body,
           { paddingTop: insets.top + 4, paddingBottom: tabBar + 24 }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={queries.some((q) => q.isRefetching)}
-            onRefresh={() => {
-              for (const q of queries) q.refetch()
-              pending.refetch()
-            }}
-            tintColor={palette.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
         <View style={styles.who}>
           {/* No escuro, o quadro do cartão: tinta sobre tinta sumiria. */}

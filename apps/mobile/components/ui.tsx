@@ -560,6 +560,20 @@ export function useStatusBar(wanted: 'light' | 'dark' | 'auto') {
   )
 }
 
+/**
+ * Puxar para atualizar: o giro só aparece quando a pessoa puxa. Ligado ao
+ * `isRefetching`, uma recarga em segundo plano (voltar para a aba) mostrava
+ * o giro, empurrava a tela para baixo e o iOS só a devolvia no próximo toque.
+ */
+export function usePullRefresh(refetch: () => Promise<unknown>) {
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = () => {
+    setRefreshing(true)
+    refetch().finally(() => setRefreshing(false))
+  }
+  return { refreshing, onRefresh }
+}
+
 // --- Tela -------------------------------------------------------------------
 
 /**
