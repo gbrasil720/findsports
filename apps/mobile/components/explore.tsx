@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
-import { haptic, usePressScale } from '@/components/motion'
+import { haptic, popFrom, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
@@ -213,7 +213,17 @@ export function MapDrop({
   const fg = elite && !live ? INK : PAPER
   const box = dropBox({ live, label, callout })
   return (
-    <View collapsable={false} style={{ width: box.width, height: box.height }}>
+    <Animated.View
+      collapsable={false}
+      // O tocado cresce da ponta (0,8 → 1, mola curta): a gota pequena vira
+      // a grande no mesmo lugar, em vez de o balão surgir do nada.
+      entering={callout ? DROP_IN : undefined}
+      style={{
+        width: box.width,
+        height: box.height,
+        transformOrigin: `${box.tipX}px ${box.tipY}px`
+      }}
+    >
       {callout ? (
         <View style={[styles.callout, { top: 0, left: 0, right: 0 }]}>
           <View style={styles.calloutBody}>
@@ -288,7 +298,7 @@ export function MapDrop({
           </Text>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   )
 }
 
@@ -361,6 +371,8 @@ export function MapGroup({
     </View>
   )
 }
+
+const DROP_IN = popFrom(0.8)
 
 /** Você no mapa: o ponto acid com dois halos. */
 export function MeDot() {
