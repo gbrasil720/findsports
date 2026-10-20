@@ -117,6 +117,11 @@ export default function Layout() {
                   sheetCornerRadius: 30
                 }}
               />
+              {/* Busca (19a, 19b): tela cheia, sobe sem a barra de abas. */}
+              <Stack.Screen
+                name="busca"
+                options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+              />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"
