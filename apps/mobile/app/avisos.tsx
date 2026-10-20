@@ -17,7 +17,7 @@ import { Card } from '@/components/card'
 import { type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { MedalImage } from '@/components/medal'
-import { haptic } from '@/components/motion'
+import { haptic, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -190,8 +190,9 @@ export default function Notices() {
         </View>
 
         {today ? (
-          <Pressable
+          <ScalePress
             accessibilityRole="button"
+            to={0.985}
             onPress={() =>
               today.code
                 ? router.push(`/codigo/${today.eventId}`)
@@ -199,7 +200,7 @@ export default function Notices() {
             }
           >
             <TodayCard palette={palette} game={today} now={now} />
-          </Pressable>
+          </ScalePress>
         ) : null}
 
         <View style={styles.tabsRow}>
@@ -264,8 +265,9 @@ export default function Notices() {
                   ) : null}
                 </View>
                 {section.items.map((notice) => (
-                  <Pressable
+                  <ScalePress
                     key={notice.id}
+                    to={0.985}
                     accessibilityRole="button"
                     onPress={() => open(notice)}
                   >
@@ -276,7 +278,7 @@ export default function Notices() {
                       unread={!read.includes(notice.id)}
                       now={now}
                     />
-                  </Pressable>
+                  </ScalePress>
                 ))}
               </View>
             )

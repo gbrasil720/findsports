@@ -24,7 +24,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -351,7 +351,7 @@ function SearchChip({
   onPress: () => void
 }) {
   return (
-    <Pressable
+    <ScalePress
       accessibilityRole="button"
       onPress={() => {
         haptic.select()
@@ -371,7 +371,7 @@ function SearchChip({
           style={[text(14, 'SemiBold', 1.2), { color: palette.ink }]}
         />
       </View>
-    </Pressable>
+    </ScalePress>
   )
 }
 
@@ -402,7 +402,7 @@ function OpenState({
   return (
     <>
       {live ? (
-        <Pressable accessibilityRole="button" onPress={onLive}>
+        <ScalePress accessibilityRole="button" to={0.985} onPress={onLive}>
           <Card
             palette={palette}
             shadow={dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
@@ -449,7 +449,7 @@ function OpenState({
               <Icon name="next" size={14} color={ACID} />
             </View>
           </Card>
-        </Pressable>
+        </ScalePress>
       ) : null}
 
       {night.length ? (
@@ -482,7 +482,7 @@ function OpenState({
             {night.map((g) => {
               const two = sides(g.game)
               return (
-                <Pressable
+                <ScalePress
                   key={g.key}
                   accessibilityRole="button"
                   onPress={() => onGame(matchName(g.game))}
@@ -529,7 +529,7 @@ function OpenState({
                       {g.bars.length} {g.bars.length === 1 ? 'bar' : 'bares'}
                     </Text>
                   </View>
-                </Pressable>
+                </ScalePress>
               )
             })}
           </ScrollView>
@@ -548,7 +548,7 @@ function OpenState({
           </View>
           <View style={styles.hoods}>
             {near.map((hood) => (
-              <Pressable
+              <ScalePress
                 key={hood.name}
                 accessibilityRole="button"
                 accessibilityLabel={`${hood.name}, ${hood.bars.length} bares`}
@@ -580,13 +580,13 @@ function OpenState({
                     {hood.bars.length}
                   </Text>
                 </View>
-              </Pressable>
+              </ScalePress>
             ))}
           </View>
         </>
       ) : null}
 
-      <Pressable accessibilityRole="button" onPress={onAi}>
+      <ScalePress accessibilityRole="button" to={0.985} onPress={onAi}>
         <Card palette={palette} shadow={INK} offset={5} style={styles.ai}>
           <View style={styles.aiHead}>
             <Icon name="sparkle" size={26} color={INK} accent={LIVE} />
@@ -606,7 +606,7 @@ function OpenState({
             </View>
           ))}
         </Card>
-      </Pressable>
+      </ScalePress>
     </>
   )
 }

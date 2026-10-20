@@ -16,7 +16,7 @@ import { Card } from '@/components/card'
 import { type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, ScalePress } from '@/components/motion'
 import { ACID, Icon, INK, PAPER, PillButton, text } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { searchCenter } from '@/lib/explore'
@@ -222,8 +222,9 @@ export default function FiltersSheet() {
             {(days.data ?? []).map((d, i) => {
               const on = draft.date === d.day
               return (
-                <Pressable
+                <ScalePress
                   key={d.day}
+                  containerStyle={{ flex: 1 }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   accessibilityLabel={`${weekday(d.day, i)}, ${d.games} ${d.games === 1 ? 'jogo' : 'jogos'}`}
@@ -272,7 +273,7 @@ export default function FiltersSheet() {
                   >
                     {d.games} jg
                   </Text>
-                </Pressable>
+                </ScalePress>
               )
             })}
           </View>
@@ -284,7 +285,7 @@ export default function FiltersSheet() {
               const on = draft.sportId === sport.id
               const key = `esporte:${sport.slug}`
               return (
-                <Pressable
+                <ScalePress
                   key={sport.id}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
@@ -330,7 +331,7 @@ export default function FiltersSheet() {
                       onPress={() => pin(key)}
                     />
                   </View>
-                </Pressable>
+                </ScalePress>
               )
             })}
           </View>
@@ -430,7 +431,7 @@ export default function FiltersSheet() {
               const on = draft.amenities.includes(item.id)
               const key = `item:${item.id}`
               return (
-                <Pressable
+                <ScalePress
                   key={item.id}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
@@ -474,7 +475,7 @@ export default function FiltersSheet() {
                     label={item.label}
                     onPress={() => pin(key)}
                   />
-                </Pressable>
+                </ScalePress>
               )
             })}
           </View>
