@@ -146,9 +146,12 @@ export default function FiltersSheet() {
             <Pressable
               accessibilityRole="button"
               hitSlop={10}
+              // Limpar vale na hora, sem o "Ver N bares": sair da folha
+              // depois de limpar não devolve os filtros antigos.
               onPress={() => {
                 haptic.select()
                 setDraft(NO_FILTERS)
+                state.setFilters(NO_FILTERS)
               }}
             >
               <Text style={[text(14, 'Bold'), { color: palette.live }]}>
