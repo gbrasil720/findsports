@@ -91,7 +91,8 @@ export default function FanTabs() {
       key: 'perfil',
       icon: 'you',
       label: 'Perfil',
-      soon: 'O perfil chega em breve'
+      soon: 'O perfil chega em breve',
+      open: () => router.navigate('/voce/perfil')
     },
     {
       key: 'conquistas',
