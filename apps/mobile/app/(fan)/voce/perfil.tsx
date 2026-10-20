@@ -157,29 +157,6 @@ export default function Profile() {
           />
         }
       >
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Compartilhar seu nível"
-            hitSlop={8}
-            onPress={share}
-          >
-            <GlassRound>
-              <Icon name="share" size={18} color={palette.ink} />
-            </GlassRound>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Configurações"
-            hitSlop={8}
-            onPress={settings}
-          >
-            <GlassRound>
-              <Icon name="gear" size={18} color={palette.ink} />
-            </GlassRound>
-          </Pressable>
-        </View>
-
         <View style={styles.who}>
           {/* No escuro, o quadro do cartão: tinta sobre tinta sumiria. */}
           <View
@@ -209,6 +186,30 @@ export default function Profile() {
                 </Text>
               </View>
             ) : null}
+          </View>
+          {/* Compartilhar e configurações na linha do nome, não numa
+              linha só deles por cima. */}
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Compartilhar seu nível"
+              hitSlop={8}
+              onPress={share}
+            >
+              <GlassRound>
+                <Icon name="share" size={18} color={palette.ink} />
+              </GlassRound>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Configurações"
+              hitSlop={8}
+              onPress={settings}
+            >
+              <GlassRound>
+                <Icon name="gear" size={18} color={palette.ink} />
+              </GlassRound>
+            </Pressable>
           </View>
         </View>
 
@@ -593,8 +594,8 @@ function Row({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 16 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-  who: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: -28 },
+  actions: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 76,
     height: 76,
