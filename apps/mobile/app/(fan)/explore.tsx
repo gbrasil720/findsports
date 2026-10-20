@@ -199,7 +199,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // A faixa livre do mapa, entre os chips e a folha no meio. Fixa: mudar o
   // enquadramento a cada ponto da folha recentrava o mapa por cima da mola.
   const padding = {
-    top: insets.top + 196,
+    top: insets.top + 154,
     right: 0,
     left: 0,
     bottom: height - (top + snaps[1])
@@ -252,7 +252,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     chosenBar,
     view,
     { width, height },
-    insets.top + 236,
+    insets.top + 194,
     top + snaps[1]
   )
   // O que vai na gota: a pílula do ao vivo, ou o balão do bar tocado.
@@ -311,7 +311,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         view.latitudeDelta) *
       height
     // Abaixo dos chips sobra lugar para a gota grande e o balão (105 pt).
-    const ceiling = insets.top + 260 + 105
+    const ceiling = insets.top + 218 + 105
     const floor = height - 336 - 24
     if (y < ceiling || y > floor) {
       const target = (ceiling + floor) / 2
@@ -568,7 +568,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           layers,
           view,
           { width, height },
-          insets.top + 236
+          insets.top + 194
         ).map((hood) => (
           <MapMarker
             key={`hood:${hood.name}`}
@@ -646,7 +646,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           `rgba(${fade},0)`
         ]}
         locations={[0, 0.4545, 0.697, 1]}
-        style={[styles.fade, { height: insets.top + 283 }]}
+        style={[styles.fade, { height: insets.top + 241 }]}
       />
 
       <View style={[styles.head, { top: insets.top + 13 }]}>
@@ -721,7 +721,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[styles.chips, { top: insets.top + 159 }]}
+        style={[styles.chips, { top: insets.top + 117 }]}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
       >
         {/* Todos os filtros (19d), com quantos estão ligados. */}
