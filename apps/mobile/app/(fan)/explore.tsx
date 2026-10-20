@@ -31,6 +31,7 @@ import {
   BarRow,
   BarTicket,
   Chip,
+  dayLabel,
   initials as initialsOf,
   MapGroup,
   MapPoint,
@@ -244,7 +245,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       // os dois (20c).
       label:
         bar.id === selected && game && !live
-          ? `${bar.name} · ${formatTime(game.startsAt)}`
+          ? // Jogo de outro dia leva o dia: "21:30" sozinho seria hoje.
+            `${bar.name} · ${later ? '' : `${dayLabel(game.startsAt, now).toLowerCase()} `}${formatTime(game.startsAt)}`
           : later && game && !live
             ? formatTime(game.startsAt)
             : bar.name
@@ -279,6 +281,25 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     if (!bar) return
     if (layer.kind === 'selected') return open(bar)
     setSelected(bar.id)
+    // A folha sobe 40 pt com o card (20c): bar perto da borda dela, ou do
+    // cabeçalho, ficaria coberto. A câmera desliza só o bastante para ele
+    // cair no meio da faixa livre, junto com a folha.
+    const y =
+      ((view.latitude + view.latitudeDelta / 2 - Number(bar.latitude)) /
+        view.latitudeDelta) *
+      height
+    const ceiling = insets.top + 236 + 50
+    const floor = height - 336 - 24
+    if (y < ceiling || y > floor) {
+      const target = (ceiling + floor) / 2
+      map.current?.animateToRegion(
+        {
+          ...view,
+          latitude: view.latitude - ((y - target) / height) * view.latitudeDelta
+        },
+        reduced ? 0 : 300
+      )
+    }
   }
   // O mapa só aceita `animateToRegion` depois de pronto: a localização que
   // chegava antes disso se perdia, e o Explorar ficava na cidade do perfil.
