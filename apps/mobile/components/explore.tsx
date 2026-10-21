@@ -556,7 +556,13 @@ export function Tag({
 }
 
 /** Sombra dura deslocada, como o `box-shadow` sem desfoque do design. */
-function HardShadow({ color, offset }: { color: string; offset: number }) {
+export function HardShadow({
+  color,
+  offset
+}: {
+  color: string
+  offset: number
+}) {
   return (
     <View
       style={[
