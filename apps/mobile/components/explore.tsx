@@ -340,6 +340,29 @@ export function dropBox({
   }
 }
 
+/**
+ * Bar sem jogo marcado no mapa: um ponto oco e pequeno, abaixo das gotas,
+ * para os bares com jogo continuarem na frente. Tocado, vira a gota grande
+ * como qualquer outro.
+ */
+export function QuietDot({ dark }: { dark: boolean }) {
+  return (
+    // Sem `collapsable`, a caixa de toque some no achatamento e o marcador
+    // fica do tamanho do ponto, difícil de acertar.
+    <View collapsable={false} style={styles.quietHit}>
+      <View
+        style={[
+          styles.quietDot,
+          {
+            backgroundColor: dark ? INK : PAPER,
+            borderColor: dark ? 'rgba(241,238,230,.55)' : 'rgba(18,18,15,.5)'
+          }
+        ]}
+      />
+    </View>
+  )
+}
+
 /** O grupo (21a): círculo com o número; o selo vermelho conta os ao vivo. */
 export function MapGroup({
   count,
@@ -1174,6 +1197,13 @@ export function BarRow({
 
 const styles = StyleSheet.create({
   pin: { alignItems: 'center' },
+  quietHit: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  quietDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
   pointHit: {
     width: 44,
     height: 44,

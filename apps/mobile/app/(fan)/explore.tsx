@@ -38,6 +38,7 @@ import {
   MapGroup,
   MeDot,
   type Palette,
+  QuietDot,
   RadiusCircle,
   type SearchBar,
   usePalette
@@ -246,8 +247,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     map.current?.animateToRegion(region, reduced ? 0 : 400)
   // A região à vista decide grupos, pontos e rótulos (Rodada 20).
   const [view, setView] = useState<Region>(region)
-  const chosen = bars.find((bar) => bar.id === selected) ?? null
-  const mapBars: MapBar[] = bars.map((bar) => {
+  // Os sem jogo entram no mapa como ponto oco, fora dos grupos e dos rótulos.
+  const listed = [...bars, ...quiet]
+  const chosen = listed.find((bar) => bar.id === selected) ?? null
+  const toMapBar = (bar: SearchBar): MapBar => {
     const game = bar.nextEvent
     const live = game ? isLive(game, now) : false
     return {
@@ -262,10 +265,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       // A pílula do ao vivo leva o nome (21a).
       label: bar.name
     }
-  })
+  }
+  const mapBars = bars.map(toMapBar)
+  const quietBars = quiet.map(toMapBar)
   // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
   const index = buildIndex(mapBars.filter((b) => b.id !== selected))
-  const chosenBar = mapBars.find((b) => b.id === selected) ?? null
+  const chosenBar =
+    [...mapBars, ...quietBars].find((b) => b.id === selected) ?? null
   const layers = mapLayers(
     index,
     chosenBar,
@@ -318,7 +324,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         reduced ? 0 : 350
       )
     }
-    const bar = bars.find((b) => b.id === layer.id)
+    const bar = listed.find((b) => b.id === layer.id)
     if (!bar) return
     if (layer.kind === 'selected') return open(bar)
     setSelected(bar.id)
@@ -613,6 +619,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             </Text>
           </MapMarker>
         ))}
+        {quietBars
+          .filter((bar) => bar.id !== selected)
+          .map((bar) => (
+            <MapMarker
+              key={`quiet:${bar.id}`}
+              draw={String(palette.dark)}
+              coordinate={{ latitude: bar.lat, longitude: bar.lng }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              zIndex={0}
+              onPress={() => tapLayer({ kind: 'point', id: bar.id, bar })}
+            >
+              <QuietDot dark={palette.dark} />
+            </MapMarker>
+          ))}
         {layers.map((layer) =>
           layer.kind === 'group' ? (
             <MapMarker
