@@ -4,6 +4,7 @@ import { utcIso } from '../utc-timestamp'
 import {
   DAY_MS,
   jaccard,
+  RECOMMENDATION_DISMISS_COOLDOWN_DAYS,
   RECOMMENDATION_INTENT_KINDS,
   RECOMMENDATION_QUALITY_WINDOW_DAYS,
   RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS,
@@ -87,6 +88,9 @@ export async function loadRecommendationCandidates(input: {
   )
   const thirtyDaysAgo = new Date(
     input.now.getTime() - RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS * DAY_MS
+  )
+  const dismissCutoff = new Date(
+    input.now.getTime() - RECOMMENDATION_DISMISS_COOLDOWN_DAYS * DAY_MS
   )
   const expandedRadiusMeters = input.radiusKm * 1.5 * 1000
 
@@ -255,7 +259,7 @@ export async function loadRecommendationCandidates(input: {
           WHERE re.actor_user_id = ${input.userId}
             AND re.bar_id = b.id
             AND (
-              (re.type = 'dismiss' AND re.occurred_at >= GREATEST(rb.starts_at, ${sixtyDaysAgo}::timestamptz))
+              (re.type = 'dismiss' AND re.occurred_at >= GREATEST(rb.starts_at, ${dismissCutoff}::timestamptz))
               OR
               (re.type = 'unfavorite' AND re.occurred_at >= GREATEST(rb.starts_at, ${thirtyDaysAgo}::timestamptz))
             )
