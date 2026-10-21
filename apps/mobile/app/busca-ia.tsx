@@ -81,7 +81,6 @@ const OFFER = 10
 // A conversa sobrevive a fechar a folha (abrir um bar e voltar), até o app
 // fechar. ponytail: memória do módulo; persistir só se pedirem.
 let saved: Turn[] = []
-let nextId = 1
 
 // Entradas como constante de módulo (o Reanimated recomeça a entrada quando
 // o objeto muda).
@@ -144,7 +143,7 @@ export default function AiSearch() {
       return
     }
     haptic.select()
-    const id = nextId++
+    const id = (turns.at(-1)?.id ?? 0) + 1
     const history = chatHistory(
       turns.map((t) => ({
         question: t.question,
@@ -399,7 +398,9 @@ export default function AiSearch() {
               placeholder={
                 blocked
                   ? `O chat volta ${resumeLabel(blocked.resumesAt, now)}`
-                  : turns.length
+                  : off
+                    ? 'A busca com IA está fora do ar'
+                    : turns.length
                     ? 'Refine ou pergunte outra coisa…'
                     : 'Diga o jogo e o que você precisa…'
               }
