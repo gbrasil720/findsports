@@ -64,7 +64,8 @@ const TAB_ICONS = {
 const MENU_SCREENS: Record<string, string> = {
   '/voce/perfil': 'perfil',
   '/voce/conquistas': 'conquistas',
-  '/voce/meus-jogos': 'jogos'
+  '/voce/meus-jogos': 'jogos',
+  '/voce/amigos': 'amigos'
 }
 
 // O estado do Explorar (`ExploreStateProvider`) mora em `app/_layout.tsx`:
@@ -123,6 +124,15 @@ export default function FanTabs() {
       soon: 'Meus jogos chega em breve',
       // Na pilha da própria aba: a barra fica e o menu some sozinho.
       open: () => router.navigate('/voce/meus-jogos')
+    },
+    {
+      key: 'amigos',
+      icon: 'people',
+      label: 'Amigos',
+      soon: 'Os amigos chegam em breve',
+      // No design, Amigos abre pelo botão do Ranking (11e); até ele existir,
+      // fica no menu.
+      open: () => router.navigate('/voce/amigos')
     },
     {
       key: 'ranking',

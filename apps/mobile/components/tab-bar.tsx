@@ -27,7 +27,7 @@ export function useTabBarSpace() {
 
 export type MenuItem = {
   key: string
-  icon: 'you' | 'medal' | 'ticket' | 'ranking' | 'star' | 'sliders'
+  icon: 'you' | 'medal' | 'ticket' | 'people' | 'ranking' | 'star' | 'sliders'
   label: string
   meta?: string
   /** O aviso enquanto a tela não existe. */
