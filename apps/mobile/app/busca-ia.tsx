@@ -285,12 +285,14 @@ export default function AiSearch() {
           : 'Diga o que você procura'
 
   const keyboard = useAnimatedKeyboard()
+  // O rodapé sobe junto do teclado, só por transform (30 pt de respiro sem
+  // teclado; 10 pt acima dele).
   const footer = useAnimatedStyle(() => ({
-    paddingBottom: Math.max(30, keyboard.height.value + 10)
+    transform: [{ translateY: -Math.max(0, keyboard.height.get() - 20) }]
   }))
   // O fim da conversa fica acima dos atalhos e do campo.
   const spacer = useAnimatedStyle(() => ({
-    height: 150 + Math.max(0, keyboard.height.value - 20)
+    height: 150 + Math.max(0, keyboard.height.get() - 20)
   }))
 
   return (
@@ -678,15 +680,20 @@ function TurnView({
 function StatusDot({ busy, quiet }: { busy: boolean; quiet: boolean }) {
   const pulse = useSharedValue(1)
   useEffect(() => {
-    pulse.value = busy
-      ? withRepeat(
-          withTiming(1.5, { duration: 600, easing: Easing.inOut(Easing.quad) }),
-          -1,
-          true
-        )
-      : withTiming(1, { duration: 200 })
+    pulse.set(
+      busy
+        ? withRepeat(
+            withTiming(1.5, {
+              duration: 600,
+              easing: Easing.inOut(Easing.quad)
+            }),
+            -1,
+            true
+          )
+        : withTiming(1, { duration: 200 })
+    )
   }, [busy, pulse])
-  const halo = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }))
+  const halo = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }))
   const color = quiet ? 'rgba(85,85,79,.5)' : ACID
   return (
     <View style={styles.dotBox}>
@@ -847,7 +854,13 @@ const styles = StyleSheet.create({
     gap: 8,
     flexDirection: 'row'
   },
-  dock: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  dock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingBottom: 30
+  },
   footer: { paddingTop: 10, paddingHorizontal: 14 },
   field: {
     height: 54,
