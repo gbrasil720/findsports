@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { createHash } from 'node:crypto'
 import { eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { contextFor, load } from './integration-seed'
 
@@ -141,3 +142,73 @@ integrationTest('amizade de ponta a ponta', async () => {
     )
   }
 })
+
+integrationTest(
+  'avisos de amigos: pedido recebido e pedido aceito',
+  async () => {
+    const { db, appRouter } = await load()
+    const tag = crypto.randomUUID().slice(0, 8)
+    const people = ['lia', 'mar', 'nei', 'oto'].map((key) => ({
+      id: crypto.randomUUID(),
+      name: `${key.toUpperCase()} Aviso${tag}`,
+      email: `${key}-${tag}@integration.invalid`,
+      emailVerified: true,
+      role: 'fan' as const,
+      onboardingCompleted: true
+    }))
+    const [lia, mar, nei, oto] = people as [
+      (typeof people)[0],
+      (typeof people)[0],
+      (typeof people)[0],
+      (typeof people)[0]
+    ]
+    await db.insert(user).values(people)
+    const as = (p: { id: string }) =>
+      appRouter.createCaller(contextFor(p.id, 'fan')).friends
+    try {
+      // Lia e Mar são amigas; Nei é amigo de Mar e pede a Lia.
+      await as(lia).request({ userId: mar.id })
+      await as(mar).respond({ userId: lia.id, accept: true })
+      await as(nei).request({ userId: mar.id })
+      await as(mar).respond({ userId: nei.id, accept: true })
+      await as(nei).request({ userId: lia.id })
+      // Lia pede a Oto, que aceita.
+      await as(lia).request({ userId: oto.id })
+      await as(oto).respond({ userId: lia.id, accept: true })
+
+      const notices = await as(lia).notices()
+      expect(notices.requests.map((r) => [r.id, r.mutual])).toEqual([
+        [nei.id, 1]
+      ])
+      expect(notices.requests[0]?.mutualInitials).toEqual(['MA'])
+      // Mar e Oto aceitaram os pedidos de Lia; o mais recente primeiro.
+      expect(notices.accepted.map((a) => a.id)).toEqual([oto.id, mar.id])
+      // Quem aceitou o pedido de outra pessoa não recebe aviso de "aceito".
+      expect((await as(mar).notices()).accepted.map((a) => a.id)).toEqual([])
+
+      // Respondido, o pedido sai dos avisos; o aceite vira aviso de quem pediu.
+      await as(lia).respond({ userId: nei.id, accept: true })
+      expect((await as(lia).notices()).requests).toEqual([])
+      expect((await as(nei).notices()).accepted.map((a) => a.id)).toEqual([
+        lia.id,
+        mar.id
+      ])
+
+      // Aceite com mais de 30 dias não aparece.
+      await db
+        .update(friendship)
+        .set({ acceptedAt: new Date(Date.now() - 31 * 86_400_000) })
+        .where(eq(friendship.addresseeId, oto.id))
+      expect((await as(lia).notices()).accepted.map((a) => a.id)).toEqual([
+        mar.id
+      ])
+    } finally {
+      await db.delete(user).where(
+        inArray(
+          user.id,
+          people.map((p) => p.id)
+        )
+      )
+    }
+  }
+)
