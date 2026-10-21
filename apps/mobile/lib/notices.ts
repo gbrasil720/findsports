@@ -3,10 +3,11 @@ import { matchName, type NearBar } from './search'
 
 /*
  * Avisos (19c do design), montados do que já existe: código validado com
- * oferta, jogo dos seus times perto, conquista desbloqueada e, dos amigos,
- * pedido recebido e pedido aceito (`friends.notices`). Ranking e comunidade
- * do design ainda não existem no produto. Contas puras; a tela fica em
- * `app/avisos.tsx`.
+ * oferta, jogo dos seus times perto, conquista desbloqueada, dos amigos,
+ * pedido recebido e pedido aceito (`friends.notices`) e, de "Bares pra
+ * você" (WEB-425), o jogo novo do bar que você pediu para avisar e o jogo que
+ * você pediu para lembrar, no dia. Ranking e comunidade do design ainda não
+ * existem no produto. Contas puras; a tela fica em `app/avisos.tsx`.
  */
 
 const TZ = 'America/Sao_Paulo'
@@ -32,6 +33,40 @@ export type Notice =
   | { id: string; kind: 'medal'; at: string; medalId: string }
   | { id: string; kind: 'friend-request'; at: string; person: FriendNotice }
   | { id: string; kind: 'friend-accepted'; at: string; person: FriendNotice }
+  | {
+      id: string
+      /** "Avisar" (23e): o bar publicou jogo do seu esporte ou time. */
+      kind: 'alert'
+      at: string
+      eventId: string
+      barId: string
+      barName: string
+      title: string
+      startsAt: string
+    }
+  | {
+      id: string
+      /** "Lembrar" (23c): o jogo é hoje. */
+      kind: 'reminder'
+      at: string
+      eventId: string
+      barId: string
+      barName: string
+      title: string
+    }
+
+type BarGame = {
+  eventId: string
+  barId: string
+  barName: string
+  startsAt: string
+  championship: string
+  participants: string[]
+  participantFreeText: string | null
+}
+
+const barGameTitle = (game: BarGame) =>
+  game.participants.join(' × ') || game.participantFreeText || game.championship
 
 /** Uma pessoa de `friends.notices`. */
 export type FriendNotice = {
@@ -50,7 +85,10 @@ export const inTab = (notice: Notice, tab: NoticeTab) =>
   tab === 'all' ||
   (tab === 'friends'
     ? notice.kind === 'friend-request' || notice.kind === 'friend-accepted'
-    : notice.kind === 'offer' || notice.kind === 'game')
+    : notice.kind === 'offer' ||
+      notice.kind === 'game' ||
+      notice.kind === 'alert' ||
+      notice.kind === 'reminder')
 
 type MyGame = {
   eventId: string
@@ -75,6 +113,9 @@ export function buildNotices(
     sides: (game: NonNullable<NearBar['nextEvent']>) => [string, string] | null
     /** `friends.notices`: pedido recebido não vence, aceito vale 30 dias. */
     friends?: { requests: FriendNotice[]; accepted: FriendNotice[] }
+    /** `recommendations.notices`: Avisar e Lembrar. */
+    alerts?: (BarGame & { publishedAt: string })[]
+    reminders?: BarGame[]
   },
   now: number
 ): Notice[] {
@@ -140,6 +181,29 @@ export function buildNotices(
         kind: 'friend-accepted',
         at: person.at,
         person
+      })
+  for (const game of input.alerts ?? [])
+    notices.push({
+      id: `alert:${game.eventId}`,
+      kind: 'alert',
+      at: game.publishedAt,
+      eventId: game.eventId,
+      barId: game.barId,
+      barName: game.barName,
+      title: barGameTitle(game),
+      startsAt: game.startsAt
+    })
+  // O lembrete só aparece no dia do jogo.
+  for (const game of input.reminders ?? [])
+    if (dayKey(game.startsAt) === dayKey(now))
+      notices.push({
+        id: `reminder:${game.eventId}`,
+        kind: 'reminder',
+        at: game.startsAt,
+        eventId: game.eventId,
+        barId: game.barId,
+        barName: game.barName,
+        title: barGameTitle(game)
       })
   return notices.sort(
     (a, b) =>
