@@ -30,7 +30,12 @@ export const AXES = [
   { key: 'distance', label: 'Distância', max: 15, icon: 'pin' },
   { key: 'experienceSimilarity', label: 'Seu estilo', max: 18, icon: 'bar' },
   { key: 'quality', label: 'Avaliação', max: 17, icon: 'star' }
-] as const satisfies readonly { key: AxisKey; max: number }[]
+] as const satisfies readonly {
+  key: AxisKey
+  label: string
+  max: number
+  icon: string
+}[]
 
 const REASON_AXIS: Partial<Record<Suggestion['reason'], AxisKey>> = {
   recent_interest: 'directIntent',
