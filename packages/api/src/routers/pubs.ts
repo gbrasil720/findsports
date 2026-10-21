@@ -65,6 +65,7 @@ import {
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
 import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import { summarizeReasons } from '../lib/rating-reasons'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
@@ -102,6 +103,31 @@ const TEAM_COLUMNS = {
   isNationalTeam: team.isNationalTeam
 }
 const TEAM_SEARCH_LIMIT = 30
+
+/**
+ * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
+ * voltaria e de quem não voltaria (WEB-398). Todas as avaliações contam: a
+ * Onside ainda não separa avaliação verificada (código validado ou check-in,
+ * WEB-408); o portão de `ratings.submit` já exige ter marcado presença ou
+ * aberto rota, WhatsApp ou telefone para aquele jogo.
+ */
+async function readReasonSummary(barId: string) {
+  const rows = await db.execute(sql`
+    SELECT r.would_return, reason, COUNT(*)::int AS count
+    FROM bar_rating r, unnest(r.reasons) AS reason
+    WHERE r.bar_id = ${barId}
+    GROUP BY r.would_return, reason
+  `)
+  return summarizeReasons(
+    (
+      rows.rows as { would_return: boolean; reason: string; count: number }[]
+    ).map((row) => ({
+      wouldReturn: row.would_return,
+      reason: row.reason,
+      count: Number(row.count)
+    }))
+  )
+}
 
 /**
  * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
@@ -555,8 +581,9 @@ export const pubsRouter = router({
       } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
+      const showRating = notaPublica && hasPublicRating(ratingCount)
       const rating =
-        notaPublica && hasPublicRating(ratingCount)
+        showRating
           ? {
               positive: ratingPositive,
               total: ratingCount,
@@ -568,11 +595,13 @@ export const pubsRouter = router({
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
       const fan = ctx.session.user.role === 'fan'
-      const [attendance, going] = await Promise.all([
+      const [attendance, going, reasons] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
-        fan ? readGoing(events.map((game) => game.id)) : new Map()
+        fan ? readGoing(events.map((game) => game.id)) : new Map(),
+        // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
+        showRating ? readReasonSummary(result.id) : null
       ])
       return {
         ...publicBar,
@@ -594,6 +623,7 @@ export const pubsRouter = router({
           })
         ),
         rating,
+        ratingReasons: reasons,
         houseOffer: elite ? houseOffer : null,
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
         // "Confirmar e gerar código" e só "Confirmar").

@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { fanProcedure, router } from '../index'
 import { participantNames } from '../lib/game-participants'
 import { RATING_WINDOW_DAYS } from '../lib/rating'
+import { ratingReasonsSchema } from '../lib/rating-reasons'
 import { utcIso } from '../lib/utc-timestamp'
 
 /**
@@ -209,7 +210,9 @@ export const ratingsRouter = router({
       z.object({
         barId: z.string().uuid(),
         eventId: z.string().uuid(),
-        wouldReturn: z.boolean()
+        wouldReturn: z.boolean(),
+        // "O que pesou?" (WEB-398), opcional. Reenviar troca as etiquetas.
+        reasons: ratingReasonsSchema.default([])
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -230,11 +233,16 @@ export const ratingsRouter = router({
           barId: input.barId,
           actorUserId: ctx.session.user.id,
           eventId: input.eventId,
-          wouldReturn: input.wouldReturn
+          wouldReturn: input.wouldReturn,
+          reasons: input.reasons
         })
         .onConflictDoUpdate({
           target: [barRating.barId, barRating.actorUserId, barRating.eventId],
-          set: { wouldReturn: input.wouldReturn, updatedAt: new Date() }
+          set: {
+            wouldReturn: input.wouldReturn,
+            reasons: input.reasons,
+            updatedAt: new Date()
+          }
         })
 
       return { success: true }
