@@ -447,8 +447,9 @@ invente layout que o projeto não tem.
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
-    `pubs.search` com o rascunho). "Quando" conta jogos por dia com `pubs.gameDays`. Ficaram
-    de fora "Só bares com jogo publicado" (a busca já só traz bar com jogo), Pix, Cartão e
+    `pubs.search` com o rascunho). "Quando" conta jogos por dia com `pubs.gameDays`. "Só
+    bares com jogo publicado" (`gamesOnly`) esconde os bares sem jogo da lista e do mapa;
+    nasce desligado, ao contrário do design. Ficaram de fora Pix, Cartão e
     Vale-refeição separados (o cadastro tem "Pix e cartão" junto).
   - **Atalhos (19e):** `app/atalhos.tsx`. Até cinco filtros fixados no topo do mapa, mais o
     "Ao vivo", que é fixo e só aparece com jogo rolando. Guardados no aparelho (SecureStore);
