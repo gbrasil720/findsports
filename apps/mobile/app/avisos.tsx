@@ -305,34 +305,45 @@ export default function Notices() {
                     </Text>
                   ) : null}
                 </View>
-                {section.items.map((notice) => (
-                  <ScalePress
-                    key={notice.id}
-                    to={0.985}
-                    accessibilityRole="button"
-                    onPress={() => open(notice)}
-                  >
+                {section.items.map((notice) =>
+                  // O pedido tem dois botões dentro: o cartão não vira um
+                  // botão só (o leitor de tela não chegaria a eles); a linha
+                  // de cima abre o perfil.
+                  notice.kind === 'friend-request' ? (
                     <NoticeCard
+                      key={notice.id}
                       palette={palette}
                       notice={notice}
                       medals={list}
                       unread={!read.includes(notice.id)}
                       now={now}
+                      onOpen={() => open(notice)}
                       answer={
-                        notice.kind === 'friend-request' ? (
-                          <RequestAnswer
-                            palette={palette}
-                            answered={answered[notice.person.id]}
-                            busy={actions.busy}
-                            onAnswer={(accept) =>
-                              respond(notice.person, accept)
-                            }
-                          />
-                        ) : null
+                        <RequestAnswer
+                          palette={palette}
+                          answered={answered[notice.person.id]}
+                          busy={actions.busy}
+                          onAnswer={(accept) => respond(notice.person, accept)}
+                        />
                       }
                     />
-                  </ScalePress>
-                ))}
+                  ) : (
+                    <ScalePress
+                      key={notice.id}
+                      to={0.985}
+                      accessibilityRole="button"
+                      onPress={() => open(notice)}
+                    >
+                      <NoticeCard
+                        palette={palette}
+                        notice={notice}
+                        medals={list}
+                        unread={!read.includes(notice.id)}
+                        now={now}
+                      />
+                    </ScalePress>
+                  )
+                )}
               </View>
             )
           })
@@ -469,7 +480,8 @@ function NoticeCard({
   medals,
   unread,
   now,
-  answer
+  answer,
+  onOpen
 }: {
   palette: Palette
   notice: Notice
@@ -478,6 +490,8 @@ function NoticeCard({
   now: number
   /** Aceitar e Recusar, só no pedido recebido. */
   answer?: ReactNode
+  /** O pedido abre o perfil pela linha de cima (os botões ficam fora). */
+  onOpen?: () => void
 }) {
   const time = (
     <View style={styles.time}>
@@ -564,7 +578,13 @@ function NoticeCard({
     return (
       <Card palette={palette} soft>
         <View style={styles.friendCard}>
-          <View style={styles.gameRow0}>
+          <ScalePress
+            to={0.98}
+            accessibilityRole={onOpen ? 'button' : undefined}
+            disabled={!onOpen}
+            onPress={onOpen}
+            style={styles.gameRow0}
+          >
             <Avatar
               id={person.id}
               name={person.name}
@@ -598,7 +618,7 @@ function NoticeCard({
               ) : null}
             </View>
             {time}
-          </View>
+          </ScalePress>
           {answer}
         </View>
       </Card>
