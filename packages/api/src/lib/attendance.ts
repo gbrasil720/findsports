@@ -51,42 +51,105 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
  */
 export const INTEREST_MIN_HISTORY = 5
 
+/** Um amigo que marcou "Vou assistir aqui" (WEB-404). */
+export type GoingFriend = { id: string; name: string; image: string | null }
+
+/** Quem vai a um jogo, como o torcedor pode ver. */
+export type Going = {
+  /** `null` abaixo do piso (`ATTENDANCE_DISPLAY_FLOOR`). */
+  count: number | null
+  /** A inicial dos três que marcaram por último; vazio abaixo do piso. */
+  initials: string[]
+  /** Os amigos de quem vê que deixam amigos verem, do último ao primeiro. */
+  friends: GoingFriend[]
+}
+
 /**
- * Quem vai a cada jogo, para o card do Explorar e o ingresso da página do
- * bar: a contagem a partir do piso e a inicial do nome dos três que marcaram
- * por último (design 2g: "M R J 34 vão"). Vale também para jogo já começado:
- * o botão "Vou assistir aqui" não cabe mais, a contagem sim. Só a primeira
- * letra: mostra que é gente de verdade sem identificar ninguém.
+ * Quem vai a cada jogo, para o card do Explorar, o ingresso da página do bar
+ * e a folha "Vou assistir aqui" (design 2g e 3d: "34 pessoas vão, entre elas
+ * Marina e Rafael"). Vale também para jogo já começado: o botão não cabe
+ * mais, a contagem sim.
+ *
+ * - Contagem e iniciais só a partir do piso. Só a primeira letra: mostra que
+ *   é gente de verdade sem identificar ninguém.
+ * - Com `viewerId`, os nomes dos amigos dele que vão (`readFriendsGoing`),
+ *   mesmo abaixo do piso: nome não é número de jogo vazio.
+ * - O mapa só tem o jogo que tem algo a mostrar: contagem ou amigo.
  */
 export async function readGoing(
-  eventIds: string[]
-): Promise<Map<string, { count: number; initials: string[] }>> {
+  eventIds: string[],
+  viewerId?: string
+): Promise<Map<string, Going>> {
   if (!eventIds.length) return new Map()
+  const [rows, friends] = await Promise.all([
+    db
+      .select({
+        eventId: attendance.eventId,
+        count: sql<number>`count(*)::int`,
+        initials: sql<
+          (string | null)[]
+        >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
+      })
+      .from(attendance)
+      .innerJoin(user, eq(user.id, attendance.userId))
+      .where(inArray(attendance.eventId, eventIds))
+      .groupBy(attendance.eventId),
+    viewerId ? readFriendsGoing(viewerId, eventIds) : new Map()
+  ])
+  const going = new Map<string, Going>()
+  for (const row of rows) {
+    const shown = row.count >= ATTENDANCE_DISPLAY_FLOOR
+    const mine = friends.get(row.eventId) ?? []
+    if (!shown && !mine.length) continue
+    going.set(row.eventId, {
+      count: shown ? row.count : null,
+      initials: shown
+        ? row.initials.filter((letter): letter is string => Boolean(letter))
+        : [],
+      friends: mine
+    })
+  }
+  return going
+}
+
+/**
+ * Os amigos de `viewerId` que marcaram presença em cada jogo (WEB-404). Só
+ * entra quem é amigo aceito e deixa amigos verem a atividade (11i: "todos"
+ * ou "amigos"); "ninguém" nunca aparece, e quem não é amigo nunca é nomeado,
+ * nem com "todos". Ordem: quem marcou por último primeiro.
+ */
+export async function readFriendsGoing(
+  viewerId: string,
+  eventIds: string[]
+): Promise<Map<string, GoingFriend[]>> {
+  const going = new Map<string, GoingFriend[]>()
+  if (!eventIds.length) return going
   const rows = await db
     .select({
       eventId: attendance.eventId,
-      count: sql<number>`count(*)::int`,
-      initials: sql<
-        (string | null)[]
-      >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
+      id: user.id,
+      name: user.name,
+      image: user.image
     })
     .from(attendance)
     .innerJoin(user, eq(user.id, attendance.userId))
-    .where(inArray(attendance.eventId, eventIds))
-    .groupBy(attendance.eventId)
-  return new Map(
-    rows
-      .filter((row) => row.count >= ATTENDANCE_DISPLAY_FLOOR)
-      .map((row) => [
-        row.eventId,
-        {
-          count: row.count,
-          initials: row.initials.filter((letter): letter is string =>
-            Boolean(letter)
-          )
-        }
-      ])
-  )
+    .where(
+      and(
+        inArray(attendance.eventId, eventIds),
+        inArray(user.activityVisibility, ['everyone', 'friends']),
+        sql`${user.banned} IS NOT TRUE`,
+        sql`EXISTS (
+          SELECT 1 FROM friendship f
+          WHERE f.accepted_at IS NOT NULL
+            AND ((f.requester_id = ${viewerId} AND f.addressee_id = ${user.id})
+              OR (f.addressee_id = ${viewerId} AND f.requester_id = ${user.id}))
+        )`
+      )
+    )
+    .orderBy(sql`${attendance.createdAt} desc`)
+  for (const { eventId, ...friend } of rows)
+    going.set(eventId, [...(going.get(eventId) ?? []), friend])
+  return going
 }
 
 type FanAttendance = {
