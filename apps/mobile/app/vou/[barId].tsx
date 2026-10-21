@@ -23,7 +23,7 @@ import {
   TextLink,
   text
 } from '@/components/ui'
-import { formatTime } from '@/lib/explore'
+import { formatTime, goingSummary } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -54,6 +54,7 @@ export default function GoingSheet() {
   const [picked, setPicked] = useState(eventId)
   const game = games.find((item) => item.id === picked) ?? games[0]
   const mine = game?.attendance
+  const going = game?.going ? goingSummary(game.going) : null
   const now = Date.now()
 
   const set = useMutation(
@@ -154,22 +155,18 @@ export default function GoingSheet() {
           ))}
         </View>
 
-        {game.going ? (
+        {going ? (
           <Card palette={palette} soft>
             <View style={styles.going}>
-              <Faces
-                palette={palette}
-                initials={game.going.initials}
-                count={game.going.count}
-              />
+              <Faces palette={palette} faces={going.faces} more={going.more} />
               <Text
                 style={[
-                  text(13.5, 'Bold', 1.35),
+                  text(13.5, 'Regular', 1.35),
                   { color: palette.ink, flex: 1 }
                 ]}
               >
-                {game.going.count.toLocaleString('pt-BR')} pessoas vão
-                {/* Falta ", entre elas Marina e Rafael" do design: WEB-404. */}
+                <Text style={{ fontFamily: 'Archivo-Bold' }}>{going.lead}</Text>
+                {going.tail}
               </Text>
             </View>
           </Card>
@@ -310,29 +307,27 @@ function GameOption({
   )
 }
 
-/** "M R +32": duas iniciais e o resto num círculo de tinta. */
+/** "M R +32": as letras (amigos primeiro) e o resto num círculo de tinta. */
 function Faces({
   palette,
-  initials,
-  count
+  faces,
+  more
 }: {
   palette: Palette
-  initials: string[]
-  count: number
+  faces: string[]
+  more: number
 }) {
-  const shown = initials.slice(0, 2)
-  const rest = count - shown.length
-  const faces: [string, string, string][] = [
-    ...shown.map((letter, index): [string, string, string] =>
+  const shown: [string, string, string][] = [
+    ...faces.map((letter, index): [string, string, string] =>
       index ? [letter, LIVE, INK] : [letter, ACID, INK]
     ),
-    ...(rest > 0 ? [[`+${rest}`, INK, PAPER] as [string, string, string]] : [])
+    ...(more > 0 ? [[`+${more}`, INK, PAPER] as [string, string, string]] : [])
   ]
   return (
     <View style={{ flexDirection: 'row' }}>
-      {faces.map(([label, bg, fg], index) => (
+      {shown.map(([label, bg, fg], index) => (
         <View
-          key={label}
+          key={`${index}${label}`}
           style={[
             styles.face,
             {
