@@ -812,16 +812,17 @@ export function MiniCard({
   item,
   label,
   width = 92,
+  height = width * 1.7,
   tilt = 0,
   dark
 }: {
   item: Suggestion
   label: string | null
   width?: number
+  height?: number
   tilt?: number
   dark: boolean
 }) {
-  const height = width * 1.7
   return (
     <View style={{ width, alignItems: 'center', gap: 8 }}>
       <View
@@ -887,9 +888,11 @@ export function MiniCard({
 /** O lugar vazio da rodada curta (23h): tracejado com "?". */
 export function MissingCard({
   width = 92,
+  height = width * 1.7,
   dark
 }: {
   width?: number
+  height?: number
   dark: boolean
 }) {
   return (
@@ -898,7 +901,7 @@ export function MissingCard({
         styles.missing,
         {
           width,
-          height: width * 1.7,
+          height,
           borderColor: dark ? 'rgba(241,238,230,.25)' : 'rgba(18,18,15,.25)'
         }
       ]}
