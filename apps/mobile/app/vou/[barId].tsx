@@ -37,9 +37,11 @@ import { trpc } from '@/lib/trpc'
 const MAX_GAMES = 6
 
 export default function GoingSheet() {
-  const { barId, eventId } = useLocalSearchParams<{
+  const { barId, eventId, runId } = useLocalSearchParams<{
     barId: string
     eventId?: string
+    /** Veio do card de "Bares pra você": a presença vai com a atribuição. */
+    runId?: string
   }>()
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -66,6 +68,9 @@ export default function GoingSheet() {
           }),
           queryClient.invalidateQueries({
             queryKey: trpc.attendance.mine.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.recommendations.today.queryKey()
           })
         ])
         if (attending) haptic.success()
@@ -83,7 +88,11 @@ export default function GoingSheet() {
   const confirm = () =>
     mine.attending && mine.code
       ? router.replace(`/codigo/${game.id}`)
-      : set.mutate({ eventId: game.id, attending: true })
+      : set.mutate({
+          eventId: game.id,
+          attending: true,
+          recommendationRunId: runId
+        })
   const label = set.isPending
     ? data.issuesCode
       ? 'Gerando código…'
