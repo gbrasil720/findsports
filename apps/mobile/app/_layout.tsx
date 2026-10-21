@@ -138,6 +138,10 @@ export default function Layout() {
               <Stack.Screen name="meu-codigo" />
               <Stack.Screen name="contatos" />
               <Stack.Screen name="amigo/[id]" />
+              <Stack.Screen
+                name="convite/[code]"
+                options={{ animation: 'fade' }}
+              />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials, usePalette } from '@/components/explore'
+import { usePendingInvite } from '@/components/friends'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
@@ -76,6 +77,7 @@ export default function FanTabs() {
   const soon = useSoon()
   const session = authClient.useSession()
   useNewAchievement()
+  usePendingInvite()
   // "Você" é uma aba de verdade (a barra a mantém marcada) que mostra o
   // mesmo Explorar com o menu por cima; fechar o menu volta para Explorar.
   // Numa tela da pilha da aba (Conquistas, Meus jogos), tocar em "Você" abre

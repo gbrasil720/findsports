@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import { type Href, useRouter } from 'expo-router'
+import { type ReactNode, useEffect } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { HardShadow, initials, type Palette } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { ACID, HOT, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -331,3 +333,27 @@ const styles = StyleSheet.create({
   },
   friends: { flexDirection: 'row', alignItems: 'center', gap: 5 }
 })
+
+/**
+ * O convite guardado por quem abriu o link antes de ter conta: aceito quando
+ * a conta chega às abas do torcedor, com o perfil de quem convidou aberto.
+ */
+export function usePendingInvite() {
+  const router = useRouter()
+  const join = useMutation(trpc.friends.joinByInvite.mutationOptions())
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, ao montar as abas
+  useEffect(() => {
+    takePendingInvite().then((code) => {
+      if (!code) return
+      join.mutate(
+        { code },
+        {
+          onSuccess: ({ inviterId }) => {
+            haptic.success()
+            router.push(`/amigo/${inviterId}?via=link` as Href)
+          }
+        }
+      )
+    })
+  }, [])
+}
