@@ -25,6 +25,17 @@ export const RECOMMENDER_MODELS = {
 export type ChatVariant = keyof typeof CHAT_MODELS
 export type RecommenderVariant = 'a' | keyof typeof RECOMMENDER_MODELS
 
+/**
+ * Raciocínio no mínimo nos dois braços do chat. O GPT-6 Luna só aceita
+ * ferramentas no Chat Completions com `none`; o Gemini recusa `none`
+ * (`7003 User Input Error`) e o mínimo dele é `minimal`, que ainda gasta uns
+ * 17 tokens de raciocínio. Os `@cf/` do desenvolvimento recusam o campo.
+ */
+export function reasoningEffort(model: string) {
+  if (model.startsWith('@cf/')) return undefined
+  return model.startsWith('google/') ? 'minimal' : 'none'
+}
+
 /** US$ por milhão de tokens. */
 const PRICES: Record<string, { in: number; out: number }> = {
   'google/gemini-2.5-flash': { in: 0.3, out: 2.5 },

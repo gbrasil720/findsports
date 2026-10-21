@@ -5,6 +5,7 @@ import {
   type SearchBar,
   type ToolState
 } from './chat-tools'
+import { reasoningEffort } from './models'
 import type { AiCall, AiStatus } from './run'
 
 /**
@@ -190,12 +191,9 @@ export async function converse(
           {
             ...body,
             model: candidate,
-            // Raciocínio desligado nos dois braços (o GPT-6 Luna só aceita
-            // ferramentas no Chat Completions assim). Os modelos `@cf/` do
-            // desenvolvimento recusam o campo.
-            ...(candidate.startsWith('@cf/')
-              ? {}
-              : { reasoning_effort: 'none' })
+            ...(reasoningEffort(candidate)
+              ? { reasoning_effort: reasoningEffort(candidate) }
+              : {})
           },
           { timeoutMs: CALL_TIMEOUT_MS }
         )) as Completion

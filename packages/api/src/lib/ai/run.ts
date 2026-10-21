@@ -115,14 +115,30 @@ export async function aiGate(
   return { ok: true, deps: { binding, gatewayId }, usage }
 }
 
-type Raw = {
-  usage?: {
-    prompt_tokens?: number
-    completion_tokens?: number
-    input_tokens?: number
-    output_tokens?: number
-    neurons?: number
-  }
+type Usage = {
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  input_tokens?: number
+  output_tokens?: number
+  neurons?: number
+}
+type Raw = { usage?: Usage; result?: { usage?: Usage } }
+
+/**
+ * Tokens de uma resposta. Chat Completions traz `prompt_tokens` e
+ * `total_tokens`; a saída é a diferença, porque o Gemini deixa o raciocínio
+ * fora do `completion_tokens` e ele é cobrado como saída. Jev e Clef trazem
+ * `input_tokens` e `output_tokens` (o Jev, dentro de `result`).
+ */
+export function readUsage(raw: Raw) {
+  const u = raw?.usage ?? raw?.result?.usage
+  const tokensIn = u?.prompt_tokens ?? u?.input_tokens ?? 0
+  const tokensOut =
+    u?.total_tokens !== undefined && u.prompt_tokens !== undefined
+      ? u.total_tokens - u.prompt_tokens
+      : (u?.completion_tokens ?? u?.output_tokens ?? 0)
+  return { tokensIn, tokensOut, neurons: u?.neurons }
 }
 
 /**
@@ -162,12 +178,7 @@ export async function runAi<T>(
         }),
         timeout
       ])) as Raw
-      const usage = {
-        tokensIn: raw?.usage?.prompt_tokens ?? raw?.usage?.input_tokens ?? 0,
-        tokensOut:
-          raw?.usage?.completion_tokens ?? raw?.usage?.output_tokens ?? 0,
-        neurons: raw?.usage?.neurons
-      }
+      const usage = readUsage(raw)
       tokensIn += usage.tokensIn
       tokensOut += usage.tokensOut
       cost += costUsd(model, usage)
