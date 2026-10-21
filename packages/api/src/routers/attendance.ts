@@ -4,6 +4,7 @@ import {
   attendanceReport
 } from '@findsports_oficial/db/schema/attendance'
 import { event } from '@findsports_oficial/db/schema/platform'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -38,13 +39,20 @@ async function openQuestion(userId: string, eventId: string) {
  */
 export const attendanceRouter = router({
   set: fanProcedure
-    .input(z.object({ eventId: z.string().uuid(), attending: z.boolean() }))
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        attending: z.boolean(),
+        // "Vou assistir" a partir do card de "Bares pra você" (WEB-425, 22e).
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
       const now = new Date()
       const game = await db.query.event.findFirst({
         where: eq(event.id, input.eventId),
-        columns: { startsAt: true },
+        columns: { startsAt: true, barId: true },
         with: {
           bar: {
             columns: {
@@ -101,6 +109,19 @@ export const attendanceRouter = router({
         }
         return null
       })
+      if (input.attending && input.recommendationRunId) {
+        // Atribuição é telemetria: falhar aqui não desfaz a presença.
+        await db
+          .insert(recommendationEvent)
+          .values({
+            actorUserId: userId,
+            barId: game.barId,
+            runId: input.recommendationRunId,
+            type: 'attend'
+          })
+          .onConflictDoNothing()
+          .catch(() => {})
+      }
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
       return {
         attending: input.attending,
