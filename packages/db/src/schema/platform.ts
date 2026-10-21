@@ -267,6 +267,11 @@ export const event = pgTable(
     acceptsReservations: boolean('accepts_reservations')
       .default(false)
       .notNull(),
+    // Telão e som do jogo, por jogo (WEB-399). Nulo herda das características
+    // do bar (`bar.amenities`); o painel grava o que o dono marcou no "Novo
+    // evento". Quem resolve é `packages/api/src/lib/event-screen.ts`.
+    onBigScreen: boolean('on_big_screen'),
+    withSound: boolean('with_sound'),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
