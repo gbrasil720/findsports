@@ -54,6 +54,11 @@ RUN_DISPOSABLE_DB_TESTS=1 bun run test
 
 `db:seed:load-test` (carga do k6) continua recusando tudo que não seja o banco sem sufixo.
 
+Para subir o web de outra worktree no seu próprio banco de desenvolvimento, crie
+`findsports_dev_<sufixo>` no container do dev e rode com
+`DEV_DATABASE_URL=postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev_<sufixo>`
+(só vale em `development`, só em loopback e só com esse nome; `DATABASE_URL` continua ignorada).
+
 ## Architecture
 
 Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, single quotes).

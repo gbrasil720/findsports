@@ -13,6 +13,7 @@ describe('resolveDatabaseUrl', () => {
     process.env = { ...originalEnv }
     delete process.env.LOAD_TEST_DATABASE_URL
     delete process.env.E2E_DATABASE_URL
+    delete process.env.DEV_DATABASE_URL
   })
 
   afterEach(() => {
@@ -35,6 +36,29 @@ describe('resolveDatabaseUrl', () => {
     const url = resolveDatabaseUrl()
     expect(url).toContain('localhost')
     expect(url).toContain('findsports_dev')
+  })
+
+  it('uses DEV_DATABASE_URL for a suffixed local dev database', () => {
+    process.env.NODE_ENV = 'development'
+    process.env.DEV_DATABASE_URL =
+      'postgres://findsports_dev:x@localhost:5432/findsports_dev_w2'
+    expect(resolveDatabaseUrl()).toContain('/findsports_dev_w2')
+  })
+
+  it('refuses DEV_DATABASE_URL outside loopback or the dev database', () => {
+    process.env.NODE_ENV = 'development'
+    process.env.DEV_DATABASE_URL =
+      'postgres://u:p@db.example.com:5432/findsports_dev'
+    expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+    process.env.DEV_DATABASE_URL = 'postgres://u:p@localhost:5432/onside_prod'
+    expect(() => resolveDatabaseUrl()).toThrow(DatabaseUrlError)
+  })
+
+  it('ignores DEV_DATABASE_URL in test mode', () => {
+    process.env.NODE_ENV = 'test'
+    process.env.DEV_DATABASE_URL =
+      'postgres://findsports_dev:x@localhost:5432/findsports_dev_w2'
+    expect(resolveDatabaseUrl()).toEndWith('/findsports_dev')
   })
 
   it('returns localhost URL in test mode', () => {
