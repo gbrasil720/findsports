@@ -115,3 +115,14 @@ export function lastSeen(date: Date | string, now: number) {
     })
     .replace(/\.| de/g, '')
 }
+
+/**
+ * A chave do autenticador dentro do `otpauth://` que o better-auth devolve
+ * ao ligar a verificação, em blocos de quatro para digitar à mão.
+ */
+export function totpSecret(uri: string) {
+  const secret = /[?&]secret=([^&]+)/.exec(uri)?.[1] ?? ''
+  return decodeURIComponent(secret)
+    .replace(/(.{4})(?=.)/g, '$1 ')
+    .trim()
+}

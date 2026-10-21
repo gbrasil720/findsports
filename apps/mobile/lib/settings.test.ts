@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { deviceLabel, lastSeen, listJoin, preferenceSummary } from './settings'
+import {
+  deviceLabel,
+  lastSeen,
+  listJoin,
+  preferenceSummary,
+  totpSecret
+} from './settings'
 
 const sentence = (parts: ReturnType<typeof preferenceSummary>) =>
   parts.map((p) => (p.strong ? `[${p.text}]` : p.text)).join('')
@@ -58,4 +64,13 @@ describe('configurações (11f–11i)', () => {
     expect(lastSeen('2026-10-20T02:10:00Z', now)).toBe('ontem, 23:10')
     expect(lastSeen('2026-10-12T15:00:00Z', now)).toBe('12 out')
   })
+})
+
+test('chave do autenticador em blocos de quatro', () => {
+  expect(
+    totpSecret(
+      'otpauth://totp/Onside:ana%40x.com?secret=JBSWY3DPEHPK3PXP&issuer=Onside&digits=6'
+    )
+  ).toBe('JBSW Y3DP EHPK 3PXP')
+  expect(totpSecret('otpauth://totp/x?issuer=Onside')).toBe('')
 })
