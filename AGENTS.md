@@ -461,8 +461,10 @@ invente layout que o projeto não tem.
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
   conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
   (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
-  "Convidar" (comunidades) e o Ranking avisam "em breve". Dados de teste:
-  `apps/mobile/scripts/amigos.sql`.
+  "Convidar" (comunidades) e o Ranking avisam "em breve". Pedido respondido e
+  sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
+  (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
+  altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
