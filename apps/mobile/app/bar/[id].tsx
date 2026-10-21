@@ -1,4 +1,6 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
+import { groupOpeningHours } from '@findsports_oficial/api/lib/opening-hours'
+import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -72,9 +74,11 @@ import { trpc } from '@/lib/trpc'
  * aqui" num vidro preso embaixo. Sem reserva de mesa (decisão do dono em
  * 16/10/2026, card da seção 08): quem marca recebe um código.
  *
- * ponytail: o design ainda tem "Horário" e avaliações escritas com etiquetas;
- * o bar não cadastra horário e a avaliação da Onside é só "voltaria", então
- * as duas ficam de fora até existirem os dados.
+ * "Horário" (WEB-397) só aparece com o horário informado, e "aberto agora"
+ * vem do servidor. Em "O que dizem" entra o resumo de "O que pesou?"
+ * (WEB-398), a favor e contra, sem nome de ninguém: a lista de avaliações
+ * escritas e "Ver todas" do design ficam de fora (só há etiquetas). "Em dia
+ * de clássico" também não entra (decisão do dono em 17/10/2026).
  */
 
 /** As características que o design desenha em ladrilho, com ícone. */
@@ -116,6 +120,23 @@ const chipLabel = (item: (typeof AMENITIES)[number]) =>
 
 /** A pé, a 4,5 km/h: 0,8 km dá 11 min, como no design. */
 const walkMinutes = (km: number) => Math.max(1, Math.round((km / 4.5) * 60))
+
+/**
+ * Uma etiqueta por jogo em "Próximos jogos aqui" (WEB-399), nesta ordem: o
+ * torcedor marcou, passa no telão, tem o som do jogo.
+ */
+const gameTag = (game: {
+  attendance: { attending: boolean } | null
+  onBigScreen: boolean
+  withSound: boolean
+}) =>
+  game.attendance?.attending
+    ? 'Vou'
+    : game.onBigScreen
+      ? 'Telão'
+      : game.withSound
+        ? 'Som ligado'
+        : null
 
 const directions = (lat: number, lng: number) =>
   Platform.OS === 'ios'
@@ -527,8 +548,8 @@ export default function BarPage() {
                             </Text>
                           </View>
                         </View>
-                        {game.attendance?.attending ? (
-                          <Label palette={palette}>Vou</Label>
+                        {gameTag(game) ? (
+                          <Label palette={palette}>{gameTag(game) ?? ''}</Label>
                         ) : null}
                       </View>
                     ))}
@@ -659,6 +680,56 @@ export default function BarPage() {
               </>
             ) : null}
 
+            {data.openingHours ? (
+              <>
+                <Heading
+                  palette={palette}
+                  title="Horário"
+                  aside={
+                    data.openNow === null
+                      ? undefined
+                      : data.openNow
+                        ? 'Aberto agora'
+                        : 'Fechado agora'
+                  }
+                />
+                <Card palette={palette} soft>
+                  <View style={styles.list}>
+                    {groupOpeningHours(data.openingHours).map((row, index) => (
+                      <View
+                        key={row.days}
+                        style={[
+                          styles.hours,
+                          index > 0 && {
+                            borderTopWidth: 1,
+                            borderTopColor: palette.line
+                          }
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            text(13.5, 'Regular', 1.4),
+                            { color: palette.ink, flexShrink: 1 }
+                          ]}
+                        >
+                          {row.days}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.mono,
+                            { color: row.hours ? palette.ink : palette.muted }
+                          ]}
+                          maxFontSizeMultiplier={1.3}
+                        >
+                          {row.hours ?? 'Fechado'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </Card>
+              </>
+            ) : null}
+
             {data.rating ? (
               <>
                 <Heading
@@ -687,6 +758,88 @@ export default function BarPage() {
                     </Text>
                   </View>
                 </View>
+                {data.ratingReasons &&
+                (data.ratingReasons.positive.length ||
+                  data.ratingReasons.negative.length) ? (
+                  <Card palette={palette} soft>
+                    <View style={styles.list}>
+                      {(
+                        [
+                          [true, data.ratingReasons.positive],
+                          [false, data.ratingReasons.negative]
+                        ] as const
+                      )
+                        .filter(([, ids]) => ids.length)
+                        .map(([back, ids], index) => (
+                          <View
+                            key={String(back)}
+                            style={[
+                              styles.said,
+                              index > 0 && {
+                                borderTopWidth: 1,
+                                borderTopColor: palette.line
+                              }
+                            ]}
+                          >
+                            <View style={styles.saidHead}>
+                              <View
+                                style={[
+                                  styles.saidMark,
+                                  {
+                                    backgroundColor: back ? ACID : palette.mark
+                                  }
+                                ]}
+                              >
+                                <Icon
+                                  name={back ? 'fan' : 'close'}
+                                  size={15}
+                                  color={back ? INK : palette.ink}
+                                  accent={back ? INK : palette.accent}
+                                />
+                              </View>
+                              <Text
+                                style={[
+                                  text(15, 'Bold', 1.3),
+                                  { color: palette.ink, flex: 1 }
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {back ? 'Quem voltaria' : 'Quem não voltaria'}
+                              </Text>
+                              <Text
+                                style={[
+                                  text(12.5, 'Regular', 1.4),
+                                  { color: palette.muted }
+                                ]}
+                              >
+                                mais citados
+                              </Text>
+                            </View>
+                            <View style={styles.chips}>
+                              {ids.map((id) => (
+                                <View
+                                  key={id}
+                                  style={[
+                                    styles.reason,
+                                    { backgroundColor: palette.mark }
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      text(12.5, 'Bold', 1.3),
+                                      { color: palette.ink }
+                                    ]}
+                                  >
+                                    {reasonLabel(id)}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        ))}
+                    </View>
+                  </Card>
+                ) : null}
               </>
             ) : null}
 
@@ -908,6 +1061,24 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums']
   },
   label: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
+  hours: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 12,
+    paddingVertical: 11
+  },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
+  said: { paddingVertical: 12, gap: 10 },
+  saidHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  saidMark: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  reason: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 3 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 3 },
   map: { height: 130 },
