@@ -29,11 +29,13 @@ import { useSoon } from '@/components/soon'
 import {
   ACID,
   GlassRound,
+  HOT,
   Icon,
   INK,
   LIVE,
   MUTED,
   PAPER,
+  SPARK,
   text,
   usePullRefresh,
   useStatusBar
@@ -281,9 +283,7 @@ export default function Notices() {
           </View>
           {unread.length ? (
             <Pressable accessibilityRole="button" hitSlop={8} onPress={markAll}>
-              <Text style={[text(13, 'Bold'), { color: palette.live }]}>
-                Ler tudo
-              </Text>
+              <Text style={[text(13, 'Bold'), { color: HOT }]}>Ler tudo</Text>
             </Pressable>
           ) : null}
         </View>
@@ -296,7 +296,7 @@ export default function Notices() {
             return (
               <View key={section.key} style={{ gap: 12 }}>
                 <View style={styles.sectionHead}>
-                  <Text style={[styles.section, { color: palette.live }]}>
+                  <Text style={[styles.section, { color: HOT }]}>
                     {section.title}
                   </Text>
                   {fresh.length ? (
@@ -638,7 +638,7 @@ function NoticeCard({
         <MedalImage id={medal.id} size={72} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.rowBetween}>
-            <Text style={[text(12, 'Bold'), { color: palette.live }]}>
+            <Text style={[text(12, 'Bold'), { color: HOT }]}>
               Conquista desbloqueada
             </Text>
             {time}
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
   },
   section: { fontFamily: 'Anton', fontSize: 24, textTransform: 'uppercase' },
   time: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SPARK },
   mono11: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   stub: {
     width: 62,
