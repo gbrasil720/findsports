@@ -55,7 +55,10 @@ import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
   executarBuscaPorNota,
+  jogoNaoAcabou,
+  type LinhaBusca,
   montarFiltrosBusca,
+  montarPaginaBusca,
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
@@ -898,6 +901,60 @@ export const pubsRouter = router({
           )
       `)
       return { bars: Number(result.rows[0]?.bars ?? 0) }
+    }),
+
+  /**
+   * Bares no ar perto de um ponto que não têm jogo marcado, do mais perto ao
+   * mais longe. O Explorar do app completa a lista com eles quando a busca
+   * traz poucos bares com jogo, para o torcedor não dar com uma lista vazia
+   * (decisão do dono em 21/10/2026). Mesmo formato dos bares da busca, sem
+   * `nextEvent`; as características filtram como lá.
+   */
+  nearbyWithoutGames: protectedProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(3),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
+        limit: z.number().int().min(1).max(20).default(10)
+      })
+    )
+    .query(async ({ input }) => {
+      const { origin, radiusMeters, amenityFilter } = montarFiltrosBusca({
+        ...input,
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
+      })
+      const result = await db.execute(sql`
+        SELECT
+          b.id, b.name, b.neighborhood, b.city, b.latitude, b.longitude,
+          b.photo_url, b.created_at, b.plan, b.rating_count, b.rating_positive,
+          0 AS event_count,
+          ST_Distance(b.geo, ${origin}) / 1000 AS distance_km
+        FROM bar b
+        WHERE b.is_active
+          AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
+          ${amenityFilter(sql`b`)}
+          AND NOT EXISTS (
+            SELECT 1 FROM event e WHERE e.bar_id = b.id AND ${jogoNaoAcabou(sql`e`)}
+          )
+        ORDER BY distance_km, b.id
+        LIMIT ${input.limit}
+      `)
+      // Sem cursor: a lista é curta e não pagina.
+      const { bars } = montarPaginaBusca(
+        result.rows as LinhaBusca[],
+        Number.POSITIVE_INFINITY
+      )
+      const notaPublica = await getAppConfig('rating.public_display')
+      const completos = await comCaracteristicasEPresenca(
+        await comGastoMedio(bars)
+      )
+      return notaPublica
+        ? completos
+        : completos.map((achado) => ({ ...achado, rating: null }))
     }),
 
   /**
