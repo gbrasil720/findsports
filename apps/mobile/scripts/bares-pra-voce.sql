@@ -33,6 +33,7 @@ on conflict do nothing;
 
 delete from recommendation_round where actor_user_id = :'fan_id';
 delete from recommendation_event where actor_user_id = :'fan_id';
+delete from bar_commercial_event where actor_user_id = :'fan_id';
 delete from event where championship like 'WEB-425 %';
 
 -- Hora de Brasília → UTC sem fuso, como `event.starts_at`.
