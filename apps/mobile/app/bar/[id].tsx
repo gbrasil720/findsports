@@ -169,13 +169,15 @@ const HERO_SHADE = [
 ] as const
 
 export default function BarPage() {
-  const { id, km, name, photo, walk } = useLocalSearchParams<{
+  const { id, km, name, photo, walk, ai } = useLocalSearchParams<{
     id: string
     km?: string
     name?: string
     photo?: string
     /** A distância é do aparelho: dá para dizer quantos minutos a pé. */
     walk?: string
+    /** Veio da busca com IA (WEB-400): o `run_id` da resposta que citou o bar. */
+    ai?: string
   }>()
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -187,6 +189,12 @@ export default function BarPage() {
   const mapPress = usePressScale(0.985)
   const reportPress = usePressScale()
   const feedback = useMutation(trpc.feedback.send.mutationOptions())
+  // Rota e "Vou assistir" depois da busca com IA contam como ação da
+  // resposta (a métrica do teste).
+  const aiAction = useMutation(trpc.ai.action.mutationOptions())
+  const fromAi = (kind: 'going' | 'route') => {
+    if (ai) aiAction.mutate({ runId: ai, kind, barId: id })
+  }
   // Barra de status clara sobre a foto; passou dela, segue o papel.
   const [pastHero, setPastHero] = useState(false)
   useStatusBar(pastHero && !palette.dark ? 'dark' : 'light')
@@ -589,7 +597,10 @@ export default function BarPage() {
                   <AnimatedPressable
                     accessibilityRole="link"
                     accessibilityLabel={`Como chegar ao ${data.name}`}
-                    onPress={() => Linking.openURL(directions(lat, lng))}
+                    onPress={() => {
+                      fromAi('route')
+                      Linking.openURL(directions(lat, lng))
+                    }}
                     onPressIn={mapPress.onPressIn}
                     onPressOut={mapPress.onPressOut}
                     style={[styles.map, mapPress.style]}
@@ -660,7 +671,10 @@ export default function BarPage() {
                     <AnimatedPressable
                       accessibilityRole="link"
                       hitSlop={8}
-                      onPress={() => Linking.openURL(directions(lat, lng))}
+                      onPress={() => {
+                        fromAi('route')
+                        Linking.openURL(directions(lat, lng))
+                      }}
                       onPressIn={goPress.onPressIn}
                       onPressOut={goPress.onPressOut}
                       style={[
@@ -907,12 +921,13 @@ export default function BarPage() {
             onPressIn={attendPress.onPressIn}
             onPressOut={attendPress.onPressOut}
             // A folha também é onde se vê o código e se desmarca.
-            onPress={() =>
+            onPress={() => {
+              fromAi('going')
               router.push({
                 pathname: '/vou/[barId]',
                 params: { barId: id, eventId: going.id }
               })
-            }
+            }}
             style={styles.attendSlot}
           >
             <View style={styles.attendShadow} />
