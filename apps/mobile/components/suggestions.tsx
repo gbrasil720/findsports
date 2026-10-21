@@ -177,7 +177,14 @@ export function SuggestionCard({
       {behind ? null : (
         <View style={styles.bottom}>
           <View style={styles.nameRow}>
-            <Text style={styles.name} numberOfLines={2}>
+            {/* Nome longo encolhe até 60% antes de cortar: a altura de linha
+                natural do Anton deixava duas linhas muito separadas. */}
+            <Text
+              style={styles.name}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               {item.name}
             </Text>
             <Pressable
