@@ -236,6 +236,7 @@ export default function FanTabs() {
           palette={palette}
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
+          image={user?.image}
           items={items}
           // Destaca a tela de baixo; sobre o Explorar, nenhum item, para não
           // sugerir um toque.

@@ -3,6 +3,7 @@ import { type Href, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -161,7 +162,17 @@ export default function Profile() {
               palette.dark && { backgroundColor: palette.card }
             ]}
           >
-            <Text style={styles.avatarText}>{initials(user?.name ?? '')}</Text>
+            {user?.image ? (
+              <Image
+                accessibilityIgnoresInvertColors
+                source={{ uri: user.image }}
+                style={styles.photo}
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {initials(user?.name ?? '')}
+              </Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text
@@ -592,6 +603,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 16, gap: 16 },
   actions: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' },
   who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  photo: { width: 76, height: 76, borderRadius: 6 },
   avatar: {
     width: 76,
     height: 76,

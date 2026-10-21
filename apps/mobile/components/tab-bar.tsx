@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -59,6 +59,7 @@ export function YouMenu({
   palette,
   name,
   initials,
+  image,
   items,
   current,
   onClose,
@@ -69,6 +70,8 @@ export function YouMenu({
   palette: Palette
   name: string
   initials: string
+  /** A foto do perfil (WEB-419), no lugar das iniciais. */
+  image?: string | null
   items: MenuItem[]
   /** O item da tela aberta sob o menu (Perfil, Conquistas...); nenhum no Explorar. */
   current?: string
@@ -110,7 +113,15 @@ export function YouMenu({
         >
           <View style={[styles.menuHead, { borderBottomColor: palette.line }]}>
             <View style={styles.menuAvatar}>
-              <Text style={styles.menuAvatarText}>{initials}</Text>
+              {image ? (
+                <Image
+                  accessibilityIgnoresInvertColors
+                  source={{ uri: image }}
+                  style={styles.menuPhoto}
+                />
+              ) : (
+                <Text style={styles.menuAvatarText}>{initials}</Text>
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -237,6 +248,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  menuPhoto: { width: 46, height: 46, borderRadius: 6 },
   menuAvatarText: {
     fontFamily: 'Anton',
     fontSize: 19,
