@@ -49,9 +49,11 @@ export const CodeBoxes = forwardRef<
     onChange: (digits: string) => void
     tone: 'dark' | 'theme'
     shake: ReturnType<typeof useShake>
+    /** O login (11s) abre com o teclado; ligar a verificação, não. */
+    autoFocus?: boolean
   }
->(function CodeBoxes({ code, onChange, tone, shake }, ref) {
-  const [focused, setFocused] = useState(true)
+>(function CodeBoxes({ code, onChange, tone, shake, autoFocus = true }, ref) {
+  const [focused, setFocused] = useState(autoFocus)
   const c = tone === 'dark' ? DARK : THEMED
   const focus = () =>
     (ref as { current: TextInput | null } | null)?.current?.focus()
@@ -93,7 +95,7 @@ export const CodeBoxes = forwardRef<
         })}
         <TextInput
           ref={ref}
-          autoFocus
+          autoFocus={autoFocus}
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           autoComplete="one-time-code"
