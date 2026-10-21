@@ -1,3 +1,4 @@
+import { firstName } from './explore'
 import { matchName, type NearBar } from './search'
 
 /*
@@ -223,7 +224,7 @@ export function todayGoing(
   ]
     .filter(Boolean)
     .slice(0, 2)
-  const first = friends[0]?.name.trim().split(/\s+/)[0] ?? ''
+  const first = friends[0] ? firstName(friends[0].name) : ''
   if (!friends.length)
     return count === null
       ? { faces: [], more: 0, bold: '', rest: 'Você vai' }
@@ -231,17 +232,20 @@ export function todayGoing(
           faces,
           more: count - faces.length,
           bold: '',
-          rest: `${count} pessoas vão`
+          rest: `${count.toLocaleString('pt-BR')} pessoas vão`
         }
   if (count !== null)
     return {
       faces,
       more: Math.max(count - faces.length, 0),
       bold: first,
-      rest: count > 1 ? ` e mais ${count - 1} vão` : ' vai'
+      rest:
+        count > 1
+          ? ` e mais ${(count - 1).toLocaleString('pt-BR')} vão`
+          : ' vai'
     }
   const others = friends.length - 1
-  const second = friends[1]?.name.trim().split(/\s+/)[0]
+  const second = friends[1] && firstName(friends[1].name)
   return {
     faces,
     more: Math.max(friends.length - faces.length, 0),

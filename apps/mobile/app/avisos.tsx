@@ -593,10 +593,8 @@ function NoticeCard({
               palette={palette}
             />
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[text(15, 'Bold', 1.3), { color: palette.ink }]}
-                numberOfLines={2}
-              >
+              {/* Sem corte: com nome longo, "pediu sua amizade" sumiria. */}
+              <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
                 {notice.kind === 'friend-request'
                   ? `${person.name} pediu sua amizade`
                   : `${person.name} aceitou seu pedido`}
@@ -778,7 +776,7 @@ function Stack({
       ? [
           {
             key: 'more',
-            label: `+${more}`,
+            label: `+${more.toLocaleString('pt-BR')}`,
             bg: ring === INK ? PAPER : INK,
             fg: ring === INK ? INK : PAPER
           }
@@ -791,8 +789,10 @@ function Stack({
         <View
           key={key}
           style={{
-            width: size,
+            // "+1.282" cresce para o lado em vez de cortar.
+            minWidth: size,
             height: size,
+            paddingHorizontal: 3,
             borderRadius: size / 2,
             marginLeft: index ? -8 : 0,
             backgroundColor: bg,

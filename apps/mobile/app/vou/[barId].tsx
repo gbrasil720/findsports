@@ -329,7 +329,7 @@ function Faces({
       ? [
           {
             key: 'more',
-            label: `+${more}`,
+            label: `+${more.toLocaleString('pt-BR')}`,
             bg: palette.dark ? PAPER : INK,
             fg: palette.dark ? INK : PAPER
           }
@@ -420,8 +420,10 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 12
   },
+  // "+1.282" cresce para o lado em vez de cortar.
   face: {
-    width: 32,
+    minWidth: 32,
+    paddingHorizontal: 3,
     height: 32,
     borderRadius: 16,
     borderWidth: 2.5,
