@@ -18,7 +18,6 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming
 } from 'react-native-reanimated'
 import Svg, {
@@ -73,10 +72,7 @@ const BALLOON_IN: EntryExitAnimationFunction = () => {
           )
         },
         {
-          scale: withDelay(
-            120,
-            withSpring(1, { duration: 300, dampingRatio: 0.8 })
-          )
+          scale: withDelay(120, withTiming(1, { duration: 260, easing: EASE }))
         }
       ]
     }

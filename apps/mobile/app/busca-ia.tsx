@@ -117,7 +117,7 @@ const CHIPS_IN = FadeInDown.delay(50)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 const ROW_IN = Array.from({ length: 8 }, (_, i) =>
-  FadeInDown.delay(100 + i * 45)
+  FadeInDown.delay(100 + Math.min(i, 5) * 45)
     .duration(240)
     .easing(EASE)
     .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
