@@ -47,7 +47,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "A Onside usa a câmera só para ler o código de amigo (QR) de outra pessoa.",
+          "cameraPermission": "A Onside usa a câmera para ler o código de amigo (QR) de outra pessoa e para tirar a sua foto do perfil.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -56,6 +56,14 @@
         "expo-contacts",
         {
           "contactsPermission": "A Onside procura na sua agenda quem já está no app. Os e-mails não saem do celular: só uma assinatura de cada um é comparada."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A Onside abre suas fotos só para você escolher a foto do perfil.",
+          "cameraPermission": "A Onside usa a câmera para ler o código de amigo (QR) de outra pessoa e para tirar a sua foto do perfil.",
+          "microphonePermission": false
         }
       ]
     ],
