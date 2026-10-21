@@ -832,15 +832,24 @@ function Match({
               onPress={() => leave(onBar)}
               style={{ flex: 1 }}
             >
-              <Glass
-                tone={dark ? 'dark' : 'light'}
-                interactive
-                style={styles.ghost}
+              <View
+                style={[
+                  styles.ghost,
+                  dark
+                    ? {
+                        backgroundColor: '#1c1c18',
+                        borderColor: 'rgba(241,238,230,.18)'
+                      }
+                    : {
+                        backgroundColor: '#fffdf8',
+                        borderColor: 'rgba(18,18,15,.12)'
+                      }
+                ]}
               >
                 <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
                   Ver o bar
                 </Text>
-              </Glass>
+              </View>
             </Pressable>
             <View style={{ flex: 1.3 }}>
               <PillButton label="Continuar" onPress={() => leave(onClose)} />
@@ -1803,6 +1812,7 @@ const styles = StyleSheet.create({
   ghost: {
     height: 52,
     borderRadius: 26,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
