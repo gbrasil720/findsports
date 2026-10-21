@@ -59,6 +59,7 @@ import {
   assertCanConfigureHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
+import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
   hasPublicRating,
@@ -437,6 +438,22 @@ export const pubRouter = router({
         .where(eq(bar.id, existingBar.id))
         .returning({ confirmsCodesLater: bar.confirmsCodesLater })
       return { later: updated?.confirmsCodesLater ?? input.later }
+    }),
+
+  /**
+   * Horário de funcionamento (WEB-397): a semana inteira de uma vez, ou
+   * `null` para tirar a seção da página. Recurso de todo plano.
+   */
+  updateOpeningHours: pubProcedure
+    .input(z.object({ openingHours: openingHoursSchema.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [updated] = await db
+        .update(bar)
+        .set({ openingHours: normalizeOpeningHours(input.openingHours) })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ openingHours: bar.openingHours })
+      return { openingHours: updated?.openingHours ?? null }
     }),
 
   /**
