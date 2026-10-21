@@ -87,7 +87,13 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { code: '4k', label: 'Times', href: '/onboarding/teams' },
       { code: '4l', label: 'Distância', href: '/onboarding/distance' },
       { code: '4m', label: 'Localização', href: '/onboarding/location' },
-      { code: '4n', label: 'Revisão', href: '/onboarding/review' }
+      { code: '4n', label: 'Revisão', href: '/onboarding/review' },
+      // O coach da IA sobre o Explorar; fora daqui, aparece uma vez só.
+      {
+        code: '4o',
+        label: 'Primeiro acesso (IA)',
+        href: { pathname: '/explore', params: { coach: '1' } }
+      }
     ]
   },
   {
@@ -108,7 +114,10 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       // Claro ou escuro pelo tema do sistema; a página do bar (2g) abre
       // tocando num card ou num pino.
       { code: '2d/2e', label: 'Explorar', href: '/explore' },
-      { code: '2m', label: 'Favoritos', href: '/favoritos' }
+      { code: '2m', label: 'Favoritos', href: '/favoritos' },
+      // A folha da busca com IA; o limite e a IA fora do ar dependem do
+      // servidor (ver `ai_run` e a chave `ai.enabled`).
+      { code: '2h', label: 'Busca com IA', href: '/busca-ia' }
     ]
   },
   {
