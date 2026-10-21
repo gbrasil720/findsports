@@ -155,6 +155,22 @@ export default function Layout() {
                 name="convite/[code]"
                 options={{ animation: 'fade' }}
               />
+              {/* Bares pra você (23a–23k): tela cheia, aberta pelo menu Você;
+                "Por que esse bar?" (22c) é a folha por cima dela. */}
+              <Stack.Screen
+                name="bares-pra-voce"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              <Stack.Screen
+                name="por-que"
+                options={{
+                  presentation: 'formSheet',
+                  sheetAllowedDetents: [0.92],
+                  sheetGrabberVisible: true,
+                  sheetCornerRadius: 30,
+                  contentStyle: { backgroundColor: 'transparent' }
+                }}
+              />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"
