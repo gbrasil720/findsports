@@ -4,6 +4,7 @@ import {
   distanceKm,
   formatKm,
   formatTime,
+  goingSummary,
   greeting,
   isLive,
   searchCenter,
@@ -51,4 +52,41 @@ test('distância de um quarteirão a outro', () => {
   )
   expect(km).toBeGreaterThan(2.6)
   expect(km).toBeLessThan(2.8)
+})
+
+test('quem vai: contagem, amigos pelo primeiro nome e a pilha', () => {
+  const friends = (...names: string[]) => names.map((name) => ({ name }))
+  expect(
+    goingSummary({
+      count: 34,
+      initials: ['J', 'K', 'L'],
+      friends: friends('Marina Costa', 'Rafael Lima')
+    })
+  ).toEqual({
+    faces: ['M', 'R'],
+    more: 32,
+    lead: '34 pessoas vão',
+    tail: ', entre elas Marina e Rafael'
+  })
+  expect(
+    goingSummary({ count: 20, initials: ['J', 'K', 'L'], friends: [] })
+  ).toEqual({ faces: ['J', 'K'], more: 18, lead: '20 pessoas vão', tail: '' })
+  // Abaixo do piso: só os amigos, sem número.
+  expect(
+    goingSummary({ count: null, initials: [], friends: friends('Marina') })
+  ).toEqual({ faces: ['M'], more: 0, lead: 'Marina vai', tail: '' })
+  expect(
+    goingSummary({
+      count: null,
+      initials: [],
+      friends: friends('Ana', 'Bia', 'Caio', 'Duda')
+    }).lead
+  ).toBe('Ana, Bia e mais 2 amigos vão')
+  expect(
+    goingSummary({
+      count: 16,
+      initials: [],
+      friends: friends('Ana', 'Bia', 'Caio')
+    }).tail
+  ).toBe(', entre elas Ana, Bia e Caio')
 })
