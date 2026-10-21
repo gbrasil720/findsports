@@ -147,6 +147,7 @@ export default function FriendSearch() {
                 key={person.id}
                 id={person.id}
                 name={person.name}
+                image={person.image}
                 sub={personLine(person)}
                 highlight={deferred.replace(/^@/, '')}
                 big

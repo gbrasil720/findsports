@@ -142,6 +142,7 @@ export default function ContactsScreen() {
                 key={person.id}
                 id={person.id}
                 name={person.name}
+                image={person.image}
                 sub={personLine(person)}
                 size={42}
                 palette={palette}
