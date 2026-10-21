@@ -163,3 +163,40 @@ describe('avisos de amigos (19c)', () => {
     ).toMatchObject({ bold: 'Ana', rest: ' e Bia vão', more: 0 })
   })
 })
+
+describe('Avisar e Lembrar (WEB-425)', () => {
+  const NOW_ = new Date('2026-10-21T18:00:00Z').getTime()
+  const game = {
+    eventId: 'e1',
+    barId: 'b1',
+    barName: 'Bar Original',
+    startsAt: '2026-10-24T19:00:00.000Z',
+    championship: 'Brasileirão',
+    participants: ['Palmeiras', 'São Paulo'],
+    participantFreeText: null
+  }
+  const base = { mine: [], medals: [], teamBars: [], sides: () => null }
+
+  test('jogo publicado pelo bar avisado vira aviso', () => {
+    const [notice] = buildNotices(
+      {
+        ...base,
+        alerts: [{ ...game, publishedAt: '2026-10-21T15:00:00.000Z' }]
+      },
+      NOW_
+    )
+    expect(notice).toMatchObject({
+      kind: 'alert',
+      title: 'Palmeiras × São Paulo',
+      barName: 'Bar Original'
+    })
+  })
+
+  test('lembrete só no dia do jogo', () => {
+    expect(buildNotices({ ...base, reminders: [game] }, NOW_)).toHaveLength(0)
+    const today = { ...game, startsAt: '2026-10-22T00:30:00.000Z' }
+    expect(buildNotices({ ...base, reminders: [today] }, NOW_)[0]?.kind).toBe(
+      'reminder'
+    )
+  })
+})

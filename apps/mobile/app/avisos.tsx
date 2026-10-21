@@ -125,6 +125,11 @@ export default function Notices() {
           }))
       }
     )
+  // Avisar e Lembrar, de "Bares pra você" (WEB-425).
+  const asked = useQuery({
+    ...trpc.recommendations.notices.queryOptions(),
+    meta: { errorToast: false }
+  })
   const center = searchCenter(state.device, city.data)
   const teamIds = (teams.data ?? []).map((t) => t.id)
   const teamBars = useQuery({
@@ -148,7 +153,9 @@ export default function Notices() {
       friends: {
         requests,
         accepted: friendNotices.data?.accepted ?? []
-      }
+      },
+      alerts: asked.data?.alerts,
+      reminders: asked.data?.reminders
     },
     now
   )
@@ -188,6 +195,13 @@ export default function Notices() {
       notice.kind === 'friend-accepted'
     )
       router.push(`/amigo/${notice.person.id}` as Href)
+    else if (notice.kind === 'alert')
+      router.push(`/bar/${notice.barId}` as Href)
+    else if (notice.kind === 'reminder')
+      router.push({
+        pathname: '/vou/[barId]',
+        params: { barId: notice.barId, eventId: notice.eventId }
+      } as Href)
     else router.push({ pathname: '/busca', params: { q: notice.title } })
   }
 
@@ -196,7 +210,8 @@ export default function Notices() {
       mine.refetch(),
       medals.refetch(),
       teamBars.refetch(),
-      friendNotices.refetch()
+      friendNotices.refetch(),
+      asked.refetch()
     ])
   )
 
@@ -628,6 +643,34 @@ function NoticeCard({
       </Card>
     )
   }
+  if (notice.kind === 'alert' || notice.kind === 'reminder')
+    return (
+      <Card palette={palette} soft>
+        <View style={styles.gameRow}>
+          <View style={[styles.mark, { backgroundColor: palette.mark }]}>
+            <Icon
+              name={notice.kind === 'alert' ? 'bell' : 'calendar'}
+              size={20}
+              color={palette.ink}
+              accent={palette.dark ? ACID : LIVE}
+            />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}>
+              {notice.kind === 'alert'
+                ? `${notice.barName} marcou jogo`
+                : `Hoje: ${notice.title}`}
+            </Text>
+            <Text style={[text(12.5), { color: palette.muted }]}>
+              {notice.kind === 'alert'
+                ? `${notice.title} · ${noticeTime(notice.startsAt, now)} ${formatTime(notice.startsAt)}`
+                : `${notice.barName} · ${formatTime(notice.at)}`}
+            </Text>
+          </View>
+          {time}
+        </View>
+      </Card>
+    )
   const medal = medals.find((a) => a.id === notice.medalId)
   if (!medal) return null
   const next = nextInSeries(medals, medal)
