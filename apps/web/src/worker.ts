@@ -4,6 +4,10 @@
  * `vite dev` em Node, onde `cloudflare:workers` não existe.
  */
 import { waitUntil } from 'cloudflare:workers'
+import {
+  type AiBinding,
+  setAiBinding
+} from '@findsports_oficial/api/lib/ai/binding'
 import { setDeployVersion } from '@findsports_oficial/api/lib/deploy-version'
 import { runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
@@ -17,6 +21,8 @@ setBackgroundTaskHandler(waitUntil)
 export default {
   async fetch(request, env) {
     setDeployVersion(env.CF_VERSION_METADATA)
+    // WEB-424: o binding do Workers AI, para a IA do app.
+    setAiBinding(env.AI as unknown as AiBinding)
     // WEB-201: banco por requisição, sobre o Hyperdrive.
     const response = await runWithDb(env.HYPERDRIVE.connectionString, () =>
       handler.fetch(request)

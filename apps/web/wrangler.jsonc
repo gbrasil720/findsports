@@ -45,7 +45,8 @@
     "PUBLIC_APP_URL": "https://www.onside.sh",
     "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
     "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
-    "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
+    "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
+    "AI_GATEWAY_ID": "onside-prod"
   },
   // WEB-203: retenção diária de analytics (scheduled() em src/worker.ts).
   // 04:00 UTC = 01:00 em São Paulo. É o único agendador. Para desligar,
@@ -55,6 +56,9 @@
   // WEB-389: id e data da versão no ar, para o Bastidores do Houdini. A tag é
   // o commit, posta pelo `wrangler deploy --tag` do CI.
   "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  // WEB-424: Workers AI. Toda chamada passa pelo AI Gateway de
+  // `AI_GATEWAY_ID` (teto de gasto, alertas e logs ficam lá).
+  "ai": { "binding": "AI" },
 
   // WEB-204: preview de PR, outro Worker com banco próprio (branch `preview`
   // do Neon). Uma URL só, a do último PR publicado: com ela no
@@ -73,6 +77,7 @@
       "triggers": { "crons": [] },
       "routes": [],
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "ai": { "binding": "AI" },
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -88,6 +93,7 @@
         "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
+        "AI_GATEWAY_ID": "onside-preview",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env
         // recusa isto com PUBLIC_APP_URL em onside.sh.
         "EMAIL_DELIVERY": "console"
