@@ -7,13 +7,8 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import {
-  EASE,
-  ErrorText,
-  haptic,
-  useBlink,
-  useShake
-} from '@/components/motion'
+import { CodeBoxes, DIGITS } from '@/components/code-boxes'
+import { EASE, ErrorText, haptic, useShake } from '@/components/motion'
 import {
   ACID,
   authErrorMessage,
@@ -35,14 +30,7 @@ import { queryClient } from '@/lib/trpc'
  * "Confiar neste aparelho" (30 dias, `trustDevice` do better-auth).
  */
 
-const DIGITS = 6
 const BOX = '#1c1c18'
-
-/** O cursor da caixa ativa, piscando. */
-function Caret() {
-  const blink = useBlink()
-  return <Animated.View style={[styles.caret, blink.style]} />
-}
 
 /** "Confiar neste aparelho": a bolinha desliza e o fundo acende. */
 function Toggle({ on }: { on: boolean }) {
@@ -74,7 +62,6 @@ export default function TwoFactor() {
   const [backup, setBackup] = useState(false)
   const [code, setCode] = useState('')
   const [trust, setTrust] = useState(true)
-  const [focused, setFocused] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const boxes = useShake()
@@ -109,8 +96,7 @@ export default function TwoFactor() {
     router.replace('/')
   }
 
-  const onDigits = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, DIGITS)
+  const onDigits = (digits: string) => {
     setCode(digits)
     if (digits.length === DIGITS && !pending) verify(digits)
   }
@@ -154,50 +140,13 @@ export default function TwoFactor() {
           onSubmitEditing={() => verify()}
         />
       ) : (
-        <Animated.View style={boxes.style}>
-          <Pressable
-            accessibilityLabel="Código de 6 dígitos"
-            onPress={() => input.current?.focus()}
-            style={styles.boxes}
-          >
-            {Array.from({ length: DIGITS }, (_, index) => {
-              const active =
-                focused && index === Math.min(code.length, DIGITS - 1)
-              return (
-                // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa
-                <View key={index} style={{ flex: 1 }}>
-                  <View
-                    style={[
-                      styles.shadow,
-                      active && { backgroundColor: 'rgba(201,241,53,.3)' }
-                    ]}
-                  />
-                  <View style={[styles.box, active && styles.boxActive]}>
-                    {code[index] ? (
-                      <Text style={styles.digit}>{code[index]}</Text>
-                    ) : active ? (
-                      <Caret />
-                    ) : null}
-                  </View>
-                </View>
-              )
-            })}
-            <TextInput
-              ref={input}
-              autoFocus
-              keyboardType="number-pad"
-              textContentType="oneTimeCode"
-              autoComplete="one-time-code"
-              maxLength={DIGITS}
-              value={code}
-              onChangeText={onDigits}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              caretHidden
-              style={styles.hidden}
-            />
-          </Pressable>
-        </Animated.View>
+        <CodeBoxes
+          ref={input}
+          code={code}
+          onChange={onDigits}
+          tone="dark"
+          shake={boxes}
+        />
       )}
 
       <Pressable
@@ -246,7 +195,6 @@ export default function TwoFactor() {
 }
 
 const styles = StyleSheet.create({
-  boxes: { flexDirection: 'row', gap: 8 },
   box: {
     height: 60,
     borderRadius: 6,
@@ -256,20 +204,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(241,238,230,.14)'
   },
-  boxActive: { borderWidth: 2, borderColor: ACID },
-  shadow: {
-    position: 'absolute',
-    top: 3,
-    left: 3,
-    right: -3,
-    bottom: -3,
-    borderRadius: 6,
-    backgroundColor: '#000'
-  },
-  digit: { fontFamily: 'GeistMono-SemiBold', fontSize: 26, color: PAPER },
-  caret: { width: 2, height: 26, backgroundColor: ACID },
-  // O teclado digita aqui; as caixas só mostram.
-  hidden: { position: 'absolute', width: 1, height: 1, opacity: 0 },
   backup: {
     paddingHorizontal: 16,
     fontFamily: 'GeistMono-SemiBold',
