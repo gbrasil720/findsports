@@ -444,6 +444,24 @@ invente layout que o projeto não tem.
   (não há notificação, amigos, comunidades, ranking nem exportação de dados); só
   "Recomeçar sugestões" funciona ali. "Reservas" do 11g virou "Vou assistir", porque
   não existe reserva de mesa.
+- **Amigos (S1 do design, 11a–11d, decisões do dono em 21/10/2026):** só na API e no
+  app; o web não tem tela (por isso o branch só vai para master com o app pronto). Banco:
+  `friendship` (`packages/db/src/schema/social.ts`, uma linha por dupla em qualquer
+  direção, pendente até aceitar; recusar ou desfazer apaga) e, em `user`, `username`,
+  `friend_code` ("GB-4821", o do QR), `activity_visibility` e `friend_requests_from`
+  (Privacidade, 11i). `@` e código nascem no primeiro uso (`ensureSocialIdentity`). Regras
+  em `packages/api/src/lib/friends.ts`, roteador `friends`. Telas: `app/(fan)/voce/amigos`
+  (11a, item "Amigos" do menu "Você"; no design abre pelo Ranking), `amigos-busca` (11b,
+  "Perto de você" é a mesma cidade), `meu-codigo` (11c, QR do link de convite e leitor
+  pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
+  "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
+  tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
+  e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
+  convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
+  conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
+  (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
+  "Convidar" (comunidades) e o Ranking avisam "em breve". Dados de teste:
+  `apps/mobile/scripts/amigos.sql`.
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma

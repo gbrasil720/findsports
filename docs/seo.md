@@ -76,6 +76,7 @@ das páginas legais.
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
 | `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`). Id que não existe, sem sessão: 404 |
+| `/convite/:código` | não | `noindex`: só abre o app no convite de amigo (`onside://convite/…`); os amigos não têm tela no web |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
