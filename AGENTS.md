@@ -396,7 +396,8 @@ invente layout que o projeto não tem.
   `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
   mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
   pesou?" no pós-jogo (WEB-398), o ranking no rodapé de Meus jogos (WEB-403),
-  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405). A busca com
+  "entre elas Marina e Rafael" (WEB-404). "Desmarcado" nos anteriores não entra (decisão
+  do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. A busca com
   IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
   breve" (`components/soon.tsx`).
 - **Conquistas ("09", WEB-403):** `app/(fan)/voce/conquistas.tsx` (estante, 2i, no menu

@@ -26,8 +26,8 @@ export function gameTitle(game: {
 }
 
 /**
- * Como o jogo que passou terminou, como no design ("Validado"...). Falta
- * "Desmarcado": desmarcar apaga a presença (WEB-405).
+ * Como o jogo que passou terminou, como no design ("Validado"...). Sem o
+ * "Desmarcado" do design: desmarcar apaga a presença, sem registro.
  */
 export function pastLabel(game: Pick<MyGame, 'validated' | 'missed'>) {
   if (game.validated) return 'Validado'
