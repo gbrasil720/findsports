@@ -18,6 +18,7 @@ import { BarMenuEditor } from './bar-menu-editor'
 import { BarPreview } from './bar-preview'
 import { ConversionReadiness } from './conversion-readiness'
 import { HouseOfferEditor } from './house-offer-editor'
+import { OpeningHoursEditor } from './opening-hours-editor'
 import { PubHeroSection } from './pub-hero-section'
 import { QueryError } from './query-error'
 import { RatingsPanel } from './ratings-panel'
@@ -128,6 +129,10 @@ export function SpaceTab({
     trpc.pub.updateCodeConfirmation.mutationOptions({
       onSuccess: invalidateBar
     })
+  )
+
+  const updateOpeningHoursMutation = useMutation(
+    trpc.pub.updateOpeningHours.mutationOptions({ onSuccess: invalidateBar })
   )
 
   const updateMenuInfoMutation = useMutation(
@@ -266,6 +271,22 @@ export function SpaceTab({
           }}
         />
       ) : null}
+
+      <OpeningHoursEditor
+        openingHours={bar.openingHours}
+        isSaving={updateOpeningHoursMutation.isPending}
+        saveError={
+          updateOpeningHoursMutation.error
+            ? getUserFacingMessage(
+                updateOpeningHoursMutation.error,
+                'Não foi possível salvar o horário. Tente novamente.'
+              )
+            : null
+        }
+        onSave={(openingHours) =>
+          updateOpeningHoursMutation.mutateAsync({ openingHours })
+        }
+      />
 
       <BarMenuEditor
         menuUrl={bar.menuUrl}
