@@ -684,11 +684,12 @@ function Account({ palette }: { palette: Palette }) {
       setPhotoBusy(false)
     }
   }
-  const choose = (source: 'library' | 'camera') =>
-    photoTask(async () => {
-      const uri = await pickSquarePhoto(source)
-      if (uri) await uploadAvatar(uri)
-    })
+  // O spinner só depois da escolha: com o seletor aberto ele ficaria por
+  // trás, rodando à toa.
+  const choose = async (source: 'library' | 'camera') => {
+    const uri = await pickSquarePhoto(source).catch(() => null)
+    if (uri) await photoTask(() => uploadAvatar(uri))
+  }
   const changePhoto = () =>
     Alert.alert('Foto do perfil', undefined, [
       { text: 'Escolher uma foto', onPress: () => choose('library') },
