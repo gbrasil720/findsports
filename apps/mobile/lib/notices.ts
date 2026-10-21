@@ -29,12 +29,8 @@ export type Notice =
       sides: [string, string] | null
     }
   | { id: string; kind: 'medal'; at: string; medalId: string }
-  | {
-      id: string
-      kind: 'friend-request' | 'friend-accepted'
-      at: string
-      person: FriendNotice
-    }
+  | { id: string; kind: 'friend-request'; at: string; person: FriendNotice }
+  | { id: string; kind: 'friend-accepted'; at: string; person: FriendNotice }
 
 /** Uma pessoa de `friends.notices`. */
 export type FriendNotice = {

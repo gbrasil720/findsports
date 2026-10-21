@@ -317,17 +317,22 @@ function Faces({
   faces: string[]
   more: number
 }) {
-  const shown: [string, string, string][] = [
-    ...faces.map((letter, index): [string, string, string] =>
-      index ? [letter, LIVE, INK] : [letter, ACID, INK]
-    ),
-    ...(more > 0 ? [[`+${more}`, INK, PAPER] as [string, string, string]] : [])
+  const shown = [
+    ...faces.map((label, index) => ({
+      key: `face${index}`,
+      label,
+      bg: index ? LIVE : ACID,
+      fg: INK
+    })),
+    ...(more > 0
+      ? [{ key: 'more', label: `+${more}`, bg: INK, fg: PAPER }]
+      : [])
   ]
   return (
     <View style={{ flexDirection: 'row' }}>
-      {shown.map(([label, bg, fg], index) => (
+      {shown.map(({ key, label, bg, fg }, index) => (
         <View
-          key={`${index}${label}`}
+          key={key}
           style={[
             styles.face,
             {
