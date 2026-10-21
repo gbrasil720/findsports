@@ -12,12 +12,13 @@ import {
   Text,
   View
 } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-qr-code'
 import { usePalette } from '@/components/explore'
 import { Avatar } from '@/components/friends'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -151,7 +152,7 @@ export default function MyCode() {
       </Glass>
 
       {tab === 'mine' ? (
-        <View style={styles.mine}>
+        <Animated.View key="mine" entering={SWAP} style={styles.mine}>
           <View style={[styles.card, { shadowColor: ACID }]}>
             <View style={styles.who}>
               <Avatar
@@ -192,9 +193,9 @@ export default function MyCode() {
             Quem escanear manda um pedido de amizade. Você aprova antes de virar
             amigo.
           </Text>
-        </View>
+        </Animated.View>
       ) : (
-        <View style={styles.scan}>
+        <Animated.View key="scan" entering={SWAP} style={styles.scan}>
           {permission?.granted ? (
             <View style={styles.camera}>
               <CameraView
@@ -249,7 +250,7 @@ export default function MyCode() {
               Digitar o código
             </Text>
           </Pressable>
-        </View>
+        </Animated.View>
       )}
 
       {tab === 'mine' && code ? (
