@@ -585,6 +585,35 @@ function Account({
   })
   const now = Date.now()
   const current = session.data?.session.id
+  const queryClient = useQueryClient()
+  const me = useQuery({
+    ...trpc.friends.me.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const username = useMutation(
+    trpc.friends.updateUsername.mutationOptions({
+      onSuccess: () => {
+        haptic.success()
+        queryClient.invalidateQueries({ queryKey: trpc.friends.pathKey() })
+      },
+      onError: (error) => {
+        haptic.error()
+        Alert.alert('Não foi possível trocar o @', error.message)
+      }
+    })
+  )
+  const editUsername = () =>
+    Alert.prompt(
+      'Seu @',
+      'É como seus amigos te acham. Letras, números, ponto ou sublinhado.',
+      (typed) => {
+        const next = typed?.trim().replace(/^@/, '')
+        if (!next || next === me.data?.username) return
+        username.mutate({ username: next })
+      },
+      'plain-text',
+      me.data?.username ?? ''
+    )
 
   const rename = () =>
     Alert.prompt(
@@ -706,6 +735,14 @@ function Account({
 
       <Section palette={palette} icon="person" title="Dados">
         <Row palette={palette} title="E-mail" value={user?.email} />
+        <Row
+          palette={palette}
+          title="Usuário"
+          value={me.data ? `@${me.data.username}` : ' '}
+          chevron
+          divided
+          onPress={editUsername}
+        />
         <Row
           palette={palette}
           title="Cidade"
@@ -835,6 +872,16 @@ function Account({
 
 // --- Privacidade (11i) ------------------------------------------------------
 
+const SEES = { everyone: 'Todos', friends: 'Amigos', nobody: 'Ninguém' }
+const ADDS = {
+  everyone: 'Todos',
+  friends_of_friends: 'Amigos de amigos',
+  nobody: 'Ninguém'
+}
+/** A chave da opção pelo rótulo que a pessoa tocou. */
+const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
+  (Object.keys(map) as (keyof T)[]).find((key) => map[key] === label) as keyof T
+
 function Privacy({
   palette,
   soon
@@ -842,40 +889,68 @@ function Privacy({
   palette: Palette
   soon: (sentence: string) => void
 }) {
+  const queryClient = useQueryClient()
+  const me = useQuery({
+    ...trpc.friends.me.queryOptions(),
+    meta: { errorToast: false }
+  })
+  // Otimista: a escolha aparece na hora e volta se o servidor recusar.
+  const save = useMutation(
+    trpc.friends.updatePrivacy.mutationOptions({
+      onMutate: (input) => {
+        const key = trpc.friends.me.queryKey()
+        const before = queryClient.getQueryData(key)
+        if (before) queryClient.setQueryData(key, { ...before, ...input })
+        return { before }
+      },
+      onError: (_, __, context) => {
+        haptic.error()
+        if (context?.before)
+          queryClient.setQueryData(trpc.friends.me.queryKey(), context.before)
+        Alert.alert('Não foi possível salvar', 'Tente de novo.')
+      }
+    })
+  )
   return (
     <>
+      <Section palette={palette} icon="pin" title="Onde você foi">
+        <Row
+          palette={palette}
+          title="Quem vê os bares que você validou"
+          sub="Também vale para jogos marcados"
+          extra={
+            <Choice
+              palette={palette}
+              options={Object.values(SEES)}
+              on={SEES[me.data?.activityVisibility ?? 'friends']}
+              onPick={(label) =>
+                save.mutate({ activityVisibility: keyOf(SEES, label) })
+              }
+            />
+          }
+        />
+        <Row
+          palette={palette}
+          title="Quem pode te adicionar"
+          divided
+          extra={
+            <Choice
+              palette={palette}
+              options={Object.values(ADDS)}
+              on={ADDS[me.data?.friendRequestsFrom ?? 'everyone']}
+              onPick={(label) =>
+                save.mutate({ friendRequestsFrom: keyOf(ADDS, label) })
+              }
+            />
+          }
+        />
+      </Section>
       <SoonNote
         palette={palette}
         icon="eye"
-        sentence="Amigos, comunidades e ranking chegam em breve. Hoje ninguém vê os bares que você validou: a página do bar só conta quantas pessoas foram."
+        sentence="Ranking e comunidades chegam em breve."
       />
       <Off>
-        <Section palette={palette} icon="pin" title="Onde você foi">
-          <Row
-            palette={palette}
-            title="Quem vê os bares que você validou"
-            sub="Também vale para jogos marcados"
-            extra={
-              <Choice
-                palette={palette}
-                options={['Todos', 'Amigos', 'Ninguém']}
-                on="Ninguém"
-              />
-            }
-          />
-          <Row
-            palette={palette}
-            title="Quem pode te adicionar"
-            divided
-            extra={
-              <Choice
-                palette={palette}
-                options={['Todos', 'Amigos de amigos', 'Ninguém']}
-                on="Todos"
-              />
-            }
-          />
-        </Section>
         <Section palette={palette} icon="ranking" title="Ranking">
           <Row
             palette={palette}
@@ -1053,17 +1128,27 @@ function Toggle({ palette, on }: { palette: Palette; on: boolean }) {
 function Choice({
   palette,
   options,
-  on
+  on,
+  onPick
 }: {
   palette: Palette
   options: string[]
   on: string
+  /** Sem ele, só desenha (o que ainda não existe). */
+  onPick?: (option: string) => void
 }) {
   return (
     <View style={[styles.choice, { backgroundColor: palette.mark }]}>
       {options.map((option) => (
-        <View
+        <Pressable
           key={option}
+          accessibilityRole="button"
+          accessibilityState={{ selected: option === on }}
+          disabled={!onPick || option === on}
+          onPress={() => {
+            haptic.select()
+            onPick?.(option)
+          }}
           style={[
             styles.choiceItem,
             option === on && { backgroundColor: palette.dark ? ACID : INK }
@@ -1083,7 +1168,7 @@ function Choice({
           >
             {option}
           </Text>
-        </View>
+        </Pressable>
       ))}
     </View>
   )
