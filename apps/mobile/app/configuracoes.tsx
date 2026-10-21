@@ -821,6 +821,7 @@ function Account({ palette }: { palette: Palette }) {
               </Text>
             )
           }
+          chevron={!user?.twoFactorEnabled}
           onPress={() => router.push('/duas-etapas' as Href)}
         />
         <Row
