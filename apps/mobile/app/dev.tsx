@@ -117,7 +117,12 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { code: '2m', label: 'Favoritos', href: '/favoritos' },
       // A folha da busca com IA; o limite e a IA fora do ar dependem do
       // servidor (ver `ai_run` e a chave `ai.enabled`).
-      { code: '2h', label: 'Busca com IA', href: '/busca-ia' }
+      { code: '2h', label: 'Busca com IA', href: '/busca-ia' },
+      {
+        code: '2h',
+        label: 'Busca com IA (pior caso)',
+        href: { pathname: '/busca-ia', params: { demo: 'pior' } }
+      }
     ]
   },
   {
