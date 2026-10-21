@@ -11,6 +11,7 @@ import {
   friendIdsOf,
   monthStart,
   mutualCounts,
+  mutualInitials,
   normalizeFriendCode,
   normalizeUsername,
   readFriendship,
@@ -26,6 +27,9 @@ import {
  */
 
 const userId = z.string().min(1).max(64)
+
+/** Avisos com mais de 30 dias saem da tela (19c). */
+const NOTICE_DAYS = 30
 const via = z.enum(['search', 'code', 'link', 'contacts', 'suggestion'])
 
 /** O que uma pessoa mostra numa linha de lista. */
@@ -226,6 +230,54 @@ export const friendsRouter = router({
         barsThisMonth: bars === null ? null : Number(bars)
       }))
     }
+  }),
+
+  /**
+   * Os avisos de amigos (19c): pedidos recebidos e ainda sem resposta, com os
+   * amigos em comum, e os seus pedidos que foram aceitos nos últimos 30 dias.
+   * Pedido recebido não vence: fica até ser respondido.
+   */
+  notices: fanProcedure.query(async ({ ctx }) => {
+    const me = ctx.session.user.id
+    const since = new Date(Date.now() - NOTICE_DAYS * 86_400_000)
+    const [requests, accepted] = await Promise.all([
+      db
+        .select({ ...PERSON, at: friendship.createdAt })
+        .from(friendship)
+        .innerJoin(user, eq(user.id, friendship.requesterId))
+        .where(
+          and(
+            eq(friendship.addresseeId, me),
+            isNull(friendship.acceptedAt),
+            listable
+          )
+        )
+        .orderBy(sql`${friendship.createdAt} desc`),
+      db
+        .select({ ...PERSON, at: friendship.acceptedAt })
+        .from(friendship)
+        .innerJoin(user, eq(user.id, friendship.addresseeId))
+        .where(
+          and(
+            eq(friendship.requesterId, me),
+            sql`${friendship.acceptedAt} >= ${since}`,
+            listable
+          )
+        )
+        .orderBy(sql`${friendship.acceptedAt} desc`)
+    ])
+    const ids = [...requests, ...accepted].map((p) => p.id)
+    const [mutual, faces] = await Promise.all([
+      mutualCounts(me, ids),
+      mutualInitials(me, ids)
+    ])
+    const shape = <T extends { id: string; at: Date | null }>(person: T) => ({
+      ...person,
+      at: (person.at ?? new Date()).toISOString(),
+      mutual: mutual.get(person.id) ?? 0,
+      mutualInitials: faces.get(person.id) ?? []
+    })
+    return { requests: requests.map(shape), accepted: accepted.map(shape) }
   }),
 
   /** Busca por nome ou `@` (11b): todos, amigos de amigos ou da sua cidade. */

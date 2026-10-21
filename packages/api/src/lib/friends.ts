@@ -178,6 +178,46 @@ export async function mutualCounts(me: string, ids: string[]) {
   return map
 }
 
+/** "Marina Costa" vira "MC"; um nome só, as duas primeiras letras. */
+export function initialsOf(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  const letters =
+    words.length > 1
+      ? `${words[0]?.[0] ?? ''}${words.at(-1)?.[0] ?? ''}`
+      : (words[0] ?? '').slice(0, 2)
+  return letters.toLocaleUpperCase('pt-BR')
+}
+
+/**
+ * As iniciais de até três amigos em comum de `me` com cada um de `ids` (19c:
+ * "MC PO LA 3 amigos em comum"). Só iniciais: são amigos de quem vê, mas o
+ * aviso não precisa dizer quem.
+ */
+export async function mutualInitials(me: string, ids: string[]) {
+  const map = new Map<string, string[]>()
+  if (!ids.length) return map
+  const rows = await db.execute<{ id: string; name: string }>(sql`
+    SELECT x.id, u.name
+    FROM (
+      SELECT f.requester_id AS id, f.addressee_id AS other, f.accepted_at
+      FROM friendship f
+      WHERE f.accepted_at IS NOT NULL AND f.requester_id IN ${ids}
+      UNION ALL
+      SELECT f.addressee_id, f.requester_id, f.accepted_at
+      FROM friendship f
+      WHERE f.accepted_at IS NOT NULL AND f.addressee_id IN ${ids}
+    ) x
+    JOIN "user" u ON u.id = x.other
+    WHERE x.other IN ${friendIdsOf(me)}
+    ORDER BY x.accepted_at DESC
+  `)
+  for (const row of rows.rows) {
+    const list = map.get(row.id) ?? []
+    if (list.length < 3) map.set(row.id, [...list, initialsOf(row.name)])
+  }
+  return map
+}
+
 /** O primeiro dia do mês de Brasília, em UTC (como `event.starts_at`). */
 export function monthStart(now = new Date()) {
   const [year, month] = now
