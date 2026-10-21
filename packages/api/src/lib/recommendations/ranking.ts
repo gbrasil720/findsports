@@ -22,6 +22,8 @@ export const RECOMMENDATION_QUALITY_WINDOW_DAYS = 60
 export const RECOMMENDATION_QUALITY_MIN_SAMPLE = 10
 export const RECOMMENDATION_QUALITY_MIN_POSITIVE_RATE = 0.3
 export const RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS = 30
+/** "Passo" (o antigo "Não tenho interesse") tira o bar por 30 dias (dono, 21/10/2026). */
+export const RECOMMENDATION_DISMISS_COOLDOWN_DAYS = 30
 
 export type RecommendationIntentAction = {
   kind: RecommendationIntentKind
@@ -265,10 +267,32 @@ function pickDiversified(
   })[0]
 }
 
+/**
+ * As posições da rodada (22e): 1 "Sua cara" é a maior nota; 2 "Pra variar"
+ * pesa 85% relevância e 15% diferença; 3 "Vale arriscar", 65% e 35%, só entre
+ * quem tem ao menos 70% da nota do primeiro. A rodada do app tem cinco (dono,
+ * 21/10/2026): a 4 repete a regra da 2 e a 5 a da 3, com o mesmo piso.
+ */
+export const RECOMMENDATION_SLOTS = [
+  { slot: 'sua_cara', relevance: 1, floor: false },
+  { slot: 'pra_variar', relevance: 0.85, floor: false },
+  { slot: 'vale_arriscar', relevance: 0.65, floor: true },
+  { slot: 'pra_variar', relevance: 0.85, floor: false },
+  { slot: 'vale_arriscar', relevance: 0.65, floor: true }
+] as const
+export type RecommendationSlot = (typeof RECOMMENDATION_SLOTS)[number]['slot']
+export const RECOMMENDATION_MAX_COUNT = RECOMMENDATION_SLOTS.length
+
+export type RankedRecommendation = ScoredRecommendation & {
+  slot: RecommendationSlot
+}
+
+/** `count` é 3 no perfil do web e 5 na rodada do app. */
 export function rankRecommendations(
   candidates: RecommendationCandidate[],
-  context: RankingContext
-): ScoredRecommendation[] {
+  context: RankingContext,
+  count = 3
+): RankedRecommendation[] {
   const scored = candidates
     .filter(
       (candidate) =>
@@ -285,25 +309,22 @@ export function rankRecommendations(
 
   const first = scored[0]
   if (!first) return []
-  const selected = [first]
+  const selected: RankedRecommendation[] = [{ ...first, slot: 'sua_cara' }]
   let remaining = scored.slice(1)
 
-  const second = pickDiversified(remaining, selected, 0.85)
-  if (second) {
-    selected.push(second)
-    remaining = remaining.filter((item) => item.bar.id !== second.bar.id)
-  }
-
-  if (selected.length < 3 && remaining.length > 0) {
-    const aboveFloor = remaining.filter(
-      (item) => item.score >= first.score * 0.7
-    )
-    const third = pickDiversified(
+  for (const rule of RECOMMENDATION_SLOTS.slice(1, count)) {
+    if (remaining.length === 0) break
+    const aboveFloor = rule.floor
+      ? remaining.filter((item) => item.score >= first.score * 0.7)
+      : remaining
+    const next = pickDiversified(
       aboveFloor.length > 0 ? aboveFloor : remaining,
       selected,
-      0.65
+      rule.relevance
     )
-    if (third) selected.push(third)
+    if (!next) break
+    selected.push({ ...next, slot: rule.slot })
+    remaining = remaining.filter((item) => item.bar.id !== next.bar.id)
   }
 
   return selected
