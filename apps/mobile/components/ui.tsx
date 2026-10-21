@@ -432,6 +432,39 @@ const ICONS = {
       />
     </>
   ),
+  userplus: (c: string, a: string) => (
+    <>
+      <Circle cx={9} cy={8} r={4.2} fill={c} />
+      <Path d="M1.8 20.8a7.2 7.2 0 0 1 14.4 0z" fill={c} />
+      <Path d="M18 3.6h2.4V7h3.4v2.4h-3.4v3.4H18V9.4h-3.4V7H18z" fill={a} />
+    </>
+  ),
+  link: (c: string, a: string) => (
+    <>
+      <Path
+        d="M14.5 6.5H17a5.5 5.5 0 0 1 0 11h-2.5v-2.6H17a2.9 2.9 0 0 0 0-5.8h-2.5z"
+        fill={c}
+        opacity={0.35}
+      />
+      <Path
+        d="M9.5 6.5H7a5.5 5.5 0 0 0 0 11h2.5v-2.6H7a2.9 2.9 0 0 1 0-5.8h2.5z"
+        fill={c}
+      />
+      <Rect x={7.6} y={10.7} width={8.8} height={2.6} rx={1.3} fill={a} />
+    </>
+  ),
+  crew: (c: string, a: string) => (
+    <>
+      <G fill={c} opacity={0.35}>
+        <Circle cx={4.8} cy={9} r={2.6} />
+        <Circle cx={19.2} cy={9} r={2.6} />
+        <Path d="M.8 18.5a4 4 0 0 1 7.2-2.4V18.5zM23.2 18.5a4 4 0 0 0-7.2-2.4V18.5z" />
+      </G>
+      <Circle cx={12} cy={7.6} r={3.6} fill={c} />
+      <Path d="M5.8 20.5a6.2 6.2 0 0 1 12.4 0z" fill={c} />
+      <Circle cx={19.6} cy={3.4} r={2} fill={a} />
+    </>
+  ),
   ranking: (c: string, a: string) => (
     <>
       <Path d="M2 11.5h6V21H2zM16 14h6v7h-6z" fill={c} opacity={0.35} />
