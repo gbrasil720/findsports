@@ -407,6 +407,8 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
 
   const pan = Gesture.Pan()
     .minDistance(8)
+    // Um dedo só: trocar de dedo no meio do arraste fazia o card pular.
+    .maxPointers(1)
     .onStart(() => {
       // Pegar o card no meio da volta continua de onde ele está.
       start.set({ x: x.get(), y: y.get() })
