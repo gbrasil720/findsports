@@ -43,16 +43,21 @@ integrationTest(
       })
       await db
         .insert(attendance)
-        .values(
-          [seeded.fanId, ...fans].map((userId) => ({ userId, eventId }))
-        )
+        .values([seeded.fanId, ...fans].map((userId) => ({ userId, eventId })))
       const callers = fans.map((id) =>
         appRouter.createCaller(contextFor(id, 'fan'))
       )
       const rate = (
         index: number,
         wouldReturn: boolean,
-        reasons?: ('sound' | 'screen' | 'service' | 'price' | 'crowded' | 'food')[]
+        reasons?: (
+          | 'sound'
+          | 'screen'
+          | 'service'
+          | 'price'
+          | 'crowded'
+          | 'food'
+        )[]
       ) =>
         callers[index]?.ratings.submit({
           barId: seeded.barId,
@@ -67,7 +72,10 @@ integrationTest(
           .select({ reasons: barRating.reasons })
           .from(barRating)
           .where(
-            and(eq(barRating.eventId, eventId), eq(barRating.actorUserId, userId))
+            and(
+              eq(barRating.eventId, eventId),
+              eq(barRating.actorUserId, userId)
+            )
           )
         return row?.reasons
       }

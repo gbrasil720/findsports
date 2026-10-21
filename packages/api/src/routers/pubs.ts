@@ -582,14 +582,13 @@ export const pubsRouter = router({
 
       const notaPublica = await getAppConfig('rating.public_display')
       const showRating = notaPublica && hasPublicRating(ratingCount)
-      const rating =
-        showRating
-          ? {
-              positive: ratingPositive,
-              total: ratingCount,
-              percentage: ratingPercentage(ratingPositive, ratingCount)
-            }
-          : null
+      const rating = showRating
+        ? {
+            positive: ratingPositive,
+            total: ratingCount,
+            percentage: ratingPercentage(ratingPositive, ratingCount)
+          }
+        : null
 
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
