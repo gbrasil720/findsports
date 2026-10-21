@@ -415,10 +415,12 @@ invente layout que o projeto não tem.
   seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
   reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
   avaliação do dashboard web usa as mesmas. Não há avaliação "verificada": todas entram
-  no resumo. O que o design da 08
-  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: o ranking
-  no rodapé de Meus jogos (WEB-403),
-  "entre elas Marina e Rafael" (WEB-404). "Desmarcado" nos anteriores não entra (decisão
+  no resumo. O que o design da 08 mostra e ainda não existe, cada um com ticket e
+  comentário no lugar onde entra: o ranking no rodapé de Meus jogos (WEB-403). "34
+  pessoas vão, entre elas Marina e Rafael" (WEB-404) sai de `readGoing(eventIds,
+  viewerId)` (`packages/api/src/lib/attendance.ts`): só nomeia amigo aceito com
+  `activity_visibility` "todos" ou "amigos", mesmo abaixo do piso (aí sem contagem); quem
+  não é amigo nunca é nomeado. Frase e pilha em `goingSummary` (`lib/explore.ts`). "Desmarcado" nos anteriores não entra (decisão
   do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. A busca com
   IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
   breve" (`components/soon.tsx`).
@@ -456,11 +458,24 @@ invente layout que o projeto não tem.
   (`app/senha.tsx`, `changePassword`, derruba os outros aparelhos), sessões
   (`listSessions`, revogar por `/revoke-session-by-id`; a lista pede login de menos de
   um dia, `freshAge`, senão pede para entrar de novo), sair e excluir (`deleteUser` com
-  a senha). Foto e ligar a verificação em duas etapas avisam "em breve". O `@usuário`
+  a senha). Foto (WEB-419, `lib/avatar.ts`): seletor ou câmera do sistema com recorte
+  quadrado, 512 px em JPEG e o mesmo `POST /api/user/avatar` do web (URL assinada do R2,
+  depois `updateUser({ image })`); sem as chaves do R2 o servidor responde 503 e o app
+  mostra a frase dele ("Upload de foto indisponível no momento."). Para testar o
+  upload, suba o web com `R2_MEDIA_*`, `CF_ACCOUNT_ID` e `MEDIA_PUBLIC_ORIGIN` (o
+  bucket é o de produção, `onside-media`, na chave `users/<id>/avatar`); para ver o
+  503, suba com essas variáveis vazias. A foto aparece no menu Você, no Perfil, na Conta
+  e no quadrinho dos amigos (`Avatar` com `image`). Duas etapas: `app/duas-etapas.tsx`
+  (senha, "Abrir no app autenticador" com o `otpauth://`, QR e chave, código de 6
+  dígitos em `components/code-boxes.tsx`, códigos de recuperação; ligada, desliga com a
+  senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
-  (quem vê os bares e jogos, quem pode te adicionar), e Ranking, comunidades e
-  exportação de dados seguem "em breve", com "Recomeçar sugestões". "Reservas" do 11g virou "Vou assistir", porque
+  (quem vê os bares e jogos, quem pode te adicionar), Ranking e comunidades seguem "em
+  breve", e "Baixar meus dados" gera um JSON (`account.exportData`: perfil,
+  preferências, favoritos, jogos, avaliações, amigos e conquistas; de outra pessoa, só
+  nome e `@` de amigo) e entrega pelo share sheet (`expo-file-system` + `expo-sharing`).
+  O design diz "Arquivo enviado por e-mail"; o app diz "Arquivo para salvar ou enviar". "Reservas" do 11g virou "Vou assistir", porque
   não existe reserva de mesa.
 - **Amigos (S1 do design, 11a–11d, decisões do dono em 21/10/2026):** só na API e no
   app; o web não tem tela (por isso o branch só vai para master com o app pronto). Banco:
@@ -502,9 +517,11 @@ invente layout que o projeto não tem.
     (WEB-400) e avisa "chega em breve".
   - **Avisos (19c):** `app/avisos.tsx`, pelo sino. Montados do que já existe
     (`lib/notices.ts`): oferta liberada (código validado com oferta), jogo dos seus times
-    perto (`pubs.search` com `teamIds`) e conquista desbloqueada. As abas são Tudo, Jogos e
-    Conquistas: amigos, ranking e comunidades do design ainda não existem. "Lido" fica no
-    aparelho. Não há notificação no celular.
+    perto (`pubs.search` com `teamIds`), conquista desbloqueada e, dos amigos
+    (`friends.notices`), pedido recebido (Aceitar e Recusar no cartão) e pedido aceito
+    (30 dias). No topo, "Seu jogo de hoje" com os amigos que vão (`todayGoing`). As abas
+    são as do design, Tudo, Jogos e Amigos; conquista só em Tudo. Ranking e comunidades
+    ainda não existem. "Lido" fica no aparelho. Não há notificação no celular.
 - **Pins do mapa (Rodada 21, família Gota, 21a, escolhida pelo dono em 20/10/2026):**
   gota com a ponta reta da marca (`MapDrop` em `components/explore.tsx`): tinta com copo,
   vermelha com telão e halo na ponta se ao vivo, acid com estrela se Elite. Só o ao vivo
