@@ -249,6 +249,33 @@ hora do lançamento: quem conta visita usa a data do jogo (`event.starts_at`). A
 decisão do dono. Bar "na hora" não lança depois. O alfabeto do código não tem O, 0,
 I, 1 nem L (`CODE_ALPHABET`), para não confundir anotado à mão.
 
+### IA (Workers AI, WEB-424; busca com IA, WEB-400)
+
+Binding `AI` no `wrangler.jsonc` (produção e preview) e um AI Gateway por ambiente em
+`AI_GATEWAY_ID` (`onside-prod`, `onside-preview`; **crie os dois no painel da Cloudflare**,
+com o teto de US$ 40/mês e alertas em 50% e 80% no de produção). Sem Gateway em produção a
+IA não chama nada. O `worker.ts` entrega o binding a `packages/api/src/lib/ai/binding.ts`; o
+`vite dev` roda em Node sem ele, e em `development` a chamada vai pela API REST do Workers
+AI com o token do login do `wrangler` e o Gateway `default` (o `getPlatformProxy` trava no
+Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (desligada por
+padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
+chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
+grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`). Tetos e sorteio
+(hash de usuário + teste, pesos em `ai.variant_weights`) são puros em `lib/ai/limits.ts`.
+
+O chat (`routers/ai.ts`, `lib/ai/chat.ts`) só consulta a Onside pelas ferramentas de
+`lib/ai/chat-tools.ts`, que chamam `pubs.*` com a sessão do torcedor (máximo 3 por mensagem,
+termina em `responder`); bar citado que nenhuma ferramenta devolveu sai da resposta. Falha:
+nova tentativa no mesmo modelo, depois o outro braço. Limite do chat: 10 por dia e 100 por
+mês (Brasília), contando só resposta útil (`ai_run.useful`). Modelos e preços em
+`lib/ai/models.ts`, com o raciocínio de cada um (`reasoningEffort`: o Gemini recusa `none`
+e vai em `minimal`). Modelo de fora chamado sem Gateway responde `2021 Insufficient
+balance`; pelo Gateway os cinco respondem (`packages/api/scripts/ai-smoke.ts`). No `vite
+dev`, ligue `ai.enabled` no seu banco; `AI_DEV_CHAT_MODEL=@cf/zai-org/glm-4.7-flash` troca
+os dois braços por um modelo da Cloudflare, de graça (só em `development`). Conjunto
+offline: `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
+inventados, tempo e custo).
+
 ### UI / Styling
 
 Global styles and design tokens: `packages/ui/src/styles/globals.css`. Tailwind v4.
@@ -421,9 +448,8 @@ invente layout que o projeto não tem.
   viewerId)` (`packages/api/src/lib/attendance.ts`): só nomeia amigo aceito com
   `activity_visibility` "todos" ou "amigos", mesmo abaixo do piso (aí sem contagem); quem
   não é amigo nunca é nomeado. Frase e pilha em `goingSummary` (`lib/explore.ts`). "Desmarcado" nos anteriores não entra (decisão
-  do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. A busca com
-  IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
-  breve" (`components/soon.tsx`).
+  do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. O que o
+  design mostra e não existe avisa "chega em breve" (`components/soon.tsx`).
 - **Conquistas ("09", WEB-403):** `app/(fan)/voce/conquistas.tsx` (estante, 2i, no menu
   "Você") e `app/conquista/[id].tsx` (a medalha, 2j; com `?nova=1`, a conquista
   desbloqueada, 2k). O design só desenha o escuro; no claro, tinta e papel trocam, o
@@ -513,8 +539,8 @@ invente layout que o projeto não tem.
   - **Busca (19a, 19b):** `app/busca.tsx`, pela lupa do Explorar. Contas em `lib/search.ts`
     sobre os bares num raio de 10 km; time e campeonato vão também ao servidor
     (`pubs.search` com `championship`). Recentes no aparelho. "Ver no mapa" põe `focus` no
-    estado e o Explorar leva o mapa até o bairro. "Pedido mais específico?" é a busca com IA
-    (WEB-400) e avisa "chega em breve".
+    estado e o Explorar leva o mapa até o bairro. "Pedido mais específico?" abre a busca com
+    IA (2h).
   - **Avisos (19c):** `app/avisos.tsx`, pelo sino. Montados do que já existe
     (`lib/notices.ts`): oferta liberada (código validado com oferta), jogo dos seus times
     perto (`pubs.search` com `teamIds`), conquista desbloqueada e, dos amigos
@@ -608,8 +634,23 @@ invente layout que o projeto não tem.
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
-- **Busca com IA:** a quarta tela da apresentação anuncia uma busca que o produto ainda não
-  tem; o dono confirmou (14/10/2026) que ela vai existir e a tela fica como no design.
+- **Busca com IA (2h, WEB-400):** `app/busca-ia.tsx`, folha alta (`formSheet`, detent 1)
+  aberta pela aba IA da barra, por "Pedido mais específico?" da busca e pelo coach. Fala com
+  `ai.chat` (servidor: seção "IA" acima); contas puras em `lib/ai-chat.ts`. O `ScrollView` é
+  filho direto da tela, com o cabeçalho em `stickyHeaderIndices` (embrulhado num `View`:
+  direto no sticky, a fileira saía em coluna) e atalhos e campo num rodapé absoluto que sobe
+  com o teclado (`useAnimatedKeyboard`). Os atalhos não gastam pergunta: "Com oferta da
+  casa" é `pubs.search` com a característica 10, "Mais barato" ordena na tela (sem gasto
+  médio no fim), "Ver no mapa" põe `focus` e volta ao Explorar. Abrir um bar fecha a folha
+  antes (dentro dela a folha do "Vou assistir" não abre) e leva `?ai=<run_id>`: a página do
+  bar registra rota e "Vou assistir" em `ai.action`. A conversa fica na memória do módulo até
+  o app fechar. Limite e IA fora do ar não estão no design: frase no lugar da resposta,
+  subtítulo com quando volta e o atalho "Abrir a busca". O polegar ("Ajudou?") também não.
+  O microfone só abre o teclado: o ditado é o do sistema.
+- **Primeiro acesso (4o):** `components/ai-coach.tsx`, por cima do Explorar uma vez só
+  (`onside.coach-ia` no SecureStore), montado em `app/(fan)/_layout.tsx`. O furo e o anel
+  cercam o botão da IA da barra nativa, medido no iPhone 16e (centro 52 pt da direita e de
+  baixo, não o 344/784 do design). `?coach=1` mostra de novo (navegador DEV, 4o).
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
   e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome
