@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -12,7 +13,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { dayLabel, type Palette, Photo, usePalette } from '@/components/explore'
-import { Avatar, useFriendActions, type Via } from '@/components/friends'
+import {
+  Avatar,
+  heroShadow,
+  useFriendActions,
+  type Via
+} from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
@@ -54,6 +60,7 @@ export default function FriendProfile() {
   const actions = useFriendActions()
   const person = profile.data
   const firstName = person?.name.split(' ')[0] ?? ''
+  const [allBars, setAllBars] = useState(false)
 
   const more = () => {
     if (!person) return
@@ -217,7 +224,7 @@ export default function FriendProfile() {
                   styles.compare,
                   {
                     backgroundColor: palette.dark ? palette.card : INK,
-                    shadowColor: palette.dark ? '#000' : 'rgba(18,18,15,.35)'
+                    shadowColor: heroShadow(palette)
                   }
                 ]}
               >
@@ -270,42 +277,66 @@ export default function FriendProfile() {
 
             {person.visible && person.barsInCommon.length ? (
               <>
-                <Text
-                  style={[
-                    text(15, 'Bold'),
-                    { color: palette.ink, marginBottom: -4 }
-                  ]}
-                >
-                  Bares em comum · {person.barsInCommon.length}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.bleed}
-                  contentContainerStyle={styles.common}
-                >
-                  {person.barsInCommon.map((bar) => (
-                    <Pressable
-                      key={bar.id}
+                <View style={styles.commonHead}>
+                  <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+                    Bares em comum · {person.barsInCommon.length}
+                  </Text>
+                  {person.barsInCommon.length > 3 ? (
+                    <Text
                       accessibilityRole="button"
-                      style={styles.commonBar}
-                      onPress={() => router.push(`/bar/${bar.id}` as Href)}
+                      suppressHighlighting
+                      onPress={() => setAllBars(!allBars)}
+                      style={[text(12.5), { color: palette.muted }]}
                     >
-                      <Photo
-                        uri={bar.photoUrl}
-                        name={bar.name}
-                        palette={palette}
-                        style={styles.commonPhoto}
-                      />
-                      <Text
-                        style={[text(12.5, 'SemiBold'), { color: palette.ink }]}
-                        numberOfLines={1}
+                      {allBars ? 'Ver menos' : 'Ver todos'}
+                    </Text>
+                  ) : null}
+                </View>
+                {/* Três por linha, dividindo a largura, como no design. */}
+                <View style={styles.common}>
+                  {[
+                    ...(allBars
+                      ? person.barsInCommon
+                      : person.barsInCommon.slice(0, 3)),
+                    // Completa a última linha para os quadros não esticarem.
+                    ...Array(
+                      (3 -
+                        ((allBars
+                          ? person.barsInCommon.length
+                          : Math.min(3, person.barsInCommon.length)) %
+                          3)) %
+                        3
+                    ).fill(null)
+                  ].map((bar, index) =>
+                    bar === null ? (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: espaço vazio da linha
+                      <View key={`gap-${index}`} style={styles.commonBar} />
+                    ) : (
+                      <Pressable
+                        key={bar.id}
+                        accessibilityRole="button"
+                        style={styles.commonBar}
+                        onPress={() => router.push(`/bar/${bar.id}` as Href)}
                       >
-                        {bar.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
+                        <Photo
+                          uri={bar.photoUrl}
+                          name={bar.name}
+                          palette={palette}
+                          style={styles.commonPhoto}
+                        />
+                        <Text
+                          style={[
+                            text(12.5, 'SemiBold'),
+                            { color: palette.ink }
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {bar.name}
+                        </Text>
+                      </Pressable>
+                    )
+                  )}
+                </View>
               </>
             ) : null}
 
@@ -478,16 +509,19 @@ function NextGame({
           />
           <View style={{ flex: 1, minWidth: 0 }}>
             <View style={styles.liveTag}>
-              {live ? <View style={styles.liveDot} /> : null}
-              <Text style={[text(11.5, 'Bold', 1.2), { color: palette.live }]}>
+              <View style={styles.liveHalo}>
+                <View style={styles.liveDot} />
+              </View>
+              <Text style={[text(12.5, 'Bold', 1.2), { color: palette.live }]}>
                 {when}
               </Text>
             </View>
             <Text
-              style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.85}
+              style={[
+                text(14.5, 'Bold', 1.25),
+                { color: palette.ink, marginTop: 2 }
+              ]}
+              numberOfLines={2}
             >
               {name} vai ao {game.barName}
             </Text>
@@ -566,7 +600,14 @@ const styles = StyleSheet.create({
   },
   compareHead: { flexDirection: 'row', justifyContent: 'space-between' },
   compareRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  compareNumber: { width: 28, fontFamily: 'Anton', fontSize: 20 },
+  // Sem `lineHeight` (o iOS corta o topo do Anton): a margem negativa leva a
+  // linha natural (1,505em) aos 20 do design.
+  compareNumber: {
+    width: 28,
+    fontFamily: 'Anton',
+    fontSize: 20,
+    marginVertical: -5
+  },
   compareLabel: { width: 74, textAlign: 'center', color: '#aaa9a4' },
   track: {
     flex: 1,
@@ -579,7 +620,15 @@ const styles = StyleSheet.create({
   next: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
   nextPhoto: { width: 48, height: 48, borderRadius: 6 },
   liveTag: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
+  liveHalo: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(232,50,12,.2)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LIVE },
   go: {
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -589,9 +638,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0
   },
-  bleed: { marginHorizontal: -16, flexGrow: 0 },
-  common: { gap: 8, paddingHorizontal: 16 },
-  commonBar: { width: 112, gap: 6 },
-  commonPhoto: { width: 112, height: 72, borderRadius: 6 },
+  common: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  commonHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: -4
+  },
+  commonBar: { flexBasis: '30%', flexGrow: 1, minWidth: 0, gap: 6 },
+  commonPhoto: { width: '100%', height: 72, borderRadius: 6 },
   empty: { alignItems: 'center', gap: 14, paddingVertical: 32 }
 })
