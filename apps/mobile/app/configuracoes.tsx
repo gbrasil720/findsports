@@ -20,6 +20,7 @@ import {
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
+import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import {
@@ -31,7 +32,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { haptic, ScalePress } from '@/components/motion'
+import { haptic, ScalePress, SWAP } from '@/components/motion'
 import {
   ACCENT,
   ACID,
@@ -747,11 +748,14 @@ function Account({ palette }: { palette: Palette }) {
           >
             <View style={styles.avatar}>
               {user?.image ? (
-                <Image
-                  accessibilityIgnoresInvertColors
-                  source={{ uri: user.image }}
-                  style={styles.avatarPhoto}
-                />
+                // A foto nova entra num fade curto, no lugar das iniciais.
+                <Animated.View key={user.image} entering={SWAP}>
+                  <Image
+                    accessibilityIgnoresInvertColors
+                    source={{ uri: user.image }}
+                    style={styles.avatarPhoto}
+                  />
+                </Animated.View>
               ) : (
                 <Text style={styles.avatarText}>
                   {initials(user?.name ?? '')}
