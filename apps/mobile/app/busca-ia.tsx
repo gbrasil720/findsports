@@ -1,17 +1,12 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
-} from 'react-native'
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import Animated, {
+  Easing,
   FadeInDown,
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -87,8 +82,13 @@ let saved: Turn[] = []
 const IN = FadeInDown.duration(220)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
+// A resposta assenta em ordem: frase, "Busquei por", bares.
+const CHIPS_IN = FadeInDown.delay(50)
+  .duration(220)
+  .easing(EASE)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 const ROW_IN = Array.from({ length: 8 }, (_, i) =>
-  FadeInDown.delay(60 + i * 45)
+  FadeInDown.delay(100 + i * 45)
     .duration(240)
     .easing(EASE)
     .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
@@ -346,6 +346,13 @@ export default function AiSearch() {
       </ScrollView>
 
       <Animated.View style={[styles.dock, footer]}>
+        {/* Borda de rolagem: a conversa some aos poucos sob o rodapé. */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={[`${palette.sheet}00`, palette.sheet]}
+          locations={[0, 0.35]}
+          style={StyleSheet.absoluteFill}
+        />
         {lastAnswer?.search && !loading ? (
           <ScrollView
             horizontal
@@ -401,8 +408,8 @@ export default function AiSearch() {
                   : off
                     ? 'A busca com IA está fora do ar'
                     : turns.length
-                    ? 'Refine ou pergunte outra coisa…'
-                    : 'Diga o jogo e o que você precisa…'
+                      ? 'Refine ou pergunte outra coisa…'
+                      : 'Diga o jogo e o que você precisa…'
               }
               placeholderTextColor={palette.muted}
               returnKeyType="send"
@@ -412,14 +419,15 @@ export default function AiSearch() {
             />
             {/* Ditado: o microfone do teclado do sistema. Tocar aqui abre o
               teclado, com o microfone dele à mão. */}
-            <Pressable
+            <ScalePress
               accessibilityRole="button"
               accessibilityLabel="Ditar"
               hitSlop={8}
+              to={0.9}
               onPress={() => input.current?.focus()}
             >
               <Mic color={palette.ink} />
-            </Pressable>
+            </ScalePress>
             <ScalePress
               accessibilityRole="button"
               accessibilityLabel="Enviar"
@@ -528,7 +536,7 @@ function TurnView({
             </Text>
           </Animated.View>
           {chips.length ? (
-            <Animated.View entering={IN} style={styles.chips}>
+            <Animated.View entering={CHIPS_IN} style={styles.chips}>
               <Text
                 style={[text(11.5, 'Regular', 1.3), { color: palette.muted }]}
               >
@@ -593,7 +601,11 @@ function StatusDot({ busy, quiet }: { busy: boolean; quiet: boolean }) {
   const pulse = useSharedValue(1)
   useEffect(() => {
     pulse.value = busy
-      ? withRepeat(withTiming(1.5, { duration: 600, easing: EASE }), -1, true)
+      ? withRepeat(
+          withTiming(1.5, { duration: 600, easing: Easing.inOut(Easing.quad) }),
+          -1,
+          true
+        )
       : withTiming(1, { duration: 200 })
   }, [busy, pulse])
   const halo = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }))
@@ -658,7 +670,7 @@ function Thumb({
       accessibilityLabel={up ? 'Ajudou' : 'Não ajudou'}
       accessibilityState={{ selected: on }}
       hitSlop={10}
-      to={0.85}
+      to={0.9}
       onPress={onPress}
       style={styles.thumb}
     >
