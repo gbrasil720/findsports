@@ -120,10 +120,11 @@ function Band({
     )
   }, [half, index, progress])
 
+  // As duas direções partem de translateX 0; a que anda para a direita começa
+  // meia largura à esquerda pelo layout. Com o transform começando em -half
+  // (milhares de pt), o iOS desenhava a faixa duas vezes, uma por cima da outra.
   const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -half * (reverse ? 1 - progress.value : progress.value) }
-    ]
+    transform: [{ translateX: (reverse ? half : -half) * progress.value }]
   }))
 
   // Cada faixa começa num jogo diferente. Com poucos jogos no dia a fila se
@@ -166,7 +167,9 @@ function Band({
 
   return (
     <View style={{ overflow: 'hidden', opacity: theme.bandOpacity[index % 2] }}>
-      <Animated.View style={[styles.run, style]}>
+      <Animated.View
+        style={[styles.run, reverse && { marginLeft: -half }, style]}
+      >
         {run(0)}
         {run(1)}
       </Animated.View>
