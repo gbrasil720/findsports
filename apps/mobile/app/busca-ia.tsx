@@ -7,7 +7,10 @@ import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import Animated, {
   Easing,
+  type EntryExitAnimationFunction,
   FadeInDown,
+  FadeOut,
+  LinearTransition,
   useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
@@ -90,6 +93,24 @@ let saved: Turn[] = []
 const IN = FadeInDown.duration(220)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
+// "Mais barato" e "Com oferta da casa" mudam a lista: os bares deslizam
+// para o lugar novo e quem sai some rápido, em vez de teletransportar.
+const REORDER = LinearTransition.duration(220).easing(EASE)
+const ROW_OUT = FadeOut.duration(120)
+// Os atalhos de vidro sobem sem opacidade (vidro não desenha a meio caminho).
+const RISE: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ translateY: 12 }] },
+    animations: {
+      transform: [
+        { translateY: withTiming(0, { duration: 220, easing: EASE }) }
+      ]
+    }
+  }
+}
+const AnimatedScroll = Animated.createAnimatedComponent(ScrollView)
+
 // A resposta assenta em ordem: frase, "Busquei por", bares.
 const CHIPS_IN = FadeInDown.delay(50)
   .duration(220)
@@ -367,7 +388,8 @@ export default function AiSearch() {
           style={StyleSheet.absoluteFill}
         />
         {lastAnswer?.search && !loading ? (
-          <ScrollView
+          <AnimatedScroll
+            entering={RISE}
             horizontal
             showsHorizontalScrollIndicator={false}
             style={{ flexGrow: 0 }}
@@ -392,7 +414,7 @@ export default function AiSearch() {
               palette={palette}
               onPress={() => setCheap((v) => !v)}
             />
-          </ScrollView>
+          </AnimatedScroll>
         ) : blocked || off || last?.state === 'unavailable' ? (
           <View style={styles.shortcuts}>
             <Chip
@@ -465,25 +487,33 @@ function worstCase(): Turn[] {
     text,
     bars,
     chips: bars.length ? WORST_CHIPS : ['Leblon', 'Hoje', 'até 3 km'],
-    search: null,
+    // Vila Madalena: "Com oferta da casa" consulta bares de verdade.
+    search: {
+      lat: -23.5535,
+      lng: -46.6911,
+      radiusKm: 10,
+      limit: 20,
+      neighborhood: null
+    },
     remainingToday: 1
   })
+  // A troca sem bares antes; a última, com os oito, ganha os atalhos.
   return [
     {
       id: 1,
-      question: WORST_QUESTION,
-      state: 'answer',
-      answer: answer('demo-1', WORST_ANSWER, WORST_BARS)
-    },
-    {
-      id: 2,
       question: 'e no Leblon?',
       state: 'answer',
       answer: answer(
-        'demo-2',
+        'demo-1',
         'Não achei bar com jogo hoje no Leblon. Quer que eu aumente o raio ou olhe amanhã?',
         []
       )
+    },
+    {
+      id: 2,
+      question: WORST_QUESTION,
+      state: 'answer',
+      answer: answer('demo-2', WORST_ANSWER, WORST_BARS)
     }
   ]
 }
@@ -608,7 +638,12 @@ function TurnView({
             </Animated.View>
           ) : null}
           {bars.map((bar, i) => (
-            <Animated.View key={bar.id} entering={ROW_IN[i]}>
+            <Animated.View
+              key={bar.id}
+              entering={ROW_IN[i]}
+              exiting={ROW_OUT}
+              layout={REORDER}
+            >
               <BarRow
                 bar={bar}
                 now={now}
