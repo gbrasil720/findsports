@@ -439,10 +439,11 @@ invente layout que o projeto não tem.
   (`app/senha.tsx`, `changePassword`, derruba os outros aparelhos), sessões
   (`listSessions`, revogar por `/revoke-session-by-id`; a lista pede login de menos de
   um dia, `freshAge`, senão pede para entrar de novo), sair e excluir (`deleteUser` com
-  a senha). Foto e ligar a verificação em duas etapas avisam "em breve". Avisos e
-  Privacidade seguem o desenho com os controles desligados e o aviso de "em breve"
-  (não há notificação, amigos, comunidades, ranking nem exportação de dados); só
-  "Recomeçar sugestões" funciona ali. "Reservas" do 11g virou "Vou assistir", porque
+  a senha). Foto e ligar a verificação em duas etapas avisam "em breve". O `@usuário`
+  dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
+  aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
+  (quem vê os bares e jogos, quem pode te adicionar), e Ranking, comunidades e
+  exportação de dados seguem "em breve", com "Recomeçar sugestões". "Reservas" do 11g virou "Vou assistir", porque
   não existe reserva de mesa.
 - **Amigos (S1 do design, 11a–11d, decisões do dono em 21/10/2026):** só na API e no
   app; o web não tem tela (por isso o branch só vai para master com o app pronto). Banco:
