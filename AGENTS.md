@@ -524,6 +524,20 @@ invente layout que o projeto não tem.
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
   (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
   altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
+- **Bares pra você (08 Sugestões, Rodadas 22 e 23, WEB-425):** `app/bares-pra-voce.tsx`
+  (tela cheia, pelo item do menu "Você" com o selo "N novos"), `app/por-que.tsx` (22c, folha),
+  baralho e card em `components/suggestions.tsx`, frases em `lib/suggestions.ts`. **Uma rodada de
+  até cinco bares por dia** (dono, 21/10/2026), gravada em `recommendation_round` na primeira
+  leitura do dia com localização (`recommendations.today`); vira às 10:00 de Brasília
+  (`lib/recommendations/round.ts`) e não muda no dia. O ranking tem 5 posições (`count`; o perfil
+  do web segue com 3). Curti = favorito + `high_intent`; Passo = `dismiss`, 30 dias; Voltar =
+  `recommendations.undo` (sem resfriamento). Avisar (`bar_game_alert`, bar + esporte ou time) e
+  Lembrar (`game_reminder`) viram avisos em Avisos por `recommendations.notices`; sem push.
+  "Vou assistir" do card manda `runId` para `attendance.set` (atribuição `attend`). O card é escuro
+  nos dois temas, como no design. As frases só usam números do servidor (`facts`); a nota pública
+  respeita o piso e o `app_config`. Os nomes dos amigos no "Combinou" (23d) ainda não existem
+  (WEB-404): hoje vai a contagem de `readGoing`, com o ponto de encaixe comentado. Dados de teste:
+  `apps/mobile/scripts/bares-pra-voce.sql`; estados de fim e vazio no DEV (`?estado=`).
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
