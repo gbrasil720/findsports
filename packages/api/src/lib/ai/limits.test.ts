@@ -10,6 +10,7 @@ import {
   type UserUsage
 } from './limits'
 import { costUsd } from './models'
+import { readUsage } from './run'
 
 const usage = (over: Partial<UserUsage> = {}): UserUsage => ({
   callsToday: 0,
@@ -146,5 +147,21 @@ describe('custo', () => {
         neurons: 1000
       })
     ).toBeCloseTo(0.011)
+  })
+})
+
+describe('tokens da resposta', () => {
+  it('Gemini: raciocínio fora do completion_tokens entra na saída', () => {
+    expect(
+      readUsage({
+        usage: { prompt_tokens: 4, completion_tokens: 2, total_tokens: 23 }
+      })
+    ).toEqual({ tokensIn: 4, tokensOut: 19, neurons: undefined })
+  })
+
+  it('Jev traz o uso dentro de result', () => {
+    expect(
+      readUsage({ result: { usage: { input_tokens: 274, output_tokens: 20 } } })
+    ).toMatchObject({ tokensIn: 274, tokensOut: 20 })
   })
 })
