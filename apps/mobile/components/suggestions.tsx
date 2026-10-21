@@ -23,7 +23,7 @@ import Animated, {
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
 import { Glass } from '@/components/glass'
-import { EASE, haptic, usePressScale } from '@/components/motion'
+import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { gameTitle } from '@/lib/my-games'
 import {
@@ -299,17 +299,23 @@ function GamePill({
           press.style
         ]}
       >
-        <Icon
-          name={icon}
-          size={15}
-          color={solid || on ? INK : PAPER}
-          accent={solid || on ? INK : ACID}
-        />
-        <Text
-          style={[text(13, 'Bold', 1.2), { color: solid || on ? INK : PAPER }]}
-        >
-          {label}
-        </Text>
+        {/* O rótulo que muda ("Avisar" → "Avisando") troca suave. */}
+        <Animated.View key={label} entering={SWAP} style={styles.pillRow}>
+          <Icon
+            name={icon}
+            size={15}
+            color={solid || on ? INK : PAPER}
+            accent={solid || on ? INK : ACID}
+          />
+          <Text
+            style={[
+              text(13, 'Bold', 1.2),
+              { color: solid || on ? INK : PAPER }
+            ]}
+          >
+            {label}
+          </Text>
+        </Animated.View>
       </Animated.View>
     </Pressable>
   )
@@ -1078,6 +1084,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 18
   },
+  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pillSolid: { backgroundColor: ACID },
   pillGhost: {
     backgroundColor: 'rgba(241,238,230,.14)',
