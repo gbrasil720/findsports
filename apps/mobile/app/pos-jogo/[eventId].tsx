@@ -1,3 +1,7 @@
+import {
+  RATING_REASONS,
+  type RatingReasonId
+} from '@findsports_oficial/api/lib/rating-reasons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -17,6 +21,7 @@ import {
   ErrorText,
   haptic,
   POP_FAST,
+  ScalePress,
   SWAP,
   usePressScale
 } from '@/components/motion'
@@ -41,8 +46,8 @@ import { trpc } from '@/lib/trpc'
  * A primeira é a pergunta de presença (`attendance.report`, WEB-128), que só
  * existe para quem marcou "Vou assistir aqui"; a segunda é a avaliação
  * (`ratings.submit`), que conta para as medalhas de resenha (o cartão "Sua
- * Nª resenha"). Falta, do design, "O que pesou?" entre os cartões e o
- * "Enviar" (WEB-398: o servidor não guarda o motivo).
+ * Nª resenha"). "O que pesou?" (WEB-398) são só etiquetas, opcionais, e vão
+ * junto do "voltaria" no mesmo envio.
  */
 
 export default function AfterGame() {
@@ -72,6 +77,7 @@ export default function AfterGame() {
   )
   const [went, setWent] = useState(true)
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null)
+  const [reasons, setReasons] = useState<RatingReasonId[]>([])
 
   const report = useMutation(trpc.attendance.report.mutationOptions())
   const rate = useMutation(trpc.ratings.submit.mutationOptions())
@@ -87,7 +93,8 @@ export default function AfterGame() {
         await rate.mutateAsync({
           barId: game.barId,
           eventId: game.eventId,
-          wouldReturn
+          wouldReturn,
+          reasons
         })
     } catch {
       return
@@ -213,6 +220,55 @@ export default function AfterGame() {
                 onPress={() => setWouldReturn(false)}
                 icon="close"
               />
+            </View>
+            <View style={styles.weighed}>
+              <Text style={[text(14, 'Bold', 1.4), { color: palette.ink }]}>
+                O que pesou?{' '}
+                <Text
+                  style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
+                >
+                  opcional
+                </Text>
+              </Text>
+              <View style={styles.reasons}>
+                {RATING_REASONS.map((reason) => {
+                  const on = reasons.includes(reason.id)
+                  return (
+                    <ScalePress
+                      key={reason.id}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      hitSlop={4}
+                      onPress={() => {
+                        haptic.select()
+                        setReasons(
+                          on
+                            ? reasons.filter((id) => id !== reason.id)
+                            : [...reasons, reason.id]
+                        )
+                      }}
+                      style={[
+                        styles.reason,
+                        on
+                          ? {
+                              backgroundColor: palette.ink,
+                              borderColor: palette.ink
+                            }
+                          : { borderColor: palette.line }
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          text(13, 'SemiBold', 1.3),
+                          { color: on ? palette.bg : palette.ink }
+                        ]}
+                      >
+                        {reason.label}
+                      </Text>
+                    </ScalePress>
+                  )
+                })}
+              </View>
             </View>
           </>
         ) : null}
@@ -378,11 +434,19 @@ const styles = StyleSheet.create({
     borderRadius: 6
   },
   choice: {
-    height: 146,
+    height: 120,
     borderRadius: 6,
     borderWidth: 1,
     padding: 14,
     justifyContent: 'space-between'
+  },
+  weighed: { gap: 10, marginTop: 2 },
+  reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  reason: {
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    borderRadius: 4,
+    borderWidth: 1
   },
   foot: { paddingHorizontal: 16, paddingTop: 12 },
   review: {
