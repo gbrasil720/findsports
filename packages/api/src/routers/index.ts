@@ -9,6 +9,7 @@ import { barReservationsRouter } from './bar-reservations'
 import { bastidoresRouter } from './bastidores'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
+import { friendsRouter } from './friends'
 import { grimorioRouter } from './grimorio'
 import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
@@ -43,6 +44,7 @@ export const appRouter = router({
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
   achievements: achievementsRouter,
+  friends: friendsRouter,
   feedback: feedbackRouter,
   grimorio: grimorioRouter,
   houdini: houdiniRouter
