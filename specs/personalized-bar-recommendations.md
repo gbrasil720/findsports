@@ -31,8 +31,9 @@ linguagem de "IA":
 Quando for necessário ultrapassar o raio configurado, o card também mostra
 "Um pouco além do seu raio · {distância}". Esse aviso não substitui o motivo.
 
-O card oferece "Não tenho interesse". A ação remove o bar do trio, impede seu
-retorno por 60 dias e não penaliza bares semelhantes. Abrir o card registra a
+O card oferece "Não tenho interesse" (no app, "Passo"). A ação remove o bar
+do trio, impede seu retorno por 30 dias (decisão do dono em 2026-10-21; antes
+eram 60) e não penaliza bares semelhantes. Abrir o card registra a
 origem da visita. Uma impressão, isoladamente, não aumenta afinidade.
 
 ## Elegibilidade
@@ -43,7 +44,7 @@ Um candidato precisa:
   comercialmente ativa (inclusive a carência já aplicada pelo billing);
 - não estar nos favoritos do torcedor;
 - não ter sido desfavoritado nos últimos 30 dias;
-- não ter recebido "Não tenho interesse" nos últimos 60 dias;
+- não ter recebido "Não tenho interesse"/"Passo" nos últimos 30 dias;
 - não ter recebido do torcedor uma avaliação "não voltaria" nos últimos 60
   dias;
 - não estar sob a proteção temporária de qualidade descrita abaixo.
@@ -89,8 +90,8 @@ Da maior para a menor força comportamental:
 
 Favoritos e avaliações positivas também formam a assinatura de experiência do
 torcedor, mas o próprio favorito nunca é candidato. Desfavoritar é rejeição
-moderada somente daquele bar por 30 dias. "Não voltaria" e "Não tenho
-interesse" excluem somente aquele bar por 60 dias; uma avaliação negativa gera
+moderada somente daquele bar por 30 dias, como "Não tenho interesse"/"Passo".
+"Não voltaria" exclui somente aquele bar por 60 dias; uma avaliação negativa gera
 apenas penalidade leve de similaridade, sem inferir rejeição a um esporte ou
 bairro inteiro.
 
@@ -136,6 +137,35 @@ candidatos, expande gradualmente até no máximo 1,5 vezes o raio. Favoritos,
 rejeições vigentes, bares sem assinatura ativa e bloqueios de qualidade não
 são reintroduzidos para completar o trio. Se ainda assim houver menos de três
 candidatos, a interface mostra somente os elegíveis, sem inventar resultados.
+
+## Rodada do app: "Bares pra você" (WEB-425)
+
+O app mostra as sugestões como um baralho, aberto pelo menu "Você" (design,
+seção 08, rodadas 22 e 23). Decisões do dono em 2026-10-21:
+
+- uma rodada de até **cinco** bares por dia, gravada em `recommendation_round`
+  na primeira leitura do dia com localização; o limite vale no servidor. A
+  rodada vira às **10:00 de Brasília** (antes disso ainda vale a de ontem) e
+  fica a mesma o dia todo, mesmo com ações novas;
+- posições 1 "Sua cara", 2 "Pra variar", 3 "Vale arriscar"; a 4 repete a
+  regra da 2 e a 5 a da 3, com o mesmo piso de 70% da nota do primeiro. O
+  perfil do web continua com três (`rankRecommendations(..., count = 3)`);
+- "Curti" salva em Seus bares e entra como intenção forte (`high_intent`) nas
+  próximas rodadas; "Passo" é o "Não tenho interesse" (30 dias); "Voltar"
+  desfaz o último dos dois sem o resfriamento do desfavoritar;
+- rodada curta ou vazia oferece completar até cinco com o dobro do raio, só
+  naquele dia (o raio do perfil não muda); fora dele o card diz "Fora do seu
+  raio";
+- "Avisar" (bar sem jogo) inscreve bar + esporte ou bar + time; o jogo
+  publicado depois que case vira aviso na tela de Avisos do app. "Lembrar"
+  (jogo em outro dia) põe o jogo em Avisos no dia. Não há push;
+- "Vou assistir" a partir do card manda o `recommendationRunId`, gravado como
+  `attend` em `recommendation_event`.
+
+O card e "Por que esse bar?" usam a nota arredondada ("Combina 86"), os
+cinco eixos com os pontos e frases montadas com números reais (aberturas do
+jogo na semana, o bar parecido e as visitas validadas, a nota pública só
+quando a plataforma a mostra).
 
 ## Estabilidade e atualização
 
