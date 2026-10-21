@@ -33,6 +33,9 @@ type EventForm = {
   endsAt: string
   participantIds: string[]
   participantFreeText: string
+  /** WEB-399: nasce das características do bar; o dono desmarca por jogo. */
+  onBigScreen: boolean
+  withSound: boolean
 }
 
 type Sport = { id: string; name: string; slug: string }
@@ -414,6 +417,40 @@ export function EventFormComponent({
           </FieldLimit>
         </div>
       )}
+
+      <fieldset>
+        <legend className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--onside-muted)] mb-2 block">
+          Neste jogo
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['onBigScreen', 'Telão'],
+              ['withSound', 'Som do jogo ligado']
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={form[key]}
+              onClick={() =>
+                setForm((prev) => ({ ...prev, [key]: !prev[key] }))
+              }
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
+                form[key]
+                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
+                  : 'bg-[var(--onside-stone)] text-[var(--onside-ink)]'
+              }`}
+            >
+              {form[key] && <Check size={12} color="currentColor" />}
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-[10px] text-[var(--onside-muted)]">
+          Vem das características do bar. Desmarque o que este jogo não tem.
+        </p>
+      </fieldset>
 
       {error && (
         <p className="text-xs text-[var(--onside-live-text)]" role="alert">

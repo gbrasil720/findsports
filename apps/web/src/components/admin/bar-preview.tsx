@@ -1,3 +1,4 @@
+import { resolveEventScreen } from '@findsports_oficial/api/lib/event-screen'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import Eye from 'reicon-react/icons/Eye'
 import { pinDoPlano } from '@/components/app/map-icons'
@@ -139,7 +140,13 @@ export function BarPreview({
                   }
                 })),
                 participantFreeText: nextEvent.participantFreeText,
-                classic: null
+                classic: null,
+                ...resolveEventScreen(
+                  nextEvent,
+                  profileState.status === 'ready'
+                    ? profileState.profile.amenities
+                    : []
+                )
               }
             : undefined
         }

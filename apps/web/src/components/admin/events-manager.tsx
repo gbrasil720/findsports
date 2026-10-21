@@ -1,3 +1,4 @@
+import { resolveEventScreen } from '@findsports_oficial/api/lib/event-screen'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -19,7 +20,7 @@ import {
 } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import type { EventsState, PolicyState } from './admin-model'
-import { useMySubscription } from './admin-queries'
+import { useMyBar, useMySubscription } from './admin-queries'
 import { EmptyEventsState } from './empty-events-state'
 import { EventDeleteDialog } from './event-delete-dialog'
 import { type EventForm, EventFormComponent } from './event-form'
@@ -36,7 +37,7 @@ function toDatetimeLocal(date: string | Date): string {
   return new Date(d.getTime() - offsetMs).toISOString().slice(0, 16)
 }
 
-const EMPTY_FORM: EventForm = {
+const EMPTY_FORM: Omit<EventForm, 'onBigScreen' | 'withSound'> = {
   sportId: '',
   championship: '',
   startsAt: '',
@@ -116,6 +117,8 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
   const events = eventsState.status === 'ready' ? eventsState.events : []
   // Sem a assinatura lida, vale o texto do Starter: o limite é o mesmo.
   const { data: subscription } = useMySubscription()
+  const { data: bar } = useMyBar()
+  const amenities = bar?.amenities ?? []
   const lapsedPlan = getLapsedPaidPlan(subscription)
   const policyBlockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const sportsErrorMessage = sportsError
@@ -197,7 +200,9 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
           startsAt,
           endsAt,
           participantIds,
-          participantFreeText: form.participantFreeText || undefined
+          participantFreeText: form.participantFreeText || undefined,
+          onBigScreen: form.onBigScreen,
+          withSound: form.withSound
         },
         {
           onSuccess: () => {
@@ -218,7 +223,9 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
         startsAt,
         endsAt: endsAt ?? null,
         participantIds,
-        participantFreeText: form.participantFreeText
+        participantFreeText: form.participantFreeText,
+        onBigScreen: form.onBigScreen,
+        withSound: form.withSound
       })
     }
   }
@@ -435,9 +442,16 @@ export function EventsManager({ eventsState, policyState }: ManagerProps) {
                   participantIds:
                     editingEvent.participants?.map((item) => item.team.id) ??
                     [],
-                  participantFreeText: editingEvent.participantFreeText ?? ''
+                  participantFreeText: editingEvent.participantFreeText ?? '',
+                  ...resolveEventScreen(editingEvent, amenities)
                 }
-              : EMPTY_FORM
+              : {
+                  ...EMPTY_FORM,
+                  ...resolveEventScreen(
+                    { onBigScreen: null, withSound: null },
+                    amenities
+                  )
+                }
           }
           initialParticipants={editingEvent?.participants?.map(
             (item) => item.team
