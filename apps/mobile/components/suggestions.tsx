@@ -506,11 +506,19 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
             <SuggestionCard item={top} now={now} actions={actions(top)} />
             <Animated.View
               pointerEvents="none"
-              style={[styles.ring, { borderColor: ACID }, likeRing]}
+              style={[
+                styles.ring,
+                { borderColor: ACID, backgroundColor: 'rgba(201,241,53,.12)' },
+                likeRing
+              ]}
             />
             <Animated.View
               pointerEvents="none"
-              style={[styles.ring, { borderColor: LIVE }, passRing]}
+              style={[
+                styles.ring,
+                { borderColor: LIVE, backgroundColor: 'rgba(232,50,12,.16)' },
+                passRing
+              ]}
             />
             <Stamp label="CURTI" color={ACID} side="left" x={x} />
             <Stamp label="PASSO" color={LIVE} side="right" x={x} />
@@ -586,12 +594,18 @@ function Blob({ color, strength }: { color: string; strength: number }) {
   return (
     <Svg width={300} height={420}>
       <Defs>
-        <RadialGradient id={`g${color}`} cx="50%" cy="50%" r="50%">
+        <RadialGradient id={`g${color.slice(1)}`} cx="50%" cy="50%" r="50%">
           <Stop offset="0" stopColor={color} stopOpacity={strength} />
           <Stop offset="1" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Ellipse cx={150} cy={210} rx={150} ry={210} fill={`url(#g${color})`} />
+      <Ellipse
+        cx={150}
+        cy={210}
+        rx={150}
+        ry={210}
+        fill={`url(#g${color.slice(1)})`}
+      />
     </Svg>
   )
 }
@@ -684,6 +698,13 @@ export function DeckButtons({
       opacity: d < 0 ? 1 + 0.45 * d : 1
     }
   })
+  // O anel de 6 pt do design em volta do botão para onde o card vai.
+  const passHalo = useAnimatedStyle(() => ({
+    opacity: Math.max(0, -drag.get())
+  }))
+  const likeHalo = useAnimatedStyle(() => ({
+    opacity: Math.max(0, drag.get())
+  }))
   const label = dark ? MUTE : '#55554f'
   const edge = dark ? '#000' : INK
   return (
@@ -712,6 +733,13 @@ export function DeckButtons({
             pass
           ]}
         >
+          <Animated.View
+            style={[
+              styles.halo,
+              { borderColor: 'rgba(232,50,12,.25)' },
+              passHalo
+            ]}
+          />
           <Icon name="close" size={29} color={PAPER} />
         </Animated.View>
       </RoundAction>
@@ -723,6 +751,13 @@ export function DeckButtons({
             like
           ]}
         >
+          <Animated.View
+            style={[
+              styles.halo,
+              { borderColor: 'rgba(201,241,53,.3)' },
+              likeHalo
+            ]}
+          />
           <Icon name="fan" size={29} color={INK} accent={INK} />
         </Animated.View>
       </RoundAction>
@@ -786,7 +821,7 @@ export function MiniCard({
   tilt?: number
   dark: boolean
 }) {
-  const height = width * 1.4
+  const height = width * 1.7
   return (
     <View style={{ width, alignItems: 'center', gap: 8 }}>
       <View
@@ -863,7 +898,7 @@ export function MissingCard({
         styles.missing,
         {
           width,
-          height: width * 1.4,
+          height: width * 1.7,
           borderColor: dark ? 'rgba(241,238,230,.25)' : 'rgba(18,18,15,.25)'
         }
       ]}
@@ -1116,6 +1151,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 3, height: 3 }
+  },
+  halo: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 39,
+    borderWidth: 6
   },
   mini: {
     borderRadius: 8,

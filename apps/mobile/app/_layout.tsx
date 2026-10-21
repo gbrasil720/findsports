@@ -165,7 +165,7 @@ export default function Layout() {
                 name="por-que"
                 options={{
                   presentation: 'formSheet',
-                  sheetAllowedDetents: [0.92],
+                  sheetAllowedDetents: [0.83],
                   sheetGrabberVisible: true,
                   sheetCornerRadius: 30,
                   contentStyle: { backgroundColor: 'transparent' }
