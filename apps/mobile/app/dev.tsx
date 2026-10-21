@@ -142,7 +142,10 @@ const SECTIONS: { title: string; items: Item[] }[] = [
         code: '11i',
         label: 'Privacidade',
         href: { pathname: '/configuracoes', params: { aba: 'privacidade' } }
-      }
+      },
+      // Sem desenho próprio: a linha de Segurança da 11h abre. Ligada, a
+      // tela desliga com a senha.
+      { code: '11h', label: 'Duas etapas: ligar', href: '/duas-etapas' }
     ]
   },
   {
