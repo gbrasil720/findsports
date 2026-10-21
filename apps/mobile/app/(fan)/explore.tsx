@@ -37,6 +37,7 @@ import {
   MapDrop,
   MapGroup,
   MeDot,
+  type Palette,
   RadiusCircle,
   type SearchBar,
   usePalette
@@ -140,6 +141,24 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const bars = liveOnly
     ? found.filter((bar) => bar.nextEvent && isLive(bar.nextEvent, now))
     : found
+  // Com poucos bares com jogo, a lista se completa com bares perto sem jogo
+  // marcado, para não terminar vazia (decisão do dono em 21/10/2026). Só no
+  // fim da busca e fora do "Ao vivo"; no mapa continuam só os com jogo.
+  const few =
+    !!search.data &&
+    !search.data.nextCursor &&
+    !liveOnly &&
+    found.length < FEW_BARS
+  const nearby = useQuery({
+    ...trpc.pubs.nearbyWithoutGames.queryOptions({
+      ...center,
+      radiusKm,
+      amenities: filters.amenities.length ? filters.amenities : undefined
+    }),
+    enabled: few,
+    placeholderData: keepPreviousData
+  })
+  const quiet = few ? (nearby.data ?? []) : []
   const todayCount = bars.filter(
     // Jogo que começou ontem à noite e ainda rola também é "hoje".
     (bar) =>
@@ -492,7 +511,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       ? `${todayCount} ${todayCount === 1 ? 'bar' : 'bares'} com jogo hoje`
       : bars.length > 0
         ? `${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} com jogo`
-        : 'Bares com jogo'
+        : quiet.length > 0
+          ? 'Bares perto de você'
+          : 'Bares com jogo'
   const glassTone = palette.dark ? 'dark' : 'light'
   const fade = palette.dark ? '18,18,15' : '241,238,230'
 
@@ -895,7 +916,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 <Text style={[text(14), styles.note, { color: palette.muted }]}>
                   Buscando bares…
                 </Text>
-              ) : bars.length === 0 ? (
+              ) : bars.length === 0 && quiet.length === 0 ? (
                 <Text style={[text(14), styles.note, { color: palette.muted }]}>
                   {liveOnly
                     ? 'Nenhum jogo ao vivo agora por perto.'
@@ -917,19 +938,32 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                     />
                   ) : (
                     // Na abertura, só o primeiro card, sem a hora (20a); os
-                    // outros aparecem conforme a folha sobe.
-                    bars.map((bar, index) =>
-                      index === 0 ? (
-                        <BarRow
-                          key={bar.id}
-                          bar={bar}
-                          now={now}
-                          palette={palette}
-                          compact={!expanded}
-                          onPress={() => open(bar)}
-                        />
+                    // outros aparecem conforme a folha sobe. Os sem jogo vêm
+                    // depois, com um título.
+                    [...bars, ...quiet].map((bar, index) => {
+                      const head =
+                        index === bars.length ? (
+                          <QuietHead
+                            key="quiet"
+                            palette={palette}
+                            alone={bars.length === 0}
+                            radiusKm={radiusKm}
+                          />
+                        ) : null
+                      return index === 0 ? (
+                        <View key={bar.id} style={{ gap: 12 }}>
+                          {head}
+                          <BarRow
+                            bar={bar}
+                            now={now}
+                            palette={palette}
+                            compact={!expanded}
+                            onPress={() => open(bar)}
+                          />
+                        </View>
                       ) : (
-                        <Animated.View key={bar.id} style={rest}>
+                        <Animated.View key={bar.id} style={[{ gap: 12 }, rest]}>
+                          {head}
                           <BarRow
                             bar={bar}
                             now={now}
@@ -938,7 +972,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                           />
                         </Animated.View>
                       )
-                    )
+                    })
                   )}
                 </Animated.View>
               )}
@@ -952,7 +986,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 >
                   Buscando no raio de {radiusKm} km…
                 </Text>
-              ) : search.data && bars.length > 0 && !search.data.nextCursor ? (
+              ) : search.data &&
+                bars.length + quiet.length > 0 &&
+                !search.data.nextCursor ? (
                 // Só no fim de verdade: com página seguinte, ampliar traria os
                 // mesmos bares mais perto.
                 <View style={styles.endRow}>
@@ -993,6 +1029,36 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       </Animated.View>
 
       {soon.toast}
+    </View>
+  )
+}
+
+/** Abaixo disso, a lista do Explorar se completa com bares sem jogo. */
+const FEW_BARS = 5
+
+/** O título dos bares sem jogo no fim da lista. */
+function QuietHead({
+  palette,
+  alone,
+  radiusKm
+}: {
+  palette: Palette
+  /** Nenhum bar com jogo: o título diz isso antes. */
+  alone: boolean
+  radiusKm: number
+}) {
+  return (
+    <View style={{ gap: 2, paddingTop: alone ? 0 : 8 }}>
+      <Text style={[text(13, 'Bold', 1.3), { color: palette.ink }]}>
+        {alone
+          ? `Nenhum bar com jogo num raio de ${radiusKm} km`
+          : 'Sem jogo marcado'}
+      </Text>
+      <Text style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}>
+        {alone
+          ? 'Mas estes bares ficam perto de você.'
+          : 'Bares perto de você que ainda não publicaram jogo.'}
+      </Text>
     </View>
   )
 }
