@@ -52,6 +52,7 @@ import {
 } from '../lib/favorite-teams'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
+import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
 import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
@@ -478,7 +479,8 @@ export const pubsRouter = router({
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
-          confirmsCodesLater: true
+          confirmsCodesLater: true,
+          openingHours: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -542,6 +544,7 @@ export const pubsRouter = router({
         menuUrl,
         averageSpendCents,
         confirmsCodesLater,
+        openingHours,
         subscription,
         events,
         ...publicBar
@@ -599,6 +602,10 @@ export const pubsRouter = router({
           subscription ?? null,
           now
         ),
+        // Horário (WEB-397): `null` sem horário informado, e a página esconde
+        // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.
+        openingHours: normalizeOpeningHours(openingHours),
+        openNow: isOpenNow(normalizeOpeningHours(openingHours), now),
         isOwner: userId === ctx.session.user.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
         // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
