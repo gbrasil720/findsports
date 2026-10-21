@@ -64,7 +64,6 @@ import { gameTitle } from '@/lib/my-games'
 import {
   isToday,
   nextRoundLabel,
-  numberWord,
   type Round,
   roundSummary,
   type Suggestion,
@@ -96,6 +95,9 @@ export default function SuggestionsScreen() {
   // Só no navegador DEV: força um estado vazio para conferir o desenho.
   const { estado } = useLocalSearchParams<{ estado?: string }>()
 
+  // Aberta por link (sem tela embaixo), fechar leva ao Explorar.
+  const close = () =>
+    router.canGoBack() ? router.back() : router.replace('/explore')
   const [place, setPlace] = useState<Place | null>(null)
   const where = place ?? state.device
   const todayKey = trpc.recommendations.today.queryKey()
@@ -269,7 +271,7 @@ export default function SuggestionsScreen() {
     <Header
       palette={palette}
       subtitle={subtitle}
-      onClose={() => router.back()}
+      onClose={close}
       onSettings={() =>
         router.push({
           pathname: '/configuracoes',
@@ -403,7 +405,7 @@ export default function SuggestionsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Fechar"
               hitSlop={8}
-              onPress={() => router.back()}
+              onPress={close}
             >
               <GlassRound>
                 <Icon name="close" size={18} color={palette.ink} />
@@ -1061,7 +1063,9 @@ function Strip({
   dark: boolean
   missing?: number
 }) {
-  const width = round.items.length + missing > 3 ? 68 : 92
+  // Rodada curta (23h): os bares largos e os lugares vazios estreitos.
+  const width = missing ? 96 : 68
+  const height = missing ? 128 : 116
   return (
     <View style={styles.strip}>
       {round.items.map((item, i) => (
@@ -1070,13 +1074,19 @@ function Strip({
           item={item}
           label={stripLabel(item, now)}
           width={width}
+          height={height}
           tilt={[-3, 1, 0, 1.5, 3][i] ?? 0}
           dark={dark}
         />
       ))}
       {Array.from({ length: missing }, (_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: lugares vazios, a posição é a identidade
-        <MissingCard key={`missing-${i}`} width={width} dark={palette.dark} />
+        <MissingCard
+          // biome-ignore lint/suspicious/noArrayIndexKey: lugares vazios, a posição é a identidade
+          key={`missing-${i}`}
+          width={46}
+          height={height}
+          dark={palette.dark}
+        />
       ))}
     </View>
   )
@@ -1203,7 +1213,7 @@ function Short({
         />
       </Animated.View>
       <Text style={[text(17, 'Regular', 1.45), { color: palette.ink }]}>
-        No seu raio de {radiusKm} km, só {numberWord(n)}{' '}
+        No seu raio de {radiusKm} km, só {n}{' '}
         {n === 1 ? 'bar combina' : 'bares combinam'} com você agora.
         {expansion.data?.bars ? ' Abrindo um pouco, aparecem mais.' : ''}
       </Text>
@@ -1352,6 +1362,7 @@ function Empty({
       </Text>
       {expansion.data?.bars && where ? (
         <BlockButton
+          leading="pin"
           label={
             refill.isPending
               ? 'Ampliando…'
@@ -1399,23 +1410,20 @@ function SeenAll({
   onReview: () => void
 }) {
   const router = useRouter()
-  const insets = useSafeAreaInsets()
   const dark = palette.dark
   const liked = round.items.filter((i) => i.decision === 'liked').length
   const passed = round.items.filter((i) => i.decision === 'passed').length
   return (
-    <View
-      style={[styles.endBody, { flex: 1, paddingBottom: insets.bottom + 16 }]}
-    >
+    <View style={[styles.endBody, { flex: 1, paddingBottom: 28, gap: 14 }]}>
       <Animated.View entering={POP} style={styles.fan}>
-        {[-10, 10, 0].map((rot, i) => (
+        {[-8, 8, 0].map((rot, i) => (
           <View
             key={rot}
             style={[
               styles.fanCard,
               {
                 transform: [
-                  { translateX: rot * 9 },
+                  { translateX: rot * 6 },
                   { translateY: i === 2 ? 0 : 30 },
                   { rotate: `${rot}deg` }
                 ],
@@ -1568,6 +1576,7 @@ function Locate({
       {picking ? null : (
         <BlockButton
           label={busy ? 'Procurando…' : 'Usar minha localização'}
+          leading="pin"
           onPress={useDevice}
         />
       )}
@@ -1812,7 +1821,7 @@ const styles = StyleSheet.create({
     borderRadius: 17
   },
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
-  fan: { height: 330, alignItems: 'center', justifyContent: 'center' },
+  fan: { height: 310, alignItems: 'center', justifyContent: 'center' },
   fanCard: {
     position: 'absolute',
     width: 220,
