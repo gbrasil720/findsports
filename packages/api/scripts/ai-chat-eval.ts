@@ -26,6 +26,7 @@ import {
   type ToolState
 } from '../src/lib/ai/chat-tools'
 import { costUsd } from '../src/lib/ai/models'
+import { readUsage } from '../src/lib/ai/run'
 
 type Day = 'hoje' | 'amanha' | 'sabado' | 'domingo'
 type Case = {
@@ -323,11 +324,7 @@ async function main() {
                 neurons?: number
               }
             }
-            const usage = {
-              tokensIn: raw?.usage?.prompt_tokens ?? 0,
-              tokensOut: raw?.usage?.completion_tokens ?? 0,
-              neurons: raw?.usage?.neurons
-            }
+            const usage = readUsage(raw as never)
             tokensIn += usage.tokensIn
             tokensOut += usage.tokensOut
             cost += costUsd(m, usage)
