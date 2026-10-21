@@ -1,8 +1,8 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
-import { type Href, useRouter } from 'expo-router'
-import { type ReactNode, useState } from 'react'
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
+import { type ReactNode, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -92,7 +92,12 @@ export default function YourBars() {
   const visits = useQuery(trpc.attendance.visits.queryOptions())
   const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
   const favorites = useFavorites()
-  const [picked, setPicked] = useState<Tab | null>(null)
+  // "Ver os 3 que você curtiu" (23j) abre direto nos salvos.
+  const { aba } = useLocalSearchParams<{ aba?: Tab }>()
+  const [picked, setPicked] = useState<Tab | null>(aba ?? null)
+  useEffect(() => {
+    if (aba) setPicked(aba)
+  }, [aba])
   const [search, setSearch] = useState<string | null>(null)
   // Abre em "Já fui" quando há visita; senão nos salvos.
   const tab: Tab = picked ?? (visits.data?.length ? 'visits' : 'saved')
