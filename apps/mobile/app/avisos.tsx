@@ -455,7 +455,7 @@ function TodayCard({
             ) : null}
             <Text
               style={[text(12.5), { color: fg, flex: 1 }]}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {who.bold ? (
                 <Text style={{ fontFamily: 'Archivo-Bold' }}>{who.bold}</Text>
