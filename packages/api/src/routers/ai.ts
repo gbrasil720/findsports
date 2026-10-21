@@ -1,6 +1,5 @@
 import { and, db, eq } from '@findsports_oficial/db'
 import { aiAction, aiRun } from '@findsports_oficial/db/schema/ai'
-import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -32,14 +31,8 @@ import { getAppConfig } from '../lib/app-config'
 /** Nome do teste A/B do chat: entra no hash do sorteio. */
 export const CHAT_EXPERIMENT = 'chat-2026-10'
 
-/**
- * Em desenvolvimento, `AI_DEV_CHAT_MODEL` troca os dois braços por um
- * modelo da própria Cloudflare (ex.: `@cf/zai-org/glm-4.7-flash`), que roda
- * sem crédito no Gateway. Fora de `development` é ignorada.
- */
+/** O braço sorteado primeiro e o outro como reserva. */
 function chatModels(variant: ChatVariant): [string, string] {
-  const dev = process.env.AI_DEV_CHAT_MODEL
-  if (env.NODE_ENV === 'development' && dev) return [dev, dev]
   const other: ChatVariant = variant === 'a' ? 'b' : 'a'
   return [CHAT_MODELS[variant], CHAT_MODELS[other]]
 }

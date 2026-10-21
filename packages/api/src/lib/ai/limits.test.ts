@@ -141,7 +141,7 @@ describe('custo', () => {
       })
     ).toBeCloseTo(0.6)
     expect(
-      costUsd('@cf/zai-org/glm-4.7-flash', {
+      costUsd('@cf/exemplo/modelo-por-neurons', {
         tokensIn: 150,
         tokensOut: 62,
         neurons: 1000

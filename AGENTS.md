@@ -271,9 +271,10 @@ mês (Brasília), contando só resposta útil (`ai_run.useful`). Modelos e preç
 `lib/ai/models.ts`, com o raciocínio de cada um (`reasoningEffort`: o Gemini recusa `none`
 e vai em `minimal`). Modelo de fora chamado sem Gateway responde `2021 Insufficient
 balance`; pelo Gateway os cinco respondem (`packages/api/scripts/ai-smoke.ts`). No `vite
-dev`, ligue `ai.enabled` no seu banco; `AI_DEV_CHAT_MODEL=@cf/zai-org/glm-4.7-flash` troca
-os dois braços por um modelo da Cloudflare, de graça (só em `development`). Conjunto
-offline: `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
+dev`, ligue `ai.enabled` no seu banco (cada mensagem chama os modelos de verdade e gasta
+crédito; para testar sem rede, os testes dublam o modelo com `setAiBinding`). Só os modelos
+decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
+offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
 inventados, tempo e custo).
 
 ### UI / Styling
