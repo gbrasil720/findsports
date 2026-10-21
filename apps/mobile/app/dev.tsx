@@ -139,6 +139,39 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     ]
   },
   {
+    // A rodada de verdade vem de `scripts/bares-pra-voce.sql`; `estado`
+    // força os estados de fim e vazio sem mexer no banco.
+    title: '08 Sugestões',
+    items: [
+      { code: '23a', label: 'Bares pra você', href: '/bares-pra-voce' },
+      {
+        code: '23f',
+        label: 'Rodada fechada',
+        href: { pathname: '/bares-pra-voce', params: { estado: 'fechada' } }
+      },
+      {
+        code: '23h',
+        label: 'Rodada curta',
+        href: { pathname: '/bares-pra-voce', params: { estado: 'curta' } }
+      },
+      {
+        code: '23i',
+        label: 'Nada no raio',
+        href: { pathname: '/bares-pra-voce', params: { estado: 'vazio' } }
+      },
+      {
+        code: '23j',
+        label: 'Viu tudo',
+        href: { pathname: '/bares-pra-voce', params: { estado: 'viu' } }
+      },
+      {
+        code: '23k',
+        label: 'Sem localização',
+        href: { pathname: '/bares-pra-voce', params: { estado: 'sem-local' } }
+      }
+    ]
+  },
+  {
     title: '11 Configurações',
     items: [
       { code: '11f', label: 'Preferências', href: '/configuracoes' },
