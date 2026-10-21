@@ -138,19 +138,21 @@ export function AiCoach({
   // O halo do anel respira devagar, para o olho achar o botão.
   const breathe = useSharedValue(1)
   useEffect(() => {
-    breathe.value = withDelay(
-      500,
-      withRepeat(
-        withSequence(
-          withTiming(1.08, { duration: 900, easing: EASE }),
-          withTiming(1, { duration: 900, easing: EASE })
-        ),
-        -1
+    breathe.set(
+      withDelay(
+        500,
+        withRepeat(
+          withSequence(
+            withTiming(1.08, { duration: 900, easing: EASE }),
+            withTiming(1, { duration: 900, easing: EASE })
+          ),
+          -1
+        )
       )
     )
   }, [breathe])
   const halo = useAnimatedStyle(() => ({
-    transform: [{ scale: breathe.value }]
+    transform: [{ scale: breathe.get() }]
   }))
 
   return (
