@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow, initials, type Palette } from '@/components/explore'
 import { haptic, usePressScale } from '@/components/motion'
@@ -28,13 +28,14 @@ const TONES = ['acid', 'stone', 'live', 'stone', 'stone'] as const
 const toneOf = (id: string) =>
   TONES[[...id].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TONES.length]
 
-/** O quadrinho com as iniciais (`ava` do design). */
+/** O quadrinho com as iniciais (`ava` do design), ou a foto da pessoa. */
 export function Avatar({
   id,
   name,
   size,
   palette,
-  me
+  me,
+  image
 }: {
   id: string
   name: string
@@ -42,7 +43,21 @@ export function Avatar({
   palette: Palette
   /** Você: tinta com acid em Anton, como no design. */
   me?: boolean
+  /** A foto do perfil (WEB-419), no lugar das iniciais. */
+  image?: string | null
 }) {
+  if (image)
+    return (
+      <Image
+        accessibilityIgnoresInvertColors
+        source={{ uri: image }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size > 50 ? 9 : 8
+        }}
+      />
+    )
   const tone = me ? 'me' : toneOf(id)
   const bg =
     tone === 'me'
@@ -165,6 +180,7 @@ export function AddButton({
 export function PersonRow({
   id,
   name,
+  image,
   sub,
   palette,
   first,
@@ -176,6 +192,7 @@ export function PersonRow({
 }: {
   id: string
   name: string
+  image?: string | null
   sub: string | null
   /** O trecho digitado na busca, em destaque no nome (11b). */
   highlight?: string
@@ -199,7 +216,7 @@ export function PersonRow({
         pressed && { opacity: 0.7 }
       ]}
     >
-      <Avatar id={id} name={name} size={size} palette={palette} />
+      <Avatar id={id} name={name} image={image} size={size} palette={palette} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={[text(big ? 15 : 14.5, 'Bold', 1.25), { color: palette.ink }]}

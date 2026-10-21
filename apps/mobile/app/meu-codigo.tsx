@@ -158,6 +158,7 @@ export default function MyCode() {
               <Avatar
                 id={session.data?.user.id ?? ''}
                 name={session.data?.user.name ?? ''}
+                image={session.data?.user.image}
                 size={48}
                 palette={{ ...palette, dark: false }}
                 me

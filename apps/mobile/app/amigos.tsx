@@ -152,6 +152,7 @@ export default function Friends() {
                         key={person.id}
                         id={person.id}
                         name={person.name}
+                        image={person.image}
                         sub={
                           person.via === 'link'
                             ? 'Pelo seu link'
@@ -264,6 +265,7 @@ export default function Friends() {
                       key={friend.id}
                       id={friend.id}
                       name={friend.name}
+                      image={friend.image}
                       size={38}
                       sub={[
                         friend.barsThisMonth === null
@@ -422,7 +424,7 @@ function Suggestion({
   onAdd
 }: {
   palette: Palette
-  person: { id: string; name: string; mutual: number }
+  person: { id: string; name: string; image: string | null; mutual: number }
   sent: boolean
   busy: boolean
   onOpen: () => void
@@ -435,6 +437,7 @@ function Suggestion({
           <Avatar
             id={person.id}
             name={person.name}
+            image={person.image}
             size={46}
             palette={palette}
           />

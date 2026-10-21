@@ -139,6 +139,7 @@ export default function FriendProfile() {
               <Avatar
                 id={person.id}
                 name={person.name}
+                image={person.image}
                 size={80}
                 palette={palette}
               />

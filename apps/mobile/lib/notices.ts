@@ -36,6 +36,7 @@ export type Notice =
 export type FriendNotice = {
   id: string
   name: string
+  image?: string | null
   at: string
   mutual: number
   mutualInitials: string[]

@@ -568,6 +568,7 @@ function NoticeCard({
             <Avatar
               id={person.id}
               name={person.name}
+              image={person.image}
               size={50}
               palette={palette}
             />
