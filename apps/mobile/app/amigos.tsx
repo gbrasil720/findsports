@@ -21,7 +21,8 @@ import {
   heroShadow,
   PersonRow,
   personLine,
-  useFriendActions
+  useFriendActions,
+  useKept
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress, SWAP, usePressScale } from '@/components/motion'
@@ -503,17 +504,3 @@ const styles = StyleSheet.create({
 })
 
 type Answered = 'friends' | 'declined' | 'sent'
-
-/**
- * A lista como a tela a mostrou: quem sai da resposta do servidor (pedido
- * aceito, sugestão adicionada) continua até a tela abrir de novo; quem chega
- * entra no fim. Com a versão nova dos dados de quem continua.
- */
-function useKept<T extends { id: string }>(list: T[] | undefined) {
-  const [kept, setKept] = useState<T[]>([])
-  const fresh = list ?? []
-  const added = fresh.filter((item) => !kept.some((k) => k.id === item.id))
-  // Na renderização, não em efeito, como no resto do app.
-  if (added.length) setKept([...kept, ...added])
-  return kept.map((k) => fresh.find((item) => item.id === k.id) ?? k)
-}
