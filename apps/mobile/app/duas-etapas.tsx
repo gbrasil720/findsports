@@ -32,6 +32,7 @@ import {
 } from '@/components/ui'
 import { authClient, refreshSession } from '@/lib/auth-client'
 import { totpSecret } from '@/lib/settings'
+import { queryClient } from '@/lib/trpc'
 
 /*
  * Verificação em duas etapas, pela linha de Segurança das Configurações
@@ -80,6 +81,7 @@ export default function TwoFactorSetup() {
     if (enabled) {
       haptic.success()
       await refreshSession()
+      queryClient.invalidateQueries({ queryKey: ['account-sessions'] })
       return router.back()
     }
     const data = result.data as { totpURI: string; backupCodes: string[] }
@@ -105,6 +107,8 @@ export default function TwoFactorSetup() {
     }
     haptic.success()
     await refreshSession()
+    // Ligar troca a sessão: a lista de aparelhos da Conta fica velha.
+    queryClient.invalidateQueries({ queryKey: ['account-sessions'] })
     setStep('codes')
   }
 
@@ -213,14 +217,20 @@ export default function TwoFactorSetup() {
             <Text selectable style={[styles.secret, { color: FG }]}>
               {secret}
             </Text>
-            <TextLink
-              label="Copiar a chave"
-              underline
+            <Text
+              accessibilityRole="button"
+              suppressHighlighting
               onPress={async () => {
                 await Clipboard.setStringAsync(secret.replace(/\s/g, ''))
                 haptic.select()
               }}
-            />
+              style={[
+                text(14, 'Bold'),
+                { color: FG, textDecorationLine: 'underline' }
+              ]}
+            >
+              Copiar a chave
+            </Text>
           </View>
         </View>
         <Text style={[text(13, 'SemiBold'), { color: FG, marginBottom: -6 }]}>
@@ -232,6 +242,7 @@ export default function TwoFactorSetup() {
           onChange={onDigits}
           tone="theme"
           shake={boxes}
+          autoFocus={false}
         />
         {error ? (
           <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
