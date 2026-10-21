@@ -2,8 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import { type ReactNode, useEffect } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { HardShadow, initials, type Palette } from '@/components/explore'
-import { haptic } from '@/components/motion'
+import { haptic, usePressScale } from '@/components/motion'
 import { ACID, HOT, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
@@ -102,6 +103,7 @@ export function AddButton({
   busy?: boolean
   onPress: () => void
 }) {
+  const press = usePressScale(0.97)
   if (relation === 'self') return null
   if (relation === 'friends')
     return (
@@ -143,15 +145,18 @@ export function AddButton({
       accessibilityRole="button"
       disabled={busy}
       onPress={onPress}
-      style={({ pressed }) => [pressed && { transform: [{ scale: 0.97 }] }]}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
     >
-      <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
-      <View style={[styles.add, busy && { opacity: 0.6 }]}>
-        <Icon name="userplus" size={15} color={INK} accent={INK} />
-        <Text style={[text(13, 'Bold'), { color: INK }]}>
-          {relation === 'received' ? 'Aceitar' : 'Adicionar'}
-        </Text>
-      </View>
+      <Animated.View style={press.style}>
+        <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
+        <View style={[styles.add, busy && { opacity: 0.6 }]}>
+          <Icon name="userplus" size={15} color={INK} accent={INK} />
+          <Text style={[text(13, 'Bold'), { color: INK }]}>
+            {relation === 'received' ? 'Aceitar' : 'Adicionar'}
+          </Text>
+        </View>
+      </Animated.View>
     </Pressable>
   )
 }
