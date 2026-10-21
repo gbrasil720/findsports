@@ -4,6 +4,7 @@ import { achievementsRouter } from './achievements'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
 import { adminUsersRouter } from './admin-users'
+import { aiRouter } from './ai'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
@@ -31,6 +32,7 @@ export const appRouter = router({
     }
   }),
   adminBars: adminBarsRouter,
+  ai: aiRouter,
   adminEvents: adminEventsRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
