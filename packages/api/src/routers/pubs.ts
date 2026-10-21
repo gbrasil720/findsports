@@ -598,7 +598,12 @@ export const pubsRouter = router({
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
-        fan ? readGoing(events.map((game) => game.id)) : new Map(),
+        fan
+          ? readGoing(
+              events.map((game) => game.id),
+              ctx.session.user.id
+            )
+          : new Map(),
         // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
         showRating ? readReasonSummary(result.id) : null
       ])
@@ -617,7 +622,8 @@ export const pubsRouter = router({
             ...resolveEventScreen(game, publicBar.amenities),
             // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
             attendance: attendance.get(game.id) ?? null,
-            // `null`: abaixo do piso, ou conta que não é de torcedor.
+            // `null`: abaixo do piso e sem amigo indo, ou conta que não é
+            // de torcedor.
             going: going.get(game.id) ?? null
           })
         ),
