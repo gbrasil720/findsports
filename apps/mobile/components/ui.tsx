@@ -831,6 +831,7 @@ export function BlockButton({
   onPress,
   disabled,
   trailing,
+  leading,
   shadow = EDGE,
   style
 }: {
@@ -838,6 +839,8 @@ export function BlockButton({
   onPress: () => void
   disabled?: boolean
   trailing?: boolean
+  /** Ícone antes do rótulo ("Ampliar para 10 km", com o pino, 23i). */
+  leading?: keyof typeof ICONS
   shadow?: string
   style?: StyleProp<ViewStyle>
 }) {
@@ -857,6 +860,9 @@ export function BlockButton({
         <HardShadow color={shadow} x={3} y={3} radius={4} />
         <Animated.View style={[styles.block, press.style]}>
           <Animated.View key={label} entering={SWAP} style={styles.row}>
+            {leading ? (
+              <Icon name={leading} size={17} color={INK} accent={ACID} />
+            ) : null}
             <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
             {trailing ? (
               <Icon name="next" size={16} color={INK} accent={LIVE} />
