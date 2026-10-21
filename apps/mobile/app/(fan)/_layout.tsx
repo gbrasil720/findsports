@@ -6,10 +6,12 @@ import { View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { AiCoach, useCoachPending } from '@/components/ai-coach'
 import { initials, usePalette } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { usePendingInvite } from '@/components/friends'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { authClient } from '@/lib/auth-client'
+import { freshCount } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -105,6 +107,16 @@ export default function FanTabs() {
     retry: false,
     meta: { errorToast: false }
   })
+  // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
+  // ainda não existe e o aparelho sabe onde está.
+  const { device } = useExploreState()
+  const suggestions = useQuery({
+    ...trpc.recommendations.today.queryOptions({ where: device }),
+    enabled: menuOpen,
+    retry: false,
+    meta: { errorToast: false }
+  })
+  const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
 
@@ -130,6 +142,18 @@ export default function FanTabs() {
       soon: 'Meus jogos chega em breve',
       // Na pilha da própria aba: a barra fica e o menu some sozinho.
       open: () => router.navigate('/voce/meus-jogos')
+    },
+    {
+      key: 'sugestoes',
+      icon: 'sparkle',
+      label: 'Bares pra você',
+      soon: 'As sugestões chegam em breve',
+      badge: fresh ? `${fresh} ${fresh === 1 ? 'novo' : 'novos'}` : undefined,
+      // Por cima, sem a barra, como no design (23a).
+      open: () => {
+        closeMenu()
+        router.push('/bares-pra-voce')
+      }
     },
     {
       key: 'amigos',

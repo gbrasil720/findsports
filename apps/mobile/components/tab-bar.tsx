@@ -27,9 +27,19 @@ export function useTabBarSpace() {
 
 export type MenuItem = {
   key: string
-  icon: 'you' | 'medal' | 'ticket' | 'people' | 'ranking' | 'star' | 'sliders'
+  icon:
+    | 'you'
+    | 'medal'
+    | 'ticket'
+    | 'sparkle'
+    | 'people'
+    | 'ranking'
+    | 'star'
+    | 'sliders'
   label: string
   meta?: string
+  /** O selo acid do design ("5 novos"). */
+  badge?: string
   /** O aviso enquanto a tela não existe. */
   soon: string
   /** A tela, quando ela existe. */
@@ -176,7 +186,13 @@ export function YouMenu({
                 >
                   {item.label}
                 </Text>
-                {item.meta ? (
+                {item.badge ? (
+                  <View style={styles.badge}>
+                    <Text style={[text(12.5, 'Bold', 1.2), { color: INK }]}>
+                      {item.badge}
+                    </Text>
+                  </View>
+                ) : item.meta ? (
                   <Text
                     style={[
                       text(12.5, 'Regular', 1.2),
@@ -270,6 +286,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: ACID
   },
   menuItemOnLight: {
     backgroundColor: 'rgba(255,255,255,.6)',
