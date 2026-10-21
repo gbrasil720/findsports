@@ -82,7 +82,11 @@ export async function loadRecommendationCandidates(input: {
   lng: number
   radiusKm: number
   now: Date
+  /** Bares que já estão na rodada do dia (completar a rodada não os repete). */
+  excludeBarIds?: string[]
 }): Promise<RecommendationCandidate[]> {
+  // Em JSON: o `sql` do Drizzle abre um array em vários parâmetros.
+  const excluded = JSON.stringify(input.excludeBarIds ?? [])
   const sixtyDaysAgo = new Date(
     input.now.getTime() - RECOMMENDATION_QUALITY_WINDOW_DAYS * DAY_MS
   )
@@ -250,6 +254,7 @@ export async function loadRecommendationCandidates(input: {
       CROSS JOIN params p
       CROSS JOIN reset_boundary rb
       WHERE b.is_active
+        AND b.id NOT IN (SELECT jsonb_array_elements_text(${excluded}::jsonb))
         AND NOT EXISTS (
           SELECT 1 FROM user_favorite_bars favorite
           WHERE favorite.user_id = ${input.userId} AND favorite.bar_id = b.id
@@ -373,6 +378,15 @@ export async function loadRecommendationCandidates(input: {
           AND ce.bar_id = eligible.id
           AND ce.type <> 'classic_exposure'
           AND ce.occurred_at >= rb.starts_at
+        UNION ALL
+        -- "Curti" na rodada do app conta como intenção forte (23g).
+        SELECT 'high_intent' AS kind, re.occurred_at
+        FROM recommendation_event re
+        CROSS JOIN reset_boundary rb
+        WHERE re.actor_user_id = ${input.userId}
+          AND re.bar_id = eligible.id
+          AND re.type = 'favorite'
+          AND re.occurred_at >= rb.starts_at
         UNION ALL
         SELECT 'positive_rating' AS kind, r.updated_at AS occurred_at
         FROM bar_rating r
