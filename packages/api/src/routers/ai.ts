@@ -11,7 +11,13 @@ import {
   MAX_HISTORY,
   MAX_MESSAGE_CHARS
 } from '../lib/ai/chat'
-import { contextCaller, runTool, type ToolState } from '../lib/ai/chat-tools'
+import {
+  contextCaller,
+  runTool,
+  type SearchArgs,
+  type SearchBar,
+  type ToolState
+} from '../lib/ai/chat-tools'
 import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import { aiGate, runAi } from '../lib/ai/run'
@@ -45,6 +51,19 @@ const turn = z.object({
 
 type Limit = { kind: 'limit'; scope: 'day' | 'month'; resumesAt: string }
 type Unavailable = { kind: 'unavailable' }
+type Answer = {
+  kind: 'answer'
+  runId: string
+  text: string
+  bars: SearchBar[]
+  /** "Busquei por": o que a busca entendeu. */
+  chips: string[]
+  /** A busca que a tela refaz nos atalhos (oferta da casa, mais barato). */
+  search:
+    | (Omit<SearchArgs, 'cursor' | 'sort'> & { neighborhood: string | null })
+    | null
+  remainingToday: number
+}
 
 async function readGate(userId: string, now: Date) {
   const gate = await aiGate(userId, now)
@@ -73,7 +92,7 @@ async function readGate(userId: string, now: Date) {
         resumesAt: allowance.resumesAt.toISOString()
       } satisfies Limit
     }
-  return { gate, allowance }
+  return { blocked: null, gate, allowance }
 }
 
 async function ownRun(runId: string, userId: string) {
@@ -92,7 +111,7 @@ export const aiRouter = router({
   /** Se o chat abre agora e, no limite, quando volta. */
   status: fanProcedure.query(async ({ ctx }) => {
     const result = await readGate(ctx.session.user.id, new Date())
-    if ('blocked' in result) return result.blocked
+    if (result.blocked) return result.blocked
     return {
       kind: 'ready' as const,
       remainingToday: result.allowance.remainingToday,
@@ -118,11 +137,11 @@ export const aiRouter = router({
         radiusKm: z.number().int().min(1).max(50).optional()
       })
     )
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }): Promise<Answer | Limit | Unavailable> => {
       const now = new Date()
       const userId = ctx.session.user.id
       const result = await readGate(userId, now)
-      if ('blocked' in result) return result.blocked
+      if (result.blocked) return result.blocked
 
       const weights = await getAppConfig('ai.variant_weights')
       const variant = assignVariant(userId, CHAT_EXPERIMENT, weights.chat)
@@ -135,6 +154,7 @@ export const aiRouter = router({
       }
       const toolCtx = {
         caller,
+        message: input.message,
         origin: input.origin,
         radiusKm: input.radiusKm ?? ctx.session.user.searchRadiusKm ?? 3,
         now
@@ -180,7 +200,7 @@ export const aiRouter = router({
             })
           )
         return {
-          kind: 'answer' as const,
+          kind: 'answer',
           runId: outcome.runId,
           text: reply.text,
           bars: reply.bars,

@@ -85,9 +85,14 @@ export const READ_TOOLS = [
       raio_km: { type: 'integer', minimum: 1, maximum: 50 },
       cidade: {
         type: 'string',
-        description: 'Só se o torcedor pedir outra cidade.'
+        description:
+          'Nome de município (ex.: "Curitiba"), só se o torcedor disser que está em outra cidade. Bairro nunca vai aqui.'
       },
-      bairro: { type: 'string', description: 'Filtra pelo bairro do bar.' }
+      bairro: {
+        type: 'string',
+        description:
+          'Só quando o torcedor quer bar DENTRO de um bairro ("na Vila Madalena"). "Perto de X" não filtra: a busca já parte de onde ele está.'
+      }
     }
   ),
   fn(
@@ -156,6 +161,8 @@ export type ToolState = {
 
 export type ToolContext = {
   caller: Caller
+  /** A mensagem do torcedor: a cidade só muda se ele a escreveu. */
+  message: string
   origin: { lat: number; lng: number } | null
   radiusKm: number
   now: Date
@@ -215,7 +222,13 @@ async function resolveTeams(caller: Caller, names: string[]) {
 }
 
 async function searchBars(ctx: ToolContext, state: ToolState, args: Args) {
-  const origin = await originFor(ctx, str(args.cidade))
+  // Cidade que o torcedor não escreveu é palpite do modelo ("Brasília" do
+  // fuso, "Pinheiros" do bairro): a busca fica onde ele está.
+  const city = str(args.cidade)
+  const origin = await originFor(
+    ctx,
+    city && fold(ctx.message).includes(fold(city)) ? city : null
+  )
   if (!origin)
     return {
       erro: 'Sem localização. Pergunte ao torcedor a cidade ou o bairro.'
