@@ -63,6 +63,14 @@ export default function TwoFactorSetup() {
   const [pending, setPending] = useState(false)
   const input = useRef<TextInput>(null)
   const boxes = useShake()
+  // "Copiado" no lugar do link por um instante: o háptico sozinho não basta.
+  const [copied, setCopied] = useState<'key' | 'codes' | null>(null)
+  const copy = async (what: 'key' | 'codes', value: string) => {
+    await Clipboard.setStringAsync(value)
+    haptic.select()
+    setCopied(what)
+    setTimeout(() => setCopied(null), 1500)
+  }
 
   const begin = async () => {
     setError(null)
@@ -220,16 +228,13 @@ export default function TwoFactorSetup() {
             <Text
               accessibilityRole="button"
               suppressHighlighting
-              onPress={async () => {
-                await Clipboard.setStringAsync(secret.replace(/\s/g, ''))
-                haptic.select()
-              }}
+              onPress={() => copy('key', secret.replace(/\s/g, ''))}
               style={[
                 text(14, 'Bold'),
                 { color: FG, textDecorationLine: 'underline' }
               ]}
             >
-              Copiar a chave
+              {copied === 'key' ? 'Chave copiada' : 'Copiar a chave'}
             </Text>
           </View>
         </View>
@@ -273,12 +278,9 @@ export default function TwoFactorSetup() {
       </View>
       <View style={styles.actions}>
         <TextLink
-          label="Copiar"
+          label={copied === 'codes' ? 'Copiados' : 'Copiar'}
           underline
-          onPress={async () => {
-            await Clipboard.setStringAsync(codesText)
-            haptic.select()
-          }}
+          onPress={() => copy('codes', codesText)}
         />
         <TextLink
           label="Compartilhar"
