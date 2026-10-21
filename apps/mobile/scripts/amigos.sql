@@ -1,8 +1,9 @@
 -- Amigos da tela 11a do design para um torcedor: Marina e Rafael amigos,
--- pedido da Júlia, Lucas e Ana como sugestão (amigos da Marina e do Rafael),
--- Thiago para achar na busca. Marina marcou "Vou assistir aqui" no jogo mais
--- próximo do Bar do Zé (scripts/bar-do-ze.sql) e teve um código validado lá
--- no último jogo dele. Só para o banco local.
+-- pedidos da Júlia e do Pedro, Lucas e Ana como sugestão (amigos da Marina e
+-- do Rafael), Thiago para achar na busca. Marina marcou "Vou assistir aqui"
+-- no jogo mais próximo do Bar do Zé (scripts/bar-do-ze.sql) e teve código
+-- validado lá e em Casa 92 e Aspicuelta 40 (scripts/conquistas.sql, se o
+-- torcedor também tiver ido: bares em comum). Só para o banco local.
 --
 --   docker exec -i findsports_dev psql -U <usuário> -d findsports_dev \
 --     -v ON_ERROR_STOP=1 -v fan=<e-mail do torcedor> < apps/mobile/scripts/amigos.sql
@@ -19,13 +20,15 @@ values
   ('am-julia', 'Júlia Prado', 'am-julia@onside.local', true, 'fan', true, 'juliaprado', 'JP-4402', 'São Paulo', 'SP'),
   ('am-lucas', 'Lucas Andrade', 'am-lucas@onside.local', true, 'fan', true, 'lucasandrade', 'LA-5503', 'São Paulo', 'SP'),
   ('am-ana', 'Ana Luiza', 'am-ana@onside.local', true, 'fan', true, 'analuiza', 'AL-6604', 'Rio de Janeiro', 'RJ'),
-  ('am-thiago', 'Thiago Sá', 'am-thiago@onside.local', true, 'fan', true, 'thiagosa', 'TS-7705', 'São Paulo', 'SP');
+  ('am-thiago', 'Thiago Sá', 'am-thiago@onside.local', true, 'fan', true, 'thiagosa', 'TS-7705', 'São Paulo', 'SP'),
+  ('am-pedro', 'Pedro Okada', 'am-pedro@onside.local', true, 'fan', true, 'pedrookada', 'PO-8806', 'São Paulo', 'SP');
 
 insert into friendship (requester_id, addressee_id, via, created_at, accepted_at)
 select r, a, 'search', at, accepted from (values
   ('am-marina', (select id from "user" where email = :'fan'), timestamptz '2026-09-10 20:00', timestamptz '2026-09-10 21:00'),
   ((select id from "user" where email = :'fan'), 'am-rafael', timestamptz '2026-10-02 20:00', timestamptz '2026-10-02 22:00'),
   ('am-julia', (select id from "user" where email = :'fan'), now() - interval '2 hours', null),
+  ('am-pedro', (select id from "user" where email = :'fan'), now() - interval '5 hours', null),
   ('am-lucas', 'am-marina', timestamptz '2026-08-01 20:00', timestamptz '2026-08-01 20:30'),
   ('am-ana', 'am-marina', timestamptz '2026-08-02 20:00', timestamptz '2026-08-02 20:30'),
   ('am-ana', 'am-rafael', timestamptz '2026-08-03 20:00', timestamptz '2026-08-03 20:30'),
@@ -50,4 +53,20 @@ insert into reservation_code_use (id, code_id, validated_by_user_id, used_at)
 select gen_random_uuid()::text, 'am-code-marina',
   (select user_id from bar where id = 'b0b0b0b0-0000-4000-8000-000000000e01'), now()
 where exists (select 1 from reservation_code where id = 'am-code-marina');
+
+-- E nos jogos de Casa 92 e Aspicuelta 40 das conquistas, se existirem.
+insert into reservation (id, event_id, user_id, party_size, status, created_at)
+select 'am-res-marina-' || e.id, e.id, 'am-marina', 1, 'confirmed', e.starts_at - interval '1 day'
+from event e join bar b on b.id = e.bar_id
+where b.id like 'c0c0c0c0-%' and b.name in ('Casa 92', 'Aspicuelta 40');
+insert into reservation_code (id, code, reservation_id, max_uses)
+select 'am-code-' || r.event_id, 'AM' || upper(left(md5(r.event_id), 6)), r.id, 1
+from reservation r where r.id like 'am-res-marina-%';
+insert into reservation_code_use (id, code_id, validated_by_user_id, used_at)
+select gen_random_uuid()::text, c.id, b.user_id, e.starts_at + interval '20 minutes'
+from reservation_code c
+join reservation r on r.id = c.reservation_id
+join event e on e.id = r.event_id
+join bar b on b.id = e.bar_id
+where c.id like 'am-code-c0c0%';
 commit;
