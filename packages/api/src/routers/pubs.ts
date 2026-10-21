@@ -37,7 +37,7 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { readFanAttendance, readGoing } from '../lib/attendance'
+import { type Going, readFanAttendance, readGoing } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
   getCurrentPlan,
@@ -603,7 +603,7 @@ export const pubsRouter = router({
               events.map((game) => game.id),
               ctx.session.user.id
             )
-          : new Map(),
+          : new Map<string, Going>(),
         // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
         showRating ? readReasonSummary(result.id) : null
       ])

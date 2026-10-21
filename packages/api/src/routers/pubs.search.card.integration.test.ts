@@ -144,7 +144,8 @@ integrationTest(
       expect(live?.attendance).toBeNull()
       expect(live?.going).toEqual({
         count: ATTENDANCE_DISPLAY_FLOOR,
-        initials: recent
+        initials: recent,
+        friends: []
       })
     } finally {
       await db.delete(user).where(inArray(user.id, userIds))
