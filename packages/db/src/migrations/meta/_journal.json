@@ -463,6 +463,13 @@
       "when": 1792624027799,
       "tag": "0066_bar_opening_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792624073718,
+      "tag": "0067_rating_reasons",
+      "breakpoints": true
     }
   ]
 }
