@@ -53,7 +53,6 @@ import {
 } from '@/lib/avatar'
 import { searchCenter, teamMark } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
-import { memberSince } from '@/lib/profile'
 import { deviceLabel, lastSeen, preferenceSummary } from '@/lib/settings'
 import { queryClient as appQueryClient, trpc } from '@/lib/trpc'
 
@@ -778,8 +777,11 @@ function Account({ palette }: { palette: Palette }) {
             >
               {user?.name}
             </Text>
-            <Text style={[text(14), { color: palette.muted }]}>
-              {user?.createdAt ? memberSince(user.createdAt) : ''}
+            <Text
+              numberOfLines={1}
+              style={[text(14), { color: palette.muted }]}
+            >
+              {me.data ? `@${me.data.username}` : ' '}
             </Text>
           </View>
           <Text
