@@ -56,6 +56,12 @@ const COMMIT_UP = 140
 const SNAP = { duration: 400, dampingRatio: 0.8 } as const
 const OUT = { duration: 220, easing: EASE } as const
 
+/** Quanto mais longe do lugar, menos o card segue o dedo (borda macia). */
+function rubberband(offset: number, dimension: number) {
+  'worklet'
+  return (offset * dimension * 0.55) / (dimension + 0.55 * Math.abs(offset))
+}
+
 /** Onde o dedo pararia se continuasse desacelerando (curva da Apple). */
 function project(velocity: number) {
   'worklet'
@@ -393,9 +399,14 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       fade.set(withTiming(0, { duration: 160 }, done))
       return
     }
-    x.set(
-      withTiming(to, { ...OUT, duration: velocity ? 180 : OUT.duration }, done)
-    )
+    // O peteleco leva a velocidade junto: sai no tempo que o dedo levaria.
+    const duration = velocity
+      ? Math.min(
+          260,
+          Math.max(120, (Math.abs(to - x.get()) / Math.abs(velocity)) * 1000)
+        )
+      : OUT.duration
+    x.set(withTiming(to, { ...OUT, duration }, done))
   }
 
   useImperativeHandle(ref, () => ({
@@ -415,11 +426,13 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
     })
     .onUpdate((e) => {
       x.set(start.get().x + e.translationX)
-      y.set(start.get().y + e.translationY)
+      // Só "para cima" tem função (abrir o bar): o vertical resiste.
+      y.set(rubberband(start.get().y + e.translationY, CARD_H))
     })
     .onEnd((e) => {
       const px = x.get() + project(e.velocityX)
-      const py = y.get() + project(e.velocityY)
+      // A decisão olha o dedo, não o card que resiste.
+      const py = start.get().y + e.translationY + project(e.velocityY)
       if (px > COMMIT_X || px < -COMMIT_X) {
         scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Light)
         flyOut(px > 0 ? 'like' : 'pass', e.velocityX)
