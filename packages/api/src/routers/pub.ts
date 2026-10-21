@@ -610,7 +610,10 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // WEB-399: omitido herda das características do bar.
+        onBigScreen: z.boolean().optional(),
+        withSound: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -680,7 +683,9 @@ export const pubRouter = router({
             ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
             ...(input.participantFreeText && {
               participantFreeText: input.participantFreeText
-            })
+            }),
+            onBigScreen: input.onBigScreen,
+            withSound: input.withSound
           })
           .returning({ id: event.id })
 
@@ -726,7 +731,10 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // WEB-399: omitido herda das características do bar.
+        onBigScreen: z.boolean().optional(),
+        withSound: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -776,7 +784,11 @@ export const pubRouter = router({
           ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
           ...(input.participantFreeText !== undefined && {
             participantFreeText: input.participantFreeText || null
-          })
+          }),
+          ...(input.onBigScreen !== undefined && {
+            onBigScreen: input.onBigScreen
+          }),
+          ...(input.withSound !== undefined && { withSound: input.withSound })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
         if (Object.keys(changes).length > 0) {

@@ -52,6 +52,8 @@ describe('montarPaginaBusca', () => {
     next_participant_free_text: null,
     next_classic_rule_version: null,
     next_classic_rule_reason: null,
+    next_on_big_screen: true,
+    next_with_sound: null,
     next_participants: []
   }
 

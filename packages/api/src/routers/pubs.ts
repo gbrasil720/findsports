@@ -45,6 +45,7 @@ import {
   type SubscriptionStanding
 } from '../lib/current-plan'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import { resolveEventScreen } from '../lib/event-screen'
 import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
@@ -581,6 +582,8 @@ export const pubsRouter = router({
             ...game
           }) => ({
             ...game,
+            // Telão e som deste jogo, já com a herança das características.
+            ...resolveEventScreen(game, publicBar.amenities),
             // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
             attendance: attendance.get(game.id) ?? null,
             // `null`: abaixo do piso, ou conta que não é de torcedor.
