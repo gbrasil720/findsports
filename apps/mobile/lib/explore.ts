@@ -76,3 +76,49 @@ export function greeting(now = new Date()) {
   if (hour >= 12 && hour < 18) return 'Boa tarde'
   return 'Boa noite'
 }
+
+/** O primeiro nome, como a folha e os avisos chamam um amigo. */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
+
+/**
+ * "34 pessoas vão, entre elas Marina e Rafael" (3d do design, WEB-404). O
+ * servidor só manda amigos que deixam ser vistos (`readGoing`); abaixo do piso
+ * não há contagem, só os amigos ("Marina e Rafael vão"). `faces` são as
+ * letras da pilha, amigos primeiro; `more` é o "+32".
+ */
+export function goingSummary(going: {
+  count: number | null
+  initials: string[]
+  friends: { name: string }[]
+}) {
+  const names = going.friends.map((friend) => firstName(friend.name))
+  const listed = names.length > 3 ? names.slice(0, 2) : names
+  const extra = names.length - listed.length
+  const list = [
+    ...listed,
+    ...(extra ? [`mais ${extra} ${extra === 1 ? 'amigo' : 'amigos'}`] : [])
+  ]
+  const joined =
+    list.length > 1
+      ? `${list.slice(0, -1).join(', ')} e ${list.at(-1)}`
+      : list[0]
+  const faces = [
+    ...names.map((name) => name[0]?.toLocaleUpperCase('pt-BR') ?? ''),
+    ...going.initials
+  ]
+    .filter(Boolean)
+    .slice(0, 2)
+  if (going.count === null)
+    return {
+      faces,
+      more: Math.max(names.length - faces.length, 0),
+      lead: `${joined} ${names.length === 1 ? 'vai' : 'vão'}`,
+      tail: ''
+    }
+  return {
+    faces,
+    more: Math.max(going.count - faces.length, 0),
+    lead: `${going.count.toLocaleString('pt-BR')} ${going.count === 1 ? 'pessoa vai' : 'pessoas vão'}`,
+    tail: joined ? `, entre elas ${joined}` : ''
+  }
+}
