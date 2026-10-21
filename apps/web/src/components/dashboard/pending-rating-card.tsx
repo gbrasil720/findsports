@@ -1,3 +1,7 @@
+import {
+  RATING_REASONS,
+  type RatingReasonId
+} from '@findsports_oficial/api/lib/rating-reasons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
@@ -53,6 +57,13 @@ export function PendingRatingCard({ pending, first }: Props) {
   const [front, setFront] = useState<string | null>(first ?? null)
   const open = pending.filter(({ eventId }) => !skipped.includes(eventId))
   const item = open.find(({ eventId }) => eventId === front) ?? open[0]
+  // "O que pesou?" (WEB-398), opcional; vale só para a pergunta na tela.
+  const [picked, setPicked] = useState<{
+    eventId: string
+    reasons: RatingReasonId[]
+  } | null>(null)
+  const reasons =
+    picked && picked.eventId === item?.eventId ? picked.reasons : []
 
   const refresh = () =>
     queryClient.invalidateQueries({
@@ -90,7 +101,19 @@ export function PendingRatingCard({ pending, first }: Props) {
   if (!item) return null
 
   const answer = (wouldReturn: boolean) =>
-    submit.mutate({ barId: item.barId, eventId: item.eventId, wouldReturn })
+    submit.mutate({
+      barId: item.barId,
+      eventId: item.eventId,
+      wouldReturn,
+      reasons
+    })
+  const toggleReason = (id: RatingReasonId) =>
+    setPicked({
+      eventId: item.eventId,
+      reasons: reasons.includes(id)
+        ? reasons.filter((reason) => reason !== id)
+        : [...reasons, id]
+    })
 
   return (
     <section
@@ -108,6 +131,36 @@ export function PendingRatingCard({ pending, first }: Props) {
         {getGameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
         {item.neighborhood}
       </p>
+
+      <fieldset className="mt-4">
+        <legend className="mb-2 font-semibold text-sm">
+          O que pesou?{' '}
+          <span className="font-normal text-[var(--onside-muted)]">
+            opcional
+          </span>
+        </legend>
+        <div className="flex flex-wrap gap-1.5">
+          {RATING_REASONS.map((reason) => {
+            const on = reasons.includes(reason.id)
+            return (
+              <button
+                key={reason.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleReason(reason.id)}
+                disabled={isPending}
+                className={`min-h-9 border px-3 font-semibold text-[13px] transition-colors ${
+                  on
+                    ? 'border-[var(--onside-ink)] bg-[var(--onside-ink)] text-[var(--onside-paper)]'
+                    : 'border-[var(--onside-line)] text-[var(--onside-ink)] hover:border-[var(--onside-ink)]'
+                }`}
+              >
+                {reason.label}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <button

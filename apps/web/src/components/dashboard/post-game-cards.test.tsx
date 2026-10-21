@@ -183,8 +183,39 @@ test('desfazer devolve o jogo daquele aviso, não o que está na tela', async ()
     input: { barId: 'bar-jogo-a', eventId: 'jogo-a' }
   })
   expect(title()).toBe('Voltaria pra ver jogo no Bar A?')
-  expect(buttons()).toEqual(['Voltaria', 'Não voltaria', 'Pular'])
+  expect(buttons()).toEqual([
+    'Som do jogo',
+    'Telão',
+    'Atendimento',
+    'Preço',
+    'Lotado',
+    'Comida',
+    'Voltaria',
+    'Não voltaria',
+    'Pular'
+  ])
   expect(toasts.at(-1)?.message).toBe('Resposta desfeita.')
+})
+
+// WEB-398
+test('"O que pesou?" vai junto da resposta e não passa para o jogo seguinte', async () => {
+  await render('ratings')
+  await click('Telão')
+  await click('Lotado')
+  await click('Telão')
+  await click('Não voltaria')
+  expect(calls.at(-1)).toEqual({
+    path: 'ratings.submit',
+    input: {
+      barId: 'bar-jogo-a',
+      eventId: 'jogo-a',
+      wouldReturn: false,
+      reasons: ['crowded']
+    }
+  })
+  expect(title()).toBe('Voltaria pra ver jogo no Bar B?')
+  await click('Voltaria')
+  expect(calls.at(-1)).toMatchObject({ input: { reasons: [] } })
 })
 
 test('a pergunta desfeita volta na frente das que ainda estão abertas', async () => {
