@@ -77,8 +77,15 @@ export function greeting(now = new Date()) {
   return 'Boa noite'
 }
 
-/** O primeiro nome, como a folha e os avisos chamam um amigo. */
-export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
+/**
+ * O primeiro nome, como a folha e os avisos chamam um amigo: a primeira
+ * palavra com letra ("🦁 Leo" vira "Leo").
+ */
+export const firstName = (name: string) =>
+  name
+    .trim()
+    .split(/\s+/)
+    .find((word) => /\p{L}/u.test(word)) ?? name.trim()
 
 /**
  * "34 pessoas vão, entre elas Marina e Rafael" (3d do design, WEB-404). O
@@ -103,7 +110,9 @@ export function goingSummary(going: {
       ? `${list.slice(0, -1).join(', ')} e ${list.at(-1)}`
       : list[0]
   const faces = [
-    ...names.map((name) => name[0]?.toLocaleUpperCase('pt-BR') ?? ''),
+    ...names.map((name) =>
+      (Array.from(name)[0] ?? '').toLocaleUpperCase('pt-BR')
+    ),
     ...going.initials
   ]
     .filter(Boolean)

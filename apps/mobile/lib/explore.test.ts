@@ -89,4 +89,8 @@ test('quem vai: contagem, amigos pelo primeiro nome e a pilha', () => {
       friends: friends('Ana', 'Bia', 'Caio')
     }).tail
   ).toBe(', entre elas Ana, Bia e Caio')
+  // Nome que começa com emoji: o primeiro nome é a primeira palavra com letra.
+  expect(
+    goingSummary({ count: null, initials: [], friends: friends('🦁 Leo Dias') })
+  ).toMatchObject({ faces: ['L'], lead: 'Leo vai' })
 })
