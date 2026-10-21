@@ -14,6 +14,10 @@ import { trpc } from '@/lib/trpc'
  */
 
 export type Relation = 'self' | 'friends' | 'sent' | 'received' | 'none'
+
+/** A sombra dos cartões de destaque do design (`sh(t, 'hero')`): acid. */
+export const heroShadow = (palette: Palette) =>
+  palette.dark ? 'rgba(201,241,53,.22)' : ACID
 export type Via = 'search' | 'code' | 'link' | 'contacts' | 'suggestion'
 
 // As cores do quadrinho com iniciais, como as pessoas do design: algumas em
@@ -162,6 +166,7 @@ export function PersonRow({
   size = 40,
   right,
   highlight,
+  big,
   onPress
 }: {
   id: string
@@ -169,6 +174,8 @@ export function PersonRow({
   sub: string | null
   /** O trecho digitado na busca, em destaque no nome (11b). */
   highlight?: string
+  /** A linha da busca (11b): nome em 15 e a de baixo em até duas linhas. */
+  big?: boolean
   palette: Palette
   first?: boolean
   size?: number
@@ -182,6 +189,7 @@ export function PersonRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
+        big && { gap: 12 },
         !first && { borderTopWidth: 1, borderTopColor: palette.line },
         pressed && { opacity: 0.7 }
       ]}
@@ -189,7 +197,7 @@ export function PersonRow({
       <Avatar id={id} name={name} size={size} palette={palette} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
+          style={[text(big ? 15 : 14.5, 'Bold', 1.25), { color: palette.ink }]}
           numberOfLines={1}
         >
           <Marked name={name} part={highlight} />
@@ -197,7 +205,7 @@ export function PersonRow({
         {sub ? (
           <Text
             style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
-            numberOfLines={1}
+            numberOfLines={big ? 2 : 1}
           >
             {sub}
           </Text>

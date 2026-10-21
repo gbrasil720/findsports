@@ -16,6 +16,7 @@ import { Card, FilterChip } from '@/components/card'
 import { usePalette } from '@/components/explore'
 import {
   AddButton,
+  heroShadow,
   PersonRow,
   personLine,
   useFriendActions
@@ -60,11 +61,17 @@ export default function FriendSearch() {
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
           tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-          style={[
-            styles.field,
-            { borderColor: palette.dark ? '#c9f135' : INK }
-          ]}
+          style={styles.field}
         >
+          {/* A borda numa camada por cima: no vidro, o iOS a tinge e o acid
+              do design sai apagado. */}
+          <View
+            pointerEvents="none"
+            style={[
+              styles.ring,
+              { borderColor: palette.dark ? '#c9f135' : INK }
+            ]}
+          />
           <Icon name="search" size={18} color={palette.ink} />
           <TextInput
             autoFocus
@@ -142,6 +149,7 @@ export default function FriendSearch() {
                 name={person.name}
                 sub={personLine(person)}
                 highlight={deferred.replace(/^@/, '')}
+                big
                 size={42}
                 palette={palette}
                 first={index === 0}
@@ -170,7 +178,7 @@ export default function FriendSearch() {
             Share.share({ message: inviteMessage(me.data.friendCode) })
           }}
         >
-          <Card palette={palette} shadow={palette.dark ? '#000' : INK}>
+          <Card palette={palette} shadow={heroShadow(palette)}>
             <View style={styles.invite}>
               <Icon name="link" size={26} color={palette.ink} accent={HOT} />
               <View style={{ flex: 1 }}>
@@ -208,12 +216,20 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderRadius: 24,
-    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingLeft: 16,
     paddingRight: 8
+  },
+  ring: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 24,
+    borderWidth: 1.5
   },
   input: { flex: 1, height: 46 },
   clear: {
