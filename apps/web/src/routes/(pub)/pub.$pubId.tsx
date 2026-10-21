@@ -22,6 +22,7 @@ import { BarLocationBlock } from '@/components/pub/bar-location-block'
 import { EventsList } from '@/components/pub/events-list'
 import { HeroEventCard } from '@/components/pub/hero-event-card'
 import { HouseOfferSection } from '@/components/pub/house-offer-section'
+import { OpeningHoursSection } from '@/components/pub/opening-hours-section'
 import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
 import { buildBarFacts } from '@/domain/bar-facts'
 import { getOffAirBar } from '@/domain/my-games'
@@ -501,6 +502,11 @@ function PubPage() {
                 plan={normalizedPub.plan}
                 directionsUrl={directionsUrl}
                 onDirections={handleOpenDirections}
+              />
+
+              <OpeningHoursSection
+                openingHours={normalizedPub.openingHours}
+                openNow={normalizedPub.openNow}
               />
 
               <EventsList
