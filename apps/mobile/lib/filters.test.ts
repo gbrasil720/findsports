@@ -42,8 +42,14 @@ describe('filtros e atalhos (19d, 19e)', () => {
     ])
     expect(applyShortcut('raio:2', NO_FILTERS, SPORTS, NOW).radius).toBe(2)
     expect(
-      activeCount({ date: 'x', sportId: 's1', amenities: [1, 4], radius: 2 })
-    ).toBe(5)
+      activeCount({
+        date: 'x',
+        sportId: 's1',
+        amenities: [1, 4],
+        radius: 2,
+        gamesOnly: true
+      })
+    ).toBe(6)
   })
 
   test('fileira: até cinco, sem repetir, e reordena', () => {

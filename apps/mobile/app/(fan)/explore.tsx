@@ -144,11 +144,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     : found
   // Com poucos bares com jogo, a lista se completa com bares perto sem jogo
   // marcado, para não terminar vazia (decisão do dono em 21/10/2026). Só no
-  // fim da busca e fora do "Ao vivo"; no mapa continuam só os com jogo.
+  // fim da busca, fora do "Ao vivo" e sem "Só bares com jogo publicado".
   const few =
     !!search.data &&
     !search.data.nextCursor &&
     !liveOnly &&
+    !filters.gamesOnly &&
     found.length < FEW_BARS
   const nearby = useQuery({
     ...trpc.pubs.nearbyWithoutGames.queryOptions({

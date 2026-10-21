@@ -14,13 +14,19 @@ export type Filters = {
   amenities: number[]
   /** `null` usa o raio do perfil. */
   radius: number | null
+  /**
+   * "Só bares com jogo publicado" (19d): tira da lista e do mapa os bares sem
+   * jogo que completam o Explorar quando há poucos com jogo.
+   */
+  gamesOnly: boolean
 }
 
 export const NO_FILTERS: Filters = {
   date: null,
   sportId: null,
   amenities: [],
-  radius: null
+  radius: null,
+  gamesOnly: false
 }
 
 /** "2026-10-20": o dia de Brasília de `now` mais `plus` dias. */
@@ -32,7 +38,8 @@ export const activeCount = (f: Filters) =>
   (f.date ? 1 : 0) +
   (f.sportId ? 1 : 0) +
   f.amenities.length +
-  (f.radius ? 1 : 0)
+  (f.radius ? 1 : 0) +
+  (f.gamesOnly ? 1 : 0)
 
 export const toggleAmenity = (f: Filters, id: number): Filters => ({
   ...f,

@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   useWindowDimensions,
   View
@@ -43,9 +44,11 @@ import { trpc } from '@/lib/trpc'
  * Todos os filtros (19d do design): folha sobre o Explorar. Mexe num rascunho
  * dos filtros e da fileira de atalhos; "Ver N bares" aplica, "Cancelar"
  * descarta. O alfinete de cada filtro fixa ou tira o filtro do topo do mapa.
- * "Só bares com jogo publicado" do design não entrou: a busca já só traz bar
- * com jogo. "Pagamento" é um chip só porque o cadastro do bar tem "Pix e
- * cartão" juntos.
+ * "Só bares com jogo publicado" esconde os bares sem jogo que completam o
+ * Explorar; desligado por padrão, ao contrário do design, que o desenha
+ * ligado, porque mostrar esses bares foi decisão do dono (21/10/2026).
+ * "Pagamento" é um chip só porque o cadastro do bar tem "Pix e cartão"
+ * juntos.
  */
 
 export default function FiltersSheet() {
@@ -516,6 +519,37 @@ export default function FiltersSheet() {
             </Pressable>
           </View>
         </Section>
+
+        <View
+          style={[
+            styles.gamesOnly,
+            { backgroundColor: palette.card, borderColor: palette.ring }
+          ]}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}>
+              Só bares com jogo publicado
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+            >
+              Esconde quem ainda não montou a agenda
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel="Só bares com jogo publicado"
+            value={draft.gamesOnly}
+            onValueChange={(gamesOnly) => {
+              haptic.select()
+              setDraft({ ...draft, gamesOnly })
+            }}
+            trackColor={{
+              false: palette.line,
+              true: palette.dark ? ACID : INK
+            }}
+            ios_backgroundColor={palette.line}
+          />
+        </View>
       </ScrollView>
 
       {/* A cápsula de vidro do rodapé, como a da folha "Vou assistir aqui". */}
@@ -767,6 +801,15 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  gamesOnly: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 7,
+    borderWidth: 1
   },
   pay: {
     height: 34,
