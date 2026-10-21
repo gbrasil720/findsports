@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow, initials, type Palette } from '@/components/explore'
@@ -369,4 +369,18 @@ export function usePendingInvite() {
       )
     })
   }, [])
+}
+
+/**
+ * A lista como a tela a mostrou: quem sai da resposta do servidor (pedido
+ * aceito, sugestão adicionada) continua até a tela abrir de novo; quem chega
+ * entra no fim. Com a versão nova dos dados de quem continua.
+ */
+export function useKept<T extends { id: string }>(list: T[] | undefined) {
+  const [kept, setKept] = useState<T[]>([])
+  const fresh = list ?? []
+  const added = fresh.filter((item) => !kept.some((k) => k.id === item.id))
+  // Na renderização, não em efeito, como no resto do app.
+  if (added.length) setKept([...kept, ...added])
+  return kept.map((k) => fresh.find((item) => item.id === k.id) ?? k)
 }
