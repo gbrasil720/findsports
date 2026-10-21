@@ -1,7 +1,8 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   bigint,
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -10,38 +11,66 @@ import {
   timestamp
 } from 'drizzle-orm/pg-core'
 
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').default(false).notNull(),
-  image: text('image'),
-  // Cliente no Stripe. Nome e escrita são do plugin `@better-auth/stripe`.
-  stripeCustomerId: text('stripe_customer_id').unique(),
-  role: text('role', { enum: ['fan', 'pub', 'admin'] })
-    .notNull()
-    .default('fan'),
-  onboardingCompleted: boolean('onboarding_completed').default(false).notNull(),
-  searchRadiusKm: integer('search_radius_km').default(3).notNull(),
-  // WEB-319: cidade que o torcedor informou e a sede dela, centro da busca
-  // quando o navegador não dá a localização. Anuláveis: conta anterior ao
-  // campo não tem cidade. Ficam fora dos `additionalFields` do better-auth de
-  // propósito — quem lê e grava é o tRPC (`pubs.getMyCity`), não a sessão.
-  searchCityName: text('search_city_name'),
-  searchCityUf: text('search_city_uf'),
-  searchCityLat: doublePrecision('search_city_lat'),
-  searchCityLng: doublePrecision('search_city_lng'),
-  twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
-  // better-auth admin plugin fields
-  banned: boolean('banned').default(false),
-  banReason: text('ban_reason'),
-  banExpires: timestamp('ban_expires'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull()
-})
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('email_verified').default(false).notNull(),
+    image: text('image'),
+    // Cliente no Stripe. Nome e escrita são do plugin `@better-auth/stripe`.
+    stripeCustomerId: text('stripe_customer_id').unique(),
+    role: text('role', { enum: ['fan', 'pub', 'admin'] })
+      .notNull()
+      .default('fan'),
+    onboardingCompleted: boolean('onboarding_completed')
+      .default(false)
+      .notNull(),
+    searchRadiusKm: integer('search_radius_km').default(3).notNull(),
+    // WEB-319: cidade que o torcedor informou e a sede dela, centro da busca
+    // quando o navegador não dá a localização. Anuláveis: conta anterior ao
+    // campo não tem cidade. Ficam fora dos `additionalFields` do better-auth de
+    // propósito — quem lê e grava é o tRPC (`pubs.getMyCity`), não a sessão.
+    searchCityName: text('search_city_name'),
+    searchCityUf: text('search_city_uf'),
+    searchCityLat: doublePrecision('search_city_lat'),
+    searchCityLng: doublePrecision('search_city_lng'),
+    twoFactorEnabled: boolean('two_factor_enabled').default(false).notNull(),
+    // Amigos (S1 do design do app, 21/10/2026). `@usuário` e código de amigo
+    // ("GB-4821", o do QR) nascem no primeiro uso dos amigos
+    // (`ensureSocialIdentity`, `packages/api/src/lib/friends.ts`); conta que
+    // nunca abriu os amigos fica sem. Fora dos `additionalFields` do better-auth:
+    // quem lê e grava é o tRPC.
+    username: text('username').unique(),
+    friendCode: text('friend_code').unique(),
+    // Privacidade (11i): quem vê os bares validados e os jogos marcados, e quem
+    // pode mandar pedido de amizade.
+    activityVisibility: text('activity_visibility', {
+      enum: ['everyone', 'friends', 'nobody']
+    })
+      .default('friends')
+      .notNull(),
+    friendRequestsFrom: text('friend_requests_from', {
+      enum: ['everyone', 'friends_of_friends', 'nobody']
+    })
+      .default('everyone')
+      .notNull(),
+    // better-auth admin plugin fields
+    banned: boolean('banned').default(false),
+    banReason: text('ban_reason'),
+    banExpires: timestamp('ban_expires'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull()
+  },
+  (table) => [
+    // Gravado já em minúsculas: a unicidade vale sem olhar a caixa.
+    check('user_username_format', sql`${table.username} ~ '^[a-z0-9._]{3,20}$'`)
+  ]
+)
 
 /**
  * Estado que o plugin `@better-auth/stripe` guarda da assinatura no Stripe

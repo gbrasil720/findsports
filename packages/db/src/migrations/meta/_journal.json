@@ -442,6 +442,13 @@
       "when": 1792453647981,
       "tag": "0063_codes_confirmed_later",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792596246554,
+      "tag": "0064_friends",
+      "breakpoints": true
     }
   ]
 }
