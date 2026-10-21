@@ -131,6 +131,7 @@ export default function Layout() {
               <Stack.Screen name="senha" />
               {/* Amigos (S1): busca em tela cheia como a do mapa; código,
                 contatos e o perfil de amigo empilham com voltar. */}
+              <Stack.Screen name="amigos" />
               <Stack.Screen
                 name="amigos-busca"
                 options={{ presentation: 'fullScreenModal', animation: 'fade' }}

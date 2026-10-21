@@ -16,15 +16,16 @@ import { type Palette, usePalette } from '@/components/explore'
 import {
   AddButton,
   Avatar,
+  heroShadow,
   PersonRow,
   personLine,
   useFriendActions
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
+  BackButton,
   Icon,
   INK,
   LIVE,
@@ -39,14 +40,14 @@ import { trpc } from '@/lib/trpc'
 
 /**
  * Amigos (11a do design): busca, os três jeitos de adicionar, pedidos
- * recebidos, sugestões de amigos de amigos e a lista. Fica na pilha da aba
- * "Você", como Meus jogos: sem voltar, o menu é o caminho.
+ * recebidos, sugestões de amigos de amigos e a lista. Empilhada sem a barra
+ * de abas, com voltar, como no design (lá ela abre pelo Ranking, 11e; aqui,
+ * pelo menu "Você").
  */
 export default function Friends() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
-  const tabBar = useTabBarSpace()
   useStatusBar('auto')
   const me = useQuery(trpc.friends.me.queryOptions())
   const overview = useQuery(trpc.friends.overview.queryOptions())
@@ -69,11 +70,14 @@ export default function Friends() {
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
-        <Title lines={[['Amigos']]} size={40} color={palette.ink} />
+        <View style={styles.head}>
+          <BackButton />
+          <Title lines={[['Amigos']]} size={36} color={palette.ink} />
+        </View>
 
         <Pressable
           accessibilityRole="search"
@@ -142,7 +146,9 @@ export default function Friends() {
                         sub={
                           person.via === 'link'
                             ? 'Pelo seu link'
-                            : personLine(person)
+                            : person.mutual
+                              ? `${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`
+                              : personLine(person)
                         }
                         palette={palette}
                         first={index === 0}
@@ -295,7 +301,7 @@ function Action({
     >
       <Card
         palette={palette}
-        shadow={hero ? (palette.dark ? '#000' : INK) : undefined}
+        shadow={hero ? heroShadow(palette) : undefined}
         style={{ flex: 1 }}
       >
         <View style={styles.action}>
@@ -419,6 +425,7 @@ function Suggestion({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 13 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   search: {
     height: 48,
     borderRadius: 24,
@@ -441,7 +448,8 @@ const styles = StyleSheet.create({
   },
   bleed: { marginHorizontal: -16, flexGrow: 0 },
   suggestions: { gap: 10, paddingHorizontal: 16, paddingBottom: 6 },
-  suggestion: { width: 142, padding: 12, gap: 8, alignItems: 'flex-start' },
+  // 142 de conteúdo mais o padding, como o `width:142px;padding:12px` do design.
+  suggestion: { width: 166, padding: 12, gap: 8, alignItems: 'flex-start' },
   why: { minHeight: 30 },
   empty: { alignItems: 'center', gap: 14, paddingVertical: 32 }
 })

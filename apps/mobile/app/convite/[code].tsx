@@ -41,7 +41,7 @@ export default function Invite() {
           haptic.success()
           router.replace(`/amigo/${inviterId}?via=link` as Href)
         },
-        onError: () => router.replace('/voce/amigos' as Href)
+        onError: () => router.replace('/amigos')
       }
     )
   }, [session.isPending, ready, code])

@@ -149,7 +149,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     title: 'S1 Amigos',
     items: [
       // Com a turma de `scripts/amigos.sql` para o torcedor logado.
-      { code: '11a', label: 'Amigos', href: '/voce/amigos' },
+      { code: '11a', label: 'Amigos', href: '/amigos' },
       { code: '11b', label: 'Buscar', href: '/amigos-busca' },
       { code: '11c', label: 'Meu código', href: '/meu-codigo' },
       { code: '11d', label: 'Perfil de amigo', href: '/amigo/am-marina' },
