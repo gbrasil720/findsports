@@ -8,6 +8,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -125,6 +126,14 @@ export const bar = pgTable(
     // `event.reservation_cap` sobrescreve por jogo; a regra vive em
     // `packages/api/src/lib/reservation-intake.ts`.
     reservationCap: smallint('reservation_cap'),
+    // Horário de funcionamento (WEB-397): sete faixas, a 0 no domingo, no
+    // relógio de Brasília; dia nulo é fechado e a coluna nula é "não
+    // informado". Validação e "aberto agora" em
+    // `packages/api/src/lib/opening-hours.ts`.
+    openingHours:
+      jsonb('opening_hours').$type<
+        ({ opens: string; closes: string } | null)[]
+      >(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui.
