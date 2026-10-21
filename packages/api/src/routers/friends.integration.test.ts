@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto'
 import { expect, test } from 'bun:test'
+import { createHash } from 'node:crypto'
 import { eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
@@ -85,7 +85,9 @@ integrationTest('amizade de ponta a ponta', async () => {
     expect(byAt[0]?.id).toBe(beto.id)
 
     // Código: Eva acha a Ana pelo código.
-    const byCode = await as(eva).byCode({ code: anaMe.friendCode.toLowerCase() })
+    const byCode = await as(eva).byCode({
+      code: anaMe.friendCode.toLowerCase()
+    })
     expect(byCode?.id).toBe(ana.id)
     expect(byCode?.relation).toBe('none')
 
