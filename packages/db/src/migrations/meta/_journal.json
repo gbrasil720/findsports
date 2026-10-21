@@ -456,6 +456,13 @@
       "when": 1792623781686,
       "tag": "0065_event_screen_sound",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792624027799,
+      "tag": "0066_bar_opening_hours",
+      "breakpoints": true
     }
   ]
 }
