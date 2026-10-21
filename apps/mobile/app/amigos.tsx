@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -10,6 +11,7 @@ import {
   Text,
   View
 } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { type Palette, usePalette } from '@/components/explore'
@@ -22,7 +24,7 @@ import {
   useFriendActions
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
-import { haptic, ScalePress } from '@/components/motion'
+import { haptic, ScalePress, SWAP, usePressScale } from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -56,6 +58,14 @@ export default function Friends() {
     Promise.all([me.refetch(), overview.refetch()])
   )
   const data = overview.data
+  // Respondido aqui fica na tela até ela abrir de novo, com o botão trocado
+  // ("Amigos", "Recusado", "Pedido enviado"): tirar a linha fazia o card e o
+  // resto da tela pularem.
+  const [answered, setAnswered] = useState<Record<string, Answered>>({})
+  const answer = (id: string, value: Answered) =>
+    setAnswered((all) => ({ ...all, [id]: value }))
+  const requests = useKept(data?.requests)
+  const suggestions = useKept(data?.suggestions)
   const month = monthName()
   const open = (id: string) => router.push(`/amigo/${id}` as Href)
 
@@ -131,14 +141,12 @@ export default function Friends() {
           </View>
         ) : (
           <>
-            {data.requests.length ? (
+            {requests.length ? (
               <>
-                <Label palette={palette}>
-                  Pedidos · {data.requests.length}
-                </Label>
+                <Label palette={palette}>Pedidos · {requests.length}</Label>
                 <Card palette={palette} shadow={palette.liveShadow}>
                   <View style={styles.inCard}>
-                    {data.requests.map((person, index) => (
+                    {requests.map((person, index) => (
                       <PersonRow
                         key={person.id}
                         id={person.id}
@@ -154,31 +162,58 @@ export default function Friends() {
                         first={index === 0}
                         onPress={() => open(person.id)}
                         right={
-                          <View style={styles.answer}>
-                            <Answer
-                              palette={palette}
-                              label={`Recusar ${person.name}`}
-                              disabled={actions.busy}
-                              onPress={() =>
-                                actions.respond.mutate({
-                                  userId: person.id,
-                                  accept: false
-                                })
-                              }
-                            />
-                            <Answer
-                              palette={palette}
-                              accept
-                              label={`Aceitar ${person.name}`}
-                              disabled={actions.busy}
-                              onPress={() =>
-                                actions.respond.mutate({
-                                  userId: person.id,
-                                  accept: true
-                                })
-                              }
-                            />
-                          </View>
+                          answered[person.id] ? (
+                            <Animated.View entering={SWAP}>
+                              {answered[person.id] === 'declined' ? (
+                                <Text
+                                  style={[
+                                    text(13, 'Bold'),
+                                    { color: palette.muted }
+                                  ]}
+                                >
+                                  Recusado
+                                </Text>
+                              ) : (
+                                <AddButton
+                                  relation="friends"
+                                  palette={palette}
+                                  onPress={() => {}}
+                                />
+                              )}
+                            </Animated.View>
+                          ) : (
+                            <View style={styles.answer}>
+                              <Answer
+                                palette={palette}
+                                label={`Recusar ${person.name}`}
+                                disabled={actions.busy}
+                                onPress={() =>
+                                  actions.respond.mutate(
+                                    { userId: person.id, accept: false },
+                                    {
+                                      onSuccess: () =>
+                                        answer(person.id, 'declined')
+                                    }
+                                  )
+                                }
+                              />
+                              <Answer
+                                palette={palette}
+                                accept
+                                label={`Aceitar ${person.name}`}
+                                disabled={actions.busy}
+                                onPress={() =>
+                                  actions.respond.mutate(
+                                    { userId: person.id, accept: true },
+                                    {
+                                      onSuccess: () =>
+                                        answer(person.id, 'friends')
+                                    }
+                                  )
+                                }
+                              />
+                            </View>
+                          )
                         }
                       />
                     ))}
@@ -187,7 +222,7 @@ export default function Friends() {
               </>
             ) : null}
 
-            {data.suggestions.length ? (
+            {suggestions.length ? (
               <>
                 <Label palette={palette}>Talvez você conheça</Label>
                 <ScrollView
@@ -196,18 +231,19 @@ export default function Friends() {
                   style={styles.bleed}
                   contentContainerStyle={styles.suggestions}
                 >
-                  {data.suggestions.map((person) => (
+                  {suggestions.map((person) => (
                     <Suggestion
                       key={person.id}
                       palette={palette}
                       person={person}
+                      sent={answered[person.id] === 'sent'}
                       busy={actions.busy}
                       onOpen={() => open(person.id)}
                       onAdd={() =>
-                        actions.request.mutate({
-                          userId: person.id,
-                          via: 'suggestion'
-                        })
+                        actions.request.mutate(
+                          { userId: person.id, via: 'suggestion' },
+                          { onSuccess: () => answer(person.id, 'sent') }
+                        )
                       }
                     />
                   ))}
@@ -334,35 +370,43 @@ function Answer({
   disabled?: boolean
   onPress: () => void
 }) {
+  const press = usePressScale(0.94)
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.answerButton,
-        accept
-          ? {
-              backgroundColor: ACID,
-              shadowColor: palette.dark ? '#000' : INK,
-              shadowOffset: { width: 3, height: 3 },
-              shadowOpacity: 1,
-              shadowRadius: 0
-            }
-          : {
-              borderWidth: 1,
-              borderColor: palette.dark ? 'rgba(241,238,230,.22)' : palette.line
-            },
-        pressed && { transform: [{ scale: 0.94 }] }
-      ]}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
     >
-      <Icon
-        name={accept ? 'check' : 'close'}
-        size={16}
-        color={accept ? INK : palette.ink}
-        accent={accept ? INK : LIVE}
-      />
+      <Animated.View
+        style={[
+          styles.answerButton,
+          accept
+            ? {
+                backgroundColor: ACID,
+                shadowColor: palette.dark ? '#000' : INK,
+                shadowOffset: { width: 3, height: 3 },
+                shadowOpacity: 1,
+                shadowRadius: 0
+              }
+            : {
+                borderWidth: 1,
+                borderColor: palette.dark
+                  ? 'rgba(241,238,230,.22)'
+                  : palette.line
+              },
+          press.style
+        ]}
+      >
+        <Icon
+          name={accept ? 'check' : 'close'}
+          size={16}
+          color={accept ? INK : palette.ink}
+          accent={accept ? INK : LIVE}
+        />
+      </Animated.View>
     </Pressable>
   )
 }
@@ -371,18 +415,20 @@ function Answer({
 function Suggestion({
   palette,
   person,
+  sent,
   busy,
   onOpen,
   onAdd
 }: {
   palette: Palette
   person: { id: string; name: string; mutual: number }
+  sent: boolean
   busy: boolean
   onOpen: () => void
   onAdd: () => void
 }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onOpen}>
+    <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
       <Card palette={palette}>
         <View style={styles.suggestion}>
           <Avatar
@@ -410,15 +456,17 @@ function Suggestion({
               comum
             </Text>
           </View>
-          <AddButton
-            relation="none"
-            palette={palette}
-            busy={busy}
-            onPress={onAdd}
-          />
+          <Animated.View key={String(sent)} entering={SWAP}>
+            <AddButton
+              relation={sent ? 'sent' : 'none'}
+              palette={palette}
+              busy={busy || sent}
+              onPress={onAdd}
+            />
+          </Animated.View>
         </View>
       </Card>
-    </Pressable>
+    </ScalePress>
   )
 }
 
@@ -453,3 +501,19 @@ const styles = StyleSheet.create({
   why: { minHeight: 30 },
   empty: { alignItems: 'center', gap: 14, paddingVertical: 32 }
 })
+
+type Answered = 'friends' | 'declined' | 'sent'
+
+/**
+ * A lista como a tela a mostrou: quem sai da resposta do servidor (pedido
+ * aceito, sugestão adicionada) continua até a tela abrir de novo; quem chega
+ * entra no fim. Com a versão nova dos dados de quem continua.
+ */
+function useKept<T extends { id: string }>(list: T[] | undefined) {
+  const [kept, setKept] = useState<T[]>([])
+  const fresh = list ?? []
+  const added = fresh.filter((item) => !kept.some((k) => k.id === item.id))
+  // Na renderização, não em efeito, como no resto do app.
+  if (added.length) setKept([...kept, ...added])
+  return kept.map((k) => fresh.find((item) => item.id === k.id) ?? k)
+}
