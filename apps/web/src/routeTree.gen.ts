@@ -27,6 +27,7 @@ import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-emai
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
 import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
@@ -142,6 +143,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
 const AdminValidateRoute = AdminValidateRouteImport.update({
   id: '/admin_/validate',
   path: '/admin/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConviteCodeRoute = ConviteCodeRouteImport.update({
+  id: '/convite/$code',
+  path: '/convite/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuiaIndexRoute = GuiaIndexRouteImport.update({
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin_/billing': typeof AdminBillingRoute
   '/admin_/validate': typeof AdminValidateRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
@@ -432,6 +441,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/admin/billing'
     | '/admin/validate'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -521,6 +532,7 @@ export interface FileRouteTypes {
     | '/(dashboard)/dashboard'
     | '/admin_/billing'
     | '/admin_/validate'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
@@ -568,6 +580,7 @@ export interface RootRouteChildren {
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   AdminBillingRoute: typeof AdminBillingRoute
   AdminValidateRoute: typeof AdminValidateRoute
+  ConviteCodeRoute: typeof ConviteCodeRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
@@ -709,6 +722,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/validate'
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/convite/$code': {
+      id: '/convite/$code'
+      path: '/convite/$code'
+      fullPath: '/convite/$code'
+      preLoaderRoute: typeof ConviteCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guia/': {
@@ -960,6 +980,7 @@ const rootRouteChildren: RootRouteChildren = {
   dashboardDashboardRoute: dashboardDashboardRoute,
   AdminBillingRoute: AdminBillingRoute,
   AdminValidateRoute: AdminValidateRoute,
+  ConviteCodeRoute: ConviteCodeRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
