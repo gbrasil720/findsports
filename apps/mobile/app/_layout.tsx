@@ -117,6 +117,17 @@ export default function Layout() {
                   sheetCornerRadius: 30
                 }}
               />
+              {/* Busca com IA (2h): folha alta sobre o mapa, aberta pela aba IA. */}
+              <Stack.Screen
+                name="busca-ia"
+                options={{
+                  presentation: 'formSheet',
+                  sheetAllowedDetents: [1],
+                  sheetGrabberVisible: true,
+                  sheetCornerRadius: 34,
+                  contentStyle: { backgroundColor: 'transparent' }
+                }}
+              />
               {/* Busca (19a, 19b): tela cheia, sobe sem a barra de abas. */}
               <Stack.Screen
                 name="busca"

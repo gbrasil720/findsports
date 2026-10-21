@@ -481,7 +481,15 @@ export function Chip({
   onPress
 }: {
   label: string
-  icon?: 'tv' | 'outdoor' | 'sound' | 'ticket' | 'premiere' | 'person'
+  icon?:
+    | 'tv'
+    | 'outdoor'
+    | 'sound'
+    | 'ticket'
+    | 'premiere'
+    | 'person'
+    | 'map'
+    | 'search'
   live?: boolean
   on: boolean
   palette: Palette
