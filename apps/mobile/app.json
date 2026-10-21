@@ -43,6 +43,20 @@
             "backgroundColor": "#12120f"
           }
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "A Onside usa a câmera só para ler o código de amigo (QR) de outra pessoa.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "A Onside procura na sua agenda quem já está no app. Os e-mails não saem do celular: só uma assinatura de cada um é comparada."
+        }
       ]
     ],
     "experiments": {
