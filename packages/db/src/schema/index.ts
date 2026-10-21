@@ -1,3 +1,4 @@
+export * from './ai'
 export * from './analytics'
 export * from './attendance'
 export * from './auth'
