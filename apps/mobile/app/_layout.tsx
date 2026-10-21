@@ -129,6 +129,15 @@ export default function Layout() {
               <Stack.Screen name="configuracoes" />
               <Stack.Screen name="cidade" />
               <Stack.Screen name="senha" />
+              {/* Amigos (S1): busca em tela cheia como a do mapa; código,
+                contatos e o perfil de amigo empilham com voltar. */}
+              <Stack.Screen
+                name="amigos-busca"
+                options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+              />
+              <Stack.Screen name="meu-codigo" />
+              <Stack.Screen name="contatos" />
+              <Stack.Screen name="amigo/[id]" />
               {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}
               <Stack.Screen
                 name="atalhos"

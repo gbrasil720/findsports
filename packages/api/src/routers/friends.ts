@@ -287,7 +287,9 @@ export const friendsRouter = router({
       if (input.accept)
         await db.update(friendship).set({ acceptedAt: new Date() }).where(where)
       else await db.delete(friendship).where(where)
-      return { relation: input.accept ? 'friends' : 'none' }
+      return {
+        relation: input.accept ? ('friends' as const) : ('none' as const)
+      }
     }),
 
   /** Desfaz a amizade ou cancela o pedido enviado. */
