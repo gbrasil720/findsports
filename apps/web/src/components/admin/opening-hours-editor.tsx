@@ -140,29 +140,34 @@ export function OpeningHoursEditor({
                 </label>
                 {item.open ? (
                   <div className="flex items-center gap-2">
-                    <input
-                      type="time"
-                      aria-label={`${label}, abre`}
-                      value={item.opens}
-                      readOnly={isSaving}
-                      onChange={(e) =>
-                        e.target.value && update(day, { opens: e.target.value })
-                      }
-                      className="onside-input w-32 font-[family-name:var(--onside-mono)]"
-                    />
+                    <div className="w-32">
+                      <input
+                        type="time"
+                        aria-label={`${label}, abre`}
+                        value={item.opens}
+                        readOnly={isSaving}
+                        onChange={(e) =>
+                          e.target.value &&
+                          update(day, { opens: e.target.value })
+                        }
+                        className="onside-input font-[family-name:var(--onside-mono)]"
+                      />
+                    </div>
                     <span aria-hidden="true">–</span>
-                    <input
-                      type="time"
-                      aria-label={`${label}, fecha`}
-                      value={item.closes}
-                      readOnly={isSaving}
-                      onChange={(e) =>
-                        e.target.value &&
-                        update(day, { closes: e.target.value })
-                      }
-                      aria-invalid={wrong || undefined}
-                      className="onside-input w-32 font-[family-name:var(--onside-mono)]"
-                    />
+                    <div className="w-32">
+                      <input
+                        type="time"
+                        aria-label={`${label}, fecha`}
+                        value={item.closes}
+                        readOnly={isSaving}
+                        onChange={(e) =>
+                          e.target.value &&
+                          update(day, { closes: e.target.value })
+                        }
+                        aria-invalid={wrong || undefined}
+                        className="onside-input font-[family-name:var(--onside-mono)]"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <span className="text-[var(--onside-muted)] text-sm">
