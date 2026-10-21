@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { accountRouter } from './account'
 import { achievementsRouter } from './achievements'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
@@ -44,6 +45,7 @@ export const appRouter = router({
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
   achievements: achievementsRouter,
+  account: accountRouter,
   friends: friendsRouter,
   feedback: feedbackRouter,
   grimorio: grimorioRouter,
