@@ -44,8 +44,10 @@ describe('registro de configuração (ESC-19)', () => {
    * podem continuar gravadas em `app_config` até a migration de limpeza.
    * Chave fora do registro não existe para a aplicação.
    */
-  it('o registro tem só as duas chaves que ficam', () => {
+  it('o registro tem só as chaves que ficam', () => {
     expect([...APP_CONFIG_KEYS].sort()).toEqual([
+      'ai.enabled',
+      'ai.variant_weights',
       'rating.public_display',
       'search.tiered_plan_query'
     ])
@@ -80,5 +82,6 @@ describe('registro de configuração (ESC-19)', () => {
   it('padrões reproduzem o comportamento anterior às flags', () => {
     expect(appConfigDefault('search.tiered_plan_query')).toBe(true)
     expect(appConfigDefault('rating.public_display')).toBe(false)
+    expect(appConfigDefault('ai.enabled')).toBe(false)
   })
 })

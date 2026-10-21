@@ -93,6 +93,47 @@ export const APP_CONFIG_DEFINITIONS = {
     descricao:
       'Exibe a nota do bar para o torcedor e libera o modo "melhor ' +
       'avaliados" na busca. A coleta de avaliações independe desta chave.'
+  }),
+
+  /**
+   * WEB-424: chave de desligar a IA (chat e recomendador). Nasce desligada:
+   * o padrão é o de hoje, sem IA, e ligar é decisão de quando o Gateway de
+   * produção tiver crédito e teto configurados. Desligada, o chat responde
+   * "indisponível" e a busca normal segue.
+   */
+  'ai.enabled': definir({
+    schema: z.boolean(),
+    padrao: false,
+    publico: false,
+    descricao:
+      'Liga a busca com IA do app e o recomendador. Desligada, o app avisa ' +
+      'que a IA está indisponível e a busca normal continua. O teto de US$ 40 ' +
+      'por mês continua valendo com ela ligada.'
+  }),
+
+  /**
+   * WEB-424: pesos dos braços dos testes, por funcionalidade. O sorteio é
+   * fixo por pessoa (hash do id com o nome do teste), então mudar um peso só
+   * move quem cai na faixa que mudou de braço.
+   */
+  'ai.variant_weights': definir({
+    schema: z.object({
+      chat: z.object({
+        a: z.number().int().min(0).max(100),
+        b: z.number().int().min(0).max(100)
+      }),
+      recommender: z.object({
+        a: z.number().int().min(0).max(100),
+        b: z.number().int().min(0).max(100),
+        c: z.number().int().min(0).max(100)
+      })
+    }),
+    padrao: { chat: { a: 50, b: 50 }, recommender: { a: 34, b: 33, c: 33 } },
+    publico: false,
+    descricao:
+      'Pesos dos braços dos testes de IA. Chat: a = Gemini 2.5 Flash, ' +
+      'b = GPT-6 Luna. Recomendador: a = só o algoritmo, b = Jev, ' +
+      'c = Clef-flash. Peso 0 tira o braço; todos em 0 caem no a.'
   })
 } as const
 
