@@ -20,7 +20,7 @@ import {
   type Via
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { haptic, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -145,8 +145,9 @@ export default function FriendProfile() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
                   style={[styles.name, { color: palette.ink }]}
-                  numberOfLines={1}
+                  numberOfLines={2}
                   adjustsFontSizeToFit
+                  minimumFontScale={0.75}
                 >
                   {person.name}
                 </Text>
@@ -202,8 +203,9 @@ export default function FriendProfile() {
                       : actions.act(person.id, person.relation, via)
                   }
                 />
-                <Pressable
+                <ScalePress
                   accessibilityRole="button"
+                  containerStyle={{ flex: 1 }}
                   style={[
                     styles.invite,
                     { backgroundColor: palette.dark ? palette.card : INK }
@@ -214,7 +216,7 @@ export default function FriendProfile() {
                   <Text style={[text(14, 'Bold'), { color: PAPER }]}>
                     Convidar
                   </Text>
-                </Pressable>
+                </ScalePress>
               </View>
             ) : null}
 
@@ -385,12 +387,12 @@ function RelationButton({
 }) {
   if (relation === 'friends' || relation === 'sent')
     return (
-      <Pressable
+      <ScalePress
         accessibilityRole="button"
         accessibilityHint={relation === 'sent' ? 'Cancela o pedido' : undefined}
         disabled={busy}
         onPress={onPress}
-        style={{ flex: 1 }}
+        containerStyle={{ flex: 1 }}
       >
         <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.pill}>
           {relation === 'friends' ? (
@@ -400,20 +402,21 @@ function RelationButton({
             {relation === 'friends' ? 'Amigos' : 'Pedido enviado'}
           </Text>
         </Glass>
-      </Pressable>
+      </ScalePress>
     )
   return (
-    <Pressable
+    <ScalePress
       accessibilityRole="button"
       disabled={busy}
       onPress={onPress}
+      containerStyle={{ flex: 1 }}
       style={[styles.pill, styles.add, busy && { opacity: 0.6 }]}
     >
       <Icon name="userplus" size={15} color={INK} accent={INK} />
       <Text style={[text(14, 'Bold'), { color: INK }]}>
         {relation === 'received' ? 'Aceitar pedido' : 'Adicionar'}
       </Text>
-    </Pressable>
+    </ScalePress>
   )
 }
 
@@ -498,7 +501,7 @@ function NextGame({
     ? 'Ao vivo'
     : `${dayLabel(game.startsAt, now).split(',')[0]} · ${formatTime(game.startsAt)}`
   return (
-    <Pressable accessibilityRole="button" onPress={onOpen}>
+    <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
       <Card palette={palette} shadow={palette.liveShadow}>
         <View style={styles.next}>
           <Photo
@@ -532,23 +535,20 @@ function NextGame({
               {gameTitle(game)}
             </Text>
           </View>
-          <Pressable
+          <ScalePress
             accessibilityRole="button"
+            to={0.96}
             onPress={() => {
               haptic.select()
               onGo()
             }}
-            style={({ pressed }) => [
-              styles.go,
-              { shadowColor: palette.dark ? '#000' : INK },
-              pressed && { transform: [{ scale: 0.96 }] }
-            ]}
+            style={[styles.go, { shadowColor: palette.dark ? '#000' : INK }]}
           >
             <Text style={[text(13, 'Bold'), { color: INK }]}>Vou também</Text>
-          </Pressable>
+          </ScalePress>
         </View>
       </Card>
-    </Pressable>
+    </ScalePress>
   )
 }
 
@@ -580,9 +580,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7
   },
-  add: { flex: 1, backgroundColor: ACID },
+  add: { backgroundColor: ACID },
   invite: {
-    flex: 1,
     height: 44,
     borderRadius: 22,
     flexDirection: 'row',
