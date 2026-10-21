@@ -324,8 +324,16 @@ function Faces({
       bg: index ? LIVE : ACID,
       fg: INK
     })),
+    // No escuro, tinta e papel trocam: o "+32" de tinta sumiria no cartão.
     ...(more > 0
-      ? [{ key: 'more', label: `+${more}`, bg: INK, fg: PAPER }]
+      ? [
+          {
+            key: 'more',
+            label: `+${more}`,
+            bg: palette.dark ? PAPER : INK,
+            fg: palette.dark ? INK : PAPER
+          }
+        ]
       : [])
   ]
   return (
