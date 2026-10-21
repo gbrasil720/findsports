@@ -2,7 +2,7 @@ import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import Animated, {
@@ -40,6 +40,12 @@ import {
   cheapestFirst,
   resumeLabel
 } from '@/lib/ai-chat'
+import {
+  WORST_ANSWER,
+  WORST_BARS,
+  WORST_CHIPS,
+  WORST_QUESTION
+} from '@/lib/ai-chat-demo'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -72,6 +78,8 @@ type Turn = {
 }
 
 const OFFER = 10
+/** Altura do cabeçalho fixo: 17 de respiro + a marca de 52 com 10 em cima e embaixo. */
+const HEAD_HEIGHT = 89
 
 // A conversa sobrevive a fechar a folha (abrir um bar e voltar), até o app
 // fechar. ponytail: memória do módulo; persistir só se pedirem.
@@ -99,7 +107,11 @@ export default function AiSearch() {
   const palette = usePalette()
   const explore = useExploreState()
   useStatusBar('light')
-  const [turns, setTurns] = useState<Turn[]>(saved)
+  // Navegador DEV: `?demo=pior` abre com o pior caso, sem chamar o modelo.
+  const { demo } = useLocalSearchParams<{ demo?: string }>()
+  const [turns, setTurns] = useState<Turn[]>(() =>
+    __DEV__ && demo === 'pior' ? worstCase() : saved
+  )
   const [draft, setDraft] = useState('')
   const [offer, setOffer] = useState(false)
   const [cheap, setCheap] = useState(false)
@@ -264,49 +276,18 @@ export default function AiSearch() {
     <>
       {/* Filho direto da tela, com flex: 1: numa folha nativa o
           react-native-screens mede outro caminho e o conteúdo some. O
-          cabeçalho fica preso no alto (`stickyHeaderIndices`). */}
+          cabeçalho fica por cima, fixo (com `stickyHeaderIndices` ele sumia
+          quando a lista rolava sozinha até o fim). */}
       <ScrollView
         ref={scroll}
         style={[styles.sheet, { backgroundColor: palette.sheet }]}
-        stickyHeaderIndices={[0]}
+        contentContainerStyle={{ paddingTop: HEAD_HEIGHT }}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() =>
           scroll.current?.scrollToEnd({ animated: true })
         }
       >
-        <View style={{ backgroundColor: palette.sheet }}>
-          <View style={styles.head}>
-            <View style={styles.mark}>
-              <Icon
-                name="sparkle"
-                size={41}
-                color={palette.ink}
-                accent={palette.accent}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[text(17, 'Bold', 1.25), { color: palette.ink }]}>
-                Onside IA
-              </Text>
-              <View style={styles.statusRow}>
-                <StatusDot
-                  busy={loading}
-                  quiet={!!blocked || off || last?.state === 'unavailable'}
-                />
-                <Text
-                  style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-                  numberOfLines={1}
-                >
-                  {subtitle}
-                </Text>
-              </View>
-            </View>
-            <View>
-              <BackButton icon="close" onPress={() => router.back()} />
-            </View>
-          </View>
-        </View>
         <View style={styles.body}>
           {!turns.length ? (
             <Animated.View entering={IN}>
@@ -345,6 +326,38 @@ export default function AiSearch() {
         <Animated.View style={spacer} />
       </ScrollView>
 
+      <View style={[styles.top, { backgroundColor: palette.sheet }]}>
+        <View style={styles.head}>
+          <View style={styles.mark}>
+            <Icon
+              name="sparkle"
+              size={41}
+              color={palette.ink}
+              accent={palette.accent}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[text(17, 'Bold', 1.25), { color: palette.ink }]}>
+              Onside IA
+            </Text>
+            <View style={styles.statusRow}>
+              <StatusDot
+                busy={loading}
+                quiet={!!blocked || off || last?.state === 'unavailable'}
+              />
+              <Text
+                style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {subtitle}
+              </Text>
+            </View>
+          </View>
+          <View>
+            <BackButton icon="close" onPress={() => router.back()} />
+          </View>
+        </View>
+      </View>
       <Animated.View style={[styles.dock, footer]}>
         {/* Borda de rolagem: a conversa some aos poucos sob o rodapé. */}
         <LinearGradient
@@ -443,6 +456,36 @@ export default function AiSearch() {
       </Animated.View>
     </>
   )
+}
+
+function worstCase(): Turn[] {
+  const answer = (id: string, text: string, bars: SearchBar[]): Answer => ({
+    kind: 'answer',
+    runId: id,
+    text,
+    bars,
+    chips: bars.length ? WORST_CHIPS : ['Leblon', 'Hoje', 'até 3 km'],
+    search: null,
+    remainingToday: 1
+  })
+  return [
+    {
+      id: 1,
+      question: WORST_QUESTION,
+      state: 'answer',
+      answer: answer('demo-1', WORST_ANSWER, WORST_BARS)
+    },
+    {
+      id: 2,
+      question: 'e no Leblon?',
+      state: 'answer',
+      answer: answer(
+        'demo-2',
+        'Não achei bar com jogo hoje no Leblon. Quer que eu aumente o raio ou olhe amanhã?',
+        []
+      )
+    }
+  ]
 }
 
 function TurnView({
@@ -701,6 +744,7 @@ function Thumb({
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
+  top: { position: 'absolute', top: 0, left: 0, right: 0 },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
