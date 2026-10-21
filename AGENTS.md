@@ -381,8 +381,16 @@ invente layout que o projeto não tem.
   do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
   página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
-  o design até "O que dizem", menos "Horário" e as avaliações escritas, que não têm dado (o
-  bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
+  o design até "O que dizem", menos as avaliações escritas e "Ver todas" (a avaliação é
+  "voltaria" mais etiquetas). "Horário" (WEB-397) só com horário informado: o dono grava em
+  `/admin` (`pub.updateOpeningHours`), sete faixas em `bar.opening_hours` (0 = domingo, fechar
+  antes de abrir vira a meia-noite) e `pubs.getById` devolve `openNow` no relógio de Brasília;
+  a regra e o agrupamento ("Seg a qui") são de `packages/api/src/lib/opening-hours.ts`, que o
+  web também usa. "Em dia de clássico" não entra. Em "Próximos jogos aqui" vai uma etiqueta
+  por jogo: "Vou", senão "Telão", senão "Som ligado" (WEB-399: `event.on_big_screen` e
+  `with_sound`, nulos herdam das características, `lib/event-screen.ts`; o dono desmarca no
+  "Novo evento"). Abaixo da nota, o resumo de "O que pesou?" (WEB-398, `ratingReasons`):
+  até três etiquetas de quem voltaria e de quem não voltaria, sem nome, pelo piso da nota. "Ampliar", no fim da
   lista, dobra o raio só na visita. Com menos de cinco bares com jogo (e fora do "Ao
   vivo"), a lista se completa com os bares perto sem jogo marcado, sob "Sem jogo
   marcado" (`pubs.nearbyWithoutGames`; decisão do dono e sócios em 21/10/2026). No
@@ -403,9 +411,13 @@ invente layout que o projeto não tem.
   por cima dela, com `disablePopToTop` na aba, e fechar deixa a pessoa onde estava) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
   do celular pelo formulário de evento do iOS (`expo-calendar/legacy`, sem pedir permissão); "Avaliar" abre o pós-jogo
   `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
-  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
-  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
-  pesou?" no pós-jogo (WEB-398), o ranking no rodapé de Meus jogos (WEB-403),
+  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). "O que pesou?" são as
+  seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
+  reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
+  avaliação do dashboard web usa as mesmas. Não há avaliação "verificada": todas entram
+  no resumo. O que o design da 08
+  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: o ranking
+  no rodapé de Meus jogos (WEB-403),
   "entre elas Marina e Rafael" (WEB-404). "Desmarcado" nos anteriores não entra (decisão
   do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. A busca com
   IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
