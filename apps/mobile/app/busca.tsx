@@ -27,7 +27,6 @@ import {
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { useSoon } from '@/components/soon'
 import {
   ACID,
   Icon,
@@ -66,7 +65,7 @@ import { trpc } from '@/lib/trpc'
  * sugestões, o bairro como melhor resultado e os bares. Bar, bairro e jogo
  * casam no aparelho, sobre os bares perto; time e campeonato vão também ao
  * servidor (`pubs.search` com `championship`, que casa nome do bar, times e
- * campeonato). "Pedido mais específico?" é a busca com IA (WEB-400).
+ * campeonato). "Pedido mais específico?" abre a busca com IA (2h, WEB-400).
  */
 
 const RECENT_KEY = 'onside.buscas-recentes'
@@ -76,7 +75,6 @@ export default function Search() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
-  const soon = useSoon()
   const state = useExploreState()
   useStatusBar('auto')
   // Um aviso de jogo (19c) abre a busca já com o jogo digitado.
@@ -298,11 +296,10 @@ export default function Search() {
               close()
             }}
             onHood={(hood) => setQuery(hood.name)}
-            onAi={() => soon.show('A busca com IA chega em breve')}
+            onAi={() => router.push('/busca-ia')}
           />
         )}
       </ScrollView>
-      {soon.toast}
     </View>
   )
 }
