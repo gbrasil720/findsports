@@ -873,6 +873,7 @@ export function PillButton({
   label,
   onPress,
   trailing,
+  leading,
   edge = EDGE,
   disabled,
   height = 56
@@ -880,6 +881,8 @@ export function PillButton({
   label: string
   onPress: () => void
   trailing?: boolean
+  /** Ícone antes do rótulo ("Compartilhar" com a seta, 11c). */
+  leading?: keyof typeof ICONS
   edge?: string
   disabled?: boolean
   /** 52 no vidro do rodapé de uma folha (3d); 56 no resto. */
@@ -911,6 +914,9 @@ export function PillButton({
         >
           {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
           <Animated.View key={label} entering={SWAP} style={styles.row}>
+            {leading ? (
+              <Icon name={leading} size={17} color={INK} accent={INK} />
+            ) : null}
             <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
             {trailing ? (
               <Icon name="next" size={17} color={INK} accent={LIVE} />

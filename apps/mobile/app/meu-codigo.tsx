@@ -152,9 +152,7 @@ export default function MyCode() {
 
       {tab === 'mine' ? (
         <View style={styles.mine}>
-          <View
-            style={[styles.card, { shadowColor: palette.dark ? ACID : INK }]}
-          >
+          <View style={[styles.card, { shadowColor: ACID }]}>
             <View style={styles.who}>
               <Avatar
                 id={session.data?.user.id ?? ''}
@@ -188,7 +186,7 @@ export default function MyCode() {
             style={[
               text(14, 'Regular', 1.45),
               styles.note,
-              { color: palette.muted }
+              { color: palette.dark ? '#d6d3cb' : palette.muted }
             ]}
           >
             Quem escanear manda um pedido de amizade. Você aprova antes de virar
@@ -280,6 +278,7 @@ export default function MyCode() {
           <View style={{ flex: 1 }}>
             <PillButton
               label="Compartilhar"
+              leading="share"
               height={52}
               onPress={() => {
                 haptic.select()
