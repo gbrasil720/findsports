@@ -43,7 +43,8 @@ integrationTest('amizade de ponta a ponta', async () => {
     // @ e código nascem no primeiro uso.
     const anaMe = await as(ana).me()
     expect(anaMe.username).toMatch(/^anateste/)
-    expect(anaMe.friendCode).toMatch(/^AT-\d{4}$/)
+    // Iniciais do primeiro e do último pedaço do nome; o sufixo do teste muda o último.
+    expect(anaMe.friendCode).toMatch(/^A[A-Z]-\d{4}$/)
     expect(anaMe.activityVisibility).toBe('friends')
 
     // Ana pede, Beto vê o pedido e aceita.
