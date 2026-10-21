@@ -4,11 +4,14 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
+import { File, Paths } from 'expo-file-system'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
+import * as Sharing from 'expo-sharing'
 import { type ReactNode, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -29,7 +32,6 @@ import {
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { useSoon } from '@/components/soon'
 import {
   ACCENT,
   ACID,
@@ -42,19 +44,27 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { authClient, refreshSession } from '@/lib/auth-client'
+import {
+  AvatarError,
+  pickSquarePhoto,
+  removeAvatar,
+  uploadAvatar
+} from '@/lib/avatar'
 import { searchCenter, teamMark } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
 import { memberSince } from '@/lib/profile'
 import { deviceLabel, lastSeen, preferenceSummary } from '@/lib/settings'
-import { trpc } from '@/lib/trpc'
+import { queryClient as appQueryClient, trpc } from '@/lib/trpc'
 
 /*
  * Configurações (11f–11i do design, escolhidas pelo dono em 20/10/2026):
  * Preferências, Avisos, Conta e Privacidade, abertas pela engrenagem do menu
  * "Você" e do Perfil. Preferências e Conta são de verdade (o mesmo servidor
- * do perfil e da conta no web). Avisos e Privacidade seguem o desenho com os
- * controles desligados e o aviso de "em breve": o app não manda notificação,
- * e amigos, comunidades, ranking e "baixar meus dados" ainda não existem.
+ * do perfil e da conta no web), com a foto e a verificação em duas etapas
+ * (WEB-419). Avisos segue o desenho com os controles desligados e o aviso de
+ * "em breve" (o app não manda notificação); em Privacidade, ranking e
+ * comunidades ainda não existem, e "Baixar meus dados" entrega o arquivo
+ * pelo share sheet.
  */
 
 type Tab = 'preferencias' | 'avisos' | 'conta' | 'privacidade'
@@ -70,7 +80,6 @@ export default function Settings() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
-  const soon = useSoon()
   useStatusBar('auto')
   const { aba } = useLocalSearchParams<{ aba?: Tab }>()
   const pick = (value?: string) =>
@@ -149,12 +158,11 @@ export default function Settings() {
         ) : tab === 'avisos' ? (
           <Notices palette={palette} />
         ) : tab === 'conta' ? (
-          <Account palette={palette} soon={soon.show} />
+          <Account palette={palette} />
         ) : (
-          <Privacy palette={palette} soon={soon.show} />
+          <Privacy palette={palette} />
         )}
       </ScrollView>
-      {soon.toast}
     </View>
   )
 }
@@ -560,13 +568,7 @@ function Notices({ palette }: { palette: Palette }) {
 
 // --- Conta (11h) ------------------------------------------------------------
 
-function Account({
-  palette,
-  soon
-}: {
-  palette: Palette
-  soon: (sentence: string) => void
-}) {
+function Account({ palette }: { palette: Palette }) {
   const router = useRouter()
   const session = authClient.useSession()
   const user = session.data?.user
@@ -664,6 +666,45 @@ function Account({
       }
     ])
 
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const photoTask = async (task: () => Promise<unknown>) => {
+    setPhotoBusy(true)
+    try {
+      await task()
+      haptic.success()
+    } catch (error) {
+      haptic.error()
+      Alert.alert(
+        'Foto do perfil',
+        error instanceof AvatarError
+          ? error.message
+          : 'Não foi possível trocar a foto. Tente de novo.'
+      )
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+  const choose = (source: 'library' | 'camera') =>
+    photoTask(async () => {
+      const uri = await pickSquarePhoto(source)
+      if (uri) await uploadAvatar(uri)
+    })
+  const changePhoto = () =>
+    Alert.alert('Foto do perfil', undefined, [
+      { text: 'Escolher uma foto', onPress: () => choose('library') },
+      { text: 'Tirar uma foto', onPress: () => choose('camera') },
+      ...(user?.image
+        ? [
+            {
+              text: 'Remover a foto',
+              style: 'destructive' as const,
+              onPress: () => photoTask(removeAvatar)
+            }
+          ]
+        : []),
+      { text: 'Cancelar', style: 'cancel' as const }
+    ])
+
   const deleteAccount = () =>
     Alert.alert(
       'Excluir a conta?',
@@ -700,12 +741,26 @@ function Account({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Trocar a foto"
-            onPress={() => soon('A foto do perfil chega em breve')}
+            disabled={photoBusy}
+            onPress={changePhoto}
           >
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {initials(user?.name ?? '')}
-              </Text>
+              {user?.image ? (
+                <Image
+                  accessibilityIgnoresInvertColors
+                  source={{ uri: user.image }}
+                  style={styles.avatarPhoto}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {initials(user?.name ?? '')}
+                </Text>
+              )}
+              {photoBusy ? (
+                <View style={styles.avatarBusy}>
+                  <ActivityIndicator color={PAPER} />
+                </View>
+              ) : null}
             </View>
             <View style={[styles.camera, { backgroundColor: PAPER }]}>
               <Icon name="camera" size={14} color={INK} accent={INK} />
@@ -766,11 +821,7 @@ function Account({
               </Text>
             )
           }
-          onPress={
-            user?.twoFactorEnabled
-              ? undefined
-              : () => soon('Ligue pelo site: onside.sh, Conta')
-          }
+          onPress={() => router.push('/duas-etapas' as Href)}
         />
         <Row
           palette={palette}
@@ -882,13 +933,7 @@ const ADDS = {
 const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
   (Object.keys(map) as (keyof T)[]).find((key) => map[key] === label) as keyof T
 
-function Privacy({
-  palette,
-  soon
-}: {
-  palette: Palette
-  soon: (sentence: string) => void
-}) {
+function Privacy({ palette }: { palette: Palette }) {
   const queryClient = useQueryClient()
   const me = useQuery({
     ...trpc.friends.me.queryOptions(),
@@ -911,6 +956,33 @@ function Privacy({
       }
     })
   )
+  const [exporting, setExporting] = useState(false)
+  const exportData = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const data = await appQueryClient.fetchQuery({
+        ...trpc.account.exportData.queryOptions(),
+        staleTime: 0
+      })
+      const day = data.exportedAt.slice(0, 10)
+      const file = new File(Paths.cache, `onside-meus-dados-${day}.json`)
+      if (file.exists) file.delete()
+      file.create()
+      file.write(JSON.stringify(data, null, 2))
+      haptic.select()
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'application/json',
+        UTI: 'public.json',
+        dialogTitle: 'Seus dados da Onside'
+      })
+    } catch {
+      haptic.error()
+      Alert.alert('Não foi possível gerar o arquivo', 'Tente de novo.')
+    } finally {
+      setExporting(false)
+    }
+  }
   return (
     <>
       <Section palette={palette} icon="pin" title="Onde você foi">
@@ -969,9 +1041,13 @@ function Privacy({
         <Row
           palette={palette}
           title="Baixar meus dados"
-          sub="Arquivo enviado por e-mail"
+          sub={
+            exporting
+              ? 'Preparando o arquivo…'
+              : 'Arquivo para salvar ou enviar'
+          }
           chevron
-          onPress={() => soon('Baixar seus dados chega em breve')}
+          onPress={exportData}
         />
         <View style={[styles.divider, { backgroundColor: palette.line }]} />
         <ResetSuggestions palette={palette} />
@@ -1354,6 +1430,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   avatarText: { fontFamily: 'Archivo-Bold', fontSize: 20, color: INK },
+  avatarPhoto: { width: 60, height: 60, borderRadius: 6 },
+  avatarBusy: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 6,
+    backgroundColor: 'rgba(18,18,15,.45)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   camera: {
     position: 'absolute',
     right: -8,
