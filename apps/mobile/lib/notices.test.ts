@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { buildNotices, noticeSections, noticeTime, startsIn } from './notices'
+import {
+  buildNotices,
+  inTab,
+  noticeSections,
+  noticeTime,
+  startsIn,
+  todayGoing
+} from './notices'
 import { sides } from './search'
 
 // 20/10/2026, 12:00 em Brasília.
@@ -88,5 +95,71 @@ describe('avisos (19c)', () => {
     expect(startsIn(iso(2.47), NOW)).toBe('2h28')
     expect(startsIn(iso(0.2), NOW)).toBe('12 min')
     expect(startsIn(iso(-1), NOW)).toBeNull()
+  })
+})
+
+describe('avisos de amigos (19c)', () => {
+  const person = (id: string, at: string) => ({
+    id,
+    name: `Pessoa ${id}`,
+    at,
+    mutual: 3,
+    mutualInitials: ['MC', 'PO', 'LA']
+  })
+  const notices = buildNotices(
+    {
+      mine: [],
+      medals: [{ id: 'bar5', unlockedAt: iso(-1) }],
+      teamBars: [],
+      sides,
+      friends: {
+        // Pedido recebido não vence.
+        requests: [person('julia', iso(-60 * 24))],
+        // Aceito há mais de 30 dias sai.
+        accepted: [person('rafa', iso(-2)), person('velho', iso(-31 * 24))]
+      }
+    },
+    NOW
+  )
+
+  test('pedido recebido e aceito, nas abas do design', () => {
+    expect(notices.map((n) => n.id)).toEqual([
+      'medal:bar5',
+      'friend-accepted:rafa',
+      'friend-request:julia'
+    ])
+    expect(
+      notices.filter((n) => inTab(n, 'friends')).map((n) => n.kind)
+    ).toEqual(['friend-accepted', 'friend-request'])
+    expect(notices.filter((n) => inTab(n, 'games'))).toEqual([])
+    expect(notices.filter((n) => inTab(n, 'all'))).toHaveLength(3)
+  })
+
+  test('o rodapé do jogo de hoje', () => {
+    const friends = (...names: string[]) => names.map((name) => ({ name }))
+    expect(
+      todayGoing({
+        count: 34,
+        initials: ['J'],
+        friends: friends('Marina Costa', 'Rafael Lima')
+      })
+    ).toEqual({
+      faces: ['MC', 'RL'],
+      more: 32,
+      bold: 'Marina',
+      rest: ' e mais 33 vão'
+    })
+    expect(todayGoing(null)).toEqual({
+      faces: [],
+      more: 0,
+      bold: '',
+      rest: 'Você vai'
+    })
+    expect(
+      todayGoing({ count: 20, initials: ['A', 'B'], friends: [] })
+    ).toEqual({ faces: ['A', 'B'], more: 18, bold: '', rest: '20 pessoas vão' })
+    expect(
+      todayGoing({ count: null, initials: [], friends: friends('Ana', 'Bia') })
+    ).toMatchObject({ bold: 'Ana', rest: ' e Bia vão', more: 0 })
   })
 })

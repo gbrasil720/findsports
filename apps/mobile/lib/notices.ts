@@ -2,9 +2,10 @@ import { matchName, type NearBar } from './search'
 
 /*
  * Avisos (19c do design), montados do que já existe: código validado com
- * oferta, jogo dos seus times perto e conquista desbloqueada. Pedido de
- * amizade, ranking e comunidade do design ainda não existem no produto.
- * Contas puras; a tela fica em `app/avisos.tsx`.
+ * oferta, jogo dos seus times perto, conquista desbloqueada e, dos amigos,
+ * pedido recebido e pedido aceito (`friends.notices`). Ranking e comunidade
+ * do design ainda não existem no produto. Contas puras; a tela fica em
+ * `app/avisos.tsx`.
  */
 
 const TZ = 'America/Sao_Paulo'
@@ -28,6 +29,30 @@ export type Notice =
       sides: [string, string] | null
     }
   | { id: string; kind: 'medal'; at: string; medalId: string }
+  | {
+      id: string
+      kind: 'friend-request' | 'friend-accepted'
+      at: string
+      person: FriendNotice
+    }
+
+/** Uma pessoa de `friends.notices`. */
+export type FriendNotice = {
+  id: string
+  name: string
+  at: string
+  mutual: number
+  mutualInitials: string[]
+}
+
+export type NoticeTab = 'all' | 'games' | 'friends'
+
+/** As abas do design: Tudo, Jogos e Amigos. Conquista só aparece em Tudo. */
+export const inTab = (notice: Notice, tab: NoticeTab) =>
+  tab === 'all' ||
+  (tab === 'friends'
+    ? notice.kind === 'friend-request' || notice.kind === 'friend-accepted'
+    : notice.kind === 'offer' || notice.kind === 'game')
 
 type MyGame = {
   eventId: string
@@ -50,6 +75,8 @@ export function buildNotices(
     /** Os bares perto com jogo dos times da pessoa (`pubs.search` com `teamIds`). */
     teamBars: NearBar[]
     sides: (game: NonNullable<NearBar['nextEvent']>) => [string, string] | null
+    /** `friends.notices`: pedido recebido não vence, aceito vale 30 dias. */
+    friends?: { requests: FriendNotice[]; accepted: FriendNotice[] }
   },
   now: number
 ): Notice[] {
@@ -101,6 +128,21 @@ export function buildNotices(
       bars: entry.bars,
       sides: input.sides(entry.game)
     })
+  for (const person of input.friends?.requests ?? [])
+    notices.push({
+      id: `friend-request:${person.id}`,
+      kind: 'friend-request',
+      at: person.at,
+      person
+    })
+  for (const person of input.friends?.accepted ?? [])
+    if (new Date(person.at).getTime() >= old)
+      notices.push({
+        id: `friend-accepted:${person.id}`,
+        kind: 'friend-accepted',
+        at: person.at,
+        person
+      })
   return notices.sort(
     (a, b) =>
       Math.abs(new Date(a.at).getTime() - now) -
@@ -153,4 +195,64 @@ export function startsIn(startsAt: string, now: number) {
   if (minutes < 60) return `${minutes} min`
   const h = Math.floor(minutes / 60)
   return `${h}h${String(minutes % 60).padStart(2, '0')}`
+}
+
+const twoLetters = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter((word) => /\p{L}/u.test(word[0] ?? ''))
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toLocaleUpperCase('pt-BR')
+
+/**
+ * O rodapé do "Seu jogo de hoje" (19c): "MC RL +32 Marina e mais 33 vão".
+ * Amigos primeiro, pelo primeiro nome (o servidor só manda quem deixa amigos
+ * verem); sem amigo, a contagem; abaixo do piso e sem amigo, "Você vai".
+ */
+export function todayGoing(
+  going: {
+    count: number | null
+    initials: string[]
+    friends: { name: string }[]
+  } | null
+) {
+  const friends = going?.friends ?? []
+  const count = going?.count ?? null
+  const faces = [
+    ...friends.map((f) => twoLetters(f.name)),
+    ...(going?.initials ?? [])
+  ]
+    .filter(Boolean)
+    .slice(0, 2)
+  const first = friends[0]?.name.trim().split(/\s+/)[0] ?? ''
+  if (!friends.length)
+    return count === null
+      ? { faces: [], more: 0, bold: '', rest: 'Você vai' }
+      : {
+          faces,
+          more: count - faces.length,
+          bold: '',
+          rest: `${count} pessoas vão`
+        }
+  if (count !== null)
+    return {
+      faces,
+      more: Math.max(count - faces.length, 0),
+      bold: first,
+      rest: count > 1 ? ` e mais ${count - 1} vão` : ' vai'
+    }
+  const others = friends.length - 1
+  const second = friends[1]?.name.trim().split(/\s+/)[0]
+  return {
+    faces,
+    more: Math.max(friends.length - faces.length, 0),
+    bold: first,
+    rest: !others
+      ? ' vai'
+      : others === 1
+        ? ` e ${second} vão`
+        : ` e mais ${others} amigos vão`
+  }
 }
