@@ -47,6 +47,8 @@ function makeFavorite({
         startsAt,
         endsAt: null,
         participantFreeText: null,
+        onBigScreen: null,
+        withSound: null,
         createdAt: '2026-08-01T00:00:00.000Z',
         sport: {
           id: 'sport-1',

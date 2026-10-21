@@ -34,7 +34,9 @@ const FILLED: EventForm = {
   startsAt: '2026-10-10T21:00',
   endsAt: '',
   participantIds: [],
-  participantFreeText: ''
+  participantFreeText: '',
+  onBigScreen: true,
+  withSound: false
 }
 
 function render(form: Partial<EventForm>) {
@@ -151,4 +153,27 @@ test('sem "Aceitar reservas neste jogo": a reserva de mesa saiu do produto', () 
   const form = render({})
   expect(form.text).not.toContain('Aceitar reservas')
   expect(form.checkbox).toBeNull()
+})
+
+// WEB-399
+test('telão e som do jogo saem marcados como vieram das características', () => {
+  const markup = renderToStaticMarkup(
+    <QueryClientProvider client={new QueryClient()}>
+      <EventFormComponent
+        initial={FILLED}
+        sports={[{ id: 'futebol-id', name: 'Futebol', slug: 'futebol' }]}
+        onSave={() => {}}
+        onCancel={() => {}}
+        isSaving={false}
+        loadingSports={false}
+      />
+    </QueryClientProvider>
+  )
+  const doc = new JSDOM(markup).window.document
+  const pressed = (label: string) =>
+    [...doc.querySelectorAll('button')]
+      .find((button) => button.textContent === label)
+      ?.getAttribute('aria-pressed')
+  expect(pressed('Telão')).toBe('true')
+  expect(pressed('Som do jogo ligado')).toBe('false')
 })

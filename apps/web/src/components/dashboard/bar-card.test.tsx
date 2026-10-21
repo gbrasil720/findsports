@@ -58,6 +58,8 @@ function eventoEm(startsAt: Date): NonNullable<DiscoveryCardBar['nextEvent']> {
     endsAt: null,
     sport: { name: 'Futebol', slug: 'futebol' },
     participants: [],
+    onBigScreen: false,
+    withSound: false,
     participantFreeText: null,
     classic: null
   } as NonNullable<DiscoveryCardBar['nextEvent']>
