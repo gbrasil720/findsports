@@ -199,9 +199,12 @@ export async function converse(
           },
           { timeoutMs: CALL_TIMEOUT_MS }
         )) as Completion
-        if (!res?.choices?.[0]?.message) throw new Error('Resposta vazia.')
+        const out = res?.choices?.[0]?.message
+        // Sem texto e sem ferramenta conta como falha: tenta de novo.
+        if (!out?.content?.trim() && !out?.tool_calls?.length)
+          throw new Error('Resposta vazia.')
         model = candidate
-        return res.choices[0].message
+        return out
       } catch (error) {
         last = error
       }
@@ -210,7 +213,8 @@ export async function converse(
   }
 
   const finish = (text: string, cited: string[] | null): ChatTurnResult => {
-    const clean = text.trim().slice(0, MAX_REPLY_CHARS)
+    // As aspas « » marcam texto de bar para o modelo; na tela, não.
+    const clean = text.replace(/[«»]/g, '').trim().slice(0, MAX_REPLY_CHARS)
     const { bars, invented } = verifyCitations(cited, clean, deps.state)
     return {
       reply: {
