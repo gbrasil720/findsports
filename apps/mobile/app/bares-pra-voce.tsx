@@ -15,7 +15,13 @@ import {
   useColorScheme,
   View
 } from 'react-native'
-import Animated, { useSharedValue } from 'react-native-reanimated'
+import Animated, {
+  FadeInDown,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, {
   Circle,
@@ -29,7 +35,14 @@ import { Card } from '@/components/card'
 import { initials, type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { haptic, POP, POP_LATE, ScalePress, SWAP } from '@/components/motion'
+import {
+  EASE,
+  haptic,
+  POP,
+  POP_LATE,
+  ScalePress,
+  SWAP
+} from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   CARD_H,
@@ -81,6 +94,15 @@ import { trpc } from '@/lib/trpc'
  */
 
 type Place = Coordinates & { name?: string }
+
+// Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
+const MATCH_OUT = FadeOut.duration(140)
+// As miniaturas da 23f/23h entram em cascata (tela rara: cabe o capricho).
+const STRIP_IN = [0, 1, 2, 3, 4].map((i) =>
+  FadeInDown.delay(i * 50)
+    .duration(220)
+    .easing(EASE)
+)
 type Decision = 'liked' | 'passed' | null
 
 export default function SuggestionsScreen() {
@@ -586,6 +608,7 @@ function Match({
   return (
     <Animated.View
       entering={SWAP}
+      exiting={MATCH_OUT}
       style={[
         StyleSheet.absoluteFill,
         { backgroundColor: palette.bg, zIndex: 100 }
@@ -933,17 +956,25 @@ function ToggleRow({
           { backgroundColor: on ? ACID : palette.dark ? '#2a2a25' : '#d9d5cc' }
         ]}
       >
-        <View
-          style={[
-            styles.knob,
-            {
-              backgroundColor: on ? INK : PAPER,
-              transform: [{ translateX: on ? 22 : 0 }]
-            }
-          ]}
-        />
+        <Knob on={on} />
       </View>
     </Pressable>
+  )
+}
+
+/** A bolinha do interruptor anda (180 ms), em vez de pular de lado. */
+function Knob({ on }: { on: boolean }) {
+  const x = useSharedValue(on ? 22 : 0)
+  useEffect(() => {
+    x.set(withTiming(on ? 22 : 0, { duration: 180, easing: EASE }))
+  }, [on, x])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }]
+  }))
+  return (
+    <Animated.View
+      style={[styles.knob, { backgroundColor: on ? INK : PAPER }, style]}
+    />
   )
 }
 
@@ -1069,15 +1100,16 @@ function Strip({
   return (
     <View style={styles.strip}>
       {round.items.map((item, i) => (
-        <MiniCard
-          key={item.barId}
-          item={item}
-          label={stripLabel(item, now)}
-          width={width}
-          height={height}
-          tilt={[-3, 1, 0, 1.5, 3][i] ?? 0}
-          dark={dark}
-        />
+        <Animated.View key={item.barId} entering={STRIP_IN[i]}>
+          <MiniCard
+            item={item}
+            label={stripLabel(item, now)}
+            width={width}
+            height={height}
+            tilt={[-3, 1, 0, 1.5, 3][i] ?? 0}
+            dark={dark}
+          />
+        </Animated.View>
       ))}
       {Array.from({ length: missing }, (_, i) => (
         <MissingCard
