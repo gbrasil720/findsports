@@ -380,8 +380,10 @@ invente layout que o projeto não tem.
   bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
   lista, dobra o raio só na visita. Com menos de cinco bares com jogo (e fora do "Ao
   vivo"), a lista se completa com os bares perto sem jogo marcado, sob "Sem jogo
-  marcado" (`pubs.nearbyWithoutGames`; decisão do dono e sócios em 21/10/2026); no
-  mapa continuam só os com jogo. **Não existe reserva de mesa** (decisão do
+  marcado" (`pubs.nearbyWithoutGames`; decisão do dono e sócios em 21/10/2026). No
+  mapa eles são um ponto oco pequeno (`QuietDot`), abaixo das gotas e fora de grupos e
+  rótulos, para os com jogo continuarem na frente; tocado, vira a gota grande como os
+  outros. **Não existe reserva de mesa** (decisão do
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
   (`packages/api/src/lib/attendance-ticket.ts`).
