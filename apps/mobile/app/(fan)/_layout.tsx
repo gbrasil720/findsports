@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { usePathname, useRouter } from 'expo-router'
+import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useNewAchievement } from '@/components/achievement-watcher'
+import { AiCoach, useCoachPending } from '@/components/ai-coach'
 import { initials, usePalette } from '@/components/explore'
 import { usePendingInvite } from '@/components/friends'
 import { useSoon } from '@/components/soon'
@@ -17,7 +18,7 @@ import { trpc } from '@/lib/trpc'
  * Favoritos; o dono trocou (16/10/2026), e o Ranking foi para o menu. É a barra nativa do iOS 26
  * (UITabBarController, pelo `NativeTabs`): o vidro distorce o que passa por
  * baixo e o destaque da aba se arrasta de uma para outra, como no sistema.
- * A IA ainda não existe (avisa "em breve"); "Você" mostra o
+ * A IA abre a busca com IA (2h) numa folha; "Você" mostra o
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
@@ -95,6 +96,10 @@ export default function FanTabs() {
   const menuOpen = pathname === '/voce' || over
   const closeMenu = () =>
     over ? setOver(false) : router.navigate(from.current)
+  // Primeiro acesso (4o): o coach da busca com IA, uma vez, sobre o Explorar.
+  // `?coach=1` mostra de novo (navegador DEV).
+  const { coach: forceCoach } = useGlobalSearchParams<{ coach?: string }>()
+  const coach = useCoachPending(forceCoach === '1')
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
     retry: false,
@@ -220,9 +225,8 @@ export default function FanTabs() {
           role="search"
           disabled
           accessibilityLabel="Busca com IA"
-          listeners={{
-            tabPress: () => soon.show('A busca com IA chega em breve')
-          }}
+          // A busca com IA (2h) é uma folha por cima da aba atual.
+          listeners={{ tabPress: () => router.push('/busca-ia') }}
         >
           <NativeTabs.Trigger.Icon
             src={icons.sparkle}
@@ -249,6 +253,15 @@ export default function FanTabs() {
           }}
           onChat={() => soon.show('A conversa com a Onside chega em breve')}
           onSettings={settings}
+        />
+      ) : null}
+      {coach.pending && pathname === '/explore' && !menuOpen ? (
+        <AiCoach
+          onClose={coach.done}
+          onOpen={() => {
+            coach.done()
+            router.push('/busca-ia')
+          }}
         />
       ) : null}
       {soon.toast}
