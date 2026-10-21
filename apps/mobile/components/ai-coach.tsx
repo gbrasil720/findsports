@@ -102,6 +102,8 @@ const BUTTONS_IN: EntryExitAnimationFunction = () => {
     }
   }
 }
+// Sai mais rápido do que entra: quem fechou já decidiu.
+const BALLOON_OUT = FadeOut.duration(120)
 const DIM_IN = FadeIn.duration(220)
 const DIM_OUT = FadeOut.duration(160)
 
@@ -214,6 +216,7 @@ export function AiCoach({
       <View pointerEvents="box-none" style={styles.callout}>
         <Animated.View
           entering={BALLOON_IN}
+          exiting={BALLOON_OUT}
           style={[styles.balloon, { backgroundColor: dark ? INK : PAPER }]}
         >
           <Text
@@ -274,6 +277,8 @@ const styles = StyleSheet.create({
   },
   balloon: {
     maxWidth: 250,
+    // Cresce a partir do canto que aponta para o botão da IA.
+    transformOrigin: 'bottom right',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderTopLeftRadius: 20,
