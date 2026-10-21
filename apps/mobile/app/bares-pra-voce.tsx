@@ -17,7 +17,14 @@ import {
 } from 'react-native'
 import Animated, { useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, Line } from 'react-native-svg'
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  RadialGradient,
+  Rect,
+  Stop
+} from 'react-native-svg'
 import { Card } from '@/components/card'
 import { initials, type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
@@ -36,6 +43,7 @@ import {
   ReleaseHint
 } from '@/components/suggestions'
 import {
+  ACCENT,
   ACID,
   BlockButton,
   GlassRound,
@@ -322,7 +330,8 @@ export default function SuggestionsScreen() {
             actions={actionsFor}
           />
         </View>
-        <View style={[styles.controls, { paddingBottom: insets.bottom + 10 }]}>
+        {/* A 28 pt do rodapé, como no design (o indicador de início fica por cima). */}
+        <View style={[styles.controls, { paddingBottom: 28 }]}>
           <ReleaseHint drag={drag} dark={dark} />
           <DeckButtons
             drag={drag}
@@ -337,11 +346,16 @@ export default function SuggestionsScreen() {
       </View>
     )
   } else if (merged.items.length < 5 || demo === 'curta') {
-    subtitle = `${merged.items.length} de ${merged.items.length} · rodada curta`
+    const size = demo === 'curta' ? 2 : merged.items.length
+    subtitle = `${size} de ${size} · rodada curta`
     body = (
       <Short
         palette={palette}
-        round={merged}
+        round={
+          demo === 'curta'
+            ? { ...merged, items: merged.items.slice(0, 2) }
+            : merged
+        }
         radiusKm={round?.radiusKm ?? userRadius}
         where={where}
         now={now}
@@ -380,6 +394,7 @@ export default function SuggestionsScreen() {
   const closed = body && subtitle === '' && merged && !pending.length
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+      {dark ? <CenterGlow /> : null}
       {pending.length && !demo ? <EdgeGlow drag={drag} /> : null}
       <View style={{ paddingTop: insets.top + 4, flex: 1 }}>
         {closed ? (
@@ -421,6 +436,21 @@ export default function SuggestionsScreen() {
       ) : null}
       {soon.toast}
     </View>
+  )
+}
+
+/** O brilho acid de fundo do escuro (8%, no centro), parado. */
+function CenterGlow() {
+  return (
+    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="center" cx="50%" cy="50%" rx="80%" ry="50%">
+          <Stop offset="0" stopColor={ACID} stopOpacity={0.08} />
+          <Stop offset="0.7" stopColor={ACID} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#center)" />
+    </Svg>
   )
 }
 
@@ -469,7 +499,7 @@ function Header({
         onPress={onSettings}
       >
         <GlassRound>
-          <Icon name="sliders" size={18} color={palette.ink} />
+          <Icon name="sliders" size={18} color={palette.ink} accent={LIVE} />
         </GlassRound>
       </Pressable>
     </View>
@@ -554,16 +584,20 @@ function Match({
   return (
     <Animated.View
       entering={SWAP}
-      style={[StyleSheet.absoluteFill, { backgroundColor: palette.bg }]}
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: palette.bg, zIndex: 100 }
+      ]}
     >
       <View
         style={[
           styles.matchBody,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 16 }
+          { paddingTop: insets.top + 16, paddingBottom: 28 }
         ]}
       >
         <Confetti />
         <Animated.View entering={POP} style={styles.pair}>
+          <View style={styles.meRing} />
           <View style={[styles.me, { borderColor: dark ? INK : PAPER }]}>
             <Text style={styles.meText}>
               {initials(session.data?.user.name ?? '')}
@@ -581,7 +615,7 @@ function Match({
         <Animated.View entering={POP_LATE} style={{ alignItems: 'center' }}>
           <Title
             lines={[['COM', 'BINOU!']]}
-            size={92}
+            size={78}
             color={palette.ink}
             accentColor={hot}
           />
@@ -601,82 +635,92 @@ function Match({
         </Animated.View>
 
         {game ? (
-          <Card
-            palette={palette}
-            shadow={ACID}
-            offset={6}
-            style={styles.ticket}
-          >
-            <View style={styles.ticketTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={[text(13, 'Bold'), { color: palette.live }]}>
-                  {gameToday ? 'Tem jogo aqui hoje' : 'Tem jogo aqui'}
-                </Text>
-                <Text style={[styles.ticketTitle, { color: palette.ink }]}>
-                  {gameTitle(game)}
-                </Text>
-              </View>
-              <Text style={[styles.ticketTime, { color: palette.ink }]}>
-                {new Date(game.startsAt).toLocaleTimeString('pt-BR', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  timeZone: 'America/Sao_Paulo'
-                })}
-              </Text>
-            </View>
-            {/* Ponto de encaixe do WEB-404: com os nomes dos amigos que vão,
-                o design diz "Marina e mais 17 vão". Hoje o servidor de
-                presença dá a contagem e as iniciais, acima do piso. */}
-            {game.going ? (
-              <>
-                <Perforation palette={palette} />
-                <View style={styles.goingRow}>
-                  <View style={{ flexDirection: 'row' }}>
-                    {game.going.initials.slice(0, 2).map((letter, i) => (
-                      <View
-                        // biome-ignore lint/suspicious/noArrayIndexKey: iniciais repetem, a posição é a identidade
-                        key={`${letter}${i}`}
-                        style={[
-                          styles.face,
-                          {
-                            backgroundColor: i ? LIVE : ACID,
-                            marginLeft: i ? -8 : 0,
-                            borderColor: palette.card
-                          }
-                        ]}
-                      >
-                        <Text style={[text(11, 'Bold', 1), { color: INK }]}>
-                          {letter}
-                        </Text>
-                      </View>
-                    ))}
-                    {game.going.count > 2 ? (
-                      <View
-                        style={[
-                          styles.face,
-                          {
-                            backgroundColor: INK,
-                            marginLeft: -8,
-                            borderColor: palette.card
-                          }
-                        ]}
-                      >
-                        <Text style={[text(11, 'Bold', 1), { color: PAPER }]}>
-                          +{game.going.count - 2}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={[text(14), { color: palette.ink }]}>
-                    <Text style={{ fontFamily: 'Archivo-Bold' }}>
-                      {game.going.count}
-                    </Text>{' '}
-                    vão
+          // O ingresso é papel no escuro (design) e tinta no claro.
+          <View>
+            <View style={[styles.ticketShadow, { backgroundColor: ACID }]} />
+            <View
+              style={[styles.ticket, { backgroundColor: dark ? PAPER : INK }]}
+            >
+              <View style={styles.ticketTop}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[text(13, 'Bold'), { color: dark ? ACCENT : LIVE }]}
+                  >
+                    {gameToday ? 'Tem jogo aqui hoje' : 'Tem jogo aqui'}
+                  </Text>
+                  <Text
+                    style={[styles.ticketTitle, { color: dark ? INK : PAPER }]}
+                  >
+                    {gameTitle(game)}
                   </Text>
                 </View>
-              </>
-            ) : null}
-          </Card>
+                <Text
+                  style={[styles.ticketTime, { color: dark ? INK : PAPER }]}
+                >
+                  {new Date(game.startsAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/Sao_Paulo'
+                  })}
+                </Text>
+              </View>
+              {/* Ponto de encaixe do WEB-404: com os nomes dos amigos que vão,
+                o design diz "Marina e mais 17 vão". Hoje o servidor de
+                presença dá a contagem e as iniciais, acima do piso. */}
+              {game.going ? (
+                <>
+                  <Perforation
+                    palette={palette}
+                    ink={dark ? 'rgba(18,18,15,.2)' : 'rgba(241,238,230,.2)'}
+                  />
+                  <View style={styles.goingRow}>
+                    <View style={{ flexDirection: 'row' }}>
+                      {game.going.initials.slice(0, 2).map((letter, i) => (
+                        <View
+                          // biome-ignore lint/suspicious/noArrayIndexKey: iniciais repetem, a posição é a identidade
+                          key={`${letter}${i}`}
+                          style={[
+                            styles.face,
+                            {
+                              backgroundColor: i ? LIVE : ACID,
+                              marginLeft: i ? -8 : 0,
+                              borderColor: dark ? PAPER : INK
+                            }
+                          ]}
+                        >
+                          <Text style={[text(11, 'Bold', 1), { color: INK }]}>
+                            {letter}
+                          </Text>
+                        </View>
+                      ))}
+                      {game.going.count > 2 ? (
+                        <View
+                          style={[
+                            styles.face,
+                            {
+                              backgroundColor: INK,
+                              marginLeft: -8,
+                              borderColor: dark ? PAPER : INK
+                            }
+                          ]}
+                        >
+                          <Text style={[text(11, 'Bold', 1), { color: PAPER }]}>
+                            +{game.going.count - 2}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={[text(14), { color: dark ? INK : PAPER }]}>
+                      <Text style={{ fontFamily: 'Archivo-Bold' }}>
+                        {game.going.count}
+                      </Text>{' '}
+                      vão
+                    </Text>
+                  </View>
+                </>
+              ) : null}
+            </View>
+          </View>
         ) : (
           <Card palette={palette} shadow={dark ? '#5d7020' : ACID} offset={6}>
             {sport ? (
@@ -817,7 +861,7 @@ function Confetti() {
   )
 }
 
-function Perforation({ palette }: { palette: Palette }) {
+function Perforation({ palette, ink }: { palette: Palette; ink: string }) {
   return (
     <View style={styles.cut}>
       <View style={[styles.hole, { left: -9, backgroundColor: palette.bg }]} />
@@ -827,7 +871,7 @@ function Perforation({ palette }: { palette: Palette }) {
           y1={1}
           x2="100%"
           y2={1}
-          stroke={palette.dash}
+          stroke={ink}
           strokeWidth={1.5}
           strokeDasharray="5,5"
         />
@@ -882,7 +926,10 @@ function ToggleRow({
         </Text>
       </View>
       <View
-        style={[styles.switch, { backgroundColor: on ? ACID : palette.mark }]}
+        style={[
+          styles.switch,
+          { backgroundColor: on ? ACID : palette.dark ? '#2a2a25' : '#d9d5cc' }
+        ]}
       >
         <View
           style={[
@@ -1014,7 +1061,7 @@ function Strip({
   dark: boolean
   missing?: number
 }) {
-  const width = round.items.length + missing > 3 ? 64 : 92
+  const width = round.items.length + missing > 3 ? 68 : 92
   return (
     <View style={styles.strip}>
       {round.items.map((item, i) => (
@@ -1594,7 +1641,12 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     zIndex: 20
   },
-  closeOnly: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
+  closeOnly: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    alignItems: 'flex-start'
+  },
   title: {
     fontFamily: 'Anton',
     fontSize: 26,
@@ -1610,15 +1662,25 @@ const styles = StyleSheet.create({
   controls: { flex: 1, justifyContent: 'flex-end', gap: 14, zIndex: 20 },
   matchBody: { flex: 1, paddingHorizontal: 16, gap: 20 },
   pair: {
-    height: 300,
+    height: 230,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: -20
   },
+  meRing: {
+    position: 'absolute',
+    left: 33,
+    top: 21,
+    width: 156,
+    height: 156,
+    borderRadius: 78,
+    borderWidth: 3,
+    borderColor: ACID
+  },
   me: {
     position: 'absolute',
-    left: 52,
-    top: 52,
+    left: 36,
+    top: 24,
     width: 150,
     height: 150,
     borderRadius: 75,
@@ -1639,8 +1701,8 @@ const styles = StyleSheet.create({
   },
   them: {
     position: 'absolute',
-    right: 52,
-    top: 44,
+    right: 36,
+    top: 18,
     width: 158,
     height: 158,
     borderRadius: 79,
@@ -1651,8 +1713,8 @@ const styles = StyleSheet.create({
   themPhoto: { width: 158, height: 158 },
   heart: {
     position: 'absolute',
-    left: 168,
-    top: 104,
+    left: 156,
+    top: 76,
     width: 46,
     height: 46,
     borderRadius: 23,
@@ -1661,15 +1723,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  ticket: { borderRadius: 6 },
+  ticketShadow: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 6
+  },
+  ticket: { borderRadius: 6, overflow: 'hidden' },
   ticketTop: { flexDirection: 'row', padding: 16, gap: 10 },
   ticketTitle: {
     fontFamily: 'Anton',
-    fontSize: 24,
+    fontSize: 26,
     textTransform: 'uppercase',
     marginTop: 2
   },
-  ticketTime: { fontFamily: 'Anton', fontSize: 30 },
+  ticketTime: { fontFamily: 'Anton', fontSize: 34 },
   cut: { height: 18, justifyContent: 'center' },
   hole: { position: 'absolute', width: 18, height: 18, borderRadius: 9 },
   goingRow: {

@@ -223,7 +223,7 @@ function AxisRow({
       </View>
       <View style={{ flex: 1, gap: 4 }}>
         <View style={styles.axisHead}>
-          <Text style={[text(17, 'Bold', 1.25), { color: palette.ink }]}>
+          <Text style={[text(16, 'Bold', 1.25), { color: palette.ink }]}>
             {axis.label}
           </Text>
           {heavy ? (
@@ -236,7 +236,7 @@ function AxisRow({
             {points}/{axis.max}
           </Text>
         </View>
-        <Text style={[text(14.5, 'Regular', 1.4), { color: palette.muted }]}>
+        <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
           {axisLine(item, axis.key, radius)}
         </Text>
         {/* Um tracinho por ponto do teto, como no design. */}
@@ -327,7 +327,7 @@ function Choice({
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: 16, paddingTop: 28, paddingBottom: 60, gap: 18 },
+  body: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 60, gap: 16 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   summary: {
     flexDirection: 'row',
@@ -347,10 +347,15 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 9, height: 9, borderRadius: 2 },
-  axis: { flexDirection: 'row', gap: 14, padding: 16 },
+  axis: {
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
   axisIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center'
