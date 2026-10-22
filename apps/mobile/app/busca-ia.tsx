@@ -724,7 +724,7 @@ function StatusDot({ busy, quiet }: { busy: boolean; quiet: boolean }) {
             -1,
             true
           )
-        : withTiming(1, { duration: 200 })
+        : withTiming(1, { duration: 200, easing: EASE })
     )
   }, [busy, pulse])
   const halo = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }))
