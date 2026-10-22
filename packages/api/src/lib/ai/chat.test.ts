@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 
 import { converse, trimHistory, verifyCitations } from './chat'
-import type { SearchBar, ToolState } from './chat-tools'
+import {
+  type Caller,
+  runTool,
+  type SearchBar,
+  type ToolState
+} from './chat-tools'
+import type { ChatEvent } from './events'
 import type { AiCall } from './run'
 
 const bar = (id: string, name: string) => ({ id, name }) as SearchBar
@@ -148,5 +154,209 @@ describe('conversa de uma mensagem', () => {
     expect(ran).toBe(3)
     expect(result.reply.toolCalls).toHaveLength(3)
     expect(bodies[1]?.tools.map((t) => t.function.name)).toEqual(['responder'])
+  })
+})
+
+describe('eventos da conversa (R24)', () => {
+  const NOW = new Date('2026-10-21T18:00:00Z')
+  const found = (id: string, name: string, km: number) =>
+    ({
+      id,
+      name,
+      neighborhood: 'Pinheiros',
+      distance_km: km,
+      photo_url: null,
+      plan: 'pro',
+      rating: { percentage: 87 },
+      averageSpendCents: null,
+      amenities: [1, 4],
+      goingCount: null,
+      nextEvent: {
+        id: 'jogo',
+        championship: 'Brasileirão',
+        startsAt: '2026-10-22T00:30:00.000Z',
+        endsAt: null,
+        participants: [
+          { team: { name: 'Corinthians' } },
+          { team: { name: 'Palmeiras' } }
+        ],
+        participantFreeText: null
+      }
+    }) as unknown as SearchBar
+  const caller = {
+    getSports: async () => [{ id: 'futebol' }],
+    searchTeams: async () => [{ id: 'time-cor', name: 'Corinthians' }],
+    search: async () => ({
+      bars: [found(ZE.id, 'Bar do Zé', 0.8), found(CASA.id, 'Casa 92', 2.3)]
+    })
+  } as unknown as Caller
+
+  it('busca: passos, ferramenta, cards, texto com citação e chips com key', async () => {
+    const events: ChatEvent[] = []
+    const emit = (e: ChatEvent) => events.push(e)
+    const state = stateWith()
+    const replies = [
+      toolCall(
+        'buscar_bares',
+        {
+          times: ['Corinthians'],
+          caracteristicas: ['telao', 'area_externa']
+        },
+        'c1'
+      ),
+      toolCall('responder', {
+        texto: 'O **Bar do Zé** [[1]], o **Fake** [[2]] e a **Casa 92** [[3]].',
+        bares: [ZE.id, 'fake', CASA.id],
+        sugestoes: [
+          'Só com oferta da casa',
+          'Ver no mapa',
+          'E amanhã?',
+          'a',
+          'b'
+        ]
+      })
+    ]
+    const toolCtx = {
+      caller,
+      message: 'timão hoje com telão',
+      origin: { lat: -23.56, lng: -46.69 },
+      radiusKm: 3,
+      now: NOW,
+      day: 'today' as const,
+      placeLabel: 'Pinheiros',
+      emit
+    }
+    const result = await converse('timão hoje com telão', [], {
+      call: async () => replies.shift(),
+      models: ['modelo-a', 'modelo-b'],
+      runTool: (name, args, id) => runTool(name, args, toolCtx, state, id),
+      state,
+      now: NOW,
+      hasOrigin: true,
+      emit
+    })
+
+    const brief = events.map((e) =>
+      e.type === 'step'
+        ? `step:${e.id}:${e.state}`
+        : e.type === 'tool'
+          ? `tool:${e.id}:${e.state}`
+          : e.type
+    )
+    expect(brief).toEqual([
+      'step:understood:done',
+      'tool:c1:run',
+      'step:search:run',
+      'step:game:done',
+      'tool:c1:run',
+      'bars',
+      'step:search:done',
+      'tool:c1:done',
+      'step:rank:run',
+      'step:rank:done',
+      'text'
+    ])
+    expect(events[0]).toMatchObject({
+      label: 'Entendi o pedido',
+      tags: ['Corinthians', 'Telão', 'Área externa']
+    })
+    expect(events[1]).toMatchObject({
+      name: 'buscar_bares',
+      label: 'Bares com o jogo',
+      params: [
+        ['time', 'Corinthians'],
+        ['dia', 'hoje'],
+        ['raio', '3 km de Pinheiros'],
+        ['tem', 'telão, área externa']
+      ]
+    })
+    expect(events[3]).toMatchObject({
+      detail: 'Corinthians × Palmeiras · 21:30 · Brasileirão'
+    })
+    expect(events[4]).toMatchObject({
+      output: '2 bares encontrados, filtrando…'
+    })
+    expect(events[7]).toMatchObject({
+      output: '2 bares · 0,8 a 2,3 km',
+      params: [
+        ['jogo', 'Corinthians × Palmeiras · 21:30'],
+        ['dia', 'hoje'],
+        ['raio', '3 km de Pinheiros'],
+        ['tem', 'telão, área externa']
+      ]
+    })
+    expect(events[5]).toMatchObject({
+      bars: [{ id: ZE.id, distanceKm: 0.8, ratingPercent: 87 }, { id: CASA.id }]
+    })
+    expect(events.at(-1)).toEqual({
+      type: 'text',
+      text: 'O **Bar do Zé** [[1]], o **Fake** e a **Casa 92** [[2]].'
+    })
+    expect(result.reply.suggestions).toEqual([
+      'Só com oferta da casa',
+      'E amanhã?',
+      'a'
+    ])
+    // O chip de dia vem do app (o modelo não passou data).
+    expect(result.reply.search?.chips).toEqual([
+      { key: 'teamIds:time-cor', label: 'Corinthians', icon: 'team' },
+      { key: 'date:2026-10-21', label: 'Hoje', icon: 'cal' },
+      { key: 'amenities:1', label: 'Telão', icon: 'tv' },
+      { key: 'amenities:4', label: 'Área externa', icon: 'sun' },
+      { key: 'radiusKm:3', label: 'até 3 km', icon: 'pin' }
+    ])
+  })
+
+  it('resposta com outra ordem: os cards saem de novo antes do texto', async () => {
+    const events: ChatEvent[] = []
+    const state = stateWith()
+    const replies = [
+      toolCall('buscar_bares', {}, 'c1'),
+      toolCall('responder', {
+        texto: 'A **Casa 92** [[1]].',
+        bares: [CASA.id]
+      })
+    ]
+    const toolCtx = {
+      caller,
+      message: 'bar',
+      origin: { lat: -23.56, lng: -46.69 },
+      radiusKm: 3,
+      now: NOW,
+      emit: (e: ChatEvent) => events.push(e)
+    }
+    await converse('bar', [], {
+      call: async () => replies.shift(),
+      models: ['modelo-a', 'modelo-b'],
+      runTool: (name, args, id) => runTool(name, args, toolCtx, state, id),
+      state,
+      now: NOW,
+      hasOrigin: true,
+      emit: toolCtx.emit
+    })
+    const bars = events.filter((e) => e.type === 'bars')
+    expect(bars).toHaveLength(2)
+    expect(bars[1]).toMatchObject({ bars: [{ id: CASA.id }] })
+    expect(events.at(-2)?.type).toBe('bars')
+    // Sem time pedido: nada de "Achei o jogo".
+    expect(events.some((e) => e.type === 'step' && e.id === 'game')).toBe(false)
+  })
+
+  it('sem emit (ai.chat antigo): sem ferramenta de proposta', async () => {
+    const bodies: { tools: { function: { name: string } }[] }[] = []
+    await converse('oi', [], {
+      call: async (_m, input) => {
+        bodies.push(input as never)
+        return toolCall('responder', { texto: 'Oi.', bares: [] })
+      },
+      models: ['modelo-a', 'modelo-b'],
+      runTool: async () => ({}),
+      state: stateWith(),
+      now: NOW,
+      hasOrigin: true
+    })
+    const names = bodies[0]?.tools.map((t) => t.function.name)
+    expect(names).not.toContain('marcar_vou_assistir')
+    expect(names).not.toContain('lembrar')
   })
 })
