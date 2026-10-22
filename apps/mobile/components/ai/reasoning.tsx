@@ -41,7 +41,7 @@ const CHECK_IN: EntryExitAnimationFunction = () => {
 // Os passos saem rápido: a resposta sobe para o lugar deles.
 const FOLD_OUT = FadeOut.duration(90)
 const FOLD_IN = FadeIn.duration(200)
-const RESIZE = LinearTransition.duration(240).easing(EASE)
+const RESIZE = LinearTransition.duration(220).easing(EASE)
 
 export function Reasoning({
   steps,

@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { StyleSheet, Text, type TextStyle, View } from 'react-native'
 import Animated, {
   Easing,
+  ReduceMotion,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
@@ -41,7 +42,11 @@ export function Spinner({
       withRepeat(
         withTiming(1, { duration: 750, easing: Easing.linear }),
         -1,
-        false
+        false,
+        undefined,
+        // Giro no lugar não desloca nada e é o único sinal de "ainda
+        // trabalhando" na 24b: continua com movimento reduzido.
+        ReduceMotion.Never
       )
     )
   }, [turn])
