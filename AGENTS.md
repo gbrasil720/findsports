@@ -261,7 +261,17 @@ Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (de
 padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
 chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
 grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`). Tetos e sorteio
-(hash de usuário + teste, pesos em `ai.variant_weights`) são puros em `lib/ai/limits.ts`.
+(hash de usuário + teste, pesos em `ai.variant_weights`, que somam 100 em cada teste) são
+puros em `lib/ai/limits.ts`; os valores dos tetos e limites moram em `ai.limits` no
+`app_config` (padrão: US$ 40, US$ 1,50 e 30 chamadas por pessoa, 10 e 100 mensagens), e o
+teto do Gateway de produção é à parte: subir um sem o outro não libera nada.
+
+A tela "IA" do Houdini (`routes/houdini/_app/ia.tsx`, `houdini.ia.overview` e `runs`, só
+admin) mostra a situação, os braços dos dois testes, quem mais gasta e o registro, e muda
+`ai.enabled`, pesos e limites pelo `appConfig.set` (sem prazo, com confirmação e Grimório).
+As contas estão em `lib/ai/report.ts`: conversa é a sequência da mesma pessoa no mesmo braço
+sem pausa de mais de 30 min; converte com `ai_action` em até 24 h da resposta; a diferença
+B − A sai com intervalo de 95% só com 100 conversas por braço e 5 com e 5 sem ação em cada.
 
 O chat (`routers/ai.ts`, `lib/ai/chat.ts`) só consulta a Onside pelas ferramentas de
 `lib/ai/chat-tools.ts`, que chamam `pubs.*` com a sessão do torcedor (máximo 3 por mensagem,
@@ -327,7 +337,7 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
 "Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
 `components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
-(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt).
+(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). A seção IA está em "IA (Workers AI…)".
 
 ### App mobile
 
