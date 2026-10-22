@@ -1,13 +1,14 @@
-import type { SearchBar } from '@/components/explore'
-import { clock } from './ai-chat'
+import { clock, fromSearchBar } from './ai-chat'
 import { WORST_ANSWER, WORST_BARS, WORST_CHIPS } from './ai-chat-demo'
 import type {
+  ChatBar,
   ChatEvent,
   ConfirmInput,
   ConfirmResult,
   ConverseInput
 } from './ai-events'
 import { env } from './env'
+import { isLive } from './explore'
 
 /*
  * Dublê do `ai.converse` e do `ai.confirm` (Rodada 24), só em
@@ -41,26 +42,6 @@ function tonight(now: number) {
   return new Date(`${day}T21:30:00-03:00`).toISOString()
 }
 
-const game = (
-  id: string,
-  home: string,
-  away: string,
-  startsAt: string,
-  championship = 'Brasileirão'
-) => ({
-  id,
-  championship,
-  startsAt,
-  endsAt: null,
-  sport: { name: 'Futebol', slug: 'futebol' },
-  participants: [
-    { team: { name: home, logoUrl: null } },
-    { team: { name: away, logoUrl: null } }
-  ],
-  participantFreeText: null,
-  classic: null
-})
-
 function bar(
   i: number,
   name: string,
@@ -68,72 +49,44 @@ function bar(
   km: number,
   plan: string,
   rating: number,
-  nextEvent: ReturnType<typeof game>
-) {
+  game: ChatBar['game']
+): ChatBar {
   return {
     id: `00000000-0000-4000-8000-0000000000a${i}`,
     name,
     neighborhood,
-    city: 'São Paulo',
-    latitude: String(-23.556 + i * 0.004),
-    longitude: String(-46.69 + i * 0.003),
-    photo_url: photo,
-    created_at: new Date(Date.now() - 400 * 24 * HOUR).toISOString(),
-    distance_km: km,
+    distanceKm: km,
+    photoUrl: photo,
     plan,
-    event_count: 1,
-    rating: { positive: rating, total: 100, percentage: rating },
+    ratingPercent: rating,
     averageSpendCents: 6000,
-    amenities: [1, 4],
-    goingCount: null,
-    goingInitials: [],
-    nextEvent
-  } as unknown as SearchBar
+    game
+  }
 }
 
 /** Os três bares da 24c. */
-export function dublaBars(now: number): SearchBar[] {
+export function dublaBars(now: number): ChatBar[] {
   const day = new Date(now - 3 * HOUR).toISOString().slice(0, 10)
   const tomorrow = new Date(Date.parse(`${day}T16:00:00-03:00`) + 24 * HOUR)
   return [
-    bar(
-      1,
-      'Bar do Zé',
-      'Vila Madalena',
-      0.8,
-      'elite',
-      87,
-      game(
-        'ev-dubla-1',
-        'Corinthians',
-        'Palmeiras',
-        new Date(now - 20 * 60_000).toISOString()
-      )
-    ),
-    bar(
-      2,
-      'Casa 92',
-      'Pinheiros',
-      1.4,
-      'pro',
-      92,
-      game('ev-dubla-2', 'Grêmio', 'Internacional', tonight(now))
-    ),
-    bar(
-      3,
-      'Empório Matilde',
-      'Vila Madalena',
-      2.3,
-      'pro',
-      78,
-      game(
-        'ev-dubla-3',
-        'Flamengo',
-        'Fluminense',
-        tomorrow.toISOString(),
-        'Carioca'
-      )
-    )
+    bar(1, 'Bar do Zé', 'Vila Madalena', 0.8, 'elite', 87, {
+      id: 'ev-dubla-1',
+      title: 'Corinthians × Palmeiras',
+      startsAt: new Date(now - 20 * 60_000).toISOString(),
+      live: true
+    }),
+    bar(2, 'Casa 92', 'Pinheiros', 1.4, 'pro', 92, {
+      id: 'ev-dubla-2',
+      title: 'Grêmio × Internacional',
+      startsAt: tonight(now),
+      live: false
+    }),
+    bar(3, 'Empório Matilde', 'Vila Madalena', 2.3, 'pro', 78, {
+      id: 'ev-dubla-3',
+      title: 'Flamengo × Fluminense',
+      startsAt: tomorrow.toISOString(),
+      live: false
+    })
   ]
 }
 
@@ -249,32 +202,29 @@ export async function* dublaConverse(
     status: 'ok',
     thoughtMs: 4000,
     searches: 2,
+    // O time é de mentira: tirá-lo primeiro traz bares de verdade do
+    // banco local; os outros chips são os argumentos reais.
     chips: [
-      { key: 'teamIds:cor', label: 'Corinthians', icon: 'team' },
-      { key: 'date', label: 'Hoje', icon: 'cal' },
+      {
+        key: 'teamIds:00000000-0000-4000-8000-0000000000c0',
+        label: 'Corinthians',
+        icon: 'team'
+      },
+      { key: `date:${today}`, label: 'Hoje', icon: 'cal' },
       { key: 'amenities:1', label: 'Telão', icon: 'tv' },
       { key: 'amenities:4', label: 'Área externa', icon: 'sun' },
-      { key: 'radiusKm', label: 'até 3 km', icon: 'pin' }
+      { key: 'radiusKm:3', label: 'até 3 km', icon: 'pin' }
     ],
     sources: bars.map((b, i) => ({
       barId: b.id,
       name: b.name,
-      photoUrl: b.photo_url,
+      photoUrl: b.photoUrl,
       why:
         ['Página do bar · agenda', 'Página do bar · avaliações'][i] ??
         'Página do bar · movimento'
     })),
     suggestions: ['Só com oferta da casa', 'E amanhã?', 'Qual tem mesa?'],
-    remainingToday: 7,
-    // Vila Madalena: tirar um chip consulta bares de verdade no banco local.
-    search: {
-      lat: -23.5535,
-      lng: -46.6911,
-      radiusKm: 3,
-      date: today,
-      amenities: [1, 4],
-      neighborhood: null
-    }
+    remainingToday: 7
   }
 }
 
@@ -306,7 +256,7 @@ async function* worst(signal: AbortSignal): AsyncGenerator<ChatEvent> {
     state: 'done',
     output: '8 bares · 0,3 a 12,2 km'
   }
-  yield { type: 'bars', bars: WORST_BARS }
+  yield { type: 'bars', bars: WORST_BARS.map((b) => fromSearchBar(b, isLive)) }
   const text = WORST_ANSWER.replace(
     '**Bar e Restaurante Esquina do Torcedor Apaixonado**',
     '**Bar e Restaurante Esquina do Torcedor Apaixonado** [[1]]'
@@ -322,7 +272,7 @@ async function* worst(signal: AbortSignal): AsyncGenerator<ChatEvent> {
     thoughtMs: 61_400,
     searches: 3,
     chips: WORST_CHIPS.map((label, i) => ({
-      key: `amenities:${i}`,
+      key: `amenities:${i + 20}`,
       label,
       icon: (['team', 'team', 'sport', 'cal', 'tv'] as const)[i] ?? 'beer'
     })),
@@ -337,14 +287,7 @@ async function* worst(signal: AbortSignal): AsyncGenerator<ChatEvent> {
       'E se chover, qual é coberto?',
       'Mais barato que R$ 60 por pessoa'
     ],
-    remainingToday: 1,
-    search: {
-      lat: -23.5535,
-      lng: -46.6911,
-      radiusKm: 10,
-      amenities: [1, 4],
-      neighborhood: null
-    }
+    remainingToday: 1
   }
 }
 
@@ -374,6 +317,11 @@ async function* proposal(
       ['chamar', 'Marina Costa']
     ]
   }
+  await wait(300, signal)
+  yield {
+    type: 'text',
+    text: 'Posso marcar sua presença no **Bar do Zé** e chamar a Marina. Confira antes:'
+  }
   const [ze] = dublaBars(now)
   yield {
     type: 'proposal',
@@ -397,7 +345,7 @@ async function* proposal(
           label: 'Chamar Marina Costa',
           on: true
         },
-        { kind: 'remind', label: 'Me lembrar 1 h antes', on: false }
+        { kind: 'remind', label: 'Me lembrar no dia do jogo', on: false }
       ]
     }
   }
@@ -410,8 +358,7 @@ async function* proposal(
     chips: [],
     sources: [],
     suggestions: ['Como chego lá?', 'Quem mais vai?', 'Me lembra 1 h antes'],
-    remainingToday: 6,
-    search: null
+    remainingToday: 6
   }
 }
 

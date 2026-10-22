@@ -5,11 +5,14 @@ import {
   barsFound,
   boldSegments,
   chatHistory,
+  chipSearch,
   citationPieces,
   confirmText,
   followUps,
+  fromSearchBar,
   historyOf,
   inNeighborhood,
+  mapFocus,
   newTurn,
   patchVersion,
   plainText,
@@ -19,8 +22,6 @@ import {
   redoTurn,
   resumeLabel,
   saveRecent,
-  searchInput,
-  searchWithout,
   shownReply,
   sourcesLabel,
   startReply,
@@ -28,7 +29,7 @@ import {
   thoughtLabel,
   versionLabel
 } from './ai-chat'
-import type { ChatBar, ChatEvent, ChatSearch } from './ai-events'
+import type { ChatBar, ChatEvent, FilterChip } from './ai-events'
 
 const bar = (id: string) => ({ id }) as ChatBar
 
@@ -224,38 +225,34 @@ describe('busca com IA (Rodada 24)', () => {
     ).toBe('Ontem · 3 bares')
   })
 
-  it('tirar um chip refaz a busca sem aquele argumento', () => {
-    const search: ChatSearch = {
-      lat: -23.56,
-      lng: -46.69,
-      radiusKm: 3,
-      date: '2026-10-22',
-      amenities: [1, 3],
-      teamIds: ['cor'],
+  it('tirar um chip refaz a busca com os que sobram', () => {
+    const chips: FilterChip[] = [
+      { key: 'teamIds:cor', label: 'Corinthians', icon: 'team' },
+      { key: 'date:2026-10-22', label: 'Hoje', icon: 'cal' },
+      { key: 'amenities:1', label: 'Telão', icon: 'tv' },
+      { key: 'amenities:4', label: 'Área externa', icon: 'sun' },
+      { key: 'radiusKm:3', label: 'até 3 km', icon: 'pin' },
+      { key: 'neighborhood:Pinheiros', label: 'Pinheiros', icon: 'pin' }
+    ]
+    const here = { lat: -23.56, lng: -46.69 }
+    expect(chipSearch(chips, ['amenities:4', 'teamIds:cor'], here)).toEqual({
+      input: {
+        lat: -23.56,
+        lng: -46.69,
+        limit: 20,
+        date: '2026-10-22',
+        amenities: [1],
+        radiusKm: 3
+      },
       neighborhood: 'Pinheiros'
-    }
-    expect(searchWithout(search, ['amenities:3'])).toEqual({
-      ...search,
-      amenities: [1]
     })
-    const bare = searchWithout(search, [
-      'date',
-      'amenities:1',
-      'amenities:3',
-      'teamIds:cor',
-      'neighborhood',
-      'radiusKm',
-      'lat'
-    ])
-    expect(bare).toEqual({ lat: -23.56, lng: -46.69, neighborhood: null })
-    // O raio tirado volta ao da pessoa; o bairro não vai ao servidor.
-    expect(searchInput(bare, 5)).toEqual({
-      lat: -23.56,
-      lng: -46.69,
-      radiusKm: 5,
-      limit: 20
-    })
-    expect(searchInput(search, 5).radiusKm).toBe(3)
+    // O chip de cidade pedida ganha do local do campo; sem local, sem busca.
+    const city = [
+      ...chips,
+      { key: 'origin:-22.9,-43.2', label: 'Rio', icon: 'pin' as const }
+    ]
+    expect(chipSearch(city, [], here)?.input.lat).toBe(-22.9)
+    expect(chipSearch(chips, [], null)).toBeNull()
     expect(
       inNeighborhood(
         [
@@ -266,6 +263,42 @@ describe('busca com IA (Rodada 24)', () => {
         'pinheiros'
       ).map((b) => b.id)
     ).toEqual(['a'])
+    expect(mapFocus(chips, here, 5)).toEqual({ ...here, km: 6 })
+  })
+
+  it('bar da busca normal vira o card do chat', () => {
+    const bar = fromSearchBar(
+      {
+        id: 'a',
+        name: 'Zé',
+        neighborhood: 'Pinheiros',
+        distance_km: 0.8,
+        photo_url: null,
+        plan: 'pro',
+        rating: { percentage: 87 },
+        averageSpendCents: null,
+        nextEvent: {
+          id: 'e',
+          startsAt: '2026-10-22T21:30:00-03:00',
+          endsAt: null,
+          championship: 'Brasileirão',
+          participants: [
+            { team: { name: 'Corinthians' } },
+            { team: { name: 'Palmeiras' } }
+          ],
+          participantFreeText: null
+        }
+      },
+      () => true
+    )
+    expect(bar.game).toEqual({
+      id: 'e',
+      title: 'Corinthians × Palmeiras',
+      startsAt: '2026-10-22T21:30:00-03:00',
+      live: true
+    })
+    expect(bar.ratingPercent).toBe(87)
+    expect(bar.distanceKm).toBe(0.8)
   })
 
   it('seguimento: até três perguntas, "Ver no mapa" em segundo com bares', () => {
@@ -280,10 +313,15 @@ describe('busca com IA (Rodada 24)', () => {
   it('fontes e a frase do "Confirmar"', () => {
     const now = new Date('2026-10-22T19:00:00Z').getTime()
     const source = { barId: 'a', name: 'Zé', photoUrl: null, why: '' }
-    expect(sourcesLabel([source, source, source], '2026-10-22', now)).toBe(
+    const today: FilterChip = {
+      key: 'date:2026-10-22',
+      label: 'Hoje',
+      icon: 'cal'
+    }
+    expect(sourcesLabel([source, source, source], [today], now)).toBe(
       'Usei 3 bares e a agenda de hoje'
     )
-    expect(sourcesLabel([source], undefined, now)).toBe('Usei 1 bar')
+    expect(sourcesLabel([source], [], now)).toBe('Usei 1 bar')
     expect(
       confirmText({
         going: {
