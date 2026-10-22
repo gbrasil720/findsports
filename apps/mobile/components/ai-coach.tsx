@@ -228,7 +228,13 @@ export function AiCoach({
           </Text>
         </Animated.View>
         <Animated.View entering={BUTTONS_IN} style={styles.buttons}>
-          <ScalePress accessibilityRole="button" onPress={onClose}>
+          {/* O vidro interativo do iOS 26 já reage ao toque; a escala só
+              entra onde ele não existe (como o `Chip`). */}
+          <ScalePress
+            accessibilityRole="button"
+            onPress={onClose}
+            to={LIQUID ? 1 : 0.97}
+          >
             <Glass tone="dark" interactive style={styles.later}>
               <Text style={[text(14, 'Bold', 1.2), { color: PAPER }]}>
                 Agora não
