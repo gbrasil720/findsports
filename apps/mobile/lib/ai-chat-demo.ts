@@ -1,8 +1,8 @@
 import type { SearchBar } from '@/components/explore'
 
 /*
- * Pior caso da busca com IA (2h), só para o navegador DEV
- * (`/busca-ia?demo=pior`): a conversa nasce daqui, sem chamar o modelo.
+ * Pior caso da busca com IA, só para o navegador DEV
+ * (`/busca-ia?dubla=pior`, pelo dublê de `lib/ai-dubla.ts`), sem modelo.
  * Pergunta no teto de 300 caracteres, resposta no teto de 600, etiquetas
  * demais, nome de bar comprido, bar sem foto, sem gasto médio e sem nota, oito
  * bares e uma troca sem nenhum.
