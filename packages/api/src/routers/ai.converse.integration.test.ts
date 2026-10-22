@@ -183,7 +183,7 @@ integrationTest(
         name: name as string,
         email: `${id}@integration.invalid`,
         emailVerified: true,
-        role: 'fan',
+        role: 'fan' as const,
         onboardingCompleted: true
       }))
     )
