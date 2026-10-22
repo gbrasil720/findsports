@@ -20,7 +20,6 @@ import {
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
-import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import {
@@ -32,7 +31,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { haptic, ScalePress, SWAP } from '@/components/motion'
+import { haptic, ScalePress } from '@/components/motion'
 import {
   ACCENT,
   ACID,
@@ -667,11 +666,17 @@ function Account({ palette }: { palette: Palette }) {
     ])
 
   const [photoBusy, setPhotoBusy] = useState(false)
-  const photoTask = async (task: () => Promise<unknown>) => {
+  // Com foto nova o véu fica até a imagem baixar (`onLoad` do `Image`): a URL
+  // é remota e o upload termina antes de ela aparecer.
+  const photoTask = async (
+    task: () => Promise<unknown>,
+    waitsForImage = false
+  ) => {
     setPhotoBusy(true)
     try {
       await task()
       haptic.success()
+      if (waitsForImage) return
     } catch (error) {
       haptic.error()
       Alert.alert(
@@ -680,15 +685,14 @@ function Account({ palette }: { palette: Palette }) {
           ? error.message
           : 'Não foi possível trocar a foto. Tente de novo.'
       )
-    } finally {
-      setPhotoBusy(false)
     }
+    setPhotoBusy(false)
   }
   // O spinner só depois da escolha: com o seletor aberto ele ficaria por
   // trás, rodando à toa.
   const choose = async (source: 'library' | 'camera') => {
     const uri = await pickSquarePhoto(source).catch(() => null)
-    if (uri) await photoTask(() => uploadAvatar(uri))
+    if (uri) await photoTask(() => uploadAvatar(uri), true)
   }
   const changePhoto = () =>
     Alert.alert('Foto do perfil', undefined, [
@@ -747,14 +751,13 @@ function Account({ palette }: { palette: Palette }) {
           >
             <View style={styles.avatar}>
               {user?.image ? (
-                // A foto nova entra num fade curto, no lugar das iniciais.
-                <Animated.View key={user.image} entering={SWAP}>
-                  <Image
-                    accessibilityIgnoresInvertColors
-                    source={{ uri: user.image }}
-                    style={styles.avatarPhoto}
-                  />
-                </Animated.View>
+                <Image
+                  accessibilityIgnoresInvertColors
+                  source={{ uri: user.image }}
+                  style={styles.avatarPhoto}
+                  onLoad={() => setPhotoBusy(false)}
+                  onError={() => setPhotoBusy(false)}
+                />
               ) : (
                 <Text style={styles.avatarText}>
                   {initials(user?.name ?? '')}
