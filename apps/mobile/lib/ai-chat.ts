@@ -68,6 +68,15 @@ const upsert = <T extends { id: string }>(list: T[], item: T) =>
     ? list.map((x) => (x.id === item.id ? item : x))
     : [...list, item]
 
+/** Passo novo entra antes dos que ainda vêm ("Comparar e ordenar" no fim). */
+const upsertStep = (list: Step[], step: Step) => {
+  if (list.some((x) => x.id === step.id)) return upsert(list, step)
+  const todo = list.findIndex((x) => x.state === 'todo')
+  return todo < 0 || step.state === 'todo'
+    ? [...list, step]
+    : [...list.slice(0, todo), step, ...list.slice(todo)]
+}
+
 /** Um evento a mais na resposta. Puro: a tela guarda o que volta. */
 export function applyEvent(reply: Reply, event: ChatEvent, now: number): Reply {
   const thought = reply.thoughtAt ?? now
@@ -82,7 +91,7 @@ export function applyEvent(reply: Reply, event: ChatEvent, now: number): Reply {
         : { ...reply, state: 'unavailable' }
     case 'step': {
       const { type: _, ...step } = event
-      return { ...reply, steps: upsert(reply.steps, step) }
+      return { ...reply, steps: upsertStep(reply.steps, step) }
     }
     case 'tool': {
       const { type: _, ...tool } = event
@@ -96,10 +105,11 @@ export function applyEvent(reply: Reply, event: ChatEvent, now: number): Reply {
       return { ...reply, proposal: event.proposal, thoughtAt: thought }
     case 'done': {
       const { type: _, ...done } = event
-      // Passo que ficou rodando terminou junto com a resposta.
-      const steps = reply.steps.map((s) =>
-        s.state === 'run' ? { ...s, state: 'done' as const } : s
-      )
+      // Passo que ficou rodando terminou junto com a resposta; o que não
+      // chegou a começar sai.
+      const steps = reply.steps
+        .filter((s) => s.state !== 'todo')
+        .map((s) => (s.state === 'run' ? { ...s, state: 'done' as const } : s))
       return { ...reply, state: 'done', done, steps, thoughtAt: thought }
     }
   }

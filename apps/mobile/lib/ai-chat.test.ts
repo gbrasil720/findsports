@@ -371,3 +371,44 @@ describe('busca com IA (Rodada 24)', () => {
     expect(chatHistory(turns, 2)).toHaveLength(2)
   })
 })
+
+describe('passo que ainda vem', () => {
+  it('fica no fim, começa no lugar e sai se não começou', () => {
+    let reply = startReply(0)
+    const step = (id: string, state: 'todo' | 'run' | 'done') =>
+      ({ type: 'step', id, label: id, state }) as const
+    for (const e of [
+      step('understood', 'done'),
+      step('rank', 'todo'),
+      step('search', 'run')
+    ])
+      reply = applyEvent(reply, e, 0)
+    expect(reply.steps.map((s) => s.id)).toEqual([
+      'understood',
+      'search',
+      'rank'
+    ])
+    reply = applyEvent(reply, step('rank', 'run'), 0)
+    expect(reply.steps.map((s) => `${s.id}:${s.state}`)).toEqual([
+      'understood:done',
+      'search:run',
+      'rank:run'
+    ])
+    const ended = applyEvent(
+      applyEvent(startReply(0), step('rank', 'todo'), 0),
+      {
+        type: 'done',
+        runId: 'r',
+        status: 'ok',
+        thoughtMs: 0,
+        searches: 0,
+        chips: [],
+        sources: [],
+        suggestions: [],
+        remainingToday: 9
+      },
+      0
+    )
+    expect(ended.steps).toEqual([])
+  })
+})
