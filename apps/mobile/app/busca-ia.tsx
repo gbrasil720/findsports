@@ -1,236 +1,447 @@
-import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import type { inferRouterOutputs } from '@trpc/server'
+import * as Clipboard from 'expo-clipboard'
+import { File, Paths } from 'expo-file-system'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  type TextInput,
+  View
+} from 'react-native'
 import Animated, {
-  Easing,
-  type EntryExitAnimationFunction,
   FadeInDown,
-  FadeOut,
   LayoutAnimationConfig,
   LinearTransition,
   useAnimatedKeyboard,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming
+  useAnimatedStyle
 } from 'react-native-reanimated'
-import Svg, { Path, Rect } from 'react-native-svg'
+import { Actions, FollowUps } from '@/components/ai/actions'
 import {
-  BarRow,
-  Chip,
-  type Palette,
-  type SearchBar,
-  usePalette
-} from '@/components/explore'
+  CodeCard,
+  ConfirmCard,
+  DecisionLine
+} from '@/components/ai/confirmation'
+import { AiHeader } from '@/components/ai/header'
+import { UserMessage } from '@/components/ai/message'
+import { PromptInput } from '@/components/ai/prompt-input'
+import { Reasoning } from '@/components/ai/reasoning'
+import {
+  AnswerText,
+  CitedBar,
+  FilterChips,
+  Sources
+} from '@/components/ai/response'
+import { Start } from '@/components/ai/start'
+import { type AiPalette, useAiPalette } from '@/components/ai/theme'
+import { DoneLine, ToolCard } from '@/components/ai/tool'
+import { Chip, dayLabel, type SearchBar } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { Glass } from '@/components/glass'
-import { EASE, haptic, ScalePress } from '@/components/motion'
+import { EASE, haptic } from '@/components/motion'
+import { text, useStatusBar } from '@/components/ui'
 import {
-  ACID,
-  BackButton,
-  Icon,
-  INK,
-  PAPER,
-  text,
-  useStatusBar
-} from '@/components/ui'
-import {
-  boldSegments,
-  chatHistory,
-  cheapestFirst,
-  resumeLabel
+  applyEvent,
+  barsFound,
+  clock,
+  confirmText,
+  firstName,
+  followUps,
+  historyOf,
+  inNeighborhood,
+  isThinking,
+  newTurn,
+  patchVersion,
+  plainText,
+  type Recent,
+  type Reply,
+  redoTurn,
+  resumeLabel,
+  saveRecent,
+  searchInput,
+  searchWithout,
+  shownReply,
+  sourcesLabel,
+  stepVersion,
+  type Turn,
+  thoughtLabel,
+  versionLabel
 } from '@/lib/ai-chat'
-import {
-  WORST_ANSWER,
-  WORST_BARS,
-  WORST_CHIPS,
-  WORST_QUESTION
-} from '@/lib/ai-chat-demo'
+import type { Dubla } from '@/lib/ai-dubla'
+import type { ConfirmResult } from '@/lib/ai-events'
+import { confirm, converse } from '@/lib/ai-stream'
+import { authClient } from '@/lib/auth-client'
+import { formatTime } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
- * Busca com IA (2h, "IA · v2" do design, WEB-400): folha alta sobre o mapa,
- * aberta pela aba IA. A pessoa pergunta do seu jeito; o servidor conversa com
- * o modelo, que só consulta a Onside por ferramentas de leitura, e devolve a
- * frase, o que a busca entendeu ("Busquei por") e os bares, que aqui são os
- * mesmos cards do Explorar. Os atalhos refazem a busca sem gastar pergunta:
- * "Com oferta da casa" pela `pubs.search` com a característica 10, "Mais
- * barato" na própria lista, "Ver no mapa" leva o Explorar até os bares.
+ * Busca com IA (Rodada 24, 24a–24e; WEB-400): folha alta sobre o mapa,
+ * aberta pela aba IA. A pessoa pergunta do seu jeito; `ai.converse` devolve
+ * em fluxo o que a IA está fazendo (passos, ferramentas), os bares antes do
+ * texto, o texto com citações e, no fim, o que ela entendeu (chips), as
+ * fontes e as próximas perguntas. Ação que muda dado (marcar presença,
+ * chamar amigo) só acontece no "Confirmar" (`ai.confirm`).
+ *
+ * As peças estão em `components/ai/`; as contas, em `lib/ai-chat.ts`. Em
+ * desenvolvimento, `?dubla=1` troca o servidor pelo dublê (`lib/ai-dubla.ts`).
  *
  * O limite (10 por dia, 100 por mês) e a IA fora do ar não estão no design:
- * seguem a 2h, com a frase no lugar da resposta, o subtítulo dizendo quando
- * volta e o atalho para a busca normal, que continua.
+ * a frase entra no lugar da resposta, o subtítulo diz quando volta e o
+ * atalho "Abrir a busca" leva à busca normal, que continua.
  */
 
-type Answer = Extract<
-  inferRouterOutputs<AppRouter>['ai']['chat'],
-  { kind: 'answer' }
->
-type Limit = { kind: 'limit'; scope: 'day' | 'month'; resumesAt: string }
-
-type Turn = {
-  id: number
-  question: string
-  state: 'loading' | 'answer' | 'limit' | 'unavailable'
-  answer?: Answer
-  limit?: Limit
-  feedback?: 1 | -1 | null
-}
-
-const OFFER = 10
-/** Altura do cabeçalho fixo: 17 de respiro + a marca de 52 com 10 em cima e embaixo. */
-const HEAD_HEIGHT = 89
+/** Altura do cabeçalho fixo: 17 de respiro + 44 do ícone + 8. */
+const HEAD_HEIGHT = 69
+const RECENTS = 'busca-ia-recentes.json'
 
 // A conversa sobrevive a fechar a folha (abrir um bar e voltar), até o app
-// fechar. ponytail: memória do módulo; persistir só se pedirem.
-let saved: Turn[] = []
+// fechar. Os recentes ficam no aparelho (o servidor não guarda texto).
+let saved: { id: string; turns: Turn[] } = { id: newId(), turns: [] }
+
+function newId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
+
+function readRecents(): Recent[] {
+  try {
+    const file = new File(Paths.document, RECENTS)
+    return file.exists ? (JSON.parse(file.textSync()) as Recent[]) : []
+  } catch {
+    return []
+  }
+}
+
+function writeRecents(list: Recent[]) {
+  try {
+    const file = new File(Paths.document, RECENTS)
+    if (!file.exists) file.create()
+    file.write(JSON.stringify(list))
+  } catch {}
+}
 
 // Entradas como constante de módulo (o Reanimated recomeça a entrada quando
 // o objeto muda).
 const IN = FadeInDown.duration(220)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
-// "Mais barato" e "Com oferta da casa" mudam a lista: os bares deslizam
-// para o lugar novo e quem sai some rápido, em vez de teletransportar.
-const REORDER = LinearTransition.duration(220).easing(EASE)
-const ROW_OUT = FadeOut.duration(120)
-// Os atalhos de vidro sobem sem opacidade (vidro não desenha a meio caminho).
-const RISE: EntryExitAnimationFunction = () => {
-  'worklet'
-  return {
-    initialValues: { transform: [{ translateY: 12 }] },
-    animations: {
-      transform: [
-        { translateY: withTiming(0, { duration: 220, easing: EASE }) }
-      ]
-    }
-  }
-}
-const AnimatedScroll = Animated.createAnimatedComponent(ScrollView)
-
-// A resposta assenta em ordem: frase, "Busquei por", bares.
-const CHIPS_IN = FadeInDown.delay(50)
-  .duration(220)
-  .easing(EASE)
-  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
-// "Ajudou?" vem depois dos bares.
-const RATE_IN = FadeInDown.delay(300)
-  .duration(220)
-  .easing(EASE)
-  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
-const ROW_IN = Array.from({ length: 8 }, (_, i) =>
-  FadeInDown.delay(100 + Math.min(i, 5) * 45)
+const SETTLE = LinearTransition.duration(220).easing(EASE)
+// Os bares chegam antes do texto, um depois do outro.
+const BAR_IN = Array.from({ length: 8 }, (_, i) =>
+  FadeInDown.delay(Math.min(i, 5) * 60)
     .duration(240)
     .easing(EASE)
     .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
 )
 
+type DevState = 'pensando' | 'resposta' | 'confirmar' | 'feito'
+const DEV_QUESTION: Record<DevState, string> = {
+  pensando:
+    'Quero ver o Corinthians hoje num lugar com telão e área externa, perto de Pinheiros',
+  resposta:
+    'Quero ver o Corinthians hoje num lugar com telão e área externa, perto de Pinheiros',
+  confirmar: 'Marca que vou no Bar do Zé e chama a Marina',
+  feito: 'Marca que vou no Bar do Zé e chama a Marina'
+}
+
 export default function AiSearch() {
   const router = useRouter()
-  const palette = usePalette()
+  const palette = useAiPalette()
   const explore = useExploreState()
+  const session = authClient.useSession()
   useStatusBar('light')
-  // Navegador DEV: `?demo=pior` abre com o pior caso, sem chamar o modelo.
-  const { demo } = useLocalSearchParams<{ demo?: string }>()
-  const [turns, setTurns] = useState<Turn[]>(() =>
-    __DEV__ && demo === 'pior' ? worstCase() : saved
+  // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
+  // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
+  const params = useLocalSearchParams<{ dubla?: Dubla; estado?: DevState }>()
+  const dubla = __DEV__ && params.dubla ? params.dubla : null
+  const devState = __DEV__ ? params.estado : undefined
+
+  const [conversation, setConversation] = useState(() =>
+    devState ? { id: newId(), turns: [] } : saved
   )
-  // Conversa guardada (a folha reabriu) aparece pronta; só turnos novos
-  // animam.
-  const [restored] = useState(() => turns.length > 0)
+  const turns = conversation.turns
+  const setTurns = (update: (list: Turn[]) => Turn[]) =>
+    setConversation((c) => ({ ...c, turns: update(c.turns) }))
+  // Conversa guardada (a folha reabriu ou veio dos recentes) aparece pronta;
+  // só turnos novos animam.
+  const [restored, setRestored] = useState(() => turns.length > 0)
+  const [recents, setRecents] = useState<Recent[]>(readRecents)
   const [draft, setDraft] = useState('')
-  const [offer, setOffer] = useState(false)
-  const [cheap, setCheap] = useState(false)
+  const [placeOn, setPlaceOn] = useState(true)
+  const [day, setDay] = useState<'today' | 'tomorrow' | null>('today')
+  const [tastes, setTastes] = useState(true)
+  const [toggles, setToggles] = useState<boolean[]>([])
+  const [flash, setFlash] = useState<{ id: string; at: number } | null>(null)
+  const [dockHeight, setDockHeight] = useState(150)
   const input = useRef<TextInput>(null)
   const scroll = useRef<ScrollView>(null)
+  const content = useRef<View>(null)
+  const cards = useRef(new Map<string, View>())
+  const running = useRef<AbortController | null>(null)
+  const stick = useRef(true)
+  const now = Date.now()
+
   useEffect(() => {
-    saved = turns
-  }, [turns])
+    saved = conversation
+  }, [conversation])
+  useEffect(() => () => running.current?.abort(), [])
 
   const status = useQuery({
     ...trpc.ai.status.queryOptions(),
+    enabled: !dubla,
     meta: { errorToast: false }
   })
-  const chat = useMutation(trpc.ai.chat.mutationOptions())
+  const city = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
   const feedback = useMutation(trpc.ai.feedback.mutationOptions())
   const action = useMutation(trpc.ai.action.mutationOptions())
 
   const last = turns.at(-1)
-  const lastAnswer = last?.state === 'answer' ? last.answer : undefined
+  const lastReply = last ? shownReply(last) : undefined
+  const busy = lastReply?.state === 'run'
   const blocked =
-    (last?.state === 'limit' ? last.limit : undefined) ??
-    (status.data?.kind === 'limit' && !last ? status.data : undefined)
-  const off = status.data?.kind === 'unavailable' && !turns.length
-  const loading = last?.state === 'loading'
-  const now = Date.now()
+    (lastReply?.state === 'limit' ? lastReply.limit : null) ??
+    (status.data?.kind === 'limit' && !last ? status.data : null)
+  const off =
+    lastReply?.state === 'unavailable' ||
+    (status.data?.kind === 'unavailable' && !last)
+  const pending =
+    lastReply?.proposal && !lastReply.decision ? lastReply.proposal : null
 
-  // "Com oferta da casa": a mesma busca, com a característica 10.
-  const offerSearch = useQuery({
-    ...trpc.pubs.search.queryOptions({
-      ...(lastAnswer?.search ?? { lat: 0, lng: 0, radiusKm: 3, limit: 20 }),
-      amenities: [...new Set([...(lastAnswer?.search?.amenities ?? []), OFFER])]
-    }),
-    enabled: offer && !!lastAnswer?.search,
+  // Contexto do campo: o local (aparelho, senão a cidade do perfil) e o dia.
+  const radiusKm = session.data?.user.searchRadiusKm ?? 3
+  const origin = explore.device ?? (city.data ? city.data : null)
+  const placeName = explore.district ?? city.data?.name ?? null
+  const placeLabel = placeName ? `${placeName} · ${radiusKm} km` : null
+
+  // Chips tirados da última resposta: a mesma busca, sem eles, sem IA.
+  const search = lastReply?.done?.search ?? null
+  const removed = lastReply?.removed ?? []
+  const refined = useQuery({
+    ...trpc.pubs.search.queryOptions(
+      searchInput(
+        searchWithout(
+          search ?? { lat: 0, lng: 0, neighborhood: null },
+          removed
+        ),
+        radiusKm
+      )
+    ),
+    enabled: !!search && removed.length > 0,
     meta: { errorToast: false }
   })
 
-  const send = (raw?: string) => {
-    const message = (raw ?? draft).trim()
-    if (!message || loading || blocked || off) {
+  const barsOf = (turn: Turn, reply: Reply): SearchBar[] => {
+    if (turn !== last || !removed.length || !refined.data || !search)
+      return reply.bars
+    const next = searchWithout(search, removed)
+    return inNeighborhood(refined.data.bars, next.neighborhood).slice(0, 8)
+  }
+
+  const send = (raw?: string, redoOf?: Turn) => {
+    const message = (redoOf?.question ?? raw ?? draft).trim()
+    if (!message || busy || blocked) {
       input.current?.focus()
       return
     }
     haptic.select()
-    const id = (turns.at(-1)?.id ?? 0) + 1
-    const history = chatHistory(
-      turns.map((t) => ({
-        question: t.question,
-        answer: t.answer?.text ?? null
-      }))
+    stick.current = true
+    const id = redoOf?.id ?? (turns.at(-1)?.id ?? 0) + 1
+    const before = redoOf ? turns.slice(0, turns.indexOf(redoOf)) : turns
+    const turn = redoOf
+      ? redoTurn(redoOf, Date.now())
+      : newTurn(id, message, Date.now())
+    const version = turn.versions.length - 1
+    if (!redoOf) setDraft('')
+    setRestored(false)
+    setTurns((list) =>
+      redoOf ? list.map((t) => (t.id === id ? turn : t)) : [...list, turn]
     )
-    setDraft('')
-    setOffer(false)
-    setCheap(false)
-    setTurns((list) => [...list, { id, question: message, state: 'loading' }])
-    const settle = (patch: Partial<Turn>) =>
+    const patch = (fn: (reply: Reply) => Reply) =>
       setTurns((list) =>
-        list.map((t) => (t.id === id ? { ...t, ...patch } : t))
+        list.map((t) => (t.id === id ? patchVersion(t, version, fn) : t))
       )
-    chat
-      .mutateAsync({
-        message,
-        history,
-        origin: explore.device
-          ? { lat: explore.device.lat, lng: explore.device.lng }
-          : null
+    running.current?.abort()
+    const controller = new AbortController()
+    running.current = controller
+    const run = async () => {
+      try {
+        const stream = converse(
+          {
+            message,
+            history: historyOf(before),
+            origin:
+              placeOn && origin ? { lat: origin.lat, lng: origin.lng } : null,
+            placeLabel: placeOn ? placeName : null,
+            radiusKm: placeOn ? radiusKm : undefined,
+            day,
+            useTastes: tastes,
+            redo: !!redoOf || undefined
+          },
+          controller.signal,
+          dubla ? { mode: dubla, hold: devState === 'pensando' } : null
+        )
+        for await (const event of stream) {
+          if (controller.signal.aborted) return
+          if (event.type === 'done') haptic.success()
+          patch((reply) => applyEvent(reply, event, Date.now()))
+        }
+        patch((reply) =>
+          reply.state === 'run' ? { ...reply, state: 'unavailable' } : reply
+        )
+      } catch {
+        patch((reply) =>
+          controller.signal.aborted
+            ? {
+                ...reply,
+                state: 'stopped',
+                thoughtAt: reply.thoughtAt ?? Date.now()
+              }
+            : { ...reply, state: 'unavailable' }
+        )
+      }
+    }
+    run()
+  }
+
+  const stop = () => {
+    haptic.select()
+    running.current?.abort()
+  }
+
+  // Ao terminar cada resposta, a conversa vai para os recentes do aparelho.
+  const lastState = lastReply?.state
+  useEffect(() => {
+    if (!turns.length || lastState === 'run' || restored) return
+    setRecents((list) => {
+      const next = saveRecent(list, {
+        id: conversation.id,
+        title: turns[0]?.question ?? '',
+        at: Date.now(),
+        bars: barsFound(turns),
+        turns
       })
-      .then((result) => {
-        if (result.kind === 'answer') {
-          haptic.success()
-          settle({ state: 'answer', answer: result })
-        } else if (result.kind === 'limit')
-          settle({ state: 'limit', limit: result })
-        else settle({ state: 'unavailable' })
+      writeRecents(next)
+      return next
+    })
+  }, [lastState, conversation.id, restored, turns])
+
+  // Navegador DEV: manda a pergunta da tela pedida.
+  const devSent = useRef(false)
+  useEffect(() => {
+    if (!devState || devSent.current) return
+    devSent.current = true
+    send(DEV_QUESTION[devState])
+  })
+
+  // A proposta nova traz os interruptores como a IA sugeriu.
+  const proposalId = pending?.id
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a proposta muda
+  useEffect(() => {
+    if (pending) setToggles(pending.actions.map((a) => a.on))
+  }, [proposalId])
+  // 24e no navegador DEV: confirma sozinho quando a resposta termina.
+  const readyToConfirm = !!pending && !!lastReply?.done
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, com a proposta pronta
+  useEffect(() => {
+    if (devState !== 'feito' || !readyToConfirm || !pending) return
+    const timer = setTimeout(
+      () => approve(pending.actions.map((a) => a.on)),
+      700
+    )
+    return () => clearTimeout(timer)
+  }, [readyToConfirm])
+
+  const approve = (values = toggles) => {
+    if (!last || !lastReply?.proposal || !lastReply.done) return
+    const proposal = lastReply.proposal
+    const index = last.shown
+    const id = last.id
+    const kind = (k: string) =>
+      values[proposal.actions.findIndex((a) => a.kind === k)] ?? false
+    const patch = (fn: (reply: Reply) => Reply) =>
+      setTurns((list) =>
+        list.map((t) => (t.id === id ? patchVersion(t, index, fn) : t))
+      )
+    patch((r) => ({ ...r, decision: { kind: 'sending' } }))
+    confirm(
+      {
+        runId: lastReply.done.runId,
+        proposalId: proposal.id,
+        actions: {
+          going: kind('going'),
+          call: kind('call'),
+          remind: kind('remind')
+        }
+      },
+      !!dubla
+    )
+      .then((result: ConfirmResult) => {
+        haptic.success()
+        patch((r) => ({ ...r, decision: { kind: 'approved', result } }))
       })
-      .catch(() => settle({ state: 'unavailable' }))
+      .catch(() => {
+        haptic.error()
+        patch((r) => ({ ...r, decision: null }))
+        Alert.alert('Não deu para confirmar', 'Tente de novo em instantes.')
+      })
+  }
+
+  const refuse = () => {
+    if (!last) return
+    haptic.select()
+    const index = last.shown
+    setTurns((list) =>
+      list.map((t) =>
+        t.id === last.id
+          ? patchVersion(t, index, (r) => ({
+              ...r,
+              decision: { kind: 'refused', at: clock(Date.now()) }
+            }))
+          : t
+      )
+    )
+  }
+
+  const removeChip = (key: string) => {
+    if (!last) return
+    const index = last.shown
+    setTurns((list) =>
+      list.map((t) =>
+        t.id === last.id
+          ? patchVersion(t, index, (r) => ({
+              ...r,
+              removed: [...r.removed, key]
+            }))
+          : t
+      )
+    )
   }
 
   const rate = (turn: Turn, value: 1 | -1) => {
-    if (!turn.answer) return
-    const next = turn.feedback === value ? null : value
+    const reply = shownReply(turn)
+    if (!reply.done) return
+    const next = reply.feedback === value ? null : value
     haptic.select()
     setTurns((list) =>
-      list.map((t) => (t.id === turn.id ? { ...t, feedback: next } : t))
+      list.map((t) =>
+        t.id === turn.id
+          ? patchVersion(t, t.shown, (r) => ({ ...r, feedback: next }))
+          : t
+      )
     )
-    feedback.mutate({ runId: turn.answer.runId, value: next })
+    if (!dubla) feedback.mutate({ runId: reply.done.runId, value: next })
   }
 
-  const openBar = (runId: string, bar: SearchBar) => {
-    action.mutate({ runId, kind: 'open_bar', barId: bar.id })
+  const openBar = (runId: string | undefined, bar: SearchBar) => {
+    if (runId && !dubla)
+      action.mutate({ runId, kind: 'open_bar', barId: bar.id })
     // A página do bar sai da folha: dentro dela, a folha do "Vou assistir"
     // não abre (folha sobre folha). A conversa fica guardada para a volta.
     router.back()
@@ -242,28 +453,12 @@ export default function AiSearch() {
         name: bar.name,
         photo: bar.photo_url ?? undefined,
         walk: explore.device ? '1' : undefined,
-        ai: runId
+        ai: runId && !dubla ? runId : undefined
       }
     })
   }
 
-  const shown = (answer: Answer, isLast: boolean) => {
-    const base =
-      isLast && offer && offerSearch.data
-        ? offerSearch.data.bars.filter(
-            (b) =>
-              !answer.search?.neighborhood ||
-              b.neighborhood
-                .toLocaleLowerCase('pt-BR')
-                .includes(answer.search.neighborhood.toLocaleLowerCase('pt-BR'))
-          )
-        : answer.bars
-    return (isLast && cheap ? cheapestFirst(base) : base).slice(0, 8)
-  }
-
-  const showOnMap = () => {
-    if (!lastAnswer) return
-    const bars = shown(lastAnswer, true)
+  const showOnMap = (bars: SearchBar[]) => {
     if (!bars.length) return
     const lats = bars.map((b) => Number(b.latitude))
     const lngs = bars.map((b) => Number(b.longitude))
@@ -280,18 +475,112 @@ export default function AiSearch() {
     router.navigate('/explore')
   }
 
-  const count = lastAnswer ? shown(lastAnswer, true).length : 0
-  const subtitle = loading
-    ? 'Procurando…'
+  // A citação leva até o card do bar e o faz piscar.
+  const goToBar = (barId: string) => {
+    const card = cards.current.get(barId)
+    const root = content.current
+    if (!card || !root) return
+    haptic.select()
+    card.measureLayout(root, (_x, y) => {
+      scroll.current?.scrollTo({
+        y: Math.max(0, y - HEAD_HEIGHT - 12),
+        animated: true
+      })
+      setFlash({ id: barId, at: Date.now() })
+    })
+  }
+
+  const newConversation = () => {
+    running.current?.abort()
+    if (!turns.length) {
+      input.current?.focus()
+      return
+    }
+    haptic.select()
+    setRestored(false)
+    setConversation({ id: newId(), turns: [] })
+  }
+
+  const reopen = (recent: Recent) => {
+    haptic.select()
+    setRestored(true)
+    setConversation({ id: recent.id, turns: recent.turns })
+  }
+
+  // "+" do campo: põe de volta o local e troca o dia.
+  const addContext = () => {
+    const options: { label: string; run: () => void }[] = []
+    if (!placeOn && placeLabel)
+      options.push({
+        label: `Perto de ${placeLabel}`,
+        run: () => setPlaceOn(true)
+      })
+    if (day !== 'today')
+      options.push({ label: 'Hoje', run: () => setDay('today') })
+    if (day !== 'tomorrow')
+      options.push({ label: 'Amanhã', run: () => setDay('tomorrow') })
+    haptic.select()
+    if (Platform.OS === 'ios')
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Adicionar à pergunta',
+          options: [...options.map((o) => o.label), 'Cancelar'],
+          cancelButtonIndex: options.length
+        },
+        (i) => options[i]?.run()
+      )
+    else
+      Alert.alert('Adicionar à pergunta', undefined, [
+        ...options.map((o) => ({ text: o.label, onPress: o.run })),
+        { text: 'Cancelar', style: 'cancel' as const }
+      ])
+  }
+
+  const lastBars = last && lastReply ? barsOf(last, lastReply) : []
+  const subtitle = busy
+    ? lastReply?.proposal
+      ? 'Esperando sua confirmação'
+      : 'Procurando…'
     : blocked
       ? `Volta ${resumeLabel(blocked.resumesAt, now)}`
-      : off || last?.state === 'unavailable'
+      : off
         ? 'Fora do ar agora'
-        : lastAnswer
-          ? count
-            ? `Achei ${count} ${count === 1 ? 'bar' : 'bares'} para você`
-            : 'Nenhum bar com esse pedido'
-          : 'Diga o que você procura'
+        : lastReply?.decision?.kind === 'sending'
+          ? 'Confirmando…'
+          : lastReply?.decision?.kind === 'approved'
+            ? 'Feito'
+            : lastReply?.decision?.kind === 'refused'
+              ? 'Nada foi feito'
+              : pending
+                ? 'Esperando sua confirmação'
+                : lastReply?.state === 'stopped'
+                  ? 'Parei aqui'
+                  : lastReply?.done && !lastReply.proposal
+                    ? lastBars.length
+                      ? `Achei ${lastBars.length} ${lastBars.length === 1 ? 'bar' : 'bares'} para você`
+                      : 'Nenhum bar com esse pedido'
+                    : 'Conhece os bares, a agenda e os seus gostos'
+  const spinning =
+    (busy && !lastReply?.proposal) || lastReply?.decision?.kind === 'sending'
+
+  const placeholder = blocked
+    ? `O chat volta ${resumeLabel(blocked.resumesAt, now)}`
+    : off && !last
+      ? 'A busca com IA está fora do ar'
+      : busy
+        ? 'Responda ou espere eu terminar…'
+        : pending
+          ? 'Mude algo antes de confirmar…'
+          : lastReply?.decision?.kind === 'approved'
+            ? 'Pergunte outra coisa…'
+            : last
+              ? 'Refine ou pergunte outra coisa…'
+              : 'Pergunte sobre bares, jogos ou bairros…'
+
+  const followItems =
+    !busy && !pending && lastReply?.done && last
+      ? followUps(lastReply.done.suggestions, lastBars.length > 0)
+      : []
 
   const keyboard = useAnimatedKeyboard()
   // O rodapé sobe junto do teclado, só por transform (30 pt de respiro sem
@@ -303,135 +592,127 @@ export default function AiSearch() {
   return (
     <>
       {/* Filho direto da tela, com flex: 1: numa folha nativa o
-          react-native-screens mede outro caminho e o conteúdo some. O
-          cabeçalho fica por cima, fixo (com `stickyHeaderIndices` ele sumia
-          quando a lista rolava sozinha até o fim). */}
+          react-native-screens mede outro caminho e o conteúdo some. */}
       <ScrollView
         ref={scroll}
         style={[styles.sheet, { backgroundColor: palette.sheet }]}
         contentContainerStyle={{ paddingTop: HEAD_HEIGHT }}
         keyboardDismissMode="interactive"
-        // O iOS soma o teclado ao inset de baixo; o espaço fixo no fim deixa
-        // a conversa acima dos atalhos e do campo.
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() =>
-          scroll.current?.scrollToEnd({ animated: true })
-        }
-        // A folha ainda assenta quando a conversa aparece: o fim medido antes
-        // ficava atrás dos atalhos.
-        onLayout={() => scroll.current?.scrollToEnd({ animated: false })}
+        scrollEventThrottle={64}
+        onScroll={(e) => {
+          const { contentOffset, contentSize, layoutMeasurement } =
+            e.nativeEvent
+          // Gruda no fim enquanto a pessoa não rolou para cima.
+          stick.current =
+            contentOffset.y + layoutMeasurement.height > contentSize.height - 80
+        }}
+        onContentSizeChange={() => {
+          if (stick.current && turns.length)
+            scroll.current?.scrollToEnd({ animated: true })
+        }}
       >
         <LayoutAnimationConfig skipEntering={restored}>
-          <View style={styles.body}>
+          <View ref={content} collapsable={false} style={styles.body}>
             {!turns.length ? (
-              <Animated.View entering={IN}>
-                <Text style={[styles.answer, { color: palette.ink }]}>
-                  {off
+              <Start
+                recents={recents}
+                now={now}
+                notice={
+                  off
                     ? 'A busca com IA está fora do ar agora. A busca normal continua funcionando.'
                     : blocked
                       ? `Você usou as perguntas ${blocked.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta ${resumeLabel(blocked.resumesAt, now)}; a busca normal continua.`
-                      : 'Me diga o jogo e o que você precisa. Eu procuro para você.'}
-                </Text>
-              </Animated.View>
+                      : null
+                }
+                palette={palette}
+                onAsk={(q) => send(q)}
+                onRecent={reopen}
+              />
             ) : null}
-            {turns.map((turn, index) => (
+            {turns.map((turn) => (
               <TurnView
                 key={turn.id}
                 turn={turn}
-                palette={palette}
+                bars={barsOf(turn, shownReply(turn))}
+                isLast={turn === last}
+                busy={busy}
                 now={now}
-                bars={
-                  turn.answer
-                    ? shown(turn.answer, index === turns.length - 1)
-                    : []
-                }
-                extraChip={
-                  index === turns.length - 1 && offer ? 'Oferta da casa' : null
-                }
-                onBar={(bar) => turn.answer && openBar(turn.answer.runId, bar)}
-                onRate={(value) => rate(turn, value)}
-                onRetry={() => {
-                  setTurns((list) => list.filter((t) => t.id !== turn.id))
-                  send(turn.question)
+                palette={palette}
+                toggles={toggles}
+                flash={flash}
+                cardRef={(id, view) => {
+                  if (view) cards.current.set(id, view)
+                  else cards.current.delete(id)
                 }}
+                onBar={(bar) => openBar(shownReply(turn).done?.runId, bar)}
+                onCite={goToBar}
+                onRemoveChip={turn === last && search ? removeChip : undefined}
+                onToggle={(i) =>
+                  setToggles((list) => list.map((v, j) => (j === i ? !v : v)))
+                }
+                onConfirm={() => approve()}
+                onRefuse={refuse}
+                onCode={(eventId) => {
+                  router.back()
+                  router.push({
+                    pathname: '/codigo/[eventId]',
+                    params: { eventId }
+                  })
+                }}
+                onCopy={(value) => {
+                  Clipboard.setStringAsync(value).catch(() => {})
+                  haptic.success()
+                }}
+                onShare={(value) =>
+                  Share.share({ message: value }).catch(() => {})
+                }
+                onRedo={() => send(undefined, turn)}
+                onRate={(value) => rate(turn, value)}
+                onVersion={(by) =>
+                  setTurns((list) =>
+                    list.map((t) => (t.id === turn.id ? stepVersion(t, by) : t))
+                  )
+                }
               />
             ))}
           </View>
         </LayoutAnimationConfig>
-        <View style={styles.spacer} />
+        <View style={{ height: dockHeight + 16 }} />
       </ScrollView>
 
       <View style={[styles.top, { backgroundColor: palette.sheet }]}>
-        <View style={styles.head}>
-          <View style={styles.mark}>
-            <Icon
-              name="sparkle"
-              size={41}
-              color={palette.ink}
-              accent={palette.accent}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[text(17, 'Bold', 1.25), { color: palette.ink }]}>
-              Onside IA
-            </Text>
-            <View style={styles.statusRow}>
-              <StatusDot
-                busy={loading}
-                quiet={!!blocked || off || last?.state === 'unavailable'}
-              />
-              <Text
-                style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {subtitle}
-              </Text>
-            </View>
-          </View>
-          <View>
-            <BackButton icon="close" onPress={() => router.back()} />
-          </View>
-        </View>
+        <AiHeader
+          status={subtitle}
+          busy={spinning}
+          quiet={!!blocked || off}
+          palette={palette}
+          onNew={newConversation}
+          onClose={() => router.back()}
+        />
       </View>
-      <Animated.View style={[styles.dock, footer]}>
+      <Animated.View
+        style={[styles.dock, footer]}
+        onLayout={(e) => setDockHeight(e.nativeEvent.layout.height)}
+      >
         {/* Borda de rolagem: a conversa some aos poucos sob o rodapé. */}
         <LinearGradient
           pointerEvents="none"
           colors={[`${palette.sheet}00`, palette.sheet]}
-          locations={[0, 0.35]}
+          locations={[0, 0.3]}
           style={StyleSheet.absoluteFill}
         />
-        {lastAnswer?.search && !loading ? (
-          <AnimatedScroll
-            entering={RISE}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.shortcuts}
-          >
-            <Chip
-              label="Com oferta da casa"
-              on={offer}
-              palette={palette}
-              onPress={() => setOffer((v) => !v)}
-            />
-            <Chip
-              label="Ver no mapa"
-              icon="map"
-              on={false}
-              palette={palette}
-              onPress={showOnMap}
-            />
-            <Chip
-              label="Mais barato"
-              on={cheap}
-              palette={palette}
-              onPress={() => setCheap((v) => !v)}
-            />
-          </AnimatedScroll>
-        ) : blocked || off || last?.state === 'unavailable' ? (
-          <View style={styles.shortcuts}>
+        {followItems.length ? (
+          <FollowUps
+            key={`${last?.id}-${last?.shown}`}
+            items={followItems}
+            palette={palette}
+            onAsk={(q) => send(q)}
+            onMap={() => showOnMap(lastBars)}
+          />
+        ) : blocked || off ? (
+          <View style={styles.pills}>
             <Chip
               label="Abrir a busca"
               icon="search"
@@ -444,483 +725,367 @@ export default function AiSearch() {
             />
           </View>
         ) : null}
-
-        <View style={styles.footer}>
-          <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.field}>
-            <TextInput
-              ref={input}
-              value={draft}
-              onChangeText={setDraft}
-              editable={!blocked && !off}
-              placeholder={
-                blocked
-                  ? `O chat volta ${resumeLabel(blocked.resumesAt, now)}`
-                  : off
-                    ? 'A busca com IA está fora do ar'
-                    : turns.length
-                      ? 'Refine ou pergunte outra coisa…'
-                      : 'Diga o jogo e o que você precisa…'
-              }
-              placeholderTextColor={palette.muted}
-              returnKeyType="send"
-              onSubmitEditing={() => send()}
-              maxLength={300}
-              style={[styles.input, { color: palette.ink }]}
-            />
-            {/* Ditado: o microfone do teclado do sistema. Tocar aqui abre o
-              teclado, com o microfone dele à mão. */}
-            <ScalePress
-              accessibilityRole="button"
-              accessibilityLabel="Ditar"
-              hitSlop={8}
-              to={0.9}
-              onPress={() => input.current?.focus()}
-            >
-              <Mic color={palette.ink} />
-            </ScalePress>
-            <ScalePress
-              accessibilityRole="button"
-              accessibilityLabel="Enviar"
-              disabled={!draft.trim() || loading}
-              accessibilityState={{ disabled: !draft.trim() || loading }}
-              onPress={() => send()}
-              to={0.92}
-              style={styles.send}
-            >
-              <Icon name="arrowUp" size={18} color={INK} />
-            </ScalePress>
-          </Glass>
-        </View>
+        <PromptInput
+          inputRef={input}
+          draft={draft}
+          onDraft={setDraft}
+          placeholder={placeholder}
+          busy={busy}
+          editable={!blocked && !(off && !last)}
+          place={
+            placeOn && placeLabel
+              ? { label: placeLabel, onRemove: () => setPlaceOn(false) }
+              : null
+          }
+          day={
+            day
+              ? {
+                  label: day === 'today' ? 'Hoje' : 'Amanhã',
+                  onRemove: () => setDay(null)
+                }
+              : null
+          }
+          tastes={tastes}
+          palette={palette}
+          onTastes={() => setTastes((v) => !v)}
+          onAdd={addContext}
+          onSend={() => send()}
+          onStop={stop}
+        />
       </Animated.View>
     </>
   )
 }
 
-function worstCase(): Turn[] {
-  const answer = (id: string, text: string, bars: SearchBar[]): Answer => ({
-    kind: 'answer',
-    runId: id,
-    text,
-    bars,
-    chips: bars.length ? WORST_CHIPS : ['Leblon', 'Hoje', 'até 3 km'],
-    // Vila Madalena: "Com oferta da casa" consulta bares de verdade.
-    search: {
-      lat: -23.5535,
-      lng: -46.6911,
-      radiusKm: 10,
-      limit: 20,
-      neighborhood: null
-    },
-    remainingToday: 1
-  })
-  // A troca sem bares antes; a última, com os oito, ganha os atalhos.
-  return [
-    {
-      id: 1,
-      question: 'e no Leblon?',
-      state: 'answer',
-      answer: answer(
-        'demo-1',
-        'Não achei bar com jogo hoje no Leblon. Quer que eu aumente o raio ou olhe amanhã?',
-        []
-      )
-    },
-    {
-      id: 2,
-      question: WORST_QUESTION,
-      state: 'answer',
-      answer: answer('demo-2', WORST_ANSWER, WORST_BARS)
-    }
-  ]
-}
-
+/** Uma troca: a pergunta e a versão da resposta que está na tela. */
 function TurnView({
   turn,
-  palette,
-  now,
   bars,
-  extraChip,
+  isLast,
+  busy,
+  now,
+  palette,
+  toggles,
+  flash,
+  cardRef,
   onBar,
+  onCite,
+  onRemoveChip,
+  onToggle,
+  onConfirm,
+  onRefuse,
+  onCode,
+  onCopy,
+  onShare,
+  onRedo,
   onRate,
-  onRetry
+  onVersion
 }: {
   turn: Turn
-  palette: Palette
-  now: number
   bars: SearchBar[]
-  extraChip: string | null
+  isLast: boolean
+  busy: boolean
+  now: number
+  palette: AiPalette
+  toggles: boolean[]
+  flash: { id: string; at: number } | null
+  cardRef: (id: string, view: View | null) => void
   onBar: (bar: SearchBar) => void
+  onCite: (barId: string) => void
+  onRemoveChip?: (key: string) => void
+  onToggle: (index: number) => void
+  onConfirm: () => void
+  onRefuse: () => void
+  onCode: (eventId: string) => void
+  onCopy: (value: string) => void
+  onShare: (value: string) => void
+  onRedo: () => void
   onRate: (value: 1 | -1) => void
-  onRetry: () => void
+  onVersion: (by: -1 | 1) => void
 }) {
-  const answer = turn.answer
-  const chips = answer
-    ? [...answer.chips, ...(extraChip ? [extraChip] : [])]
-    : []
+  const reply = shownReply(turn)
+  const thinking = isThinking(reply)
+  const decision = reply.decision
+  const approved = decision?.kind === 'approved' ? decision.result : null
+  // O número de cada bar citado é a posição dele na resposta original.
+  const numberOf = (barId: string) => {
+    const i = reply.bars.findIndex((b) => b.id === barId)
+    return i < 0 ? null : i + 1
+  }
+  const proposal = reply.proposal
+  const when = proposal
+    ? `${dayLabel(proposal.game.startsAt, now).toLocaleLowerCase('pt-BR')} ${formatTime(proposal.game.startsAt)}`
+    : ''
+  // Ferramenta esperando confirmação fica fora do raciocínio (24d).
+  const waiting = reply.tools.filter((t) => t.state !== 'done')
+  const answer = approved ? confirmText(approved) : reply.text
+  const finished = reply.state === 'done' || reply.state === 'stopped'
+
   return (
     <>
-      <Animated.View
-        entering={IN}
-        style={[styles.bubble, { backgroundColor: palette.dark ? PAPER : INK }]}
-      >
-        <Text
-          style={[styles.bubbleText, { color: palette.dark ? INK : PAPER }]}
-        >
-          {turn.question}
-        </Text>
+      <Animated.View entering={IN} layout={SETTLE}>
+        <UserMessage palette={palette}>{turn.question}</UserMessage>
       </Animated.View>
 
-      {turn.state === 'loading' ? (
-        <Animated.View entering={IN}>
-          <Text style={[styles.answer, { color: palette.muted }]}>
-            Procurando os bares…
-          </Text>
+      {/* Depois do "Confirmar", o raciocínio sai e ficam as linhas (24e). */}
+      {reply.steps.length && !approved ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Reasoning
+            steps={reply.steps}
+            tools={reply.tools}
+            thinking={thinking}
+            label={thoughtLabel(reply)}
+            palette={palette}
+          />
         </Animated.View>
       ) : null}
 
-      {turn.state === 'unavailable' ? (
-        <View style={{ gap: 10, alignItems: 'flex-start' }}>
-          <Animated.View entering={IN}>
-            <Text style={[styles.answer, { color: palette.ink }]}>
-              Não consegui responder agora. Tente de novo em instantes; a busca
-              normal continua.
-            </Text>
-          </Animated.View>
-          {/* Vidro entra só com movimento, sem opacidade. */}
-          <Animated.View entering={RISE}>
-            <Chip
-              label="Tentar de novo"
-              on={false}
-              palette={palette}
-              onPress={onRetry}
-            />
-          </Animated.View>
-        </View>
-      ) : null}
+      {/* Rodando: as ferramentas abaixo dos passos; prontas, entram no
+          raciocínio quando ele fecha. Esperando você, ficam à vista. */}
+      {(thinking ? reply.tools : approved ? [] : waiting).map((tool) => (
+        <Animated.View key={tool.id} entering={IN} layout={SETTLE}>
+          <ToolCard
+            tool={
+              decision?.kind === 'refused'
+                ? { ...tool, state: 'done', params: undefined }
+                : tool
+            }
+            palette={palette}
+          />
+        </Animated.View>
+      ))}
 
-      {turn.state === 'limit' && turn.limit ? (
-        <Animated.View entering={IN}>
+      {approved ? <ApprovedLines result={approved} palette={palette} /> : null}
+
+      {reply.state === 'unavailable' ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Text style={[styles.answer, { color: palette.ink }]}>
+            Não consegui responder agora. Tente de novo em instantes; a busca
+            normal continua.
+          </Text>
+        </Animated.View>
+      ) : null}
+      {reply.state === 'limit' && reply.limit ? (
+        <Animated.View entering={IN} layout={SETTLE}>
           <Text style={[styles.answer, { color: palette.ink }]}>
             Você usou as perguntas{' '}
-            {turn.limit.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta{' '}
+            {reply.limit.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat
+            volta{' '}
             <Text style={{ fontFamily: 'Archivo-Bold' }}>
-              {resumeLabel(turn.limit.resumesAt, now)}
+              {resumeLabel(reply.limit.resumesAt, now)}
             </Text>
             ; a busca normal continua.
           </Text>
         </Animated.View>
       ) : null}
+      {reply.state === 'stopped' && !reply.text ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Text style={[styles.answer, { color: palette.muted }]}>
+            Você parou a resposta.
+          </Text>
+        </Animated.View>
+      ) : null}
 
-      {answer ? (
-        <>
-          <Animated.View entering={IN}>
-            <Text style={[styles.answer, { color: palette.ink }]}>
-              {boldSegments(answer.text).map((part, i) => (
-                <Text
-                  // biome-ignore lint/suspicious/noArrayIndexKey: pedaços fixos da frase
-                  key={i}
-                  style={part.bold ? { fontFamily: 'Archivo-Bold' } : null}
-                >
-                  {part.text}
-                </Text>
-              ))}
-            </Text>
-          </Animated.View>
-          {chips.length ? (
-            <Animated.View entering={CHIPS_IN} style={styles.chips}>
-              <Text
-                style={[text(11.5, 'Regular', 1.3), { color: palette.muted }]}
-              >
-                Busquei por
-              </Text>
-              {chips.map((chip) => (
-                <View
-                  key={chip}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: palette.dark ? palette.card : '#fff',
-                      borderColor: palette.dark
-                        ? palette.ring
-                        : 'rgba(18,18,15,.10)'
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[text(11.5, 'Regular', 1.3), { color: palette.ink }]}
-                  >
-                    {chip}
-                  </Text>
-                </View>
-              ))}
-            </Animated.View>
-          ) : null}
+      {answer && !proposal ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <AnswerText
+            text={answer}
+            count={reply.bars.length}
+            palette={palette}
+            onCite={(n) => {
+              const bar = reply.bars[n - 1]
+              if (bar) onCite(bar.id)
+            }}
+          />
+        </Animated.View>
+      ) : null}
+      {approved ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <AnswerText text={answer} count={0} palette={palette} />
+        </Animated.View>
+      ) : null}
+
+      {reply.done?.chips.length ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <FilterChips
+            chips={reply.done.chips.filter(
+              (c) => !reply.removed.includes(c.key)
+            )}
+            palette={palette}
+            onRemove={
+              onRemoveChip ? (chip) => onRemoveChip(chip.key) : undefined
+            }
+          />
+        </Animated.View>
+      ) : null}
+
+      {/* Os cards chegam com a ferramenta, antes do texto. */}
+      {bars.length ? (
+        <Animated.View layout={SETTLE} style={{ gap: 10 }}>
           {bars.map((bar, i) => (
-            <AnswerRow
-              key={bar.id}
-              index={i}
-              bar={bar}
-              now={now}
-              palette={palette}
-              onPress={() => onBar(bar)}
-            />
+            <Animated.View key={bar.id} entering={BAR_IN[i]} layout={SETTLE}>
+              <CitedBar
+                ref={(view) => cardRef(bar.id, view)}
+                bar={bar}
+                n={numberOf(bar.id)}
+                now={now}
+                palette={palette}
+                flash={flash?.id === bar.id ? flash.at : undefined}
+                onPress={() => onBar(bar)}
+              />
+            </Animated.View>
           ))}
-          <Animated.View entering={RATE_IN} style={styles.rate}>
-            <Text style={[text(12, 'Regular', 1.3), { color: palette.muted }]}>
-              Ajudou?
-            </Text>
-            <Thumb
-              up
-              on={turn.feedback === 1}
+        </Animated.View>
+      ) : null}
+
+      {reply.done?.sources.length ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Sources
+            label={sourcesLabel(
+              reply.done.sources,
+              reply.done.search?.date,
+              now
+            )}
+            sources={reply.done.sources}
+            numberOf={numberOf}
+            palette={palette}
+            onOpen={(s) => {
+              const bar = reply.bars.find((b) => b.id === s.barId)
+              if (bar) onBar(bar)
+            }}
+          />
+        </Animated.View>
+      ) : null}
+
+      {proposal && !decision ? (
+        <>
+          <Animated.View entering={IN} layout={SETTLE}>
+            <ConfirmCard
+              proposal={proposal}
+              values={isLast ? toggles : proposal.actions.map((a) => a.on)}
+              when={when}
+              sending={false}
               palette={palette}
-              onPress={() => onRate(1)}
-            />
-            <Thumb
-              on={turn.feedback === -1}
-              palette={palette}
-              onPress={() => onRate(-1)}
+              onToggle={onToggle}
+              onConfirm={onConfirm}
+              onRefuse={onRefuse}
             />
           </Animated.View>
+          <Text style={[styles.note, { color: palette.muted }]}>
+            Nada é marcado sem você confirmar.
+          </Text>
         </>
+      ) : null}
+      {proposal && decision?.kind === 'sending' ? (
+        <ConfirmCard
+          proposal={proposal}
+          values={toggles}
+          when={when}
+          sending
+          palette={palette}
+          onToggle={onToggle}
+          onConfirm={onConfirm}
+          onRefuse={onRefuse}
+        />
+      ) : null}
+      {decision?.kind === 'refused' ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <DecisionLine
+            approved={false}
+            label="Você recusou · nada foi feito"
+            at={decision.at}
+            palette={palette}
+          />
+        </Animated.View>
+      ) : null}
+
+      {approved?.going?.ok && approved.going.code && proposal ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <CodeCard
+            code={approved.going.code}
+            title={approved.going.eventTitle}
+            when={when}
+            place={[approved.going.barName, approved.going.neighborhood]
+              .filter(Boolean)
+              .join(' · ')}
+            palette={palette}
+            onPress={() => onCode(proposal.game.id)}
+          />
+        </Animated.View>
+      ) : null}
+
+      {finished && (reply.text || approved) && !(busy && isLast) ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Actions
+            feedback={reply.feedback}
+            version={versionLabel(turn)}
+            palette={palette}
+            onCopy={() => onCopy(plainText(answer))}
+            onRedo={onRedo}
+            onRate={onRate}
+            onShare={() => onShare(plainText(answer))}
+            onVersion={onVersion}
+          />
+        </Animated.View>
       ) : null}
     </>
   )
 }
 
-/**
- * Um bar da resposta. A entrada fica a da posição em que ele nasceu: com
- * "Mais barato" o índice muda, e um `entering` novo faria o Reanimated
- * refazer a entrada (a linha sumia e voltava) em vez de só deslizar.
- */
-function AnswerRow({
-  index,
-  bar,
-  now,
-  palette,
-  onPress
+/** As linhas do que foi feito (24e), com a hora e "Pronto". */
+function ApprovedLines({
+  result,
+  palette
 }: {
-  index: number
-  bar: SearchBar
-  now: number
-  palette: Palette
-  onPress: () => void
+  result: ConfirmResult
+  palette: AiPalette
 }) {
-  const [enter] = useState(() => ROW_IN[index])
-  return (
-    <Animated.View entering={enter} exiting={ROW_OUT} layout={REORDER}>
-      <BarRow bar={bar} now={now} palette={palette} onPress={onPress} />
+  const lines = [
+    result.going && {
+      icon: 'ticket' as const,
+      label: result.going.ok ? 'Presença marcada' : 'Presença não marcada',
+      failed: !result.going.ok
+    },
+    result.call && {
+      icon: 'people' as const,
+      label: result.call.ok
+        ? `Chamado para ${firstName(result.call.friendName)}`
+        : 'Chamado não enviado',
+      failed: !result.call.ok
+    },
+    result.remind && {
+      icon: 'bell' as const,
+      label: result.remind.ok ? 'Lembrete marcado' : 'Lembrete não marcado',
+      failed: !result.remind.ok
+    }
+  ].filter((l) => !!l)
+  return lines.map((line) => (
+    <Animated.View key={line.icon} entering={IN} layout={SETTLE}>
+      <DoneLine
+        icon={line.icon}
+        label={line.label}
+        at={result.at}
+        failed={line.failed}
+        palette={palette}
+      />
     </Animated.View>
-  )
-}
-
-/** O ponto acid ao lado do subtítulo; pulsa enquanto procura. */
-function StatusDot({ busy, quiet }: { busy: boolean; quiet: boolean }) {
-  const pulse = useSharedValue(1)
-  useEffect(() => {
-    pulse.set(
-      busy
-        ? withRepeat(
-            withTiming(1.5, {
-              duration: 600,
-              easing: Easing.inOut(Easing.quad)
-            }),
-            -1,
-            true
-          )
-        : withTiming(1, { duration: 200, easing: EASE })
-    )
-  }, [busy, pulse])
-  const halo = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }))
-  const color = quiet ? 'rgba(85,85,79,.5)' : ACID
-  return (
-    <View style={styles.dotBox}>
-      <Animated.View
-        style={[
-          styles.dotHalo,
-          {
-            backgroundColor: quiet
-              ? 'rgba(85,85,79,.2)'
-              : 'rgba(201,241,53,.35)'
-          },
-          halo
-        ]}
-      />
-      <View style={[styles.dot, { backgroundColor: color }]} />
-    </View>
-  )
-}
-
-/** Microfone do design (20 pt): corpo cheio, haste a 30%. */
-function Mic({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path
-        d="M5 11a7 7 0 0 0 14 0h-2.2a4.8 4.8 0 0 1-9.6 0z"
-        fill={color}
-        opacity={0.3}
-      />
-      <Rect
-        x={11}
-        y={17}
-        width={2}
-        height={4}
-        rx={1}
-        fill={color}
-        opacity={0.3}
-      />
-      <Rect x={8.5} y={2.5} width={7} height={12} rx={3.5} fill={color} />
-    </Svg>
-  )
-}
-
-/** Polegar da resposta (a métrica do teste). Não está no design. */
-function Thumb({
-  up,
-  on,
-  palette,
-  onPress
-}: {
-  up?: boolean
-  on: boolean
-  palette: Palette
-  onPress: () => void
-}) {
-  const color = on ? palette.ink : palette.muted
-  return (
-    <ScalePress
-      accessibilityRole="button"
-      accessibilityLabel={up ? 'Ajudou' : 'Não ajudou'}
-      accessibilityState={{ selected: on }}
-      hitSlop={10}
-      to={0.9}
-      onPress={onPress}
-      style={styles.thumb}
-    >
-      <Svg
-        width={17}
-        height={17}
-        viewBox="0 0 24 24"
-        style={up ? undefined : { transform: [{ rotate: '180deg' }] }}
-      >
-        <Rect
-          x={2.5}
-          y={10}
-          width={4}
-          height={10.5}
-          rx={1}
-          fill={color}
-          opacity={on ? 1 : 0.45}
-        />
-        <Path
-          d="M8.5 20.5V10l4.4-6.6a1.9 1.9 0 0 1 3.4 1.4L15.5 9h4a2 2 0 0 1 2 2.4l-1.4 7.2a2.4 2.4 0 0 1-2.4 1.9z"
-          fill={color}
-          opacity={on ? 1 : 0.45}
-        />
-      </Svg>
-    </ScalePress>
-  )
+  ))
 }
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
   top: { position: 'absolute', top: 0, left: 0, right: 0 },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 17,
-    paddingHorizontal: 16,
-    zIndex: 1
-  },
-  mark: {
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 10,
-    marginRight: 8
-  },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dotBox: {
-    width: 13,
-    height: 13,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  dotHalo: { position: 'absolute', width: 13, height: 13, borderRadius: 6.5 },
-  dot: { width: 7, height: 7, borderRadius: 3.5 },
-  body: { paddingTop: 8, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
-  spacer: { height: 150 },
-  bubble: {
-    alignSelf: 'flex-end',
-    maxWidth: 270,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 4,
-    shadowColor: ACID,
-    shadowOpacity: 0.9,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
-  },
-  bubbleText: { ...text(15, 'Regular', 1.38) },
-  answer: { ...text(15.5, 'Regular', 1.45) },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-    alignItems: 'center'
-  },
-  chip: {
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 3,
-    borderWidth: StyleSheet.hairlineWidth
-  },
-  rate: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -2 },
-  thumb: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  shortcuts: {
-    paddingTop: 10,
-    paddingHorizontal: 14,
-    gap: 8,
-    flexDirection: 'row'
-  },
+  body: { paddingTop: 6, paddingHorizontal: 16, paddingBottom: 14, gap: 14 },
+  answer: { ...text(15.5, 'Regular', 1.5) },
+  note: { ...text(12.5, 'Regular', 1.4), textAlign: 'center' },
+  pills: { flexDirection: 'row', paddingHorizontal: 12 },
   dock: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    paddingBottom: 30
-  },
-  footer: { paddingTop: 10, paddingHorizontal: 14 },
-  field: {
-    height: 54,
-    borderRadius: 27,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 18,
-    paddingRight: 8,
-    gap: 10,
-    overflow: 'hidden'
-  },
-  input: { flex: 1, ...text(15, 'Regular', 1.2), paddingVertical: 0 },
-  send: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ACID,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: INK,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 2 }
+    paddingTop: 10,
+    paddingBottom: 30,
+    gap: 10
   }
 })
