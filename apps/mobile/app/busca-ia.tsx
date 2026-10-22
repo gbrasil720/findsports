@@ -10,6 +10,7 @@ import Animated, {
   type EntryExitAnimationFunction,
   FadeInDown,
   FadeOut,
+  LayoutAnimationConfig,
   LinearTransition,
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -138,6 +139,9 @@ export default function AiSearch() {
   const [turns, setTurns] = useState<Turn[]>(() =>
     __DEV__ && demo === 'pior' ? worstCase() : saved
   )
+  // Conversa guardada (a folha reabriu) aparece pronta; só turnos novos
+  // animam.
+  const [restored] = useState(() => turns.length > 0)
   const [draft, setDraft] = useState('')
   const [offer, setOffer] = useState(false)
   const [cheap, setCheap] = useState(false)
@@ -315,41 +319,43 @@ export default function AiSearch() {
           scroll.current?.scrollToEnd({ animated: true })
         }
       >
-        <View style={styles.body}>
-          {!turns.length ? (
-            <Animated.View entering={IN}>
-              <Text style={[styles.answer, { color: palette.ink }]}>
-                {off
-                  ? 'A busca com IA está fora do ar agora. A busca normal continua funcionando.'
-                  : blocked
-                    ? `Você usou as perguntas ${blocked.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta ${resumeLabel(blocked.resumesAt, now)}; a busca normal continua.`
-                    : 'Me diga o jogo e o que você precisa. Eu procuro para você.'}
-              </Text>
-            </Animated.View>
-          ) : null}
-          {turns.map((turn, index) => (
-            <TurnView
-              key={turn.id}
-              turn={turn}
-              palette={palette}
-              now={now}
-              bars={
-                turn.answer
-                  ? shown(turn.answer, index === turns.length - 1)
-                  : []
-              }
-              extraChip={
-                index === turns.length - 1 && offer ? 'Oferta da casa' : null
-              }
-              onBar={(bar) => turn.answer && openBar(turn.answer.runId, bar)}
-              onRate={(value) => rate(turn, value)}
-              onRetry={() => {
-                setTurns((list) => list.filter((t) => t.id !== turn.id))
-                send(turn.question)
-              }}
-            />
-          ))}
-        </View>
+        <LayoutAnimationConfig skipEntering={restored}>
+          <View style={styles.body}>
+            {!turns.length ? (
+              <Animated.View entering={IN}>
+                <Text style={[styles.answer, { color: palette.ink }]}>
+                  {off
+                    ? 'A busca com IA está fora do ar agora. A busca normal continua funcionando.'
+                    : blocked
+                      ? `Você usou as perguntas ${blocked.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta ${resumeLabel(blocked.resumesAt, now)}; a busca normal continua.`
+                      : 'Me diga o jogo e o que você precisa. Eu procuro para você.'}
+                </Text>
+              </Animated.View>
+            ) : null}
+            {turns.map((turn, index) => (
+              <TurnView
+                key={turn.id}
+                turn={turn}
+                palette={palette}
+                now={now}
+                bars={
+                  turn.answer
+                    ? shown(turn.answer, index === turns.length - 1)
+                    : []
+                }
+                extraChip={
+                  index === turns.length - 1 && offer ? 'Oferta da casa' : null
+                }
+                onBar={(bar) => turn.answer && openBar(turn.answer.runId, bar)}
+                onRate={(value) => rate(turn, value)}
+                onRetry={() => {
+                  setTurns((list) => list.filter((t) => t.id !== turn.id))
+                  send(turn.question)
+                }}
+              />
+            ))}
+          </View>
+        </LayoutAnimationConfig>
         <View style={styles.spacer} />
       </ScrollView>
 
