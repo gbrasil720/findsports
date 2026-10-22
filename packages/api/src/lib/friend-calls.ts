@@ -54,6 +54,21 @@ export async function createFriendCall(input: {
   return { ok: true, callId: created.id, friendName: friend?.name ?? '' }
 }
 
+/**
+ * Apaga os chamados da dupla nas duas direções: amizade desfeita (ou pedido
+ * recusado) não deixa chamado para responder nem "vai também" para ver.
+ */
+export async function deleteCallsBetween(a: string, b: string) {
+  await db
+    .delete(friendCall)
+    .where(
+      or(
+        and(eq(friendCall.fromUserId, a), eq(friendCall.toUserId, b)),
+        and(eq(friendCall.fromUserId, b), eq(friendCall.toUserId, a))
+      )
+    )
+}
+
 /** Um chamado como Avisos mostra: a outra pessoa, o jogo e o bar. */
 export type CallNotice = {
   id: string
