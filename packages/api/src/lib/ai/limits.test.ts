@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'bun:test'
-
+import { appConfigDefault } from '../app-config/registry'
 import {
   assignVariant,
   brasiliaWindows,
   budgetBlock,
-  CHAT_DAILY_MESSAGES,
-  CHAT_MONTHLY_MESSAGES,
   chatAllowance,
   type UserUsage
 } from './limits'
 import { costUsd } from './models'
 import { readUsage } from './run'
+
+const limits = appConfigDefault('ai.limits')
 
 const usage = (over: Partial<UserUsage> = {}): UserUsage => ({
   callsToday: 0,
@@ -50,49 +50,70 @@ describe('limite do chat', () => {
   const now = new Date('2026-10-21T18:00:00Z')
 
   it('sobra o que falta do dia e do mês', () => {
-    expect(chatAllowance(usage({ chatToday: 3, chatMonth: 40 }), now)).toEqual({
+    expect(
+      chatAllowance(usage({ chatToday: 3, chatMonth: 40 }), now, limits)
+    ).toEqual({
       ok: true,
-      remainingToday: CHAT_DAILY_MESSAGES - 3,
-      remainingMonth: CHAT_MONTHLY_MESSAGES - 40
+      remainingToday: limits.chatDailyMessages - 3,
+      remainingMonth: limits.chatMonthlyMessages - 40
     })
   })
 
   it('10 no dia: volta amanhã à meia-noite de Brasília', () => {
-    expect(chatAllowance(usage({ chatToday: 10, chatMonth: 10 }), now)).toEqual(
-      {
-        ok: false,
-        scope: 'day',
-        resumesAt: new Date('2026-10-22T03:00:00Z')
-      }
-    )
+    expect(
+      chatAllowance(usage({ chatToday: 10, chatMonth: 10 }), now, limits)
+    ).toEqual({
+      ok: false,
+      scope: 'day',
+      resumesAt: new Date('2026-10-22T03:00:00Z')
+    })
   })
 
   it('100 no mês vence o dia: volta no dia 1º', () => {
-    expect(chatAllowance(usage({ chatToday: 2, chatMonth: 100 }), now)).toEqual(
-      {
-        ok: false,
-        scope: 'month',
-        resumesAt: new Date('2026-11-01T03:00:00Z')
-      }
-    )
+    expect(
+      chatAllowance(usage({ chatToday: 2, chatMonth: 100 }), now, limits)
+    ).toEqual({
+      ok: false,
+      scope: 'month',
+      resumesAt: new Date('2026-11-01T03:00:00Z')
+    })
   })
 
   it('30 chamadas no dia, mesmo sem resposta útil, travam até amanhã', () => {
     const blocked = usage({ callsToday: 30, chatToday: 1 })
-    expect(budgetBlock(blocked)).toBe('user_daily')
-    expect(chatAllowance(blocked, now)).toMatchObject({
+    expect(budgetBlock(blocked, limits)).toBe('user_daily')
+    expect(chatAllowance(blocked, now, limits)).toMatchObject({
       ok: false,
       scope: 'day'
     })
   })
 
   it('US$ 1,50 da pessoa trava até o mês que vem; US$ 40 de todo mundo trava todos', () => {
-    expect(budgetBlock(usage({ userCostMonth: 1.5 }))).toBe('user_budget')
-    expect(chatAllowance(usage({ userCostMonth: 1.5 }), now)).toMatchObject({
+    expect(budgetBlock(usage({ userCostMonth: 1.5 }), limits)).toBe(
+      'user_budget'
+    )
+    expect(
+      chatAllowance(usage({ userCostMonth: 1.5 }), now, limits)
+    ).toMatchObject({
       scope: 'month'
     })
-    expect(budgetBlock(usage({ totalCostMonth: 40 }))).toBe('budget')
-    expect(budgetBlock(usage({ totalCostMonth: 39.99 }))).toBeNull()
+    expect(budgetBlock(usage({ totalCostMonth: 40 }), limits)).toBe('budget')
+    expect(budgetBlock(usage({ totalCostMonth: 39.99 }), limits)).toBeNull()
+  })
+})
+
+describe('limites do app_config', () => {
+  const now = new Date('2026-10-21T18:00:00Z')
+
+  it('limite mais baixo trava antes do padrão; mais alto libera', () => {
+    const lower = { ...limits, chatDailyMessages: 3, monthlyBudgetUsd: 5 }
+    expect(chatAllowance(usage({ chatToday: 3 }), now, lower)).toMatchObject({
+      ok: false,
+      scope: 'day'
+    })
+    expect(budgetBlock(usage({ totalCostMonth: 5 }), lower)).toBe('budget')
+    const higher = { ...limits, userDailyCalls: 60 }
+    expect(budgetBlock(usage({ callsToday: 30 }), higher)).toBeNull()
   })
 })
 

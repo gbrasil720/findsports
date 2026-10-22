@@ -1,16 +1,17 @@
+import type { AppConfigValue } from '../app-config/registry'
+
 /**
  * Tetos e sorteio da IA (WEB-424, WEB-400), em funções puras: o banco só
- * entrega as contagens (`run.ts`).
+ * entrega as contagens e os limites (`run.ts`).
  */
 
-/** Teto do mês, todo mundo junto. O Gateway de produção tem o mesmo teto. */
-export const MONTHLY_BUDGET_USD = 40
-/** Por pessoa: gasto do mês e chamadas do dia, inclusive as que falharam. */
-export const USER_MONTHLY_USD = 1.5
-export const USER_DAILY_CALLS = 30
-/** Mensagens do chat com resposta útil (o que acabar primeiro). */
-export const CHAT_DAILY_MESSAGES = 10
-export const CHAT_MONTHLY_MESSAGES = 100
+/**
+ * Tetos e limites (`ai.limits` no `app_config`, editáveis no Houdini): o
+ * gasto do mês de todo mundo (o Gateway de produção tem o mesmo teto), o
+ * gasto do mês e as chamadas do dia por pessoa (inclusive as que falharam), e
+ * as mensagens do chat com resposta útil (o que acabar primeiro).
+ */
+export type AiLimits = AppConfigValue<'ai.limits'>
 
 /**
  * Começo do dia e do mês de Brasília que contém `now`, e o começo dos
@@ -46,10 +47,13 @@ export type UserUsage = {
 export type AiBlock = 'budget' | 'user_budget' | 'user_daily'
 
 /** Trava de gasto e de chamadas, para qualquer funcionalidade de IA. */
-export function budgetBlock(usage: UserUsage): AiBlock | null {
-  if (usage.totalCostMonth >= MONTHLY_BUDGET_USD) return 'budget'
-  if (usage.userCostMonth >= USER_MONTHLY_USD) return 'user_budget'
-  if (usage.callsToday >= USER_DAILY_CALLS) return 'user_daily'
+export function budgetBlock(
+  usage: UserUsage,
+  limits: AiLimits
+): AiBlock | null {
+  if (usage.totalCostMonth >= limits.monthlyBudgetUsd) return 'budget'
+  if (usage.userCostMonth >= limits.userMonthlyUsd) return 'user_budget'
+  if (usage.callsToday >= limits.userDailyCalls) return 'user_daily'
   return null
 }
 
@@ -62,22 +66,26 @@ export type ChatAllowance =
  * meia-noite de Brasília ou no dia 1º. A trava de chamadas por dia também
  * volta amanhã; a de gasto da pessoa, no mês seguinte.
  */
-export function chatAllowance(usage: UserUsage, now: Date): ChatAllowance {
+export function chatAllowance(
+  usage: UserUsage,
+  now: Date,
+  limits: AiLimits
+): ChatAllowance {
   const w = brasiliaWindows(now)
   if (
-    usage.chatMonth >= CHAT_MONTHLY_MESSAGES ||
-    usage.userCostMonth >= USER_MONTHLY_USD
+    usage.chatMonth >= limits.chatMonthlyMessages ||
+    usage.userCostMonth >= limits.userMonthlyUsd
   )
     return { ok: false, scope: 'month', resumesAt: w.nextMonth }
   if (
-    usage.chatToday >= CHAT_DAILY_MESSAGES ||
-    usage.callsToday >= USER_DAILY_CALLS
+    usage.chatToday >= limits.chatDailyMessages ||
+    usage.callsToday >= limits.userDailyCalls
   )
     return { ok: false, scope: 'day', resumesAt: w.nextDay }
   return {
     ok: true,
-    remainingToday: CHAT_DAILY_MESSAGES - usage.chatToday,
-    remainingMonth: CHAT_MONTHLY_MESSAGES - usage.chatMonth
+    remainingToday: limits.chatDailyMessages - usage.chatToday,
+    remainingMonth: limits.chatMonthlyMessages - usage.chatMonth
   }
 }
 

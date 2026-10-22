@@ -64,7 +64,7 @@ async function readGate(userId: string, now: Date) {
     // Trava da própria pessoa: a tela diz quando volta. O resto (chave
     // desligada, sem Gateway, teto do mês de todo mundo) é "indisponível".
     if (gate.usage && gate.reason !== 'budget') {
-      const allowance = chatAllowance(gate.usage, now)
+      const allowance = chatAllowance(gate.usage, now, gate.limits)
       if (!allowance.ok)
         return {
           blocked: {
@@ -76,7 +76,7 @@ async function readGate(userId: string, now: Date) {
     }
     return { blocked: { kind: 'unavailable' } satisfies Unavailable }
   }
-  const allowance = chatAllowance(gate.usage, now)
+  const allowance = chatAllowance(gate.usage, now, gate.limits)
   if (!allowance.ok)
     return {
       blocked: {
