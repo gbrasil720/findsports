@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildNotices,
+  callLine,
   inTab,
   noticeSections,
   noticeTime,
@@ -197,6 +198,56 @@ describe('Avisar e Lembrar (WEB-425)', () => {
     const today = { ...game, startsAt: '2026-10-22T00:30:00.000Z' }
     expect(buildNotices({ ...base, reminders: [today] }, NOW_)[0]?.kind).toBe(
       'reminder'
+    )
+  })
+})
+
+describe('chamado de amigo (Rodada 24)', () => {
+  const call = (id: string, startsAt: string, at = iso(-1)) => ({
+    id,
+    status: 'pending' as const,
+    at,
+    person: { id: 'gabriel', name: 'Gabriel Brasil', image: null },
+    eventId: `e-${id}`,
+    barId: 'ze',
+    barName: 'Bar do Zé',
+    startsAt,
+    championship: 'Brasileirão',
+    participants: ['Corinthians', 'Palmeiras'],
+    participantFreeText: null
+  })
+
+  test('recebido e aceito ficam na aba Amigos', () => {
+    const notices = buildNotices(
+      {
+        mine: [],
+        medals: [],
+        teamBars: [],
+        sides,
+        friends: {
+          requests: [],
+          accepted: [],
+          calls: [call('a', iso(9.5))],
+          callsAccepted: [call('b', iso(9.5), iso(-2))]
+        }
+      },
+      NOW
+    )
+    expect(notices.map((n) => n.id)).toEqual(['call:a', 'call-accepted:b'])
+    expect(notices.every((n) => inTab(n, 'friends'))).toBe(true)
+    expect(notices.some((n) => inTab(n, 'games'))).toBe(false)
+  })
+
+  test('a linha do jogo diz o dia', () => {
+    // 21:30 de hoje em Brasília.
+    expect(callLine(call('a', iso(9.5)), NOW)).toBe(
+      'Corinthians × Palmeiras · Bar do Zé · hoje 21:30'
+    )
+    expect(callLine(call('a', iso(33.5)), NOW)).toBe(
+      'Corinthians × Palmeiras · Bar do Zé · amanhã 21:30'
+    )
+    expect(callLine(call('a', iso(81.5)), NOW)).toBe(
+      'Corinthians × Palmeiras · Bar do Zé · sex 21:30'
     )
   })
 })

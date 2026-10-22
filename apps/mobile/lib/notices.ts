@@ -1,4 +1,4 @@
-import { firstName } from './explore'
+import { firstName, formatTime } from './explore'
 import { matchName, type NearBar } from './search'
 
 /*
@@ -6,7 +6,8 @@ import { matchName, type NearBar } from './search'
  * oferta, jogo dos seus times perto, conquista desbloqueada, dos amigos,
  * pedido recebido e pedido aceito (`friends.notices`) e, de "Bares pra
  * você" (WEB-425), o jogo novo do bar que você pediu para avisar e o jogo que
- * você pediu para lembrar, no dia. Ranking e comunidade do design ainda não
+ * você pediu para lembrar, no dia, e o chamado de amigo (Rodada 24): o que
+ * você recebeu, com a resposta, e o "Marina vai também" do que você fez. Ranking e comunidade do design ainda não
  * existem no produto. Contas puras; a tela fica em `app/avisos.tsx`.
  */
 
@@ -33,6 +34,8 @@ export type Notice =
   | { id: string; kind: 'medal'; at: string; medalId: string }
   | { id: string; kind: 'friend-request'; at: string; person: FriendNotice }
   | { id: string; kind: 'friend-accepted'; at: string; person: FriendNotice }
+  | { id: string; kind: 'call'; at: string; call: CallNotice }
+  | { id: string; kind: 'call-accepted'; at: string; call: CallNotice }
   | {
       id: string
       /** "Avisar" (23e): o bar publicou jogo do seu esporte ou time. */
@@ -78,13 +81,36 @@ export type FriendNotice = {
   mutualInitials: string[]
 }
 
+/** Um chamado de amigo de `friends.notices` (Rodada 24). */
+export type CallNotice = BarGame & {
+  id: string
+  status: 'pending' | 'going' | 'not_now'
+  at: string
+  person: { id: string; name: string; image: string | null }
+}
+
+/** "Corinthians × Palmeiras · Bar do Zé · hoje 21:30", a linha do chamado. */
+export function callLine(call: CallNotice, now: number) {
+  const day = dayKey(call.startsAt)
+  const when =
+    day === dayKey(now)
+      ? 'hoje'
+      : day === dayKey(now + DAY)
+        ? 'amanhã'
+        : noticeTime(call.startsAt, now).toLocaleLowerCase('pt-BR')
+  return `${barGameTitle(call)} · ${call.barName} · ${when} ${formatTime(call.startsAt)}`
+}
+
 export type NoticeTab = 'all' | 'games' | 'friends'
 
 /** As abas do design: Tudo, Jogos e Amigos. Conquista só aparece em Tudo. */
 export const inTab = (notice: Notice, tab: NoticeTab) =>
   tab === 'all' ||
   (tab === 'friends'
-    ? notice.kind === 'friend-request' || notice.kind === 'friend-accepted'
+    ? notice.kind === 'friend-request' ||
+      notice.kind === 'friend-accepted' ||
+      notice.kind === 'call' ||
+      notice.kind === 'call-accepted'
     : notice.kind === 'offer' ||
       notice.kind === 'game' ||
       notice.kind === 'alert' ||
@@ -111,8 +137,16 @@ export function buildNotices(
     /** Os bares perto com jogo dos times da pessoa (`pubs.search` com `teamIds`). */
     teamBars: NearBar[]
     sides: (game: NonNullable<NearBar['nextEvent']>) => [string, string] | null
-    /** `friends.notices`: pedido recebido não vence, aceito vale 30 dias. */
-    friends?: { requests: FriendNotice[]; accepted: FriendNotice[] }
+    /**
+     * `friends.notices`: pedido recebido não vence, aceito vale 30 dias; os
+     * chamados vêm do servidor já no prazo.
+     */
+    friends?: {
+      requests: FriendNotice[]
+      accepted: FriendNotice[]
+      calls?: CallNotice[]
+      callsAccepted?: CallNotice[]
+    }
     /** `recommendations.notices`: Avisar e Lembrar. */
     alerts?: (BarGame & { publishedAt: string })[]
     reminders?: BarGame[]
@@ -182,6 +216,15 @@ export function buildNotices(
         at: person.at,
         person
       })
+  for (const call of input.friends?.calls ?? [])
+    notices.push({ id: `call:${call.id}`, kind: 'call', at: call.at, call })
+  for (const call of input.friends?.callsAccepted ?? [])
+    notices.push({
+      id: `call-accepted:${call.id}`,
+      kind: 'call-accepted',
+      at: call.at,
+      call
+    })
   for (const game of input.alerts ?? [])
     notices.push({
       id: `alert:${game.eventId}`,
