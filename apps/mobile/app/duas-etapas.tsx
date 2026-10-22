@@ -132,7 +132,7 @@ export default function TwoFactorSetup() {
 
   if (enabled)
     return (
-      <Screen gap={16} top={6}>
+      <Screen key="off" gap={16} top={6}>
         <BackButton />
         <Title lines={[['Desligar a'], ['', 'verificação']]} size={40} />
         <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
@@ -166,7 +166,7 @@ export default function TwoFactorSetup() {
 
   if (step === 'password')
     return (
-      <Screen gap={16} top={6}>
+      <Screen key={step} gap={16} top={6}>
         <BackButton />
         <Title lines={[['Verificação em'], ['', 'duas etapas']]} size={40} />
         <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
@@ -201,7 +201,7 @@ export default function TwoFactorSetup() {
 
   if (step === 'key')
     return (
-      <Screen gap={16} top={6}>
+      <Screen key={step} gap={16} top={6}>
         <BackButton />
         <Title lines={[['Adicione no'], ['', 'autenticador']]} size={40} />
         <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
@@ -265,7 +265,7 @@ export default function TwoFactorSetup() {
     )
 
   return (
-    <Screen gap={16} top={6}>
+    <Screen key={step} gap={16} top={6}>
       <Title lines={[['Guarde os'], ['', 'códigos']]} size={40} />
       <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
         A verificação está ligada. Se perder o celular, cada código abaixo entra
