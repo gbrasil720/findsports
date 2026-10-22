@@ -25,16 +25,16 @@ import { getAppConfig } from '../lib/app-config'
  */
 
 /** Conversa: mensagens da mesma pessoa no mesmo braço, sem pausa maior. */
-const CONVERSATION_GAP = sql.raw(`interval '30 minutes'`)
+const CONVERSATION_GAP = sql`interval '30 minutes'`
 /** Ação que conta como conversão: até 24 h depois da resposta. */
-const CONVERSION_WINDOW = sql.raw(`interval '24 hours'`)
+const CONVERSION_WINDOW = sql`interval '24 hours'`
 // ponytail: gráfico e listas com teto fixo; paginar se a IA crescer.
 const CHART_MAX_DAYS = 92
 const TOP_LIMIT = 10
 
-const TZ = sql.raw(`'America/Sao_Paulo'`)
+const TZ = sql`'America/Sao_Paulo'`
 
-const since = (start: Date | null, column = sql.raw('r.created_at')): SQL =>
+const since = (start: Date | null, column = sql`r.created_at`): SQL =>
   start ? sql`${column} >= ${start}` : sql`true`
 
 type VariantRow = {
