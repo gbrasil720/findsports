@@ -11,6 +11,7 @@ import {
   timestamp
 } from 'drizzle-orm/pg-core'
 import { user } from './auth'
+import { bar, event } from './platform'
 
 /**
  * Uma execução de IA (WEB-424): um pedido do recomendador ou uma mensagem do
@@ -88,11 +89,51 @@ export const aiAction = pgTable(
     runId: text('run_id')
       .notNull()
       .references(() => aiRun.runId, { onDelete: 'cascade' }),
-    kind: text('kind', { enum: ['open_bar', 'going', 'route'] }).notNull(),
+    // `call` e `remind` vêm do "Confirmar" de uma proposta da IA (R24).
+    kind: text('kind', {
+      enum: ['open_bar', 'going', 'route', 'call', 'remind']
+    }).notNull(),
     barId: text('bar_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull()
   },
   (table) => [index('ai_action_run_idx').on(table.runId)]
+)
+
+/**
+ * O que a IA propôs fazer (R24, `marcar_vou_assistir` e `lembrar`): nada muda
+ * sem o "Confirmar" do torcedor, que chega em `ai.confirm` com este id. Vale
+ * uma vez e só para o dono do `run_id` (`used_at`).
+ */
+export const aiProposal = pgTable(
+  'ai_proposal',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    runId: text('run_id')
+      .notNull()
+      .references(() => aiRun.runId, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => event.id, { onDelete: 'cascade' }),
+    // "Vou assistir" entra na proposta de `marcar_vou_assistir`; o lembrete,
+    // em todas; o amigo, só se o pedido chamou um amigo aceito.
+    offersGoing: boolean('offers_going').notNull(),
+    friendId: text('friend_id').references(() => user.id, {
+      onDelete: 'set null'
+    }),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (table) => [index('ai_proposal_run_idx').on(table.runId)]
 )
