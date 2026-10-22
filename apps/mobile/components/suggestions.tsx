@@ -417,6 +417,10 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
     promote.set(0)
     leaving.set(0)
     if (returning && returning.barId === top?.barId) {
+      // O que estava por cima apaga o resto enquanto o desfeito o cobre,
+      // em vez de ficar vazio de uma vez.
+      promote.set(1)
+      promote.set(withTiming(0, { duration: 250, easing: EASE }))
       if (reduced) {
         x.set(0)
         fade.set(0)
