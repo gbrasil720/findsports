@@ -558,10 +558,12 @@ export function Tag({
 /** Sombra dura deslocada, como o `box-shadow` sem desfoque do design. */
 export function HardShadow({
   color,
-  offset
+  offset,
+  radius = 6
 }: {
   color: string
   offset: number
+  radius?: number
 }) {
   return (
     <View
@@ -572,7 +574,7 @@ export function HardShadow({
           left: offset,
           right: -offset,
           bottom: -offset,
-          borderRadius: 6,
+          borderRadius: radius,
           backgroundColor: color
         }
       ]}
