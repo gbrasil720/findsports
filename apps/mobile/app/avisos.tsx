@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { type ReactNode, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -52,10 +53,12 @@ import {
   progressShare,
   unit
 } from '@/lib/achievements'
-import { formatTime, searchCenter, teamMark } from '@/lib/explore'
+import { firstName, formatTime, searchCenter, teamMark } from '@/lib/explore'
 import { formatCode, gameTitle } from '@/lib/my-games'
 import {
   buildNotices,
+  type CallNotice,
+  callLine,
   type FriendNotice,
   inTab,
   type Notice,
@@ -73,13 +76,15 @@ import { trpc } from '@/lib/trpc'
  * código e os amigos que vão. Embaixo, os avisos montados do que já existe
  * (`lib/notices.ts`): oferta liberada, jogo dos seus times perto, conquista
  * desbloqueada e, dos amigos, pedido recebido (com Aceitar e Recusar) e
- * pedido aceito. As abas são as do design, Tudo, Jogos e Amigos; conquista
+ * pedido aceito, e o chamado de amigo (Rodada 24, com "Vou também" e "Agora
+ * não"). As abas são as do design, Tudo, Jogos e Amigos; conquista
  * fica em Tudo. Ranking e comunidades ainda não existem. "Lido" fica no
  * aparelho.
  */
 
 const READ_KEY = 'onside.avisos-lidos'
 type Answered = 'friends' | 'declined'
+type CallAnswered = { status: 'going' | 'not_now'; code: string | null }
 
 export default function Notices() {
   const router = useRouter()
@@ -125,6 +130,32 @@ export default function Notices() {
           }))
       }
     )
+  // Chamado de amigo: a resposta troca o card na hora e fica até reabrir.
+  const queryClient = useQueryClient()
+  const calls = useKept(friendNotices.data?.calls)
+  const [callAnswers, setCallAnswers] = useState<Record<string, CallAnswered>>(
+    {}
+  )
+  const answerCall = useMutation(
+    trpc.friends.respondCall.mutationOptions({
+      onSuccess: (result, input) => {
+        if (result.status === 'going') haptic.success()
+        else haptic.select()
+        setCallAnswers((all) => ({
+          ...all,
+          [input.callId]: { status: result.status, code: result.code }
+        }))
+        // O jogo marcado entra no cartão de hoje e em Meus jogos.
+        queryClient.invalidateQueries({
+          queryKey: trpc.attendance.pathKey()
+        })
+      },
+      onError: (error) => {
+        haptic.error()
+        Alert.alert('Não deu certo', error.message)
+      }
+    })
+  )
   // Avisar e Lembrar, de "Bares pra você" (WEB-425).
   const asked = useQuery({
     ...trpc.recommendations.notices.queryOptions(),
@@ -152,7 +183,12 @@ export default function Notices() {
       sides,
       friends: {
         requests,
-        accepted: friendNotices.data?.accepted ?? []
+        accepted: friendNotices.data?.accepted ?? [],
+        calls: calls.map((call) => ({
+          ...call,
+          status: callAnswers[call.id]?.status ?? call.status
+        })),
+        callsAccepted: friendNotices.data?.callsAccepted
       },
       alerts: asked.data?.alerts,
       reminders: asked.data?.reminders
@@ -195,6 +231,10 @@ export default function Notices() {
       notice.kind === 'friend-accepted'
     )
       router.push(`/amigo/${notice.person.id}` as Href)
+    else if (notice.kind === 'call')
+      router.push(`/bar/${notice.call.barId}` as Href)
+    else if (notice.kind === 'call-accepted')
+      router.push(`/amigo/${notice.call.person.id}` as Href)
     else if (notice.kind === 'alert')
       router.push(`/bar/${notice.barId}` as Href)
     else if (notice.kind === 'reminder')
@@ -327,10 +367,33 @@ export default function Notices() {
                   ) : null}
                 </View>
                 {section.items.map((notice) =>
-                  // O pedido tem dois botões dentro: o cartão não vira um
-                  // botão só (o leitor de tela não chegaria a eles); a linha
-                  // de cima abre o perfil.
-                  notice.kind === 'friend-request' ? (
+                  // O pedido e o chamado têm botões dentro: o cartão não vira
+                  // um botão só (o leitor de tela não chegaria a eles); a
+                  // linha de cima abre o perfil ou o bar.
+                  notice.kind === 'call' || notice.kind === 'call-accepted' ? (
+                    <CallCard
+                      key={notice.id}
+                      palette={palette}
+                      notice={notice}
+                      unread={!read.includes(notice.id)}
+                      now={now}
+                      code={
+                        callAnswers[notice.call.id]?.code ??
+                        mine.data?.find(
+                          (g) => g.eventId === notice.call.eventId
+                        )?.code ??
+                        null
+                      }
+                      busy={answerCall.isPending}
+                      onOpen={() => open(notice)}
+                      onAnswer={(answer) =>
+                        answerCall.mutate({ callId: notice.call.id, answer })
+                      }
+                      onCode={() =>
+                        router.push(`/codigo/${notice.call.eventId}`)
+                      }
+                    />
+                  ) : notice.kind === 'friend-request' ? (
                     <NoticeCard
                       key={notice.id}
                       palette={palette}
@@ -371,7 +434,7 @@ export default function Notices() {
         ) : (
           <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
             {tab === 'friends'
-              ? 'Nada dos amigos por aqui. Pedidos de amizade e pedidos aceitos aparecem aqui.'
+              ? 'Nada dos amigos por aqui. Pedidos de amizade, pedidos aceitos e chamados para jogos aparecem aqui.'
               : 'Nada por aqui ainda. Os avisos chegam quando um bar valida seu código, quando sai uma conquista, quando um bar perto marca jogo dos seus times ou quando alguém te pede amizade.'}
           </Text>
         )}
@@ -671,6 +734,8 @@ function NoticeCard({
         </View>
       </Card>
     )
+  // O chamado tem o próprio cartão (`CallCard`).
+  if (notice.kind !== 'medal') return null
   const medal = medals.find((a) => a.id === notice.medalId)
   if (!medal) return null
   const next = nextInSeries(medals, medal)
@@ -786,6 +851,207 @@ function RequestAnswer({
         >
           <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
             Recusar
+          </Text>
+        </Pressable>
+      </Animated.View>
+    </View>
+  )
+}
+
+/**
+ * O "Chamado de amigo" (Rodada 24): RECEBIDO com "Vou também" e "Agora não"
+ * e sombra acid; ACEITO com a faixa acid e o código; AGORA NÃO com a frase.
+ * Para quem chamou, o mesmo topo com "Marina vai também".
+ */
+function CallCard({
+  palette,
+  notice,
+  unread,
+  now,
+  code,
+  busy,
+  onOpen,
+  onAnswer,
+  onCode
+}: {
+  palette: Palette
+  notice: Extract<Notice, { kind: 'call' | 'call-accepted' }>
+  unread: boolean
+  now: number
+  /** O código do balcão de quem disse "Vou também", se o bar emite. */
+  code: string | null
+  busy: boolean
+  onOpen: () => void
+  onAnswer: (answer: 'going' | 'not_now') => void
+  onCode: () => void
+}) {
+  const { call } = notice
+  const first = firstName(call.person.name)
+  const pending = notice.kind === 'call' && call.status === 'pending'
+  return (
+    <Card
+      palette={palette}
+      soft
+      shadow={
+        pending
+          ? palette.dark
+            ? 'rgba(201,241,53,.22)'
+            : 'rgba(201,241,53,.85)'
+          : palette.dark
+            ? 'rgba(0,0,0,.6)'
+            : palette.shadow
+      }
+      offset={pending ? 5 : 4}
+    >
+      <View style={styles.callCard}>
+        <ScalePress
+          to={0.98}
+          accessibilityRole="button"
+          onPress={onOpen}
+          style={styles.gameRow0}
+        >
+          <Avatar
+            id={call.person.id}
+            name={call.person.name}
+            image={call.person.image}
+            size={44}
+            palette={palette}
+          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}>
+              {notice.kind === 'call'
+                ? `${first} te chamou pro jogo`
+                : `${first} vai também`}
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+            >
+              {callLine(call, now)}
+            </Text>
+          </View>
+          <View style={styles.time}>
+            {unread ? <View style={styles.dot} /> : null}
+            <Text style={[styles.mono11, { color: palette.muted }]}>
+              {noticeTime(notice.at, now)}
+            </Text>
+          </View>
+        </ScalePress>
+        {notice.kind === 'call' ? (
+          <CallAnswer
+            palette={palette}
+            call={call}
+            code={code}
+            busy={busy}
+            onAnswer={onAnswer}
+            onCode={onCode}
+          />
+        ) : null}
+      </View>
+    </Card>
+  )
+}
+
+/** Os três estados de baixo do chamado; a troca entra com `SWAP`. */
+function CallAnswer({
+  palette,
+  call,
+  code,
+  busy,
+  onAnswer,
+  onCode
+}: {
+  palette: Palette
+  call: CallNotice
+  code: string | null
+  busy: boolean
+  onAnswer: (answer: 'going' | 'not_now') => void
+  onCode: () => void
+}) {
+  const going = usePress(3, 3)
+  const later = usePressScale(0.97)
+  const strip = usePressScale(0.98)
+  const first = firstName(call.person.name)
+  if (call.status === 'going')
+    return (
+      <Animated.View entering={SWAP} style={strip.style}>
+        <Pressable
+          accessibilityRole={code ? 'button' : undefined}
+          accessibilityHint={code ? 'Abre o código do balcão' : undefined}
+          disabled={!code}
+          onPressIn={strip.onPressIn}
+          onPressOut={strip.onPressOut}
+          onPress={onCode}
+          style={[
+            styles.going,
+            {
+              backgroundColor: palette.dark
+                ? 'rgba(201,241,53,.14)'
+                : 'rgba(201,241,53,.4)'
+            }
+          ]}
+        >
+          <Icon name="check" size={15} color={palette.ink} />
+          <Text
+            style={[text(13, 'SemiBold', 1.3), { flex: 1, color: palette.ink }]}
+          >
+            Você vai · o {first} foi avisado
+          </Text>
+          {code ? (
+            <Text style={[styles.callCode, { color: palette.ink }]}>
+              {formatCode(code)}
+            </Text>
+          ) : null}
+        </Pressable>
+      </Animated.View>
+    )
+  if (call.status === 'not_now')
+    return (
+      <Animated.Text
+        entering={SWAP}
+        style={[
+          text(12.5, 'Regular', 1.4),
+          styles.notNow,
+          { color: palette.muted }
+        ]}
+      >
+        Você respondeu “agora não”. O {first} não recebe aviso disso.
+      </Animated.Text>
+    )
+  return (
+    <View style={styles.callAnswers}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPressIn={going.onPressIn}
+        onPressOut={going.onPressOut}
+        onPress={() => onAnswer('going')}
+        style={{ flex: 1.4 }}
+      >
+        <HardShadow color={palette.dark ? '#000' : INK} offset={3} radius={4} />
+        <Animated.View style={[styles.answer, styles.goingButton, going.style]}>
+          <Icon name="ticket" size={15} color={INK} accent={INK} />
+          <Text style={[text(13.5, 'Bold'), { color: INK }]}>Vou também</Text>
+        </Animated.View>
+      </Pressable>
+      <Animated.View style={[{ flex: 1 }, later.style]}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          onPressIn={later.onPressIn}
+          onPressOut={later.onPressOut}
+          onPress={() => onAnswer('not_now')}
+          style={[
+            styles.answer,
+            {
+              borderWidth: 1,
+              borderColor: palette.dark
+                ? 'rgba(241,238,230,.22)'
+                : 'rgba(18,18,15,.10)'
+            }
+          ]}
+        >
+          <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
+            Agora não
           </Text>
         </Pressable>
       </Animated.View>
@@ -982,6 +1248,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   answered: { height: 40, justifyContent: 'center' },
+  callCard: { padding: 14 },
+  callAnswers: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  goingButton: { flexDirection: 'row', gap: 6, backgroundColor: ACID },
+  going: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 5
+  },
+  callCode: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13,
+    letterSpacing: 0.52
+  },
+  notNow: { marginTop: 10 },
   who: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   medalRow: {
     flexDirection: 'row',
