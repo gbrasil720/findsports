@@ -290,14 +290,17 @@ inventados, tempo e custo).
 **Chat em eventos (Rodada 24):** `ai.converse` é uma mutation que devolve um async iterable
 (`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `step` ("Entendi o pedido",
 "Achei o jogo", "Procurando bares que vão passar", "Comparar e ordenar", só os que o pedido
-usa), `tool` (`run` → `done`, ou `wait` na proposta), `bars` assim que a busca devolve (sai de
+usa; numa busca, "Comparar e ordenar" chega já como `todo` e o app o mantém vazio no fim),
+`tool` (`run` → `done`, ou `wait` na proposta), `bars` assim que a busca devolve (sai de
 novo antes do texto se a resposta escolheu outros ou outra ordem: a última lista vale),
 `text` com citação `[[n]]` (renumerada depois da conferência; fora do intervalo sai),
 `proposal` e `done` (chips com `key` = `<argumento do pubs.search>:<valor>`, fontes,
 até 3 sugestões, `thoughtMs`, `searches`). Trava, braços, reserva e `ai_run` são os do chat.
 `marcar_vou_assistir` e `lembrar` só propõem: a proposta vira `ai_proposal` depois da linha
 do `ai_run` e só `ai.confirm` executa (uma vez, só o dono; "Vou assistir" pelo
-`attendance.set`, chamado por `createFriendCall`, lembrete por `recommendations.remind`;
+`attendance.set`, chamado por `createFriendCall`, lembrete por `recommendations.remind` com
+`beforeMinutes: 180`, o "Me lembrar 3 h antes", que aparece em Avisos 3 h antes do jogo e,
+com push (WEB-416), avisa nessa hora; sem `beforeMinutes`, o "Lembrar" de Bares pra você vale o dia;
 cada ação grava `ai_action`; falha volta com `code` estável, `ConfirmFailure`). Só propõe
 quando a mensagem pede (marcar, chamar, lembrar), e "Chamar" só com o nome escrito nela;
 amigo é achado só entre os aceitos. O trabalho vai pelo `waitUntil` (`runInBackground`):
