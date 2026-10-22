@@ -42,7 +42,9 @@ export const ICON_PATHS = {
   vanish: 'M12 3a9 9 0 1 0 0 18 M12 3a9 9 0 0 1 0 18 M3 12h4 M17 12h4',
   back: 'M9 14 L4 9 L9 4 M4 9h11a5 5 0 0 1 0 10h-3',
   external: 'M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6',
-  doc: 'M5 3h10l4 4v14H5Z M9 12h6 M9 16h6 M9 8h3'
+  doc: 'M5 3h10l4 4v14H5Z M9 12h6 M9 16h6 M9 8h3',
+  spark:
+    'M10 4l1.8 5.2L17 11l-5.2 1.8L10 18l-1.8-5.2L3 11l5.2-1.8Z M18 3v4 M16 5h4 M18 16v4 M16 18h4'
 } as const
 
 export type IconName = keyof typeof ICON_PATHS

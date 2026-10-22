@@ -18,6 +18,7 @@ export const HOUDINI_NAV = [
   { to: '/houdini/jogos', label: 'Jogos', icon: 'cal' },
   { to: '/houdini/ampulheta', label: 'Ampulheta', icon: 'hourglass' },
   { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' },
+  { to: '/houdini/ia', label: 'IA', icon: 'spark' },
   { to: '/houdini/grimorio', label: 'Grimório', icon: 'book' }
 ] as const satisfies ReadonlyArray<{
   to: string
