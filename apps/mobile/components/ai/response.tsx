@@ -1,13 +1,16 @@
 import { forwardRef, useEffect, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  type EntryExitAnimationFunction,
   FadeIn,
   FadeOut,
   LinearTransition,
+  ReduceMotion,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
-  ZoomOut
+  withDelay,
+  withSequence,
+  withTiming
 } from 'react-native-reanimated'
 import { dayLabel, HardShadow, Photo, Tag } from '@/components/explore'
 import { EASE, haptic, ScalePress, usePressScale } from '@/components/motion'
@@ -101,8 +104,21 @@ export const CitedBar = forwardRef<
   const glow = useSharedValue(0)
   useEffect(() => {
     if (!flash) return
-    glow.set(1)
-    glow.set(withTiming(0, { duration: 600, easing: EASE }))
+    // Acende quando a rolagem chega (≈ 280 ms) e apaga devagar. Vale com
+    // menos movimento: é a única pista de qual card a citação abriu.
+    glow.set(
+      withSequence(
+        withDelay(
+          280,
+          withTiming(1, { duration: 120, reduceMotion: ReduceMotion.Never })
+        ),
+        withTiming(0, {
+          duration: 500,
+          easing: EASE,
+          reduceMotion: ReduceMotion.Never
+        })
+      )
+    )
   }, [flash, glow])
   const ring = useAnimatedStyle(() => ({ opacity: glow.get() }))
   const press = usePressScale(0.985)
@@ -270,12 +286,7 @@ export function Sources({
         >
           {label}
         </Text>
-        <AiIcon
-          name="chevron"
-          size={13}
-          color={palette.muted}
-          rotate={open ? 180 : 0}
-        />
+        <Chevron open={open} color={palette.muted} />
       </Pressable>
       {open ? (
         <Animated.View entering={OPEN_IN} exiting={OPEN_OUT}>
@@ -322,6 +333,22 @@ export function Sources({
   )
 }
 
+/** A seta de abrir e fechar, girando como a do raciocínio. */
+export function Chevron({ open, color }: { open: boolean; color: string }) {
+  const turn = useSharedValue(open ? 180 : 0)
+  useEffect(() => {
+    turn.set(withTiming(open ? 180 : 0, { duration: 200, easing: EASE }))
+  }, [open, turn])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${turn.get()}deg` }]
+  }))
+  return (
+    <Animated.View style={style}>
+      <AiIcon name="chevron" size={13} color={color} />
+    </Animated.View>
+  )
+}
+
 function Face({
   uri,
   size,
@@ -356,7 +383,16 @@ const CHIP_ICON = {
   beer: 'bar'
 } as const
 
-const CHIP_OUT = ZoomOut.duration(160).easing(EASE)
+// O chip sai encolhendo, só por transform (no campo ele está sobre o vidro).
+const CHIP_OUT: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ scale: 1 }] },
+    animations: {
+      transform: [{ scale: withTiming(0.6, { duration: 120, easing: EASE }) }]
+    }
+  }
+}
 const CHIP_MOVE = LinearTransition.duration(200).easing(EASE)
 
 /** Chip com ×: os filtros entendidos e o contexto do campo. */
@@ -472,7 +508,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: ACID
   },
-  sources: { borderRadius: 7, borderWidth: 1 },
+  sources: { borderRadius: 7, borderWidth: 1, overflow: 'hidden' },
   sourcesHead: {
     flexDirection: 'row',
     alignItems: 'center',

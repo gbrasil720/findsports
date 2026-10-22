@@ -47,6 +47,19 @@ const DROP_IN: EntryExitAnimationFunction = () => {
   }
 }
 
+const DROP_OUT: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ translateX: 2 }, { translateY: 2 }] },
+    animations: {
+      transform: [
+        { translateX: withTiming(0, { duration: 120, easing: EASE }) },
+        { translateY: withTiming(0, { duration: 120, easing: EASE }) }
+      ]
+    }
+  }
+}
+
 export type ContextChip = { label: string; onRemove: () => void }
 
 export function PromptInput({
@@ -84,7 +97,13 @@ export function PromptInput({
   const mode = busy ? 2 : ready ? 1 : 0
   const progress = useSharedValue(mode)
   useEffect(() => {
-    progress.set(withTiming(mode, { duration: 180, easing: EASE }))
+    // Parado o fundo é translúcido sobre o vidro: troca sem transição. Só
+    // acid ↔ parar (os dois opacos) passa pela cor.
+    progress.set(
+      mode && progress.get()
+        ? withTiming(mode, { duration: 180, easing: EASE })
+        : mode
+    )
   }, [mode, progress])
   const idle = palette.dark ? 'rgba(241,238,230,0.12)' : 'rgba(18,18,15,0.08)'
   const button = useAnimatedStyle(() => ({
@@ -201,6 +220,7 @@ export function PromptInput({
           {ready ? (
             <Animated.View
               entering={DROP_IN}
+              exiting={DROP_OUT}
               style={[styles.send, { backgroundColor: palette.sendShadow }]}
             />
           ) : null}

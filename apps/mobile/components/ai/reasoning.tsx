@@ -6,8 +6,6 @@ import Animated, {
   FadeInDown,
   FadeOut,
   LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
   withTiming
 } from 'react-native-reanimated'
 import { EASE, haptic } from '@/components/motion'
@@ -15,6 +13,7 @@ import { Icon, INK, text } from '@/components/ui'
 import type { Step, Tool } from '@/lib/ai-chat'
 import { AiIcon } from './icons'
 import { Shimmer, Spinner } from './loader'
+import { Chevron } from './response'
 import type { AiPalette } from './theme'
 import { ToolCard } from './tool'
 
@@ -39,7 +38,8 @@ const CHECK_IN: EntryExitAnimationFunction = () => {
     }
   }
 }
-const FOLD_OUT = FadeOut.duration(150)
+// Os passos saem rápido: a resposta sobe para o lugar deles.
+const FOLD_OUT = FadeOut.duration(90)
 const FOLD_IN = FadeIn.duration(200)
 const RESIZE = LinearTransition.duration(240).easing(EASE)
 
@@ -61,13 +61,6 @@ export function Reasoning({
   // Aberto enquanto pensa; fecha quando termina. Tocar inverte.
   const [open, setOpen] = useState(thinking)
   useEffect(() => setOpen(thinking), [thinking])
-  const turn = useSharedValue(thinking ? 180 : 0)
-  useEffect(() => {
-    turn.set(withTiming(open ? 180 : 0, { duration: 200, easing: EASE }))
-  }, [open, turn])
-  const chevron = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${turn.get()}deg` }]
-  }))
 
   return (
     <Animated.View layout={RESIZE} style={{ gap: 12 }}>
@@ -100,9 +93,7 @@ export function Reasoning({
             </Text>
           </Animated.View>
         )}
-        <Animated.View style={chevron}>
-          <AiIcon name="chevron" size={13} color={palette.muted} />
-        </Animated.View>
+        <Chevron open={open} color={palette.muted} />
       </Pressable>
       {open ? (
         <Animated.View exiting={FOLD_OUT} style={{ gap: 12 }}>

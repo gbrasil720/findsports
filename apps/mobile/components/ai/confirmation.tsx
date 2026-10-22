@@ -4,11 +4,11 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withSpring
 } from 'react-native-reanimated'
 import QRCode from 'react-qr-code'
 import { HardShadow, PALETTE, Perforation } from '@/components/explore'
-import { EASE, haptic, usePress, usePressScale } from '@/components/motion'
+import { haptic, usePress, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, PAPER, text } from '@/components/ui'
 import type { Proposal, ProposalAction } from '@/lib/ai-events'
 import { env } from '@/lib/env'
@@ -184,7 +184,8 @@ function ActionRow({
 export function Switch({ on, palette }: { on: boolean; palette: AiPalette }) {
   const value = useSharedValue(on ? 1 : 0)
   useEffect(() => {
-    value.set(withTiming(on ? 1 : 0, { duration: 200, easing: EASE }))
+    // Mola sem passar do ponto: toque duplo rápido inverte no meio.
+    value.set(withSpring(on ? 1 : 0, { duration: 250, dampingRatio: 1 }))
   }, [on, value])
   const track = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(

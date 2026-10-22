@@ -122,7 +122,7 @@ function Action({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={on === undefined ? undefined : { selected: on }}
-      to={0.88}
+      to={0.92}
       onPress={onPress}
       style={[styles.action, on ? { backgroundColor: palette.thumbOn } : null]}
     >

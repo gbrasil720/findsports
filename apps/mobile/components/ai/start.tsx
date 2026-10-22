@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow } from '@/components/explore'
-import { enterAt, ScalePress } from '@/components/motion'
+import { enterAt, ScalePress, usePress } from '@/components/motion'
 import { Icon, Title, text } from '@/components/ui'
 import { type Recent, recentMeta } from '@/lib/ai-chat'
 import type { AiPalette } from './theme'
@@ -31,6 +31,9 @@ export const STARTERS = [
   }
 ] as const
 
+// Entradas como constante de módulo: a tela renderiza a cada letra digitada.
+const START_IN = Array.from({ length: 6 }, (_, i) => enterAt(i, false))
+
 export function Start({
   recents,
   now,
@@ -49,7 +52,7 @@ export function Start({
 }) {
   return (
     <View style={{ gap: 14 }}>
-      <Animated.View entering={enterAt(0, false)} style={styles.intro}>
+      <Animated.View entering={START_IN[0]} style={styles.intro}>
         <Title
           lines={[['O que você'], ['quer ', 'assistir?']]}
           size={38}
@@ -71,50 +74,20 @@ export function Start({
           {STARTERS.map((s, i) => (
             <Animated.View
               key={s.question}
-              entering={enterAt(1 + i, false)}
+              entering={START_IN[1 + i]}
               style={styles.cell}
             >
-              <ScalePress
-                accessibilityRole="button"
-                accessibilityLabel={s.question}
+              <Starter
+                starter={s}
+                palette={palette}
                 onPress={() => onAsk(s.question)}
-                containerStyle={{ flex: 1 }}
-                style={{ flex: 1 }}
-              >
-                <HardShadow color={palette.shadow} offset={4} radius={7} />
-                <View
-                  style={[
-                    styles.starter,
-                    { backgroundColor: palette.card, borderColor: palette.ring }
-                  ]}
-                >
-                  <Icon
-                    name={s.icon}
-                    size={22}
-                    color={palette.ink}
-                    accent={palette.accent}
-                  />
-                  <Text
-                    style={[text(14, 'SemiBold', 1.3), { color: palette.ink }]}
-                  >
-                    {s.question}
-                  </Text>
-                  <Text
-                    style={[
-                      text(11.5, 'Regular', 1.4),
-                      { color: palette.muted, marginTop: 'auto' }
-                    ]}
-                  >
-                    {s.tag}
-                  </Text>
-                </View>
-              </ScalePress>
+              />
             </Animated.View>
           ))}
         </View>
       )}
       {recents.length ? (
-        <Animated.View entering={enterAt(5, false)}>
+        <Animated.View entering={START_IN[5]}>
           <Text style={[text(13, 'SemiBold', 1.4), { color: palette.muted }]}>
             Recentes
           </Text>
@@ -157,6 +130,56 @@ export function Start({
         </Animated.View>
       ) : null}
     </View>
+  )
+}
+
+/** Cartão de sugestão: afunda até cobrir a sombra dura, que fica parada. */
+function Starter({
+  starter,
+  palette,
+  onPress
+}: {
+  starter: (typeof STARTERS)[number]
+  palette: AiPalette
+  onPress: () => void
+}) {
+  const press = usePress(4, 4)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={starter.question}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={{ flex: 1 }}
+    >
+      <HardShadow color={palette.shadow} offset={4} radius={7} />
+      <Animated.View
+        style={[
+          styles.starter,
+          { backgroundColor: palette.card, borderColor: palette.ring },
+          press.style
+        ]}
+      >
+        <Icon
+          name={starter.icon}
+          size={22}
+          color={palette.ink}
+          accent={palette.accent}
+        />
+        <Text style={[text(14, 'SemiBold', 1.3), { color: palette.ink }]}>
+          {starter.question}
+        </Text>
+        <Text
+          style={[
+            text(11.5, 'Regular', 1.4),
+            { color: palette.muted, marginTop: 'auto' }
+          ]}
+        >
+          {starter.tag}
+        </Text>
+      </Animated.View>
+    </Pressable>
   )
 }
 
