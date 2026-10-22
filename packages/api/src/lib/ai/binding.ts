@@ -12,28 +12,16 @@ import { env } from '@findsports_oficial/env/server'
  * wrangler daria o binding, mas trava no Bun (scripts) e leva 7 s no Node.
  */
 
-export type AiGatewayOptions = {
-  gateway: {
-    id: string
-    metadata: Record<string, string | number | boolean>
-  }
-}
+import { type AiBinding, currentAiBinding, setAiBinding } from './binding-slot'
 
-export type AiBinding = {
-  run: (
-    model: string,
-    input: Record<string, unknown>,
-    options?: AiGatewayOptions
-  ) => Promise<unknown>
-}
+export type { AiBinding, AiGatewayOptions } from './binding-slot'
+export { setAiBinding }
 
 let binding: AiBinding | null = null
 
-export function setAiBinding(ai: AiBinding) {
-  binding = ai
-}
-
 export async function getAiBinding(): Promise<AiBinding | null> {
+  const fromWorker = currentAiBinding()
+  if (fromWorker) return fromWorker
   if (binding) return binding
   if (env.NODE_ENV !== 'development' || !env.CF_ACCOUNT_ID) return null
   binding = restBinding(env.CF_ACCOUNT_ID)
