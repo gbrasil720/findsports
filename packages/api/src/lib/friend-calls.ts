@@ -1,5 +1,4 @@
-import { db, eq, sql } from '@findsports_oficial/db'
-import { getEventEnd } from '@findsports_oficial/db/event-window'
+import { and, db, eq, or, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { event } from '@findsports_oficial/db/schema/platform'
 import { friendCall } from '@findsports_oficial/db/schema/social'
@@ -20,8 +19,9 @@ export type FriendCallResult =
 
 /**
  * Chama um amigo aceito para um jogo num bar. Um chamado por (de, para,
- * jogo): repetir devolve `duplicate` e não cria outro. Jogo que já acabou
- * recusa; o que está rolando ainda vale ("Vou também" decide depois).
+ * jogo): repetir devolve `duplicate` e não cria outro. Jogo começado recusa,
+ * a mesma regra do `attendance.set`: o "Vou também" não teria como marcar
+ * presença. Bar fora do ar conta como jogo inexistente.
  */
 export async function createFriendCall(input: {
   fromUserId: string
@@ -35,11 +35,12 @@ export async function createFriendCall(input: {
     return { ok: false, reason: 'not_friends' }
   const game = await db.query.event.findFirst({
     where: eq(event.id, eventId),
-    columns: { barId: true, startsAt: true, endsAt: true }
+    columns: { barId: true, startsAt: true },
+    with: { bar: { columns: { isActive: true } } }
   })
-  if (!game || game.barId !== barId)
+  if (!game?.bar.isActive || game.barId !== barId)
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
-  if (getEventEnd(game) <= new Date()) return { ok: false, reason: 'past_game' }
+  if (game.startsAt <= new Date()) return { ok: false, reason: 'past_game' }
   const [created] = await db
     .insert(friendCall)
     .values({ fromUserId, toUserId, eventId, barId })
