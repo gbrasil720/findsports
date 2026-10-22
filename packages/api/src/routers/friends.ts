@@ -5,7 +5,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { fanProcedure, router } from '../index'
 import { readMyGames } from '../lib/attendance'
-import { readCallNotices } from '../lib/friend-calls'
+import { deleteCallsBetween, readCallNotices } from '../lib/friend-calls'
 import {
   canSeeActivity,
   ensureSocialIdentity,
@@ -394,7 +394,10 @@ export const friendsRouter = router({
       )
       if (input.accept)
         await db.update(friendship).set({ acceptedAt: new Date() }).where(where)
-      else await db.delete(friendship).where(where)
+      else {
+        await db.delete(friendship).where(where)
+        await deleteCallsBetween(ctx.session.user.id, input.userId)
+      }
       return {
         relation: input.accept ? ('friends' as const) : ('none' as const)
       }
@@ -409,6 +412,8 @@ export const friendsRouter = router({
         sql`(${friendship.requesterId} = ${me} AND ${friendship.addresseeId} = ${input.userId})
           OR (${friendship.requesterId} = ${input.userId} AND ${friendship.addresseeId} = ${me})`
       )
+      // Sem amizade, o chamado não fica para responder nem para ver.
+      await deleteCallsBetween(me, input.userId)
       return { relation: 'none' as const }
     }),
 
