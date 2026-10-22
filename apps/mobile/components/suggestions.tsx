@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import {
   forwardRef,
   type ReactNode,
-  useEffect,
   useImperativeHandle,
   useLayoutEffect
 } from 'react'
@@ -958,19 +957,6 @@ export function MissingCard({
       </Text>
     </View>
   )
-}
-
-/** O efeito colateral do toque, para quem chama de um botão. */
-export function useImpact() {
-  return () =>
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-}
-
-/** Reduz um valor `drag` a zero quando o baralho some (fim da rodada). */
-export function useResetDrag(drag: SharedValue<number>, active: boolean) {
-  useEffect(() => {
-    if (!active) drag.set(0)
-  }, [active, drag])
 }
 
 const styles = StyleSheet.create({
