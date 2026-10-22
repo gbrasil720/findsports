@@ -253,7 +253,7 @@ export async function hydrateRound(
   const eventIds = gameRows.map((game) => game.id)
   const eventList = JSON.stringify(eventIds)
   const [going, mine] = await Promise.all([
-    readGoing(eventIds),
+    readGoing(eventIds, userId),
     eventIds.length
       ? db.execute(sql`
           SELECT event_id, 'attend' AS kind FROM attendance
@@ -300,8 +300,7 @@ export async function hydrateRound(
               participantFreeText: game.participant_free_text,
               participants: game.participants,
               sport: { id: game.sport_id, name: game.sport_name },
-              // Ponto de encaixe do WEB-404 (nomes dos amigos que vão):
-              // hoje só a contagem e as iniciais, acima do piso.
+              // Amigos que vão pelo nome (WEB-404), pela privacidade de cada um.
               going: going.get(game.id) ?? null,
               attending: mineRows.some(
                 (row) => row.event_id === game.id && row.kind === 'attend'

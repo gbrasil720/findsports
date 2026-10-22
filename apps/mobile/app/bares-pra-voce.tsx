@@ -77,6 +77,7 @@ import { env } from '@/lib/env'
 import { type Coordinates, searchCenter } from '@/lib/explore'
 import { dayKey } from '@/lib/filters'
 import { gameTitle } from '@/lib/my-games'
+import { todayGoing } from '@/lib/notices'
 import {
   isToday,
   nextRoundLabel,
@@ -562,6 +563,7 @@ function Match({
   const dark = palette.dark
   const hot = dark ? ACID : palette.live
   const game = item.game
+  const going = game?.going ? todayGoing(game.going) : null
   const gameToday = game ? isToday(game.startsAt, now) : false
   const teams = useQuery({
     ...trpc.pubs.getMyTeams.queryOptions(),
@@ -697,21 +699,20 @@ function Match({
                   })}
                 </Text>
               </View>
-              {/* Ponto de encaixe do WEB-404: com os nomes dos amigos que vão,
-                o design diz "Marina e mais 17 vão". Hoje o servidor de
-                presença dá a contagem e as iniciais, acima do piso. */}
-              {game.going ? (
+              {going && (going.bold || going.rest !== 'Você vai') ? (
                 <>
                   <Perforation
                     palette={palette}
                     ink={dark ? 'rgba(18,18,15,.2)' : 'rgba(241,238,230,.2)'}
                   />
+                  {/* "Marina e mais 17 vão" (23d): amigos pela privacidade
+                    de cada um (WEB-404), o resto só contagem e iniciais. */}
                   <View style={styles.goingRow}>
                     <View style={{ flexDirection: 'row' }}>
-                      {game.going.initials.slice(0, 2).map((letter, i) => (
+                      {going.faces.map((letters, i) => (
                         <View
                           // biome-ignore lint/suspicious/noArrayIndexKey: iniciais repetem, a posição é a identidade
-                          key={`${letter}${i}`}
+                          key={`${letters}${i}`}
                           style={[
                             styles.face,
                             {
@@ -722,11 +723,11 @@ function Match({
                           ]}
                         >
                           <Text style={[text(11, 'Bold', 1), { color: INK }]}>
-                            {letter}
+                            {letters}
                           </Text>
                         </View>
                       ))}
-                      {game.going.count > 2 ? (
+                      {going.more > 0 ? (
                         <View
                           style={[
                             styles.face,
@@ -738,16 +739,20 @@ function Match({
                           ]}
                         >
                           <Text style={[text(11, 'Bold', 1), { color: PAPER }]}>
-                            +{game.going.count - 2}
+                            +{going.more.toLocaleString('pt-BR')}
                           </Text>
                         </View>
                       ) : null}
                     </View>
-                    <Text style={[text(14), { color: dark ? INK : PAPER }]}>
-                      <Text style={{ fontFamily: 'Archivo-Bold' }}>
-                        {game.going.count}
-                      </Text>{' '}
-                      vão
+                    <Text
+                      style={[text(14), { color: dark ? INK : PAPER, flex: 1 }]}
+                    >
+                      {going.bold ? (
+                        <Text style={{ fontFamily: 'Archivo-Bold' }}>
+                          {going.bold}
+                        </Text>
+                      ) : null}
+                      {going.rest}
                     </Text>
                   </View>
                 </>
