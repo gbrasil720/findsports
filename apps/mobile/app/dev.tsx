@@ -203,7 +203,9 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { code: '11b', label: 'Buscar', href: '/amigos-busca' },
       { code: '11c', label: 'Meu código', href: '/meu-codigo' },
       { code: '11d', label: 'Perfil de amigo', href: '/amigo/am-marina' },
-      { code: '—', label: 'Contatos', href: '/contatos' }
+      { code: '—', label: 'Contatos', href: '/contatos' },
+      // O componente da Rodada 24 não tem código; o card mora em Avisos.
+      { code: 'R24', label: 'Chamado de amigo (Avisos)', href: '/avisos' }
     ]
   },
   {
