@@ -5,6 +5,7 @@ import { getAppConfig } from '../app-config'
 import { type AiBinding, aiGatewayId, getAiBinding } from './binding'
 import {
   type AiBlock,
+  type AiLimits,
   brasiliaWindows,
   budgetBlock,
   type UserUsage
@@ -88,31 +89,36 @@ export async function readUserUsage(
 }
 
 export type AiGate =
-  | { ok: true; deps: AiDeps; usage: UserUsage }
+  | { ok: true; deps: AiDeps; usage: UserUsage; limits: AiLimits }
   | {
       ok: false
       reason: 'disabled' | 'unavailable' | AiBlock
       usage: UserUsage | null
+      limits: AiLimits
     }
 
 /**
  * Se a IA pode ser chamada agora por esta pessoa: chave ligada, binding e
- * Gateway presentes, e dentro do teto do mês e das travas por pessoa.
+ * Gateway presentes, e dentro do teto do mês e das travas por pessoa
+ * (`ai.limits`).
  */
 export async function aiGate(
   userId: string,
   now = new Date()
 ): Promise<AiGate> {
-  if (!(await getAppConfig('ai.enabled')))
-    return { ok: false, reason: 'disabled', usage: null }
+  const [enabled, limits] = await Promise.all([
+    getAppConfig('ai.enabled'),
+    getAppConfig('ai.limits')
+  ])
+  if (!enabled) return { ok: false, reason: 'disabled', usage: null, limits }
   const binding = await getAiBinding().catch(() => null)
   const gatewayId = aiGatewayId()
   if (!binding || !gatewayId)
-    return { ok: false, reason: 'unavailable', usage: null }
+    return { ok: false, reason: 'unavailable', usage: null, limits }
   const usage = await readUserUsage(userId, now)
-  const block = budgetBlock(usage)
-  if (block) return { ok: false, reason: block, usage }
-  return { ok: true, deps: { binding, gatewayId }, usage }
+  const block = budgetBlock(usage, limits)
+  if (block) return { ok: false, reason: block, usage, limits }
+  return { ok: true, deps: { binding, gatewayId }, usage, limits }
 }
 
 type Usage = {

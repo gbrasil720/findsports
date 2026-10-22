@@ -47,6 +47,7 @@ describe('registro de configuração (ESC-19)', () => {
   it('o registro tem só as chaves que ficam', () => {
     expect([...APP_CONFIG_KEYS].sort()).toEqual([
       'ai.enabled',
+      'ai.limits',
       'ai.variant_weights',
       'rating.public_display',
       'search.tiered_plan_query'
@@ -69,6 +70,38 @@ describe('registro de configuração (ESC-19)', () => {
     })
   })
 
+  it('pesos da IA fecham 100 em cada teste; peso 0 tira o braço', () => {
+    const pesos = appConfigDefault('ai.variant_weights')
+    expect(
+      validateAppConfigValue('ai.variant_weights', {
+        ...pesos,
+        chat: { a: 100, b: 0 }
+      }).ok
+    ).toBe(true)
+    expect(
+      validateAppConfigValue('ai.variant_weights', {
+        ...pesos,
+        chat: { a: 60, b: 30 }
+      })
+    ).toEqual({ ok: false, erro: 'Os pesos do chat precisam somar 100.' })
+  })
+
+  it('limites da IA recusam zero e o dia acima do mês', () => {
+    const limites = appConfigDefault('ai.limits')
+    expect(
+      validateAppConfigValue('ai.limits', { ...limites, userDailyCalls: 0 }).ok
+    ).toBe(false)
+    expect(
+      validateAppConfigValue('ai.limits', {
+        ...limites,
+        chatDailyMessages: 150
+      })
+    ).toEqual({
+      ok: false,
+      erro: 'O limite do dia não pode passar do limite do mês.'
+    })
+  })
+
   it('subconjunto público não inclui chave interna', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('rating.public_display')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
@@ -83,5 +116,12 @@ describe('registro de configuração (ESC-19)', () => {
     expect(appConfigDefault('search.tiered_plan_query')).toBe(true)
     expect(appConfigDefault('rating.public_display')).toBe(false)
     expect(appConfigDefault('ai.enabled')).toBe(false)
+    expect(appConfigDefault('ai.limits')).toEqual({
+      monthlyBudgetUsd: 40,
+      userMonthlyUsd: 1.5,
+      userDailyCalls: 30,
+      chatDailyMessages: 10,
+      chatMonthlyMessages: 100
+    })
   })
 })
