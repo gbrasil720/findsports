@@ -169,6 +169,9 @@ export const gameReminder = pgTable(
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
     runId: text('run_id'),
+    // Quanto antes do jogo o lembrete vale (a busca com IA usa 3 h). Nulo é o
+    // "Lembrar" de Bares pra você: o dia do jogo inteiro.
+    remindBeforeMinutes: integer('remind_before_minutes'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull()
