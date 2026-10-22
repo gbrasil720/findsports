@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   // No texto, o número sobe 2 pt da linha de base (vertical-align do design).
-  inline: { marginHorizontal: 2, transform: [{ translateY: 3 }] },
+  inline: { marginHorizontal: 2, transform: [{ translateY: 1 }] },
   citeText: { fontFamily: MONO, fontSize: 10.5, lineHeight: 12, color: INK },
   corner: { position: 'absolute', left: -8, top: -8 },
   flash: {

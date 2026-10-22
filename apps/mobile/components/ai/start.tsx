@@ -163,8 +163,8 @@ export function Start({
 const styles = StyleSheet.create({
   intro: { gap: 6, marginTop: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  // Duas colunas: (largura − 8) / 2.
-  cell: { width: '48.9%', flexGrow: 1 },
+  // Duas colunas: (largura − 8) / 2; o flexGrow fecha a conta.
+  cell: { width: '48%', flexGrow: 1 },
   starter: {
     flex: 1,
     gap: 10,
