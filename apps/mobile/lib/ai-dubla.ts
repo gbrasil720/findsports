@@ -147,6 +147,7 @@ export async function* dublaConverse(
     state: 'done',
     tags: ['Corinthians', 'Hoje', 'Telão', 'Área externa', place]
   }
+  yield { type: 'step', id: 's4', label: 'Comparar e ordenar', state: 'todo' }
   yield { type: 'step', id: 's2', label: 'Achei o jogo', state: 'run' }
   await wait(600, signal)
   yield {

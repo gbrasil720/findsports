@@ -127,6 +127,8 @@ function StepRow({
   last: boolean
   palette: AiPalette
 }) {
+  if (step.state === 'todo')
+    return <TodoStep label={step.label} palette={palette} />
   const done = step.state === 'done'
   return (
     <Animated.View entering={STEP_IN} style={styles.step}>
@@ -188,7 +190,7 @@ function StepRow({
   )
 }
 
-/** Passo que ainda não começou (o design desenha; o contrato não manda). */
+/** Passo que ainda não começou ("Comparar e ordenar" vazio, 24b). */
 export function TodoStep({
   label,
   palette
