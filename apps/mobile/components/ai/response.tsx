@@ -9,11 +9,12 @@ import Animated, {
   withTiming,
   ZoomOut
 } from 'react-native-reanimated'
-import { BarRow, type SearchBar } from '@/components/explore'
-import { EASE, haptic, ScalePress } from '@/components/motion'
+import { dayLabel, HardShadow, Photo, Tag } from '@/components/explore'
+import { EASE, haptic, ScalePress, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, text } from '@/components/ui'
 import { citationPieces } from '@/lib/ai-chat'
-import type { FilterChip, Source } from '@/lib/ai-events'
+import type { ChatBar, FilterChip, Source } from '@/lib/ai-events'
+import { formatKm, formatTime } from '@/lib/explore'
 import { AiIcon } from './icons'
 import type { AiPalette } from './theme'
 import { MONO } from './tool'
@@ -88,7 +89,7 @@ export function Cite({ n, ring }: { n: number; ring?: string }) {
 export const CitedBar = forwardRef<
   View,
   {
-    bar: SearchBar
+    bar: ChatBar
     n: number | null
     now: number
     palette: AiPalette
@@ -104,9 +105,99 @@ export const CitedBar = forwardRef<
     glow.set(withTiming(0, { duration: 900, easing: EASE }))
   }, [flash, glow])
   const ring = useAnimatedStyle(() => ({ opacity: glow.get() }))
+  const press = usePressScale(0.985)
+  const game = bar.game
   return (
     <View ref={ref} collapsable={false}>
-      <BarRow bar={bar} now={now} palette={palette} onPress={onPress} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={bar.name}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+      >
+        <Animated.View style={press.style}>
+          <HardShadow color={palette.shadow} offset={4} />
+          <View
+            style={[
+              styles.row,
+              { backgroundColor: palette.card, borderColor: palette.ring }
+            ]}
+          >
+            <Photo
+              uri={bar.photoUrl}
+              name={bar.name}
+              style={styles.photo}
+              palette={palette}
+            />
+            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+              <View style={styles.nameRow}>
+                <Text
+                  style={[
+                    text(16, 'Bold', 1.2),
+                    { color: palette.ink, flexShrink: 1 }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {bar.name}
+                </Text>
+                {bar.plan === 'pro' ? (
+                  <Tag outline color={palette.ink}>
+                    Pro
+                  </Tag>
+                ) : null}
+              </View>
+              <Text
+                style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {game ? game.title : 'Sem eventos programados'}
+              </Text>
+              <View style={styles.meta}>
+                {bar.distanceKm !== null ? (
+                  <View style={styles.km}>
+                    <Icon name="pin" size={13} color={palette.ink} />
+                    <Text
+                      style={[text(12, 'Bold', 1.2), { color: palette.ink }]}
+                    >
+                      {formatKm(bar.distanceKm)}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text
+                  style={[
+                    text(12, 'Regular', 1.2),
+                    { color: palette.muted, flexShrink: 1 }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {bar.neighborhood}
+                </Text>
+                {bar.ratingPercent !== null ? (
+                  <Tag>{bar.ratingPercent}%</Tag>
+                ) : null}
+              </View>
+            </View>
+            {game ? (
+              <View style={styles.when}>
+                <Text
+                  style={[
+                    styles.time,
+                    { color: game.live ? palette.live : palette.ink }
+                  ]}
+                >
+                  {game.live ? 'Agora' : formatTime(game.startsAt)}
+                </Text>
+                <Text
+                  style={[text(11.5, 'Regular', 1.2), { color: palette.muted }]}
+                >
+                  {game.live ? 'Ao vivo' : dayLabel(game.startsAt, now)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </Animated.View>
+      </Pressable>
       <Animated.View pointerEvents="none" style={[styles.flash, ring]} />
       {n ? (
         <View style={styles.corner} pointerEvents="none">
@@ -361,6 +452,20 @@ const styles = StyleSheet.create({
   inline: { marginHorizontal: 2, transform: [{ translateY: 1 }] },
   citeText: { fontFamily: MONO, fontSize: 10.5, lineHeight: 12, color: INK },
   corner: { position: 'absolute', left: -8, top: -8 },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  photo: { width: 62, height: 62, borderRadius: 3 },
+  nameRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  meta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
+  when: { alignItems: 'flex-end', paddingRight: 4, gap: 3 },
+  time: { fontFamily: 'Anton', fontSize: 24, marginVertical: -7 },
   flash: {
     ...StyleSheet.absoluteFill,
     borderRadius: 6,

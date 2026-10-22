@@ -1,8 +1,8 @@
 import type {
   ChatBar,
   ChatEvent,
-  ChatSearch,
   ConfirmResult,
+  FilterChip,
   Proposal,
   Source
 } from './ai-events'
@@ -294,30 +294,54 @@ export const recentMeta = (recent: Recent, now: number) =>
 
 // --- Chips que refazem a busca (sem IA) --------------------------------------
 
-/**
- * A busca da IA sem os chips tirados. A `key` é o argumento de `pubs.search`;
- * em lista, o valor vem depois de `:` (`amenities:3`, `teamIds:<id>`).
- */
-export function searchWithout(search: ChatSearch, removed: string[]) {
-  const next: ChatSearch = { ...search }
-  for (const key of removed) {
-    const [arg, value] = key.split(':') as [keyof ChatSearch, string?]
-    if (arg === 'amenities' && value !== undefined)
-      next.amenities = next.amenities?.filter((a) => String(a) !== value)
-    else if (arg === 'teamIds' && value !== undefined)
-      next.teamIds = next.teamIds?.filter((t) => t !== value)
-    else if (arg === 'neighborhood') next.neighborhood = null
-    else if (arg !== 'lat' && arg !== 'lng') delete next[arg]
-  }
-  if (next.amenities?.length === 0) delete next.amenities
-  if (next.teamIds?.length === 0) delete next.teamIds
-  return next
+type Point = { lat: number; lng: number }
+
+/** Os argumentos de `pubs.search` (os que os chips carregam). */
+export type ChipSearch = Point & {
+  radiusKm?: number
+  sportId?: string
+  championship?: string
+  date?: string
+  amenities?: number[]
+  teamIds?: string[]
+  limit: number
 }
 
-/** O que vai para `pubs.search` (o bairro é filtro do app, como na 2h). */
-export function searchInput(search: ChatSearch, radiusKm: number) {
-  const { neighborhood: _, ...args } = search
-  return { radiusKm, limit: 20, ...args }
+/**
+ * A busca dos chips que sobraram, sem IA. A `key` é
+ * `<argumento de pubs.search>:<valor>`; `neighborhood:<bairro>` filtra a
+ * lista no app e `origin:<lat>,<lng>` é o ponto de partida (senão, o do
+ * campo). Sem ponto de partida, não há busca.
+ */
+export function chipSearch(
+  chips: FilterChip[],
+  removed: string[],
+  fallback: Point | null
+): { input: ChipSearch; neighborhood: string | null } | null {
+  let origin = fallback
+  let neighborhood: string | null = null
+  const args: Omit<ChipSearch, 'lat' | 'lng'> = { limit: 20 }
+  for (const { key } of chips) {
+    if (removed.includes(key)) continue
+    const at = key.indexOf(':')
+    const arg = key.slice(0, at)
+    const value = key.slice(at + 1)
+    if (at < 0 || !value) continue
+    if (arg === 'origin') {
+      const [lat, lng] = value.split(',').map(Number)
+      if (Number.isFinite(lat) && Number.isFinite(lng))
+        origin = { lat: lat as number, lng: lng as number }
+    } else if (arg === 'neighborhood') neighborhood = value
+    else if (arg === 'amenities')
+      args.amenities = [...(args.amenities ?? []), Number(value)]
+    else if (arg === 'teamIds') args.teamIds = [...(args.teamIds ?? []), value]
+    else if (arg === 'radiusKm') args.radiusKm = Number(value)
+    else if (arg === 'date' || arg === 'sportId' || arg === 'championship')
+      args[arg] = value
+  }
+  return origin
+    ? { input: { lat: origin.lat, lng: origin.lng, ...args }, neighborhood }
+    : null
 }
 
 /** Bares do bairro pedido, quando a IA filtrou por bairro. */
@@ -332,6 +356,69 @@ export const inNeighborhood = <T extends { neighborhood: string | null }>(
           .includes(neighborhood.toLocaleLowerCase('pt-BR'))
       )
     : bars
+
+type FoundBar = {
+  id: string
+  name: string
+  neighborhood: string | null
+  distance_km: number
+  photo_url: string | null
+  plan: string | null
+  rating: { percentage: number } | null
+  averageSpendCents: number | null
+  nextEvent?: {
+    id: string
+    startsAt: string
+    endsAt: string | null
+    championship: string
+    participants: { team: { name: string } }[]
+    participantFreeText: string | null
+  } | null
+}
+
+/** Um bar de `pubs.search` no formato dos cards do chat. */
+export function fromSearchBar(
+  bar: FoundBar,
+  isLive: (game: { startsAt: string; endsAt: string | null }) => boolean
+): ChatBar {
+  const game = bar.nextEvent
+  const names = game?.participants.map((p) => p.team.name) ?? []
+  return {
+    id: bar.id,
+    name: bar.name,
+    neighborhood: bar.neighborhood,
+    distanceKm: bar.distance_km,
+    photoUrl: bar.photo_url,
+    plan: bar.plan,
+    ratingPercent: bar.rating?.percentage ?? null,
+    averageSpendCents: bar.averageSpendCents,
+    game: game
+      ? {
+          id: game.id,
+          title:
+            names.join(' × ') || game.participantFreeText || game.championship,
+          startsAt: game.startsAt,
+          live: isLive(game)
+        }
+      : null
+  }
+}
+
+/** "Ver no mapa": o ponto da busca (chip `origin`, senão o do campo). */
+export function mapFocus(
+  chips: FilterChip[],
+  fallback: Point | null,
+  radiusKm: number
+) {
+  const search = chipSearch(chips, [], fallback)
+  if (!search) return null
+  const { lat, lng } = search.input
+  return {
+    lat,
+    lng,
+    km: Math.max(1.6, (search.input.radiusKm ?? radiusKm) * 2)
+  }
+}
 
 // --- Rodapé, fontes e confirmação ---------------------------------------------
 
@@ -348,12 +435,13 @@ export function followUps(suggestions: string[], hasBars: boolean) {
   ]
 }
 
-/** "Usei 3 bares e a agenda de hoje". */
+/** "Usei 3 bares e a agenda de hoje" (o dia vem do chip `date:`). */
 export function sourcesLabel(
   sources: Source[],
-  day: string | undefined,
+  chips: FilterChip[],
   now: number
 ) {
+  const day = chips.find((c) => c.key.startsWith('date:'))?.key.slice(5)
   const n = sources.length
   const bars = `${n} ${n === 1 ? 'bar' : 'bares'}`
   if (!day) return `Usei ${bars}`
@@ -377,7 +465,8 @@ export function confirmText(result: ConfirmResult) {
     parts.push(
       `${firstName(result.call.friendName)} recebeu seu chamado. Quando tocar em “Vou também”, aparece em quem vai.`
     )
-  if (result.remind?.ok) parts.push('O lembrete aparece em Avisos 1 h antes.')
+  if (result.remind?.ok)
+    parts.push('O lembrete aparece em Avisos no dia do jogo.')
   const failed = [result.going, result.call, result.remind].filter(
     (r): r is { ok: false; reason: string } => r !== null && !r.ok
   )

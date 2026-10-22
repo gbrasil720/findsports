@@ -41,20 +41,23 @@ import {
 import { Start } from '@/components/ai/start'
 import { type AiPalette, useAiPalette } from '@/components/ai/theme'
 import { DoneLine, ToolCard } from '@/components/ai/tool'
-import { Chip, dayLabel, type SearchBar } from '@/components/explore'
+import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { EASE, haptic } from '@/components/motion'
 import { text, useStatusBar } from '@/components/ui'
 import {
   applyEvent,
   barsFound,
+  chipSearch,
   clock,
   confirmText,
   firstName,
   followUps,
+  fromSearchBar,
   historyOf,
   inNeighborhood,
   isThinking,
+  mapFocus,
   newTurn,
   patchVersion,
   plainText,
@@ -63,8 +66,6 @@ import {
   redoTurn,
   resumeLabel,
   saveRecent,
-  searchInput,
-  searchWithout,
   shownReply,
   sourcesLabel,
   stepVersion,
@@ -74,10 +75,10 @@ import {
 } from '@/lib/ai-chat'
 import { WORST_QUESTION } from '@/lib/ai-chat-demo'
 import type { Dubla } from '@/lib/ai-dubla'
-import type { ConfirmResult } from '@/lib/ai-events'
+import type { ChatBar, ConfirmResult } from '@/lib/ai-events'
 import { confirm, converse } from '@/lib/ai-stream'
 import { authClient } from '@/lib/auth-client'
-import { formatTime } from '@/lib/explore'
+import { formatTime, isLive } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -223,28 +224,27 @@ export default function AiSearch() {
   const placeName = explore.district ?? city.data?.name ?? null
   const placeLabel = placeName ? `${placeName} · ${radiusKm} km` : null
 
-  // Chips tirados da última resposta: a mesma busca, sem eles, sem IA.
-  const search = lastReply?.done?.search ?? null
+  // Chips tirados da última resposta: a busca dos que sobram, sem IA.
+  const chips = lastReply?.done?.chips ?? []
   const removed = lastReply?.removed ?? []
+  const fieldOrigin =
+    placeOn && origin ? { lat: origin.lat, lng: origin.lng } : null
+  const rebuilt = removed.length
+    ? chipSearch(chips, removed, fieldOrigin)
+    : null
   const refined = useQuery({
     ...trpc.pubs.search.queryOptions(
-      searchInput(
-        searchWithout(
-          search ?? { lat: 0, lng: 0, neighborhood: null },
-          removed
-        ),
-        radiusKm
-      )
+      rebuilt?.input ?? { lat: 0, lng: 0, limit: 20 }
     ),
-    enabled: !!search && removed.length > 0,
+    enabled: !!rebuilt,
     meta: { errorToast: false }
   })
 
-  const barsOf = (turn: Turn, reply: Reply): SearchBar[] => {
-    if (turn !== last || !removed.length || !refined.data || !search)
-      return reply.bars
-    const next = searchWithout(search, removed)
-    return inNeighborhood(refined.data.bars, next.neighborhood).slice(0, 8)
+  const barsOf = (turn: Turn, reply: Reply): ChatBar[] => {
+    if (turn !== last || !rebuilt || !refined.data) return reply.bars
+    return inNeighborhood(refined.data.bars, rebuilt.neighborhood)
+      .slice(0, 8)
+      .map((b) => fromSearchBar(b, (g) => isLive(g, now)))
   }
 
   const send = (raw?: string, redoOf?: Turn) => {
@@ -442,7 +442,7 @@ export default function AiSearch() {
     if (!dubla) feedback.mutate({ runId: reply.done.runId, value: next })
   }
 
-  const openBar = (runId: string | undefined, bar: SearchBar) => {
+  const openBar = (runId: string | undefined, bar: ChatBar) => {
     if (runId && !dubla)
       action.mutate({ runId, kind: 'open_bar', barId: bar.id })
     // A página do bar sai da folha: dentro dela, a folha do "Vou assistir"
@@ -452,28 +452,21 @@ export default function AiSearch() {
       pathname: '/bar/[id]',
       params: {
         id: bar.id,
-        km: String(bar.distance_km),
+        km: bar.distanceKm === null ? undefined : String(bar.distanceKm),
         name: bar.name,
-        photo: bar.photo_url ?? undefined,
+        photo: bar.photoUrl ?? undefined,
         walk: explore.device ? '1' : undefined,
         ai: runId && !dubla ? runId : undefined
       }
     })
   }
 
-  const showOnMap = (bars: SearchBar[]) => {
-    if (!bars.length) return
-    const lats = bars.map((b) => Number(b.latitude))
-    const lngs = bars.map((b) => Number(b.longitude))
-    const spread = Math.max(
-      (Math.max(...lats) - Math.min(...lats)) * 111,
-      (Math.max(...lngs) - Math.min(...lngs)) * 102
-    )
-    explore.setFocus({
-      lat: (Math.max(...lats) + Math.min(...lats)) / 2,
-      lng: (Math.max(...lngs) + Math.min(...lngs)) / 2,
-      km: Math.max(1.6, spread * 1.4)
-    })
+  // "Ver no mapa": o Explorar vai até o ponto da busca (o card do chat não
+  // traz coordenadas).
+  const showOnMap = () => {
+    const focus = mapFocus(chips, fieldOrigin, radiusKm)
+    if (!focus) return
+    explore.setFocus(focus)
     router.back()
     router.navigate('/explore')
   }
@@ -651,7 +644,11 @@ export default function AiSearch() {
                 }}
                 onBar={(bar) => openBar(shownReply(turn).done?.runId, bar)}
                 onCite={goToBar}
-                onRemoveChip={turn === last && search ? removeChip : undefined}
+                onRemoveChip={
+                  turn === last && chipSearch(chips, [], fieldOrigin)
+                    ? removeChip
+                    : undefined
+                }
                 onToggle={(i) =>
                   setToggles((list) => list.map((v, j) => (j === i ? !v : v)))
                 }
@@ -715,7 +712,7 @@ export default function AiSearch() {
             items={followItems}
             palette={palette}
             onAsk={(q) => send(q)}
-            onMap={() => showOnMap(lastBars)}
+            onMap={showOnMap}
           />
         ) : blocked || off ? (
           <View style={styles.pills}>
@@ -788,7 +785,7 @@ function TurnView({
   onVersion
 }: {
   turn: Turn
-  bars: SearchBar[]
+  bars: ChatBar[]
   isLast: boolean
   busy: boolean
   now: number
@@ -796,7 +793,7 @@ function TurnView({
   toggles: boolean[]
   flash: { id: string; at: number } | null
   cardRef: (id: string, view: View | null) => void
-  onBar: (bar: SearchBar) => void
+  onBar: (bar: ChatBar) => void
   onCite: (barId: string) => void
   onRemoveChip?: (key: string) => void
   onToggle: (index: number) => void
@@ -892,7 +889,7 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {answer && !proposal ? (
+      {answer && !proposal && !waiting.some((t) => t.state === 'wait') ? (
         <Animated.View entering={IN} layout={SETTLE}>
           <AnswerText
             text={answer}
@@ -925,6 +922,17 @@ function TurnView({
         </Animated.View>
       ) : null}
 
+      {/* Busca refeita sem bares (o design não desenha): a frase no lugar. */}
+      {reply.removed.length && reply.bars.length && !bars.length ? (
+        <Animated.View entering={IN} layout={SETTLE}>
+          <Text
+            style={[styles.note, { color: palette.muted, textAlign: 'left' }]}
+          >
+            Sem bares com esses filtros. Tire outro ou pergunte de novo.
+          </Text>
+        </Animated.View>
+      ) : null}
+
       {/* Os cards chegam com a ferramenta, antes do texto. */}
       {bars.length ? (
         <Animated.View layout={SETTLE} style={{ gap: 10 }}>
@@ -947,11 +955,7 @@ function TurnView({
       {reply.done?.sources.length ? (
         <Animated.View entering={IN} layout={SETTLE}>
           <Sources
-            label={sourcesLabel(
-              reply.done.sources,
-              reply.done.search?.date,
-              now
-            )}
+            label={sourcesLabel(reply.done.sources, reply.done.chips, now)}
             sources={reply.done.sources}
             numberOf={numberOf}
             palette={palette}

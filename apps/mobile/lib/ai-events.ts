@@ -1,25 +1,31 @@
-import type { SearchBar } from '@/components/explore'
-
 /*
- * A fronteira do chat da IA (Rodada 24), copiada do contrato
- * (`design-ref/specs/r24-contrato.md`) enquanto `ai.converse` e `ai.confirm`
- * não chegam a este branch.
+ * A fronteira do chat da IA (Rodada 24): os tipos de
+ * `packages/api/src/lib/ai/events.ts` do servidor (w6), copiados enquanto
+ * aquele arquivo não chega a este branch. Contrato:
+ * `design-ref/specs/r24-contrato.md`.
  *
- * TROCAR: quando `packages/api/src/lib/ai/events.ts` existir, apague este
- * arquivo e importe dali (`import type { ChatEvent, … } from
- * '@findsports_oficial/api/lib/ai/events'`).
+ * TROCAR: quando `packages/api/src/lib/ai/events.ts` existir aqui, apague os
+ * tipos copiados e importe dali (`import type { ChatEvent, … } from
+ * '@findsports_oficial/api/lib/ai/events'`). `ConverseInput`,
+ * `ConfirmInput` e `ConfirmResult` saem do `AppRouter` (entrada e saída de
+ * `ai.converse` e `ai.confirm`).
  *
- * Dois pontos que o contrato deixa em aberto e que este arquivo assume
- * (perguntados ao coordenador):
- * - `bars` traz o `SearchBar` de `pubs.search`, como `ai.chat` devolve hoje: é
- *   o que o card do Explorar (`BarRow`) consome.
- * - `done` traz `search`, os argumentos da busca que a IA fez (como o `search`
- *   de `ai.chat`): tirar um chip refaz a busca sem ele, sem IA. A `key` do chip
- *   é o argumento de `pubs.search`, com o valor depois de `:` quando o
- *   argumento é lista (`amenities:3`, `teamIds:<id>`).
+ * A `key` de cada chip é `<argumento de pubs.search>:<valor>` (`teamIds:<id>`,
+ * `amenities:1`, `date:2026-10-22`, `radiusKm:3`, `championship:<nome>`),
+ * mais `neighborhood:<bairro>` (filtro da lista) e `origin:<lat>,<lng>`.
  */
 
-export type ChatBar = SearchBar
+export type ChatBar = {
+  id: string
+  name: string
+  neighborhood: string | null
+  distanceKm: number | null
+  photoUrl: string | null
+  plan: string | null
+  ratingPercent: number | null
+  game: { id: string; title: string; startsAt: string; live: boolean } | null
+  averageSpendCents: number | null
+}
 
 export type FilterChip = {
   key: string
@@ -44,20 +50,6 @@ export type Proposal = {
   bar: { id: string; name: string; photoUrl: string | null }
   game: { id: string; title: string; startsAt: string }
   actions: ProposalAction[]
-}
-
-/** Os argumentos de `pubs.search` que a IA usou (sem `cursor` e `sort`). */
-export type ChatSearch = {
-  lat: number
-  lng: number
-  radiusKm?: number
-  sportId?: string
-  championship?: string
-  date?: string
-  amenities?: number[]
-  teamIds?: string[]
-  limit?: number
-  neighborhood: string | null
 }
 
 export type ChatEvent =
@@ -98,7 +90,6 @@ export type ChatEvent =
       sources: Source[]
       suggestions: string[]
       remainingToday: number
-      search?: ChatSearch | null
     }
 
 export type ConverseInput = {
