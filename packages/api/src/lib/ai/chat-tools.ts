@@ -389,12 +389,22 @@ const step = (
   event: Omit<Extract<ChatEvent, { type: 'step' }>, 'type'>
 ) => ctx.emit?.({ type: 'step', ...event })
 
+/**
+ * "Perto de Pinheiros" é ponto de partida, não filtro, mas o modelo às vezes
+ * manda o bairro mesmo assim e a lista sai vazia: o pedido decide.
+ */
+export function nearOnly(message: string, hood: string) {
+  const escaped = fold(hood).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`perto d[aeo]s? ${escaped}`).test(fold(message))
+}
+
 function searchParams(
   ctx: ToolContext,
   args: Args,
   radiusKm: number,
   city: string | null,
-  date: string | null
+  date: string | null,
+  hood: string | null
 ): [string, string][] {
   const place = city ?? ctx.placeLabel
   const terms = strs(args.caracteristicas).filter(
@@ -407,7 +417,6 @@ function searchParams(
   if (championship) params.push(['campeonato', championship])
   if (date) params.push(['dia', dayChip(date, ctx.now).toLocaleLowerCase()])
   params.push(['raio', place ? `${radiusKm} km de ${place}` : `${radiusKm} km`])
-  const hood = str(args.bairro)
   if (hood) params.push(['bairro', hood])
   if (terms.length)
     params.push([
@@ -469,7 +478,17 @@ async function searchBars(
   const radiusKm = radius(args.raio_km, ctx.radiusKm)
   const asksGame = strs(args.times).length > 0 || !!str(args.campeonato)
   report.label = asksGame ? 'Bares com o jogo' : 'Bares com jogo'
-  report.params = searchParams(ctx, args, radiusKm, city, validDate)
+  const askedHood = str(args.bairro)
+  const neighborhood =
+    askedHood && !nearOnly(ctx.message, askedHood) ? askedHood : null
+  report.params = searchParams(
+    ctx,
+    args,
+    radiusKm,
+    city,
+    validDate,
+    neighborhood
+  )
   ctx.emit?.({
     type: 'tool',
     id: '',
@@ -496,7 +515,6 @@ async function searchBars(
     (t): t is AmenityTerm => t in AMENITY_TERMS
   )
   const championship = str(args.campeonato)
-  const neighborhood = str(args.bairro)
   const searchArgs = {
     lat: origin.lat,
     lng: origin.lng,
