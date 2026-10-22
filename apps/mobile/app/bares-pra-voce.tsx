@@ -18,6 +18,7 @@ import {
 import Animated, {
   FadeInDown,
   FadeOut,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming
@@ -965,31 +966,31 @@ function ToggleRow({
           {sub}
         </Text>
       </View>
-      <View
-        style={[
-          styles.switch,
-          { backgroundColor: on ? ACID : palette.dark ? '#2a2a25' : '#d9d5cc' }
-        ]}
-      >
-        <Knob on={on} />
-      </View>
+      <Switch on={on} off={palette.dark ? '#2a2a25' : '#d9d5cc'} />
     </Pressable>
   )
 }
 
-/** A bolinha do interruptor anda (180 ms), em vez de pular de lado. */
-function Knob({ on }: { on: boolean }) {
+/**
+ * O interruptor: a bolinha anda (180 ms) e trilho e bolinha trocam de cor no
+ * mesmo passo, em vez de a cor pular no primeiro quadro.
+ */
+function Switch({ on, off }: { on: boolean; off: string }) {
   const x = useSharedValue(on ? 22 : 0)
   useEffect(() => {
     x.set(withTiming(on ? 22 : 0, { duration: 180, easing: EASE }))
   }, [on, x])
-  const style = useAnimatedStyle(() => ({
+  const track = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 22], [off, ACID])
+  }))
+  const knob = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 22], [PAPER, INK]),
     transform: [{ translateX: x.get() }]
   }))
   return (
-    <Animated.View
-      style={[styles.knob, { backgroundColor: on ? INK : PAPER }, style]}
-    />
+    <Animated.View style={[styles.switch, track]}>
+      <Animated.View style={[styles.knob, knob]} />
+    </Animated.View>
   )
 }
 
