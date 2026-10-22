@@ -60,6 +60,9 @@ const OUT = {
   dampingRatio: 1,
   overshootClamping: true
 } as const
+// Passado daqui o card já saiu da tela (o canto de baixo, girado, é o último
+// a sair): a decisão vai ao JS sem esperar a cauda da mola.
+const GONE = 330
 // Com movimento reduzido a viagem vira fade, e o fade não pode virar corte.
 const FADE = { duration: 160, reduceMotion: ReduceMotion.Never } as const
 
@@ -159,13 +162,16 @@ export function SuggestionCard({
   item,
   now,
   actions,
-  behind
+  behind,
+  reveal
 }: {
   item: Suggestion
   now: number
   actions?: CardActions
   /** Card de trás da pilha: só a foto e o topo, como no design. */
   behind?: boolean
+  /** O de trás com o resto por baixo, que aparece quando o de cima sai. */
+  reveal?: SharedValue<number>
 }) {
   const game = item.game
   const today = game ? isToday(game.startsAt, now) : false
@@ -181,105 +187,126 @@ export function SuggestionCard({
         <SlotPill item={item} />
         <ScoreBadge score={item.score} />
       </View>
-      {behind ? null : (
-        <View style={styles.bottom}>
-          <View style={styles.nameRow}>
-            {/* Nome longo encolhe até 60% antes de cortar: a altura de linha
+      {behind && !reveal ? null : (
+        <Reveal value={reveal}>
+          <View style={styles.bottom}>
+            <View style={styles.nameRow}>
+              {/* Nome longo encolhe até 60% antes de cortar: a altura de linha
                 natural do Anton deixava duas linhas muito separadas. */}
-            <Text
-              style={styles.name}
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
-            >
-              {item.name}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Abrir a página do ${item.name}`}
-              hitSlop={8}
-              onPress={actions?.onOpen}
-              style={styles.up}
-            >
-              <Icon name="arrowUp" size={16} color={PAPER} />
-            </Pressable>
-          </View>
-          <Text style={[text(14), styles.where]} numberOfLines={1}>
-            {[item.neighborhood, distanceText(item.distanceKm)]
-              .filter(Boolean)
-              .join(' · ')}
-            {item.isExpandedRadius ? ' · Fora do seu raio' : ''}
-          </Text>
-          <View style={styles.reason}>
-            <Icon name="sparkle" size={16} color={INK} accent={LIVE} />
-            <Text style={[text(13.5, 'SemiBold', 1.35), styles.reasonText]}>
-              {reasonLine(item)}
-            </Text>
-          </View>
-          {chips(item).length ? (
-            <View style={styles.chips}>
-              {chips(item).map((axis) => (
-                <View key={axis.key} style={styles.chip}>
-                  <Icon
-                    name={axis.icon}
-                    size={13}
-                    color={PAPER}
-                    accent={ACID}
-                  />
-                  <Text style={[text(12, 'SemiBold', 1.2), { color: PAPER }]}>
-                    {axis.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <View style={styles.game}>
-            <Icon
-              name={game ? 'tv' : 'calendar'}
-              size={20}
-              color={PAPER}
-              accent={ACID}
-            />
-            <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[styles.when, { color: game ? ACID : MUTE }]}
-                numberOfLines={1}
+                style={styles.name}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
-                {game ? gameWhen(game.startsAt, now) : 'SEM JOGO MARCADO'}
+                {item.name}
               </Text>
-              <Text
-                style={[text(13.5, 'Bold', 1.3), styles.gameTitle]}
-                numberOfLines={game ? 1 : 2}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir a página do ${item.name}`}
+                hitSlop={8}
+                onPress={actions?.onOpen}
+                style={styles.up}
               >
-                {game ? gameTitle(game) : usualLine(item)}
+                <Icon name="arrowUp" size={16} color={PAPER} />
+              </Pressable>
+            </View>
+            <Text style={[text(14), styles.where]} numberOfLines={1}>
+              {[item.neighborhood, distanceText(item.distanceKm)]
+                .filter(Boolean)
+                .join(' · ')}
+              {item.isExpandedRadius ? ' · Fora do seu raio' : ''}
+            </Text>
+            <View style={styles.reason}>
+              <Icon name="sparkle" size={16} color={INK} accent={LIVE} />
+              <Text style={[text(13.5, 'SemiBold', 1.35), styles.reasonText]}>
+                {reasonLine(item)}
               </Text>
             </View>
-            {game && today ? (
-              <GamePill
-                label={game.attending ? 'Você vai' : 'Vou assistir'}
-                icon="ticket"
-                solid
-                onPress={actions?.onGo}
-              />
-            ) : game ? (
-              <GamePill
-                label={game.reminded ? 'Lembrete' : 'Lembrar'}
-                icon={game.reminded ? 'check' : 'bell'}
-                on={game.reminded}
-                onPress={actions?.onRemind}
-              />
-            ) : item.facts.usualSports.length ? (
-              <GamePill
-                label={alerted ? 'Avisando' : 'Avisar'}
-                icon={alerted ? 'check' : 'bell'}
-                on={alerted}
-                onPress={actions?.onAlert}
-              />
+            {chips(item).length ? (
+              <View style={styles.chips}>
+                {chips(item).map((axis) => (
+                  <View key={axis.key} style={styles.chip}>
+                    <Icon
+                      name={axis.icon}
+                      size={13}
+                      color={PAPER}
+                      accent={ACID}
+                    />
+                    <Text style={[text(12, 'SemiBold', 1.2), { color: PAPER }]}>
+                      {axis.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             ) : null}
+            <View style={styles.game}>
+              <Icon
+                name={game ? 'tv' : 'calendar'}
+                size={20}
+                color={PAPER}
+                accent={ACID}
+              />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[styles.when, { color: game ? ACID : MUTE }]}
+                  numberOfLines={1}
+                >
+                  {game ? gameWhen(game.startsAt, now) : 'SEM JOGO MARCADO'}
+                </Text>
+                <Text
+                  style={[text(13.5, 'Bold', 1.3), styles.gameTitle]}
+                  numberOfLines={game ? 1 : 2}
+                >
+                  {game ? gameTitle(game) : usualLine(item)}
+                </Text>
+              </View>
+              {game && today ? (
+                <GamePill
+                  label={game.attending ? 'Você vai' : 'Vou assistir'}
+                  icon="ticket"
+                  solid
+                  onPress={actions?.onGo}
+                />
+              ) : game ? (
+                <GamePill
+                  label={game.reminded ? 'Lembrete' : 'Lembrar'}
+                  icon={game.reminded ? 'check' : 'bell'}
+                  on={game.reminded}
+                  onPress={actions?.onRemind}
+                />
+              ) : item.facts.usualSports.length ? (
+                <GamePill
+                  label={alerted ? 'Avisando' : 'Avisar'}
+                  icon={alerted ? 'check' : 'bell'}
+                  on={alerted}
+                  onPress={actions?.onAlert}
+                />
+              ) : null}
+            </View>
           </View>
-        </View>
+        </Reveal>
       )}
     </View>
+  )
+}
+
+function Reveal({
+  value,
+  children
+}: {
+  value?: SharedValue<number>
+  children: ReactNode
+}) {
+  const style = useAnimatedStyle(() => ({ opacity: value ? value.get() : 1 }))
+  if (!value) return children
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, style]}
+    >
+      {children}
+    </Animated.View>
   )
 }
 
@@ -366,6 +393,11 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   const nudge = useSharedValue(0)
   // No voo de saída ou de volta o `drag` desce sozinho e o háptico de limite cala.
   const flying = useSharedValue(false)
+  // O resto do próximo card aparece quando o de cima é lançado: o JS ainda
+  // vai trocar a pilha, e até lá quem fica à mostra já é o bar seguinte.
+  const promote = useSharedValue(0)
+  // O sentido do card que está saindo (1 Curti, -1 Passo), até ele sumir.
+  const leaving = useSharedValue(0)
   const top = items[0]
 
   // A decisão vai ao JS só quando o card já saiu da tela.
@@ -382,6 +414,8 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   useLayoutEffect(() => {
     y.set(0)
     flying.set(false)
+    promote.set(0)
+    leaving.set(0)
     if (returning && returning.barId === top?.barId) {
       if (reduced) {
         x.set(0)
@@ -410,6 +444,15 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       if (!flying.get()) drag.set(value)
     }
   )
+  useAnimatedReaction(
+    () =>
+      leaving.get() !== 0 && Math.abs(x.get()) >= GONE ? leaving.get() : 0,
+    (direction) => {
+      if (!direction) return
+      leaving.set(0)
+      scheduleOnRN(decide, direction > 0 ? 'like' : 'pass')
+    }
+  )
   // Passar do ponto de soltura dá um toque, uma vez em cada sentido.
   useAnimatedReaction(
     () => (Math.abs(x.get()) >= COMMIT_X ? Math.sign(x.get()) : 0),
@@ -424,6 +467,7 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
     const to = direction === 'like' ? FLY : -FLY
     flying.set(true)
     drag.set(withTiming(0, { duration: 180, easing: EASE }))
+    promote.set(withTiming(1, { duration: 180, easing: EASE }))
     const done = (finished?: boolean) => {
       'worklet'
       if (finished) scheduleOnRN(decide, direction)
@@ -434,11 +478,14 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
     }
     // O peteleco leva a velocidade junto: mola sem quique, que parte na
     // velocidade do dedo em vez de dar tranco ao soltar.
-    x.set(withSpring(to, { ...OUT, velocity }, done))
+    leaving.set(direction === 'like' ? 1 : -1)
+    x.set(withSpring(to, { ...OUT, velocity }))
   }
 
   useImperativeHandle(ref, () => ({
     fling: (direction) => {
+      // Um toque a mais em Curti durante o voo decidia o mesmo bar duas vezes.
+      if (flying.get()) return
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
       flyOut(direction)
     }
@@ -537,7 +584,7 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       ) : null}
       {next ? (
         <Animated.View style={[styles.layer, second]}>
-          <SuggestionCard item={next} now={now} behind />
+          <SuggestionCard item={next} now={now} behind reveal={promote} />
           <Animated.View style={[styles.shade, secondShade]} />
         </Animated.View>
       ) : null}
