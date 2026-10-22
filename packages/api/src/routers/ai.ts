@@ -1,3 +1,4 @@
+import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, isNull } from '@findsports_oficial/db'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { TRPCError } from '@trpc/server'
@@ -253,83 +254,73 @@ async function talk(
       : [])
   ]
 
-  try {
-    const outcome = await runAi(
-      { userId, feature: 'chat', variant, assignedModel: models[0] },
-      result.gate.deps,
-      async (call) => {
-        const turnResult = await converse(
-          input.message,
-          input.history as ChatTurn[],
-          {
-            call,
-            models,
-            runTool: (name, args, callId) =>
-              runTool(name, args, toolCtx, state, callId),
-            state,
-            now,
-            hasOrigin: input.origin !== null,
-            context,
-            temperature: input.redo ? 0.7 : undefined,
-            emit
-          }
-        )
-        return {
-          value: turnResult.reply,
-          status: turnResult.status,
-          servedModel: turnResult.servedModel,
-          useful: true
+  const outcome = await runAi(
+    { userId, feature: 'chat', variant, assignedModel: models[0] },
+    result.gate.deps,
+    async (call) => {
+      const turnResult = await converse(
+        input.message,
+        input.history as ChatTurn[],
+        {
+          call,
+          models,
+          runTool: (name, args, callId) =>
+            runTool(name, args, toolCtx, state, callId),
+          state,
+          now,
+          hasOrigin: input.origin !== null,
+          context,
+          temperature: input.redo ? 0.7 : undefined,
+          emit
         }
-      }
-    )
-    const reply = outcome.value
-    if (reply.invented.length)
-      console.warn(
-        JSON.stringify({
-          msg: 'ai.converse.invented_bar',
-          runId: outcome.runId,
-          ids: reply.invented
-        })
       )
-    for (const p of state.proposals ?? []) {
-      const [row] = await db
-        .insert(aiProposal)
-        .values({
-          runId: outcome.runId,
-          userId,
-          barId: p.bar.id,
-          eventId: p.game.id,
-          offersGoing: p.offersGoing,
-          friendId: p.friend?.id ?? null
-        })
-        .returning({ id: aiProposal.id })
-      if (row) emit({ type: 'proposal', proposal: toProposal(row.id, p) })
+      return {
+        value: turnResult.reply,
+        status: turnResult.status,
+        servedModel: turnResult.servedModel,
+        useful: true
+      }
     }
-    emit({
-      type: 'done',
-      runId: outcome.runId,
-      status: outcome.status,
-      thoughtMs: Math.round(performance.now() - started),
-      searches: reply.toolCalls.filter((n) => !PROPOSAL_NAMES.has(n)).length,
-      chips: reply.search?.chips ?? [],
-      sources: reply.bars.map((b) => ({
-        barId: b.id,
-        name: b.name,
-        photoUrl: b.photo_url ?? null,
-        why: state.opened.has(b.id) ? 'Página do bar · agenda' : 'Agenda do bar'
-      })),
-      suggestions: reply.suggestions,
-      remainingToday: result.allowance.remainingToday - 1
-    })
-  } catch (error) {
-    console.error(
+  )
+  const reply = outcome.value
+  if (reply.invented.length)
+    console.warn(
       JSON.stringify({
-        msg: 'ai.converse.failed',
-        error: error instanceof Error ? error.message : String(error)
+        msg: 'ai.converse.invented_bar',
+        runId: outcome.runId,
+        ids: reply.invented
       })
     )
-    emit({ type: 'blocked', reason: 'unavailable' })
+  for (const p of state.proposals ?? []) {
+    const [row] = await db
+      .insert(aiProposal)
+      .values({
+        runId: outcome.runId,
+        userId,
+        barId: p.bar.id,
+        eventId: p.game.id,
+        offersGoing: p.offersGoing,
+        friendId: p.friend?.id ?? null
+      })
+      .returning({ id: aiProposal.id })
+    if (row) emit({ type: 'proposal', proposal: toProposal(row.id, p) })
   }
+  emit({
+    type: 'done',
+    runId: outcome.runId,
+    status: outcome.status,
+    thoughtMs: Math.round(performance.now() - started),
+    searches: reply.toolCalls.filter((n) => !PROPOSAL_NAMES.has(n)).length,
+    chips: reply.search?.chips ?? [],
+    sources: reply.bars.map((b) => ({
+      barId: b.id,
+      name: b.name,
+      photoUrl: b.photo_url ?? null,
+      why: state.opened.has(b.id) ? 'Página do bar · agenda' : 'Agenda do bar'
+    })),
+    suggestions: reply.suggestions,
+    remainingToday: result.allowance.remainingToday - 1
+  })
 }
 
 const failed = (error: unknown) => ({
@@ -370,7 +361,21 @@ export const aiRouter = router({
     input
   }): AsyncGenerator<ChatEvent> {
     const queue = eventQueue<ChatEvent>()
-    const work = talk(ctx, input, queue.push).finally(queue.close)
+    const work = talk(ctx, input, queue.push)
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            msg: 'ai.converse.failed',
+            error: error instanceof Error ? error.message : String(error)
+          })
+        )
+        queue.push({ type: 'blocked', reason: 'unavailable' })
+      })
+      .finally(queue.close)
+    // O app pode desconectar no meio (parar, sair da tela). No Worker, o que
+    // fica fora do `waitUntil` é cancelado junto, e o modelo já cobrou: o
+    // trabalho vai até o fim e grava o `ai_run`, só não tem mais quem leia.
+    runInBackground(work)
     yield* queue.drain()
     await work
   }),
