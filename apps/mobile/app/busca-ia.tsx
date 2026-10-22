@@ -846,8 +846,10 @@ function TurnView({
         <UserMessage palette={palette}>{turn.question}</UserMessage>
       </Animated.View>
 
-      {/* Depois do "Confirmar", o raciocínio sai e ficam as linhas (24e). */}
-      {reply.steps.length && !approved ? (
+      {/* Depois do "Confirmar", o raciocínio sai e ficam as linhas (24e).
+          "Pensando" aparece já no envio: o primeiro passo só chega quando o
+          modelo pede a primeira ferramenta, alguns segundos depois. */}
+      {(reply.steps.length || thinking) && !approved ? (
         <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
           <Reasoning
             steps={reply.steps}
