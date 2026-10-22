@@ -754,6 +754,7 @@ export function DeckButtons({
       <RoundAction
         label="Voltar"
         color={label}
+        glass
         disabled={!canUndo}
         onPress={onUndo}
       >
@@ -803,7 +804,7 @@ export function DeckButtons({
           <Icon name="fan" size={29} color={INK} accent={INK} />
         </Animated.View>
       </RoundAction>
-      <RoundAction label="Por quê" color={label} onPress={onWhy}>
+      <RoundAction label="Por quê" color={label} glass onPress={onWhy}>
         <Animated.View style={side}>
           <Glass
             tone={dark ? 'dark' : 'light'}
@@ -821,12 +822,15 @@ export function DeckButtons({
 function RoundAction({
   label,
   color,
+  glass,
   disabled,
   onPress,
   children
 }: {
   label: string
   color: string
+  /** O vidro interativo já responde ao toque: sem a escala por cima. */
+  glass?: boolean
   disabled?: boolean
   onPress: () => void
   children: ReactNode
@@ -843,7 +847,9 @@ function RoundAction({
       onPressOut={press.onPressOut}
       style={styles.action}
     >
-      <Animated.View style={press.style}>{children}</Animated.View>
+      <Animated.View style={glass ? undefined : press.style}>
+        {children}
+      </Animated.View>
       <Text style={[text(11, 'SemiBold', 1.2), { color }]}>{label}</Text>
     </Pressable>
   )
