@@ -297,7 +297,7 @@ export const friendsRouter = router({
   respondCall: fanProcedure
     .input(
       z.object({
-        callId: z.string().uuid(),
+        callId: z.string().min(1).max(64),
         answer: z.enum(['going', 'not_now'])
       })
     )
