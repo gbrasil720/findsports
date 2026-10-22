@@ -148,24 +148,25 @@ test('alteração de conta que não existe mais não mostra o id', async ({
 /** Um valor válido e diferente do atual, do mesmo formato. */
 function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
-  // Pesos dos testes de IA (WEB-424): troca a ordem dos braços do chat.
+  // Pesos dos testes de IA (WEB-424): o chat inteiro num braço (soma 100).
   if (
     value !== null &&
     typeof value === 'object' &&
     'chat' in value &&
     'recommender' in value
   ) {
-    const weights = value as {
-      chat: { a: number; b: number }
-      recommender: Record<string, number>
-    }
-    return {
-      ...weights,
-      chat: {
-        a: weights.chat.b,
-        b: weights.chat.a === weights.chat.b ? 0 : weights.chat.a
-      }
-    }
+    const weights = value as { chat: { a: number; b: number } }
+    const a = weights.chat.a === 100 ? 0 : 100
+    return { ...weights, chat: { a, b: 100 - a } }
+  }
+  // Limites da IA: uma chamada a mais por pessoa no dia.
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    'userDailyCalls' in value
+  ) {
+    const limits = value as { userDailyCalls: number }
+    return { ...limits, userDailyCalls: limits.userDailyCalls + 1 }
   }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
@@ -204,6 +205,7 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
     'ai.enabled',
+    'ai.limits',
     'ai.variant_weights',
     'rating.public_display',
     'search.tiered_plan_query'
