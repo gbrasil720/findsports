@@ -696,6 +696,10 @@ async function findFriend(userId: string, ref: string) {
   return rows.rows[0] ?? null
 }
 
+/** "Marca", "vou", "chama", "lembra"...: o pedido de uma proposta. */
+const ASKS_ACTION =
+  /\b(vou|marca\w*|marque|chama\w*|chame|convid\w*|lembr\w*|avis\w*)\b/
+
 const FILLER = new Set(['jogo', 'hoje', 'amanha', 'contra', 'vs'])
 
 /**
@@ -726,6 +730,14 @@ async function propose(
   kind: 'marcar_vou_assistir' | 'lembrar',
   report: ToolReport
 ) {
+  // Proposta só quando o torcedor pediu: texto de bar ou de outra fonte não
+  // monta "Vou assistir" nem "Chamar" sozinho.
+  if (!ASKS_ACTION.test(fold(ctx.message))) {
+    report.output = 'Sem pedido'
+    return {
+      erro: 'O torcedor não pediu para marcar, chamar nem lembrar. Não proponha.'
+    }
+  }
   const ref = str(args.bar)
   const barId = ref ? await findBar(ctx, state, ref) : null
   if (!barId) {
@@ -760,7 +772,11 @@ async function propose(
     state: 'done',
     detail: gameDetail(game)
   })
-  const asked = kind === 'marcar_vou_assistir' ? str(args.chamar) : null
+  // Só chama quem o torcedor escreveu na mensagem, com 3 letras ou mais.
+  const named = kind === 'marcar_vou_assistir' ? str(args.chamar) : null
+  const term = named ? fold(named.replace(/^@/, '')) : ''
+  const asked =
+    named && term.length >= 3 && fold(ctx.message).includes(term) ? named : null
   const friend =
     asked && ctx.userId ? await findFriend(ctx.userId, asked) : null
   const proposal: PendingProposal = {
@@ -790,7 +806,9 @@ async function propose(
     bar: quoted(b.name),
     jogo: { titulo: title, inicio: brt(game.startsAt) },
     amigo: friend ? quoted(friend.name) : null,
-    amigo_nao_encontrado: asked && !friend ? quoted(asked) : null
+    amigo_nao_encontrado: asked && !friend ? quoted(asked) : null,
+    chamar_ignorado:
+      named && !asked ? 'O torcedor não escreveu esse nome na mensagem.' : null
   })
 }
 
