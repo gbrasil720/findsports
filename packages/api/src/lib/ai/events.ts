@@ -74,7 +74,8 @@ export type ChatEvent =
       type: 'step'
       id: string
       label: string
-      state: 'run' | 'done'
+      // 'todo': passo que ainda vem ("Comparar e ordenar" vazio, 24b).
+      state: 'todo' | 'run' | 'done'
       tags?: string[]
       detail?: string
     }
