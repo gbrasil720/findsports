@@ -197,7 +197,10 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
   })
   // `allTextContents` não espera: só lê depois que as linhas renderizaram.
   await expect(spell(page, KEY)).toBeVisible()
-  const keys = await page.locator('article code').allTextContents()
+  // O padrão de um feitiço em JSON também sai em `<code>`: só os nomes contam.
+  const keys = (await page.locator('article code').allTextContents()).filter(
+    (text) => /^[a-z0-9_]+(\.[a-z0-9_]+)+$/.test(text)
+  )
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
     'ai.enabled',
