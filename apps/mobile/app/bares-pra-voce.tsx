@@ -106,6 +106,8 @@ const STRIP_IN = [0, 1, 2, 3, 4].map((i) =>
   FadeInDown.delay(i * 50)
     .duration(220)
     .easing(EASE)
+    // O padrão do FadeInDown sobe 25 pt: aqui só assenta.
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 )
 type Decision = 'liked' | 'passed' | null
 
