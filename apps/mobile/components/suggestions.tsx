@@ -1109,6 +1109,10 @@ const styles = StyleSheet.create({
   layer: { position: 'absolute', left: 0, top: 0, transformOrigin: '50% 100%' },
   topCard: {
     transformOrigin: '50% 120%',
+    // Com fundo, o iOS desenha a sombra pela caixa e não recalcula pelo
+    // conteúdo a cada quadro do arraste.
+    backgroundColor: INK,
+    borderRadius: 14,
     shadowColor: '#000',
     shadowOpacity: 0.55,
     shadowRadius: 25,
