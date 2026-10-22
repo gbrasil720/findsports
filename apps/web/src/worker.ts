@@ -7,7 +7,7 @@ import { waitUntil } from 'cloudflare:workers'
 import {
   type AiBinding,
   setAiBinding
-} from '@findsports_oficial/api/lib/ai/binding'
+} from '@findsports_oficial/api/lib/ai/binding-slot'
 import { setDeployVersion } from '@findsports_oficial/api/lib/deploy-version'
 import { runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
