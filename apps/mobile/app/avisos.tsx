@@ -15,7 +15,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { type Palette, usePalette } from '@/components/explore'
+import { HardShadow, type Palette, usePalette } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import {
   AddButton,
@@ -24,7 +24,13 @@ import {
   useKept
 } from '@/components/friends'
 import { MedalImage } from '@/components/medal'
-import { haptic, ScalePress, SWAP, usePressScale } from '@/components/motion'
+import {
+  haptic,
+  ScalePress,
+  SWAP,
+  usePress,
+  usePressScale
+} from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import {
   ACID,
@@ -686,7 +692,7 @@ function RequestAnswer({
   busy: boolean
   onAnswer: (accept: boolean) => void
 }) {
-  const accept = usePressScale(0.97)
+  const accept = usePress(3, 3)
   const decline = usePressScale(0.97)
   if (answered)
     return (
@@ -702,25 +708,22 @@ function RequestAnswer({
     )
   return (
     <View style={styles.answers}>
-      <Animated.View style={[{ flex: 1 }, accept.style]}>
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy}
-          onPressIn={accept.onPressIn}
-          onPressOut={accept.onPressOut}
-          onPress={() => onAnswer(true)}
-          style={[
-            styles.answer,
-            {
-              backgroundColor: ACID,
-              shadowColor: palette.dark ? '#000' : INK
-            },
-            styles.answerShadow
-          ]}
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPressIn={accept.onPressIn}
+        onPressOut={accept.onPressOut}
+        onPress={() => onAnswer(true)}
+        style={{ flex: 1 }}
+      >
+        {/* A sombra dura fica parada e o botão afunda sobre ela. */}
+        <HardShadow color={palette.dark ? '#000' : INK} offset={3} radius={4} />
+        <Animated.View
+          style={[styles.answer, { backgroundColor: ACID }, accept.style]}
         >
           <Text style={[text(13.5, 'Bold'), { color: INK }]}>Aceitar</Text>
-        </Pressable>
-      </Animated.View>
+        </Animated.View>
+      </Pressable>
       <Animated.View style={[{ flex: 1 }, decline.style]}>
         <Pressable
           accessibilityRole="button"
@@ -934,11 +937,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  answerShadow: {
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
   },
   answered: { height: 40, justifyContent: 'center' },
   who: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
