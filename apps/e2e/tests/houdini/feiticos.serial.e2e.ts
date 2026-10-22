@@ -148,6 +148,25 @@ test('alteração de conta que não existe mais não mostra o id', async ({
 /** Um valor válido e diferente do atual, do mesmo formato. */
 function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
+  // Pesos dos testes de IA (WEB-424): troca a ordem dos braços do chat.
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    'chat' in value &&
+    'recommender' in value
+  ) {
+    const weights = value as {
+      chat: { a: number; b: number }
+      recommender: Record<string, number>
+    }
+    return {
+      ...weights,
+      chat: {
+        a: weights.chat.b,
+        b: weights.chat.a === weights.chat.b ? 0 : weights.chat.a
+      }
+    }
+  }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
@@ -181,6 +200,8 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
   const keys = await page.locator('article code').allTextContents()
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
+    'ai.enabled',
+    'ai.variant_weights',
     'rating.public_display',
     'search.tiered_plan_query'
   ])
