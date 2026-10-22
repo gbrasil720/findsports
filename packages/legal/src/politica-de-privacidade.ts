@@ -586,7 +586,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'A busca com IA do app entende um pedido escrito — "Corinthians hoje, com telão, perto de Pinheiros" — e procura os bares por você. Para responder, o texto do pedido, as últimas mensagens da conversa e o resultado das buscas na Onside (bares, jogos, distâncias) passam pela Cloudflare (Workers AI e AI Gateway) até um fornecedor de modelo de IA: hoje o Google ou a OpenAI, conforme o grupo de teste em que a sua conta caiu. As sugestões de bares também podem usar modelos de IA com dados de uso, como times escolhidos e bares salvos ou visitados.'
+            'A busca com IA do app entende um pedido escrito — "Corinthians hoje, com telão, perto de Pinheiros" — e procura os bares por você. Para responder, o texto do pedido, as últimas mensagens da conversa e o resultado das buscas na Onside (bares, jogos, distâncias) passam pela Cloudflare (Workers AI e AI Gateway) até um fornecedor de modelo de IA: hoje o Google ou a OpenAI. As sugestões de bares também podem usar modelos de IA com dados de uso, como times escolhidos e bares salvos ou visitados.'
         },
         {
           type: 'p',
