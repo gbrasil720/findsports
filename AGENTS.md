@@ -691,19 +691,30 @@ invente layout que o projeto não tem.
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
-- **Busca com IA (2h, WEB-400):** `app/busca-ia.tsx`, folha alta (`formSheet`, detent 1)
-  aberta pela aba IA da barra, por "Pedido mais específico?" da busca e pelo coach. Fala com
-  `ai.chat` (servidor: seção "IA" acima); contas puras em `lib/ai-chat.ts`. O `ScrollView` é
-  filho direto da tela, com o cabeçalho em `stickyHeaderIndices` (embrulhado num `View`:
-  direto no sticky, a fileira saía em coluna) e atalhos e campo num rodapé absoluto que sobe
-  com o teclado (`useAnimatedKeyboard`). Os atalhos não gastam pergunta: "Com oferta da
-  casa" é `pubs.search` com a característica 10, "Mais barato" ordena na tela (sem gasto
-  médio no fim), "Ver no mapa" põe `focus` e volta ao Explorar. Abrir um bar fecha a folha
-  antes (dentro dela a folha do "Vou assistir" não abre) e leva `?ai=<run_id>`: a página do
-  bar registra rota e "Vou assistir" em `ai.action`. A conversa fica na memória do módulo até
-  o app fechar. Limite e IA fora do ar não estão no design: frase no lugar da resposta,
-  subtítulo com quando volta e o atalho "Abrir a busca". O polegar ("Ajudou?") também não.
-  O microfone só abre o teclado: o ditado é o do sistema.
+- **Busca com IA (Rodada 24, 24a–24e; WEB-400):** `app/busca-ia.tsx`, folha alta
+  (`formSheet`, detent 1) aberta pela aba IA, por "Pedido mais específico?" da busca e pelo
+  coach. Fala com `ai.converse` em eventos (passos, ferramentas, `bars` antes do `text`,
+  proposta, `done`) e `ai.confirm`; a fonte está em `lib/ai-stream.ts`, os tipos em
+  `lib/ai-events.ts` (cópia dos de `packages/api/src/lib/ai/events.ts`, trocar pelo `import
+  type` quando estiverem juntos) e as contas puras em `lib/ai-chat.ts` (eventos → resposta,
+  citações `[[n]]` em pedaços, versões do "refazer", recentes, chips). As peças são de
+  `components/ai/` (uma por arquivo, nomes do AI Elements da 24f) e o quadro delas (t24c) é a
+  tela DEV `app/ai-pecas.tsx`. O raciocínio fica aberto enquanto pensa e fecha no primeiro
+  texto ou proposta; ferramenta pronta entra nele, a que espera "Confirmar" fica à vista.
+  Citação tocada rola até o card e o faz piscar. Tirar um chip de "Entendi assim" refaz a
+  busca sem IA: a `key` do chip é `<argumento de pubs.search>:<valor>` (mais
+  `neighborhood:` e `origin:`), e `chipSearch` monta a busca com os que sobram. "Ver no
+  mapa" leva o Explorar ao ponto da busca (o `ChatBar` não traz coordenadas). Chips de local
+  e dia só no campo do início (24a); "+" troca o contexto depois. Recentes (até 20, com a
+  conversa inteira) ficam no aparelho, em `busca-ia-recentes.json` (`Paths.document`): o
+  servidor não guarda texto. Depois do "Confirmar" (24e) a frase é do app (`confirmText`) e
+  o cartão do código abre `app/codigo/[eventId]`. Parar só deixa de mostrar: o servidor
+  termina a mensagem e desconta. Abrir um bar fecha a folha antes e leva `?ai=<run_id>`.
+  Limite, IA fora do ar e busca refeita sem bares não estão no design: frase no lugar da
+  resposta e "Abrir a busca". O microfone só abre o teclado (ditado do sistema). **Dublê**
+  (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
+  pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
+  "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
 - **Primeiro acesso (4o):** `components/ai-coach.tsx`, por cima do Explorar uma vez só
   (`onside.coach-ia` no SecureStore), montado em `app/(fan)/_layout.tsx`. O furo e o anel
   cercam o botão da IA da barra nativa, medido no iPhone 16e (centro 52 pt da direita e de
