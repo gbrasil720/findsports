@@ -63,7 +63,7 @@ const BALLOON_IN: EntryExitAnimationFunction = () => {
       transform: [{ translateY: 10 }, { scale: 0.94 }]
     },
     animations: {
-      opacity: withDelay(120, withTiming(1, { duration: 180 })),
+      opacity: withDelay(120, withTiming(1, { duration: 180, easing: EASE })),
       transform: [
         {
           translateY: withDelay(
@@ -86,7 +86,7 @@ const BUTTONS_IN: EntryExitAnimationFunction = () => {
       transform: [{ translateY: 10 }]
     },
     animations: {
-      opacity: withDelay(200, withTiming(1, { duration: 180 })),
+      opacity: withDelay(200, withTiming(1, { duration: 180, easing: EASE })),
       transform: [
         {
           translateY: withDelay(
@@ -99,9 +99,9 @@ const BUTTONS_IN: EntryExitAnimationFunction = () => {
   }
 }
 // Sai mais rápido do que entra: quem fechou já decidiu.
-const BALLOON_OUT = FadeOut.duration(120)
-const DIM_IN = FadeIn.duration(220)
-const DIM_OUT = FadeOut.duration(160)
+const BALLOON_OUT = FadeOut.duration(120).easing(EASE)
+const DIM_IN = FadeIn.duration(220).easing(EASE)
+const DIM_OUT = FadeOut.duration(160).easing(EASE)
 
 /** Se o coach ainda não foi visto neste aparelho. `force` mostra de novo (DEV). */
 export function useCoachPending(force: boolean) {
