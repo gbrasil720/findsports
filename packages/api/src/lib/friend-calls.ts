@@ -108,6 +108,13 @@ type Row = {
  */
 export async function readCallNotices(me: string, days: number) {
   const since = new Date(Date.now() - days * 86_400_000)
+  // "Vou também" só vale com a presença de pé: desmarcada, o chamado sai dos
+  // dois lados (quem chamou não vê "vai também"; quem foi chamado não vê
+  // "Você vai").
+  const standing = sql`EXISTS (
+    SELECT 1 FROM attendance a
+    WHERE a.user_id = c.to_user_id AND a.event_id = c.event_id
+  )`
   const read = (received: boolean) =>
     db.execute<Row>(sql`
       SELECT c.id, c.status,
@@ -125,9 +132,12 @@ export async function readCallNotices(me: string, days: number) {
       WHERE ${
         received
           ? sql`c.to_user_id = ${me} AND c.created_at >= ${since}
-              AND (c.status <> 'pending' OR e.starts_at > now() AT TIME ZONE 'UTC')`
+              AND CASE c.status
+                WHEN 'pending' THEN e.starts_at > now() AT TIME ZONE 'UTC'
+                WHEN 'going' THEN ${standing}
+                ELSE true END`
           : sql`c.from_user_id = ${me} AND c.status = 'going'
-              AND c.responded_at >= ${since}`
+              AND c.responded_at >= ${since} AND ${standing}`
       }
       ORDER BY at DESC
     `)
