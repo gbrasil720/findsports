@@ -287,6 +287,23 @@ decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
 offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
 inventados, tempo e custo).
 
+**Chat em eventos (Rodada 24):** `ai.converse` é uma mutation que devolve um async iterable
+(`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `step` ("Entendi o pedido",
+"Achei o jogo", "Procurando bares que vão passar", "Comparar e ordenar", só os que o pedido
+usa), `tool` (`run` → `done`, ou `wait` na proposta), `bars` assim que a busca devolve (sai de
+novo antes do texto se a resposta escolheu outros ou outra ordem: a última lista vale),
+`text` com citação `[[n]]` (renumerada depois da conferência; fora do intervalo sai),
+`proposal` e `done` (chips com `key` = `<argumento do pubs.search>:<valor>`, fontes,
+até 3 sugestões, `thoughtMs`, `searches`). Trava, braços, reserva e `ai_run` são os do chat.
+`marcar_vou_assistir` e `lembrar` só propõem: a proposta vira `ai_proposal` depois da linha
+do `ai_run` e só `ai.confirm` executa (uma vez, só o dono; "Vou assistir" pelo
+`attendance.set`, chamado por `createFriendCall`, lembrete por `recommendations.remind`;
+cada ação grava `ai_action`). Amigo é achado só entre os aceitos. O app fala com
+`ai.converse` pelo `httpBatchStreamLink` com o `fetch` de `expo/fetch` (`splitLink` em
+`apps/mobile/lib/trpc.ts`). Fumaça contra um web rodando:
+`packages/api/scripts/ai-converse-smoke.ts`. `ai.chat` está obsoleto e sai quando o app
+migrar.
+
 ### UI / Styling
 
 Global styles and design tokens: `packages/ui/src/styles/globals.css`. Tailwind v4.
