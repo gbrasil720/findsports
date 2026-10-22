@@ -834,7 +834,9 @@ function TurnView({
     ? `${dayLabel(proposal.game.startsAt, now).toLocaleLowerCase('pt-BR')} ${formatTime(proposal.game.startsAt)}`
     : ''
   // Ferramenta esperando confirmação fica fora do raciocínio (24d).
-  const waiting = reply.tools.filter((t) => t.state !== 'done')
+  // Se a resposta caiu ou foi parada, nada fica "Aguardando você".
+  const live = reply.state === 'run' || reply.state === 'done'
+  const waiting = live ? reply.tools.filter((t) => t.state !== 'done') : []
   const answer = approved ? confirmText(approved) : reply.text
   const finished = reply.state === 'done' || reply.state === 'stopped'
 

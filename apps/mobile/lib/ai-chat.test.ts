@@ -158,6 +158,13 @@ describe('busca com IA (Rodada 24)', () => {
       applyEvent(startReply(0), { type: 'blocked', reason: 'unavailable' }, 0)
         .state
     ).toBe('unavailable')
+    // Caiu depois do texto (sem done): o que chegou fica.
+    let reply = applyEvent(startReply(0), { type: 'bars', bars: [bar('a')] }, 0)
+    reply = applyEvent(reply, { type: 'text', text: 'Achei um.' }, 10)
+    reply = applyEvent(reply, { type: 'blocked', reason: 'unavailable' }, 20)
+    expect(reply.state).toBe('unavailable')
+    expect(reply.text).toBe('Achei um.')
+    expect(reply.bars).toHaveLength(1)
   })
 
   it('refazer: versão nova na tela, "2/2", anda sem passar das pontas', () => {
