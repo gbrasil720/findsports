@@ -39,6 +39,7 @@ import {
   EASE,
   haptic,
   POP,
+  POP_FAST,
   popFrom,
   ScalePress,
   SWAP
@@ -1392,7 +1393,7 @@ function Empty({
           </View>
         </View>
       </Card>
-      <Animated.View entering={POP}>
+      <Animated.View entering={POP_FAST}>
         <Title
           lines={[['NENHUM BAR'], ['', 'NO SEU RAIO.']]}
           size={52}
@@ -1593,7 +1594,7 @@ function Locate({
       contentContainerStyle={[styles.endBody, { alignItems: 'stretch' }]}
       keyboardShouldPersistTaps="handled"
     >
-      <Animated.View entering={POP} style={styles.rings}>
+      <Animated.View entering={POP_FAST} style={styles.rings}>
         <View style={[styles.ring1, { borderColor: palette.line }]} />
         <View style={[styles.ring2, { borderColor: palette.line }]} />
         <View style={styles.pinDisc}>
