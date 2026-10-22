@@ -318,6 +318,9 @@ export default function AiSearch() {
         onContentSizeChange={() =>
           scroll.current?.scrollToEnd({ animated: true })
         }
+        // A folha ainda assenta quando a conversa aparece: o fim medido antes
+        // ficava atrás dos atalhos.
+        onLayout={() => scroll.current?.scrollToEnd({ animated: false })}
       >
         <LayoutAnimationConfig skipEntering={restored}>
           <View style={styles.body}>
