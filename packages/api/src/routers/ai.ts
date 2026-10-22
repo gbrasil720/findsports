@@ -240,7 +240,10 @@ async function talk(
   const context = [
     PROPOSAL_RULE,
     ...(input.placeLabel
-      ? [`A busca parte de «${input.placeLabel}», raio de ${radiusKm} km.`]
+      ? [
+          // Texto do app dentro das aspas do prompt: sem as próprias aspas.
+          `A busca parte de «${input.placeLabel.replace(/[«»]/g, '')}», raio de ${radiusKm} km.`
+        ]
       : []),
     ...(input.day
       ? [
