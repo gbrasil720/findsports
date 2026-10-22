@@ -44,81 +44,79 @@ export function ToolCard({
   const params =
     tool.state !== 'done' && tool.params?.length ? tool.params : null
   return (
-    <Animated.View>
-      <Card palette={palette} radius={7} resize>
-        <View style={styles.head}>
-          <Icon
-            name={toolIcon(tool.name)}
-            size={19}
-            color={palette.ink}
-            accent={palette.accent}
-          />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={[text(14, 'Bold', 1.3), { color: palette.ink }]}
-              numberOfLines={1}
-            >
-              {tool.label}
-            </Text>
-            <Text style={[styles.mono, { color: palette.muted }]}>
-              {tool.name}
-            </Text>
-          </View>
-          <Animated.View key={tool.state} entering={SWAP_IN}>
-            <ToolStatus state={tool.state} palette={palette} />
-          </Animated.View>
+    <Card palette={palette} radius={7} resize>
+      <View style={styles.head}>
+        <Icon
+          name={toolIcon(tool.name)}
+          size={19}
+          color={palette.ink}
+          accent={palette.accent}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            style={[text(14, 'Bold', 1.3), { color: palette.ink }]}
+            numberOfLines={1}
+          >
+            {tool.label}
+          </Text>
+          <Text style={[styles.mono, { color: palette.muted }]}>
+            {tool.name}
+          </Text>
         </View>
-        {params ? (
-          <Animated.View exiting={PARAMS_OUT}>
-            <Dashed palette={palette} />
-            <View style={styles.params}>
-              <View style={styles.paramCol}>
-                {params.map(([key]) => (
-                  <Text
-                    key={key}
-                    style={[styles.param, { color: palette.muted }]}
-                  >
-                    {key}
-                  </Text>
-                ))}
-              </View>
-              <View style={[styles.paramCol, { flex: 1 }]}>
-                {params.map(([key, value]) => (
-                  <Text
-                    key={key}
-                    style={[styles.param, { color: palette.ink }]}
-                    numberOfLines={1}
-                  >
-                    {value}
-                  </Text>
-                ))}
-              </View>
-            </View>
-          </Animated.View>
-        ) : null}
-        {tool.output ? (
-          <View>
-            <Dashed palette={palette} />
-            <View style={styles.output}>
-              {tool.state === 'run' ? (
-                <>
-                  <Spinner size={11} palette={palette} />
-                  <Shimmer size={12.5} weight="Regular" palette={palette}>
-                    {tool.output}
-                  </Shimmer>
-                </>
-              ) : (
+        <Animated.View key={tool.state} entering={SWAP_IN}>
+          <ToolStatus state={tool.state} palette={palette} />
+        </Animated.View>
+      </View>
+      {params ? (
+        <Animated.View exiting={PARAMS_OUT}>
+          <Dashed palette={palette} />
+          <View style={styles.params}>
+            <View style={styles.paramCol}>
+              {params.map(([key]) => (
                 <Text
-                  style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+                  key={key}
+                  style={[styles.param, { color: palette.muted }]}
                 >
-                  {tool.output}
+                  {key}
                 </Text>
-              )}
+              ))}
+            </View>
+            <View style={[styles.paramCol, { flex: 1 }]}>
+              {params.map(([key, value]) => (
+                <Text
+                  key={key}
+                  style={[styles.param, { color: palette.ink }]}
+                  numberOfLines={1}
+                >
+                  {value}
+                </Text>
+              ))}
             </View>
           </View>
-        ) : null}
-      </Card>
-    </Animated.View>
+        </Animated.View>
+      ) : null}
+      {tool.output ? (
+        <View>
+          <Dashed palette={palette} />
+          <View style={styles.output}>
+            {tool.state === 'run' ? (
+              <>
+                <Spinner size={11} palette={palette} />
+                <Shimmer size={12.5} weight="Regular" palette={palette}>
+                  {tool.output}
+                </Shimmer>
+              </>
+            ) : (
+              <Text
+                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+              >
+                {tool.output}
+              </Text>
+            )}
+          </View>
+        </View>
+      ) : null}
+    </Card>
   )
 }
 
