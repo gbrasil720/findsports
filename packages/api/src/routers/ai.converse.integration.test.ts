@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from 'bun:test'
+import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { and, eq, inArray } from '@findsports_oficial/db'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
@@ -345,6 +346,113 @@ integrationTest(
       await resetAppConfig('ai.enabled')
       await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
       await db.delete(user).where(inArray(user.id, [friendId, strangerId]))
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest('confirmações em paralelo: só uma executa', async () => {
+  const { db, appRouter } = await load()
+  const { setAppConfig, resetAppConfig } = await import('../lib/app-config')
+  const seeded = await seedBar('elite', 'active', inAMonth(), {
+    name: 'Bar R24 Paralelo',
+    latitude: String(ORIGIN.lat + 0.004),
+    longitude: String(ORIGIN.lng)
+  })
+  const gameId = await seeded.seedGame({
+    startsAt: new Date(Date.now() + 2 * 3_600_000)
+  })
+  const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+  setAiBinding(
+    fakeModel((id) =>
+      call(id, 'marcar_vou_assistir', { bar: 'bar r24 paralelo' })
+    )
+  )
+  await setAppConfig('ai.enabled', true, null)
+
+  try {
+    const events = await collect(
+      await fan.ai.converse({
+        message: 'Marca que vou no Bar R24 Paralelo',
+        origin: ORIGIN
+      })
+    )
+    const proposal = events.find((e) => e.type === 'proposal')
+    const done = events.at(-1)
+    if (proposal?.type !== 'proposal' || done?.type !== 'done')
+      throw new Error('sem proposta')
+    const confirm = () =>
+      fan.ai.confirm({
+        runId: done.runId,
+        proposalId: proposal.proposal.id,
+        actions: { going: true, call: false, remind: false }
+      })
+    const results = await Promise.allSettled([confirm(), confirm()])
+    expect(results.map((r) => r.status).sort()).toEqual([
+      'fulfilled',
+      'rejected'
+    ])
+    expect(
+      await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(attendance.userId, seeded.fanId),
+            eq(attendance.eventId, gameId)
+          )
+        )
+    ).toHaveLength(1)
+    expect(
+      await db.select().from(aiAction).where(eq(aiAction.runId, done.runId))
+    ).toHaveLength(1)
+  } finally {
+    await resetAppConfig('ai.enabled')
+    await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+    await seeded.cleanup()
+  }
+})
+
+integrationTest(
+  'app desconecta no meio: o trabalho segue no waitUntil e grava o ai_run',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig } = await import('../lib/app-config')
+    const seeded = await seedBar('pro', 'active', inAMonth(), {
+      name: 'Bar R24 Parou',
+      latitude: String(ORIGIN.lat + 0.006),
+      longitude: String(ORIGIN.lng)
+    })
+    await seeded.seedGame({ startsAt: new Date(Date.now() + 3_600_000) })
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    setAiBinding(fakeModel((id) => call(id, 'buscar_bares', {})))
+    await setAppConfig('ai.enabled', true, null)
+    // O Worker registra o waitUntil aqui; o teste guarda as promessas.
+    const background: Promise<unknown>[] = []
+    setBackgroundTaskHandler((promise) => background.push(promise))
+
+    try {
+      const seen: ChatEvent[] = []
+      for await (const event of await fan.ai.converse({
+        message: 'tem jogo hoje?',
+        origin: ORIGIN
+      })) {
+        seen.push(event)
+        break
+      }
+      expect(seen).toHaveLength(1)
+      expect(background).toHaveLength(1)
+      await Promise.all(background)
+      const rows = await db
+        .select()
+        .from(aiRun)
+        .where(eq(aiRun.userId, seeded.fanId))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ feature: 'chat', useful: true })
+    } finally {
+      setBackgroundTaskHandler(() => {})
+      await resetAppConfig('ai.enabled')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
       await seeded.cleanup()
     }
   }
