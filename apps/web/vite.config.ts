@@ -49,7 +49,11 @@ export default defineConfig(({ mode }) => ({
      * Com o plugin, o `vite dev` roda o SSR em workerd, e o E2E depende do dev
      * em Node (outbox de e-mail em `node:fs`, resolver do banco local).
      */
-    mode === 'cloudflare' && cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    // `remoteBindings: false`: o `vite preview` do E2E do Worker não abre
+    // sessão remota para o binding `ai` (o CI não tem token da Cloudflare). O
+    // deploy não usa sessão remota; em desenvolvimento a IA vai pela API REST.
+    mode === 'cloudflare' &&
+      cloudflare({ viteEnvironment: { name: 'ssr' }, remoteBindings: false }),
     tailwindcss(),
     tanstackStart(),
     viteReact()
