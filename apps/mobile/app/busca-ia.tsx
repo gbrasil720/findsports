@@ -221,6 +221,7 @@ export default function AiSearch() {
   const last = turns.at(-1)
   const lastReply = last ? shownReply(last) : undefined
   const busy = lastReply?.state === 'run'
+  const streaming = busy && !!lastReply?.text
   const blocked =
     (lastReply?.state === 'limit' ? lastReply.limit : null) ??
     (status.data?.kind === 'limit' && !last ? status.data : null)
@@ -617,11 +618,17 @@ export default function AiSearch() {
             contentOffset.y + layoutMeasurement.height > contentSize.height - 80
         }}
         onContentSizeChange={() => {
+          // Com o texto chegando em pedaços, uma rolagem animada por pedaço
+          // treme: acompanha seco e só anima quando entra um bloco inteiro.
           if (stick.current && turns.length)
-            scroll.current?.scrollToEnd({ animated: true })
+            scroll.current?.scrollToEnd({ animated: !streaming })
         }}
       >
-        <LayoutAnimationConfig skipEntering={restored}>
+        <LayoutAnimationConfig
+          key={conversation.id}
+          skipEntering={restored}
+          skipExiting
+        >
           <View ref={content} collapsable={false} style={styles.body}>
             {!turns.length ? (
               <Start
@@ -839,10 +846,14 @@ function TurnView({
   const waiting = live ? reply.tools.filter((t) => t.state !== 'done') : []
   const answer = approved ? confirmText(approved) : reply.text
   const finished = reply.state === 'done' || reply.state === 'stopped'
+  // Enquanto o texto cresce, a transição de layout recomeçaria a cada pedaço
+  // em todos os blocos de baixo: eles assentam quando o texto para.
+  const settle =
+    isLast && reply.state === 'run' && reply.text ? undefined : SETTLE
 
   return (
     <>
-      <Animated.View entering={IN} layout={SETTLE}>
+      <Animated.View entering={IN} layout={settle}>
         <UserMessage palette={palette}>{turn.question}</UserMessage>
       </Animated.View>
 
@@ -850,7 +861,7 @@ function TurnView({
           "Pensando" aparece já no envio: o primeiro passo só chega quando o
           modelo pede a primeira ferramenta, alguns segundos depois. */}
       {(reply.steps.length || thinking) && !approved ? (
-        <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
+        <Animated.View entering={IN} exiting={OUT} layout={settle}>
           <Reasoning
             steps={reply.steps}
             tools={reply.tools}
@@ -864,7 +875,12 @@ function TurnView({
       {/* Rodando: as ferramentas abaixo dos passos; prontas, entram no
           raciocínio quando ele fecha. Esperando você, ficam à vista. */}
       {(thinking ? reply.tools : approved ? [] : waiting).map((tool) => (
-        <Animated.View key={tool.id} entering={IN} layout={SETTLE}>
+        <Animated.View
+          key={tool.id}
+          entering={IN}
+          exiting={OUT}
+          layout={settle}
+        >
           <ToolCard
             tool={
               decision?.kind === 'refused'
@@ -879,7 +895,7 @@ function TurnView({
       {approved ? <ApprovedLines result={approved} palette={palette} /> : null}
 
       {reply.state === 'unavailable' ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Text style={[styles.answer, { color: palette.ink }]}>
             Não consegui responder agora. Tente de novo em instantes; a busca
             normal continua.
@@ -887,7 +903,7 @@ function TurnView({
         </Animated.View>
       ) : null}
       {reply.state === 'limit' && reply.limit ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Text style={[styles.answer, { color: palette.ink }]}>
             Você usou as perguntas{' '}
             {reply.limit.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat
@@ -900,7 +916,7 @@ function TurnView({
         </Animated.View>
       ) : null}
       {reply.state === 'stopped' && !reply.text ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Text style={[styles.answer, { color: palette.muted }]}>
             Você parou a resposta.
           </Text>
@@ -911,7 +927,7 @@ function TurnView({
         <Animated.View
           key={`texto-${turn.shown}`}
           entering={turn.versions.length > 1 ? SWAP : IN}
-          layout={SETTLE}
+          layout={settle}
         >
           <AnswerText
             text={answer}
@@ -925,13 +941,13 @@ function TurnView({
         </Animated.View>
       ) : null}
       {approved ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <AnswerText text={answer} count={0} palette={palette} />
         </Animated.View>
       ) : null}
 
       {reply.done?.chips.length ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <FilterChips
             chips={reply.done.chips.filter(
               (c) => !reply.removed.includes(c.key)
@@ -946,7 +962,7 @@ function TurnView({
 
       {/* Busca refeita sem bares (o design não desenha): a frase no lugar. */}
       {reply.removed.length && reply.bars.length && !bars.length ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Text
             style={[styles.note, { color: palette.muted, textAlign: 'left' }]}
           >
@@ -957,9 +973,9 @@ function TurnView({
 
       {/* Os cards chegam com a ferramenta, antes do texto. */}
       {bars.length ? (
-        <Animated.View layout={SETTLE} style={{ gap: 10 }}>
+        <Animated.View layout={settle} style={{ gap: 10 }}>
           {bars.map((bar, i) => (
-            <Animated.View key={bar.id} entering={BAR_IN[i]} layout={SETTLE}>
+            <Animated.View key={bar.id} entering={BAR_IN[i]} layout={settle}>
               <CitedBar
                 ref={(view) => cardRef(bar.id, view)}
                 bar={bar}
@@ -975,7 +991,7 @@ function TurnView({
       ) : null}
 
       {reply.done?.sources.length ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Sources
             label={sourcesLabel(reply.done.sources, reply.done.chips, now)}
             sources={reply.done.sources}
@@ -992,7 +1008,7 @@ function TurnView({
       {/* Um só cartão do pedir ao confirmar: "Confirmar" vira o giro nele. */}
       {proposal && (!decision || decision.kind === 'sending') ? (
         <>
-          <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
+          <Animated.View entering={IN} exiting={OUT} layout={settle}>
             <ConfirmCard
               proposal={proposal}
               values={isLast ? toggles : proposal.actions.map((a) => a.on)}
@@ -1004,7 +1020,7 @@ function TurnView({
               onRefuse={onRefuse}
             />
           </Animated.View>
-          <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
+          <Animated.View entering={IN} exiting={OUT} layout={settle}>
             <Text style={[styles.note, { color: palette.muted }]}>
               Nada é marcado sem você confirmar.
             </Text>
@@ -1012,7 +1028,7 @@ function TurnView({
         </>
       ) : null}
       {decision?.kind === 'refused' ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <DecisionLine
             approved={false}
             label="Você recusou · nada foi feito"
@@ -1023,7 +1039,7 @@ function TurnView({
       ) : null}
 
       {approved?.going?.ok && approved.going.code && proposal ? (
-        <Animated.View entering={CODE_IN} layout={SETTLE}>
+        <Animated.View entering={CODE_IN} layout={settle}>
           <CodeCard
             code={approved.going.code}
             title={approved.going.eventTitle}
@@ -1042,7 +1058,7 @@ function TurnView({
       (reply.text || approved) &&
       !(busy && isLast) &&
       !(proposal && (!decision || decision.kind === 'sending')) ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} layout={settle}>
           <Actions
             feedback={reply.feedback}
             version={versionLabel(turn)}
