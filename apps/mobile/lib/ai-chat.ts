@@ -1,6 +1,7 @@
 import type {
   ChatBar,
   ChatEvent,
+  ConfirmFailure,
   ConfirmResult,
   FilterChip,
   Proposal,
@@ -468,7 +469,7 @@ export function confirmText(result: ConfirmResult) {
   if (result.remind?.ok)
     parts.push('O lembrete aparece em Avisos no dia do jogo.')
   const failed = [result.going, result.call, result.remind].filter(
-    (r): r is { ok: false; reason: string } => r !== null && !r.ok
+    (r): r is ConfirmFailure => r !== null && !r.ok
   )
   for (const f of failed) parts.push(f.reason)
   return parts.join(' ')
