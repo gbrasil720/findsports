@@ -3,6 +3,7 @@ import { describe, expect, it } from 'bun:test'
 import { converse, trimHistory, verifyCitations } from './chat'
 import {
   type Caller,
+  nearOnly,
   runTool,
   type SearchBar,
   type ToolState
@@ -154,6 +155,16 @@ describe('conversa de uma mensagem', () => {
     expect(ran).toBe(3)
     expect(result.reply.toolCalls).toHaveLength(3)
     expect(bodies[1]?.tools.map((t) => t.function.name)).toEqual(['responder'])
+  })
+})
+
+describe('bairro', () => {
+  it('"perto de X" não filtra; "na X" filtra', () => {
+    expect(nearOnly('Quero ver o jogo perto de Pinheiros', 'Pinheiros')).toBe(
+      true
+    )
+    expect(nearOnly('bar perto da Vila Madalena', 'vila madalena')).toBe(true)
+    expect(nearOnly('bar na Vila Madalena', 'Vila Madalena')).toBe(false)
   })
 })
 
