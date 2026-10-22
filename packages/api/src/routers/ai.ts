@@ -1,26 +1,42 @@
-import { and, db, eq } from '@findsports_oficial/db'
-import { aiAction, aiRun } from '@findsports_oficial/db/schema/ai'
+import { and, db, eq, isNull } from '@findsports_oficial/db'
+import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
+import type { Context } from '../context'
 import { fanProcedure, router } from '../index'
 import {
   type ChatTurn,
   converse,
   MAX_HISTORY,
-  MAX_MESSAGE_CHARS
+  MAX_MESSAGE_CHARS,
+  PROPOSAL_RULE
 } from '../lib/ai/chat'
 import {
   contextCaller,
+  dateOf,
+  gameTitle,
+  hour,
+  type PendingProposal,
+  PROPOSAL_NAMES,
   runTool,
   type SearchArgs,
   type SearchBar,
   type ToolState
 } from '../lib/ai/chat-tools'
+import {
+  type ChatEvent,
+  type Emit,
+  eventQueue,
+  type Proposal
+} from '../lib/ai/events'
 import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import { aiGate, runAi } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
+import { createFriendCall } from '../lib/friend-calls'
+import { attendanceRouter } from './attendance'
+import { recommendationsRouter } from './recommendations'
 
 /*
  * Busca com IA do app (tela 2h, WEB-400), só para torcedor. A busca normal
@@ -88,6 +104,239 @@ async function readGate(userId: string, now: Date) {
   return { blocked: null, gate, allowance }
 }
 
+const originInput = z
+  .object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180)
+  })
+  .nullable()
+  .default(null)
+
+const converseInput = z.object({
+  message: z.string().trim().min(1).max(MAX_MESSAGE_CHARS),
+  history: z
+    .array(turn)
+    .max(MAX_HISTORY * 2)
+    .default([]),
+  origin: originInput,
+  placeLabel: z.string().trim().max(80).nullable().default(null),
+  radiusKm: z.number().int().min(1).max(50).optional(),
+  day: z.enum(['today', 'tomorrow']).nullable().default(null),
+  useTastes: z.boolean().default(false),
+  redo: z.boolean().optional()
+})
+
+type FanContext = Context & {
+  session: NonNullable<Context['session']>
+}
+
+/** "Meus gostos": esportes, times e raio do perfil, como dado para o modelo. */
+async function readTastes(ctx: FanContext) {
+  const caller = contextCaller(ctx)
+  const [sports, teams] = await Promise.all([
+    caller.getMyPreferences(),
+    caller.getMyTeams()
+  ])
+  return {
+    sports: sports.map((s) => s.sport.name),
+    teams: teams.map((t) => t.name),
+    radiusKm: ctx.session.user.searchRadiusKm ?? null
+  }
+}
+
+const GOING_LABEL = 'Marcar “Vou assistir aqui”'
+
+/** A proposta como o app a recebe (24d). */
+export function toProposal(id: string, p: PendingProposal): Proposal {
+  return {
+    id,
+    bar: p.bar,
+    game: p.game,
+    actions: [
+      ...(p.offersGoing
+        ? [
+            {
+              kind: 'going' as const,
+              label: p.issuesCode
+                ? `${GOING_LABEL} e gerar seu código`
+                : GOING_LABEL,
+              on: true
+            }
+          ]
+        : []),
+      ...(p.friend
+        ? [
+            {
+              kind: 'call' as const,
+              friendId: p.friend.id,
+              label: `Chamar ${p.friend.name}`,
+              on: true
+            }
+          ]
+        : []),
+      // Sem push (WEB-416): o lembrete aparece em Avisos no dia do jogo.
+      {
+        kind: 'remind' as const,
+        label: 'Me lembrar no dia do jogo',
+        on: p.remind
+      }
+    ]
+  }
+}
+
+/**
+ * Uma mensagem do chat contada em eventos (R24). Trava, sorteio, reserva e
+ * `ai_run` são os de `ai.chat`; a diferença é que cada passo sai quando
+ * acontece. As propostas viram `ai_proposal` depois de a linha do `ai_run`
+ * existir, e só então saem para a tela: o "Confirmar" sempre acha a proposta.
+ */
+async function talk(
+  ctx: FanContext,
+  input: z.infer<typeof converseInput>,
+  emit: Emit
+) {
+  const started = performance.now()
+  const now = new Date()
+  const userId = ctx.session.user.id
+  const result = await readGate(userId, now)
+  if (result.blocked) {
+    emit(
+      result.blocked.kind === 'limit'
+        ? {
+            type: 'blocked',
+            reason: 'limit',
+            scope: result.blocked.scope,
+            resumesAt: result.blocked.resumesAt
+          }
+        : { type: 'blocked', reason: 'unavailable' }
+    )
+    return
+  }
+
+  const weights = await getAppConfig('ai.variant_weights')
+  const variant = assignVariant(userId, CHAT_EXPERIMENT, weights.chat)
+  const models = chatModels(variant)
+  const tastes = input.useTastes ? await readTastes(ctx) : null
+  const radiusKm = input.radiusKm ?? tastes?.radiusKm ?? 3
+  const state: ToolState = {
+    bars: new Map(),
+    opened: new Map(),
+    lastSearch: null,
+    proposals: []
+  }
+  const toolCtx = {
+    caller: contextCaller(ctx),
+    message: input.message,
+    origin: input.origin,
+    radiusKm,
+    now,
+    userId,
+    day: input.day,
+    placeLabel: input.placeLabel,
+    emit
+  }
+  const quote = (list: string[]) => list.map((v) => `«${v}»`).join(', ')
+  const context = [
+    PROPOSAL_RULE,
+    ...(input.placeLabel
+      ? [`A busca parte de «${input.placeLabel}», raio de ${radiusKm} km.`]
+      : []),
+    ...(input.day
+      ? [
+          `O torcedor escolheu o dia ${input.day === 'today' ? 'hoje' : 'amanhã'} (${dateOf(input.day, now)}): use essa data na busca, a menos que ele peça outro dia.`
+        ]
+      : []),
+    ...(tastes && (tastes.sports.length || tastes.teams.length)
+      ? [
+          `Gostos do torcedor (use quando o pedido não disser outra coisa): esportes ${quote(tastes.sports) || 'nenhum'}; times ${quote(tastes.teams) || 'nenhum'}.`
+        ]
+      : [])
+  ]
+
+  try {
+    const outcome = await runAi(
+      { userId, feature: 'chat', variant, assignedModel: models[0] },
+      result.gate.deps,
+      async (call) => {
+        const turnResult = await converse(
+          input.message,
+          input.history as ChatTurn[],
+          {
+            call,
+            models,
+            runTool: (name, args, callId) =>
+              runTool(name, args, toolCtx, state, callId),
+            state,
+            now,
+            hasOrigin: input.origin !== null,
+            context,
+            temperature: input.redo ? 0.7 : undefined,
+            emit
+          }
+        )
+        return {
+          value: turnResult.reply,
+          status: turnResult.status,
+          servedModel: turnResult.servedModel,
+          useful: true
+        }
+      }
+    )
+    const reply = outcome.value
+    if (reply.invented.length)
+      console.warn(
+        JSON.stringify({
+          msg: 'ai.converse.invented_bar',
+          runId: outcome.runId,
+          ids: reply.invented
+        })
+      )
+    for (const p of state.proposals ?? []) {
+      const [row] = await db
+        .insert(aiProposal)
+        .values({
+          runId: outcome.runId,
+          userId,
+          barId: p.bar.id,
+          eventId: p.game.id,
+          offersGoing: p.offersGoing,
+          friendId: p.friend?.id ?? null
+        })
+        .returning({ id: aiProposal.id })
+      if (row) emit({ type: 'proposal', proposal: toProposal(row.id, p) })
+    }
+    emit({
+      type: 'done',
+      runId: outcome.runId,
+      status: outcome.status,
+      thoughtMs: Math.round(performance.now() - started),
+      searches: reply.toolCalls.filter((n) => !PROPOSAL_NAMES.has(n)).length,
+      chips: reply.search?.chips ?? [],
+      sources: reply.bars.map((b) => ({
+        barId: b.id,
+        name: b.name,
+        photoUrl: b.photo_url ?? null,
+        why: state.opened.has(b.id) ? 'Página do bar · agenda' : 'Agenda do bar'
+      })),
+      suggestions: reply.suggestions,
+      remainingToday: result.allowance.remainingToday - 1
+    })
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        msg: 'ai.converse.failed',
+        error: error instanceof Error ? error.message : String(error)
+      })
+    )
+    emit({ type: 'blocked', reason: 'unavailable' })
+  }
+}
+
+const failed = (error: unknown) => ({
+  ok: false as const,
+  reason: error instanceof Error ? error.message : 'Não deu certo.'
+})
+
 async function ownRun(runId: string, userId: string) {
   const [row] = await db
     .select({ runId: aiRun.runId })
@@ -112,6 +361,117 @@ export const aiRouter = router({
     }
   }),
 
+  /**
+   * A conversa da Rodada 24: os eventos chegam um a um pelo
+   * `httpBatchStreamLink` (`ChatEvent`, `lib/ai/events.ts`).
+   */
+  converse: fanProcedure.input(converseInput).mutation(async function* ({
+    ctx,
+    input
+  }): AsyncGenerator<ChatEvent> {
+    const queue = eventQueue<ChatEvent>()
+    const work = talk(ctx, input, queue.push).finally(queue.close)
+    yield* queue.drain()
+    await work
+  }),
+
+  /**
+   * "Confirmar" de uma proposta (24d → 24e). Vale uma vez e só para quem a
+   * recebeu; cada ação feita grava `ai_action`. Ação que falha não desfaz as
+   * outras: a resposta diz o que deu certo.
+   */
+  confirm: fanProcedure
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        proposalId: z.string().uuid(),
+        actions: z.object({
+          going: z.boolean(),
+          call: z.boolean(),
+          remind: z.boolean()
+        })
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      const now = new Date()
+      const [p] = await db
+        .update(aiProposal)
+        .set({ usedAt: now })
+        .where(
+          and(
+            eq(aiProposal.id, input.proposalId),
+            eq(aiProposal.runId, input.runId),
+            eq(aiProposal.userId, userId),
+            isNull(aiProposal.usedAt)
+          )
+        )
+        .returning()
+      if (!p)
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Proposta não encontrada ou já confirmada.'
+        })
+      const record = (kind: 'going' | 'call' | 'remind') =>
+        db.insert(aiAction).values({ runId: p.runId, kind, barId: p.barId })
+
+      let going = null
+      if (input.actions.going && p.offersGoing) {
+        try {
+          const marked = await attendanceRouter
+            .createCaller(ctx)
+            .set({ eventId: p.eventId, attending: true })
+          await record('going')
+          const b = await contextCaller(ctx).getById({ id: p.barId })
+          const game = b.events.find((e) => e.id === p.eventId)
+          going = {
+            ok: true as const,
+            code: marked.code,
+            eventTitle: gameTitle(game) ?? '',
+            startsAt: game ? new Date(game.startsAt).toISOString() : '',
+            barName: b.name,
+            neighborhood: b.neighborhood ?? null
+          }
+        } catch (error) {
+          going = failed(error)
+        }
+      }
+
+      let call = null
+      if (input.actions.call && p.friendId) {
+        try {
+          const sent = await createFriendCall({
+            fromUserId: userId,
+            toUserId: p.friendId,
+            eventId: p.eventId,
+            barId: p.barId
+          })
+          if (sent.ok) await record('call')
+          call = sent.ok
+            ? { ok: true as const, friendName: sent.friendName }
+            : { ok: false as const, reason: sent.reason }
+        } catch (error) {
+          call = failed(error)
+        }
+      }
+
+      let remind = null
+      if (input.actions.remind) {
+        try {
+          await recommendationsRouter
+            .createCaller(ctx)
+            .remind({ eventId: p.eventId, on: true })
+          await record('remind')
+          remind = { ok: true as const }
+        } catch (error) {
+          remind = failed(error)
+        }
+      }
+
+      return { going, call, remind, at: hour(now) }
+    }),
+
+  /** Obsoleto: o app novo usa `converse`. Sai depois da migração da tela (w8). */
   chat: fanProcedure
     .input(
       z.object({
@@ -195,9 +555,10 @@ export const aiRouter = router({
         return {
           kind: 'answer',
           runId: outcome.runId,
-          text: reply.text,
+          // O app antigo não lê citação.
+          text: reply.text.replace(/\s*\[\[\d+\]\]/g, ''),
           bars: reply.bars,
-          chips: reply.search?.chips ?? [],
+          chips: reply.search?.chips.map((c) => c.label) ?? [],
           search: reply.search
             ? { ...reply.search.args, neighborhood: reply.search.neighborhood }
             : null,
