@@ -1,10 +1,11 @@
 import { and, db, eq, isNull, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { friendship } from '@findsports_oficial/db/schema/social'
+import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { fanProcedure, router } from '../index'
 import { readMyGames } from '../lib/attendance'
+import { readCallNotices } from '../lib/friend-calls'
 import {
   canSeeActivity,
   ensureSocialIdentity,
@@ -20,6 +21,7 @@ import {
   relationsWith,
   USERNAME_PATTERN
 } from '../lib/friends'
+import { attendanceRouter } from './attendance'
 
 /*
  * Amigos (S1 do design do app: 11a lista, 11b busca, 11c código, 11d perfil;
@@ -240,7 +242,7 @@ export const friendsRouter = router({
   notices: fanProcedure.query(async ({ ctx }) => {
     const me = ctx.session.user.id
     const since = new Date(Date.now() - NOTICE_DAYS * 86_400_000)
-    const [requests, accepted] = await Promise.all([
+    const [requests, accepted, calls] = await Promise.all([
       db
         .select({ ...PERSON, at: friendship.createdAt })
         .from(friendship)
@@ -264,7 +266,9 @@ export const friendsRouter = router({
             listable
           )
         )
-        .orderBy(sql`${friendship.acceptedAt} desc`)
+        .orderBy(sql`${friendship.acceptedAt} desc`),
+      // O chamado de amigo (Rodada 24): recebidos e os que viraram "Vou também".
+      readCallNotices(me, NOTICE_DAYS)
     ])
     const ids = [...requests, ...accepted].map((p) => p.id)
     const [mutual, faces] = await Promise.all([
@@ -277,8 +281,60 @@ export const friendsRouter = router({
       mutual: mutual.get(person.id) ?? 0,
       mutualInitials: faces.get(person.id) ?? []
     })
-    return { requests: requests.map(shape), accepted: accepted.map(shape) }
+    return {
+      requests: requests.map(shape),
+      accepted: accepted.map(shape),
+      ...calls
+    }
   }),
+
+  /**
+   * Resposta ao chamado de amigo, só por quem recebeu. "Vou também" marca
+   * presença pelo mesmo caminho de "Vou assistir aqui" (`attendance.set`) e
+   * devolve o código do balcão quando o bar emite; "Agora não" só grava a
+   * resposta, e quem chamou não recebe aviso.
+   */
+  respondCall: fanProcedure
+    .input(
+      z.object({
+        callId: z.string().uuid(),
+        answer: z.enum(['going', 'not_now'])
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const me = ctx.session.user.id
+      const [call] = await db
+        .select({ eventId: friendCall.eventId, status: friendCall.status })
+        .from(friendCall)
+        .where(
+          and(eq(friendCall.id, input.callId), eq(friendCall.toUserId, me))
+        )
+      if (!call)
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Chamado não encontrado.'
+        })
+      if (call.status !== 'pending')
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Você já respondeu esse chamado.'
+        })
+      const marked =
+        input.answer === 'going'
+          ? await attendanceRouter
+              .createCaller(ctx)
+              .set({ eventId: call.eventId, attending: true })
+          : null
+      await db
+        .update(friendCall)
+        .set({ status: input.answer, respondedAt: new Date() })
+        .where(eq(friendCall.id, input.callId))
+      return {
+        status: input.answer,
+        eventId: call.eventId,
+        code: marked?.code ?? null
+      }
+    }),
 
   /** Busca por nome ou `@` (11b): todos, amigos de amigos ou da sua cidade. */
   search: fanProcedure
