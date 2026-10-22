@@ -256,6 +256,7 @@ describe('eventos da conversa (R24)', () => {
     )
     expect(brief).toEqual([
       'step:understood:done',
+      'step:rank:todo',
       'tool:c1:run',
       'step:search:run',
       'step:game:done',
@@ -271,7 +272,7 @@ describe('eventos da conversa (R24)', () => {
       label: 'Entendi o pedido',
       tags: ['Corinthians', 'Telão', 'Área externa']
     })
-    expect(events[1]).toMatchObject({
+    expect(events[2]).toMatchObject({
       name: 'buscar_bares',
       label: 'Bares com o jogo',
       params: [
@@ -281,13 +282,13 @@ describe('eventos da conversa (R24)', () => {
         ['tem', 'telão, área externa']
       ]
     })
-    expect(events[3]).toMatchObject({
+    expect(events[4]).toMatchObject({
       detail: 'Corinthians × Palmeiras · 21:30 · Brasileirão'
     })
-    expect(events[4]).toMatchObject({
+    expect(events[5]).toMatchObject({
       output: '2 bares encontrados, filtrando…'
     })
-    expect(events[7]).toMatchObject({
+    expect(events[8]).toMatchObject({
       output: '2 bares · 0,8 a 2,3 km',
       params: [
         ['jogo', 'Corinthians × Palmeiras · 21:30'],
@@ -296,7 +297,7 @@ describe('eventos da conversa (R24)', () => {
         ['tem', 'telão, área externa']
       ]
     })
-    expect(events[5]).toMatchObject({
+    expect(events[6]).toMatchObject({
       bars: [{ id: ZE.id, distanceKm: 0.8, ratingPercent: 87 }, { id: CASA.id }]
     })
     expect(events.at(-1)).toEqual({

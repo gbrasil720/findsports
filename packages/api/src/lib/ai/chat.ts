@@ -334,6 +334,14 @@ export async function converse(
         state: 'done',
         ...(tags.length ? { tags } : {})
       })
+      // Busca (não proposta) termina comparando: o passo aparece já, vazio.
+      if (!PROPOSAL_TOOLS.some((t) => t.function.name === first.function.name))
+        emit({
+          type: 'step',
+          id: 'rank',
+          label: 'Comparar e ordenar',
+          state: 'todo'
+        })
     }
     messages.push({
       role: 'assistant',
