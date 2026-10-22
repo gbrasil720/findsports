@@ -747,13 +747,15 @@ export default function AiSearch() {
           placeholder={placeholder}
           busy={busy}
           editable={!blocked && !(off && !last)}
+          // Os chips de contexto aparecem no início (24a); na conversa o
+          // contexto continua valendo e o "+" o muda, como no design.
           place={
-            placeOn && placeLabel
+            !turns.length && placeOn && placeLabel
               ? { label: placeLabel, onRemove: () => setPlaceOn(false) }
               : null
           }
           day={
-            day
+            !turns.length && day
               ? {
                   label: day === 'today' ? 'Hoje' : 'Amanhã',
                   onRemove: () => setDay(null)
