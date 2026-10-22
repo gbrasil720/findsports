@@ -918,13 +918,13 @@ function CallCard({
             palette={palette}
           />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}>
+            <Text style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}>
               {notice.kind === 'call'
                 ? `${first} te chamou pro jogo`
                 : `${first} vai também`}
             </Text>
             <Text
-              style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+              style={[text(12.5, 'Regular', 1.25), { color: palette.muted }]}
             >
               {callLine(call, now)}
             </Text>
