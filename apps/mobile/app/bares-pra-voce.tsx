@@ -39,7 +39,7 @@ import {
   EASE,
   haptic,
   POP,
-  POP_LATE,
+  popFrom,
   ScalePress,
   SWAP
 } from '@/components/motion'
@@ -97,6 +97,9 @@ type Place = Coordinates & { name?: string }
 
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
 const MATCH_OUT = FadeOut.duration(140)
+// O "COMBINOU!" e o confete chegam logo atrás do par, não depois de tudo.
+const MATCH_TITLE = popFrom(0.9, 90)
+const CONFETTI_IN = popFrom(0.9, 150)
 // As miniaturas da 23f/23h entram em cascata (tela rara: cabe o capricho).
 const STRIP_IN = [0, 1, 2, 3, 4].map((i) =>
   FadeInDown.delay(i * 50)
@@ -637,7 +640,7 @@ function Match({
             <Icon name="fan" size={22} color={ACID} accent={ACID} />
           </View>
         </Animated.View>
-        <Animated.View entering={POP_LATE} style={{ alignItems: 'center' }}>
+        <Animated.View entering={MATCH_TITLE} style={{ alignItems: 'center' }}>
           <Title
             lines={[['COM', 'BINOU!']]}
             size={78}
@@ -872,7 +875,7 @@ function Confetti() {
   ]
   return (
     <Animated.View
-      entering={POP_LATE}
+      entering={CONFETTI_IN}
       style={StyleSheet.absoluteFill}
       pointerEvents="none"
     >
