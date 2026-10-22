@@ -38,6 +38,7 @@ import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
   EASE,
+  ErrorText,
   haptic,
   POP,
   POP_FAST,
@@ -1657,9 +1658,9 @@ function Locate({
           ]}
         />
       </View>
-      {error ? (
-        <Text style={[text(13.5), { color: palette.live }]}>{error}</Text>
-      ) : null}
+      <ErrorText style={[text(13.5), { color: palette.live }]}>
+        {error}
+      </ErrorText>
       <View style={styles.chipsWrap}>
         {(places.data ?? []).map((p) => (
           <ScalePress
