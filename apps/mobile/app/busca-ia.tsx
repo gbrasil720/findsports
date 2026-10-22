@@ -640,19 +640,14 @@ function TurnView({
             </Animated.View>
           ) : null}
           {bars.map((bar, i) => (
-            <Animated.View
+            <AnswerRow
               key={bar.id}
-              entering={ROW_IN[i]}
-              exiting={ROW_OUT}
-              layout={REORDER}
-            >
-              <BarRow
-                bar={bar}
-                now={now}
-                palette={palette}
-                onPress={() => onBar(bar)}
-              />
-            </Animated.View>
+              index={i}
+              bar={bar}
+              now={now}
+              palette={palette}
+              onPress={() => onBar(bar)}
+            />
           ))}
           <Animated.View entering={IN} style={styles.rate}>
             <Text style={[text(12, 'Regular', 1.3), { color: palette.muted }]}>
@@ -673,6 +668,32 @@ function TurnView({
         </>
       ) : null}
     </>
+  )
+}
+
+/**
+ * Um bar da resposta. A entrada fica a da posição em que ele nasceu: com
+ * "Mais barato" o índice muda, e um `entering` novo faria o Reanimated
+ * refazer a entrada (a linha sumia e voltava) em vez de só deslizar.
+ */
+function AnswerRow({
+  index,
+  bar,
+  now,
+  palette,
+  onPress
+}: {
+  index: number
+  bar: SearchBar
+  now: number
+  palette: Palette
+  onPress: () => void
+}) {
+  const [enter] = useState(() => ROW_IN[index])
+  return (
+    <Animated.View entering={enter} exiting={ROW_OUT} layout={REORDER}>
+      <BarRow bar={bar} now={now} palette={palette} onPress={onPress} />
+    </Animated.View>
   )
 }
 
