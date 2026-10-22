@@ -10,6 +10,7 @@ import {
   View
 } from 'react-native'
 import Animated, {
+  Easing,
   type EntryExitAnimationFunction,
   FadeIn,
   FadeOut,
@@ -17,7 +18,6 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSequence,
   withTiming
 } from 'react-native-reanimated'
 import Svg, {
@@ -142,11 +142,12 @@ export function AiCoach({
       withDelay(
         500,
         withRepeat(
-          withSequence(
-            withTiming(1.08, { duration: 900, easing: EASE }),
-            withTiming(1, { duration: 900, easing: EASE })
-          ),
-          -1
+          withTiming(1.08, {
+            duration: 900,
+            easing: Easing.inOut(Easing.sin)
+          }),
+          -1,
+          true
         )
       )
     )
