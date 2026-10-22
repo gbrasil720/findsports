@@ -3,7 +3,9 @@
 -- do Rafael), Thiago para achar na busca. Marina marcou "Vou assistir aqui"
 -- no jogo mais próximo do Bar do Zé (scripts/bar-do-ze.sql) e teve código
 -- validado lá e em Casa 92 e Aspicuelta 40 (scripts/conquistas.sql, se o
--- torcedor também tiver ido: bares em comum). Só para o banco local.
+-- torcedor também tiver ido: bares em comum). Marina chamou o torcedor para
+-- esse jogo (chamado pendente em Avisos) e o torcedor chamou o Rafael, que
+-- disse "Vou também" (Rodada 24). Só para o banco local.
 --
 --   docker exec -i findsports_dev psql -U <usuário> -d findsports_dev \
 --     -v ON_ERROR_STOP=1 -v fan=<e-mail do torcedor> < apps/mobile/scripts/amigos.sql
@@ -40,6 +42,19 @@ insert into attendance (user_id, event_id)
 select 'am-marina', e.id from event e
 where e.bar_id = 'b0b0b0b0-0000-4000-8000-000000000e01' and e.starts_at > now() at time zone 'UTC'
 order by e.starts_at limit 1;
+
+-- Chamado de amigo: Marina chamou o torcedor; o Rafael aceitou o do torcedor.
+insert into friend_call (id, from_user_id, to_user_id, event_id, bar_id, status, created_at, responded_at)
+select 'am-call-' || f.k, f.de, f.para, e.id, e.bar_id, f.status, now() - f.ago, f.answered
+from (select e.id, e.bar_id from event e
+  where e.bar_id = 'b0b0b0b0-0000-4000-8000-000000000e01' and e.starts_at > now() at time zone 'UTC'
+  order by e.starts_at limit 1) e,
+(values
+  ('marina', 'am-marina', (select id from "user" where email = :'fan'), 'pending', interval '20 minutes', null::timestamptz),
+  ('rafael', (select id from "user" where email = :'fan'), 'am-rafael', 'going', interval '3 hours', now() - interval '1 hour')
+) as f(k, de, para, status, ago, answered);
+insert into attendance (user_id, event_id)
+select 'am-rafael', event_id from friend_call where id = 'am-call-rafael';
 
 -- E teve o código validado no último jogo que já passou lá.
 insert into reservation (id, event_id, user_id, party_size, status, created_at)
