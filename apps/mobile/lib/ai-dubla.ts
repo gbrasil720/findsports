@@ -1,5 +1,6 @@
 import type { SearchBar } from '@/components/explore'
 import { clock } from './ai-chat'
+import { WORST_ANSWER, WORST_BARS, WORST_CHIPS } from './ai-chat-demo'
 import type {
   ChatEvent,
   ConfirmInput,
@@ -16,10 +17,10 @@ import { env } from './env'
  *
  * Pergunta com "marca" ou "chama" vira a proposta (24d); o resto, a busca
  * com três bares (24c). `?dubla=limite` e `?dubla=fora` respondem o limite e
- * a IA fora do ar. `hold` para no meio da ferramenta (24b) até a pessoa parar.
+ * a IA fora do ar; `?dubla=pior`, o pior caso (`lib/ai-chat-demo.ts`). `hold` para no meio da ferramenta (24b) até a pessoa parar.
  */
 
-export type Dubla = '1' | 'limite' | 'fora'
+export type Dubla = '1' | 'pior' | 'limite' | 'fora'
 
 const wait = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -173,6 +174,11 @@ export async function* dublaConverse(
     return
   }
 
+  if (mode === 'pior') {
+    yield* worst(signal)
+    return
+  }
+
   if (/\b(marca|chama)/i.test(input.message)) {
     yield* proposal(signal, now)
     return
@@ -266,6 +272,76 @@ export async function* dublaConverse(
       lng: -46.6911,
       radiusKm: 3,
       date: today,
+      amenities: [1, 4],
+      neighborhood: null
+    }
+  }
+}
+
+/** Pior caso: tudo no teto (nomes, etiquetas, oito bares, citação fora). */
+async function* worst(signal: AbortSignal): AsyncGenerator<ChatEvent> {
+  const label = 'Entendi o pedido com todos os detalhes que você mandou'
+  yield { type: 'step', id: 's1', label, state: 'run' }
+  await wait(500, signal)
+  yield { type: 'step', id: 's1', label, state: 'done', tags: WORST_CHIPS }
+  yield {
+    type: 'tool',
+    id: 't1',
+    name: 'buscar_bares_com_jogo_e_caracteristicas',
+    label: 'Bares com o jogo, telão, som e área externa coberta',
+    state: 'run',
+    params: [
+      ['jogo', 'Atlético Mineiro × Red Bull Bragantino · 21:30'],
+      ['raio', '10 km de Pinheiros e Vila Madalena'],
+      ['tem', 'telão, som do jogo, área externa, área coberta, pet']
+    ],
+    output: '214 bares encontrados, filtrando por tudo que você pediu…'
+  }
+  await wait(1200, signal)
+  yield {
+    type: 'tool',
+    id: 't1',
+    name: 'buscar_bares_com_jogo_e_caracteristicas',
+    label: 'Bares com o jogo, telão, som e área externa coberta',
+    state: 'done',
+    output: '8 bares · 0,3 a 12,2 km'
+  }
+  yield { type: 'bars', bars: WORST_BARS }
+  const text = WORST_ANSWER.replace(
+    '**Bar e Restaurante Esquina do Torcedor Apaixonado**',
+    '**Bar e Restaurante Esquina do Torcedor Apaixonado** [[1]]'
+  ).replace('**Empório Matilde**', '**Empório Matilde** [[4]] [[9]]')
+  for (const chunk of chunks(text, 6)) {
+    await wait(30, signal)
+    yield { type: 'text', text: chunk }
+  }
+  yield {
+    type: 'done',
+    runId: '00000000-0000-4000-8000-00000000d0b3',
+    status: 'ok',
+    thoughtMs: 61_400,
+    searches: 3,
+    chips: WORST_CHIPS.map((label, i) => ({
+      key: `amenities:${i}`,
+      label,
+      icon: (['team', 'team', 'sport', 'cal', 'tv'] as const)[i] ?? 'beer'
+    })),
+    sources: WORST_BARS.map((b) => ({
+      barId: b.id,
+      name: b.name,
+      photoUrl: null,
+      why: 'Página do bar · agenda, avaliações, características e movimento'
+    })),
+    suggestions: [
+      'Algum desses tem mesa para oito pessoas reservada?',
+      'E se chover, qual é coberto?',
+      'Mais barato que R$ 60 por pessoa'
+    ],
+    remainingToday: 1,
+    search: {
+      lat: -23.5535,
+      lng: -46.6911,
+      radiusKm: 10,
       amenities: [1, 4],
       neighborhood: null
     }

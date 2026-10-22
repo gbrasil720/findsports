@@ -72,6 +72,7 @@ import {
   thoughtLabel,
   versionLabel
 } from '@/lib/ai-chat'
+import { WORST_QUESTION } from '@/lib/ai-chat-demo'
 import type { Dubla } from '@/lib/ai-dubla'
 import type { ConfirmResult } from '@/lib/ai-events'
 import { confirm, converse } from '@/lib/ai-stream'
@@ -339,7 +340,7 @@ export default function AiSearch() {
   useEffect(() => {
     if (!devState || devSent.current) return
     devSent.current = true
-    send(DEV_QUESTION[devState])
+    send(dubla === 'pior' ? WORST_QUESTION : DEV_QUESTION[devState])
   })
 
   // A proposta nova traz os interruptores como a IA sugeriu.
