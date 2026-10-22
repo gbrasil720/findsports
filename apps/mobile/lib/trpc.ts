@@ -23,7 +23,7 @@ const headers = () => {
   return cookie ? { Cookie: cookie } : {}
 }
 
-const trpcClient = createTRPCClient<AppRouter>({
+export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     splitLink({
       // O chat da IA (R24) chega em eventos, um a um: o `fetch` do React
