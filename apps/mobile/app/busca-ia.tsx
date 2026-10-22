@@ -1035,7 +1035,11 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {finished && (reply.text || approved) && !(busy && isLast) ? (
+      {/* Com a confirmação na tela (24d) a resposta ainda não existe: sem ações. */}
+      {finished &&
+      (reply.text || approved) &&
+      !(busy && isLast) &&
+      !(proposal && (!decision || decision.kind === 'sending')) ? (
         <Animated.View entering={IN} layout={SETTLE}>
           <Actions
             feedback={reply.feedback}
