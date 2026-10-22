@@ -149,7 +149,7 @@ export function buildNotices(
     }
     /** `recommendations.notices`: Avisar e Lembrar. */
     alerts?: (BarGame & { publishedAt: string })[]
-    reminders?: BarGame[]
+    reminders?: (BarGame & { remindBeforeMinutes?: number | null })[]
   },
   now: number
 ): Notice[] {
@@ -236,9 +236,15 @@ export function buildNotices(
       title: barGameTitle(game),
       startsAt: game.startsAt
     })
-  // O lembrete só aparece no dia do jogo.
+  // O lembrete aparece no dia do jogo, ou só a partir de N minutos antes
+  // quando foi pedido assim (o "3 h antes" da busca com IA).
   for (const game of input.reminders ?? [])
-    if (dayKey(game.startsAt) === dayKey(now))
+    if (
+      game.remindBeforeMinutes
+        ? now >=
+          new Date(game.startsAt).getTime() - game.remindBeforeMinutes * 60_000
+        : dayKey(game.startsAt) === dayKey(now)
+    )
       notices.push({
         id: `reminder:${game.eventId}`,
         kind: 'reminder',

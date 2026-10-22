@@ -345,7 +345,7 @@ async function* proposal(
           label: 'Chamar Marina Costa',
           on: true
         },
-        { kind: 'remind', label: 'Me lembrar no dia do jogo', on: false }
+        { kind: 'remind', label: 'Me lembrar 3 h antes', on: false }
       ]
     }
   }

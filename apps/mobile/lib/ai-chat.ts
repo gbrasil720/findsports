@@ -467,7 +467,7 @@ export function confirmText(result: ConfirmResult) {
       `${firstName(result.call.friendName)} recebeu seu chamado. Quando tocar em “Vou também”, aparece em quem vai.`
     )
   if (result.remind?.ok)
-    parts.push('O lembrete aparece em Avisos no dia do jogo.')
+    parts.push('O lembrete aparece em Avisos 3 h antes do jogo.')
   const failed = [result.going, result.call, result.remind].filter(
     (r): r is ConfirmFailure => r !== null && !r.ok
   )
