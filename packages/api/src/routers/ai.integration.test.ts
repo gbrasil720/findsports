@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { eq } from '@findsports_oficial/db'
+import { eq, sql } from '@findsports_oficial/db'
 import { aiAction, aiRun } from '@findsports_oficial/db/schema/ai'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { setAiBinding } from '../lib/ai/binding'
@@ -211,5 +211,78 @@ integrationTest(
       kind: 'unavailable'
     })
     expect(log).toHaveLength(0)
+  }
+)
+
+integrationTest(
+  'limites do chat vêm de ai.limits no app_config, não do código',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig, appConfigDefault } = await import(
+      '../lib/app-config'
+    )
+    const seeded = await seedBar('pro', 'active', null)
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    setAiBinding(fakeModel([]))
+    await setAppConfig('ai.enabled', true, null)
+    await setAppConfig(
+      'ai.limits',
+      {
+        ...appConfigDefault('ai.limits'),
+        chatDailyMessages: 2,
+        chatMonthlyMessages: 50
+      },
+      null
+    )
+
+    try {
+      expect(await fan.ai.status()).toEqual({
+        kind: 'ready',
+        remainingToday: 2,
+        remainingMonth: 50
+      })
+      await db.insert(aiRun).values(
+        Array.from({ length: 2 }, () => ({
+          userId: seeded.fanId,
+          feature: 'chat' as const,
+          variant: 'a',
+          assignedModel: CHAT_MODELS.a,
+          status: 'ok' as const,
+          useful: true
+        }))
+      )
+      expect(await fan.ai.status()).toMatchObject({
+        kind: 'limit',
+        scope: 'day'
+      })
+
+      // Teto do mês de todo mundo abaixo do gasto: indisponível para todos.
+      await setAppConfig(
+        'ai.limits',
+        {
+          ...appConfigDefault('ai.limits'),
+          monthlyBudgetUsd: 1,
+          userMonthlyUsd: 0.5
+        },
+        null
+      )
+      await db.insert(aiRun).values({
+        userId: null,
+        feature: 'chat',
+        variant: 'b',
+        assignedModel: CHAT_MODELS.b,
+        status: 'ok',
+        costUsd: 1
+      })
+      expect(await fan.ai.status()).toEqual({ kind: 'unavailable' })
+    } finally {
+      await resetAppConfig('ai.enabled')
+      await resetAppConfig('ai.limits')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await db.execute(
+        sql`DELETE FROM ai_run WHERE user_id IS NULL AND cost_usd = 1`
+      )
+      await seeded.cleanup()
+    }
   }
 )
