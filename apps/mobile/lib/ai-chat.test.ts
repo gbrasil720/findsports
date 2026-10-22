@@ -330,7 +330,7 @@ describe('busca com IA (Rodada 24)', () => {
           eventTitle: 'COR × PAL',
           startsAt: '',
           barName: 'Zé',
-          neighborhood: null
+          neighborhood: 'Vila Madalena'
         },
         call: { ok: true, friendName: 'Marina Costa' },
         remind: null,
