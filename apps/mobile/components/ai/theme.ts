@@ -38,7 +38,7 @@ const AI = {
     tasteRing: 'rgba(18,18,15,.12)',
     switchOn: INK,
     knobOn: ACID,
-    switchOff: 'rgba(18,18,15,.12)',
+    switchOff: 'rgba(18,18,15,0.12)',
     confirmShadow: INK,
     /** Contorno do "Agora não" na confirmação. */
     later: 'rgba(18,18,15,.10)',

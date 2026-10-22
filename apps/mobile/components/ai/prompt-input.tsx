@@ -35,6 +35,20 @@ const ICON_IN: EntryExitAnimationFunction = () => {
   }
 }
 
+// A sombra sai de trás do botão, só por transform.
+const DROP_IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { transform: [{ translateX: 0 }, { translateY: 0 }] },
+    animations: {
+      transform: [
+        { translateX: withTiming(2, { duration: 180, easing: EASE }) },
+        { translateY: withTiming(2, { duration: 180, easing: EASE }) }
+      ]
+    }
+  }
+}
+
 export type ContextChip = { label: string; onRemove: () => void }
 
 export function PromptInput({
@@ -74,7 +88,7 @@ export function PromptInput({
   useEffect(() => {
     progress.set(withTiming(mode, { duration: 180, easing: EASE }))
   }, [mode, progress])
-  const idle = palette.dark ? 'rgba(241,238,230,.12)' : 'rgba(18,18,15,.08)'
+  const idle = palette.dark ? 'rgba(241,238,230,0.12)' : 'rgba(18,18,15,0.08)'
   const button = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
       progress.get(),
@@ -82,13 +96,6 @@ export function PromptInput({
       [idle, ACID, palette.stop]
     )
   }))
-  // A sombra dura (2 pt) sai de trás do botão só quando dá para enviar.
-  const drop = useAnimatedStyle(() => {
-    const out = progress.get() <= 1 ? progress.get() : 2 - progress.get()
-    return {
-      transform: [{ translateX: out * 2 }, { translateY: out * 2 }]
-    }
-  })
 
   return (
     <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.field}>
@@ -191,9 +198,14 @@ export function PromptInput({
           onPress={busy ? onStop : onSend}
           style={styles.sendBox}
         >
-          <Animated.View
-            style={[styles.send, { backgroundColor: palette.sendShadow }, drop]}
-          />
+          {/* A sombra dura (2 pt) só existe com texto: atrás do fundo
+              translúcido do botão parado, ela apareceria. */}
+          {ready ? (
+            <Animated.View
+              entering={DROP_IN}
+              style={[styles.send, { backgroundColor: palette.sendShadow }]}
+            />
+          ) : null}
           <Animated.View style={[styles.send, button]}>
             {busy ? (
               <Animated.View

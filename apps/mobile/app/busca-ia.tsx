@@ -95,7 +95,7 @@ import { trpc } from '@/lib/trpc'
  * atalho "Abrir a busca" leva à busca normal, que continua.
  */
 
-/** Altura do cabeçalho fixo: 17 de respiro + 44 do ícone + 8. */
+/** Altura do cabeçalho fixo (17 de respiro + 44 do ícone + 8) até medir. */
 const HEAD_HEIGHT = 69
 const RECENTS = 'busca-ia-recentes.json'
 
@@ -177,6 +177,8 @@ export default function AiSearch() {
   const [toggles, setToggles] = useState<boolean[]>([])
   const [flash, setFlash] = useState<{ id: string; at: number } | null>(null)
   const [dockHeight, setDockHeight] = useState(150)
+  // O status quebra em duas linhas no início: o cabeçalho cresce.
+  const [headHeight, setHeadHeight] = useState(HEAD_HEIGHT)
   const input = useRef<TextInput>(null)
   const scroll = useRef<ScrollView>(null)
   const content = useRef<View>(null)
@@ -483,7 +485,7 @@ export default function AiSearch() {
     haptic.select()
     card.measureLayout(root, (_x, y) => {
       scroll.current?.scrollTo({
-        y: Math.max(0, y - HEAD_HEIGHT - 12),
+        y: Math.max(0, y - headHeight - 12),
         animated: true
       })
       setFlash({ id: barId, at: Date.now() })
@@ -596,7 +598,7 @@ export default function AiSearch() {
       <ScrollView
         ref={scroll}
         style={[styles.sheet, { backgroundColor: palette.sheet }]}
-        contentContainerStyle={{ paddingTop: HEAD_HEIGHT }}
+        contentContainerStyle={{ paddingTop: headHeight }}
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
@@ -682,7 +684,10 @@ export default function AiSearch() {
         <View style={{ height: dockHeight + 16 }} />
       </ScrollView>
 
-      <View style={[styles.top, { backgroundColor: palette.sheet }]}>
+      <View
+        style={[styles.top, { backgroundColor: palette.sheet }]}
+        onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
+      >
         <AiHeader
           status={subtitle}
           busy={spinning}
