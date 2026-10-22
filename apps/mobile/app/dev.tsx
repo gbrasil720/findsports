@@ -20,6 +20,11 @@ type Item = { code: string; label: string; href?: Href; reload?: true }
 
 const BAR_DO_ZE = 'b0b0b0b0-0000-4000-8000-000000000e01'
 
+const ai = (params: Record<string, string>): Href => ({
+  pathname: '/busca-ia',
+  params: { dubla: '1', ...params }
+})
+
 const SECTIONS: { title: string; items: Item[] }[] = [
   {
     title: '02 Splash',
@@ -115,14 +120,36 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       // tocando num card ou num pino.
       { code: '2d/2e', label: 'Explorar', href: '/explore' },
       { code: '2m', label: 'Favoritos', href: '/favoritos' },
-      // A folha da busca com IA; o limite e a IA fora do ar dependem do
-      // servidor (ver `ai_run` e a chave `ai.enabled`).
-      { code: '2h', label: 'Busca com IA', href: '/busca-ia' },
+      // A folha da busca com IA de verdade (servidor; o limite e a IA fora
+      // do ar dependem de `ai_run` e da chave `ai.enabled`).
+      { code: '2h', label: 'Busca com IA (servidor)', href: '/busca-ia' }
+    ]
+  },
+  {
+    // Rodada 24 com o dublê (`lib/ai-dubla.ts`): sem modelo e sem crédito.
+    title: '24 Busca com IA',
+    items: [
+      { code: '24a', label: 'Início', href: ai({}) },
+      { code: '24b', label: 'Pensando', href: ai({ estado: 'pensando' }) },
+      { code: '24c', label: 'Resposta', href: ai({ estado: 'resposta' }) },
+      { code: '24d', label: 'Confirmar', href: ai({ estado: 'confirmar' }) },
+      { code: '24e', label: 'Feito', href: ai({ estado: 'feito' }) },
       {
-        code: '2h',
-        label: 'Busca com IA (pior caso)',
-        href: { pathname: '/busca-ia', params: { demo: 'pior' } }
-      }
+        code: '24·',
+        label: 'Pior caso',
+        href: ai({ estado: 'resposta', dubla: 'pior' })
+      },
+      {
+        code: '24·',
+        label: 'Limite do dia',
+        href: ai({ estado: 'resposta', dubla: 'limite' })
+      },
+      {
+        code: '24·',
+        label: 'IA fora do ar',
+        href: ai({ estado: 'resposta', dubla: 'fora' })
+      },
+      { code: 't24c', label: 'Peças do chat', href: '/ai-pecas' }
     ]
   },
   {
