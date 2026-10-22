@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow, initials, type Palette } from '@/components/explore'
-import { haptic, usePressScale } from '@/components/motion'
+import { haptic, usePress } from '@/components/motion'
 import { ACID, HOT, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
@@ -118,7 +118,7 @@ export function AddButton({
   busy?: boolean
   onPress: () => void
 }) {
-  const press = usePressScale(0.97)
+  const press = usePress(3, 3)
   if (relation === 'self') return null
   if (relation === 'friends')
     return (
@@ -163,14 +163,15 @@ export function AddButton({
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
-      <Animated.View style={press.style}>
-        <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
-        <View style={[styles.add, busy && { opacity: 0.6 }]}>
-          <Icon name="userplus" size={15} color={INK} accent={INK} />
-          <Text style={[text(13, 'Bold'), { color: INK }]}>
-            {relation === 'received' ? 'Aceitar' : 'Adicionar'}
-          </Text>
-        </View>
+      {/* A sombra fica parada e o botão afunda sobre ela. */}
+      <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
+      <Animated.View
+        style={[styles.add, busy && { opacity: 0.6 }, press.style]}
+      >
+        <Icon name="userplus" size={15} color={INK} accent={INK} />
+        <Text style={[text(13, 'Bold'), { color: INK }]}>
+          {relation === 'received' ? 'Aceitar' : 'Adicionar'}
+        </Text>
       </Animated.View>
     </Pressable>
   )
