@@ -279,11 +279,25 @@ export default function TwoFactorSetup() {
         ))}
       </View>
       <View style={styles.actions}>
-        <TextLink
-          label={copied === 'codes' ? 'Copiados' : 'Copiar'}
-          underline
-          onPress={() => copy('codes', codesText)}
-        />
+        {/* A largura de "Copiados" fica reservada: a troca não empurra
+            "Compartilhar". */}
+        <View>
+          <View
+            style={{ opacity: 0 }}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <TextLink label="Copiados" underline onPress={() => {}} />
+          </View>
+          <View style={StyleSheet.absoluteFill}>
+            <TextLink
+              label={copied === 'codes' ? 'Copiados' : 'Copiar'}
+              underline
+              onPress={() => copy('codes', codesText)}
+            />
+          </View>
+        </View>
         <TextLink
           label="Compartilhar"
           underline
