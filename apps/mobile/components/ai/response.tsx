@@ -102,7 +102,7 @@ export const CitedBar = forwardRef<
   useEffect(() => {
     if (!flash) return
     glow.set(1)
-    glow.set(withTiming(0, { duration: 900, easing: EASE }))
+    glow.set(withTiming(0, { duration: 600, easing: EASE }))
   }, [flash, glow])
   const ring = useAnimatedStyle(() => ({ opacity: glow.get() }))
   const press = usePressScale(0.985)

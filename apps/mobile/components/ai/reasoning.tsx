@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
+  type EntryExitAnimationFunction,
   FadeIn,
   FadeInDown,
   FadeOut,
@@ -9,7 +10,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { EASE, haptic, POP_FAST } from '@/components/motion'
+import { EASE, haptic } from '@/components/motion'
 import { Icon, INK, text } from '@/components/ui'
 import type { Step, Tool } from '@/lib/ai-chat'
 import { AiIcon } from './icons'
@@ -27,6 +28,17 @@ import { ToolCard } from './tool'
 const STEP_IN = FadeInDown.duration(220)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 6 }] })
+// O passo que termina: o check cresce de 0,6 sem passar do ponto.
+const CHECK_IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.6 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 120 }),
+      transform: [{ scale: withTiming(1, { duration: 200, easing: EASE }) }]
+    }
+  }
+}
 const FOLD_OUT = FadeOut.duration(150)
 const FOLD_IN = FadeIn.duration(200)
 const RESIZE = LinearTransition.duration(240).easing(EASE)
@@ -129,7 +141,7 @@ function StepRow({
     <Animated.View entering={STEP_IN} style={styles.step}>
       <View style={styles.rail}>
         {done ? (
-          <Animated.View entering={POP_FAST} style={styles.check}>
+          <Animated.View entering={CHECK_IN} style={styles.check}>
             <Icon name="check" size={10} color={INK} accent={INK} />
           </Animated.View>
         ) : (

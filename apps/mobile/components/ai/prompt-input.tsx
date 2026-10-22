@@ -5,7 +5,6 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming
 } from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
@@ -22,15 +21,14 @@ import type { AiPalette } from './theme'
  * parar enquanto a resposta chega.
  */
 
-// O ícone troca crescendo, sem transparência (o botão fica sobre o vidro).
+// O ícone troca crescendo, sem transparência (o botão fica sobre o vidro)
+// e sem passar do ponto: é troca de estado, não gesto.
 const ICON_IN: EntryExitAnimationFunction = () => {
   'worklet'
   return {
-    initialValues: { transform: [{ scale: 0.5 }] },
+    initialValues: { transform: [{ scale: 0.6 }] },
     animations: {
-      transform: [
-        { scale: withSpring(1, { duration: 260, dampingRatio: 0.8 }) }
-      ]
+      transform: [{ scale: withTiming(1, { duration: 180, easing: EASE }) }]
     }
   }
 }
