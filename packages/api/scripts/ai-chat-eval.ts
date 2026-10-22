@@ -363,7 +363,7 @@ async function main() {
         for (const t of c.times ?? [])
           if (
             !chips.some((chip) =>
-              chip
+              chip.label
                 .toLocaleLowerCase('pt-BR')
                 .includes(t.toLocaleLowerCase('pt-BR').slice(0, 5))
             )
