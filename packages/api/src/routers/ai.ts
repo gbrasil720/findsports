@@ -27,6 +27,7 @@ import {
 } from '../lib/ai/chat-tools'
 import {
   type ChatEvent,
+  type ConfirmFailure,
   type Emit,
   eventQueue,
   type Proposal
@@ -326,10 +327,28 @@ async function talk(
   })
 }
 
-const failed = (error: unknown) => ({
-  ok: false as const,
-  reason: error instanceof Error ? error.message : 'Não deu certo.'
-})
+const CALL_FAILURES: Record<'not_friends' | 'duplicate' | 'past_game', string> =
+  {
+    not_friends: 'Vocês não são amigos na Onside.',
+    duplicate: 'Você já chamou essa pessoa para este jogo.',
+    past_game: 'Esse jogo já começou.'
+  }
+
+/**
+ * A falha de uma ação para a tela: a frase de uma recusa (`TRPCError`, que já
+ * é escrita para o torcedor) ou texto fixo. Mensagem interna não sai.
+ */
+function failed(error: unknown): ConfirmFailure {
+  if (error instanceof TRPCError)
+    return { ok: false, code: 'refused', reason: error.message }
+  console.error(
+    JSON.stringify({
+      msg: 'ai.confirm.failed',
+      error: error instanceof Error ? error.message : String(error)
+    })
+  )
+  return { ok: false, code: 'failed', reason: 'Não deu certo agora.' }
+}
 
 async function ownRun(runId: string, userId: string) {
   const [row] = await db
@@ -420,18 +439,32 @@ export const aiRouter = router({
           code: 'NOT_FOUND',
           message: 'Proposta não encontrada ou já confirmada.'
         })
+      // A métrica não desfaz uma ação feita: falha ao gravar só vai ao log.
       const record = (kind: 'going' | 'call' | 'remind') =>
-        db.insert(aiAction).values({ runId: p.runId, kind, barId: p.barId })
+        db
+          .insert(aiAction)
+          .values({ runId: p.runId, kind, barId: p.barId })
+          .catch((error) =>
+            console.error(
+              JSON.stringify({
+                msg: 'ai.confirm.record_failed',
+                kind,
+                error: error instanceof Error ? error.message : String(error)
+              })
+            )
+          )
 
       let going = null
       if (input.actions.going && p.offersGoing) {
         try {
+          // O que a tela mostra é lido antes de marcar: depois do `set`, a
+          // presença está feita e a resposta não pode virar falha.
+          const b = await contextCaller(ctx).getById({ id: p.barId })
+          const game = b.events.find((e) => e.id === p.eventId)
           const marked = await attendanceRouter
             .createCaller(ctx)
             .set({ eventId: p.eventId, attending: true })
           await record('going')
-          const b = await contextCaller(ctx).getById({ id: p.barId })
-          const game = b.events.find((e) => e.id === p.eventId)
           going = {
             ok: true as const,
             code: marked.code,
@@ -457,7 +490,11 @@ export const aiRouter = router({
           if (sent.ok) await record('call')
           call = sent.ok
             ? { ok: true as const, friendName: sent.friendName }
-            : { ok: false as const, reason: sent.reason }
+            : ({
+                ok: false,
+                code: sent.reason,
+                reason: CALL_FAILURES[sent.reason]
+              } satisfies ConfirmFailure)
         } catch (error) {
           call = failed(error)
         }
