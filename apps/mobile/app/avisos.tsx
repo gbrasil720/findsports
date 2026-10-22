@@ -951,7 +951,11 @@ function CallCard({
   )
 }
 
-/** Os três estados de baixo do chamado; a troca entra com `SWAP`. */
+/**
+ * Os três estados de baixo do chamado; a troca entra com `SWAP`. O design diz
+ * "o Gabriel foi avisado": sem saber o gênero de quem chamou, a frase vai sem
+ * artigo nem particípio.
+ */
 function CallAnswer({
   palette,
   call,
@@ -994,7 +998,7 @@ function CallAnswer({
           <Text
             style={[text(13, 'SemiBold', 1.3), { flex: 1, color: palette.ink }]}
           >
-            Você vai · o {first} foi avisado
+            Você vai · {first} recebeu o aviso
           </Text>
           {code ? (
             <Text style={[styles.callCode, { color: palette.ink }]}>
@@ -1014,7 +1018,7 @@ function CallAnswer({
           { color: palette.muted }
         ]}
       >
-        Você respondeu “agora não”. O {first} não recebe aviso disso.
+        Você respondeu “agora não”. {first} não recebe aviso disso.
       </Animated.Text>
     )
   return (
