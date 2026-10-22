@@ -14,7 +14,7 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { type Palette, usePalette } from '@/components/explore'
+import { HardShadow, type Palette, usePalette } from '@/components/explore'
 import {
   AddButton,
   Avatar,
@@ -25,7 +25,13 @@ import {
   useKept
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
-import { haptic, ScalePress, SWAP, usePressScale } from '@/components/motion'
+import {
+  haptic,
+  ScalePress,
+  SWAP,
+  usePress,
+  usePressScale
+} from '@/components/motion'
 import {
   ACID,
   BackButton,
@@ -373,7 +379,10 @@ function Answer({
   disabled?: boolean
   onPress: () => void
 }) {
-  const press = usePressScale(0.94)
+  // Aceitar tem sombra dura: afunda sobre ela. Recusar, sem sombra, encolhe.
+  const sink = usePress(3, 3)
+  const shrink = usePressScale(0.94)
+  const press = accept ? sink : shrink
   return (
     <Pressable
       accessibilityRole="button"
@@ -383,17 +392,14 @@ function Answer({
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
+      {accept ? (
+        <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
+      ) : null}
       <Animated.View
         style={[
           styles.answerButton,
           accept
-            ? {
-                backgroundColor: ACID,
-                shadowColor: palette.dark ? '#000' : INK,
-                shadowOffset: { width: 3, height: 3 },
-                shadowOpacity: 1,
-                shadowRadius: 0
-              }
+            ? { backgroundColor: ACID }
             : {
                 borderWidth: 1,
                 borderColor: palette.dark
