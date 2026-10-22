@@ -696,6 +696,29 @@ async function findFriend(userId: string, ref: string) {
   return rows.rows[0] ?? null
 }
 
+const FILLER = new Set(['jogo', 'hoje', 'amanha', 'contra', 'vs'])
+
+/**
+ * Palavras de um jogo, sem acento nem caixa; "×", "x", "vs" e palavra curta
+ * ("do", "de") não contam.
+ */
+const gameWords = (text: string) =>
+  fold(text)
+    .split(/[^a-z0-9:]+/)
+    .filter((w) => w.length >= 3 && !FILLER.has(w))
+
+/** Todas as palavras do jogo pedido estão no jogo do bar (em qualquer ordem). */
+function sameGame(
+  wanted: string,
+  game: GameLike & { startsAt: string | Date }
+) {
+  const words = gameWords(wanted)
+  const have = new Set(
+    gameWords(`${gameTitle(game)} ${game.championship} ${hour(game.startsAt)}`)
+  )
+  return words.length > 0 && words.every((w) => have.has(w))
+}
+
 async function propose(
   ctx: ToolContext,
   state: ToolState,
@@ -712,12 +735,17 @@ async function propose(
   const b = await ctx.caller.getById({ id: barId })
   const wanted = str(args.jogo)
   const future = b.events.filter((e) => new Date(e.startsAt) > ctx.now)
-  const game =
-    (wanted &&
-      future.find((e) =>
-        fold(`${gameTitle(e)} ${e.championship}`).includes(fold(wanted))
-      )) ||
-    future[0]
+  const game = wanted ? future.find((e) => sameGame(wanted, e)) : future[0]
+  if (wanted && !game) {
+    report.output = 'Jogo não marcado aqui'
+    return data({
+      erro: 'Esse jogo não está marcado nesse bar.',
+      bar: quoted(b.name),
+      jogos: future
+        .slice(0, 5)
+        .map((e) => ({ titulo: gameTitle(e), inicio: brt(e.startsAt) }))
+    })
+  }
   if (!game) {
     report.output = 'Sem jogo marcado'
     return data({
