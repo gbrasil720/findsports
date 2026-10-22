@@ -48,6 +48,20 @@ export type Proposal = {
   actions: ProposalAction[]
 }
 
+/**
+ * Ação do `ai.confirm` que não foi feita. `code` é estável, para o app
+ * decidir; `reason` é a frase para a tela, nunca mensagem interna.
+ * - `not_friends`, `duplicate`, `past_game`: recusas do chamado de amigo.
+ * - `refused`: recusa do servidor (jogo encerrado, bar fora do ar...), com a
+ *   frase dele.
+ * - `failed`: erro inesperado, com texto fixo.
+ */
+export type ConfirmFailure = {
+  ok: false
+  code: 'not_friends' | 'duplicate' | 'past_game' | 'refused' | 'failed'
+  reason: string
+}
+
 export type ChatEvent =
   | {
       type: 'blocked'
