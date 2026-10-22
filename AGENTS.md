@@ -298,7 +298,11 @@ até 3 sugestões, `thoughtMs`, `searches`). Trava, braços, reserva e `ai_run` 
 `marcar_vou_assistir` e `lembrar` só propõem: a proposta vira `ai_proposal` depois da linha
 do `ai_run` e só `ai.confirm` executa (uma vez, só o dono; "Vou assistir" pelo
 `attendance.set`, chamado por `createFriendCall`, lembrete por `recommendations.remind`;
-cada ação grava `ai_action`). Amigo é achado só entre os aceitos. O app fala com
+cada ação grava `ai_action`; falha volta com `code` estável, `ConfirmFailure`). Só propõe
+quando a mensagem pede (marcar, chamar, lembrar), e "Chamar" só com o nome escrito nela;
+amigo é achado só entre os aceitos. O trabalho vai pelo `waitUntil` (`runInBackground`):
+o app desconectar não perde o `ai_run`. A resposta sai com `Cache-Control: no-transform`,
+para a compressão da borda não juntar os eventos. O app fala com
 `ai.converse` pelo `httpBatchStreamLink` com o `fetch` de `expo/fetch` (`splitLink` em
 `apps/mobile/lib/trpc.ts`). Fumaça contra um web rodando:
 `packages/api/scripts/ai-converse-smoke.ts`. `ai.chat` está obsoleto e sai quando o app
