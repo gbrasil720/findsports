@@ -604,7 +604,7 @@ export default function AiSearch() {
           react-native-screens mede outro caminho e o conteúdo some. */}
       <ScrollView
         ref={scroll}
-        style={[styles.sheet, { backgroundColor: palette.sheet }]}
+        style={[styles.sheet, { backgroundColor: palette.sheetBg }]}
         contentContainerStyle={{ paddingTop: headHeight }}
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
@@ -702,7 +702,7 @@ export default function AiSearch() {
       </ScrollView>
 
       <View
-        style={[styles.top, { backgroundColor: palette.sheet }]}
+        style={[styles.top, { backgroundColor: palette.sheetBg }]}
         onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
       >
         <AiHeader

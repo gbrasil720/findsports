@@ -11,6 +11,8 @@ const AI = {
     ...PALETTE.light,
     /** Fundo da folha (rgba .97 sobre o mapa). */
     sheet: '#f1eee6',
+    // O fundo da folha (24a–24e): 97%, o mapa aparece de leve por trás.
+    sheetBg: 'rgba(241,238,230,.97)',
     /** Título da 24a: "assistir?" em vermelho. */
     hot: '#c92b0c',
     /** Chips de contexto e de filtro. */
@@ -49,6 +51,7 @@ const AI = {
   dark: {
     ...PALETTE.dark,
     sheet: '#161613',
+    sheetBg: 'rgba(22,22,19,.97)',
     /** Sombra dura dos cards no escuro (a do design é mais forte). */
     shadow: 'rgba(0,0,0,.6)',
     hot: ACID,
