@@ -15,6 +15,7 @@ import Animated, {
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
+  useDerivedValue,
   useReducedMotion,
   useSharedValue,
   withSpring,
@@ -501,27 +502,28 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   const passRing = useAnimatedStyle(() => ({
     opacity: interpolate(x.get(), [0, -COMMIT_X], [0, 1], Extrapolation.CLAMP)
   }))
-  const progress = () => {
-    'worklet'
-    return Math.min(1, Math.abs(x.get()) / COMMIT_X)
-  }
+  // Derivado, não função: o estilo só assina o shared value que lê direto,
+  // e com `x` dentro de outra função a pilha de trás não andava com o arraste.
+  const progress = useDerivedValue(() =>
+    Math.min(1, Math.abs(x.get()) / COMMIT_X)
+  )
   const second = useAnimatedStyle(() => {
-    const p = progress()
+    const p = progress.get()
     return {
       transform: [{ translateY: 12 - 12 * p }, { scale: 0.95 + 0.05 * p }]
     }
   })
   const secondShade = useAnimatedStyle(() => ({
-    opacity: 0.25 * (1 - progress())
+    opacity: 0.25 * (1 - progress.get())
   }))
   const third = useAnimatedStyle(() => {
-    const p = progress()
+    const p = progress.get()
     return {
       transform: [{ translateY: 24 - 12 * p }, { scale: 0.9 + 0.05 * p }]
     }
   })
   const thirdShade = useAnimatedStyle(() => ({
-    opacity: 0.45 - 0.2 * progress()
+    opacity: 0.45 - 0.2 * progress.get()
   }))
 
   const [next, after] = [items[1], items[2]]
