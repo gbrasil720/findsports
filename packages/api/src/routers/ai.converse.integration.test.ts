@@ -111,6 +111,7 @@ integrationTest(
       )
       expect(brief(events)).toEqual([
         'step:understood:done',
+        'step:rank:todo',
         'tool:run',
         'step:search:run',
         'tool:run',
