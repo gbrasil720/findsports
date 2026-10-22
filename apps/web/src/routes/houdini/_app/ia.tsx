@@ -327,7 +327,7 @@ function IaPage() {
                   rows={o.top.month}
                   value={(r) => usd(r.costUsd)}
                   limit={(r) => pct(r.costUsd / o.top.limits.userMonthlyUsd)}
-                  limitLabel={`do teto de ${usd(o.top.limits.userMonthlyUsd)}`}
+                  limitLabel={`Do teto de ${usd(o.top.limits.userMonthlyUsd)}`}
                 />
                 <TopTable
                   caption="Mais chamadas hoje"
@@ -338,7 +338,7 @@ function IaPage() {
                   limit={(r) =>
                     `${int(r.chat)} de ${o.top.limits.chatDailyMessages}`
                   }
-                  limitLabel="mensagens úteis"
+                  limitLabel="Mensagens úteis"
                 />
               </div>
             </Section>
@@ -783,7 +783,11 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
                 {row.label}
               </th>
               {arms.map((a) => (
-                <td key={a.variant} className="hd-mono">
+                <td
+                  key={a.variant}
+                  className="hd-mono"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
                   {row.cell(a)}
                 </td>
               ))}
@@ -1102,7 +1106,10 @@ function TopTable({
 }) {
   return (
     <div className="hd-table-wrap">
-      <table className="hd-table" style={{ minWidth: 380 }}>
+      <table
+        className="hd-table"
+        style={{ minWidth: 380, whiteSpace: 'nowrap' }}
+      >
         <caption
           style={{
             textAlign: 'left',
@@ -1230,7 +1237,10 @@ function RunsLog() {
         </div>
       ) : (
         <div className="hd-table-wrap">
-          <table className="hd-table" style={{ minWidth: 980 }}>
+          <table
+            className="hd-table"
+            style={{ minWidth: 980, whiteSpace: 'nowrap' }}
+          >
             <thead>
               <tr>
                 <th>Quando</th>
