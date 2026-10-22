@@ -536,12 +536,14 @@ invente layout que o projeto não tem.
   altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
 - **Chamado de amigo ("Chamar Marina", Rodada 24):** tabela `friend_call` (um por de, para e
   jogo; pending, going, not_now). Quem cria é `createFriendCall`
-  (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo acabado recusa, repetido
-  devolve `duplicate`), chamado pelo `ai.confirm`. `friends.respondCall` só pelo
-  destinatário e uma vez: "Vou também" passa por `attendance.set` (código no Elite),
-  "Agora não" não avisa quem chamou. Em Avisos (`CallCard` em `app/avisos.tsx`), aba
-  Amigos e Tudo: `calls` (pendente some quando o jogo começa) e `callsAccepted` ("Marina vai
-  também"). A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g (notificação)
+  (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa como no
+  `attendance.set`, bar fora do ar é `NOT_FOUND`, repetido devolve `duplicate`), chamado
+  pelo `ai.confirm`. `friends.respondCall` só pelo destinatário e uma vez (o `update` só
+  pega linha `pending`; se a presença falhar, volta a pendente): "Vou também" passa por
+  `attendance.set` (código no Elite), "Agora não" não avisa quem chamou. Desfazer ou
+  recusar amizade apaga os chamados da dupla. Em Avisos (`CallCard` em `app/avisos.tsx`),
+  aba Amigos e Tudo: `calls` (pendente some quando o jogo começa) e `callsAccepted` ("Marina
+  vai também"); o "Vou também" sai dos dois lados se a presença for desmarcada. A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g (notificação)
   não entra: não há push (WEB-416).
 - **Bares pra você (08 Sugestões, Rodadas 22 e 23, WEB-425):** `app/bares-pra-voce.tsx`
   (tela cheia, pelo item do menu "Você" com o selo "N novos"), `app/por-que.tsx` (22c, folha),
