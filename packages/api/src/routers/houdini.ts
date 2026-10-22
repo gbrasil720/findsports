@@ -21,6 +21,7 @@ import { adminProcedure, router } from '../index'
 import { readUnregisteredAlerts } from '../lib/attendance'
 import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
+import { houdiniIaRouter } from './houdini-ia'
 
 const DAY = 24 * 3_600_000
 const SEARCH_LIMIT = 8
@@ -67,6 +68,9 @@ const AMPULHETA_LIMIT = 200
  * tabelas já registram.
  */
 export const houdiniRouter = router({
+  /** A tela "IA": testes, gasto e limites da IA. */
+  ia: houdiniIaRouter,
+
   overview: adminProcedure.query(async () => {
     const now = new Date()
     const [[people], [bars], ghosts] = await Promise.all([
