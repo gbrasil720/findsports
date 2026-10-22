@@ -116,6 +116,11 @@ const CHIPS_IN = FadeInDown.delay(50)
   .duration(220)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
+// "Ajudou?" vem depois dos bares.
+const RATE_IN = FadeInDown.delay(300)
+  .duration(220)
+  .easing(EASE)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 const ROW_IN = Array.from({ length: 8 }, (_, i) =>
   FadeInDown.delay(100 + Math.min(i, 5) * 45)
     .duration(240)
@@ -651,7 +656,7 @@ function TurnView({
               onPress={() => onBar(bar)}
             />
           ))}
-          <Animated.View entering={IN} style={styles.rate}>
+          <Animated.View entering={RATE_IN} style={styles.rate}>
             <Text style={[text(12, 'Regular', 1.3), { color: palette.muted }]}>
               Ajudou?
             </Text>
