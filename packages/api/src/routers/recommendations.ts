@@ -396,16 +396,27 @@ export const recommendationsRouter = router({
       z.object({
         eventId: z.string().uuid(),
         on: z.boolean(),
-        runId: z.string().uuid().optional()
+        runId: z.string().uuid().optional(),
+        /** Sem ele, o lembrete vale o dia do jogo inteiro. */
+        beforeMinutes: z.number().int().min(1).max(1440).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
       if (input.on) {
+        const remindBeforeMinutes = input.beforeMinutes ?? null
         await db
           .insert(gameReminder)
-          .values({ userId, eventId: input.eventId, runId: input.runId })
-          .onConflictDoNothing()
+          .values({
+            userId,
+            eventId: input.eventId,
+            runId: input.runId,
+            remindBeforeMinutes
+          })
+          .onConflictDoUpdate({
+            target: [gameReminder.userId, gameReminder.eventId],
+            set: { remindBeforeMinutes }
+          })
       } else {
         await db
           .delete(gameReminder)
@@ -422,8 +433,8 @@ export const recommendationsRouter = router({
   /**
    * Os avisos de "Avisar" e "Lembrar" para a tela de Avisos do app: jogo
    * publicado depois do pedido que case com o esporte ou o time, e os
-   * jogos lembrados que ainda não acabaram. O app mostra o lembrete só no
-   * dia do jogo.
+   * jogos lembrados que ainda não acabaram. O app mostra o lembrete no dia
+   * do jogo, ou a partir de `remindBeforeMinutes` antes dele.
    */
   notices: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
@@ -456,7 +467,8 @@ export const recommendationsRouter = router({
         SELECT
           e.id AS event_id, e.starts_at, e.championship, e.participant_free_text,
           ${participantNames(sql`e.id`)} AS participants,
-          b.id AS bar_id, b.name AS bar_name
+          b.id AS bar_id, b.name AS bar_name,
+          r.remind_before_minutes
         FROM game_reminder r
         JOIN event e ON e.id = r.event_id
         JOIN bar b ON b.id = e.bar_id AND b.is_active
@@ -475,6 +487,7 @@ export const recommendationsRouter = router({
       bar_name: string
       sport_name?: string
       team_name?: string | null
+      remind_before_minutes?: number | null
     }
     const game = (row: Row) => ({
       eventId: row.event_id,
@@ -492,7 +505,10 @@ export const recommendationsRouter = router({
         sportName: row.sport_name ?? '',
         teamName: row.team_name ?? null
       })),
-      reminders: (reminders.rows as Row[]).map(game)
+      reminders: (reminders.rows as Row[]).map((row) => ({
+        ...game(row),
+        remindBeforeMinutes: row.remind_before_minutes ?? null
+      }))
     }
   }),
 

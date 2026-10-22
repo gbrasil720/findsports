@@ -173,7 +173,7 @@ export const PROPOSAL_TOOLS = [
   ),
   fn(
     'lembrar',
-    'Propõe lembrar o torcedor de um jogo num bar (aviso no app no dia do jogo). Não grava nada: o torcedor confirma na tela.',
+    'Propõe lembrar o torcedor de um jogo num bar (aviso no app 3 h antes do jogo). Não grava nada: o torcedor confirma na tela.',
     { bar: BAR_REF, jogo: GAME_REF },
     ['bar']
   )

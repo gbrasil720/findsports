@@ -176,16 +176,18 @@ export function toProposal(id: string, p: PendingProposal): Proposal {
             }
           ]
         : []),
-      // Sem push (WEB-416): o lembrete aparece em Avisos no dia do jogo.
+      // Aparece em Avisos 3 h antes; com push (WEB-416) avisa nessa hora.
       {
         kind: 'remind' as const,
-        label: 'Me lembrar no dia do jogo',
+        label: 'Me lembrar 3 h antes',
         on: p.remind
       }
     ]
   }
 }
 
+/** O "Me lembrar 3 h antes" da proposta (24d). */
+const AI_REMIND_BEFORE_MINUTES = 180
 /**
  * Uma mensagem do chat contada em eventos (R24). Trava, sorteio, reserva e
  * `ai_run` são os de `ai.chat`; a diferença é que cada passo sai quando
@@ -503,9 +505,11 @@ export const aiRouter = router({
       let remind = null
       if (input.actions.remind) {
         try {
-          await recommendationsRouter
-            .createCaller(ctx)
-            .remind({ eventId: p.eventId, on: true })
+          await recommendationsRouter.createCaller(ctx).remind({
+            eventId: p.eventId,
+            on: true,
+            beforeMinutes: AI_REMIND_BEFORE_MINUTES
+          })
           await record('remind')
           remind = { ok: true as const }
         } catch (error) {
