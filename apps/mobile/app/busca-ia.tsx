@@ -17,6 +17,7 @@ import {
 } from 'react-native'
 import Animated, {
   FadeInDown,
+  FadeOut,
   LayoutAnimationConfig,
   LinearTransition,
   useAnimatedKeyboard,
@@ -43,7 +44,7 @@ import { type AiPalette, useAiPalette } from '@/components/ai/theme'
 import { DoneLine, ToolCard } from '@/components/ai/tool'
 import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { EASE, haptic } from '@/components/motion'
+import { EASE, haptic, popFrom, SWAP } from '@/components/motion'
 import { text, useStatusBar } from '@/components/ui'
 import {
   applyEvent,
@@ -139,6 +140,17 @@ const BAR_IN = Array.from({ length: 8 }, (_, i) =>
     .easing(EASE)
     .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
 )
+
+const OUT = FadeOut.duration(120)
+// Depois do "Confirmar": as linhas do que foi feito uma depois da outra, e o
+// código por último, com um estalo curto (o momento raro da conversa).
+const DONE_IN = [0, 1, 2].map((i) =>
+  FadeInDown.delay(i * 60)
+    .duration(220)
+    .easing(EASE)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
+)
+const CODE_IN = popFrom(0.96, 180)
 
 type DevState = 'pensando' | 'resposta' | 'confirmar' | 'feito'
 const DEV_QUESTION: Record<DevState, string> = {
@@ -832,7 +844,7 @@ function TurnView({
 
       {/* Depois do "Confirmar", o raciocínio sai e ficam as linhas (24e). */}
       {reply.steps.length && !approved ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
           <Reasoning
             steps={reply.steps}
             tools={reply.tools}
@@ -890,7 +902,11 @@ function TurnView({
       ) : null}
 
       {answer && !proposal && !waiting.some((t) => t.state === 'wait') ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View
+          key={`texto-${turn.shown}`}
+          entering={turn.versions.length > 1 ? SWAP : IN}
+          layout={SETTLE}
+        >
           <AnswerText
             text={answer}
             count={reply.bars.length}
@@ -967,36 +983,27 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {proposal && !decision ? (
+      {/* Um só cartão do pedir ao confirmar: "Confirmar" vira o giro nele. */}
+      {proposal && (!decision || decision.kind === 'sending') ? (
         <>
-          <Animated.View entering={IN} layout={SETTLE}>
+          <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
             <ConfirmCard
               proposal={proposal}
               values={isLast ? toggles : proposal.actions.map((a) => a.on)}
               when={when}
-              sending={false}
+              sending={decision?.kind === 'sending'}
               palette={palette}
               onToggle={onToggle}
               onConfirm={onConfirm}
               onRefuse={onRefuse}
             />
           </Animated.View>
-          <Text style={[styles.note, { color: palette.muted }]}>
-            Nada é marcado sem você confirmar.
-          </Text>
+          <Animated.View entering={IN} exiting={OUT} layout={SETTLE}>
+            <Text style={[styles.note, { color: palette.muted }]}>
+              Nada é marcado sem você confirmar.
+            </Text>
+          </Animated.View>
         </>
-      ) : null}
-      {proposal && decision?.kind === 'sending' ? (
-        <ConfirmCard
-          proposal={proposal}
-          values={toggles}
-          when={when}
-          sending
-          palette={palette}
-          onToggle={onToggle}
-          onConfirm={onConfirm}
-          onRefuse={onRefuse}
-        />
       ) : null}
       {decision?.kind === 'refused' ? (
         <Animated.View entering={IN} layout={SETTLE}>
@@ -1010,7 +1017,7 @@ function TurnView({
       ) : null}
 
       {approved?.going?.ok && approved.going.code && proposal ? (
-        <Animated.View entering={IN} layout={SETTLE}>
+        <Animated.View entering={CODE_IN} layout={SETTLE}>
           <CodeCard
             code={approved.going.code}
             title={approved.going.eventTitle}
@@ -1069,8 +1076,8 @@ function ApprovedLines({
       failed: !result.remind.ok
     }
   ].filter((l) => !!l)
-  return lines.map((line) => (
-    <Animated.View key={line.icon} entering={IN} layout={SETTLE}>
+  return lines.map((line, i) => (
+    <Animated.View key={line.icon} entering={DONE_IN[i]} layout={SETTLE}>
       <DoneLine
         icon={line.icon}
         label={line.label}

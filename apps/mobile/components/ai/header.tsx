@@ -43,8 +43,8 @@ export function AiHeader({
         <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
           Busca com IA
         </Text>
-        {/* O status troca com um esmaecer curto (a frase muda de tamanho). */}
-        <Animated.View key={status} entering={SWAP} style={styles.status}>
+        <View style={styles.status}>
+          {/* O giro fica fora da troca: não volta ao começo a cada frase. */}
           {busy ? (
             <Spinner size={11} palette={palette} />
           ) : (
@@ -64,15 +64,18 @@ export function AiHeader({
               />
             </View>
           )}
-          <Text
+          {/* A frase troca com um esmaecer curto. */}
+          <Animated.Text
+            key={status}
+            entering={SWAP}
             style={[
               text(12.5, 'Regular', 1.4),
               { color: palette.muted, flexShrink: 1 }
             ]}
           >
             {status}
-          </Text>
-        </Animated.View>
+          </Animated.Text>
+        </View>
       </View>
       {onNew ? (
         <Pressable

@@ -6,7 +6,6 @@ import Animated, {
   LinearTransition
 } from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
-import { HardShadow } from '@/components/explore'
 import { EASE } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import type { Tool } from '@/lib/ai-chat'
@@ -45,8 +44,8 @@ export function ToolCard({
   const params =
     tool.state !== 'done' && tool.params?.length ? tool.params : null
   return (
-    <Animated.View layout={RESIZE}>
-      <Card palette={palette} radius={7}>
+    <Animated.View>
+      <Card palette={palette} radius={7} resize>
         <View style={styles.head}>
           <Icon
             name={toolIcon(tool.name)}
@@ -210,20 +209,34 @@ export function DoneLine({
   )
 }
 
-/** O card das peças: papel, contorno de 1 pt e a sombra dura de 4 pt. */
+/**
+ * O card das peças: papel, contorno de 1 pt e a sombra dura de 4 pt. Com
+ * `resize`, card e sombra acompanham a mudança de altura (a ferramenta que
+ * vira linha) em vez de saltar.
+ */
 export function Card({
   palette,
   radius = 7,
+  resize,
   children
 }: {
   palette: AiPalette
   radius?: number
+  resize?: boolean
   children: ReactNode
 }) {
+  const layout = resize ? RESIZE : undefined
   return (
-    <View>
-      <HardShadow color={palette.shadow} offset={4} radius={radius} />
-      <View
+    <Animated.View layout={layout}>
+      <Animated.View
+        layout={layout}
+        style={[
+          styles.shadow,
+          { borderRadius: radius, backgroundColor: palette.shadow }
+        ]}
+      />
+      <Animated.View
+        layout={layout}
         style={[
           styles.card,
           {
@@ -234,8 +247,8 @@ export function Card({
         ]}
       >
         {children}
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   )
 }
 
@@ -264,6 +277,7 @@ export function Dashed({
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, overflow: 'hidden' },
+  shadow: { position: 'absolute', top: 4, left: 4, right: -4, bottom: -4 },
   head: {
     flexDirection: 'row',
     alignItems: 'center',

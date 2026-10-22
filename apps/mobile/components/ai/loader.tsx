@@ -92,6 +92,7 @@ export function Shimmer({
   const [box, setBox] = useState<{ w: number; h: number } | null>(null)
   const sweep = useSharedValue(0)
   useEffect(() => {
+    if (reduced) return
     sweep.set(
       withRepeat(
         withTiming(1, { duration: 1600, easing: Easing.linear }),
@@ -99,7 +100,7 @@ export function Shimmer({
         false
       )
     )
-  }, [sweep])
+  }, [sweep, reduced])
   const w = box?.w ?? 0
   // A faixa tem o dobro da largura e anda de fora a fora.
   const band = useAnimatedProps(() => ({ x: -2 * w + sweep.get() * 3 * w }))
