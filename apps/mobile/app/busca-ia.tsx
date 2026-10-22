@@ -565,21 +565,23 @@ function TurnView({
       ) : null}
 
       {turn.state === 'unavailable' ? (
-        <Animated.View
-          entering={IN}
-          style={{ gap: 10, alignItems: 'flex-start' }}
-        >
-          <Text style={[styles.answer, { color: palette.ink }]}>
-            Não consegui responder agora. Tente de novo em instantes; a busca
-            normal continua.
-          </Text>
-          <Chip
-            label="Tentar de novo"
-            on={false}
-            palette={palette}
-            onPress={onRetry}
-          />
-        </Animated.View>
+        <View style={{ gap: 10, alignItems: 'flex-start' }}>
+          <Animated.View entering={IN}>
+            <Text style={[styles.answer, { color: palette.ink }]}>
+              Não consegui responder agora. Tente de novo em instantes; a busca
+              normal continua.
+            </Text>
+          </Animated.View>
+          {/* Vidro entra só com movimento, sem opacidade. */}
+          <Animated.View entering={RISE}>
+            <Chip
+              label="Tentar de novo"
+              on={false}
+              palette={palette}
+              onPress={onRetry}
+            />
+          </Animated.View>
+        </View>
       ) : null}
 
       {turn.state === 'limit' && turn.limit ? (
