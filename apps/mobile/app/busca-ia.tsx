@@ -473,6 +473,7 @@ export default function AiSearch() {
             <ScalePress
               accessibilityRole="button"
               accessibilityLabel="Enviar"
+              disabled={!draft.trim() || loading}
               accessibilityState={{ disabled: !draft.trim() || loading }}
               onPress={() => send()}
               to={0.92}
