@@ -357,6 +357,8 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   const fade = useSharedValue(1)
   const start = useSharedValue({ x: 0, y: 0 })
   const nudge = useSharedValue(0)
+  // No voo de saída ou de volta o `drag` desce sozinho e o háptico de limite cala.
+  const flying = useSharedValue(false)
   const top = items[0]
 
   // A decisão vai ao JS só quando o card já saiu da tela.
@@ -372,6 +374,7 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage ao card de cima
   useLayoutEffect(() => {
     y.set(0)
+    flying.set(false)
     if (returning && returning.barId === top?.barId) {
       if (reduced) {
         x.set(0)
@@ -379,8 +382,14 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
         fade.set(withTiming(1, { duration: 160 }))
       } else {
         fade.set(1)
+        flying.set(true)
         x.set(returning.direction === 'like' ? FLY : -FLY)
-        x.set(withSpring(0, SNAP))
+        x.set(
+          withSpring(0, SNAP, () => {
+            'worklet'
+            flying.set(false)
+          })
+        )
       }
       return
     }
@@ -390,13 +399,15 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
 
   useAnimatedReaction(
     () => Math.max(-1, Math.min(1, x.get() / COMMIT_X)),
-    (value) => drag.set(value)
+    (value) => {
+      if (!flying.get()) drag.set(value)
+    }
   )
   // Passar do ponto de soltura dá um toque, uma vez em cada sentido.
   useAnimatedReaction(
     () => (Math.abs(x.get()) >= COMMIT_X ? Math.sign(x.get()) : 0),
     (now, before) => {
-      if (before !== null && now !== before && now !== 0)
+      if (!flying.get() && before !== null && now !== before && now !== 0)
         scheduleOnRN(haptic.select)
     }
   )
@@ -404,6 +415,8 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
   const flyOut = (direction: 'like' | 'pass', velocity = 0) => {
     'worklet'
     const to = direction === 'like' ? FLY : -FLY
+    flying.set(true)
+    drag.set(withTiming(0, { duration: 180, easing: EASE }))
     const done = (finished?: boolean) => {
       'worklet'
       if (finished) scheduleOnRN(decide, direction)
