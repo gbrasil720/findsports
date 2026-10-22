@@ -200,6 +200,19 @@ describe('Avisar e Lembrar (WEB-425)', () => {
       'reminder'
     )
   })
+
+  test('lembrete de 3 h antes só aparece na janela', () => {
+    const at = new Date(NOW_ + 4 * 3_600_000).toISOString()
+    const early = { ...game, startsAt: at, remindBeforeMinutes: 180 }
+    expect(buildNotices({ ...base, reminders: [early] }, NOW_)).toHaveLength(0)
+    const soon = {
+      ...early,
+      startsAt: new Date(NOW_ + 2 * 3_600_000).toISOString()
+    }
+    expect(buildNotices({ ...base, reminders: [soon] }, NOW_)[0]?.kind).toBe(
+      'reminder'
+    )
+  })
 })
 
 describe('chamado de amigo (Rodada 24)', () => {
