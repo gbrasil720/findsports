@@ -1,3 +1,4 @@
+import { File } from 'expo-file-system'
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
 import { authClient, refreshSession } from './auth-client'
@@ -53,12 +54,14 @@ export async function uploadAvatar(uri: string) {
     compress: 0.8,
     format: SaveFormat.JPEG
   })
-  const file = await (await fetch(saved.uri)).blob()
+  // Os bytes, não um `Blob`: com `Blob` o `fetch` do React Native manda
+  // `content-type` vazio, e o R2 recusa a assinatura (que inclui o tipo).
+  const file = await new File(saved.uri).bytes()
 
   const sign = await fetch(`${env.EXPO_PUBLIC_SERVER_URL}/api/user/avatar`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ contentType: 'image/jpeg', size: file.size })
+    body: JSON.stringify({ contentType: 'image/jpeg', size: file.byteLength })
   })
   const body = (await sign.json().catch(() => ({}))) as {
     uploadUrl?: string
