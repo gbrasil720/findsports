@@ -303,36 +303,51 @@ export const friendsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
+      const mine = and(
+        eq(friendCall.id, input.callId),
+        eq(friendCall.toUserId, me)
+      )
+      // Responde só o que ainda está pendente, numa linha só: dois toques
+      // juntos não respondem duas vezes.
       const [call] = await db
-        .select({ eventId: friendCall.eventId, status: friendCall.status })
-        .from(friendCall)
-        .where(
-          and(eq(friendCall.id, input.callId), eq(friendCall.toUserId, me))
-        )
-      if (!call)
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Chamado não encontrado.'
-        })
-      if (call.status !== 'pending')
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Você já respondeu esse chamado.'
-        })
-      const marked =
-        input.answer === 'going'
-          ? await attendanceRouter
-              .createCaller(ctx)
-              .set({ eventId: call.eventId, attending: true })
-          : null
-      await db
         .update(friendCall)
         .set({ status: input.answer, respondedAt: new Date() })
-        .where(eq(friendCall.id, input.callId))
-      return {
-        status: input.answer,
-        eventId: call.eventId,
-        code: marked?.code ?? null
+        .where(and(mine, eq(friendCall.status, 'pending')))
+        .returning({ eventId: friendCall.eventId })
+      if (!call) {
+        const [exists] = await db
+          .select({ id: friendCall.id })
+          .from(friendCall)
+          .where(mine)
+        throw exists
+          ? new TRPCError({
+              code: 'PRECONDITION_FAILED',
+              message: 'Você já respondeu esse chamado.'
+            })
+          : new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Chamado não encontrado.'
+            })
+      }
+      if (input.answer === 'not_now')
+        return { status: input.answer, eventId: call.eventId, code: null }
+      try {
+        const marked = await attendanceRouter
+          .createCaller(ctx)
+          .set({ eventId: call.eventId, attending: true })
+        return {
+          status: input.answer,
+          eventId: call.eventId,
+          code: marked.code
+        }
+      } catch (error) {
+        // Presença recusada (jogo começou, bar saiu do ar): o chamado volta a
+        // pendente, sem "vai também" para quem chamou.
+        await db
+          .update(friendCall)
+          .set({ status: 'pending', respondedAt: null })
+          .where(mine)
+        throw error
       }
     }),
 
