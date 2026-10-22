@@ -65,11 +65,13 @@ export default function TwoFactorSetup() {
   const boxes = useShake()
   // "Copiado" no lugar do link por um instante: o háptico sozinho não basta.
   const [copied, setCopied] = useState<'key' | 'codes' | null>(null)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const copy = async (what: 'key' | 'codes', value: string) => {
     await Clipboard.setStringAsync(value)
     haptic.select()
     setCopied(what)
-    setTimeout(() => setCopied(null), 1500)
+    clearTimeout(copiedTimer.current)
+    copiedTimer.current = setTimeout(() => setCopied(null), 1500)
   }
 
   const begin = async () => {
