@@ -295,10 +295,6 @@ export default function AiSearch() {
   const footer = useAnimatedStyle(() => ({
     transform: [{ translateY: -Math.max(0, keyboard.height.get() - 20) }]
   }))
-  // O fim da conversa fica acima dos atalhos e do campo.
-  const spacer = useAnimatedStyle(() => ({
-    height: 150 + Math.max(0, keyboard.height.get() - 20)
-  }))
 
   return (
     <>
@@ -311,6 +307,9 @@ export default function AiSearch() {
         style={[styles.sheet, { backgroundColor: palette.sheet }]}
         contentContainerStyle={{ paddingTop: HEAD_HEIGHT }}
         keyboardDismissMode="interactive"
+        // O iOS soma o teclado ao inset de baixo; o espaço fixo no fim deixa
+        // a conversa acima dos atalhos e do campo.
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         onContentSizeChange={() =>
           scroll.current?.scrollToEnd({ animated: true })
@@ -351,7 +350,7 @@ export default function AiSearch() {
             />
           ))}
         </View>
-        <Animated.View style={spacer} />
+        <View style={styles.spacer} />
       </ScrollView>
 
       <View style={[styles.top, { backgroundColor: palette.sheet }]}>
@@ -842,6 +841,7 @@ const styles = StyleSheet.create({
   dotHalo: { position: 'absolute', width: 13, height: 13, borderRadius: 6.5 },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   body: { paddingTop: 8, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+  spacer: { height: 150 },
   bubble: {
     alignSelf: 'flex-end',
     maxWidth: 270,
