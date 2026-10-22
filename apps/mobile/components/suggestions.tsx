@@ -11,6 +11,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   Extrapolation,
   interpolate,
+  ReduceMotion,
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -53,7 +54,13 @@ const FLY = 520
 const COMMIT_X = 120
 const COMMIT_UP = 140
 const SNAP = { duration: 400, dampingRatio: 0.8 } as const
-const OUT = { duration: 220, easing: EASE } as const
+const OUT = {
+  duration: 300,
+  dampingRatio: 1,
+  overshootClamping: true
+} as const
+// Com movimento reduzido a viagem vira fade, e o fade não pode virar corte.
+const FADE = { duration: 160, reduceMotion: ReduceMotion.Never } as const
 
 /** Quanto mais longe do lugar, menos o card segue o dedo (borda macia). */
 function rubberband(offset: number, dimension: number) {
@@ -378,7 +385,7 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       if (reduced) {
         x.set(0)
         fade.set(0)
-        fade.set(withTiming(1, { duration: 160 }))
+        fade.set(withTiming(1, FADE))
       } else {
         fade.set(1)
         flying.set(true)
@@ -421,17 +428,12 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       if (finished) scheduleOnRN(decide, direction)
     }
     if (reduced) {
-      fade.set(withTiming(0, { duration: 160 }, done))
+      fade.set(withTiming(0, FADE, done))
       return
     }
-    // O peteleco leva a velocidade junto: sai no tempo que o dedo levaria.
-    const duration = velocity
-      ? Math.min(
-          260,
-          Math.max(120, (Math.abs(to - x.get()) / Math.abs(velocity)) * 1000)
-        )
-      : OUT.duration
-    x.set(withTiming(to, { ...OUT, duration }, done))
+    // O peteleco leva a velocidade junto: mola sem quique, que parte na
+    // velocidade do dedo em vez de dar tranco ao soltar.
+    x.set(withSpring(to, { ...OUT, velocity }, done))
   }
 
   useImperativeHandle(ref, () => ({
