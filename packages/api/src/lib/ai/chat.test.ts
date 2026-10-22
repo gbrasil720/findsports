@@ -371,3 +371,85 @@ describe('eventos da conversa (R24)', () => {
     expect(names).not.toContain('lembrar')
   })
 })
+
+describe('proposta (R24)', () => {
+  const NOW = new Date('2026-10-21T18:00:00Z')
+  const game = {
+    id: 'jogo-cor',
+    championship: 'Brasileirão',
+    startsAt: '2026-10-22T00:30:00.000Z',
+    endsAt: null,
+    participants: [
+      { team: { name: 'Corinthians' } },
+      { team: { name: 'Palmeiras' } }
+    ],
+    participantFreeText: null
+  }
+  const caller = {
+    getById: async () => ({
+      id: ZE.id,
+      name: ZE.name,
+      photoUrl: null,
+      issuesCode: false,
+      events: [game]
+    })
+  } as unknown as Caller
+  const propose = async (message: string, args: Record<string, unknown>) => {
+    const state = stateWith(ZE)
+    const result = await runTool(
+      'marcar_vou_assistir',
+      { bar: ZE.id, ...args },
+      {
+        caller,
+        message,
+        origin: null,
+        radiusKm: 3,
+        now: NOW,
+        userId: 'torcedor'
+      },
+      state
+    )
+    return { result: result as Record<string, unknown>, state }
+  }
+
+  it('jogo pedido que o bar não tem: erro ao modelo, sem proposta', async () => {
+    const { result, state } = await propose('marca que vou ver o Flamengo', {
+      jogo: 'Flamengo'
+    })
+    expect(result.dados).toMatchObject({
+      erro: 'Esse jogo não está marcado nesse bar.',
+      jogos: [{ titulo: 'Corinthians × Palmeiras' }]
+    })
+    expect(state.proposals ?? []).toHaveLength(0)
+  })
+
+  it('jogo pedido em outra ordem, com x e sem acento: acha', async () => {
+    const { state } = await propose('vou no zé', {
+      jogo: 'PALMEIRAS x corinthians'
+    })
+    expect(state.proposals?.[0]?.game.id).toBe('jogo-cor')
+  })
+
+  it('"chamar" com nome que não está na mensagem é ignorado', async () => {
+    const { result, state } = await propose('marca que vou no Bar do Zé', {
+      chamar: 'Marina'
+    })
+    expect(state.proposals?.[0]?.friend).toBeNull()
+    expect(result.dados).toMatchObject({
+      chamar_ignorado: 'O torcedor não escreveu esse nome na mensagem.'
+    })
+  })
+
+  it('"chamar" com menos de 3 letras é ignorado mesmo na mensagem', async () => {
+    const { state } = await propose('vou no zé, chama a Bia', { chamar: 'a' })
+    expect(state.proposals?.[0]?.friend).toBeNull()
+  })
+
+  it('mensagem sem pedido de marcar, chamar ou lembrar: não propõe', async () => {
+    const { result, state } = await propose('qual bar passa o Corinthians?', {
+      chamar: 'Corinthians'
+    })
+    expect(result.erro).toContain('não pediu')
+    expect(state.proposals ?? []).toHaveLength(0)
+  })
+})
