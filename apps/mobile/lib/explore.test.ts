@@ -14,7 +14,7 @@ test('busca parte do aparelho, senão da cidade, senão de São Paulo', () => {
   const city = { lat: -22.9, lng: -43.2, name: 'Rio de Janeiro' }
   expect(searchCenter({ lat: 1, lng: 2 }, city)).toEqual({ lat: 1, lng: 2 })
   expect(searchCenter(null, city)).toEqual({ lat: -22.9, lng: -43.2 })
-  expect(searchCenter(null, null)).toEqual({ lat: -23.5505, lng: -46.6333 })
+  expect(searchCenter(null, null)).toEqual({ lat: -23.5329, lng: -46.6395 })
 })
 
 test('ao vivo do início ao fim; sem fim informado, três horas', () => {
