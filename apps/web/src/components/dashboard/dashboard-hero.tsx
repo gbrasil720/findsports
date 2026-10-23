@@ -1,3 +1,4 @@
+import Location from 'reicon-react/icons/Location'
 import type { LocationState, RadiusKm } from '@/domain/discovery'
 
 type Props = {
@@ -7,6 +8,7 @@ type Props = {
   locationState: LocationState
   /** A cidade em que a busca cai sem a localização: a do perfil ou São Paulo. */
   fallbackCityName: string
+  onRequestLocation: () => void
 }
 
 export function DashboardHero({
@@ -14,9 +16,16 @@ export function DashboardHero({
   count,
   radiusKm,
   locationState,
-  fallbackCityName
+  fallbackCityName,
+  onRequestLocation
 }: Props) {
   const hasRealLocation = locationState === 'granted'
+  // `unknown` é antes de o navegador responder (e o HTML do servidor): o
+  // botão piscaria para quem já liberou a localização.
+  const offerLocation =
+    locationState === 'idle' ||
+    locationState === 'denied' ||
+    locationState === 'unavailable'
 
   let statusLabel: string
   if (isLoading) {
@@ -47,10 +56,27 @@ export function DashboardHero({
           favorito.
         </p>
       </div>
-      {/* Visually hidden status for screen readers; count is shown under Resultados */}
-      <p className="sr-only" aria-live="polite">
-        {statusLabel}
-      </p>
+      {/* De onde a distância parte fica à vista: escondido para quem enxerga,
+          o "17 km" do card medido do centro da cidade parecia erro. O pedido
+          de localização continua só no clique (WEB-266). */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <p
+          className="text-[var(--onside-muted)] text-sm leading-snug"
+          aria-live="polite"
+        >
+          {statusLabel}
+        </p>
+        {offerLocation ? (
+          <button
+            type="button"
+            onClick={onRequestLocation}
+            className="inline-flex items-center gap-1.5 font-bold text-[var(--onside-ink)] text-sm underline underline-offset-2"
+          >
+            <Location size={14} color="currentColor" aria-hidden="true" />
+            Usar minha localização
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }
