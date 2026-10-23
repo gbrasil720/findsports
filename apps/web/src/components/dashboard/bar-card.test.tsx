@@ -63,11 +63,12 @@ function eventoEm(startsAt: Date): NonNullable<DiscoveryCardBar['nextEvent']> {
   } as NonNullable<DiscoveryCardBar['nextEvent']>
 }
 
-function renderizar(bar: DiscoveryCardBar) {
+function renderizar(bar: DiscoveryCardBar, distanceFromCity?: string) {
   const markup = renderToStaticMarkup(
     <MinuteTickProvider>
       <BarCard
         bar={bar}
+        distanceFromCity={distanceFromCity}
         isHovered={false}
         isFavorite={false}
         onMouseEnter={() => {}}
@@ -263,5 +264,32 @@ describe('preço médio (WEB-144)', () => {
       .body.textContent
     expect(texto).toContain(`${formatAverageSpend(6000)} por pessoa`)
     expect(texto).toContain('informado pelo bar')
+  })
+})
+
+describe('distância', () => {
+  const texto = (documento: Document) =>
+    documento.body.textContent?.replace(/\s+/g, ' ') ?? ''
+
+  test('com a localização do torcedor, avisa que é em linha reta', () => {
+    const documento = renderizar(criarBar('starter'))
+    expect(texto(documento)).toContain('1.2 km em linha reta')
+    expect(
+      documento.querySelector('[title^="Em linha reta até o bar"]')
+    ).not.toBeNull()
+  })
+
+  test('sem localização, diz de que centro de cidade ela parte', () => {
+    const documento = renderizar(criarBar('starter'), 'São Paulo')
+    expect(texto(documento)).toContain('1.2 km do centro de São Paulo')
+    expect(texto(documento)).not.toContain('em linha reta')
+  })
+
+  test('sem distância, nada de origem ao lado do traço', () => {
+    const documento = renderizar({
+      ...criarBar('starter'),
+      distance_km: Number.NaN
+    })
+    expect(texto(documento)).not.toContain('em linha reta')
   })
 })
