@@ -52,6 +52,14 @@ export async function initPostHog(): Promise<boolean> {
 
   posthog.init(projectKey, {
     api_host: env.VITE_POSTHOG_HOST,
+    // Com o proxy em `api_host`, o SDK não deduz o painel: sem isto, links da
+    // toolbar e afins apontariam para `a.onside.sh`.
+    ui_host: 'https://eu.posthog.com',
+    // Os padrões do SDK nesta data. O que está escrito abaixo vale por cima
+    // deles (página vista e autocaptura continuam desligadas).
+    defaults: '2026-05-30',
+    // Perfil de pessoa só para quem fez login (`identify`).
+    person_profiles: 'identified_only',
     capture_pageview: false,
     capture_pageleave: true,
     autocapture: false,
