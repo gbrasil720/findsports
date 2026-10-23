@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test'
-import { SAO_PAULO } from '../../env'
 import { insert, query } from '../../fixtures/db'
 import {
   createEvent,
@@ -17,6 +16,10 @@ import { expect, test } from '../../fixtures/test'
 
 // `/dashboard` (WEB-178). Cada teste põe o torcedor e os bares num ponto
 // próprio do mapa: a busca é por raio, então os testes paralelos não se veem.
+
+// A sede de São Paulo, de onde a busca parte sem localização nem cidade
+// (`SAO_PAULO_FALLBACK` no web).
+const CENTRO_DE_SAO_PAULO = { latitude: -23.5329, longitude: -46.6395 }
 
 const card = (page: Page, name: string) =>
   page.getByRole('link', { name: `Ver ${name}` })
@@ -46,7 +49,7 @@ test.describe('localização negada', () => {
   test('cai no centro de São Paulo', async ({ page }) => {
     // Bar no centro de SP com nome único: a busca pelo nome isola ele dos
     // outros bares que a suíte cria ali.
-    const central = await pubAt(SAO_PAULO)
+    const central = await pubAt(CENTRO_DE_SAO_PAULO)
     await createEvent({ barId: central.barId, startsAt: days(2) })
     await signInFanAt(page, uniqueSpot())
 
