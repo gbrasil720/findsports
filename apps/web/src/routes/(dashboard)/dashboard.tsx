@@ -623,6 +623,7 @@ function FanDashboard() {
         radiusKm={radiusKm}
         locationState={locationState}
         fallbackCityName={(profileCity ?? SAO_PAULO_CITY).name}
+        onRequestLocation={() => requestLocation(true)}
       />
       {isFan ? <AttendanceReportCard first={avaliar} /> : null}
       <PendingRatingCard
