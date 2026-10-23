@@ -8,8 +8,12 @@ import { getEventEnd } from '@findsports_oficial/db/event-window'
 
 export type Coordinates = { lat: number; lng: number }
 
-/** Centro de São Paulo: a busca cai aqui sem localização nem cidade. */
-export const SAO_PAULO = { lat: -23.5505, lng: -46.6333 }
+/**
+ * Centro de São Paulo: a busca cai aqui sem localização nem cidade. É a sede
+ * de `municipios-centros.json`, a mesma de quem escolheu São Paulo no perfil,
+ * e a mesma do web (`SAO_PAULO_FALLBACK`).
+ */
+export const SAO_PAULO = { lat: -23.5329, lng: -46.6395 }
 
 /** Localização do aparelho, senão a cidade do perfil, senão São Paulo. */
 export function searchCenter(
