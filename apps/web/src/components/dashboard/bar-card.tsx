@@ -83,6 +83,11 @@ type Props = {
   isFavorite: boolean
   favoritePending?: boolean
   classicPlacementGuaranteed?: boolean
+  /**
+   * Cidade de onde a distância foi medida, quando a busca não tem a
+   * localização do navegador (WEB-319). Sem ela, a distância é até o torcedor.
+   */
+  distanceFromCity?: string
   onMouseEnter: () => void
   onMouseLeave: () => void
   onFocus: () => void
@@ -96,6 +101,7 @@ export function BarCard({
   isFavorite,
   favoritePending = false,
   classicPlacementGuaranteed = false,
+  distanceFromCity,
   onMouseEnter,
   onMouseLeave,
   onFocus,
@@ -235,11 +241,34 @@ export function BarCard({
           </h3>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1 font-bold text-sm tabular-nums">
+            {/* A distância é em linha reta, e o mapa do celular mostra a rota:
+                sem dizer isso, 20 km aqui contra 30 km lá pareciam erro. Sem
+                localização, ela parte do centro da cidade, não do torcedor. */}
+            <span
+              className="inline-flex items-center gap-1 text-sm"
+              title={
+                distanceFromCity
+                  ? `Em linha reta, a partir do centro de ${distanceFromCity}, não de onde você está.`
+                  : 'Em linha reta até o bar. O caminho a pé ou de carro é mais longo.'
+              }
+            >
               <Location size={14} color="currentColor" aria-hidden="true" />
-              {Number.isFinite(bar.distance_km)
-                ? `${bar.distance_km.toFixed(1)} km`
-                : '—'}
+              <span className="font-bold tabular-nums">
+                {Number.isFinite(bar.distance_km)
+                  ? `${bar.distance_km.toFixed(1)} km`
+                  : '—'}
+              </span>
+              {Number.isFinite(bar.distance_km) ? (
+                // O espaço é para o leitor de tela; o vão visual é o `gap`.
+                <>
+                  {' '}
+                  <span className="text-[var(--bar-card-muted)] text-xs">
+                    {distanceFromCity
+                      ? `do centro de ${distanceFromCity}`
+                      : 'em linha reta'}
+                  </span>
+                </>
+              ) : null}
             </span>
             <span className="text-[var(--bar-card-muted)] text-xs">
               {bar.neighborhood}

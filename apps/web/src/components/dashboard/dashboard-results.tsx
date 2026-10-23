@@ -255,6 +255,11 @@ function ResultContent(props: Props) {
       isFavorite={props.favoriteIds.has(bar.id)}
       favoritePending={props.favoritePending}
       classicPlacementGuaranteed={props.classicPlacementGuaranteed}
+      distanceFromCity={
+        // A busca parte das coordenadas sempre que elas existem
+        // (`resolveSearchCenter`); sem elas, do centro da cidade.
+        props.coords ? undefined : (props.profileCity ?? SAO_PAULO_CITY).name
+      }
       onMouseEnter={() => props.onHover(bar.id)}
       onMouseLeave={() => props.onHover(null)}
       onFocus={() => props.onHover(bar.id)}
