@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import centros from '../../../../packages/api/src/data/municipios-centros.json'
 import {
   type DashboardFilters,
   DEFAULT_RADIUS_KM,
@@ -65,6 +66,13 @@ describe('centro da busca (WEB-319)', () => {
     expect(resolveSearchCenter(null, null)).toEqual(SAO_PAULO_FALLBACK)
     // `undefined` é a consulta da cidade ainda sem resposta, ou com erro.
     expect(resolveSearchCenter(null, undefined)).toEqual(SAO_PAULO_FALLBACK)
+  })
+
+  test('o centro de São Paulo é a sede que a cidade do perfil grava', () => {
+    const sede = (centros as [string, string, number, number][]).find(
+      ([nome, uf]) => nome === 'São Paulo' && uf === 'SP'
+    )
+    expect({ lat: sede?.[2], lng: sede?.[3] }).toEqual(SAO_PAULO_FALLBACK)
   })
 })
 

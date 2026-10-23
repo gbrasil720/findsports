@@ -25,7 +25,12 @@ export function normalizeRadiusKm(value: number | null | undefined): RadiusKm {
   return clampSearchRadiusKm(value, DEFAULT_RADIUS_KM)
 }
 
-export const SAO_PAULO_FALLBACK = { lat: -23.5505, lng: -46.6333 } as const
+/**
+ * A sede de São Paulo, a mesma de `municipios-centros.json` — o centro de quem
+ * escolheu São Paulo no perfil. Eram dois pontos a 2 km um do outro, e a
+ * distância do card mudava conforme a cidade estivesse ou não no perfil.
+ */
+export const SAO_PAULO_FALLBACK = { lat: -23.5329, lng: -46.6395 } as const
 
 export type LocationState =
   | 'unknown'
