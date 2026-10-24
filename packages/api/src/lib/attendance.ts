@@ -545,10 +545,14 @@ export async function readAttendanceQuestions(
       participantFreeText: event.participantFreeText,
       participants: participantNames(sql`${event.id}`),
       startsAt: event.startsAt,
+      barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
+      photoUrl: bar.photoUrl,
       offer: reservation.offerSnapshot,
-      answered: sql<boolean>`${attendanceReport.userId} IS NOT NULL`
+      answered: sql<boolean>`${attendanceReport.userId} IS NOT NULL`,
+      // A resposta gravada: quem disse que não foi não avalia (`post-game.ts`).
+      attended: attendanceReport.attended
     })
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))
