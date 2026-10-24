@@ -1,5 +1,10 @@
 # Redesign da página pública do bar (`/pub/$pubId`)
 
+> **Histórico.** Desde o painel do bar no web (24/10/2026) o web é só para bares:
+> `/pub/$pubId` virou a página "está no app" com o cartão do bar, e o mapa
+> MapLibre do web saiu junto com `VITE_MAP_TILES_URL`. O que segue descreve a
+> página antiga e fica como registro das decisões daquela época.
+
 Decisões fechadas na sessão de grilling. Escopo: UI + duas correções de query.
 Sem migration.
 
@@ -86,10 +91,9 @@ contradiz o job da página.
 
 ## 8. Riscos
 
-- `VITE_MAP_TILES_URL` é opcional no schema de env. Sem o arquivo de tiles, o
-  mapa precisa degradar para o bloco de endereço + botão, nunca para uma imagem
-  quebrada. (Era `VITE_GOOGLE_MAPS_PUBLIC_KEY`; o WEB-73 trocou o Google por
-  MapLibre + Protomaps auto-hospedado — ver `docs/map-tiles.md`.)
+- O mapa desta página dependia de `VITE_MAP_TILES_URL` (MapLibre + Protomaps,
+  WEB-73). A variável e o mapa saíram do web; ver o aviso no topo de
+  `docs/map-tiles.md`.
 - A página continua `protectedProcedure` + `noindex`. O bar não ganha tráfego
   orgânico com ela; se isso incomodar, é outra decisão (versão pública rasa),
   fora deste escopo.
