@@ -79,8 +79,6 @@ export function useMedalPalette() {
   }
 }
 
-export type MedalPalette = ReturnType<typeof useMedalPalette>
-
 export function MedalImage({
   id,
   locked = false,
