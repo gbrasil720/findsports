@@ -122,15 +122,15 @@ export function YouMenu({
         >
           <View style={[styles.menuHead, { borderBottomColor: palette.line }]}>
             <View style={styles.menuAvatar}>
+              {/* A foto cobre as iniciais quando carrega. */}
+              <Text style={styles.menuAvatarText}>{initials}</Text>
               {image ? (
                 <Image
                   accessibilityIgnoresInvertColors
                   source={{ uri: image }}
-                  style={styles.menuPhoto}
+                  style={StyleSheet.absoluteFill}
                 />
-              ) : (
-                <Text style={styles.menuAvatarText}>{initials}</Text>
-              )}
+              ) : null}
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -261,9 +261,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: ACID,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    overflow: 'hidden'
   },
-  menuPhoto: { width: 46, height: 46, borderRadius: 6 },
   menuAvatarText: {
     fontFamily: 'Anton',
     fontSize: 19,

@@ -46,18 +46,6 @@ export function Avatar({
   image?: string | null
 }) {
   const palette = usePalette()
-  if (image)
-    return (
-      <Image
-        accessibilityIgnoresInvertColors
-        source={{ uri: image }}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size > 50 ? 9 : 8
-        }}
-      />
-    )
   const tone = me ? 'me' : toneOf(id)
   const bg =
     tone === 'me'
@@ -87,7 +75,8 @@ export function Avatar({
         borderRadius: size > 50 ? 9 : 8,
         backgroundColor: bg,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        overflow: 'hidden'
       }}
     >
       <Text
@@ -99,6 +88,14 @@ export function Avatar({
       >
         {initials(name)}
       </Text>
+      {/* A foto cobre as iniciais quando carrega; lenta ou quebrada, ficam elas. */}
+      {image ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          source={{ uri: image }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
     </View>
   )
 }
