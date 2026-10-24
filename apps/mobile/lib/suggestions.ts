@@ -268,10 +268,6 @@ export function stripLabel(item: Suggestion, now: number) {
   return null
 }
 
-/** Os que ainda faltam decidir, na ordem da rodada. */
-export const pending = (round: Round) =>
-  round.items.filter((item) => !item.decision)
-
 /** "N novos" no menu Você (2c): os que a pessoa nem viu ainda. */
 export const freshCount = (round: Round) =>
   round.items.filter((item) => !item.seen && !item.decision).length
