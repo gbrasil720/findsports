@@ -34,6 +34,7 @@ import {
   consentBannerEnabled,
   useAnalyticsConsent
 } from '../lib/analytics-consent'
+import { env } from '../lib/env'
 import { initPostHog, stopPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
@@ -227,7 +228,8 @@ function PostHogProvider() {
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonated = session?.session.impersonatedBy ? session : null
-  const isDev = import.meta.env.DEV
+  // Sem devtools na suíte E2E: o botão flutuante cobre o que o teste clica.
+  const isDev = import.meta.env.DEV && !env.VITE_E2E_NO_DEVTOOLS
   // WEB-383: o Houdini não mede o admin nem pede consentimento de cookie.
   const inHoudini = useRouterState({
     select: (s) =>
@@ -293,9 +295,7 @@ function RootDocument() {
       <Toaster richColors />
       {isDev ? (
         <>
-          {/* No canto de cima: embaixo à esquerda ele cobria o menu do dono na
-              barra lateral do painel, que gruda no fim da tela. */}
-          <TanStackRouterDevtools position="top-right" />
+          <TanStackRouterDevtools position="bottom-left" />
           <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         </>
       ) : null}

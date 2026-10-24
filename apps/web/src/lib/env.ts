@@ -66,13 +66,20 @@ export const env = createEnv({
      * `vite dev`, onde não há análise, para a suíte conseguir testá-lo. O
      * PostHog continua desligado; ver `consentBannerEnabled`.
      */
-    VITE_E2E_CONSENT_BANNER: z.optional(z.string())
+    VITE_E2E_CONSENT_BANNER: z.optional(z.string()),
+
+    /**
+     * Só da suíte E2E: tira os devtools do `vite dev`, cujo botão flutuante
+     * cobre o canto da tela que o teste precisa clicar.
+     */
+    VITE_E2E_NO_DEVTOOLS: z.optional(z.string())
   },
   runtimeEnv: {
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
     VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-    VITE_E2E_CONSENT_BANNER: import.meta.env.VITE_E2E_CONSENT_BANNER
+    VITE_E2E_CONSENT_BANNER: import.meta.env.VITE_E2E_CONSENT_BANNER,
+    VITE_E2E_NO_DEVTOOLS: import.meta.env.VITE_E2E_NO_DEVTOOLS
   },
   emptyStringAsUndefined: true
 })

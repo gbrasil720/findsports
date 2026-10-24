@@ -66,6 +66,8 @@ export const SERVER_ENV: Record<string, string> = {
   // Sem análise em `vite dev` o aviso de cookies não existiria. Isto liga só
   // o aviso; `fixtures/test.ts` já o deixa respondido em todo teste.
   VITE_E2E_CONSENT_BANNER: '1',
+  // Sem os devtools do `vite dev`: o botão flutuante cobre o que o teste clica.
+  VITE_E2E_NO_DEVTOOLS: '1',
   // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. O
   // alcance do plugin é coberto por `packages/auth/src/captcha-scope.test.ts`.
   TURNSTILE_SECRET_KEY: '',
