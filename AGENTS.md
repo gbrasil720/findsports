@@ -169,6 +169,20 @@ o `propose` o traria de volta, e o `sync` nunca apaga linha (favoritos e jogos s
 cascata). `featured` é a lista curta que a tela mostra sem busca; o resto aparece por
 `pubs.searchTeams`. Escudo e foto não entram (marca do clube, licença das imagens).
 
+### Título do jogo e card do bar
+
+O título de um jogo ("Corinthians × Palmeiras", senão o texto livre do bar, senão o
+campeonato) sai de `gameTitle` em `packages/db/src/game-title.ts`, sem imports: web, app
+e servidor (chat da IA) usam o mesmo. Leitura em SQL cru usa o irmão `gameTitle` de
+`packages/api/src/lib/game-participants.ts`; um teste de integração confere que os dois
+concordam. Tela que precisa dos times separados recebe `participants[]` (ou usa
+`participantNames`), nunca quebra o título de volta.
+
+O card do bar nas listas (`pubs.search`, `nearbyWithoutGames`, `searchByLocation`) é
+completado depois do cache por `toBarCards` (`routers/pubs.ts`): gasto médio pela
+assinatura vigente, características, quem vai (piso do `readGoing`) e a exibição pública
+da nota. O que pode envelhecer um TTL fica no cache; o que não pode, ali.
+
 ### Environment variables
 
 Split by runtime boundary:
