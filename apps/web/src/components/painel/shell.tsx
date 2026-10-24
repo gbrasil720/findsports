@@ -30,6 +30,7 @@ type ItemNav = {
   to:
     | '/admin'
     | '/admin/jogos'
+    | '/admin/desempenho'
     | '/admin/quem-vai'
     | '/admin/meu-espaco'
     | '/admin/billing'
@@ -89,6 +90,7 @@ export function PainelShell({ children }: { children: ReactNode }) {
       icone: 'cal',
       contador: contadores.jogos
     },
+    { to: '/admin/desempenho', rotulo: 'Desempenho', icone: 'chart' },
     ...(showsGoing
       ? [
           {
