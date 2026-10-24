@@ -10,12 +10,13 @@ import {
 import { formatCode } from '@/domain/my-games'
 import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { Botao, CabecalhoCard, CampoTexto, Card } from '../painel'
 
 type Props = {
   logLate: (input: { codes: string[] }) => Promise<LateEntryResult[]>
   /** "Faltou lançar?": quem marcou e ainda não foi lançado, por jogo. */
   missing?: NotLoggedGame[]
-  /** Depois de lançar, para "Faltou lançar?" se atualizar. */
+  /** Depois de lançar, para "Faltou lançar?" e a lista se atualizarem. */
   onLogged?: () => void
 }
 
@@ -29,7 +30,7 @@ const MAX_CODES = 80
  */
 export function LateCodeEntry({ logLate, missing = [], onLogged }: Props) {
   const fieldId = useId()
-  const hintId = `${fieldId}-hint`
+  const titleId = `${fieldId}-title`
   const [draft, setDraft] = useState('')
   const [results, setResults] = useState<LateEntryResult[] | null>(null)
   const codes = splitLateCodes(draft)
@@ -52,67 +53,68 @@ export function LateCodeEntry({ logLate, missing = [], onLogged }: Props) {
   }
 
   return (
-    <section
-      className="onside-panel mb-6 p-5 md:p-6"
-      aria-labelledby={`${fieldId}-title`}
-    >
-      <p className="onside-kicker">Depois do jogo, pela comanda</p>
-      <h2 id={`${fieldId}-title`} className="onside-display text-2xl">
-        Lançar códigos da comanda
-      </h2>
-      <p className="mt-2 text-[var(--onside-muted)] text-sm">
+    <Card className="qv-comanda" aria-labelledby={titleId} role="region">
+      <CabecalhoCard
+        id={titleId}
+        titulo="Lançar códigos da comanda"
+        meta="Depois do jogo, pela comanda"
+      />
+      <p className="jogos-dica">
         Digite os códigos que a equipe anotou, um por linha. Vale até 48 h
         depois do fim do jogo, e cada código conta como visita no dia do jogo.
       </p>
 
       {missing.length ? <MissingList games={missing} /> : null}
 
-      <form method="post" onSubmit={handleSubmit} noValidate className="mt-4">
-        <label htmlFor={fieldId} className="onside-label">
-          Códigos anotados
-        </label>
-        <textarea
+      <form
+        method="post"
+        onSubmit={handleSubmit}
+        noValidate
+        className="qv-comanda"
+      >
+        <CampoTexto
           id={fieldId}
+          rotulo="Códigos anotados"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          rows={6}
+          rows={5}
           placeholder={'K7M·R4P\nH3X·W9T'}
           spellCheck={false}
           autoCapitalize="characters"
-          className="onside-textarea font-[family-name:var(--onside-mono)] uppercase tracking-[0.15em]"
-          aria-describedby={hintId}
           aria-invalid={overLimit || undefined}
+          dica={
+            overLimit
+              ? `Até ${MAX_CODES} códigos por vez. Tire ${codes.length - MAX_CODES}.`
+              : 'Não precisa do ponto do meio nem de maiúscula.'
+          }
         />
-        <p id={hintId} className="mt-1.5 text-[var(--onside-muted)] text-xs">
-          {overLimit
-            ? `Até ${MAX_CODES} códigos por vez. Tire ${codes.length - MAX_CODES}.`
-            : 'Não precisa do ponto do meio nem de maiúscula.'}
-        </p>
         {mutation.error ? (
-          <p className="onside-field-error" role="alert">
+          <p className="jogos-erro" role="alert">
             {getUserFacingMessage(
               mutation.error,
               'Não foi possível lançar. Tente de novo.'
             )}
           </p>
         ) : null}
-        <button
-          type="submit"
-          disabled={!codes.length || overLimit || mutation.isPending}
-          className="onside-btn onside-btn-acid mt-4"
-        >
-          {mutation.isPending
-            ? 'Lançando…'
-            : codes.length > 1
-              ? `Lançar ${codes.length} códigos`
-              : 'Lançar código'}
-        </button>
+        <div>
+          <Botao
+            type="submit"
+            variante="acid"
+            disabled={!codes.length || overLimit || mutation.isPending}
+          >
+            {mutation.isPending
+              ? 'Lançando…'
+              : codes.length > 1
+                ? `Lançar ${codes.length} códigos`
+                : 'Lançar código'}
+          </Botao>
+        </div>
       </form>
 
       <div role="status">
         {results ? (
-          <div className="mt-5 space-y-4">
-            <p className="font-semibold text-sm">
+          <div className="qv-comanda">
+            <p className="m-0 font-semibold text-sm">
               {logged.length === 1
                 ? '1 código lançado'
                 : `${logged.length} códigos lançados`}
@@ -127,7 +129,7 @@ export function LateCodeEntry({ logLate, missing = [], onLogged }: Props) {
           </div>
         ) : null}
       </div>
-    </section>
+    </Card>
   )
 }
 
@@ -140,27 +142,18 @@ function ResultList({
 }) {
   return (
     <div>
-      <p className="onside-kicker">{title}</p>
-      <ul className="mt-1 divide-y divide-[var(--onside-line)] border-[1.5px] border-[var(--onside-line)]">
+      <CabecalhoCard titulo={title} nivel={3} tamanho={14} />
+      <ul className="qv-resultado" style={{ marginTop: 6 }}>
         {items.map((item) => (
-          <li
-            key={item.code}
-            className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2 text-sm"
-          >
-            <span className="font-[family-name:var(--onside-mono)] font-bold tracking-[0.15em]">
-              {formatCode(item.code)}
-            </span>
+          <li key={item.code}>
+            <b className="painel-mono">{formatCode(item.code)}</b>
             <span
-              className={
-                item.status === 'logged'
-                  ? 'text-[var(--onside-ink)]'
-                  : 'text-[var(--onside-live-text)]'
-              }
+              className={item.status === 'logged' ? undefined : 'jogos-erro'}
             >
               {getLateEntryLabel(item.status)}
             </span>
             {item.guestName && item.event ? (
-              <span className="basis-full text-[var(--onside-muted)] text-xs">
+              <span>
                 {item.guestName} ·{' '}
                 {item.event.participantFreeText ?? item.event.championship} ·{' '}
                 {formatDayLabel(new Date(item.event.startsAt))},{' '}
@@ -180,35 +173,39 @@ function ResultList({
  */
 function MissingList({ games }: { games: NotLoggedGame[] }) {
   return (
-    <div className="onside-callout mt-4">
-      <div className="w-full">
-        <p className="font-semibold text-sm">Faltou lançar?</p>
-        <p className="mt-1 text-[var(--onside-muted)] text-xs">
+    <div className="qv-faltou">
+      <div>
+        <p>
+          <b>Faltou lançar?</b>
+        </p>
+        <p className="jogos-dica">
           Marcaram que iam e ainda não têm código lançado. Confira nas comandas.
         </p>
-        <ul className="mt-3 space-y-3">
-          {games.map((game) => {
-            const startsAt = new Date(game.startsAt)
-            const closesAt = new Date(game.closesAt)
-            return (
-              <li key={game.id} className="text-sm">
-                <p className="font-semibold">
+      </div>
+      <ul>
+        {games.map((game) => {
+          const startsAt = new Date(game.startsAt)
+          const closesAt = new Date(game.closesAt)
+          return (
+            <li key={game.id}>
+              <p>
+                <b>
                   {game.participantFreeText ?? game.championship} ·{' '}
                   {formatDayLabel(startsAt)}, {formatEventTime(startsAt)}
-                </p>
-                <p className="[overflow-wrap:anywhere]">
-                  {game.names.join(', ')}
-                </p>
-                <p className="text-[var(--onside-muted)] text-xs">
-                  Dá para lançar até {/* "Hoje" e "Amanhã" no meio da frase. */}
-                  {formatDayLabel(closesAt).toLowerCase()},{' '}
-                  {formatEventTime(closesAt)}.
-                </p>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+                </b>
+              </p>
+              <p className="[overflow-wrap:anywhere]">
+                {game.names.join(', ')}
+              </p>
+              <p className="jogos-dica">
+                Dá para lançar até {/* "Hoje" e "Amanhã" no meio da frase. */}
+                {formatDayLabel(closesAt).toLowerCase()},{' '}
+                {formatEventTime(closesAt)}.
+              </p>
+            </li>
+          )
+        })}
+      </ul>
     </div>
   )
 }
