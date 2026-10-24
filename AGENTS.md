@@ -377,6 +377,14 @@ invente layout que o projeto não tem.
   `/api/auth` (`apps/mobile/.env`, modelo em `.env.example`). Só o **tipo** do router cruza a
   fronteira (`import type { AppRouter }` em `lib/trpc.ts`); código de servidor nunca entra no
   bundle do app.
+- **Cache das consultas:** `lib/query-client.ts`. Resposta vale 30 s (`staleTime`);
+  esportes, times, cidade, preferências, `friends.me` e `appConfig.getPublic`, 5 min
+  (`lib/trpc.ts`). Toda mutation que dá certo, o `refreshSession` e o `ai.confirm` vencem o
+  cache inteiro sem buscar nada (`refetchType: 'none'`): a próxima tela que abrir busca de
+  novo, e a tela à vista atualiza pelo `invalidateQueries` da própria mutation. Escrita
+  nova fora do `useMutation` (como `authClient`) tem de vencer o cache do mesmo jeito.
+  Voltar do segundo plano revalida o que venceu (`focusManager` no `AppState`) e, sem rede,
+  as consultas esperam (`onlineManager` no `expo-network`).
 - **Sessão:** `@better-auth/expo` guarda a sessão no SecureStore e a manda como cabeçalho
   `Cookie`. No servidor, o plugin `expo()` e o esquema `onside://` em
   `packages/auth/src/trusted-origins.ts` (`APP_SCHEME`, igual ao `scheme` do `app.json`).
@@ -627,7 +635,7 @@ invente layout que o projeto não tem.
   tela): grupos, pontos e nomes de bairro, sem rótulo; de rua: sem grupo, até 3 rótulos;
   mais perto que 1,5 km: rótulo em todos que couberem. Tocar num bar o seleciona: os outros apagam para 45% e a folha
   troca para o card dele; tocar no mapa solta. Grupos pela `supercluster` (tocar abre no zoom em que o
-  grupo se separa) e o resto em `lib/map-layers.ts`, sobre os cantos reais da tela
+  grupo se separa; o índice só é refeito quando os bares mudam, `indexCache`) e o resto em `lib/map-layers.ts`, sobre os cantos reais da tela
   (`getMapBoundaries`); debaixo do cabeçalho não sai rótulo. A camada nativa do MapLibre
   faria isso sozinha, mas sai do Expo Go: WEB-417, sem compromisso. A câmera abre no raio da pessoa, com a
   região da tela toda e o centro deslocado para a faixa livre: `mapPadding` e
