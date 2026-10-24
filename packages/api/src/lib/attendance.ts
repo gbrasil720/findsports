@@ -47,8 +47,9 @@ import { visit } from './visits'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
- * servidor já resolvidos: o torcedor recebe a contagem a partir do piso, e o
- * bar recebe só o sinal relativo, nunca a contagem.
+ * servidor já resolvidos: o torcedor recebe a contagem a partir do piso; o
+ * bar Elite recebe a contagem (Hoje e Plano e cobrança), os outros planos só o
+ * sinal relativo.
  */
 
 const eventEnd = eventEndSql()
