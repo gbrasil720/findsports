@@ -512,6 +512,13 @@
       "when": 1792871994967,
       "tag": "0073_subscription_cancel_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792879451403,
+      "tag": "0074_event_published_at",
+      "breakpoints": true
     }
   ]
 }
