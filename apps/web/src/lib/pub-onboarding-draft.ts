@@ -29,7 +29,7 @@ export type PubOnboardingDraft = {
   amenities?: number[]
   screenCount?: number
   /** Da Revisão (WEB-448); opcionais, como no Meu espaço. */
-  openingHours?: OpeningHours
+  openingHours?: OpeningHours | null
   houseOffer?: string
   /** Só para o formulário voltar com ele; o servidor não recebe CEP. */
   cep?: string

@@ -16,6 +16,7 @@ import {
   ONBOARDING_TRIAL,
   PLAN_NAMES
 } from '@findsports_oficial/api/lib/plan-limits'
+import { normalizeHouseOffer } from '@findsports_oficial/db/house-offer'
 import { useMutation } from '@tanstack/react-query'
 import {
   createFileRoute,
@@ -32,6 +33,16 @@ import {
   useState
 } from 'react'
 import { toast } from 'sonner'
+import { Horario, OfertaDaCasa } from '@/components/admin/espaco-campos'
+import {
+  type DiaRascunho,
+  diasDoHorario,
+  erroDaOferta,
+  horarioDoRascunho,
+  horarioInvalido,
+  MSG_HORARIO_INVALIDO,
+  recursoPago
+} from '@/components/admin/espaco-model'
 import { entradaHead } from '@/components/entrada/auth'
 import { MapaPrevia, ObShell, Previa } from '@/components/entrada/onboarding'
 import {
@@ -59,7 +70,10 @@ import {
   parsePubOnboardingDraft,
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
-import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
+import {
+  getPubOnboardingReview,
+  resumoDoHorario
+} from '@/lib/pub-onboarding-review'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { formatPhone, formatStoredPhone } from '@/utils/format-phone'
@@ -87,6 +101,17 @@ const BOAS_VINDAS: readonly (readonly [IconeNome, string])[] = [
 
 /** "Com oferta da casa" não se marca: é o filtro da busca (ver `amenities.ts`). */
 const ITENS = AMENITIES.filter(({ id }) => id !== HOUSE_OFFER_AMENITY_ID)
+
+/**
+ * Oferta da casa é do Elite (WEB-448). O bar nasce no teste do cadastro, e a
+ * regra de mostrar o campo é a do Meu espaço (`recursoPago`); o
+ * `completePub` confere de novo.
+ */
+const PODE_OFERTA =
+  recursoPago(
+    { status: 'ready', plan: ONBOARDING_TRIAL.plan, standing: 'current' },
+    'elite'
+  ).status === 'liberado'
 
 function Titulo({
   linhas,
@@ -146,6 +171,11 @@ function PubOnboarding() {
   const [description, setDescription] = useState('')
   const [amenities, setAmenities] = useState<number[]>([])
   const [screenCount, setScreenCount] = useState<number | null>(null)
+  // Horário e oferta se preenchem na Revisão, num painel aberto pelo "Editar"
+  // da linha (WEB-448), com as peças do Meu espaço.
+  const [hours, setHours] = useState<DiaRascunho[] | null>(null)
+  const [houseOffer, setHouseOffer] = useState('')
+  const [editando, setEditando] = useState<'horario' | 'oferta' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
@@ -163,6 +193,8 @@ function PubOnboarding() {
   })
 
   const address = juntarEndereco(rua, numero)
+  const openingHours = horarioDoRascunho(hours)
+  const oferta = PODE_OFERTA ? normalizeHouseOffer(houseOffer) : null
   const draft = useMemo<PubOnboardingDraft>(
     () => ({
       name: name.trim(),
@@ -174,6 +206,8 @@ function PubOnboarding() {
       description: description.trim() || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
       screenCount: screenCount ?? undefined,
+      openingHours: openingHours ?? undefined,
+      houseOffer: oferta ?? undefined,
       cep: cep || undefined
     }),
     [
@@ -186,6 +220,8 @@ function PubOnboarding() {
       description,
       amenities,
       screenCount,
+      openingHours,
+      oferta,
       cep
     ]
   )
@@ -267,6 +303,8 @@ function PubOnboarding() {
     // Rascunho antigo pode trazer "Aceita reserva", que saiu do checklist.
     setAmenities(declaredAmenityIds(salvo.amenities ?? []))
     setScreenCount(salvo.screenCount ?? null)
+    setHours(diasDoHorario(salvo.openingHours ?? null))
+    setHouseOffer(salvo.houseOffer ?? '')
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, ULTIMO_PASSO))
@@ -319,6 +357,9 @@ function PubOnboarding() {
     setDescription('')
     setAmenities([])
     setScreenCount(null)
+    setHours(null)
+    setHouseOffer('')
+    setEditando(null)
     setPhoneError(null)
     setError(null)
     setDraftRestored(false)
@@ -356,6 +397,12 @@ function PubOnboarding() {
     }
     if (step === 2 && motivoTelasInvalido(screenCount) !== null) {
       return 'Para continuar, corrija o número de telas.'
+    }
+    if (step === ULTIMO_PASSO && horarioInvalido(hours)) {
+      return 'Para continuar, corrija o horário: um dia abre e fecha na mesma hora.'
+    }
+    if (step === ULTIMO_PASSO && PODE_OFERTA && erroDaOferta(houseOffer)) {
+      return 'Para continuar, encurte a oferta da casa.'
     }
     return null
   })()
@@ -787,11 +834,41 @@ function PubOnboarding() {
   ]
     .filter(Boolean)
     .join(' · ')
-  const linhas: [IconeNome, string, string | null, (() => void) | null][] = [
-    ['pin', 'Endereço', enderecoCompleto, () => setStep(1)],
-    ['cal', 'Horário', null, null],
-    ['phone', 'Contato', contato, () => setStep(1)],
-    ['ticket', 'Oferta da casa', null, null]
+  const abrir = (painel: 'horario' | 'oferta') => () =>
+    setEditando((atual) => (atual === painel ? null : painel))
+  const linhas: {
+    icone: IconeNome
+    rotulo: string
+    valor: string | null
+    editar: (() => void) | null
+    painel?: 'horario' | 'oferta'
+  }[] = [
+    {
+      icone: 'pin',
+      rotulo: 'Endereço',
+      valor: enderecoCompleto,
+      editar: () => setStep(1)
+    },
+    {
+      icone: 'cal',
+      rotulo: 'Horário',
+      valor: resumoDoHorario(openingHours),
+      editar: abrir('horario'),
+      painel: 'horario'
+    },
+    {
+      icone: 'phone',
+      rotulo: 'Contato',
+      valor: contato,
+      editar: () => setStep(1)
+    },
+    {
+      icone: 'ticket',
+      rotulo: 'Oferta da casa',
+      valor: oferta,
+      editar: PODE_OFERTA ? abrir('oferta') : null,
+      painel: PODE_OFERTA ? 'oferta' : undefined
+    }
   ]
 
   return (
@@ -804,6 +881,14 @@ function PubOnboarding() {
           nome={name.trim()}
           sub={`${neighborhood.trim()} · ★ novo`}
           chips={[`${PLAN_NAMES[ONBOARDING_TRIAL.plan]} · teste`, ...chips]}
+          extra={
+            oferta ? (
+              <div className="entrada-previa-oferta">
+                <Icone nome="ticket" tamanho={18} acento="var(--painel-ink)" />
+                <b>{oferta}</b>
+              </div>
+            ) : null
+          }
         />
       }
     >
@@ -820,32 +905,71 @@ function PubOnboarding() {
       </p>
       {recuperado}
       <Card className="entrada-ob-revisao">
-        {linhas.map(([icone, rotulo, valor, editar]) => (
-          <div key={rotulo}>
-            <Icone nome={icone} tamanho={20} />
-            <div>
-              {rotulo}
-              {valor ? (
-                <b>{valor}</b>
-              ) : (
-                <b data-vazio>
-                  {editar
-                    ? 'Não informado'
-                    : 'Você preenche depois, em Meu espaço'}
-                </b>
-              )}
-            </div>
-            {editar ? (
-              <button
-                type="button"
-                onClick={editar}
-                aria-label={`Editar ${rotulo.toLowerCase()}`}
-              >
-                Editar
-              </button>
-            ) : null}
-          </div>
-        ))}
+        {linhas.map(({ icone, rotulo, valor, editar, painel }) => {
+          const aberto = painel !== undefined && editando === painel
+          return (
+            <Fragment key={rotulo}>
+              <div>
+                <Icone nome={icone} tamanho={20} />
+                <div>
+                  {rotulo}
+                  {valor ? (
+                    <b>{valor}</b>
+                  ) : (
+                    <b data-vazio>
+                      {editar
+                        ? 'Não informado'
+                        : 'Você preenche depois, em Meu espaço'}
+                    </b>
+                  )}
+                </div>
+                {editar ? (
+                  <button
+                    type="button"
+                    onClick={editar}
+                    aria-label={`Editar ${rotulo.toLowerCase()}`}
+                    aria-expanded={painel ? aberto : undefined}
+                    aria-controls={painel ? `ob-painel-${painel}` : undefined}
+                  >
+                    Editar
+                  </button>
+                ) : null}
+              </div>
+              {aberto ? (
+                <section
+                  id={`ob-painel-${painel}`}
+                  aria-label={rotulo}
+                  className="entrada-ob-painel"
+                >
+                  {painel === 'horario' ? (
+                    <Horario
+                      hours={hours}
+                      erro={
+                        horarioInvalido(hours)
+                          ? MSG_HORARIO_INVALIDO
+                          : undefined
+                      }
+                      mudar={setHours}
+                    />
+                  ) : (
+                    <OfertaDaCasa
+                      valor={houseOffer}
+                      erro={erroDaOferta(houseOffer)}
+                      mudar={setHouseOffer}
+                    />
+                  )}
+                  <Botao
+                    variante="ink"
+                    altura={36}
+                    onClick={() => setEditando(null)}
+                  >
+                    Pronto
+                  </Botao>
+                </section>
+              ) : null}
+            </Fragment>
+          )
+        })}
       </Card>
       <p className="entrada-ob-letra">
         Ao continuar você aceita os Termos de Uso.
