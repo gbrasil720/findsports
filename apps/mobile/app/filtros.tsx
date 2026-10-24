@@ -1,4 +1,3 @@
-import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -32,6 +31,8 @@ import {
   PIX_E_CARTAO,
   RADII,
   type Shortcut,
+  searchInput,
+  searchRadius,
   shortcutLabel,
   sportCode,
   sportsMineFirst,
@@ -81,7 +82,7 @@ export default function FiltersSheet() {
   }
   const center = searchCenter(state.device, city.data)
   const profileRadius = session.data?.user.searchRadiusKm ?? 3
-  const radiusKm = Math.min(draft.radius ?? profileRadius, SEARCH_RADIUS_MAX_KM)
+  const radiusKm = searchRadius(draft, profileRadius)
 
   const days = useQuery({
     ...trpc.pubs.gameDays.queryOptions({
@@ -94,14 +95,7 @@ export default function FiltersSheet() {
   })
   // Quantos bares o rascunho traria: o número do botão.
   const preview = useQuery({
-    ...trpc.pubs.search.queryOptions({
-      ...center,
-      radiusKm,
-      date: draft.date ?? undefined,
-      sportId: draft.sportId ?? undefined,
-      amenities: draft.amenities.length ? draft.amenities : undefined,
-      limit: 50
-    }),
+    ...trpc.pubs.search.queryOptions(searchInput(draft, center, radiusKm)),
     placeholderData: keepPreviousData
   })
   const count = preview.data?.bars.length ?? 0
