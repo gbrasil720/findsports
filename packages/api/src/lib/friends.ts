@@ -1,8 +1,7 @@
 import { and, db, eq, isNull, or, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { friendship } from '@findsports_oficial/db/schema/social'
-import { readAchievements } from './achievements-read'
-import { readVisitedGames } from './attendance'
+import { readAchievements, readVisits } from './achievements-read'
 
 /*
  * Amigos (S1 do design do app, decisões do dono em 21/10/2026). O roteador é
@@ -229,16 +228,24 @@ export function monthStart(now = new Date()) {
 
 /** O que o perfil do amigo compara (11d): o mês de cada um. */
 export async function readMonth(userId: string, now = new Date()) {
-  const [visits, achievements] = await Promise.all([
-    readVisitedGames(userId),
-    readAchievements(userId)
+  // Uma leitura das visitas serve ao mês e às conquistas. Vem uma linha por
+  // chegada validada: o jogo conta uma vez, e os bares saem do mais recente.
+  const read = readVisits(userId)
+  const [rows, achievements] = await Promise.all([
+    read,
+    readAchievements(userId, read)
   ])
+  const visits = [...rows].sort(
+    (a, b) =>
+      b.at.getTime() - a.at.getTime() ||
+      (a.eventId < b.eventId ? -1 : a.eventId > b.eventId ? 1 : 0)
+  )
   const start = monthStart(now)
-  const month = visits.filter((visit) => visit.startsAt >= start)
+  const month = visits.filter((visit) => visit.at >= start)
   return {
     stats: {
       bars: new Set(month.map((visit) => visit.barId)).size,
-      games: month.length,
+      games: new Set(month.map((visit) => visit.eventId)).size,
       neighborhoods: new Set(month.map((visit) => visit.neighborhood)).size,
       achievements: achievements.achievements.filter((a) => a.unlockedAt).length
     },
