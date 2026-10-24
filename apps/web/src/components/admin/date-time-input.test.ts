@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test'
 
-import { formatDateTime, maskDateTime, parseDateTime } from './date-time-input'
+import {
+  dateTimeByName,
+  formatDateTime,
+  maskDateTime,
+  parseDateTime
+} from './date-time-input'
 
 test('digitar só números põe as barras, o espaço e os dois-pontos', () => {
   const typed = [...'081020262130'].reduce<string[]>((steps, digit) => {
@@ -133,4 +138,9 @@ test('incompleto', () => {
   for (const text of ['0', '08/10', '08/10/202', '08/10/2026', '08/10/2026 2'])
     expect(parseDateTime(text)).toEqual({ problem: 'incomplete' })
   expect(parseDateTime('08/10/2026 21:3')).toEqual({ problem: 'incomplete' })
+})
+
+test('por extenso, como o "Começa" do design', () => {
+  expect(dateTimeByName('2026-10-17T16:00')).toBe('Sáb, 17 out · 16:00')
+  expect(dateTimeByName('2027-01-03T09:05')).toBe('Dom, 3 jan · 09:05')
 })

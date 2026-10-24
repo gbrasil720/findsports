@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { Icone } from '../painel'
+import { dataCurta } from './hoje-model'
 
 /**
  * Data e hora com máscara `dd/mm/aaaa hh:mm` (WEB-306).
@@ -100,6 +101,15 @@ export function timeOf(datetimeLocal: string | undefined): string | null {
   return datetimeLocal ? (datetimeLocal.split('T')[1] ?? null) : null
 }
 
+/**
+ * "Sáb, 17 out · 16:00" de um valor `aaaa-mm-ddThh:mm`, como o "Começa" do
+ * design. O valor já é o relógio de Brasília que o dono digitou.
+ */
+export function dateTimeByName(datetimeLocal: string): string {
+  const [date = '', time = ''] = datetimeLocal.split('T')
+  return `${dataCurta(date)} · ${time}`
+}
+
 type Props = {
   label: string
   /** Texto com máscara, como está no campo — não o valor convertido. */
@@ -112,6 +122,11 @@ type Props = {
   hint?: string
   /** Ícone de calendário à esquerda, como o "Começa" do design. */
   icone?: boolean
+  /**
+   * Fora do foco, a data completa aparece por extenso ("Sáb, 17 out ·
+   * 16:00"); no foco, volta a máscara para editar.
+   */
+  porExtenso?: boolean
 }
 
 export function DateTimeInput({
@@ -121,7 +136,8 @@ export function DateTimeInput({
   required,
   error,
   hint = `Dia, mês, ano e horário de 24 h: ${DATE_TIME_PLACEHOLDER}.`,
-  icone = false
+  icone = false,
+  porExtenso = false
 }: Props) {
   const ids = useId()
   const inputId = `${ids}-input`
@@ -129,8 +145,11 @@ export function DateTimeInput({
   const errorId = `${ids}-error`
   // "Incompleto" só vira erro ao sair do campo: antes disso é só digitação.
   const [left, setLeft] = useState(false)
+  const [focused, setFocused] = useState(false)
 
-  const { problem } = parseDateTime(value)
+  const { problem, value: parsed } = parseDateTime(value)
+  const shown =
+    porExtenso && !focused && parsed ? dateTimeByName(parsed) : value
   const message =
     problem && (problem !== 'incomplete' || left)
       ? PROBLEM_MESSAGE[problem]
@@ -176,9 +195,13 @@ export function DateTimeInput({
           type="text"
           inputMode="numeric"
           autoComplete="off"
-          value={value}
+          value={shown}
           onChange={handleChange}
-          onBlur={() => setLeft(true)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setLeft(true)
+            setFocused(false)
+          }}
           placeholder={DATE_TIME_PLACEHOLDER}
           required={required}
           aria-invalid={message ? true : undefined}

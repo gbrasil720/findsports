@@ -437,6 +437,7 @@ export function EventFormComponent({
           <DateTimeInput
             label="Começa"
             icone
+            porExtenso
             value={startsText}
             onChange={setStartsText}
             required
