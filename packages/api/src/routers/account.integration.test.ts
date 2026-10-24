@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
-import { inArray } from '@findsports_oficial/db'
+import { eq, inArray } from '@findsports_oficial/db'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { userFavoriteBars } from '@findsports_oficial/db/schema/platform'
+import { event, userFavoriteBars } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
@@ -76,3 +76,42 @@ integrationTest('exportar meus dados', async () => {
     await ctx.cleanup()
   }
 })
+
+integrationTest(
+  'o arquivo traz todos os jogos, além dos 50 de Meus jogos',
+  async () => {
+    const ctx = await seedBar('pro', 'active', null)
+    const { db } = ctx
+    try {
+      const first = await ctx.seedGame({
+        startsAt: new Date(Date.now() - 86_400_000)
+      })
+      const [{ sportId } = { sportId: '' }] = await db
+        .select({ sportId: event.sportId })
+        .from(event)
+        .where(eq(event.id, first))
+      const more = await db
+        .insert(event)
+        .values(
+          Array.from({ length: 50 }, (_, i) => ({
+            barId: ctx.barId,
+            sportId,
+            championship: `Jogo ${i}`,
+            startsAt: new Date(Date.now() - (i + 2) * 86_400_000)
+          }))
+        )
+        .returning({ id: event.id })
+      await db.insert(attendance).values(
+        [first, ...more.map((m) => m.id)].map((eventId) => ({
+          userId: ctx.fanId,
+          eventId
+        }))
+      )
+
+      expect(await ctx.fan.attendance.mine()).toHaveLength(50)
+      expect((await ctx.fan.account.exportData()).games).toHaveLength(51)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)

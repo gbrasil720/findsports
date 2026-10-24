@@ -82,7 +82,7 @@ export const accountRouter = router({
         .innerJoin(bar, eq(bar.id, userFavoriteBars.barId))
         .where(eq(userFavoriteBars.userId, me))
         .orderBy(sql`${userFavoriteBars.createdAt} desc`),
-      readMyGames(me),
+      readMyGames(me, new Date(), null),
       db
         .select({
           eventId: attendanceReport.eventId,
