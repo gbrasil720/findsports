@@ -510,7 +510,10 @@ function BillingPage() {
                         </span>
                       </div>
                       <span className="font-[family-name:var(--onside-mono)] font-semibold text-[14px] leading-none">
-                        {reais(fatura.amountReais)}
+                        {/* "R$ 269" como no design; centavos só quando há. */}
+                        {Number.isInteger(fatura.amountReais)
+                          ? formatPlanPrice(fatura.amountReais)
+                          : reais(fatura.amountReais)}
                       </span>
                       <Badge tipo={badge.tipo}>{badge.label}</Badge>
                       <span className="w-[72px] text-right">
