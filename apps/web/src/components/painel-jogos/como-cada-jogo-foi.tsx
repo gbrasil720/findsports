@@ -5,7 +5,8 @@ import type {
 } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { type CSSProperties, useState } from 'react'
+import { flushSync } from 'react-dom'
 import {
   type EventAnalyticsRow,
   type EventComparisonData,
@@ -25,6 +26,7 @@ import {
 } from '@/components/admin/desempenho-contas'
 import { MetricHint } from '@/components/admin/metric-hint'
 import { QueryError } from '@/components/admin/query-error'
+import { countLabel } from '@/lib/plural'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Badge, Card, Chip, Icone } from '../painel'
@@ -307,6 +309,7 @@ function CompararJogos({
 }) {
   const trpc = useTRPC()
   const [escolha, setEscolha] = useState<EventComparisonTarget | null>(null)
+  const [todos, setTodos] = useState(false)
   // Começa com os três que mais puxaram público, como o seletor antigo.
   const alvo: EventComparisonTarget | null =
     escolha ??
@@ -328,6 +331,12 @@ function CompararJogos({
       : alvo?.type === 'event_to_bar'
         ? [alvo.eventId]
         : []
+
+  // Os quatro primeiros (1z) e o que estiver escolhido; o resto atrás do "+N".
+  const visiveis = todos
+    ? jogos
+    : jogos.filter((j, i) => i < 4 || escolhidos.includes(j.eventId))
+  const escondidos = jogos.length - visiveis.length
 
   const tocar = (id: string) => {
     if (contraMedia) return setEscolha({ type: 'event_to_bar', eventId: id })
@@ -379,7 +388,7 @@ function CompararJogos({
         <legend className="sr-only">
           {contraMedia ? 'Jogo alvo' : 'Jogos comparados'}
         </legend>
-        {jogos.map((jogo) => (
+        {visiveis.map((jogo) => (
           <Chip
             key={jogo.eventId}
             altura={30}
@@ -389,6 +398,23 @@ function CompararJogos({
             {jogo.eventName}
           </Chip>
         ))}
+        {escondidos > 0 ? (
+          <button
+            type="button"
+            className="painel-chip"
+            style={{ '--painel-chip-h': '30px' } as CSSProperties}
+            aria-label={`Mostrar mais ${countLabel(escondidos, 'jogo', 'jogos')}`}
+            onClick={(e) => {
+              // O "+N" some: o foco fica nos jogos, no lugar onde ele estava.
+              const grupo = e.currentTarget.parentElement
+              const antes = visiveis.length
+              flushSync(() => setTodos(true))
+              grupo?.querySelectorAll('button')[antes]?.focus()
+            }}
+          >
+            +{escondidos}
+          </button>
+        ) : null}
       </fieldset>
       <div aria-live="polite">
         {!contraMedia && escolhidos.length < 2 ? (
