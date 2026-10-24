@@ -497,7 +497,8 @@ invente layout que o projeto não tem.
   outros. **Não existe reserva de mesa** (decisão do
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
-  (`packages/api/src/lib/attendance-ticket.ts`). Toda marcação passa por `setAttendance`
+  (`packages/api/src/lib/attendance-ticket.ts`; quem emite é `issuesCounterCode`, em
+  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). Toda marcação passa por `setAttendance`
   (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
