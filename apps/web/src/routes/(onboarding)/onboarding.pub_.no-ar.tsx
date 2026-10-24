@@ -12,7 +12,8 @@ import { EmBreve, Icone, propsBotao } from '@/components/painel'
  * "Seu bar está no ar" (design 4r/4w): a tela depois do cadastro do bar, com o
  * teste grátis e o próximo passo, que é pôr jogo na grade. As sugestões da
  * rodada do design não existem ainda (WEB-433): no lugar da lista, o atalho
- * para cadastrar o primeiro jogo, com o formulário aberto em `/admin/jogos`.
+ * para cadastrar o primeiro jogo, com o formulário aberto
+ * (`/admin/jogos?novo=1`, o `validateSearch` da tela de Jogos).
  *
  * Só para bar com o cadastro feito; o guard deixa esta passar entre as
  * `/onboarding/*` (`PUB_LIVE_PATH`).
@@ -44,9 +45,6 @@ const CONFETE = [
   [90, 700, 'var(--painel-fg)'],
   [700, 760, 'var(--painel-acid)']
 ] as const
-
-/** O formulário de jogo já aberto (combinado com a tela de Jogos). */
-const NOVO_JOGO = '/admin/jogos?novo=1'
 
 function NoAr() {
   const { data: bar } = useMyBar()
@@ -131,10 +129,14 @@ function NoAr() {
             <EmBreve />
           </div>
           <div className="entrada-noar-pe">
-            <a href={NOVO_JOGO} {...propsBotao({ variante: 'acid' })}>
+            <Link
+              to="/admin/jogos"
+              search={{ novo: 1 }}
+              {...propsBotao({ variante: 'acid' })}
+            >
               <Icone nome="bolt" tamanho={18} acento="var(--painel-ink)" />
               Cadastrar o primeiro jogo
-            </a>
+            </Link>
             <Link to="/admin">Fazer isso depois</Link>
           </div>
         </aside>
