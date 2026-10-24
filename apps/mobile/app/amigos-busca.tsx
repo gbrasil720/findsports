@@ -126,7 +126,6 @@ export default function FriendSearch() {
               key={key}
               label={label}
               on={scope === key}
-              palette={palette}
               raised
               onPress={() => setScope(key)}
             />
@@ -152,13 +151,11 @@ export default function FriendSearch() {
                 highlight={deferred.replace(/^@/, '')}
                 big
                 size={42}
-                palette={palette}
                 first={index === 0}
                 onPress={() => router.push(`/amigo/${person.id}` as Href)}
                 right={
                   <AddButton
                     relation={person.relation}
-                    palette={palette}
                     busy={actions.busy}
                     onPress={() =>
                       actions.act(person.id, person.relation, 'search')
@@ -179,7 +176,7 @@ export default function FriendSearch() {
             Share.share({ message: inviteMessage(me.data.friendCode) })
           }}
         >
-          <Card palette={palette} shadow={heroShadow(palette)}>
+          <Card shadow={heroShadow(palette)}>
             <View style={styles.invite}>
               <Icon name="link" size={26} color={palette.ink} accent={HOT} />
               <View style={{ flex: 1 }}>

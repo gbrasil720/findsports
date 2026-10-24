@@ -32,7 +32,7 @@ import {
   usePress,
   usePressScale
 } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -115,24 +115,17 @@ export default function Friends() {
 
         <View style={styles.actions}>
           <Action
-            palette={palette}
             icon="qr"
             label="Meu código"
             hero
             onPress={() => router.push('/meu-codigo')}
           />
           <Action
-            palette={palette}
             icon="people"
             label="Contatos"
             onPress={() => router.push('/contatos')}
           />
-          <Action
-            palette={palette}
-            icon="link"
-            label="Link de convite"
-            onPress={shareLink}
-          />
+          <Action icon="link" label="Link de convite" onPress={shareLink} />
         </View>
 
         {overview.isPending ? (
@@ -151,8 +144,8 @@ export default function Friends() {
           <>
             {requests.length ? (
               <>
-                <Label palette={palette}>Pedidos · {requests.length}</Label>
-                <Card palette={palette} shadow={palette.liveShadow}>
+                <Label>Pedidos · {requests.length}</Label>
+                <Card shadow={palette.liveShadow}>
                   <View style={styles.inCard}>
                     {requests.map((person, index) => (
                       <PersonRow
@@ -167,7 +160,6 @@ export default function Friends() {
                               ? `${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`
                               : personLine(person)
                         }
-                        palette={palette}
                         first={index === 0}
                         onPress={() => open(person.id)}
                         right={
@@ -185,7 +177,6 @@ export default function Friends() {
                               ) : (
                                 <AddButton
                                   relation="friends"
-                                  palette={palette}
                                   onPress={() => {}}
                                 />
                               )}
@@ -193,7 +184,6 @@ export default function Friends() {
                           ) : (
                             <View style={styles.answer}>
                               <Answer
-                                palette={palette}
                                 label={`Recusar ${person.name}`}
                                 disabled={actions.busy}
                                 onPress={() =>
@@ -207,7 +197,6 @@ export default function Friends() {
                                 }
                               />
                               <Answer
-                                palette={palette}
                                 accept
                                 label={`Aceitar ${person.name}`}
                                 disabled={actions.busy}
@@ -233,7 +222,7 @@ export default function Friends() {
 
             {suggestions.length ? (
               <>
-                <Label palette={palette}>Talvez você conheça</Label>
+                <Label>Talvez você conheça</Label>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -243,7 +232,6 @@ export default function Friends() {
                   {suggestions.map((person) => (
                     <Suggestion
                       key={person.id}
-                      palette={palette}
                       person={person}
                       sent={answered[person.id] === 'sent'}
                       busy={actions.busy}
@@ -260,12 +248,12 @@ export default function Friends() {
               </>
             ) : null}
 
-            <Label palette={palette}>
+            <Label>
               Seus amigos
               {data.friends.length ? ` · ${data.friends.length}` : ''}
             </Label>
             {data.friends.length ? (
-              <Card palette={palette}>
+              <Card>
                 <View style={styles.inCard}>
                   {data.friends.map((friend, index) => (
                     <PersonRow
@@ -282,7 +270,6 @@ export default function Friends() {
                       ]
                         .filter(Boolean)
                         .join(' · ')}
-                      palette={palette}
                       first={index === 0}
                       onPress={() => open(friend.id)}
                       right={
@@ -308,13 +295,8 @@ export default function Friends() {
 }
 
 /** "Pedidos · 2", "Talvez você conheça": o rótulo cinza de cada bloco. */
-function Label({
-  palette,
-  children
-}: {
-  palette: Palette
-  children: React.ReactNode
-}) {
+function Label({ children }: { children: React.ReactNode }) {
+  const palette = usePalette()
   return (
     <Text
       style={[text(13, 'SemiBold'), styles.label, { color: palette.muted }]}
@@ -326,18 +308,17 @@ function Label({
 
 /** Meu código, Contatos, Link de convite. */
 function Action({
-  palette,
   icon,
   label,
   hero,
   onPress
 }: {
-  palette: Palette
   icon: 'qr' | 'people' | 'link'
   label: string
   hero?: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <ScalePress
       accessibilityRole="button"
@@ -345,11 +326,7 @@ function Action({
       containerStyle={{ flex: 1 }}
       style={{ flex: 1 }}
     >
-      <Card
-        palette={palette}
-        shadow={hero ? heroShadow(palette) : undefined}
-        style={{ flex: 1 }}
-      >
+      <Card shadow={hero ? heroShadow(palette) : undefined} style={{ flex: 1 }}>
         <View style={styles.action}>
           <Icon
             name={icon}
@@ -368,19 +345,18 @@ function Action({
 
 /** Recusar (x) e aceitar (✓) de um pedido. */
 function Answer({
-  palette,
   accept,
   label,
   disabled,
   onPress
 }: {
-  palette: Palette
   accept?: boolean
   label: string
   disabled?: boolean
   onPress: () => void
 }) {
   // Aceitar tem sombra dura: afunda sobre ela. Recusar, sem sombra, encolhe.
+  const palette = usePalette()
   const sink = usePress(3, 3)
   const shrink = usePressScale(0.94)
   const press = accept ? sink : shrink
@@ -423,30 +399,28 @@ function Answer({
 
 /** Um card de "Talvez você conheça". */
 function Suggestion({
-  palette,
   person,
   sent,
   busy,
   onOpen,
   onAdd
 }: {
-  palette: Palette
   person: { id: string; name: string; image: string | null; mutual: number }
   sent: boolean
   busy: boolean
   onOpen: () => void
   onAdd: () => void
 }) {
+  const palette = usePalette()
   return (
     <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
-      <Card palette={palette}>
+      <Card>
         <View style={styles.suggestion}>
           <Avatar
             id={person.id}
             name={person.name}
             image={person.image}
             size={46}
-            palette={palette}
           />
           <View>
             <Text
@@ -470,7 +444,6 @@ function Suggestion({
           <Animated.View key={String(sent)} entering={SWAP}>
             <AddButton
               relation={sent ? 'sent' : 'none'}
-              palette={palette}
               busy={busy || sent}
               onPress={onAdd}
             />

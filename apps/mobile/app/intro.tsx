@@ -27,7 +27,7 @@ import {
 } from '@/components/intro-art'
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
 import { SplashDone } from '@/components/splash'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import { PillButton, useStatusBar } from '@/components/ui'
 
 /*
@@ -149,7 +149,6 @@ export default function Intro() {
             artHeight={artHeight}
             done={index < start}
             play={splashDone && index <= reached}
-            palette={palette}
           />
         ))}
       </ScrollView>
@@ -206,8 +205,7 @@ function IntroPage({
   width,
   artHeight,
   done,
-  play,
-  palette
+  play
 }: {
   item: Page
   index: number
@@ -215,8 +213,8 @@ function IntroPage({
   artHeight: number
   done: boolean
   play: boolean
-  palette: Palette
 }) {
+  const palette = usePalette()
   const progress = useEntrance(done, play)
   return (
     <View style={{ width }}>

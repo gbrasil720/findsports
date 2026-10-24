@@ -59,7 +59,7 @@ import {
   MissingCard,
   ReleaseHint
 } from '@/components/suggestions'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,
@@ -301,7 +301,6 @@ export default function SuggestionsScreen() {
 
   const header = (subtitle: string) => (
     <Header
-      palette={palette}
       subtitle={subtitle}
       onClose={close}
       onSettings={() =>
@@ -324,7 +323,6 @@ export default function SuggestionsScreen() {
     subtitle = 'Precisamos saber onde você está'
     body = (
       <Locate
-        palette={palette}
         center={searchCenter(state.device, null)}
         picking={picking}
         onPlace={(next) => {
@@ -340,7 +338,6 @@ export default function SuggestionsScreen() {
     subtitle = 'Nada por aqui ainda'
     body = (
       <Empty
-        palette={palette}
         radiusKm={userRadius}
         where={where}
         onPick={() => setPicking(true)}
@@ -384,7 +381,6 @@ export default function SuggestionsScreen() {
     subtitle = `${size} de ${size} · rodada curta`
     body = (
       <Short
-        palette={palette}
         round={
           demo === 'curta'
             ? { ...merged, items: merged.items.slice(0, 2) }
@@ -401,12 +397,11 @@ export default function SuggestionsScreen() {
     )
   } else if (finishedHere || demo === 'fechada') {
     subtitle = ''
-    body = <Closed palette={palette} round={merged} now={now} />
+    body = <Closed round={merged} now={now} />
   } else {
     subtitle = `${merged.items.length} de ${merged.items.length} · você viu todos`
     body = (
       <SeenAll
-        palette={palette}
         round={merged}
         now={now}
         onReview={() => {
@@ -451,7 +446,6 @@ export default function SuggestionsScreen() {
       </View>
       {match && merged ? (
         <Match
-          palette={palette}
           item={match}
           runId={merged.runId}
           now={now}
@@ -491,16 +485,15 @@ function CenterGlow() {
 // --- Cabeçalho ---------------------------------------------------------------
 
 function Header({
-  palette,
   subtitle,
   onClose,
   onSettings
 }: {
-  palette: Palette
   subtitle: string
   onClose: () => void
   onSettings: () => void
 }) {
+  const palette = usePalette()
   return (
     <View style={styles.header}>
       <Pressable
@@ -543,7 +536,6 @@ function Header({
 // --- Combinou! (23d, 23e) ----------------------------------------------------
 
 function Match({
-  palette,
   item,
   runId,
   now,
@@ -551,7 +543,6 @@ function Match({
   onGo,
   onBar
 }: {
-  palette: Palette
   item: Suggestion
   runId: string
   now: number
@@ -559,6 +550,7 @@ function Match({
   onGo: () => void
   onBar: () => void
 }) {
+  const palette = usePalette()
   const insets = useSafeAreaInsets()
   const session = authClient.useSession()
   const dark = palette.dark
@@ -697,7 +689,6 @@ function Match({
               {going && (going.bold || going.rest !== 'Você vai') ? (
                 <>
                   <Perforation
-                    palette={palette}
                     ink={dark ? 'rgba(18,18,15,.2)' : 'rgba(241,238,230,.2)'}
                   />
                   {/* "Marina e mais 17 vão" (23d): amigos pela privacidade
@@ -755,10 +746,9 @@ function Match({
             </View>
           </View>
         ) : (
-          <Card palette={palette} shadow={dark ? '#5d7020' : ACID} offset={6}>
+          <Card shadow={dark ? '#5d7020' : ACID} offset={6}>
             {sport ? (
               <ToggleRow
-                palette={palette}
                 icon="bell"
                 title={`Avisar quando passar ${sportWord(sport.name)}`}
                 sub="Quando o bar publicar um jogo do seu esporte"
@@ -768,7 +758,6 @@ function Match({
             ) : null}
             {team ? (
               <ToggleRow
-                palette={palette}
                 icon="tv"
                 title={`Avisar em jogo do ${team.name}`}
                 sub="Só se for o seu time"
@@ -903,7 +892,8 @@ function Confetti() {
   )
 }
 
-function Perforation({ palette, ink }: { palette: Palette; ink: string }) {
+function Perforation({ ink }: { ink: string }) {
+  const palette = usePalette()
   return (
     <View style={styles.cut}>
       <View style={[styles.hole, { left: -9, backgroundColor: palette.bg }]} />
@@ -924,7 +914,6 @@ function Perforation({ palette, ink }: { palette: Palette; ink: string }) {
 }
 
 function ToggleRow({
-  palette,
   icon,
   title,
   sub,
@@ -932,7 +921,6 @@ function ToggleRow({
   onChange,
   last
 }: {
-  palette: Palette
   icon: 'bell' | 'tv'
   title: string
   sub: string
@@ -940,6 +928,7 @@ function ToggleRow({
   onChange: (on: boolean) => void
   last?: boolean
 }) {
+  const palette = usePalette()
   return (
     <Pressable
       accessibilityRole="switch"
@@ -997,15 +986,8 @@ function Switch({ on, off }: { on: boolean; off: string }) {
 
 // --- Fim da rodada (23f) -----------------------------------------------------
 
-function Closed({
-  palette,
-  round,
-  now
-}: {
-  palette: Palette
-  round: Round
-  now: number
-}) {
+function Closed({ round, now }: { round: Round; now: number }) {
+  const palette = usePalette()
   const router = useRouter()
   const dark = palette.dark
   const liked = round.items.filter((i) => i.decision === 'liked')
@@ -1020,7 +1002,7 @@ function Closed({
   )?.name
   return (
     <ScrollView contentContainerStyle={styles.endBody}>
-      <Strip palette={palette} round={round} now={now} dark={dark} />
+      <Strip round={round} now={now} dark={dark} />
       <Animated.View entering={POP}>
         <Title
           lines={[['RODADA ', 'FECHADA.']]}
@@ -1033,11 +1015,10 @@ function Closed({
         {roundSummary(round, now)}
       </Text>
       {/* No lugar do "Mais 5 pra você": a rodada é uma por dia (dono). */}
-      <NextRound palette={palette} at={round.nextRoundAt} now={now} />
+      <NextRound at={round.nextRoundAt} now={now} />
       <View style={[styles.rows, { borderTopColor: palette.line }]}>
         {ticket?.game ? (
           <Row
-            palette={palette}
             icon="ticket"
             title="Ver meu código"
             sub={`${ticket.name} · hoje ${new Date(ticket.game.startsAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}`}
@@ -1046,7 +1027,6 @@ function Closed({
         ) : null}
         {liked.length ? (
           <Row
-            palette={palette}
             icon="fan"
             title={`${liked.length} ${liked.length === 1 ? 'bar' : 'bares'} em Salvos`}
             sub={liked.map((i) => i.name).join(', ')}
@@ -1060,7 +1040,6 @@ function Closed({
         ) : null}
         {alerted ? (
           <Row
-            palette={palette}
             icon="bell"
             title="Aviso ligado"
             sub={`${alerted.name} · ${sportName ? `quando passar ${sportWord(sportName)}` : 'em jogo do seu time'}`}
@@ -1072,15 +1051,8 @@ function Closed({
   )
 }
 
-function NextRound({
-  palette,
-  at,
-  now
-}: {
-  palette: Palette
-  at: string
-  now: number
-}) {
+function NextRound({ at, now }: { at: string; now: number }) {
+  const palette = usePalette()
   return (
     <View style={{ alignSelf: 'flex-start' }}>
       <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.next}>
@@ -1099,19 +1071,18 @@ function NextRound({
 }
 
 function Strip({
-  palette,
   round,
   now,
   dark,
   missing = 0
 }: {
-  palette: Palette
   round: Round
   now: number
   dark: boolean
   missing?: number
 }) {
   // Rodada curta (23h): os bares largos e os lugares vazios estreitos.
+  const palette = usePalette()
   const width = missing ? 96 : 68
   const height = missing ? 128 : 116
   return (
@@ -1142,18 +1113,17 @@ function Strip({
 }
 
 function Row({
-  palette,
   icon,
   title,
   sub,
   onPress
 }: {
-  palette: Palette
   icon: 'ticket' | 'fan' | 'bell' | 'tv' | 'calendar' | 'search' | 'bar'
   title: string
   sub: string
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <ScalePress
       accessibilityRole="button"
@@ -1204,20 +1174,19 @@ function useRefill(onFilled: () => void) {
 }
 
 function Short({
-  palette,
   round,
   radiusKm,
   where,
   now,
   onFilled
 }: {
-  palette: Palette
   round: Round
   radiusKm: number
   where: Coordinates | null
   now: number
   onFilled: () => void
 }) {
+  const palette = usePalette()
   const router = useRouter()
   const state = useExploreState()
   const dark = palette.dark
@@ -1241,13 +1210,7 @@ function Short({
   )
   return (
     <ScrollView contentContainerStyle={styles.endBody}>
-      <Strip
-        palette={palette}
-        round={round}
-        now={now}
-        dark={dark}
-        missing={5 - n}
-      />
+      <Strip round={round} now={now} dark={dark} missing={5 - n} />
       <Animated.View entering={POP}>
         <Title
           lines={[[`SÓ ${n} `, 'POR HOJE.']]}
@@ -1278,10 +1241,9 @@ function Short({
         />
       ) : null}
       {(extra.length && where) || tomorrow?.games ? (
-        <Card palette={palette} soft>
+        <Card soft>
           {extra.length && where ? (
             <Row
-              palette={palette}
               icon="tv"
               title={`Incluir ${listNames(extra.map((s) => sportWord(s.name)))}`}
               sub="Mais esportes, mais bares"
@@ -1297,7 +1259,6 @@ function Short({
           ) : null}
           {tomorrow?.games ? (
             <Row
-              palette={palette}
               icon="calendar"
               title="Ver bares com jogo amanhã"
               sub={`${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} tem ${tomorrow.games} ${tomorrow.games === 1 ? 'jogo' : 'jogos'} perto`}
@@ -1329,18 +1290,17 @@ const listNames = (names: string[]) =>
 // --- Nada no raio (23i) ------------------------------------------------------
 
 function Empty({
-  palette,
   radiusKm,
   where,
   onPick,
   onFilled
 }: {
-  palette: Palette
   radiusKm: number
   where: Coordinates | null
   onPick: () => void
   onFilled: () => void
 }) {
+  const palette = usePalette()
   const dark = palette.dark
   const expansion = useExpansion(where, true)
   const refill = useRefill(onFilled)
@@ -1350,7 +1310,7 @@ function Empty({
     }).catch(() => {})
   return (
     <ScrollView contentContainerStyle={styles.endBody}>
-      <Card palette={palette} shadow={ACID} offset={6}>
+      <Card shadow={ACID} offset={6}>
         <View style={styles.mapBox}>
           <Image
             source={
@@ -1420,16 +1380,14 @@ function Empty({
           }
         />
       ) : null}
-      <Card palette={palette} soft>
+      <Card soft>
         <Row
-          palette={palette}
           icon="search"
           title="Escolher outro bairro"
           sub="Para quando você vai sair de outro lugar"
           onPress={onPick}
         />
         <Row
-          palette={palette}
           icon="bar"
           title="Indicar um bar daqui"
           sub="Mandamos o convite para ele entrar na Onside"
@@ -1443,16 +1401,15 @@ function Empty({
 // --- Viu tudo (23j) ----------------------------------------------------------
 
 function SeenAll({
-  palette,
   round,
   now,
   onReview
 }: {
-  palette: Palette
   round: Round
   now: number
   onReview: () => void
 }) {
+  const palette = usePalette()
   const router = useRouter()
   const dark = palette.dark
   const liked = round.items.filter((i) => i.decision === 'liked').length
@@ -1480,7 +1437,7 @@ function SeenAll({
           </View>
         ))}
       </Animated.View>
-      <NextRound palette={palette} at={round.nextRoundAt} now={now} />
+      <NextRound at={round.nextRoundAt} now={now} />
       <Title
         lines={[['VOCÊ VIU'], ['', 'TODOS DE HOJE.']]}
         size={52}
@@ -1520,18 +1477,17 @@ function SeenAll({
 // --- Sem localização (23k) ---------------------------------------------------
 
 function Locate({
-  palette,
   center,
   picking,
   onPlace,
   onSettings
 }: {
-  palette: Palette
   center: Coordinates
   picking: boolean
   onPlace: (place: Place) => void
   onSettings: () => void
 }) {
+  const palette = usePalette()
   const scheme = useColorScheme()
   const dark = palette.dark
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())

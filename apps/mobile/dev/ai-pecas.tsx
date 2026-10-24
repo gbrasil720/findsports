@@ -241,7 +241,6 @@ export default function AiPieces() {
         <State label="Pílulas" palette={palette} bleed>
           <FollowUps
             items={followUps(['Só com oferta da casa', 'E amanhã?'], true)}
-            palette={palette}
             onAsk={noop}
             onMap={noop}
           />

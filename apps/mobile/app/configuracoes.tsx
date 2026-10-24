@@ -26,7 +26,7 @@ import { initials, MeDot, RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,
@@ -148,13 +148,13 @@ export default function Settings() {
           })}
         </Glass>
         {tab === 'preferencias' ? (
-          <Preferences palette={palette} />
+          <Preferences />
         ) : tab === 'avisos' ? (
-          <Notices palette={palette} />
+          <Notices />
         ) : tab === 'conta' ? (
-          <Account palette={palette} />
+          <Account />
         ) : (
-          <Privacy palette={palette} />
+          <Privacy />
         )}
       </ScrollView>
     </View>
@@ -163,7 +163,8 @@ export default function Settings() {
 
 // --- Preferências (11f) -----------------------------------------------------
 
-function Preferences({ palette }: { palette: Palette }) {
+function Preferences() {
+  const palette = usePalette()
   const router = useRouter()
   const state = useExploreState()
   const session = authClient.useSession()
@@ -210,7 +211,7 @@ function Preferences({ palette }: { palette: Palette }) {
 
   return (
     <>
-      <SummaryCard palette={palette}>
+      <SummaryCard>
         <Text style={[text(18, 'Regular', 1.45), { color: PAPER }]}>
           {summary.map((part, index) => (
             <Text
@@ -233,10 +234,10 @@ function Preferences({ palette }: { palette: Palette }) {
             </Text>
           ))}
         </Text>
-        <ResetSuggestions palette={palette} inline />
+        <ResetSuggestions inline />
       </SummaryCard>
 
-      <Card palette={palette}>
+      <Card>
         <View style={styles.pad}>
           <View style={styles.cardHead}>
             <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
@@ -289,7 +290,7 @@ function Preferences({ palette }: { palette: Palette }) {
         </View>
       </Card>
 
-      <Card palette={palette}>
+      <Card>
         <View style={styles.pad}>
           <View style={styles.cardHead}>
             <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
@@ -367,16 +368,11 @@ function Preferences({ palette }: { palette: Palette }) {
 }
 
 /** O cartão escuro da frase, com a sombra acid. */
-function SummaryCard({
-  palette,
-  children
-}: {
-  palette: Palette
-  children: ReactNode
-}) {
+function SummaryCard({ children }: { children: ReactNode }) {
+  const palette = usePalette()
   return (
     <Card
-      palette={{ ...palette, card: palette.dark ? '#1c1c18' : INK }}
+      fill={palette.dark ? palette.card : INK}
       shadow="rgba(201,241,53,.85)"
       offset={5}
     >
@@ -386,13 +382,7 @@ function SummaryCard({
 }
 
 /** "Recomeçar sugestões": esquece o que a pessoa dispensou e o que viu. */
-function ResetSuggestions({
-  palette,
-  inline
-}: {
-  palette: Palette
-  inline?: boolean
-}) {
+function ResetSuggestions({ inline }: { inline?: boolean }) {
   const queryClient = useQueryClient()
   const reset = useMutation(
     trpc.recommendations.reset.mutationOptions({
@@ -438,7 +428,6 @@ function ResetSuggestions({
     )
   return (
     <Row
-      palette={palette}
       title="Recomeçar sugestões"
       sub="Mantém esportes, raio e favoritos"
       onPress={confirm}
@@ -449,17 +438,14 @@ function ResetSuggestions({
 
 // --- Avisos (11g) -----------------------------------------------------------
 
-function Notices({ palette }: { palette: Palette }) {
+function Notices() {
+  const palette = usePalette()
   return (
     <>
-      <SoonNote
-        palette={palette}
-        sentence="Os avisos no celular chegam em breve. Até lá, o que é seu aparece no sino do Explorar."
-      />
+      <SoonNote sentence="Os avisos no celular chegam em breve. Até lá, o que é seu aparece no sino do Explorar." />
       <Off>
-        <Section palette={palette} icon="tv" title="Jogos">
+        <Section icon="tv" title="Jogos">
           <Row
-            palette={palette}
             title="Meus times vão jogar"
             sub="Aviso antes do jogo, com bares perto passando"
             extra={
@@ -493,18 +479,12 @@ function Notices({ palette }: { palette: Palette }) {
                 ))}
               </View>
             }
-            right={<Toggle palette={palette} on />}
+            right={<Toggle on />}
           />
-          <Row
-            palette={palette}
-            title="Clássicos perto de você"
-            right={<Toggle palette={palette} on />}
-            divided
-          />
+          <Row title="Clássicos perto de você" right={<Toggle on />} divided />
         </Section>
-        <Section palette={palette} icon="ticket" title="Vou assistir">
+        <Section icon="ticket" title="Vou assistir">
           <Row
-            palette={palette}
             title="Lembrete do jogo marcado"
             sub="Sempre ligado enquanto houver jogo marcado"
             right={
@@ -514,22 +494,12 @@ function Notices({ palette }: { palette: Palette }) {
             }
           />
         </Section>
-        <Section palette={palette} icon="people" title="Amigos e comunidades">
+        <Section icon="people" title="Amigos e comunidades">
+          <Row title="Pedidos de amizade" right={<Toggle on />} />
+          <Row title="Amigo vai ao mesmo jogo" right={<Toggle on />} divided />
           <Row
-            palette={palette}
-            title="Pedidos de amizade"
-            right={<Toggle palette={palette} on />}
-          />
-          <Row
-            palette={palette}
-            title="Amigo vai ao mesmo jogo"
-            right={<Toggle palette={palette} on />}
-            divided
-          />
-          <Row
-            palette={palette}
             title="Ranking do mês fechou"
-            right={<Toggle palette={palette} on={false} />}
+            right={<Toggle on={false} />}
             divided
           />
         </Section>
@@ -545,7 +515,7 @@ function Notices({ palette }: { palette: Palette }) {
                 Nada de aviso entre o apito inicial e o final.
               </Text>
             </View>
-            <Toggle palette={{ ...palette, dark: false }} on />
+            <Toggle on />
           </View>
         </View>
       </Off>
@@ -555,7 +525,8 @@ function Notices({ palette }: { palette: Palette }) {
 
 // --- Conta (11h) ------------------------------------------------------------
 
-function Account({ palette }: { palette: Palette }) {
+function Account() {
+  const palette = usePalette()
   const router = useRouter()
   const session = authClient.useSession()
   const user = session.data?.user
@@ -722,7 +693,7 @@ function Account({ palette }: { palette: Palette }) {
 
   return (
     <>
-      <Card palette={palette} shadow={palette.dark ? '#3a4a12' : undefined}>
+      <Card shadow={palette.dark ? '#3a4a12' : undefined}>
         <View style={styles.me}>
           <Pressable
             accessibilityRole="button"
@@ -779,10 +750,9 @@ function Account({ palette }: { palette: Palette }) {
         </View>
       </Card>
 
-      <Section palette={palette} icon="person" title="Dados">
-        <Row palette={palette} title="E-mail" value={user?.email} />
+      <Section icon="person" title="Dados">
+        <Row title="E-mail" value={user?.email} />
         <Row
-          palette={palette}
           title="Usuário"
           value={me.data ? `@${me.data.username}` : ' '}
           chevron
@@ -790,7 +760,6 @@ function Account({ palette }: { palette: Palette }) {
           onPress={editUsername}
         />
         <Row
-          palette={palette}
           title="Cidade"
           value={city.data?.name ?? 'Escolher'}
           chevron
@@ -799,9 +768,8 @@ function Account({ palette }: { palette: Palette }) {
         />
       </Section>
 
-      <Section palette={palette} icon="shield" title="Segurança">
+      <Section icon="shield" title="Segurança">
         <Row
-          palette={palette}
           title="Verificação em duas etapas"
           right={
             user?.twoFactorEnabled ? (
@@ -816,7 +784,6 @@ function Account({ palette }: { palette: Palette }) {
           onPress={() => router.push('/duas-etapas' as Href)}
         />
         <Row
-          palette={palette}
           title="Senha"
           value="Alterar"
           chevron
@@ -825,13 +792,12 @@ function Account({ palette }: { palette: Palette }) {
         />
       </Section>
 
-      <Section palette={palette} icon="lock" title="Sessões ativas">
+      <Section icon="lock" title="Sessões ativas">
         {sessions.isPending ? (
           <ActivityIndicator style={{ padding: 18 }} color={palette.muted} />
         ) : sessions.isError ? (
           // A lista pede login recente (`freshAge` do better-auth, um dia).
           <Row
-            palette={palette}
             title="Entre de novo para ver"
             sub="Por segurança, a lista dos aparelhos pede um login recente."
             right={
@@ -866,7 +832,6 @@ function Account({ palette }: { palette: Palette }) {
               return (
                 <Row
                   key={item.id}
-                  palette={palette}
                   icon={device.computer ? 'tv' : 'you'}
                   title={device.name}
                   sub={mine ? 'agora' : lastSeen(item.updatedAt, now)}
@@ -925,7 +890,8 @@ const ADDS = {
 const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
   (Object.keys(map) as (keyof T)[]).find((key) => map[key] === label) as keyof T
 
-function Privacy({ palette }: { palette: Palette }) {
+function Privacy() {
+  const palette = usePalette()
   const queryClient = useQueryClient()
   const me = useQuery(trpc.friends.me.queryOptions())
   // Otimista: a escolha aparece na hora e volta se o servidor recusar.
@@ -974,14 +940,12 @@ function Privacy({ palette }: { palette: Palette }) {
   }
   return (
     <>
-      <Section palette={palette} icon="pin" title="Onde você foi">
+      <Section icon="pin" title="Onde você foi">
         <Row
-          palette={palette}
           title="Quem vê os bares que você validou"
           sub="Também vale para jogos marcados"
           extra={
             <Choice
-              palette={palette}
               options={Object.values(SEES)}
               on={SEES[me.data?.activityVisibility ?? 'friends']}
               onPick={(label) =>
@@ -991,12 +955,10 @@ function Privacy({ palette }: { palette: Palette }) {
           }
         />
         <Row
-          palette={palette}
           title="Quem pode te adicionar"
           divided
           extra={
             <Choice
-              palette={palette}
               options={Object.values(ADDS)}
               on={ADDS[me.data?.friendRequestsFrom ?? 'everyone']}
               onPick={(label) =>
@@ -1006,29 +968,22 @@ function Privacy({ palette }: { palette: Palette }) {
           }
         />
       </Section>
-      <SoonNote
-        palette={palette}
-        icon="eye"
-        sentence="Ranking e comunidades chegam em breve."
-      />
+      <SoonNote icon="eye" sentence="Ranking e comunidades chegam em breve." />
       <Off>
-        <Section palette={palette} icon="ranking" title="Ranking">
+        <Section icon="ranking" title="Ranking">
           <Row
-            palette={palette}
             title="Aparecer no ranking global"
-            right={<Toggle palette={palette} on={false} />}
+            right={<Toggle on={false} />}
           />
           <Row
-            palette={palette}
             title="Mostrar comunidades no perfil"
-            right={<Toggle palette={palette} on={false} />}
+            right={<Toggle on={false} />}
             divided
           />
         </Section>
       </Off>
-      <Section palette={palette} icon="doc" title="Seus dados">
+      <Section icon="doc" title="Seus dados">
         <Row
-          palette={palette}
           title="Baixar meus dados"
           sub={
             exporting
@@ -1039,7 +994,7 @@ function Privacy({ palette }: { palette: Palette }) {
           onPress={exportData}
         />
         <View style={[styles.divider, { backgroundColor: palette.line }]} />
-        <ResetSuggestions palette={palette} />
+        <ResetSuggestions />
       </Section>
     </>
   )
@@ -1063,16 +1018,15 @@ function Off({ children }: { children: ReactNode }) {
 
 /** O aviso de "em breve" no lugar do texto do design. */
 function SoonNote({
-  palette,
   sentence,
   icon = 'bell'
 }: {
-  palette: Palette
   sentence: string
   icon?: 'bell' | 'eye'
 }) {
+  const palette = usePalette()
   return (
-    <Card palette={palette} shadow="rgba(232,50,12,.28)">
+    <Card shadow="rgba(232,50,12,.28)">
       <View style={styles.soon}>
         <Icon name={icon} size={24} color={palette.ink} />
         <Text
@@ -1086,23 +1040,22 @@ function SoonNote({
 }
 
 function Section({
-  palette,
   icon,
   title,
   children
 }: {
-  palette: Palette
   icon: Parameters<typeof Icon>[0]['name']
   title: string
   children: ReactNode
 }) {
+  const palette = usePalette()
   return (
     <View style={{ gap: 6 }}>
       <View style={styles.sectionHead}>
         <Icon name={icon} size={18} color={palette.ink} />
         <Text style={[text(13, 'Bold'), { color: palette.ink }]}>{title}</Text>
       </View>
-      <Card palette={palette}>
+      <Card>
         <View style={{ paddingHorizontal: 14 }}>{children}</View>
       </Card>
     </View>
@@ -1110,7 +1063,6 @@ function Section({
 }
 
 function Row({
-  palette,
   icon,
   title,
   sub,
@@ -1121,7 +1073,6 @@ function Row({
   divided,
   onPress
 }: {
-  palette: Palette
   icon?: 'tv' | 'you'
   title: string
   sub?: string
@@ -1132,6 +1083,7 @@ function Row({
   divided?: boolean
   onPress?: () => void
 }) {
+  const palette = usePalette()
   const body = (
     <View
       style={[
@@ -1175,7 +1127,8 @@ function Row({
   )
 }
 
-function Toggle({ palette, on }: { palette: Palette; on: boolean }) {
+function Toggle({ on }: { on: boolean }) {
+  const palette = usePalette()
   return (
     <View
       style={[
@@ -1191,17 +1144,16 @@ function Toggle({ palette, on }: { palette: Palette; on: boolean }) {
 }
 
 function Choice({
-  palette,
   options,
   on,
   onPick
 }: {
-  palette: Palette
   options: string[]
   on: string
   /** Sem ele, só desenha (o que ainda não existe). */
   onPick?: (option: string) => void
 }) {
+  const palette = usePalette()
   return (
     <View style={[styles.choice, { backgroundColor: palette.mark }]}>
       {options.map((option) => (

@@ -26,7 +26,7 @@ import {
   SWAP,
   usePressScale
 } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -139,12 +139,11 @@ export default function AfterGame() {
           </Text>
         </View>
 
-        <Card palette={palette} soft>
+        <Card soft>
           <View style={styles.went}>
             <Photo
               uri={game.photoUrl}
               name={game.barName}
-              palette={palette}
               style={styles.photo}
             />
             <Text
@@ -192,14 +191,12 @@ export default function AfterGame() {
             </View>
             <View style={styles.choices}>
               <Choice
-                palette={palette}
                 label="Voltaria"
                 selected={wouldReturn === true}
                 onPress={() => setWouldReturn(true)}
                 icon="fan"
               />
               <Choice
-                palette={palette}
                 label="Não voltaria"
                 selected={wouldReturn === false}
                 onPress={() => setWouldReturn(false)}
@@ -261,10 +258,7 @@ export default function AfterGame() {
         {rating && achievements.data ? (
           // Some e volta com "Não fui"/"Sim, fui": fade curto, sem salto.
           <Animated.View entering={SWAP} exiting={CARD_OUT}>
-            <ReviewCount
-              list={achievements.data.achievements}
-              palette={palette}
-            />
+            <ReviewCount list={achievements.data.achievements} />
           </Animated.View>
         ) : null}
 
@@ -289,18 +283,12 @@ export default function AfterGame() {
 const CARD_OUT = FadeOut.duration(120)
 
 /** "Sua 7ª resenha. Faltam 3 para a medalha Crítico." (3g). */
-function ReviewCount({
-  list,
-  palette
-}: {
-  list: Achievement[]
-  palette: Palette
-}) {
+function ReviewCount({ list }: { list: Achievement[] }) {
+  const palette = usePalette()
   const { head, tail, next } = reviewLine(list)
   return (
     <Card
-      // Tinta no claro, como o design; no escuro, o cartão do tema.
-      palette={{ ...palette, card: palette.dark ? palette.card : INK }}
+      fill={palette.dark ? palette.card : INK}
       shadow="rgba(201,241,53,.85)"
       offset={5}
     >
@@ -317,18 +305,17 @@ function ReviewCount({
 
 /** O cartão grande de "Voltaria" e "Não voltaria". */
 function Choice({
-  palette,
   label,
   selected,
   onPress,
   icon
 }: {
-  palette: Palette
   label: string
   selected: boolean
   onPress: () => void
   icon: 'fan' | 'close'
 }) {
+  const palette = usePalette()
   const press = usePressScale()
   return (
     <Pressable

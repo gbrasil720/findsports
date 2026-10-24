@@ -9,7 +9,7 @@ import { Card, OfferCard } from '@/components/card'
 import { dayLabel } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -146,7 +146,6 @@ export default function GoingSheet() {
           {games.map((item) => (
             <GameOption
               key={item.id}
-              palette={palette}
               selected={item.id === game.id}
               title={gameTitle(item)}
               detail={`${dayLabel(item.startsAt, now)} · ${item.championship}${item.attendance?.attending ? ' · você vai' : ''}`}
@@ -162,9 +161,9 @@ export default function GoingSheet() {
         </View>
 
         {going ? (
-          <Card palette={palette} soft>
+          <Card soft>
             <View style={styles.going}>
-              <Faces palette={palette} faces={going.faces} more={going.more} />
+              <Faces faces={going.faces} more={going.more} />
               <Text
                 style={[
                   text(13.5, 'Regular', 1.35),
@@ -180,7 +179,6 @@ export default function GoingSheet() {
 
         {data.houseOffer ? (
           <OfferCard
-            palette={palette}
             offer={data.houseOffer}
             note="Vale com o seu código."
             compact
@@ -236,20 +234,19 @@ export default function GoingSheet() {
 
 /** Uma linha do "Jogo": rádio, o jogo e a hora, como no design. */
 function GameOption({
-  palette,
   selected,
   title,
   detail,
   time,
   onPress
 }: {
-  palette: Palette
   selected: boolean
   title: string
   detail: string
   time: string
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <Pressable
       accessibilityRole="radio"
@@ -314,15 +311,8 @@ function GameOption({
 }
 
 /** "M R +32": as letras (amigos primeiro) e o resto num círculo de tinta. */
-function Faces({
-  palette,
-  faces,
-  more
-}: {
-  palette: Palette
-  faces: string[]
-  more: number
-}) {
+function Faces({ faces, more }: { faces: string[]; more: number }) {
+  const palette = usePalette()
   const shown = [
     ...faces.map((label, index) => ({
       key: `face${index}`,

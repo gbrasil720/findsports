@@ -9,7 +9,7 @@ import Animated, {
 import QRCode from 'react-qr-code'
 import { HardShadow, Perforation } from '@/components/explore'
 import { haptic, usePress, usePressScale } from '@/components/motion'
-import { PALETTE } from '@/components/theme'
+import { PALETTE, PaletteProvider } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, text } from '@/components/ui'
 import type { Proposal, ProposalAction } from '@/lib/ai-events'
 import { env } from '@/lib/env'
@@ -424,7 +424,9 @@ export function CodeCard({
               />
             </View>
           </View>
-          <Perforation palette={ticket} shadow={{ color: ACID, offset: 5 }} />
+          <PaletteProvider value={ticket}>
+            <Perforation shadow={{ color: ACID, offset: 5 }} />
+          </PaletteProvider>
           <View style={styles.ticketFoot}>
             <Text style={styles.code}>{formatCode(code)}</Text>
             <Text style={[text(12.5, 'Regular', 1.4), { color: '#aaa9a4' }]}>

@@ -19,7 +19,7 @@ import { Avatar } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { usePalette } from '@/components/theme'
+import { PALETTE, PaletteProvider, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -155,14 +155,16 @@ export default function MyCode() {
         <Animated.View key="mine" entering={SWAP} style={styles.mine}>
           <View style={[styles.card, { shadowColor: ACID }]}>
             <View style={styles.who}>
-              <Avatar
-                id={session.data?.user.id ?? ''}
-                name={session.data?.user.name ?? ''}
-                image={session.data?.user.image}
-                size={48}
-                palette={{ ...palette, dark: false }}
-                me
-              />
+              {/* O cartão é papel nos dois temas. */}
+              <PaletteProvider value={PALETTE.light}>
+                <Avatar
+                  id={session.data?.user.id ?? ''}
+                  name={session.data?.user.name ?? ''}
+                  image={session.data?.user.image}
+                  size={48}
+                  me
+                />
+              </PaletteProvider>
               <View style={{ flex: 1 }}>
                 <Text style={[text(17, 'Bold', 1.25), { color: INK }]}>
                   {session.data?.user.name}

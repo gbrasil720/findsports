@@ -728,7 +728,6 @@ export default function AiSearch() {
           <FollowUps
             key={`${last?.id}-${last?.shown}`}
             items={followItems}
-            palette={palette}
             onAsk={(q) => send(q)}
             onMap={showOnMap}
           />
@@ -738,7 +737,6 @@ export default function AiSearch() {
               label="Abrir a busca"
               icon="search"
               on={false}
-              palette={palette}
               onPress={() => {
                 router.back()
                 router.push('/busca')

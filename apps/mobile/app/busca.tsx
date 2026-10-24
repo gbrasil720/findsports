@@ -25,7 +25,7 @@ import {
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   Icon,
@@ -210,7 +210,6 @@ export default function Search() {
               ).map(([kind, label]) => (
                 <SearchChip
                   key={kind}
-                  palette={palette}
                   label={label}
                   query={deferred}
                   onPress={() =>
@@ -223,7 +222,6 @@ export default function Search() {
               : recent.map((item) => (
                   <SearchChip
                     key={item}
-                    palette={palette}
                     label={item}
                     onPress={() => setQuery(item)}
                   />
@@ -234,7 +232,6 @@ export default function Search() {
           <>
             {local.hood ? (
               <HoodCard
-                palette={palette}
                 hood={local.hood as Hood<NearBar>}
                 query={deferred}
                 now={now}
@@ -250,12 +247,11 @@ export default function Search() {
               </Text>
             </View>
             {results.length ? (
-              <Card palette={palette} soft>
+              <Card soft>
                 <View style={{ paddingHorizontal: 14 }}>
                   {results.slice(0, 20).map((bar, i) => (
                     <ResultRow
                       key={bar.id}
-                      palette={palette}
                       bar={bar}
                       query={deferred}
                       now={now}
@@ -277,7 +273,6 @@ export default function Search() {
           </>
         ) : (
           <OpenState
-            palette={palette}
             bars={bars}
             now={now}
             onLive={() => {
@@ -333,16 +328,15 @@ function Hl({
 }
 
 function SearchChip({
-  palette,
   label,
   query = '',
   onPress
 }: {
-  palette: Palette
   label: string
   query?: string
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <ScalePress
       accessibilityRole="button"
@@ -369,7 +363,6 @@ function SearchChip({
 }
 
 function OpenState({
-  palette,
   bars,
   now,
   onLive,
@@ -378,7 +371,6 @@ function OpenState({
   onHood,
   onAi
 }: {
-  palette: Palette
   bars: NearBar[]
   now: number
   onLive: () => void
@@ -387,6 +379,7 @@ function OpenState({
   onHood: (hood: Hood<NearBar>) => void
   onAi: () => void
 }) {
+  const palette = usePalette()
   const { width } = useWindowDimensions()
   const live = liveNow(bars, now)
   const night = tonight(bars, now)
@@ -397,7 +390,6 @@ function OpenState({
       {live ? (
         <ScalePress accessibilityRole="button" to={0.985} onPress={onLive}>
           <Card
-            palette={palette}
             shadow={dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
             offset={5}
             style={{ backgroundColor: dark ? palette.card : INK }}
@@ -421,7 +413,6 @@ function OpenState({
                     key={b.id}
                     uri={b.photo_url}
                     name={b.name}
-                    palette={palette}
                     big
                     style={{ ...styles.stackPhoto, marginLeft: i ? -8 : 0 }}
                   />
@@ -484,7 +475,6 @@ function OpenState({
                   <Photo
                     uri={g.bars[0]?.photo_url ?? null}
                     name={g.bars[0]?.name ?? ''}
-                    palette={palette}
                     big
                     style={StyleSheet.absoluteFill}
                   />
@@ -551,7 +541,7 @@ function OpenState({
                   { width: (width - 32 - 10) / 2, borderColor: palette.ring }
                 ]}
               >
-                <HoodMap palette={palette} hood={hood} now={now} />
+                <HoodMap hood={hood} now={now} />
                 <LinearGradient
                   colors={
                     dark
@@ -580,7 +570,7 @@ function OpenState({
       ) : null}
 
       <ScalePress accessibilityRole="button" to={0.985} onPress={onAi}>
-        <Card palette={palette} shadow={INK} offset={5} style={styles.ai}>
+        <Card shadow={INK} offset={5} style={styles.ai}>
           <View style={styles.aiHead}>
             <Icon name="sparkle" size={26} color={INK} accent={LIVE} />
             <Text style={[text(17, 'Bold', 1.25), { color: INK, flex: 1 }]}>
@@ -638,16 +628,15 @@ function Teams({ game }: { game: NonNullable<NearBar['nextEvent']> }) {
 
 /** Recorte do mapa do bairro, com os bares em quadradinhos (vermelho: ao vivo). */
 function HoodMap({
-  palette,
   hood,
   now,
   big
 }: {
-  palette: Palette
   hood: Hood<NearBar>
   now: number
   big?: boolean
 }) {
+  const palette = usePalette()
   const lats = hood.bars.map((b) => Number(b.latitude))
   const lngs = hood.bars.map((b) => Number(b.longitude))
   const span = Math.max(
@@ -717,26 +706,24 @@ function HoodMap({
 }
 
 function HoodCard({
-  palette,
   hood,
   query,
   now,
   onMap
 }: {
-  palette: Palette
   hood: Hood<NearBar>
   query: string
   now: number
   onMap: () => void
 }) {
+  const palette = usePalette()
   return (
     <Card
-      palette={palette}
       shadow={palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
       offset={5}
     >
       <View style={styles.hoodMap}>
-        <HoodMap palette={palette} hood={hood} now={now} big />
+        <HoodMap hood={hood} now={now} big />
         <View style={styles.hoodBadge}>
           <Glass
             tone={palette.dark ? 'dark' : 'light'}
@@ -783,20 +770,19 @@ function HoodCard({
 }
 
 function ResultRow({
-  palette,
   bar,
   query,
   now,
   first,
   onPress
 }: {
-  palette: Palette
   bar: NearBar
   query: string
   now: number
   first: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   return (
@@ -813,7 +799,6 @@ function ResultRow({
       <Photo
         uri={bar.photo_url}
         name={bar.name}
-        palette={palette}
         big
         style={styles.resultPhoto}
       />

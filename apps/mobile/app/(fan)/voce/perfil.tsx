@@ -21,7 +21,7 @@ import { MedalImage } from '@/components/medal'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,
@@ -227,7 +227,6 @@ export default function Profile() {
           <>
             <Tap onPress={() => router.navigate('/voce/conquistas')}>
               <Card
-                palette={palette}
                 shadow={
                   palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
                 }
@@ -264,7 +263,6 @@ export default function Profile() {
 
             <View style={styles.grid}>
               <Tile
-                palette={palette}
                 icon="fan"
                 value={String(
                   yourBarCount(visits.data ?? [], saved.data ?? [])
@@ -273,7 +271,6 @@ export default function Profile() {
                 onPress={() => router.navigate('/favoritos')}
               />
               <Tile
-                palette={palette}
                 icon="ticket"
                 value={String(today)}
                 label={
@@ -283,14 +280,12 @@ export default function Profile() {
                 onPress={() => router.navigate('/voce/meus-jogos')}
               />
               <Tile
-                palette={palette}
                 icon="map"
                 value={`${user?.searchRadiusKm ?? 3} km`}
                 label="Raio de busca"
                 onPress={() => router.push('/configuracoes')}
               />
               <Tile
-                palette={palette}
                 icon="tv"
                 value={String(sports.data?.length ?? 0)}
                 label={sports.data?.length === 1 ? 'Esporte' : 'Esportes'}
@@ -299,7 +294,7 @@ export default function Profile() {
             </View>
 
             {next.length ? (
-              <Card palette={palette} soft style={styles.next}>
+              <Card soft style={styles.next}>
                 <Text
                   style={[
                     text(16, 'Bold'),
@@ -319,7 +314,6 @@ export default function Profile() {
                     <Photo
                       uri={photoUrl}
                       name={barName}
-                      palette={palette}
                       style={styles.nextPhoto}
                     />
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -351,11 +345,7 @@ export default function Profile() {
 
             {top.bars.length ? (
               <>
-                <Heading
-                  palette={palette}
-                  title="Bares que você mais foi"
-                  meta={top.label}
-                />
+                <Heading title="Bares que você mais foi" meta={top.label} />
                 <View style={styles.topBars}>
                   {top.bars.map((bar) => (
                     <Pressable
@@ -368,7 +358,6 @@ export default function Profile() {
                       <Photo
                         uri={bar.photoUrl}
                         name={bar.barName}
-                        palette={palette}
                         style={styles.topPhoto}
                         big
                       />
@@ -395,16 +384,14 @@ export default function Profile() {
             {pending.data?.length ? (
               <>
                 <Heading
-                  palette={palette}
                   title="Avaliações"
                   meta={`${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`}
                 />
-                <Card palette={palette} soft>
+                <Card soft>
                   <View style={styles.rows}>
                     {pending.data.slice(0, 3).map((item, i) => (
                       <Row
                         key={item.eventId}
-                        palette={palette}
                         first={i === 0}
                         icon="star"
                         title={item.barName}
@@ -418,17 +405,10 @@ export default function Profile() {
               </>
             ) : null}
 
-            <Card palette={palette} soft>
+            <Card soft>
               <View style={styles.rows}>
+                <Row first icon="chat" title="Ajuda e suporte" onPress={help} />
                 <Row
-                  palette={palette}
-                  first
-                  icon="chat"
-                  title="Ajuda e suporte"
-                  onPress={help}
-                />
-                <Row
-                  palette={palette}
                   icon="doc"
                   title="Termos e privacidade"
                   onPress={() =>
@@ -470,14 +450,12 @@ function Tap({
 }
 
 function Tile({
-  palette,
   icon,
   value,
   label,
   hot,
   onPress
 }: {
-  palette: Palette
   icon: 'fan' | 'ticket' | 'map' | 'tv'
   value: string
   label: string
@@ -485,11 +463,11 @@ function Tile({
   hot?: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <View style={styles.tile}>
       <Tap onPress={onPress}>
         <Card
-          palette={palette}
           soft
           shadow={hot ? palette.liveShadow : undefined}
           offset={hot ? 5 : 4}
@@ -511,15 +489,8 @@ function Tile({
   )
 }
 
-function Heading({
-  palette,
-  title,
-  meta
-}: {
-  palette: Palette
-  title: string
-  meta: string
-}) {
+function Heading({ title, meta }: { title: string; meta: string }) {
+  const palette = usePalette()
   return (
     <View style={styles.heading}>
       <Text style={[text(16, 'Bold'), { color: palette.ink }]}>{title}</Text>
@@ -529,7 +500,6 @@ function Heading({
 }
 
 function Row({
-  palette,
   first,
   icon,
   title,
@@ -537,7 +507,6 @@ function Row({
   action,
   onPress
 }: {
-  palette: Palette
   first?: boolean
   icon: 'star' | 'chat' | 'doc'
   title: string
@@ -546,6 +515,7 @@ function Row({
   action?: string
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <Pressable
       accessibilityRole="button"

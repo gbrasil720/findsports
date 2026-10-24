@@ -47,7 +47,7 @@ import { Glass } from '@/components/glass'
 import { EASE, haptic, POP_FAST, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   Icon,
@@ -801,7 +801,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             live
             label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
             on={liveOnly}
-            palette={palette}
             onPress={() => state.setLiveOnly(!liveOnly)}
           />
         ) : null}
@@ -814,7 +813,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               icon={shown.icon}
               label={shown.label}
               on={shortcutOn(key, filters, sports, now)}
-              palette={palette}
               onPress={() =>
                 state.setFilters(applyShortcut(key, filters, sports, now))
               }
@@ -941,7 +939,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                       key={chosen.id}
                       bar={chosen}
                       now={now}
-                      palette={palette}
                       favorite={favorites.ids.has(chosen.id)}
                       onFavorite={() => favorites.toggle(chosen.id)}
                       onPress={() => open(chosen)}
@@ -955,7 +952,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                         index === bars.length ? (
                           <QuietHead
                             key="quiet"
-                            palette={palette}
                             alone={bars.length === 0}
                             radiusKm={radiusKm}
                           />
@@ -966,7 +962,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                           <BarRow
                             bar={bar}
                             now={now}
-                            palette={palette}
                             compact={!expanded}
                             onPress={() => open(bar)}
                           />
@@ -977,7 +972,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                           <BarRow
                             bar={bar}
                             now={now}
-                            palette={palette}
                             onPress={() => open(bar)}
                           />
                         </Animated.View>
@@ -1048,15 +1042,14 @@ const FEW_BARS = 5
 
 /** O título dos bares sem jogo no fim da lista. */
 function QuietHead({
-  palette,
   alone,
   radiusKm
 }: {
-  palette: Palette
   /** Nenhum bar com jogo: o título diz isso antes. */
   alone: boolean
   radiusKm: number
 }) {
+  const palette = usePalette()
   return (
     <View style={{ gap: 2, paddingTop: alone ? 0 : 8 }}>
       <Text style={[text(13, 'Bold', 1.3), { color: palette.ink }]}>

@@ -21,7 +21,7 @@ import { Glass } from '@/components/glass'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import { type Palette, usePalette } from '@/components/theme'
+import { PaletteProvider, usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,
@@ -176,13 +176,11 @@ export default function MyGames() {
           <>
             <View style={styles.tabs}>
               <TabChip
-                palette={palette}
                 label={`Próximas · ${upcoming.length}`}
                 selected={tab === 'next'}
                 onPress={() => goTo('next')}
               />
               <TabChip
-                palette={palette}
                 label="Anteriores"
                 selected={tab === 'past'}
                 onPress={() => goTo('past')}
@@ -191,7 +189,6 @@ export default function MyGames() {
 
             {first ? (
               <NextGame
-                palette={palette}
                 game={first}
                 now={now}
                 onCode={() => openCode(first)}
@@ -205,7 +202,6 @@ export default function MyGames() {
             {rest.map((game) => (
               <LaterGame
                 key={game.eventId}
-                palette={palette}
                 game={game}
                 now={now}
                 onPress={() => (game.code ? openCode(game) : openBar(game))}
@@ -237,12 +233,11 @@ export default function MyGames() {
                     {thisMonth(past, now) ?? ''}
                   </Text>
                 </View>
-                <Card palette={palette} soft>
+                <Card soft>
                   <View style={styles.list}>
                     {past.map((game, index) => (
                       <PastRow
                         key={game.eventId}
-                        palette={palette}
                         game={game}
                         first={index === 0}
                         rate={toRate.has(game.eventId)}
@@ -273,16 +268,15 @@ export default function MyGames() {
 }
 
 function TabChip({
-  palette,
   label,
   selected,
   onPress
 }: {
-  palette: Palette
   label: string
   selected: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   return (
     <Pressable
       accessibilityRole="tab"
@@ -307,23 +301,22 @@ function TabChip({
 
 /** O próximo jogo: faixa acid "Você vai", o bar e o código com "Mostrar". */
 function NextGame({
-  palette,
   game,
   now,
   onCode,
   onBar
 }: {
-  palette: Palette
   game: MyGame
   now: number
   onCode: () => void
   onBar: () => void
 }) {
+  const palette = usePalette()
   const show = usePressScale()
   const when = `${dayLabel(game.startsAt, now)} · ${formatTime(game.startsAt)}`
   const shadow = palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
   return (
-    <Card palette={palette} shadow={shadow} offset={5} notched>
+    <Card shadow={shadow} offset={5} notched>
       <View style={styles.band}>
         <Icon name="check" size={14} color={INK} />
         <Text style={[text(13.5, 'Bold', 1.2), { color: INK, flex: 1 }]}>
@@ -337,12 +330,7 @@ function NextGame({
         onPress={onBar}
         style={styles.barRow}
       >
-        <Photo
-          uri={game.photoUrl}
-          name={game.barName}
-          palette={palette}
-          style={styles.photo}
-        />
+        <Photo uri={game.photoUrl} name={game.barName} style={styles.photo} />
         <View style={{ flex: 1 }}>
           <Text
             style={[text(17, 'Bold', 1.3), { color: palette.ink }]}
@@ -371,15 +359,16 @@ function NextGame({
       ) : null}
       {game.code ? (
         <>
-          <Perforation
-            palette={{
+          {/* O furo na cor da tela, não da folha. */}
+          <PaletteProvider
+            value={{
               ...palette,
               sheet: palette.bg,
               dash: palette.dark ? 'rgba(241,238,230,.18)' : palette.dash
             }}
-            shadow={{ color: shadow, offset: 5 }}
-            inset={16}
-          />
+          >
+            <Perforation shadow={{ color: shadow, offset: 5 }} inset={16} />
+          </PaletteProvider>
           <View style={styles.codeRow}>
             <View style={{ flex: 1 }}>
               <Text style={[text(12), { color: palette.muted }]}>
@@ -440,16 +429,15 @@ function NextGame({
 
 /** Os outros próximos: "Você vai · amanhã", o bar e o jogo numa linha. */
 function LaterGame({
-  palette,
   game,
   now,
   onPress
 }: {
-  palette: Palette
   game: MyGame
   now: number
   onPress: () => void
 }) {
+  const palette = usePalette()
   const line = [
     gameTitle(game),
     formatTime(game.startsAt),
@@ -466,12 +454,11 @@ function LaterGame({
       onPressOut={press.onPressOut}
     >
       <Animated.View style={press.style}>
-        <Card palette={palette} soft>
+        <Card soft>
           <View style={[styles.barRow, { paddingBottom: 14 }]}>
             <Photo
               uri={game.photoUrl}
               name={game.barName}
-              palette={palette}
               style={styles.photo}
             />
             <View style={{ flex: 1 }}>
@@ -512,18 +499,17 @@ function LaterGame({
 }
 
 function PastRow({
-  palette,
   game,
   first,
   rate,
   onRate
 }: {
-  palette: Palette
   game: MyGame
   first: boolean
   rate: boolean
   onRate: () => void
 }) {
+  const palette = usePalette()
   const label = pastLabel(game)
   const press = usePressScale()
   return (
