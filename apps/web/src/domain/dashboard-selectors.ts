@@ -154,7 +154,10 @@ export function resolveFavoriteIds(
   return ids
 }
 
-export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
+export function toMapBars(
+  bars: DiscoveryBar[],
+  now: number = Date.now()
+): MapBar[] {
   return bars.flatMap((bar) => {
     const lat = Number.parseFloat(bar.latitude)
     const lng = Number.parseFloat(bar.longitude)
@@ -170,7 +173,7 @@ export function toMapBars(bars: DiscoveryBar[]): MapBar[] {
         pin: pinDoPlano(
           bar.plan,
           nextEvent !== undefined &&
-            getEventTemporalState(nextEvent.startsAt, nextEvent.endsAt) ===
+            getEventTemporalState(nextEvent.startsAt, nextEvent.endsAt, now) ===
               'live'
         )
       }

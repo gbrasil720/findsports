@@ -1,11 +1,12 @@
 import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Basketball from 'reicon-react/icons/Basketball'
 import ChevronRight from 'reicon-react/icons/ChevronRight'
 import Football from 'reicon-react/icons/Football'
 import Location from 'reicon-react/icons/Location'
 import Store from 'reicon-react/icons/Store'
+import { useMinuteNow } from '@/components/app/minute-tick'
 import { OnsideMap } from '@/components/app/onside-map'
 import {
   type DiscoveryBar,
@@ -278,9 +279,10 @@ export function DashboardResults(props: Props) {
   // O destaque do hover mora aqui, e não na rota: trocar de card renderiza
   // a lista e o mapa, não a página com os filtros.
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  // Calculado a cada render daqui, e não na rota: o pino passa a "ao vivo"
-  // pela hora do render, e o hover (que não renderiza mais a rota) redesenha.
-  const mapBars = toMapBars(bars)
+  // O pino passa a "ao vivo" no mesmo relógio de minuto dos cards, e vira
+  // junto com eles sem esperar um hover.
+  const agora = useMinuteNow()
+  const mapBars = useMemo(() => toMapBars(bars, agora), [bars, agora])
   const loading = resultState.status === 'loading'
   const locationError =
     locationState === 'denied' || locationState === 'unavailable'
