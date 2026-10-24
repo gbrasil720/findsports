@@ -1,5 +1,6 @@
 import type { Dubla } from './ai-dubla'
 import type { ChatEvent, ConfirmInput, ConverseInput } from './ai-events'
+import { queryClient } from './query-client'
 import { trpcClient } from './trpc'
 
 /*
@@ -27,4 +28,9 @@ export async function* converse(
 export const confirm = (input: ConfirmInput, dubla: boolean) =>
   __DEV__ && dubla
     ? (require('./ai-dubla') as DublaModule).dublaConfirm(input)
-    : server.ai.confirm.mutate(input)
+    : server.ai.confirm.mutate(input).then((result) => {
+        // O "Confirmar" marca presença, chama amigo ou lembra, fora do
+        // `useMutation`: o cache vence como numa mutation (`query-client.ts`).
+        queryClient.invalidateQueries({ refetchType: 'none' })
+        return result
+      })
