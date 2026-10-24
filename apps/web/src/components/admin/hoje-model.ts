@@ -104,14 +104,14 @@ export type BlocoNoite<T> = {
 }
 
 /**
- * A linha do tempo da noite (`tl2` do design): os jogos do dia da casa (das
+ * As horas de uma noite (`tl2` do design): os jogos do dia da casa `dia` (das
  * 6h às 6h), de 18h a 2h, alargada se um jogo começa antes ou acaba depois.
  */
-export function montarNoite<T extends JogoComHorario>(
+function faixaDaNoite<T extends JogoComHorario>(
   eventos: readonly T[],
+  dia: string,
   now: number
 ) {
-  const dia = diaDaCasa(now)
   const zero = brasiliaDayStart(dia).getTime()
   const horas = (t: number) => (t - zero) / HORA
   const jogos = eventos
@@ -154,9 +154,34 @@ export function montarNoite<T extends JogoComHorario>(
   }
 }
 
-/** Posição de uma hora na linha do tempo, em % da largura. */
-export function posicao(h: number, de: number, ate: number): number {
-  return ((Math.min(Math.max(h, de), ate) - de) / (ate - de)) * 100
+/**
+ * A noite de hoje e, à direita, a de amanhã: a tela mostra a de hoje e o dono
+ * arrasta para ver a próxima ("arraste para ver amanhã").
+ */
+export function montarNoite<T extends JogoComHorario>(
+  eventos: readonly T[],
+  now: number
+) {
+  const dia = diaDaCasa(now)
+  return {
+    ...faixaDaNoite(eventos, dia, now),
+    amanha: faixaDaNoite(eventos, somaDias(dia, 1), now)
+  }
+}
+
+/**
+ * Posição de uma hora da faixa `de`–`ate` na linha do tempo, em % da largura.
+ * `antes` são as colunas que vêm antes da faixa e `total`, as da linha inteira
+ * (hoje e amanhã lado a lado).
+ */
+export function posicao(
+  h: number,
+  de: number,
+  ate: number,
+  antes = 0,
+  total = ate - de
+): number {
+  return ((antes + Math.min(Math.max(h, de), ate) - de) / total) * 100
 }
 
 /** "18h", "00h", "01h": o rótulo de cada coluna. */

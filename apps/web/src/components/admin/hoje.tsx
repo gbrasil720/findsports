@@ -5,7 +5,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
-import { type ReactNode, useId, useState } from 'react'
+import { type ReactNode, useId, useRef, useState } from 'react'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import {
   Avatar,
@@ -228,7 +228,7 @@ export function Hoje() {
         meta={
           fora
             ? 'Os jogos não aparecem no app enquanto o bar estiver fora do ar'
-            : `${noite.de % 24}h → ${noite.ate % 24}h`
+            : `${noite.de % 24}h → ${noite.ate % 24}h · arraste para ver amanhã`
         }
       >
         {events.isError ? (
@@ -243,85 +243,13 @@ export function Hoje() {
             />
           </div>
         ) : (
-          <div className="hoje-noite-rolagem">
-            <div
-              className="hoje-noite"
-              style={{ height: Math.max(196, 40 + noite.linhas * 78) }}
-            >
-              <div className="hoje-horas" aria-hidden="true">
-                {noite.horas.map((h) => (
-                  <div key={h}>
-                    <span>{rotuloHora(h)}</span>
-                  </div>
-                ))}
-              </div>
-              {events.isPending || noite.blocos.length === 0 ? null : (
-                <ul aria-label="Jogos de hoje">
-                  {noite.blocos.map((b) => {
-                    const de = posicao(b.inicio, noite.de, noite.ate)
-                    const ate = posicao(b.fim, noite.de, noite.ate)
-                    const linha = porJogo.get(b.jogo.id)
-                    const vao = lista ? linha?.reservedPeople : null
-                    const chegaram = linha?.arrivals ?? 0
-                    return (
-                      <li
-                        key={b.jogo.id}
-                        className="hoje-jogo"
-                        data-estado={b.estado}
-                        style={{
-                          left: `${de}%`,
-                          width: `calc(${ate - de}% - 4px)`,
-                          top: 30 + b.linha * 78
-                        }}
-                      >
-                        <div className="hoje-jogo-topo">
-                          <b>{gameTitle(b.jogo)}</b>
-                          {b.estado === 'live' ? (
-                            <Badge tipo="live">Ao vivo</Badge>
-                          ) : b.estado === 'past' ? (
-                            <Badge tipo="muted">Encerrado</Badge>
-                          ) : (
-                            <Badge tipo="pub">Publicado</Badge>
-                          )}
-                        </div>
-                        <span className="hoje-jogo-linha">
-                          {hora(b.jogo.startsAt)} ·{' '}
-                          {vao == null
-                            ? b.jogo.championship
-                            : vao > 0
-                              ? `${vao} ${plural(vao, 'vai', 'vão')} · ${chegaram} ${plural(chegaram, 'chegou', 'chegaram')}`
-                              : 'ninguém marcou ainda'}
-                        </span>
-                        {vao ? (
-                          <Progresso
-                            valor={chegaram}
-                            max={vao}
-                            altura={4}
-                            rotulo={`${chegaram} de ${vao} chegaram`}
-                          />
-                        ) : null}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              {noite.agora === null ? null : (
-                <div
-                  className="hoje-agora"
-                  style={{
-                    left: `${posicao(noite.agora, noite.de, noite.ate)}%`
-                  }}
-                >
-                  <span>AGORA {hora(now)}</span>
-                </div>
-              )}
-              {events.isSuccess && noite.blocos.length === 0 ? (
-                <p className="hoje-noite-vazia">
-                  <span>Nenhum jogo marcado para hoje.</span>
-                </p>
-              ) : null}
-            </div>
-          </div>
+          <LinhaDaNoite
+            noite={noite}
+            now={now}
+            carregando={events.isPending}
+            linhaDoJogo={(id) => porJogo.get(id)}
+            lista={lista}
+          />
         )}
       </Secao>
 
@@ -393,6 +321,197 @@ export function Hoje() {
         </div>
       </div>
     </div>
+  )
+}
+
+type Noite = ReturnType<
+  typeof montarNoite<RouterOutputs['pub']['getMyEvents'][number]>
+>
+type LinhaDoJogo =
+  RouterOutputs['commercialAnalytics']['getMyEventAnalytics']['events'][number]
+
+/**
+ * A linha do tempo de "A noite": a de hoje ocupa a largura do card e a de
+ * amanhã fica à direita. Arrasta com o dedo (rolagem nativa), com o mouse e,
+ * com o foco nela, anda uma hora por seta (Home e End vão às pontas).
+ */
+function LinhaDaNoite({
+  noite,
+  now,
+  carregando,
+  linhaDoJogo,
+  lista
+}: {
+  noite: Noite
+  now: number
+  carregando: boolean
+  linhaDoJogo: (id: string) => LinhaDoJogo | undefined
+  lista: boolean
+}) {
+  const arrasto = useRef<{ x: number; rolagem: number } | null>(null)
+  const [arrastando, setArrastando] = useState(false)
+  const hoje = noite.horas.length
+  const total = hoje + noite.amanha.horas.length
+  const linhas = Math.max(noite.linhas, noite.amanha.linhas)
+  const soltar = () => {
+    arrasto.current = null
+    setArrastando(false)
+  }
+
+  const faixas = [
+    { faixa: noite, antes: 0, vazia: 'Nenhum jogo marcado para hoje.' },
+    {
+      faixa: noite.amanha,
+      antes: hoje,
+      vazia: 'Nenhum jogo marcado para amanhã.'
+    }
+  ]
+
+  return (
+    <section
+      className="hoje-noite-rolagem"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: rolagem que anda pelas setas precisa do foco (WCAG 2.1.1).
+      tabIndex={0}
+      aria-label="A noite, de hoje até amanhã. Use as setas para andar pelas horas."
+      data-arrastando={arrastando || undefined}
+      onPointerDown={(e) => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return
+        arrasto.current = { x: e.clientX, rolagem: e.currentTarget.scrollLeft }
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setArrastando(true)
+      }}
+      onPointerMove={(e) => {
+        const a = arrasto.current
+        if (a) e.currentTarget.scrollLeft = a.rolagem - (e.clientX - a.x)
+      }}
+      onPointerUp={soltar}
+      onPointerCancel={soltar}
+      onKeyDown={(e) => {
+        const el = e.currentTarget
+        const hora = el.scrollWidth / total
+        const passo = {
+          ArrowRight: hora,
+          ArrowLeft: -hora,
+          Home: -el.scrollWidth,
+          End: el.scrollWidth
+        }[e.key]
+        if (passo === undefined) return
+        e.preventDefault()
+        el.scrollBy({
+          left: passo,
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'instant'
+            : 'smooth'
+        })
+      }}
+    >
+      <div
+        className="hoje-noite"
+        style={{
+          height: Math.max(196, 40 + linhas * 78),
+          ['--colunas' as string]: total,
+          ['--colunas-hoje' as string]: hoje
+        }}
+      >
+        <div className="hoje-horas" aria-hidden="true">
+          {noite.horas.map((h) => (
+            <div key={h}>
+              <span>{rotuloHora(h)}</span>
+            </div>
+          ))}
+          {noite.amanha.horas.map((h, i) => (
+            <div key={`amanha-${h}`} data-amanha={i === 0 || undefined}>
+              <span>
+                {i === 0 ? `amanhã · ${rotuloHora(h)}` : rotuloHora(h)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {carregando
+          ? null
+          : faixas.map(({ faixa, antes, vazia }) => {
+              const ondeEsta = (h: number) =>
+                posicao(h, faixa.de, faixa.ate, antes, total)
+              if (faixa.blocos.length === 0) {
+                return (
+                  <p
+                    key={faixa.dia}
+                    className="hoje-noite-vazia"
+                    style={{
+                      left: `${ondeEsta(faixa.de)}%`,
+                      width: `${ondeEsta(faixa.ate) - ondeEsta(faixa.de)}%`
+                    }}
+                  >
+                    <span>{vazia}</span>
+                  </p>
+                )
+              }
+              return (
+                <ul
+                  key={faixa.dia}
+                  aria-label={antes ? 'Jogos de amanhã' : 'Jogos de hoje'}
+                >
+                  {faixa.blocos.map((b) => {
+                    const de = ondeEsta(b.inicio)
+                    const ate = ondeEsta(b.fim)
+                    const linha = linhaDoJogo(b.jogo.id)
+                    const vao = lista ? linha?.reservedPeople : null
+                    const chegaram = linha?.arrivals ?? 0
+                    return (
+                      <li
+                        key={b.jogo.id}
+                        className="hoje-jogo"
+                        data-estado={b.estado}
+                        style={{
+                          left: `${de}%`,
+                          width: `calc(${ate - de}% - 4px)`,
+                          top: 30 + b.linha * 78
+                        }}
+                      >
+                        <div className="hoje-jogo-topo">
+                          <b>{gameTitle(b.jogo)}</b>
+                          {b.estado === 'live' ? (
+                            <Badge tipo="live">Ao vivo</Badge>
+                          ) : b.estado === 'past' ? (
+                            <Badge tipo="muted">Encerrado</Badge>
+                          ) : (
+                            <Badge tipo="pub">Publicado</Badge>
+                          )}
+                        </div>
+                        <span className="hoje-jogo-linha">
+                          {hora(b.jogo.startsAt)} ·{' '}
+                          {vao == null
+                            ? b.jogo.championship
+                            : vao > 0
+                              ? `${vao} ${plural(vao, 'vai', 'vão')} · ${chegaram} ${plural(chegaram, 'chegou', 'chegaram')}`
+                              : 'ninguém marcou ainda'}
+                        </span>
+                        {vao ? (
+                          <Progresso
+                            valor={chegaram}
+                            max={vao}
+                            altura={4}
+                            rotulo={`${chegaram} de ${vao} chegaram`}
+                          />
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )
+            })}
+        {noite.agora === null ? null : (
+          <div
+            className="hoje-agora"
+            style={{
+              left: `${posicao(noite.agora, noite.de, noite.ate, 0, total)}%`
+            }}
+          >
+            <span>AGORA {hora(now)}</span>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
