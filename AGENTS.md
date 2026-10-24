@@ -678,7 +678,8 @@ invente layout que o projeto não tem.
   faria isso sozinha, mas sai do Expo Go: WEB-417, sem compromisso. A câmera abre no raio da pessoa, com a
   região da tela toda e o centro deslocado para a faixa livre: `mapPadding` e
   `edgePadding` no iOS abriam três vezes mais longe. A folha abre mais baixa (título e
-  um card) e o botão de alfinete acima dela volta ao raio.
+  um card, com o seguinte sumindo num degradê antes da barra de abas, para dizer que a
+  lista continua; com um bar só, sem degradê) e o botão de alfinete acima dela volta ao raio.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
