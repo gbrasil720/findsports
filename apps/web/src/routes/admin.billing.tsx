@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -67,6 +68,12 @@ const diaMes = (date: string | Date) =>
     .replace('.', '')
     .replace(' de ', ' ')
 
+/** Primeiro dia do mês de Brasília até hoje (`YYYY-MM-DD`). */
+function thisMonth() {
+  const today = brasiliaDay(new Date())
+  return { from: `${today.slice(0, 8)}01`, to: today }
+}
+
 /** Situação que não é a de sempre (ativo) ganha selo; por `status`, mais `trial_ended`. */
 const STATUS_BADGE: Record<string, { label: string; tipo: BadgeTipo }> = {
   trialing: { label: 'Trial gratuito', tipo: 'acid' },
@@ -112,6 +119,17 @@ function BillingPage() {
   const month = useQuery({
     ...trpc.commercialAnalytics.getMyMonthNumbers.queryOptions(),
     enabled: Boolean(subscription?.currentPlan),
+    meta: { errorToast: false },
+    retry: false
+  }).data
+  // Os números do design (3o, 3q) são do Elite; fora dele vêm nulos e o card
+  // segue com as visitas do analytics, que todo plano enxerga.
+  const elite = month?.going != null
+  const overview = useQuery({
+    ...trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions(
+      thisMonth()
+    ),
+    enabled: Boolean(month) && !elite,
     meta: { errorToast: false },
     retry: false
   }).data
@@ -198,11 +216,18 @@ function BillingPage() {
         ? 'Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano ser contratado.'
         : null
 
-  const kpis = comPlural([
-    [month?.going, 'marcou que ia', 'marcaram que iam'],
-    [month?.classicsOnTop, 'clássico no topo', 'clássicos no topo'],
-    [month?.validatedCodes, 'código validado', 'códigos validados']
-  ])
+  const kpis = comPlural(
+    elite
+      ? [
+          [month?.going, 'marcou que ia', 'marcaram que iam'],
+          [month?.classicsOnTop, 'clássico no topo', 'clássicos no topo'],
+          [month?.validatedCodes, 'código validado', 'códigos validados']
+        ]
+      : [
+          [overview?.uniqueVisitors, 'viu o bar', 'viram o bar'],
+          [overview?.interestedPeople, 'se interessou', 'se interessaram']
+        ]
+  )
 
   return (
     <>
@@ -563,6 +588,7 @@ function BillingPage() {
           }
           monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
           going={month?.going ?? null}
+          visitors={elite ? null : (overview?.uniqueVisitors ?? null)}
           classics={month?.classicsOnTop ?? null}
           onClose={() => setCancelling(false)}
         />
@@ -573,14 +599,17 @@ function BillingPage() {
 
 /**
  * O que o bar perde, com os números que existem (3q): quem marcou que ia no
- * mês e os clássicos no topo (Elite), os jogos marcados e o pin.
+ * mês e os clássicos no topo (Elite), senão quem viu o bar, os jogos marcados
+ * e o pin.
  */
 function CancelPlan({
   going,
+  visitors,
   classics,
   ...props
 }: Omit<Parameters<typeof CancelPlanDialog>[0], 'perdas'> & {
   going: number | null
+  visitors: number | null
   classics: number | null
 }) {
   const events = useMyEvents().data
@@ -592,6 +621,11 @@ function CancelPlan({
       going,
       'pessoa que marcou que ia ao bar este mês',
       'pessoas que marcaram que iam ao bar este mês'
+    ],
+    [
+      visitors,
+      'pessoa que viu o bar este mês',
+      'pessoas que viram o bar este mês'
     ],
     [
       classics,
