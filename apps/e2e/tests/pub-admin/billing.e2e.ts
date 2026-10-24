@@ -6,7 +6,11 @@ import { query } from '../../fixtures/db'
 import { createEvent, createTicket } from '../../fixtures/going'
 import { painelLink } from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
-import { stripeSubscription } from '../../fixtures/stripe'
+import {
+  seedStripeInvoices,
+  stripeInvoice,
+  stripeSubscription
+} from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
 // /admin/billing: plano atual e portal do Stripe, onde ficam faturas, cartão,
@@ -60,12 +64,18 @@ test('a assinatura aparece sem esperar a consulta do cupom ao Stripe (WEB-348)',
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
-test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
+const faturas = (page: Page) => page.getByRole('region', { name: 'Faturas' })
+
+test('Elite ativo: plano, faturas e portal do Stripe', async ({
+  page,
+  request
+}) => {
   // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
   // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
+  const subscriptionId = `sub_e2e_${randomUUID()}`
   const pub = await createPub({
     subscription: {
-      externalSubscriptionId: `sub_e2e_${randomUUID()}`,
+      externalSubscriptionId: subscriptionId,
       monthlyDiscountReais: 28
     }
   })
@@ -86,6 +96,36 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
      SELECT gen_random_uuid()::text, id FROM reservation_code WHERE reservation_id = $1`,
     [ticket.reservationId]
   )
+  // Faturas do Stripe (WEB-443, 3o): a paga de outubro e a de R$ 0 que o
+  // Stripe emitiu ao abrir o teste. Rascunho não aparece.
+  await seedStripeInvoices(
+    request,
+    { id: subscriptionId, customer: customerId },
+    [
+      stripeInvoice({
+        id: `in_draft_${subscriptionId}`,
+        customer: customerId,
+        status: 'draft',
+        total: 26900,
+        created: new Date('2026-11-12T15:00:00Z')
+      }),
+      stripeInvoice({
+        id: `in_out_${subscriptionId}`,
+        customer: customerId,
+        status: 'paid',
+        total: 26900,
+        created: new Date('2026-10-12T15:00:00Z')
+      }),
+      stripeInvoice({
+        id: `in_teste_${subscriptionId}`,
+        customer: customerId,
+        status: 'paid',
+        total: 0,
+        created: new Date('2026-08-20T15:00:00Z'),
+        trialEnd: new Date('2026-10-12T15:00:00Z')
+      })
+    ]
+  )
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
@@ -100,17 +140,29 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   await expect(kpi('marcaram que iam este mês')).toContainText('2')
   await expect(kpi('clássicos no topo este mês')).toContainText('0')
   await expect(kpi('código validado este mês')).toContainText('1')
-  // Faturas, dados da nota e PIX ainda não existem: aparecem "em breve".
+  const rows = faturas(page).getByRole('listitem')
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(0)).toContainText('Outubro 2026')
+  await expect(rows.nth(0)).toContainText('Pago em 12 out')
+  await expect(rows.nth(0)).toContainText('R$ 269')
+  await expect(rows.nth(0)).toContainText('Pago')
   await expect(
-    page.getByRole('region', { name: 'Faturas' }).getByText('em breve')
-  ).toBeVisible()
+    rows.nth(0).getByRole('link', { name: /^Baixar PDF/ })
+  ).toHaveAttribute(
+    'href',
+    `https://pay.stripe.com/invoice/in_out_${subscriptionId}/pdf`
+  )
+  await expect(rows.nth(1)).toContainText('Agosto 2026')
+  await expect(rows.nth(1)).toContainText('Elite grátis até 12 out')
+  await expect(rows.nth(1)).toContainText('R$ 0')
+  await expect(rows.nth(1)).toContainText('Teste')
+  await expect(rows.nth(1).getByRole('link')).toHaveCount(0)
+  await expect(faturas(page).getByText('em breve')).toHaveCount(0)
+  // Dados da nota e PIX ainda não existem: aparecem "em breve".
   await expect(
     page.getByRole('region', { name: 'Dados da nota' }).getByText('em breve')
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Usar PIX' })).toBeDisabled()
-  await expect(
-    page.getByText(/faturas e os recibos de cada cobrança ficam no portal/)
-  ).toBeVisible()
 
   const navigations: string[] = []
   page.on('request', (request) => {
@@ -255,6 +307,59 @@ test('pagamento atrasado mostra o plano parado e manda regularizar', async ({
   await expect(aviso).toContainText('Plano Pro com pagamento pendente')
   await expect(aviso).toContainText('O último pagamento não foi confirmado.')
   await expect(aviso).toContainText('o cardápio no perfil')
+})
+
+// WEB-443 (3s): a fatura do mês fica pendente, com a data em que o cartão
+// foi recusado, e o card diz de que dia é a cobrança não confirmada.
+test('pagamento pendente: fatura pendente com a data da recusa', async ({
+  page,
+  request
+}) => {
+  const subscriptionId = `sub_e2e_${randomUUID()}`
+  const customerId = `cus_e2e_${randomUUID()}`
+  await seedStripeInvoices(
+    request,
+    { id: subscriptionId, customer: customerId },
+    [
+      stripeInvoice({
+        id: `in_out_${subscriptionId}`,
+        customer: customerId,
+        status: 'open',
+        total: 26900,
+        created: new Date('2026-10-12T12:00:00Z'),
+        attempts: 2
+      })
+    ],
+    [
+      { status: 'failed', created: new Date('2026-10-14T15:00:00Z') },
+      { status: 'failed', created: new Date('2026-10-12T13:00:00Z') }
+    ]
+  )
+  await openBilling(page, {
+    subscription: {
+      plan: 'elite',
+      status: 'past_due',
+      externalSubscriptionId: subscriptionId
+    }
+  })
+
+  await expect(currentPlan(page)).toContainText(
+    'por mês · cobrança de 14 out não confirmada'
+  )
+  const row = faturas(page).getByRole('listitem')
+  await expect(row).toContainText('Outubro 2026')
+  await expect(row).toContainText('Cartão recusado em 14 out')
+  await expect(row).toContainText('Pendente')
+  await expect(row.getByRole('link', { name: /^Baixar PDF/ })).toBeVisible()
+})
+
+test('assinatura no Stripe sem fatura emitida', async ({ page }) => {
+  await openBilling(page, {
+    subscription: { externalSubscriptionId: `sub_e2e_${randomUUID()}` }
+  })
+  await expect(
+    faturas(page).getByText('Nenhuma fatura emitida ainda.')
+  ).toBeVisible()
 })
 
 test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => {
