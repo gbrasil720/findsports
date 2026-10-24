@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   inArray,
+  isNotNull,
   notInArray,
   or,
   sql
@@ -377,6 +378,7 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
+          AND e.published_at IS NOT NULL
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
       ) g
       GROUP BY g.title, g.starts_at
@@ -508,7 +510,9 @@ export const pubsRouter = router({
           },
           events: {
             // Jogo ao vivo continua na página até o fim derivado.
-            where: (event) => eventNotEndedSql(event, now),
+            // Rascunho (WEB-436) não sai na página do bar.
+            where: (event) =>
+              and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
             with: {
               sport: true,
               participants: {
@@ -741,7 +745,8 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
-              where: (event) => eventNotEndedSql(event, now),
+              where: (event) =>
+                and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
               // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
               with: {
@@ -910,6 +915,7 @@ export const pubsRouter = router({
           AND EXISTS (
             SELECT 1 FROM event e
             WHERE e.bar_id = b.id
+              AND e.published_at IS NOT NULL
               AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
           )
       `)
@@ -996,6 +1002,7 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
+          AND e.published_at IS NOT NULL
           AND ST_DWithin(b.geo, ${filtros.origin}, ${filtros.radiusMeters})
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql(now), 7)}
           ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
