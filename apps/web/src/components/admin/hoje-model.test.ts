@@ -78,6 +78,12 @@ describe('montarNoite', () => {
     // Real Madrid às 23:45 sem fim informado vai até 2:45: a noite estica.
     expect(noite.ate).toBe(27)
     expect(noite.agora).toBeCloseTo(21 + 52 / 60)
+    // Arrastando, a noite de amanhã: o jogo das 19h do dia 13.
+    expect(noite.amanha.dia).toBe('2026-10-13')
+    expect(noite.amanha.blocos.map((b) => [b.jogo.id, b.inicio])).toEqual([
+      ['amanha', 19]
+    ])
+    expect(noite.amanha.agora).toBeNull()
   })
 
   test('jogo da tarde abre a noite mais cedo; jogo da madrugada entra', () => {
@@ -99,6 +105,9 @@ describe('montarNoite', () => {
     expect(posicao(18, 18, 26)).toBe(0)
     expect(posicao(22, 18, 26)).toBe(50)
     expect(posicao(40, 18, 26)).toBe(100)
+    // Amanhã, depois das 8 colunas de hoje, numa linha de 16.
+    expect(posicao(18, 18, 26, 8, 16)).toBe(50)
+    expect(posicao(22, 18, 26, 8, 16)).toBe(75)
     expect([rotuloHora(18), rotuloHora(24), rotuloHora(25)]).toEqual([
       '18h',
       '00h',

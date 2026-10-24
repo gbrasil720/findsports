@@ -44,12 +44,31 @@
   padding: 18px 22px 14px;
 }
 .painel .hoje-noite-rolagem {
+  margin-top: 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  border-radius: 4px;
 }
+.painel .hoje-noite-rolagem::-webkit-scrollbar {
+  display: none;
+}
+.painel .hoje-noite-rolagem:focus-visible {
+  outline: 2px solid var(--painel-fg);
+  outline-offset: 4px;
+}
+.painel .hoje-noite-rolagem[data-arrastando] {
+  cursor: grabbing;
+  user-select: none;
+}
+/* A noite de hoje cabe na largura do card; a de amanhã fica à direita. */
 .painel .hoje-noite {
   position: relative;
-  min-width: 760px;
-  margin-top: 10px;
+  width: max(
+    calc(100% * var(--colunas) / var(--colunas-hoje)),
+    calc(95px * var(--colunas))
+  );
 }
 .painel .hoje-horas {
   position: absolute;
@@ -62,7 +81,11 @@
   padding-left: 6px;
   border-left: 1px solid var(--painel-line);
 }
+.painel .hoje-horas > div[data-amanha] {
+  border-left: 2px solid var(--painel-fg);
+}
 .painel .hoje-horas span {
+  white-space: nowrap;
   font: 600 11px / 1 var(--onside-mono);
   color: var(--painel-muted);
 }
@@ -74,8 +97,6 @@
 .painel .hoje-noite-vazia {
   position: absolute;
   top: 80px;
-  left: 0;
-  right: 0;
   margin: 0;
   text-align: center;
   color: var(--painel-muted);
