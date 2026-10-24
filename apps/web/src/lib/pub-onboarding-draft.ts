@@ -24,6 +24,8 @@ export type PubOnboardingDraft = {
   description?: string
   amenities?: number[]
   screenCount?: number
+  /** Só para o formulário voltar com ele; o servidor não recebe CEP. */
+  cep?: string
   /**
    * Passo do wizard em que o dono parou, gravado enquanto ele preenche. Ausente
    * no rascunho que passou pela revisão — o formato de antes, e o único que

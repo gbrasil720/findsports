@@ -26,6 +26,7 @@ import {
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { FAN_HOME, PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
@@ -108,13 +109,14 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        navigate({ to: '/plan', search: { trial: 'started' } })
+        navigate(
+          callbackUrl === '/admin' ? { to: PUB_LIVE_PATH } : { to: callbackUrl }
+        )
         return
       }
 
-      if (data.user.role === 'pub') navigate({ to: '/plan' })
-      else if (data.user.onboardingCompleted) navigate({ to: callbackUrl })
-      else navigate({ to: withCallbackUrl('/onboarding/fan', callbackUrl) })
+      // Torcedor (cadastrado pelo app) não tem tela no web.
+      navigate({ to: data.user.role === 'pub' ? callbackUrl : FAN_HOME })
     } catch {
       toast.error('Não foi possível concluir a confirmação. Tente novamente.')
     } finally {

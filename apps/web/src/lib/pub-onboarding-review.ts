@@ -3,7 +3,8 @@ import {
   PLAN_NAMES
 } from '@findsports_oficial/api/lib/plan-limits'
 
-type Review = { titulo: string; texto: string; botao: string }
+/** `titulo` e `tint` são as duas linhas do título; a segunda em destaque. */
+type Review = { titulo: string; tint: string; texto: string; botao: string }
 
 /**
  * O que o último passo do cadastro de bar promete (WEB-238): concluir publica
@@ -25,13 +26,15 @@ export function getPubOnboardingReview({
   const oferta = `seu bar entra no ar e você ganha o plano ${PLAN_NAMES[ONBOARDING_TRIAL.plan]} grátis por ${ONBOARDING_TRIAL.days} dias, sem cartão.`
   if (!emailVerified) {
     return {
-      titulo: 'Falta só confirmar seu e-mail',
+      titulo: 'Falta só',
+      tint: 'confirmar seu e-mail',
       texto: `Revise os dados do bar. Ao continuar, você confirma seu e-mail. Depois disso salvamos o cadastro, ${oferta} Em seguida você conhece os planos.`,
       botao: 'Confirmar meu e-mail'
     }
   }
   return {
-    titulo: 'Pronto para colocar seu bar no ar',
+    titulo: 'Pronto para colocar',
+    tint: 'seu bar no ar',
     texto: `Revise os dados do bar. Ao continuar, salvamos o cadastro, ${oferta}${goesToPlan ? ' Em seguida você conhece os planos.' : ''}`,
     botao: 'Colocar meu bar no ar'
   }
