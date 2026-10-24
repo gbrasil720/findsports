@@ -1,3 +1,7 @@
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import type { RecommendationFacts } from './facts'
 import type {
   RecommendationAxes,
@@ -14,26 +18,17 @@ import type {
 export const ROUND_SIZE = 5
 /** A hora de Brasília em que a rodada vira. */
 export const ROUND_TURN_HOUR = 10
-const TZ = 'America/Sao_Paulo'
 const HOUR_MS = 3_600_000
 
 /** O dia da rodada ("2026-10-21"): antes das 10:00 ainda vale a de ontem. */
 export function roundDay(now: Date): string {
-  return new Date(now.getTime() - ROUND_TURN_HOUR * HOUR_MS).toLocaleDateString(
-    'en-CA',
-    { timeZone: TZ }
-  )
+  return brasiliaDay(now.getTime() - ROUND_TURN_HOUR * HOUR_MS)
 }
 
-/**
- * Quando a próxima rodada abre. Brasília não tem horário de verão desde
- * 2019, então 10:00 de lá é sempre 13:00 UTC.
- */
+/** Quando a próxima rodada abre: 10:00 de Brasília do dia seguinte ao da rodada. */
 export function nextRoundAt(now: Date): Date {
-  const [year, month, day] = roundDay(now).split('-').map(Number)
-  return new Date(
-    Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + 1, ROUND_TURN_HOUR + 3)
-  )
+  const next = brasiliaDay(brasiliaDayStart(roundDay(now)), 1)
+  return new Date(brasiliaDayStart(next).getTime() + ROUND_TURN_HOUR * HOUR_MS)
 }
 
 /** O que a rodada guarda de cada bar: a conta do momento em que saiu. */

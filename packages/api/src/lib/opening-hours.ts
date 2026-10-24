@@ -1,3 +1,4 @@
+import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
 import { z } from 'zod'
 
 /**
@@ -42,7 +43,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 /** Dia da semana e minuto do dia em Brasília, seja qual for o fuso do processo. */
 function brasiliaClock(now: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRASILIA_TIME_ZONE,
     weekday: 'short',
     hour: '2-digit',
     minute: '2-digit',
