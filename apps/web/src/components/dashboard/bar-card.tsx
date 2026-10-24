@@ -1,6 +1,7 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { formatAverageSpend } from '@findsports_oficial/db/bar-menu'
 import { Link } from '@tanstack/react-router'
+import { memo } from 'react'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
 import { useMinuteNow } from '@/components/app/minute-tick'
@@ -57,29 +58,31 @@ const PLAN_BADGE: Record<SubscriptionPlan, string | null> = {
 
 type Props = {
   bar: DiscoveryCardBar
-  isHovered: boolean
+  isHovered?: boolean
   isFavorite: boolean
   favoritePending?: boolean
   classicPlacementGuaranteed?: boolean
-  onMouseEnter: () => void
-  onMouseLeave: () => void
-  onFocus: () => void
-  onBlur: () => void
+  /** Bar sob o mouse ou o foco, `null` ao sair; o mapa destaca o pino. */
+  onHover?: (barId: string | null) => void
   onFavorite: (barId: string) => void
 }
 
-export function BarCard({
+/**
+ * `memo`: passar o mouse num card troca o destaque de dois cards, e os outros
+ * não precisam renderizar de novo. Por isso `onHover` recebe o id em vez de
+ * uma função nova por card.
+ */
+export const BarCard = memo(function BarCard({
   bar,
-  isHovered,
+  isHovered = false,
   isFavorite,
   favoritePending = false,
   classicPlacementGuaranteed = false,
-  onMouseEnter,
-  onMouseLeave,
-  onFocus,
-  onBlur,
+  onHover,
   onFavorite
 }: Props) {
+  const enter = () => onHover?.(bar.id)
+  const leave = () => onHover?.(null)
   const event = bar.nextEvent
   // ESC-17: só este cartão re-renderiza na virada do minuto, e não a página.
   const agora = useMinuteNow()
@@ -139,10 +142,10 @@ export function BarCard({
             })
           }
         }}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onMouseEnter={enter}
+        onMouseLeave={leave}
+        onFocus={enter}
+        onBlur={leave}
         className="col-span-2 grid min-w-0 grid-cols-[auto_1fr] items-center gap-3 outline-offset-2 sm:gap-4"
         aria-label={`Ver ${bar.name}`}
       >
@@ -274,10 +277,10 @@ export function BarCard({
         aria-pressed={isFavorite}
         aria-busy={favoritePending || undefined}
         onClick={() => onFavorite(bar.id)}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onMouseEnter={enter}
+        onMouseLeave={leave}
+        onFocus={enter}
+        onBlur={leave}
         className={`col-start-3 row-start-1 grid min-h-11 min-w-11 shrink-0 place-self-start place-items-center border border-[var(--onside-ink)] transition-colors disabled:opacity-50 ${
           isFavorite
             ? 'bg-[var(--onside-live)] text-[var(--onside-paper)]'
@@ -293,4 +296,4 @@ export function BarCard({
       </button>
     </div>
   )
-}
+})

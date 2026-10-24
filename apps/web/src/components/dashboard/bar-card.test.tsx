@@ -68,16 +68,7 @@ function eventoEm(startsAt: Date): NonNullable<DiscoveryCardBar['nextEvent']> {
 function renderizar(bar: DiscoveryCardBar) {
   const markup = renderToStaticMarkup(
     <MinuteTickProvider>
-      <BarCard
-        bar={bar}
-        isHovered={false}
-        isFavorite={false}
-        onMouseEnter={() => {}}
-        onMouseLeave={() => {}}
-        onFocus={() => {}}
-        onBlur={() => {}}
-        onFavorite={() => {}}
-      />
+      <BarCard bar={bar} isFavorite={false} onFavorite={() => {}} />
     </MinuteTickProvider>
   )
   return new JSDOM(markup).window.document
