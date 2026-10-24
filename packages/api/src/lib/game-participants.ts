@@ -50,9 +50,10 @@ export const byMatchOrder = (participant: {
 ]
 
 /**
- * O título pronto, com a regra de `@findsports_oficial/db/game-title`: times,
- * texto livre não vazio, campeonato. `game-participants.integration.test.ts`
- * confere que as duas concordam.
+ * O título pronto, com a regra de `@findsports_oficial/db/game-title`: com
+ * exatamente dois times, "A × B"; senão o texto livre não vazio, senão o
+ * campeonato. `game-participants.integration.test.ts` confere que as duas
+ * concordam.
  */
 export const gameTitle = (game: {
   id: SQL
@@ -60,7 +61,7 @@ export const gameTitle = (game: {
   championship: SQL
 }) =>
   sql<string>`COALESCE(
-    ${teams(game.id, sql`string_agg(t.name, ' × ' ORDER BY ${MATCH_ORDER})`)},
+    ${teams(game.id, sql`CASE WHEN count(*) = 2 THEN string_agg(t.name, ' × ' ORDER BY ${MATCH_ORDER}) END`)},
     NULLIF(btrim(${game.participantFreeText}), ''),
     ${game.championship}
   )`
