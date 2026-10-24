@@ -314,11 +314,12 @@ function FanDashboard() {
     enabled: isFan
   })
 
-  // Avaliações pendentes deste torcedor. Falha aqui não pode atrapalhar a
-  // busca — o card some e a tela segue fazendo o trabalho principal. Só
-  // torcedor as tem; bar nem chega aqui (`applyAuthGuards` o manda ao /admin).
-  const pendingRatingsQuery = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
+  // Pós-jogo deste torcedor ("Você foi?" e "Voltaria?"). Falha aqui não
+  // pode atrapalhar a busca — o card some e a tela segue fazendo o trabalho
+  // principal. Só torcedor o tem; bar nem chega aqui (`applyAuthGuards` o
+  // manda ao /admin).
+  const postGameQuery = useQuery({
+    ...trpc.postGame.pending.queryOptions(),
     enabled: isFan,
     retry: false
   })
@@ -623,7 +624,7 @@ function FanDashboard() {
       />
       {isFan ? <AttendanceReportCard first={avaliar} /> : null}
       <PendingRatingCard
-        pending={pendingRatingsQuery.data ?? []}
+        pending={postGameQuery.data?.filter((item) => item.rating) ?? []}
         first={avaliar}
       />
       <SearchFilterBar

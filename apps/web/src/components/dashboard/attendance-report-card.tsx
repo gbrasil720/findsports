@@ -23,8 +23,9 @@ type Answer = { attended: boolean; offerReceived?: boolean }
 export function AttendanceReportCard({ first }: { first?: string } = {}) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
+  // A fila do pós-jogo (`postGame.pending`): aqui, os jogos com "Você foi?".
   const query = useQuery({
-    ...trpc.attendance.pendingReports.queryOptions(),
+    ...trpc.postGame.pending.queryOptions(),
     retry: false,
     meta: { errorToast: false }
   })
@@ -36,15 +37,17 @@ export function AttendanceReportCard({ first }: { first?: string } = {}) {
   // Os botões clicados trocam de pergunta; o foco vai para o título, que é o
   // mesmo nó de uma pergunta para a outra.
   const titleRef = useRef<HTMLHeadingElement>(null)
-  const open = query.data?.filter(({ eventId }) => !skipped.includes(eventId))
+  const open = query.data?.filter(
+    ({ eventId, presence }) => presence && !skipped.includes(eventId)
+  )
   const item = open?.find(({ eventId }) => eventId === front) ?? open?.[0]
 
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: trpc.attendance.pendingReports.queryKey()
+      queryKey: trpc.postGame.pending.queryKey()
     })
   const undo = useMutation(
-    trpc.attendance.removeReport.mutationOptions({
+    trpc.postGame.undo.mutationOptions({
       onSuccess: (_data, { eventId }) => {
         setFront(eventId)
         return refresh()
@@ -52,11 +55,11 @@ export function AttendanceReportCard({ first }: { first?: string } = {}) {
     })
   )
   const mutation = useMutation(
-    trpc.attendance.report.mutationOptions({
+    trpc.postGame.answer.mutationOptions({
       onSuccess: async (_data, { eventId }) => {
         await refresh()
         toastWithUndo('Resposta registrada. Obrigado!', () =>
-          undo.mutateAsync({ eventId })
+          undo.mutateAsync({ eventId, presence: true })
         )
         titleRef.current?.focus()
       },
@@ -76,24 +79,24 @@ export function AttendanceReportCard({ first }: { first?: string } = {}) {
     mutation.mutate({ eventId: item.eventId, ...value })
   }
 
-  const options: { label: string; value: Answer; primary?: boolean }[] =
-    item?.offer
-      ? [
-          {
-            label: 'Fui e recebi',
-            value: { attended: true, offerReceived: true },
-            primary: true
-          },
-          {
-            label: 'Fui, sem a oferta',
-            value: { attended: true, offerReceived: false }
-          },
-          { label: 'Não fui', value: { attended: false } }
-        ]
-      : [
-          { label: 'Fui', value: { attended: true }, primary: true },
-          { label: 'Não fui', value: { attended: false } }
-        ]
+  const offer = item?.presence?.offer
+  const options: { label: string; value: Answer; primary?: boolean }[] = offer
+    ? [
+        {
+          label: 'Fui e recebi',
+          value: { attended: true, offerReceived: true },
+          primary: true
+        },
+        {
+          label: 'Fui, sem a oferta',
+          value: { attended: true, offerReceived: false }
+        },
+        { label: 'Não fui', value: { attended: false } }
+      ]
+    : [
+        { label: 'Fui', value: { attended: true }, primary: true },
+        { label: 'Não fui', value: { attended: false } }
+      ]
 
   return (
     <>
@@ -115,10 +118,9 @@ export function AttendanceReportCard({ first }: { first?: string } = {}) {
             {gameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
             {item.neighborhood}
           </p>
-          {item.offer ? (
+          {offer ? (
             <p className="mt-2 text-sm [overflow-wrap:anywhere]">
-              <span className="font-semibold">Oferta da casa:</span>{' '}
-              {item.offer}
+              <span className="font-semibold">Oferta da casa:</span> {offer}
             </p>
           ) : null}
 

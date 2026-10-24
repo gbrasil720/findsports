@@ -28,11 +28,20 @@ const game = (eventId: string, barName: string) => ({
   participantFreeText: null,
   startsAt: ONTEM
 })
-const RATINGS = [game('jogo-a', 'Bar A'), game('jogo-b', 'Bar B')].map(
-  (item) => ({ ...item, sport: { name: 'Futebol', slug: 'futebol' } })
-)
-const REPORTS = [
-  { ...game('jogo-c', 'Bar C'), offer: 'Chopp em dobro', answered: false }
+// A fila do pós-jogo (`postGame.pending`): dois "Voltaria?" e um "Você foi?".
+const PENDING = [
+  ...[game('jogo-a', 'Bar A'), game('jogo-b', 'Bar B')].map((item) => ({
+    ...item,
+    photoUrl: null,
+    presence: null,
+    rating: true
+  })),
+  {
+    ...game('jogo-c', 'Bar C'),
+    photoUrl: null,
+    presence: { offer: 'Chopp em dobro' },
+    rating: false
+  }
 ]
 
 /**
@@ -53,13 +62,12 @@ const fakeServer: TRPCLink<AppRouter> =
         observer.error(new TRPCClientError('fora do ar'))
         return
       }
-      if (op.path.endsWith('.remove') || op.path.endsWith('.removeReport')) {
+      if (op.path === 'postGame.undo') {
         answered.delete(eventId as string)
       } else if (op.type === 'mutation') {
         answered.add(eventId as string)
       }
-      const list = op.path.startsWith('ratings.') ? RATINGS : REPORTS
-      const data = list.filter((item) => !answered.has(item.eventId))
+      const data = PENDING.filter((item) => !answered.has(item.eventId))
       observer.next({ result: { type: 'data', data } })
       observer.complete()
     })
@@ -124,8 +132,12 @@ const settle = () =>
 
 /** O dashboard lê as pendências e entrega ao card; aqui também. */
 function Ratings() {
-  const query = useQuery(trpc.ratings.getPending.queryOptions())
-  return <PendingRatingCard pending={query.data ?? []} />
+  const query = useQuery(trpc.postGame.pending.queryOptions())
+  return (
+    <PendingRatingCard
+      pending={query.data?.filter((item) => item.rating) ?? []}
+    />
+  )
 }
 
 async function render(card: 'ratings' | 'reports') {
@@ -179,8 +191,8 @@ test('desfazer devolve o jogo daquele aviso, não o que está na tela', async ()
 
   await undo(toasts[0])
   expect(calls.at(-1)).toEqual({
-    path: 'ratings.remove',
-    input: { barId: 'bar-jogo-a', eventId: 'jogo-a' }
+    path: 'postGame.undo',
+    input: { eventId: 'jogo-a', rating: true }
   })
   expect(title()).toBe('Voltaria pra ver jogo no Bar A?')
   expect(buttons()).toEqual([
@@ -205,17 +217,15 @@ test('"O que pesou?" vai junto da resposta e não passa para o jogo seguinte', a
   await click('Telão')
   await click('Não voltaria')
   expect(calls.at(-1)).toEqual({
-    path: 'ratings.submit',
+    path: 'postGame.answer',
     input: {
-      barId: 'bar-jogo-a',
       eventId: 'jogo-a',
-      wouldReturn: false,
-      reasons: ['crowded']
+      rating: { wouldReturn: false, reasons: ['crowded'] }
     }
   })
   expect(title()).toBe('Voltaria pra ver jogo no Bar B?')
   await click('Voltaria')
-  expect(calls.at(-1)).toMatchObject({ input: { reasons: [] } })
+  expect(calls.at(-1)).toMatchObject({ input: { rating: { reasons: [] } } })
 })
 
 test('a pergunta desfeita volta na frente das que ainda estão abertas', async () => {
@@ -235,11 +245,11 @@ test('se desfazer falha, o aviso diz e a resposta continua valendo', async () =>
   await click('Fui e recebi')
   expect(title()).toBeUndefined()
 
-  failing = 'attendance.removeReport'
+  failing = 'postGame.undo'
   await undo(toasts[0])
   expect(calls.at(-1)).toEqual({
-    path: 'attendance.removeReport',
-    input: { eventId: 'jogo-c' }
+    path: 'postGame.undo',
+    input: { eventId: 'jogo-c', presence: true }
   })
   expect(toasts.at(-1)).toMatchObject({
     type: 'error',
@@ -266,8 +276,8 @@ test('"Depois do jogo" desfeito volta com as mesmas opções', async () => {
 })
 
 test.each([
-  ['reports', 'attendance.report', 'Fui e recebi'],
-  ['ratings', 'ratings.submit', 'Voltaria']
+  ['reports', 'postGame.answer', 'Fui e recebi'],
+  ['ratings', 'postGame.answer', 'Voltaria']
 ] as const)('%s: resposta que não grava deixa o card na tela, com o erro', async (card, path, label) => {
   failing = path
   await render(card)
