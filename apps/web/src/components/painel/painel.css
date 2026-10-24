@@ -561,6 +561,30 @@
   min-height: 100dvh;
 }
 
+/*
+ * Fundo de fora do shell. O aviso de cookies reserva espaço no fim do `body`
+ * e o pinta de papel (`cookie-consent.css`), e o `html` é branco: no escuro
+ * isso sobrava como faixa clara depois do painel. Literais, porque os tokens
+ * vivem em `.painel` e não chegam ao `body`.
+ */
+html:has(.painel),
+html[data-consent]:has(.painel) body {
+  background: #f1eee6;
+}
+@media (prefers-color-scheme: dark) {
+  html:has(.painel),
+  html:has(.painel) body,
+  html[data-consent]:has(.painel) body {
+    background: #12120f;
+  }
+}
+
+/* A faixa de tinta que o aviso põe sob o `aside` das telas de login não é da
+ * barra lateral do painel. */
+html[data-consent] .painel .painel-lateral {
+  box-shadow: none;
+}
+
 .painel .painel-lateral {
   position: sticky;
   top: 0;
