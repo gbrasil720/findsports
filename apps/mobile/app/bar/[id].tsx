@@ -1,6 +1,7 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
 import { groupOpeningHours } from '@findsports_oficial/api/lib/opening-hours'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -36,7 +37,6 @@ import {
   dayLabel,
   dropBox,
   MapDrop,
-  matchLine,
   type Palette,
   PhotoPill,
   usePalette
@@ -528,12 +528,12 @@ export default function BarPage() {
                             ]}
                             numberOfLines={2}
                           >
-                            {matchLine(game)}
+                            {gameTitle(game)}
                           </Text>
                           {/* A hora não pode sumir com campeonato longo: o
                             campeonato encolhe, a hora fica. */}
                           <View style={styles.sub}>
-                            {matchLine(game) === game.championship ? null : (
+                            {gameTitle(game) === game.championship ? null : (
                               <Text
                                 style={[
                                   text(12, 'Regular', 1.4),
@@ -917,7 +917,7 @@ export default function BarPage() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: mine.attending }}
-            accessibilityHint={`${matchLine(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
+            accessibilityHint={`${gameTitle(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
             onPressIn={attendPress.onPressIn}
             onPressOut={attendPress.onPressOut}
             // A folha também é onde se vê o código e se desmarca.

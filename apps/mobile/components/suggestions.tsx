@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
@@ -26,7 +27,6 @@ import { scheduleOnRN } from 'react-native-worklets'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
-import { gameTitle } from '@/lib/my-games'
 import {
   chips,
   distanceText,

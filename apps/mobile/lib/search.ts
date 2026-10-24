@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { isLive } from './explore'
 
 /*
@@ -44,12 +45,13 @@ export function sides(game: Game): [string, string] | null {
   return parts?.length === 2 ? [parts[0] as string, parts[1] as string] : null
 }
 
-/** "Corinthians × Palmeiras", senão o texto livre ou o campeonato. */
+/**
+ * O título do jogo (`gameTitle`), com o texto livre "A x B" escrito como
+ * "A × B": o mesmo jogo digitado de dois jeitos agrupa junto na busca.
+ */
 export function matchName(game: Game) {
   const two = sides(game)
-  return two
-    ? `${two[0]} × ${two[1]}`
-    : (game.participantFreeText ?? game.championship)
+  return two ? `${two[0]} × ${two[1]}` : gameTitle(game)
 }
 
 type Grouped<B extends NearBar> = {

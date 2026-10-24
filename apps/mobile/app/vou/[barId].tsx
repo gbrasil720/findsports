@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -5,12 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, OfferCard } from '@/components/card'
-import {
-  dayLabel,
-  matchLine,
-  type Palette,
-  usePalette
-} from '@/components/explore'
+import { dayLabel, type Palette, usePalette } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
 import {
@@ -151,7 +147,7 @@ export default function GoingSheet() {
               key={item.id}
               palette={palette}
               selected={item.id === game.id}
-              title={matchLine(item)}
+              title={gameTitle(item)}
               detail={`${dayLabel(item.startsAt, now)} · ${item.championship}${item.attendance?.attending ? ' · você vai' : ''}`}
               time={formatTime(item.startsAt)}
               onPress={() => {

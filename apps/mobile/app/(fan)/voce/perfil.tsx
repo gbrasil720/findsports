@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import {
@@ -18,7 +19,6 @@ import { Card } from '@/components/card'
 import {
   dayLabel,
   initials,
-  matchLine,
   type Palette,
   Photo,
   usePalette
@@ -40,7 +40,7 @@ import {
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
-import { gameTitle, shortDate } from '@/lib/my-games'
+import { shortDate } from '@/lib/my-games'
 import {
   markedToday,
   memberSince,
@@ -332,7 +332,7 @@ export default function Profile() {
                         style={[text(14.5, 'Bold'), { color: palette.ink }]}
                         numberOfLines={1}
                       >
-                        {matchLine(game)}
+                        {gameTitle(game)}
                       </Text>
                       <Text
                         style={[text(12.5), { color: palette.muted }]}

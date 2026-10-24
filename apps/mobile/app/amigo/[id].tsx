@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -36,7 +37,6 @@ import {
 } from '@/components/ui'
 import { formatTime, isLive } from '@/lib/explore'
 import { monthName } from '@/lib/invite'
-import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
 const VIAS: Via[] = ['search', 'code', 'link', 'contacts', 'suggestion']

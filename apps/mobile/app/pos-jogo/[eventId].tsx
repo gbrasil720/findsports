@@ -2,6 +2,7 @@ import {
   RATING_REASONS,
   type RatingReasonId
 } from '@findsports_oficial/api/lib/rating-reasons'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -38,7 +39,6 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { type Achievement, reviewLine } from '@/lib/achievements'
-import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
 /*

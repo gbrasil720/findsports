@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Brightness from 'expo-brightness'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
@@ -27,7 +28,7 @@ import {
 } from '@/components/ui'
 import { env } from '@/lib/env'
 import { formatTime } from '@/lib/explore'
-import { formatCode, gameTitle } from '@/lib/my-games'
+import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
 /*

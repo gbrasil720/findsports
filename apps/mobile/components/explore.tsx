@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -109,15 +110,6 @@ export function dayLabel(date: string | Date, now: number) {
 /** Bar cadastrado há menos de 30 dias ganha o selo "Novo", como no web. */
 export const isNewBar = (createdAt: string, now: number) =>
   now - new Date(createdAt).getTime() < 30 * DAY
-
-export function matchLine(game: Game) {
-  const names = game.participants.map((p) => p.team.name)
-  if (names.length === 2) return `${names[0]} × ${names[1]}`
-  return (
-    game.participantFreeText ??
-    (names.length ? names.join(', ') : game.championship)
-  )
-}
 
 /** "BS" para Boteco Sete: a foto que falta vira as iniciais. */
 export const initials = (name: string) =>
@@ -618,7 +610,7 @@ export function MatchRow({
           style={[text(14, 'Bold', 1.15), { color: palette.ink, flex: 1 }]}
           numberOfLines={2}
         >
-          {matchLine(game)}
+          {gameTitle(game)}
         </Text>
         {center}
       </View>
@@ -1112,7 +1104,7 @@ export function BarRow({
               style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
               numberOfLines={1}
             >
-              {game ? matchLine(game) : 'Sem eventos programados'}
+              {game ? gameTitle(game) : 'Sem eventos programados'}
             </Text>
             <View style={styles.rowMeta}>
               <View style={styles.km}>
