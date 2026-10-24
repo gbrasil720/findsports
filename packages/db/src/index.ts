@@ -1,10 +1,16 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
+import { defaults, Pool } from 'pg'
 import * as schema from './schema'
 import { resolveAndValidateDatabaseUrl } from './utils/db-resolver'
 
 export * from './schema'
+
+// `Date` vai ao Postgres em UTC. O padrão do `pg` é o fuso do processo
+// ("…23:59:59.999-03:00"), e comparado com `timestamp` sem fuso, onde guardamos
+// UTC, o Postgres descarta o deslocamento: numa máquina em Brasília o fim do
+// dia virava 20:59 UTC e o jogo da noite saía do período. O Worker roda em UTC.
+defaults.parseInputDatesAsUTC = true
 
 export function createDb() {
   const { url, summary } = resolveAndValidateDatabaseUrl()
