@@ -1,274 +1,48 @@
-import { and, db, eq, sql } from '@findsports_oficial/db'
-import { getEventEnd } from '@findsports_oficial/db/event-window'
-import {
-  eventEndedSql,
-  eventEndSql,
-  utcNowSql
-} from '@findsports_oficial/db/event-window-sql'
-import { barRating } from '@findsports_oficial/db/schema/rating'
-import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, router } from '../index'
-import { participantNames } from '../lib/game-participants'
-import { RATING_WINDOW_DAYS } from '../lib/rating'
+import {
+  answerPostGame,
+  readPendingRatings,
+  undoPostGame
+} from '../lib/post-game'
 import { ratingReasonsSchema } from '../lib/rating-reasons'
-import { utcIso } from '../lib/utc-timestamp'
 
 /**
- * Tipos de evento comercial que contam como intenção de ir. Marcar "Vou
- * assistir aqui" (`attendance`) também conta, e é a intenção mais explícita.
- *
- * `profile_view` fica de fora: abrir a página de um bar não é dizer que você
- * pensou em ir lá. Sem esse corte, qualquer pessoa que passou os olhos num
- * perfil ganharia direito de avaliar o bar — e a avaliação valeria tanto
- * quanto a de quem nunca saiu de casa.
+ * @deprecated A avaliação mora em `postGame` (`lib/post-game.ts`), junto do
+ * "Você foi?". Estes três são adaptadores para o web publicado antes da troca
+ * (aba aberta com o bundle anterior); saem quando ele não os chamar mais.
  */
-const INTENT_TYPES = [
-  'directions_opened',
-  'whatsapp_opened',
-  'phone_clicked'
-] as const
-
-const RATING_WINDOW_MS = RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000
-
-/**
- * O torcedor pode avaliar este bar por este jogo?
- *
- * Três condições, todas verificadas no servidor porque todas são a diferença
- * entre uma nota que significa alguma coisa e um placar de popularidade:
- *
- *   1. ele demonstrou intenção de ir — marcou "Vou assistir aqui" naquele
- *      jogo, ou abriu rota, WhatsApp ou telefone DAQUELE bar, para AQUELE
- *      jogo (`bar_commercial_event`, com `actor_user_id` e
- *      `source_event_id`);
- *   2. o jogo já acabou. Avaliar antes seria avaliar expectativa;
- *   3. faz menos de `RATING_WINDOW_DAYS` que acabou. Depois disso é memória,
- *      não observação — e é onde mora a avaliação movida por raiva acumulada.
- *
- * Devolve o motivo da recusa em vez de um booleano: quem chama precisa saber
- * a diferença entre "ainda não pode" e "não pode mais".
- */
-async function checkEligibility(input: {
-  userId: string
-  barId: string
-  eventId: string
-  now: Date
-}): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const rows = await db.execute(sql`
-    SELECT
-      e.starts_at,
-      e.ends_at,
-      b.is_active,
-      EXISTS (
-        SELECT 1 FROM bar_commercial_event ce
-        WHERE ce.bar_id = ${input.barId}
-          AND ce.actor_user_id = ${input.userId}
-          AND ce.source_event_id = ${input.eventId}
-          AND ce.type IN (${sql.join(
-            INTENT_TYPES.map((type) => sql`${type}`),
-            sql`, `
-          )})
-      ) OR EXISTS (
-        SELECT 1 FROM attendance a
-        WHERE a.user_id = ${input.userId} AND a.event_id = e.id
-      ) AS has_intent
-    FROM event e
-    JOIN bar b ON b.id = e.bar_id
-    WHERE e.id = ${input.eventId} AND e.bar_id = ${input.barId}
-  `)
-
-  const row = rows.rows[0] as
-    | {
-        starts_at: string
-        ends_at: string | null
-        is_active: boolean
-        has_intent: boolean
-      }
-    | undefined
-
-  if (!row) {
-    return { ok: false, reason: 'Jogo não encontrado neste bar.' }
-  }
-
-  // Como em `getPending`: bar fora do ar não recebe avaliação.
-  if (!row.is_active) {
-    return { ok: false, reason: 'Este bar não está no ar.' }
-  }
-
-  if (!row.has_intent) {
-    return {
-      ok: false,
-      reason: 'Só quem demonstrou interesse em ir a este jogo pode avaliar.'
-    }
-  }
-
-  // Sem o `utcIso` a janela de avaliação andava com o fuso do processo.
-  const endsAt = getEventEnd({
-    startsAt: utcIso(row.starts_at),
-    endsAt: row.ends_at ? utcIso(row.ends_at) : null
-  })
-
-  if (endsAt.getTime() > input.now.getTime()) {
-    return { ok: false, reason: 'O jogo ainda não acabou.' }
-  }
-
-  if (input.now.getTime() - endsAt.getTime() > RATING_WINDOW_MS) {
-    return {
-      ok: false,
-      reason: `A avaliação fecha ${RATING_WINDOW_DAYS} dias depois do jogo.`
-    }
-  }
-
-  return { ok: true }
-}
-
 export const ratingsRouter = router({
-  /**
-   * O que este torcedor pode avaliar e ainda não avaliou.
-   *
-   * É o que alimenta o card do dashboard. Sem uma superfície que pergunte na
-   * hora certa, o sistema inteiro colhe silêncio: ninguém volta ao perfil de
-   * um bar no dia seguinte para avaliar por conta própria.
-   *
-   * A janela e o portão de intenção são os mesmos de `submit` — mas escritos
-   * uma vez só, em SQL, porque aqui a pergunta é "quais", não "este pode".
-   */
-  getPending: fanProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id
-    const rows = await db.execute(sql`
-      WITH intent AS (
-        SELECT ce.bar_id, ce.source_event_id AS event_id
-        FROM bar_commercial_event ce
-        WHERE ce.actor_user_id = ${userId}
-          AND ce.type IN (${sql.join(
-            INTENT_TYPES.map((type) => sql`${type}`),
-            sql`, `
-          )})
-        UNION
-        SELECT ev.bar_id, a.event_id
-        FROM attendance a
-        JOIN event ev ON ev.id = a.event_id
-        WHERE a.user_id = ${userId}
-      )
-      SELECT DISTINCT ON (e.id)
-        e.id AS event_id,
-        e.championship,
-        e.participant_free_text,
-        ${participantNames(sql`e.id`)} AS participants,
-        e.starts_at,
-        b.id AS bar_id,
-        b.name AS bar_name,
-        b.neighborhood,
-        s.name AS sport_name,
-        s.slug AS sport_slug
-      FROM intent i
-      JOIN event e ON e.id = i.event_id AND e.bar_id = i.bar_id
-      JOIN bar b ON b.id = i.bar_id
-      JOIN sport s ON s.id = e.sport_id
-      WHERE b.is_active
-        AND ${eventEndedSql('e')}
-        AND ${eventEndSql('e')} > ${utcNowSql()} - ${`${RATING_WINDOW_DAYS} days`}::interval
-        AND NOT EXISTS (
-          SELECT 1 FROM bar_rating r
-          WHERE r.bar_id = i.bar_id
-            AND r.actor_user_id = ${userId}
-            AND r.event_id = i.event_id
-        )
-      ORDER BY e.id, e.starts_at DESC
-      LIMIT 5
-    `)
+  /** @deprecated `postGame.pending`, itens com `rating`. */
+  getPending: fanProcedure.query(({ ctx }) =>
+    readPendingRatings(ctx.session.user.id)
+  ),
 
-    return (
-      rows.rows as {
-        event_id: string
-        championship: string
-        participant_free_text: string | null
-        participants: string[]
-        starts_at: string
-        bar_id: string
-        bar_name: string
-        neighborhood: string
-        sport_name: string
-        sport_slug: string
-      }[]
-    ).map((row) => ({
-      eventId: row.event_id,
-      championship: row.championship,
-      participantFreeText: row.participant_free_text,
-      participants: row.participants,
-      startsAt: utcIso(row.starts_at),
-      barId: row.bar_id,
-      barName: row.bar_name,
-      neighborhood: row.neighborhood,
-      sport: { name: row.sport_name, slug: row.sport_slug }
-    }))
-  }),
-
-  /**
-   * Registra — ou corrige — a avaliação de um jogo.
-   *
-   * Reenviar troca a resposta em vez de somar outra: a chave única é
-   * `(bar, torcedor, jogo)`, e a trigger de contadores trata `UPDATE`
-   * mexendo só no numerador. Quem mudou de ideia não infla a amostra.
-   */
+  /** @deprecated `postGame.answer` com `rating`. */
   submit: fanProcedure
     .input(
       z.object({
         barId: z.string().uuid(),
         eventId: z.string().uuid(),
         wouldReturn: z.boolean(),
-        // "O que pesou?" (WEB-398), opcional. Reenviar troca as etiquetas.
         reasons: ratingReasonsSchema.default([])
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const eligibility = await checkEligibility({
-        userId: ctx.session.user.id,
-        barId: input.barId,
-        eventId: input.eventId,
-        now: new Date()
-      })
-
-      if (!eligibility.ok) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: eligibility.reason })
-      }
-
-      await db
-        .insert(barRating)
-        .values({
-          barId: input.barId,
-          actorUserId: ctx.session.user.id,
-          eventId: input.eventId,
-          wouldReturn: input.wouldReturn,
-          reasons: input.reasons
-        })
-        .onConflictDoUpdate({
-          target: [barRating.barId, barRating.actorUserId, barRating.eventId],
-          set: {
-            wouldReturn: input.wouldReturn,
-            reasons: input.reasons,
-            updatedAt: new Date()
-          }
-        })
-
+      const { barId, eventId, ...rating } = input
+      await answerPostGame(ctx.session.user.id, { eventId, barId, rating })
       return { success: true }
     }),
 
-  /** Desfaz a própria avaliação. */
+  /** @deprecated `postGame.undo` com `rating`. */
   remove: fanProcedure
     .input(z.object({ barId: z.string().uuid(), eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await db
-        .delete(barRating)
-        .where(
-          and(
-            eq(barRating.barId, input.barId),
-            eq(barRating.actorUserId, ctx.session.user.id),
-            eq(barRating.eventId, input.eventId)
-          )
-        )
-
+      await undoPostGame(ctx.session.user.id, {
+        eventId: input.eventId,
+        rating: true
+      })
       return { success: true }
     })
 })
