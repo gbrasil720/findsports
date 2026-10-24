@@ -89,5 +89,3 @@ export type AiPalette = (typeof AI)['light'] | (typeof AI)['dark']
 export function useAiPalette(): AiPalette {
   return AI[usePalette().dark ? 'dark' : 'light']
 }
-
-export const AI_PALETTE = AI
