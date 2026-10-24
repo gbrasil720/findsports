@@ -64,6 +64,8 @@ import {
   activeCount,
   applyShortcut,
   defaultShortcuts,
+  searchInput,
+  searchRadius,
   shortcutLabel,
   shortcutOn
 } from '@/lib/filters'
@@ -112,19 +114,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const { device, district, liveOnly, filters } = state
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const center = searchCenter(device, city.data)
-  const radiusKm = filters.radius ?? session.data?.user.searchRadiusKm ?? 3
+  const radiusKm = searchRadius(filters, session.data?.user.searchRadiusKm ?? 3)
   // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
   const wider = Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)
 
   const search = useQuery({
-    ...trpc.pubs.search.queryOptions({
-      ...center,
-      radiusKm,
-      date: filters.date ?? undefined,
-      sportId: filters.sportId ?? undefined,
-      amenities: filters.amenities.length ? filters.amenities : undefined,
-      limit: 30
-    }),
+    ...trpc.pubs.search.queryOptions(searchInput(filters, center, radiusKm)),
     enabled: device !== null || !city.isPending,
     // Trocar um filtro mantém a lista e os pinos de antes até chegar a nova,
     // em vez de piscar "Buscando bares…".
