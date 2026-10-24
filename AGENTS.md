@@ -728,7 +728,7 @@ invente layout que o projeto não tem.
     Opção vegetariana, Perto do metrô, Bicicletário); todos podem virar atalho. O antigo
     "Pix e cartão" (id 14) está em `HIDDEN_AMENITY_IDS` (`packages/api/src/lib/amenities.ts`):
     os bares o mantêm gravado, a busca e a escrita o aceitam, nenhuma tela o mostra; a
-    migration 0073 deu Pix e Cartão a quem o tinha.
+    migration 0075 deu Pix e Cartão a quem o tinha.
   - **Atalhos (19e):** `app/atalhos.tsx`. Até cinco filtros fixados no topo do mapa, mais o
     "Ao vivo", que é fixo e só aparece com jogo rolando. Guardados no aparelho (SecureStore);
     sem nada salvo, a fileira é Hoje, Telão, Área externa e o esporte principal. Contas em

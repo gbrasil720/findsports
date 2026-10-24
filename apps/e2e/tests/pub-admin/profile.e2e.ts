@@ -503,7 +503,7 @@ test('"Com oferta da casa" não se marca nas características, e o antigo "Aceit
 test('Pagamento separa Pix, Cartão, Vale-refeição e Couvert, e o antigo "Pix e cartão" fica gravado (WEB-455)', async ({
   page
 }) => {
-  // 14 era "Pix e cartão"; a migration 0073 deu Pix (16) e Cartão (17) a quem
+  // 14 era "Pix e cartão"; a migration 0075 deu Pix (16) e Cartão (17) a quem
   // o tinha, e ele continua no banco, escondido.
   const pub = await createPub({ bar: { amenities: [14, 16, 17] } })
   await signIn(page, pub.user)
