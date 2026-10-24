@@ -1,3 +1,4 @@
+import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
@@ -422,6 +423,9 @@ export function Hoje() {
                         {r.wouldReturn ? 'Voltaria' : 'Não voltaria'} ·{' '}
                         {dataCurta(diaDaCasa(r.startsAt))}
                       </span>
+                      {r.reasons.length > 0 ? (
+                        <span>{r.reasons.map(reasonLabel).join(' · ')}</span>
+                      ) : null}
                     </div>
                   </li>
                 ))}
