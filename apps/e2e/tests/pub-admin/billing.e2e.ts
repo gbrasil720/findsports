@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { painelLink } from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { stripeSubscription } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
@@ -31,7 +32,7 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await page.getByRole('link', { name: 'Assinatura e pagamentos' }).click()
+  await painelLink(page, 'Plano e cobrança').click()
   await expect(page).toHaveURL(/\/admin\/billing$/)
   await expect(
     page.getByRole('heading', { level: 1, name: 'Assinatura e pagamentos' })

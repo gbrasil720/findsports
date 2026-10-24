@@ -179,11 +179,11 @@ for (const status of ['past_due', 'unpaid'] as const) {
     })
 
     await signIn(page, user)
-    await page.goto('/admin#admin-espaco')
-    // Só a aba aberta: as outras ficam montadas e podem repetir o texto.
+    await page.goto('/admin/meu-espaco')
+    // Só a seção da tela: o cabeçalho e o resto podem repetir o texto.
     await expect(
       page
-        .getByRole('tabpanel', { name: 'Meu espaço' })
+        .locator('#admin-espaco')
         .getByText('Plano Pro com pagamento pendente')
     ).toBeVisible()
     await expect(

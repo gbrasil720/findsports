@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { painelLink } from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
@@ -11,10 +12,10 @@ import { expect, test } from '../../fixtures/test'
 async function openSpace(page: Page, options: PubOptions) {
   const pub = await createPub(options)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-espaco')
-  await expect(page.getByRole('tab', { name: 'Meu espaço' })).toHaveAttribute(
-    'aria-selected',
-    'true'
+  await page.goto('/admin/meu-espaco')
+  await expect(painelLink(page, 'Meu espaço')).toHaveAttribute(
+    'aria-current',
+    'page'
   )
   return pub
 }
@@ -39,7 +40,7 @@ test('Starter: cardápio, oferta e Quem vai bloqueados, com link para os planos'
       name: 'Ver planos'
     })
   ).toHaveAttribute('href', /\/plan\?origin=admin/)
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(painelLink(page, 'Quem vai')).toHaveCount(0)
 })
 
 test('sem assinatura: tudo bloqueado, como no Starter', async ({ page }) => {
@@ -51,27 +52,26 @@ test('sem assinatura: tudo bloqueado, como no Starter', async ({ page }) => {
   await expect(card(page, 'Oferta da casa')).toContainText(
     'Disponível no plano Elite'
   )
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(painelLink(page, 'Quem vai')).toHaveCount(0)
 })
 
-test('as abas trocam pelo clique e pelo hash, e Configurações renderiza', async ({
+test('a barra lateral leva às rotas, o hash antigo também, e Configurações renderiza', async ({
   page
 }) => {
   const pub = await createPub()
   await signIn(page, pub.user)
   await page.goto('/admin')
-  await expect(page.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await expect(painelLink(page, 'Hoje')).toHaveAttribute('aria-current', 'page')
 
-  await page.getByRole('tab', { name: 'Configurações' }).click()
-  await expect(page).toHaveURL(/#admin-configuracoes$/)
+  await painelLink(page, 'Configurações').click()
+  await expect(page).toHaveURL(/\/admin\/configuracoes$/)
   await expect(
-    page.getByRole('heading', { name: 'Configurações', level: 2 })
+    page.getByRole('heading', { name: 'Configurações', level: 1 })
   ).toBeVisible()
 
+  // Link salvo das abas de antes (`/admin#admin-grade`) cai na rota nova.
   await page.goto('/admin#admin-grade')
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
   await expect(
     page.getByRole('heading', { name: 'Minha grade', level: 2 })
   ).toBeVisible()
@@ -106,8 +106,8 @@ test('Elite tem a aba Quem vai, e o jogo novo não pergunta de reserva', async (
   page
 }) => {
   await openSpace(page, { subscription: { plan: 'elite' } })
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toBeVisible()
-  await page.goto('/admin#admin-grade')
+  await expect(painelLink(page, 'Quem vai')).toBeVisible()
+  await page.goto('/admin/jogos')
   await page.getByRole('button', { name: 'Novo evento' }).click()
   const dialog = page.getByRole('dialog', { name: 'Novo evento' })
   await expect(dialog.getByLabel('Campeonato')).toBeVisible()
@@ -127,7 +127,7 @@ test('Elite com pagamento atrasado vê "Regularizar assinatura", não os planos'
   ).toHaveAttribute('href', '/admin/billing')
   await expect(offer.getByRole('link', { name: 'Ver planos' })).toHaveCount(0)
   // Sem código em aberto, a lista de quem vai some com o plano.
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(painelLink(page, 'Quem vai')).toHaveCount(0)
 })
 
 test('o servidor recusa recurso pago fora do plano', async ({ page }) => {

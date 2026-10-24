@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { createEvent, createTicket, soccerSportId } from '../../fixtures/going'
+import { painelLink } from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
@@ -21,10 +22,10 @@ async function openSchedule(page: Page, options: PubOptions = {}) {
 }
 
 async function gotoSchedule(page: Page) {
-  await page.goto('/admin#admin-grade')
-  await expect(page.getByRole('tab', { name: 'Minha grade' })).toHaveAttribute(
-    'aria-selected',
-    'true'
+  await page.goto('/admin/jogos')
+  await expect(painelLink(page, 'Jogos')).toHaveAttribute(
+    'aria-current',
+    'page'
   )
 }
 
@@ -252,17 +253,17 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
 
   // WEB-353: a Visão geral diz até quando o limite vale (o fim do ciclo, não
   // "este mês") e não oferece "Criar evento" como ação disponível.
-  await page.getByRole('tab', { name: 'Visão geral' }).click()
-  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  await painelLink(page, 'Hoje').click()
+  const overview = page.locator('#admin-visao')
   await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
   await expect(overview).not.toContainText('este mês')
   await expect(
     overview.getByRole('button', { name: 'Criar evento' })
   ).toHaveCount(0)
   await overview.getByRole('button', { name: 'Ver grade' }).click()
-  await expect(page.getByRole('tab', { name: 'Minha grade' })).toHaveAttribute(
-    'aria-selected',
-    'true'
+  await expect(painelLink(page, 'Jogos')).toHaveAttribute(
+    'aria-current',
+    'page'
   )
 })
 
@@ -297,7 +298,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
 
   // Antes do limite: a Visão geral já diz quantos jogos restam.
   await page.goto('/admin')
-  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  const overview = page.locator('#admin-visao')
   await expect(overview).toContainText(
     `Pagamento pendente — 1 de ${STARTER_LIMIT} jogos restantes`
   )
@@ -325,7 +326,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   ).toHaveAttribute('href', '/admin/billing')
   await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
 
-  await page.getByRole('tab', { name: 'Visão geral' }).click()
+  await painelLink(page, 'Hoje').click()
   await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
   await expect(
     overview.getByRole('button', { name: 'Ver grade' })
