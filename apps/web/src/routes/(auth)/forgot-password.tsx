@@ -1,17 +1,18 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import Envelope from 'reicon-react/icons/Envelope'
 import EnvelopeCheck from 'reicon-react/icons/EnvelopeCheck'
-import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
-import { AuthBrandPanel } from '@/components/auth-brand-panel'
-import { AuthInputField } from '@/components/auth-input-field'
-import { OnsideBrand } from '@/components/brand/onside-brand'
+import {
+  AuthSplit,
+  CampoForm,
+  Disp,
+  entradaHead
+} from '@/components/entrada/auth'
+import { Botao, propsBotao } from '@/components/painel'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
-import { pageHead } from '@/lib/page-head'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 /**
@@ -24,7 +25,7 @@ const REDIRECT_APOS_TOKEN = '/reset-password'
 
 export const Route = createFileRoute('/(auth)/forgot-password')({
   head: () =>
-    pageHead({
+    entradaHead({
       path: '/forgot-password',
       title: 'Recuperar senha — Onside',
       description:
@@ -94,129 +95,92 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="onside-app flex">
-      <AuthBrandPanel variant="login">
-        <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
-          <span className="onside-live-dot" aria-hidden="true" />
-          Recuperação de acesso
-        </div>
-        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
-          ESQUECEU?{' '}
-          <span className="text-[var(--onside-acid)]">SEM DRAMA.</span>
-        </p>
-        <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
-          Mandamos um link no seu e-mail e você volta a campo em um minuto.
-        </p>
-      </AuthBrandPanel>
-
-      <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
-        <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
-          <Link to="/" aria-label="Onside — página inicial">
-            <OnsideBrand />
-          </Link>
-          <p className="mt-4 max-w-[28ch] text-sm text-[var(--onside-muted)]">
-            Recupere o acesso e volte pro{' '}
-            <span className="font-semibold text-[var(--onside-ink)]">jogo</span>
-            .
+    <AuthSplit
+      foto={
+        <>
+          <Disp
+            nivel={0}
+            tamanho={64}
+            linhas={[
+              { texto: 'Esqueceu?' },
+              { texto: 'Sem drama.', tint: true }
+            ]}
+          />
+          <p>
+            Mandamos um link no seu e-mail e você volta a campo em um minuto.
           </p>
-        </div>
+        </>
+      }
+    >
+      {emailEnviado ? (
+        <EmailEnviado
+          email={emailEnviado}
+          onTentarOutro={() => {
+            setEmailEnviado(null)
+            form.reset()
+          }}
+        />
+      ) : (
+        <>
+          <p className="entrada-kicker">Recuperar senha</p>
+          <Disp tamanho={56} linhas={[{ texto: 'Vamos de nova senha' }]} />
+          <p className="entrada-linha">
+            Informe o e-mail da sua conta. Se ele estiver cadastrado, enviamos
+            um link para você definir uma nova senha.
+          </p>
 
-        <div className="w-full max-w-[420px]">
-          {emailEnviado ? (
-            <EmailEnviado
-              email={emailEnviado}
-              onTentarOutro={() => {
-                setEmailEnviado(null)
-                form.reset()
-              }}
-            />
-          ) : (
-            <>
-              <div className="mb-8">
-                <p className="onside-kicker">Recuperar senha</p>
-                <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
-                  VAMOS DE{' '}
-                  <span className="text-[var(--onside-live-text)]">
-                    NOVA SENHA.
-                  </span>
-                </h1>
-                <p className="text-sm text-[var(--onside-muted)]">
-                  Informe o e-mail da sua conta. Se ele estiver cadastrado,
-                  enviamos um link para você definir uma nova senha.
-                </p>
-              </div>
+          <form
+            method="post"
+            ref={formRef}
+            noValidate
+            style={{ marginTop: 6 }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              form.handleSubmit()
+            }}
+          >
+            <form.Field
+              name="email"
+              validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
+            >
+              {(field) => (
+                <CampoForm
+                  field={field}
+                  rotulo="E-mail da conta"
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  spellCheck={false}
+                  placeholder="seu@email.com"
+                  autoComplete="email"
+                  maxLength={255}
+                  required
+                />
+              )}
+            </form.Field>
 
-              <form
-                method="post"
-                ref={formRef}
-                className="flex flex-col gap-4"
-                noValidate
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  form.handleSubmit()
-                }}
-              >
-                <form.Field
-                  name="email"
-                  validators={{
-                    onBlur: validateEmail,
-                    onSubmit: validateEmail
-                  }}
-                >
-                  {(field) => (
-                    <AuthInputField
-                      label="E-mail da conta"
-                      icon={Envelope}
-                      field={field}
-                      id="email"
-                      type="email"
-                      inputMode="email"
-                      spellCheck={false}
-                      placeholder="seu@email.com"
-                      autoComplete="email"
-                      maxLength={255}
-                      required
-                    />
-                  )}
-                </form.Field>
+            <Botao
+              type="submit"
+              variante="acid"
+              disabled={isLoading}
+              className="entrada-cta"
+              style={{ marginTop: 4 }}
+            >
+              {isLoading ? 'Enviando…' : 'Enviar link de recuperação'}
+            </Botao>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="onside-btn onside-btn-acid onside-btn-full mt-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader
-                        size={16}
-                        color="currentColor"
-                        className="animate-spin"
-                        aria-hidden="true"
-                      />
-                      Enviando…
-                    </>
-                  ) : (
-                    'Enviar link de recuperação'
-                  )}
-                </button>
+            <p className="entrada-nota">
+              Lembrou a senha?{' '}
+              <Link to="/login" className="entrada-link">
+                Voltar ao login
+              </Link>
+            </p>
 
-                <p className="text-center text-sm text-[var(--onside-muted)]">
-                  Lembrou a senha?{' '}
-                  <Link
-                    to="/login"
-                    className="font-semibold text-[var(--onside-ink)] underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
-                  >
-                    Voltar ao login
-                  </Link>
-                </p>
-
-                {captcha.widget}
-              </form>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+            {captcha.widget}
+          </form>
+        </>
+      )}
+    </AuthSplit>
   )
 }
 
@@ -233,45 +197,29 @@ function EmailEnviado({
   onTentarOutro: () => void
 }) {
   return (
-    <div aria-live="polite">
-      <div className="mb-6 grid size-16 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-        <EnvelopeCheck size={30} color="currentColor" aria-hidden="true" />
-      </div>
-      <p className="onside-kicker">Link a caminho</p>
-      <h1 className="onside-display mb-3 text-[38px] sm:text-[44px]">
-        CONFIRA SUA{' '}
-        <span className="text-[var(--onside-live-text)]">
-          CAIXA DE ENTRADA.
-        </span>
-      </h1>
-      <p className="text-sm text-[var(--onside-muted)] leading-relaxed">
-        Se <strong className="text-[var(--onside-ink)]">{email}</strong> estiver
-        cadastrado na Onside, o link para definir uma nova senha já saiu.
+    <div aria-live="polite" className="entrada-form">
+      <span className="entrada-selo" aria-hidden="true">
+        <EnvelopeCheck size={30} color="currentColor" />
+      </span>
+      <p className="entrada-kicker">Link a caminho</p>
+      <Disp tamanho={48} linhas={[{ texto: 'Confira sua caixa de entrada' }]} />
+      <p className="entrada-linha">
+        Se <strong>{email}</strong> estiver cadastrado na Onside, o link para
+        definir uma nova senha já saiu.
       </p>
-      <ul className="my-7 grid gap-3 text-sm text-[var(--onside-muted)]">
-        <li className="border-[var(--onside-line)] border-l-2 pl-3">
-          O link vale por{' '}
-          <strong className="text-[var(--onside-ink)]">30 minutos</strong> e só
-          pode ser usado uma vez.
+      <ul className="entrada-lista">
+        <li>
+          O link vale por <strong>30 minutos</strong> e só pode ser usado uma
+          vez.
         </li>
-        <li className="border-[var(--onside-line)] border-l-2 pl-3">
-          Não achou? Procure em spam ou promoções antes de pedir outro.
-        </li>
-        <li className="border-[var(--onside-line)] border-l-2 pl-3">
-          Sua senha atual continua valendo enquanto o link não for usado.
-        </li>
+        <li>Não achou? Procure em spam ou promoções antes de pedir outro.</li>
+        <li>Sua senha atual continua valendo enquanto o link não for usado.</li>
       </ul>
-      <div className="flex flex-wrap gap-3">
-        <Link to="/login" className="onside-btn onside-btn-acid">
+      <div className="entrada-botoes">
+        <Link to="/login" {...propsBotao({ variante: 'acid' })}>
           Voltar ao login
         </Link>
-        <button
-          type="button"
-          onClick={onTentarOutro}
-          className="onside-btn onside-btn-outline"
-        >
-          Usar outro e-mail
-        </button>
+        <Botao onClick={onTentarOutro}>Usar outro e-mail</Botao>
       </div>
     </div>
   )
