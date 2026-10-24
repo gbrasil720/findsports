@@ -1,3 +1,7 @@
+import {
+  COMMERCIAL_TIME_ZONE,
+  getCommercialDay
+} from '@findsports_oficial/api/lib/commercial-analytics/commercial-day'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
 import { buildDirectionsUrl } from '@/lib/maps-link'
@@ -148,30 +152,51 @@ export function formatGameSubtitle(title: string, parts: string[]): string {
   return parts.filter((part) => part !== title).join(' · ')
 }
 
-/** "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo. */
-export function formatDayLabel(date: Date, now: Date = new Date()): string {
-  const tomorrow = new Date(now)
-  tomorrow.setDate(now.getDate() + 1)
+/**
+ * Dia e hora de jogo saem sempre no relógio de Brasília, onde os bares estão,
+ * e não no fuso do navegador de quem lê: o jogo das 22:30 de quarta não vira
+ * "quinta, 01:30" para quem abre o app de fora do Brasil.
+ */
+function nextDay(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + 1)
+  return date.toISOString().slice(0, 10)
+}
 
-  if (date.toDateString() === now.toDateString()) return 'Hoje'
-  if (date.toDateString() === tomorrow.toDateString()) return 'Amanhã'
+/**
+ * "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo.
+ * `short` é a forma dos cards ("qua., 26 de ago."); `long`, a do perfil
+ * ("quarta-feira, 26 de ago.").
+ */
+export function formatDayLabel(
+  date: Date,
+  now: Date = new Date(),
+  weekday: 'long' | 'short' = 'long'
+): string {
+  const day = getCommercialDay(date)
+  const today = getCommercialDay(now)
+
+  if (day === today) return 'Hoje'
+  if (day === nextDay(today)) return 'Amanhã'
 
   return date.toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short'
+    weekday,
+    day: weekday === 'long' ? '2-digit' : 'numeric',
+    month: 'short',
+    timeZone: COMMERCIAL_TIME_ZONE
   })
 }
 
 export function formatEventTime(date: Date): string {
   return date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: COMMERCIAL_TIME_ZONE
   })
 }
 
 export type EventDayGroup<T extends ProfileEvent> = {
-  /** `toDateString()` do dia — chave estável para `key` de lista. */
+  /** Dia em Brasília (`AAAA-MM-DD`) — chave estável para `key` de lista. */
   key: string
   label: string
   events: T[]
@@ -190,7 +215,7 @@ export function groupEventsByDay<T extends ProfileEvent>(
   for (const event of [...events].sort(
     (a, b) => a.startsAt.getTime() - b.startsAt.getTime()
   )) {
-    const key = event.startsAt.toDateString()
+    const key = getCommercialDay(event.startsAt)
     const group = groups.get(key)
 
     if (group) {
