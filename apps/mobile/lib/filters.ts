@@ -1,3 +1,4 @@
+import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 
 /*
@@ -29,6 +30,31 @@ export const NO_FILTERS: Filters = {
   radius: null,
   gamesOnly: false
 }
+
+/** Quantos bares a busca do Explorar traz: os do mapa e o "Ver N bares". */
+export const SEARCH_LIMIT = 30
+
+/** O raio da busca: o do filtro, senão o do perfil, até o teto. */
+export const searchRadius = (f: Filters, profileKm: number) =>
+  Math.min(f.radius ?? profileKm, SEARCH_RADIUS_MAX_KM)
+
+/**
+ * A entrada de `pubs.search` para os filtros: a mesma no Explorar e no
+ * "Ver N bares" da folha de filtros, para o número do botão ser o que o mapa
+ * mostra.
+ */
+export const searchInput = (
+  f: Filters,
+  center: { lat: number; lng: number },
+  radiusKm: number
+) => ({
+  ...center,
+  radiusKm,
+  date: f.date ?? undefined,
+  sportId: f.sportId ?? undefined,
+  amenities: f.amenities.length ? f.amenities : undefined,
+  limit: SEARCH_LIMIT
+})
 
 /** "2026-10-20": o dia de Brasília de `now` mais `plus` dias. */
 export const dayKey = (now: number, plus = 0) => brasiliaDay(now, plus)
