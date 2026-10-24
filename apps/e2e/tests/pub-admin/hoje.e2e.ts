@@ -185,3 +185,42 @@ test('Starter sem jogo hoje: noite vazia, quem viu o bar e "Novo jogo"', async (
   await page.getByRole('link', { name: 'Novo jogo' }).click()
   await expect(page).toHaveURL(/\/admin\/jogos\?novo=1$/)
 })
+
+test('A noite arrasta para ver amanhã, com o mouse e pelas setas', async ({
+  page,
+  isMobile
+}) => {
+  const pub = await openHoje(page, { subscription: { plan: 'pro' } })
+  const { championship } = await createEvent(pub.barId, {
+    startsAt: new Date(noite('21:00').getTime() + 24 * 3_600_000)
+  })
+
+  await page.goto('/admin')
+  await expect(
+    page.getByText('18h → 2h · arraste para ver amanhã')
+  ).toBeVisible()
+  const amanha = page
+    .getByRole('list', { name: 'Jogos de amanhã' })
+    .getByRole('listitem')
+    .filter({ hasText: championship })
+  await expect(amanha).toContainText('21:00')
+  await expect(amanha).not.toBeInViewport()
+
+  const linha = page.getByRole('region', {
+    name: /A noite, de hoje até amanhã/
+  })
+  if (!isMobile) {
+    const caixa = await linha.boundingBox()
+    if (!caixa) throw new Error('linha do tempo sem caixa')
+    await page.mouse.move(caixa.x + caixa.width - 10, caixa.y + 60)
+    await page.mouse.down()
+    await page.mouse.move(caixa.x + 10, caixa.y + 60, { steps: 8 })
+    await page.mouse.up()
+    await expect(amanha).toBeInViewport()
+  }
+
+  await linha.press('Home')
+  await expect(amanha).not.toBeInViewport()
+  await linha.press('End')
+  await expect(amanha).toBeInViewport()
+})
