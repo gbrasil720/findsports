@@ -85,6 +85,25 @@ describe('alteracoes', () => {
     expect(a.oferta).toBeUndefined()
   })
 
+  test('rua e número abrem separados e vão juntos em `address`', () => {
+    const base = rascunhoDoBar(bar)
+    expect([base.rua, base.numero]).toEqual(['Rua das Flores', '123'])
+    const a = alteracoes(bar, { ...base, numero: '125' }, ambos)
+    expect(a.perfil).toEqual({ address: 'Rua das Flores, 125' })
+  })
+
+  test('endereço sem vírgula fica todo na rua e não muda ao salvar outra coisa', () => {
+    const semVirgula = { ...bar, address: 'Rua das Flores 123' } as AdminBar
+    const base = rascunhoDoBar(semVirgula)
+    expect([base.rua, base.numero]).toEqual(['Rua das Flores 123', ''])
+    const a = alteracoes(semVirgula, { ...base, name: 'Outro bar' }, ambos)
+    expect(a.perfil).toEqual({ name: 'Outro bar' })
+    // Mexer na rua pede o número, como no cadastro.
+    const b = alteracoes(semVirgula, { ...base, rua: 'Rua das Flores' }, ambos)
+    expect(b.erros).toEqual({ numero: 'Informe o número.' })
+    expect(b.perfil).toBeNull()
+  })
+
   test('limpar o telefone e tirar o horário também são mudança', () => {
     const comHorario = {
       ...bar,
