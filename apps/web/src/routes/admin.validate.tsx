@@ -4,7 +4,6 @@ import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { LateCodeEntry } from '@/components/admin/late-code-entry'
 import { useMinuteNow } from '@/components/app/minute-tick'
-import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin/validate')({
@@ -14,10 +13,8 @@ export const Route = createFileRoute('/admin/validate')({
   head: () => ({
     meta: [
       { title: 'Validar código — Onside' },
-      { name: 'robots', content: 'noindex' },
-      ...PWA_META
-    ],
-    links: [...PWA_LINKS]
+      { name: 'robots', content: 'noindex' }
+    ]
   }),
   component: ValidatePage
 })
