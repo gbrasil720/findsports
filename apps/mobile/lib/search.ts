@@ -1,4 +1,4 @@
-import { gameTitle } from '@findsports_oficial/db/game-title'
+import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import { isLive } from './explore'
 
 /*
@@ -39,8 +39,8 @@ export const fold = (value: string) =>
 
 /** Os dois lados do jogo: os times, senão o texto livre partido no "×". */
 export function sides(game: Game): [string, string] | null {
-  const names = game.participants.map((p) => p.team.name)
-  if (names.length === 2) return [names[0] as string, names[1] as string]
+  const two = matchSides(game)
+  if (two) return two
   const parts = game.participantFreeText?.split(/\s+[×x]\s+/i)
   return parts?.length === 2 ? [parts[0] as string, parts[1] as string] : null
 }
