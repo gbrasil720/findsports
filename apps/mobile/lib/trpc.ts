@@ -49,3 +49,16 @@ export const trpc = createTRPCOptionsProxy<AppRouter>({
   client: trpcClient,
   queryClient
 })
+
+// Muda pouco e só pela própria pessoa (cuja mutation vence o cache, ver
+// `lib/query-client.ts`) ou pela equipe: 5 min sem buscar de novo.
+for (const rare of [
+  trpc.pubs.getSports,
+  trpc.pubs.getTeamsBySport,
+  trpc.pubs.getMyCity,
+  trpc.pubs.getMyPreferences,
+  trpc.pubs.getMyTeams,
+  trpc.friends.me,
+  trpc.appConfig.getPublic
+])
+  queryClient.setQueryDefaults(rare.queryKey(), { staleTime: 5 * 60_000 })

@@ -2,7 +2,8 @@ import { MutationCache, QueryClient } from '@tanstack/react-query'
 
 /**
  * Por 30 s a resposta vale como está: trocar de tela não repete a mesma
- * consulta (`pubs.getMyCity` aparece em uma dúzia de telas).
+ * consulta (`pubs.getMyCity` aparece em uma dúzia de telas). Os dados que
+ * quase não mudam ganham mais tempo em `lib/trpc.ts`.
  */
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },

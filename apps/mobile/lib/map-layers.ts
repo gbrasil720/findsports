@@ -105,6 +105,25 @@ export function buildIndex(bars: MapBar[]): BarIndex {
   return index
 }
 
+/**
+ * `buildIndex` com memória do último pedido: o Explorar desenha de novo a
+ * cada movimento do mapa (e a cada toque na folha) com os mesmos bares em
+ * objetos novos. O índice só é refeito quando o conteúdo deles muda; mover o
+ * mapa só consulta (`mapLayers`).
+ */
+export function indexCache() {
+  let key: string | null = null
+  let index: BarIndex | null = null
+  return (bars: MapBar[]): BarIndex => {
+    const next = JSON.stringify(bars)
+    if (!index || next !== key) {
+      key = next
+      index = buildIndex(bars)
+    }
+    return index
+  }
+}
+
 type Box = { x1: number; y1: number; x2: number; y2: number }
 const touches = (a: Box, b: Box) =>
   a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2
