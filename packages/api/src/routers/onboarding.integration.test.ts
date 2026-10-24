@@ -81,7 +81,7 @@ integrationTest(
  * "desligado, Starter, 14 dias" para provar que ninguém mais a lê.
  */
 integrationTest(
-  'completePub publica o bar com o teste de 120 dias do Elite, sem ler a chave antiga',
+  'completePub publica o bar com o teste de 120 dias do Elite (e o horário e a oferta), sem ler a chave antiga',
   async () => {
     const { db, appRouter } = await load()
     const { appConfigStore } = await import('../lib/app-config')
@@ -138,8 +138,36 @@ integrationTest(
           name: 'Bar do teste grátis',
           neighborhood: 'Centro',
           city: 'São Paulo',
-          address: `Rua do Teste ${id.slice(0, 8)}, 10`
+          address: `Rua do Teste ${id.slice(0, 8)}, 10`,
+          // WEB-448: horário e oferta da Revisão gravam junto.
+          openingHours: [
+            { opens: '12:00', closes: '22:00' },
+            null,
+            null,
+            null,
+            null,
+            { opens: '17:00', closes: '02:00' },
+            { opens: '17:00', closes: '02:00' }
+          ],
+          houseOffer: '  Chopp em dobro   até o intervalo '
         })
+
+      const [gravado] = await db
+        .select({ openingHours: bar.openingHours, houseOffer: bar.houseOffer })
+        .from(bar)
+        .where(eq(bar.userId, id))
+      expect(gravado).toEqual({
+        openingHours: [
+          { opens: '12:00', closes: '22:00' },
+          null,
+          null,
+          null,
+          null,
+          { opens: '17:00', closes: '02:00' },
+          { opens: '17:00', closes: '02:00' }
+        ],
+        houseOffer: 'Chopp em dobro até o intervalo'
+      })
 
       // O vencimento é conferido contra o relógio do banco, que o gravou.
       const { rows } = await db.execute(sql`

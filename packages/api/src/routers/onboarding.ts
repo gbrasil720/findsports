@@ -1,5 +1,6 @@
 import { auth } from '@findsports_oficial/auth'
 import { db, eq, sql } from '@findsports_oficial/db'
+import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -25,6 +26,11 @@ import {
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
+import {
+  assertCanConfigureHouseOffer,
+  parseHouseOfferInput
+} from '../lib/house-offer'
+import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { ONBOARDING_TRIAL } from '../lib/plan-limits'
 import {
   findSearchCity,
@@ -93,13 +99,34 @@ export const onboardingRouter = router({
         // recusados: um cliente desatualizado não pode derrubar o cadastro
         // inteiro do bar por causa de uma característica aposentada.
         amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
-        screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional()
+        screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional(),
+        // WEB-448: horário e oferta da Revisão, opcionais como no Meu espaço
+        // (`pub.updateOpeningHours`, `pub.updateHouseOffer`).
+        openingHours: openingHoursSchema.nullable().optional(),
+        // Teto de payload; o limite vale sobre o texto normalizado.
+        houseOffer: z
+          .string()
+          .max(HOUSE_OFFER_MAX_LENGTH * 4)
+          .optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       await assertOnboardingPending(userId)
+
+      // A oferta é do Elite: confere contra a assinatura que este envio cria
+      // (o teste do cadastro), antes do geocoding pago.
+      const houseOffer = parseHouseOfferInput(input.houseOffer ?? null)
+      if (houseOffer) {
+        assertCanConfigureHouseOffer({
+          plan: ONBOARDING_TRIAL.plan,
+          status: 'trialing',
+          currentPeriodEnd: new Date(
+            Date.now() + ONBOARDING_TRIAL.days * 86_400_000
+          )
+        })
+      }
 
       const motivoTelefone = motivoTelefoneInvalido(input.phone)
       if (motivoTelefone) {
@@ -144,6 +171,8 @@ export const onboardingRouter = router({
             description: input.description ?? null,
             amenities: writableAmenityIds(input.amenities ?? []),
             screenCount: input.screenCount ?? null,
+            openingHours: normalizeOpeningHours(input.openingHours ?? null),
+            houseOffer,
             latitude,
             longitude,
             // WEB-113: o bar nasce publicado, com o teste grátis abaixo.
