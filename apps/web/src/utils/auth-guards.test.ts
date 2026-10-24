@@ -144,6 +144,16 @@ describe('applyAuthGuards', () => {
         ).toBe(FAN_HOME)
       }
     }
+    expect(
+      redirectOf(() =>
+        applyAuthGuards(
+          session('admin'),
+          '/login',
+          {},
+          '/login?callbackUrl=%2Fhoudini'
+        )
+      )
+    ).toBe('/houdini')
     for (const path of [FAN_HOME, '/pub/bar-123', '/termos']) {
       expect(() => applyAuthGuards(session('fan'), path), path).not.toThrow()
     }

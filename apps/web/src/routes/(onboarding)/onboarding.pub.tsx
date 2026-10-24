@@ -23,6 +23,7 @@ import {
   useNavigate
 } from '@tanstack/react-router'
 import {
+  Fragment,
   type ReactNode,
   type Ref,
   useEffect,
@@ -109,13 +110,13 @@ function Titulo({
       className="entrada-disp"
       style={{ '--entrada-disp': `${tamanho}px`, outline: 'none' } as never}
     >
-      {linhas.map((linha) => (
-        <span
-          key={linha.texto}
-          className={linha.tint ? 'entrada-tint' : undefined}
-        >
-          {linha.texto}
-        </span>
+      {linhas.map((linha, i) => (
+        <Fragment key={linha.texto}>
+          {i > 0 ? ' ' : null}
+          <span className={linha.tint ? 'entrada-tint' : undefined}>
+            {linha.texto}
+          </span>
+        </Fragment>
       ))}
     </h1>
   )
