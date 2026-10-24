@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
-import { inArray, sql } from '@findsports_oficial/db'
+import { eq, inArray, sql } from '@findsports_oficial/db'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -12,7 +13,7 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { wilsonLowerBound } from '../lib/rating'
-import { contextFor, load } from './integration-seed'
+import { contextFor, load, refusal, seedBar } from './integration-seed'
 
 /**
  * O que este teste trava, e por que cada coisa precisa de banco de verdade:
@@ -290,6 +291,43 @@ integrationTest(
     } finally {
       await db.delete(user).where(inArray(user.id, [ownerId, ...fanIds]))
       await db.delete(sport).where(inArray(sport.id, [sportId]))
+    }
+  }
+)
+
+integrationTest(
+  'bar fora do ar não recebe avaliação, como no getPending',
+  async () => {
+    const seeded = await seedBar('pro', 'active', null)
+    const { db } = seeded
+    try {
+      const eventId = await seeded.seedGame({
+        startsAt: new Date(Date.now() - 6 * 3_600_000)
+      })
+      await db.insert(attendance).values({ userId: seeded.fanId, eventId })
+      await db
+        .update(bar)
+        .set({ isActive: false })
+        .where(eq(bar.id, seeded.barId))
+      const rate = () =>
+        seeded.fan.ratings.submit({
+          barId: seeded.barId,
+          eventId,
+          wouldReturn: true
+        })
+
+      expect(await seeded.fan.ratings.getPending()).toEqual([])
+      const refused = await refusal(rate())
+      expect(refused.code).toBe('FORBIDDEN')
+      expect(refused.message).toBe('Este bar não está no ar.')
+
+      await db
+        .update(bar)
+        .set({ isActive: true })
+        .where(eq(bar.id, seeded.barId))
+      await rate()
+    } finally {
+      await seeded.cleanup()
     }
   }
 )
