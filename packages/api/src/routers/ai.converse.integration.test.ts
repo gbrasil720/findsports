@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from 'bun:test'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
-import { and, eq, inArray } from '@findsports_oficial/db'
+import { and, eq, inArray, sql } from '@findsports_oficial/db'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
@@ -102,6 +102,11 @@ integrationTest(
     await setAppConfig('ai.enabled', true, null)
 
     try {
+      expect(await fan.ai.status()).toEqual({
+        kind: 'ready',
+        remainingToday: 10,
+        remainingMonth: 100
+      })
       const events = await collect(
         await fan.ai.converse({
           message: 'quero ver jogo com telão',
@@ -149,8 +154,90 @@ integrationTest(
         .select()
         .from(aiRun)
         .where(eq(aiRun.runId, done.runId))
-      expect(row).toMatchObject({ feature: 'chat', useful: true })
+      expect(row).toMatchObject({
+        userId: seeded.fanId,
+        feature: 'chat',
+        status: 'ok',
+        useful: true,
+        tokensIn: 1600,
+        tokensOut: 80
+      })
+      expect(Object.values(CHAT_MODELS)).toContain(row?.servedModel as never)
+      expect(row?.assignedModel).toBe(row?.servedModel as string)
+      expect(row?.costUsd).toBeGreaterThan(0)
+
+      // Polegar e ação só na própria resposta.
+      await fan.ai.feedback({ runId: done.runId, value: 1 })
+      await fan.ai.action({
+        runId: done.runId,
+        kind: 'open_bar',
+        barId: seeded.barId
+      })
+      const other = appRouter.createCaller(
+        contextFor(crypto.randomUUID(), 'fan')
+      )
+      expect(
+        (await refusal(other.ai.feedback({ runId: done.runId, value: -1 })))
+          .code
+      ).toBe('NOT_FOUND')
+      expect(
+        (
+          await refusal(
+            other.ai.action({ runId: done.runId, kind: 'open_bar' })
+          )
+        ).code
+      ).toBe('NOT_FOUND')
+      const [rated] = await db
+        .select({ feedback: aiRun.feedback })
+        .from(aiRun)
+        .where(eq(aiRun.runId, done.runId))
+      expect(rated?.feedback).toBe(1)
+      expect(
+        await db
+          .select({ kind: aiAction.kind })
+          .from(aiAction)
+          .where(eq(aiAction.runId, done.runId))
+      ).toEqual([{ kind: 'open_bar' }])
     } finally {
+      await resetAppConfig('ai.enabled')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'os dois modelos fora do ar: indisponível, linha com erro e nada desconta',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig } = await import('../lib/app-config')
+    const seeded = await seedBar('pro', 'active', null)
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    const log: string[] = []
+    setAiBinding({
+      run: async (model) => {
+        log.push(model)
+        throw new Error('2021: Insufficient balance')
+      }
+    })
+    await setAppConfig('ai.enabled', true, null)
+    const quiet = spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      expect(
+        await collect(await fan.ai.converse({ message: 'e amanhã?' }))
+      ).toEqual([{ type: 'blocked', reason: 'unavailable' }])
+      expect(log).toHaveLength(3)
+      expect(new Set(log).size).toBe(2)
+      expect(
+        await db
+          .select({ status: aiRun.status, useful: aiRun.useful })
+          .from(aiRun)
+          .where(eq(aiRun.userId, seeded.fanId))
+      ).toEqual([{ status: 'error', useful: false }])
+      expect(await fan.ai.status()).toMatchObject({ remainingToday: 10 })
+    } finally {
+      quiet.mockRestore()
       await resetAppConfig('ai.enabled')
       await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
       await seeded.cleanup()
@@ -495,6 +582,13 @@ integrationTest(
         reason: 'limit',
         scope: 'day'
       })
+      // Volta amanhã à meia-noite de Brasília.
+      if (blocked?.type !== 'blocked' || blocked.reason !== 'limit')
+        throw new Error('sem limite')
+      const resumes = new Date(blocked.resumesAt)
+      expect(resumes.getUTCHours()).toBe(3)
+      expect(resumes.getTime()).toBeGreaterThan(Date.now())
+      expect(await fan.ai.status()).toMatchObject({ kind: 'limit' })
       expect(ran).toBe(0)
       expect(
         await db
@@ -505,6 +599,78 @@ integrationTest(
     } finally {
       await resetAppConfig('ai.enabled')
       await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'limites do chat vêm de ai.limits no app_config, não do código',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig, appConfigDefault } = await import(
+      '../lib/app-config'
+    )
+    const seeded = await seedBar('pro', 'active', null)
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    await setAppConfig('ai.enabled', true, null)
+    await setAppConfig(
+      'ai.limits',
+      {
+        ...appConfigDefault('ai.limits'),
+        chatDailyMessages: 2,
+        chatMonthlyMessages: 50
+      },
+      null
+    )
+
+    try {
+      expect(await fan.ai.status()).toEqual({
+        kind: 'ready',
+        remainingToday: 2,
+        remainingMonth: 50
+      })
+      await db.insert(aiRun).values(
+        Array.from({ length: 2 }, () => ({
+          userId: seeded.fanId,
+          feature: 'chat' as const,
+          variant: 'a',
+          assignedModel: CHAT_MODELS.a,
+          status: 'ok' as const,
+          useful: true
+        }))
+      )
+      expect(await fan.ai.status()).toMatchObject({
+        kind: 'limit',
+        scope: 'day'
+      })
+
+      // Teto do mês de todo mundo abaixo do gasto: indisponível para todos.
+      await setAppConfig(
+        'ai.limits',
+        {
+          ...appConfigDefault('ai.limits'),
+          monthlyBudgetUsd: 1,
+          userMonthlyUsd: 0.5
+        },
+        null
+      )
+      await db.insert(aiRun).values({
+        userId: null,
+        feature: 'chat',
+        variant: 'b',
+        assignedModel: CHAT_MODELS.b,
+        status: 'ok',
+        costUsd: 1
+      })
+      expect(await fan.ai.status()).toEqual({ kind: 'unavailable' })
+    } finally {
+      await resetAppConfig('ai.enabled')
+      await resetAppConfig('ai.limits')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await db.execute(
+        sql`DELETE FROM ai_run WHERE user_id IS NULL AND cost_usd = 1`
+      )
       await seeded.cleanup()
     }
   }
