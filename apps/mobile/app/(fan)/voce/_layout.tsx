@@ -1,5 +1,11 @@
 import { Stack } from 'expo-router'
 
+// O menu fica sempre no fundo da pilha: um link ou `navigate` direto para
+// `/voce/meus-jogos` com a aba ainda fechada montava a pilha só com Meus
+// jogos, o `popToTop` do blur não tinha para onde voltar e tocar em "Você"
+// caía em Meus jogos de novo.
+export const unstable_settings = { initialRouteName: 'index' }
+
 /*
  * A pilha da aba "Você" (WEB-407): a primeira tela é o Explorar com o menu
  * por cima; o que o menu abre entra aqui, com a barra de abas visível e
