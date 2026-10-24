@@ -750,7 +750,12 @@ export function JogosPage({
           </Botao>
         </Card>
       ) : filtro === 'passados' ? (
-        <ComoCadaJogoFoi range={periodo.range} />
+        <ComoCadaJogoFoi
+          range={periodo.range}
+          encerrados={
+            new Set(filtrarJogos(events, 'passados', now).map((j) => j.id))
+          }
+        />
       ) : vista === 'semana' ? (
         <SemanaJogos
           dias={montarSemana(semana, visiveis, now)}
