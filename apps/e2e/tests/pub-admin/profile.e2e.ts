@@ -32,6 +32,12 @@ const info = (page: Page) =>
 const fotos = (page: Page) =>
   page.getByRole('region', { name: 'Fotos', exact: true })
 
+/** Rua e número são campos separados, gravados juntos em `address`. */
+async function fillAddress(page: Page, rua: string, numero: string) {
+  await info(page).getByLabel('Rua', { exact: true }).fill(rua)
+  await info(page).getByLabel('Número', { exact: true }).fill(numero)
+}
+
 const pickPhoto = (page: Page, file: Parameters<Locator['setInputFiles']>[0]) =>
   page.locator('input[type="file"]').setInputFiles(file)
 
@@ -104,15 +110,80 @@ test('Descartar volta ao que está gravado, sem salvar', async ({ page }) => {
 
 test('mudar o endereço geocodifica a rua nova e grava', async ({ page }) => {
   const { barId } = await openProfile(page)
-  const newStreet = `Rua Nova E2E ${randomUUID().slice(0, 8)}, 42`
+  const rua = `Rua Nova E2E ${randomUUID().slice(0, 8)}`
+  const newStreet = `${rua}, 42`
 
-  await info(page).getByLabel('Rua e número').fill(newStreet)
+  // O bar gravado abre com rua e número separados.
+  await expect(info(page).getByLabel('Número', { exact: true })).toHaveValue(
+    '100'
+  )
+  await fillAddress(page, rua, '42')
   expect((await save(page)).ok()).toBe(true)
 
-  await expect(info(page).getByLabel('Rua e número')).toHaveValue(newStreet)
+  await expect(info(page).getByLabel('Rua', { exact: true })).toHaveValue(rua)
+  await expect(info(page).getByLabel('Número', { exact: true })).toHaveValue(
+    '42'
+  )
   expect(await geocodedStreets(page)).toContain(newStreet)
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(newStreet)
+})
+
+// WEB-438: o CEP preenche rua, bairro, cidade e UF pelo ViaCEP, no navegador,
+// e não vai ao servidor; o número continua com o dono.
+test('CEP preenche o endereço e o número vai junto da rua', async ({
+  page
+}) => {
+  const { barId } = await openProfile(page)
+  const rua = `Rua CEP E2E ${randomUUID().slice(0, 8)}`
+  await page.route('https://viacep.com.br/ws/**', (route) =>
+    route.fulfill({
+      json: {
+        logradouro: rua,
+        bairro: 'Vila Madalena',
+        localidade: 'São Paulo',
+        uf: 'SP'
+      }
+    })
+  )
+
+  await info(page).getByLabel('CEP').fill('05433000')
+  await expect(info(page).getByLabel('CEP')).toHaveValue('05433-000')
+  await expect(info(page).getByText('Encontrado')).toBeVisible()
+  await expect(info(page).getByLabel('Rua', { exact: true })).toHaveValue(rua)
+  await expect(info(page).getByLabel('Bairro')).toHaveValue('Vila Madalena')
+  await expect(info(page).getByLabel('UF', { exact: true })).toHaveValue('SP')
+  await info(page).getByLabel('Número', { exact: true }).fill('214')
+  const saved = page.waitForRequest(/pub\.updateMe/)
+  expect((await save(page)).ok()).toBe(true)
+  expect((await saved).postData()).not.toContain('05433')
+
+  const [bar] = await query(
+    'SELECT address, neighborhood, uf FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(bar).toEqual({
+    address: `${rua}, 214`,
+    neighborhood: 'Vila Madalena',
+    uf: 'SP'
+  })
+})
+
+test('CEP que o ViaCEP não acha avisa e deixa o endereço como está', async ({
+  page
+}) => {
+  await openProfile(page)
+  await page.route('https://viacep.com.br/ws/**', (route) =>
+    route.fulfill({ json: { erro: 'true' } })
+  )
+  const antes = await info(page).getByLabel('Rua', { exact: true }).inputValue()
+
+  await info(page).getByLabel('CEP').fill('99999999')
+  await expect(info(page)).toContainText(
+    'Não achamos esse CEP. Preencha o endereço.'
+  )
+  await expect(info(page).getByLabel('Rua', { exact: true })).toHaveValue(antes)
+  await expect(saveButton(page)).toBeDisabled()
 })
 
 // WEB-270: bar cadastrado antes do campo abre sem UF (e salva o resto sem ela,
@@ -143,15 +214,15 @@ test('endereço que o geocoding não acha é recusado com a mensagem certa', asy
   const pageErrors = collectPageErrors(page)
   const { barId, street } = await openProfile(page)
 
-  await info(page).getByLabel('Rua e número').fill('Rua inexistente, 1')
+  await fillAddress(page, 'Rua inexistente', '1')
   expect((await save(page)).ok()).toBe(false)
 
   await expect(saveError(page)).toHaveText(
     'Não encontramos esse endereço em São Paulo. Confira a rua, o número e a cidade.'
   )
   // O rascunho continua na tela, e nada foi gravado.
-  await expect(info(page).getByLabel('Rua e número')).toHaveValue(
-    'Rua inexistente, 1'
+  await expect(info(page).getByLabel('Rua', { exact: true })).toHaveValue(
+    'Rua inexistente'
   )
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(street)
@@ -185,9 +256,11 @@ test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço
   page
 }) => {
   const { barId, street } = await openProfile(page)
-  const newStreet = `Rua falha-geocoding ${randomUUID().slice(0, 8)}, 1`
-
-  await info(page).getByLabel('Rua e número').fill(newStreet)
+  await fillAddress(
+    page,
+    `Rua falha-geocoding ${randomUUID().slice(0, 8)}`,
+    '1'
+  )
   expect((await save(page)).ok()).toBe(false)
 
   await expect(saveError(page)).toHaveText(
