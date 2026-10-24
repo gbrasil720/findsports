@@ -77,14 +77,6 @@ const STATUS_BADGE: Record<string, { label: string; tipo: BadgeTipo }> = {
   cancelled: { label: 'Cancelado', tipo: 'pub' }
 }
 
-/** Primeiro e último dia do mês corrente em Brasília (`YYYY-MM-DD`). */
-function thisMonth() {
-  const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  }).format(new Date())
-  return { from: `${today.slice(0, 8)}01`, to: today }
-}
-
 function BillingPage() {
   const trpc = useTRPC()
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
@@ -113,11 +105,11 @@ function BillingPage() {
     meta: { errorToast: false },
     retry: false
   }).data
-  // O que o plano rendeu no mês: só números que o servidor calcula. Sem
-  // analytics (plano parado, falha), a linha some.
-  const month = thisMonth()
-  const overview = useQuery({
-    ...trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions(month),
+  // O que o plano rendeu no mês (WEB-446): só números que o servidor calcula,
+  // e os que o plano não libera vêm nulos. Sem nenhum (plano parado, falha),
+  // a linha some.
+  const month = useQuery({
+    ...trpc.commercialAnalytics.getMyMonthNumbers.queryOptions(),
     enabled: Boolean(subscription?.currentPlan),
     meta: { errorToast: false },
     retry: false
@@ -205,20 +197,11 @@ function BillingPage() {
         ? 'Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano ser contratado.'
         : null
 
-  const kpis: { valor: number; rotulo: string }[] = overview
-    ? [
-        { valor: overview.uniqueVisitors, rotulo: 'viram o bar' },
-        { valor: overview.interestedPeople, rotulo: 'se interessaram' },
-        ...(overview.classicExposures !== null
-          ? [
-              {
-                valor: overview.classicExposures,
-                rotulo: 'vezes no topo em clássicos'
-              }
-            ]
-          : [])
-      ]
-    : []
+  const kpis = [
+    { valor: month?.going, rotulo: 'marcaram que iam' },
+    { valor: month?.classicsOnTop, rotulo: 'clássicos no topo' },
+    { valor: month?.validatedCodes, rotulo: 'códigos validados' }
+  ].filter((kpi): kpi is { valor: number; rotulo: string } => kpi.valor != null)
 
   return (
     <>
@@ -578,8 +561,8 @@ function BillingPage() {
               : null
           }
           monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
-          visitors={overview?.uniqueVisitors ?? null}
-          classics={overview?.classicExposures ?? null}
+          going={month?.going ?? null}
+          classics={month?.classicsOnTop ?? null}
           onClose={() => setCancelling(false)}
         />
       ) : null}
@@ -588,15 +571,15 @@ function BillingPage() {
 }
 
 /**
- * O que o bar perde, com os números que existem (3q): quem viu o bar no mês,
- * as vezes no topo dos clássicos (Elite), os jogos marcados e o pin.
+ * O que o bar perde, com os números que existem (3q): quem marcou que ia no
+ * mês e os clássicos no topo (Elite), os jogos marcados e o pin.
  */
 function CancelPlan({
-  visitors,
+  going,
   classics,
   ...props
 }: Omit<Parameters<typeof CancelPlanDialog>[0], 'perdas'> & {
-  visitors: number | null
+  going: number | null
   classics: number | null
 }) {
   const events = useMyEvents().data
@@ -604,16 +587,16 @@ function CancelPlan({
     (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   ).length
   const perdas: PerdaCancelamento[] = [
-    ...(visitors !== null
-      ? [{ valor: visitors, rotulo: 'pessoas que viram o bar este mês' }]
-      : []),
-    ...(classics !== null
+    ...(going !== null
       ? [
           {
-            valor: classics,
-            rotulo: 'vezes com o bar no topo da busca em clássicos este mês'
+            valor: going,
+            rotulo: 'pessoas que marcaram que iam ao bar este mês'
           }
         ]
+      : []),
+    ...(classics !== null
+      ? [{ valor: classics, rotulo: 'clássicos com o bar no topo da busca' }]
       : []),
     ...(upcoming
       ? [{ valor: upcoming, rotulo: 'jogos marcados saem das buscas' }]
