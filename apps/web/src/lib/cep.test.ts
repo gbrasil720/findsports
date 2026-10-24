@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { formatarCep, lerViaCep } from './cep'
+import { formatarCep, juntarEndereco, lerViaCep, separarNumero } from './cep'
 
 describe('CEP do cadastro do bar', () => {
   test('formata enquanto digita e corta no oitavo dígito', () => {
@@ -25,5 +25,26 @@ describe('CEP do cadastro do bar', () => {
     expect(lerViaCep({ erro: 'true' })).toBeNull()
     expect(lerViaCep(null)).toBeNull()
     expect(lerViaCep({ localidade: 'Cidade', uf: 'XX' })?.uf).toBe('')
+  })
+
+  test('rua e número: juntos em `address`, separados pela última vírgula', () => {
+    expect(juntarEndereco(' Rua Aspicuelta ', ' 214 ')).toBe(
+      'Rua Aspicuelta, 214'
+    )
+    expect(juntarEndereco('Rua Aspicuelta', '')).toBe('Rua Aspicuelta')
+    expect(separarNumero('Rua Aspicuelta, 214')).toEqual([
+      'Rua Aspicuelta',
+      '214'
+    ])
+    expect(separarNumero('Av. Brasil, 10, fundos')).toEqual([
+      'Av. Brasil, 10',
+      'fundos'
+    ])
+    // Sem vírgula não há como saber onde está o número: tudo na rua.
+    expect(separarNumero('Rua Aspicuelta 214')).toEqual([
+      'Rua Aspicuelta 214',
+      ''
+    ])
+    expect(separarNumero('')).toEqual(['', ''])
   })
 })
