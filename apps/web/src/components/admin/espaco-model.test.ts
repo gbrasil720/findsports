@@ -4,9 +4,13 @@ import {
   abertoAte,
   alteracoes,
   checklistDoPerfil,
+  diaDoJogo,
+  iniciaisDoApp,
+  quandoNaGota,
   rascunhoDoBar,
   recursoPago,
   SEMANA_PADRAO,
+  siglaDoTime,
   temAlteracao
 } from './espaco-model'
 
@@ -181,5 +185,34 @@ describe('abertoAte', () => {
       'fechado agora'
     )
     expect(abertoAte(null, new Date())).toBeNull()
+  })
+})
+
+describe('Card e Mapa da prévia', () => {
+  // Sexta, 24/10/2026, 15:00 em Brasília.
+  const agora = new Date('2026-10-24T18:00:00Z')
+  test('o dia do jogo é o do app, no relógio de Brasília', () => {
+    expect(diaDoJogo('2026-10-25T00:30:00Z', agora)).toBe('Hoje')
+    expect(diaDoJogo('2026-10-25T18:00:00Z', agora)).toBe('Amanhã')
+    expect(diaDoJogo('2026-10-23T18:00:00Z', agora)).toBe('Ontem')
+    expect(diaDoJogo('2026-10-28T18:00:00Z', agora)).toBe('qua., 28/10')
+  })
+  test('o balão da gota diz quando, ou ao vivo, ou nada sem jogo', () => {
+    expect(
+      quandoNaGota({ startsAt: '2026-10-25T00:30:00Z' }, false, agora)
+    ).toBe('HOJE 21:30')
+    expect(
+      quandoNaGota({ startsAt: '2026-10-28T18:00:00Z' }, false, agora)
+    ).toBe('QUA 15:00')
+    expect(
+      quandoNaGota({ startsAt: '2026-10-24T17:00:00Z' }, true, agora)
+    ).toBe('AO VIVO')
+    expect(quandoNaGota(null, false, agora)).toBeNull()
+  })
+  test('siglas e iniciais como o app desenha', () => {
+    expect(siglaDoTime('São Paulo')).toBe('SÃO')
+    expect(siglaDoTime('Red Bull Racing')).toBe('RED')
+    expect(iniciaisDoApp('Bar do Zé')).toBe('BD')
+    expect(iniciaisDoApp('7 Mares Bar')).toBe('MB')
   })
 })

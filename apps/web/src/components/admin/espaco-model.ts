@@ -408,3 +408,68 @@ export function abertoAte(
   const faixa = desdeHoje ? hoje : hours[(dia + 6) % 7]
   return faixa ? `aberto até ${horaCurta(faixa.closes)}` : 'aberto agora'
 }
+
+/* ─── Card e Mapa: as contas do app (`apps/mobile`), para a prévia bater ─── */
+
+const HORA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRASILIA_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+/** "21:30", no relógio de Brasília. */
+export const horaDoJogo = (startsAt: string | Date) =>
+  HORA.format(new Date(startsAt))
+
+const DIA_MS = 86_400_000
+const diaDe = (quando: number | string | Date) =>
+  new Date(quando).toLocaleDateString('pt-BR', { timeZone: BRASILIA_TIME_ZONE })
+
+/** "Hoje", "Amanhã", "Ontem" ou "sáb., 18/10": o `dayLabel` do app. */
+export function diaDoJogo(startsAt: string | Date, now: Date): string {
+  const agora = now.getTime()
+  if (diaDe(startsAt) === diaDe(agora)) return 'Hoje'
+  if (diaDe(startsAt) === diaDe(agora + DIA_MS)) return 'Amanhã'
+  if (diaDe(startsAt) === diaDe(agora - DIA_MS)) return 'Ontem'
+  return new Date(startsAt).toLocaleDateString('pt-BR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: BRASILIA_TIME_ZONE
+  })
+}
+
+/**
+ * O que o balão da gota tocada diz (21a): "AO VIVO", "HOJE 21:30",
+ * "AMANHÃ 21:30" ou "SÁB 21:30". `null` sem jogo: o balão só tem o nome.
+ */
+export function quandoNaGota(
+  jogo: { startsAt: string | Date } | null,
+  aoVivo: boolean,
+  now: Date
+): string | null {
+  if (!jogo) return null
+  if (aoVivo) return 'AO VIVO'
+  const dia = diaDoJogo(jogo.startsAt, now)
+    .split(',')[0]
+    ?.replace('.', '')
+    .toLocaleUpperCase('pt-BR')
+  return `${dia} ${horaDoJogo(jogo.startsAt)}`
+}
+
+/** "COR" para Corinthians: o escudo que o card do app desenha. */
+export const siglaDoTime = (nome: string) =>
+  nome
+    .replace(/[^\p{L}]/gu, '')
+    .slice(0, 3)
+    .toLocaleUpperCase('pt-BR')
+
+/** "BD" para Bar do Zé: as iniciais que o app põe no lugar da foto. */
+export const iniciaisDoApp = (nome: string) =>
+  nome
+    .split(/\s+/)
+    .filter((palavra) => /\p{L}/u.test(palavra[0] ?? ''))
+    .slice(0, 2)
+    .map((palavra) => palavra[0])
+    .join('')
+    .toUpperCase()
