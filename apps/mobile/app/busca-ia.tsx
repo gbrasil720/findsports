@@ -1042,6 +1042,7 @@ function TurnView({
           <CodeCard
             code={approved.going.code}
             title={approved.going.eventTitle}
+            participants={approved.going.participants}
             when={when}
             place={[approved.going.barName, approved.going.neighborhood]
               .filter(Boolean)
