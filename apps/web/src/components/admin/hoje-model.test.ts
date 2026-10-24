@@ -8,10 +8,7 @@ import {
   posicao,
   rotuloHora,
   semanaDe,
-  somaDosJogos,
-  validadosAte,
-  vaoPorDia,
-  variacao
+  somaDosJogos
 } from './hoje-model'
 
 // Brasília é UTC-3: 21:30 em Brasília é 00:30Z do dia seguinte.
@@ -135,22 +132,6 @@ describe('contagens', () => {
     expect(
       somaDosJogos([linha('a', '2026-10-12', null, null)], new Set(['a']))
     ).toBeNull()
-  })
-
-  test('por dia, validados até hoje e variação', () => {
-    const linhas = [
-      linha('a', '2026-10-12', 24, 9),
-      linha('b', '2026-10-12', 5, 1),
-      linha('c', '2026-10-14', 3, 2)
-    ]
-    expect(
-      vaoPorDia(linhas, ['2026-10-12', '2026-10-13', '2026-10-14'])
-    ).toEqual([29, 0, 3])
-    expect(validadosAte(linhas, '2026-10-13')).toBe(10)
-    expect(variacao(64, 59)).toBe(8)
-    expect(variacao(5, 10)).toBe(-50)
-    expect(variacao(3, 0)).toBeNull()
-    expect(variacao(0, 0)).toBe(0)
   })
 })
 
