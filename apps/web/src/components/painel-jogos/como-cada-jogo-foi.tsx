@@ -349,7 +349,7 @@ function CompararJogos({
   }
 
   return (
-    <Card className="comparar" aria-labelledby="comparar-titulo">
+    <Card className="comparar" role="region" aria-labelledby="comparar-titulo">
       <div className="comparar-cab">
         <h2 id="comparar-titulo">Comparar jogos</h2>
         <Badge tipo="acid">{modo === 'advanced' ? 'Elite' : 'Pro'}</Badge>
