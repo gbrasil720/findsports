@@ -14,7 +14,6 @@ export type AdminBar = RouterOutputs['pub']['getMe']
 export type AdminEvent = RouterOutputs['pub']['getMyEvents'][number]
 export type EventCreationPolicy =
   RouterOutputs['pub']['getMyEventCreationPolicy']
-export type Subscription = RouterOutputs['pub']['getMySubscription']
 export type SubscriptionPlan = DbSubscriptionPlan
 
 /* ------------------------------------------------------------------ */

@@ -8,7 +8,6 @@ export type BarIntentAction = 'directions' | 'whatsapp' | 'phone' | 'favorite'
 /** Onde o convite de instalação apareceu, e em que plataforma. */
 export type InstallSurface = 'dashboard' | 'admin'
 export type InstallPlatform = 'android' | 'ios'
-export type { PageSurface } from './page-surface'
 
 /**
  * Product analytics — only events that answer an internal usage question.
