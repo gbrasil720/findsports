@@ -4,7 +4,7 @@ import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { fanProcedure, router } from '../index'
-import { readMyGames } from '../lib/attendance'
+import { readMyGames, setAttendance } from '../lib/attendance'
 import { deleteCallsBetween, readCallNotices } from '../lib/friend-calls'
 import {
   canSeeActivity,
@@ -22,7 +22,6 @@ import {
   USERNAME_PATTERN
 } from '../lib/friends'
 import { visit } from '../lib/visits'
-import { attendanceRouter } from './attendance'
 
 /*
  * Amigos (S1 do design do app: 11a lista, 11b busca, 11c código, 11d perfil;
@@ -289,7 +288,7 @@ export const friendsRouter = router({
 
   /**
    * Resposta ao chamado de amigo, só por quem recebeu. "Vou também" marca
-   * presença pelo mesmo caminho de "Vou assistir aqui" (`attendance.set`) e
+   * presença pelo mesmo caminho de "Vou assistir aqui" (`setAttendance`) e
    * devolve o código do balcão quando o bar emite; "Agora não" só grava a
    * resposta, e quem chamou não recebe aviso.
    */
@@ -306,48 +305,44 @@ export const friendsRouter = router({
         eq(friendCall.id, input.callId),
         eq(friendCall.toUserId, me)
       )
-      // Responde só o que ainda está pendente, numa linha só: dois toques
-      // juntos não respondem duas vezes.
-      const [call] = await db
-        .update(friendCall)
-        .set({ status: input.answer, respondedAt: new Date() })
-        .where(and(mine, eq(friendCall.status, 'pending')))
-        .returning({ eventId: friendCall.eventId })
-      if (!call) {
-        const [exists] = await db
-          .select({ id: friendCall.id })
-          .from(friendCall)
-          .where(mine)
-        throw exists
-          ? new TRPCError({
-              code: 'PRECONDITION_FAILED',
-              message: 'Você já respondeu esse chamado.'
-            })
-          : new TRPCError({
-              code: 'NOT_FOUND',
-              message: 'Chamado não encontrado.'
-            })
-      }
-      if (input.answer === 'not_now')
-        return { status: input.answer, eventId: call.eventId, code: null }
-      try {
-        const marked = await attendanceRouter
-          .createCaller(ctx)
-          .set({ eventId: call.eventId, attending: true })
+      // Chamado e presença numa transação: presença recusada (jogo começou,
+      // bar saiu do ar) deixa o chamado pendente, sem "vai também" para quem
+      // chamou nem por um instante.
+      return db.transaction(async (tx) => {
+        // Responde só o que ainda está pendente, numa linha só: dois toques
+        // juntos não respondem duas vezes.
+        const [call] = await tx
+          .update(friendCall)
+          .set({ status: input.answer, respondedAt: new Date() })
+          .where(and(mine, eq(friendCall.status, 'pending')))
+          .returning({ eventId: friendCall.eventId })
+        if (!call) {
+          const [exists] = await tx
+            .select({ id: friendCall.id })
+            .from(friendCall)
+            .where(mine)
+          throw exists
+            ? new TRPCError({
+                code: 'PRECONDITION_FAILED',
+                message: 'Você já respondeu esse chamado.'
+              })
+            : new TRPCError({
+                code: 'NOT_FOUND',
+                message: 'Chamado não encontrado.'
+              })
+        }
+        if (input.answer === 'not_now')
+          return { status: input.answer, eventId: call.eventId, code: null }
+        const marked = await setAttendance(
+          { userId: me, eventId: call.eventId, attending: true },
+          tx
+        )
         return {
           status: input.answer,
           eventId: call.eventId,
           code: marked.code
         }
-      } catch (error) {
-        // Presença recusada (jogo começou, bar saiu do ar): o chamado volta a
-        // pendente, sem "vai também" para quem chamou.
-        await db
-          .update(friendCall)
-          .set({ status: 'pending', respondedAt: null })
-          .where(mine)
-        throw error
-      }
+      })
     }),
 
   /** Busca por nome ou `@` (11b): todos, amigos de amigos ou da sua cidade. */
