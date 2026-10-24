@@ -1,4 +1,8 @@
 import {
+  groupOpeningHours,
+  type OpeningHours
+} from '@findsports_oficial/api/lib/opening-hours'
+import {
   ONBOARDING_TRIAL,
   PLAN_NAMES
 } from '@findsports_oficial/api/lib/plan-limits'
@@ -38,4 +42,25 @@ export function getPubOnboardingReview({
     texto: `Revise os dados do bar. Ao continuar, salvamos o cadastro, ${oferta}${goesToPlan ? ' Em seguida você conhece os planos.' : ''}`,
     botao: 'Colocar meu bar no ar'
   }
+}
+
+const horaCurta = (hora: string) =>
+  hora.endsWith(':00') ? hora.slice(0, 2) : hora
+
+/**
+ * A linha "Horário" da Revisão (4q): "Seg a qui 17–00 · Sex e sáb 17–02 ·
+ * Dom 12–22". Agrupa como a página do bar (`groupOpeningHours`); dia fechado
+ * não aparece. `null` sem horário.
+ */
+export function resumoDoHorario(hours: OpeningHours | null): string | null {
+  if (!hours?.some(Boolean)) return null
+  return groupOpeningHours(hours)
+    .flatMap(({ days, hours: faixa }) => {
+      if (!faixa) return []
+      const [abre = '', fecha = ''] = faixa.split(' – ')
+      // Dia sozinho vem por extenso ("Domingo"); a linha usa a sigla.
+      const dias = days.includes(' ') ? days : days.slice(0, 3)
+      return `${dias} ${horaCurta(abre)}–${horaCurta(fecha)}`
+    })
+    .join(' · ')
 }
