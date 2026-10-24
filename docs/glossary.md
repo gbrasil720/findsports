@@ -196,3 +196,14 @@ Registro de que o torcedor de fato foi ao bar. Tem duas fontes declaradas e
 independentes — o bar validando o código e o torcedor respondendo depois do
 jogo. A segunda existe porque cada validação custa um brinde ao bar e só rende
 um dado que será usado para cobrar dele: não registrar é gratuito e invisível.
+
+## Título do jogo
+
+Como um jogo é nomeado em toda tela: com dois participantes, "A × B" (confronto);
+com qualquer outro número, o texto livre do bar e, em branco, o campeonato
+(`@findsports_oficial/db/game-title`).
+
+## Card do bar
+
+Um bar numa lista de busca, completado depois do cache com gasto médio,
+características, quem vai e nota pública (`toBarCards`).

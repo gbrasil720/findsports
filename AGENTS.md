@@ -171,12 +171,13 @@ cascata). `featured` é a lista curta que a tela mostra sem busca; o resto apare
 
 ### Título do jogo e card do bar
 
-O título de um jogo ("Corinthians × Palmeiras", senão o texto livre do bar, senão o
-campeonato) sai de `gameTitle` em `packages/db/src/game-title.ts`, sem imports: web, app
-e servidor (chat da IA) usam o mesmo. Leitura em SQL cru usa o irmão `gameTitle` de
-`packages/api/src/lib/game-participants.ts`; um teste de integração confere que os dois
-concordam. Tela que precisa dos times separados recebe `participants[]` (ou usa
-`participantNames`), nunca quebra o título de volta.
+O título de um jogo sai de `gameTitle` em `packages/db/src/game-title.ts`, sem imports:
+web, app e servidor (chat da IA) usam o mesmo. A regra (dono, 24/10/2026): **dois
+participantes → "A × B"; qualquer outro número (0, 1, ou 3+, como numa corrida, que não
+é confronto) → o texto livre do bar, senão o campeonato**. Leitura em SQL cru usa o irmão
+`gameTitle` de `packages/api/src/lib/game-participants.ts`; um teste de integração
+confere que os dois concordam. Tela que põe um lado de cada (escudos, ticket do código)
+usa `matchSides` (só com dois) e nunca quebra o título de volta.
 
 O card do bar nas listas (`pubs.search`, `nearbyWithoutGames`, `searchByLocation`) é
 completado depois do cache por `toBarCards` (`routers/pubs.ts`): gasto médio pela
