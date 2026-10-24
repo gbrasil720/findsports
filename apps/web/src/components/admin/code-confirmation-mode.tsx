@@ -1,12 +1,7 @@
-import { Label } from '@findsports_oficial/ui/components/label'
-import {
-  RadioGroup,
-  RadioGroupItem
-} from '@findsports_oficial/ui/components/radio-group'
 import { Link } from '@tanstack/react-router'
 import { useId } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
 import { toast } from 'sonner'
+import { Botao, IconeBotao, propsBotao } from '@/components/painel/pecas'
 import { getTeamMessage } from '@/domain/code-confirmation'
 
 type Props = {
@@ -35,7 +30,8 @@ const OPTIONS = [
 /**
  * Como o bar confere o código do torcedor (WEB-412), dentro do card da oferta
  * da casa: é o código que dá a oferta. "Na hora" é o padrão; "pela comanda" é
- * para o bar que só tem papel no balcão. Trocar grava na hora, sem botão.
+ * para o bar que só tem papel no balcão. Trocar grava na hora, sem esperar o
+ * "Salvar alterações" do espaço.
  */
 export function CodeConfirmationMode({
   later,
@@ -59,37 +55,40 @@ export function CodeConfirmationMode({
   return (
     <section
       aria-labelledby={titleId}
-      className="mt-6 border-[var(--onside-line)] border-t pt-5"
+      className="mt-5 flex flex-col gap-3 border-[var(--painel-line)] border-t pt-4"
     >
-      <h3 id={titleId} className="onside-label">
+      <h3 id={titleId} className="font-semibold text-[13px]">
         Como o código é conferido
       </h3>
-      <RadioGroup
+      <div
+        role="radiogroup"
         aria-labelledby={titleId}
-        value={later ? 'later' : 'now'}
-        onValueChange={(value) => {
-          if (!isSaving) onChange(value === 'later')
-        }}
-        className="mt-2 gap-3"
+        className="flex flex-col gap-2"
       >
         {OPTIONS.map((option) => (
-          <Label
+          <label
             key={option.value}
-            className="onside-choice-row items-start border-[1.5px] border-[var(--onside-line)] p-3 has-[[data-checked]]:border-[var(--onside-ink)]"
+            className="flex cursor-pointer flex-col items-start gap-0.5 rounded-[6px] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--painel-line2)] has-checked:shadow-[inset_0_0_0_1.5px_var(--painel-fg)] has-focus-visible:outline-2 has-focus-visible:outline-[var(--painel-acid)] has-disabled:opacity-60"
           >
-            <RadioGroupItem value={option.value} className="mt-0.5" />
-            <span className="min-w-0">
-              <span className="block font-semibold">{option.title}</span>
-              <span className="mt-0.5 block text-[var(--onside-muted)] text-xs">
-                {option.hint}
-              </span>
+            <input
+              type="radio"
+              name={titleId}
+              value={option.value}
+              checked={(option.value === 'later') === later}
+              disabled={isSaving}
+              onChange={() => onChange(option.value === 'later')}
+              className="sr-only"
+            />
+            <span className="font-bold text-[13.5px]">{option.title}</span>
+            <span className="text-[12.5px] text-[var(--painel-muted)] leading-snug">
+              {option.hint}
             </span>
-          </Label>
+          </label>
         ))}
-      </RadioGroup>
+      </div>
 
       {saveError ? (
-        <p className="onside-field-error" role="alert">
+        <p className="text-[13px] text-[var(--painel-live)]" role="alert">
           {saveError}
         </p>
       ) : null}
@@ -98,32 +97,24 @@ export function CodeConfirmationMode({
       </p>
 
       {later ? (
-        <div className="mt-4 space-y-3">
-          <p className="onside-kicker">Recado para a equipe</p>
-          <p className="whitespace-pre-line border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] p-3 text-sm [overflow-wrap:anywhere]">
+        <div className="flex flex-col gap-3">
+          <p className="font-semibold text-[13px]">Recado para a equipe</p>
+          <p className="whitespace-pre-line rounded-[6px] bg-[var(--painel-sub)] p-3 text-[13.5px] [overflow-wrap:anywhere]">
             {message}
           </p>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void copy()}
-              className="onside-btn onside-btn-ink"
-            >
+            <Botao variante="ink" altura={38} onClick={() => void copy()}>
               Copiar recado
-            </button>
-            <button
-              type="button"
-              onClick={() => printTeamSheet(message)}
-              className="onside-btn onside-btn-outline"
-            >
+            </Botao>
+            <Botao altura={38} onClick={() => printTeamSheet(message)}>
               Imprimir meia folha
-            </button>
-            <Link to="/admin/validate" className="onside-btn onside-btn-ghost">
+            </Botao>
+            <Link to="/admin/validate" {...propsBotao({ altura: 38 })}>
               Lançar códigos da comanda
-              <ArrowRight size={13} color="currentColor" aria-hidden="true" />
+              <IconeBotao nome="right" />
             </Link>
           </div>
-          <p className="text-[var(--onside-muted)] text-xs">
+          <p className="text-[12.5px] text-[var(--painel-muted)] leading-snug">
             A Onside não confere se o cliente estava no bar: o código anotado
             vale como visita, e o combinado com a equipe é seu.
           </p>
