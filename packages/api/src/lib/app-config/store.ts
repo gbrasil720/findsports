@@ -19,20 +19,16 @@ import {
  * número de flags que a requisição tocar. Aqui a tabela inteira vira um
  * registro em cache sob UMA chave, e ler a segunda flag é acesso a objeto.
  *
- * ## Por que o cache compartilhado
+ * ## Cache
  *
- * Em serverless o cache em memória é por instância: com vinte instâncias
- * quentes, desligar uma flag levaria até vinte leituras diferentes para
- * propagar. O `createSharedCache` usa Redis/KV quando existe credencial e cai
- * em memória quando não existe — o mesmo padrão dos catálogos. Cabe aqui
- * porque configuração é dado global: nada nesta tabela deriva de sessão.
+ * O registro fica no `TtlCache` em memória da instância, o mesmo dos
+ * catálogos. Cabe aqui porque configuração é dado global: nada nesta tabela
+ * deriva de sessão.
  *
  * ## Propagação
  *
- * Gravar invalida o cache de quem gravou. Com Redis, isso apaga a entrada
- * compartilhada e todas as instâncias leem o valor novo na próxima requisição.
- * Sem Redis, as demais instâncias veem o valor novo em até
- * `APP_CONFIG_TTL_MS`. Um minuto para desarmar uma flag é aceitável e é o
+ * Gravar invalida o cache de quem gravou. As demais instâncias veem o valor
+ * novo em até `APP_CONFIG_TTL_MS`. Um minuto para desarmar uma flag é aceitável e é o
  * preço de não consultar o banco a cada requisição. Quem precisar de efeito
  * imediato tem o mesmo recurso de sempre: um deploy.
  *
@@ -75,8 +71,7 @@ export type AppConfigEntrada<K extends AppConfigKey = AppConfigKey> = {
 export type AppConfigStore = {
   get<K extends AppConfigKey>(key: K): Promise<AppConfigValue<K>>
   getPublic(): Promise<AppConfigPublico>
-  /** Descarta o cache — o local e, com Redis, o compartilhado. Chamado
-   *  depois de gravar. */
+  /** Descarta o cache da instância. Chamado depois de gravar. */
   invalidate(): Promise<void>
 }
 
@@ -151,7 +146,7 @@ export function createAppConfigStore(deps: {
     },
 
     async invalidate() {
-      await deps.cache.clear()
+      deps.cache.clear()
     }
   }
 }
