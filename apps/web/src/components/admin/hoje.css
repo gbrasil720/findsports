@@ -43,6 +43,13 @@
 .painel .hoje-noite-card {
   padding: 18px 22px 14px;
 }
+/* No celular, "arraste para ver amanhã" desce para baixo do título. */
+.painel .hoje-noite-card .painel-hd {
+  flex-wrap: wrap;
+}
+.painel .hoje-noite-card .painel-hd > span {
+  white-space: normal;
+}
 .painel .hoje-noite-rolagem {
   margin-top: 10px;
   overflow-x: auto;
