@@ -11,7 +11,8 @@ import {
   ACHIEVEMENTS,
   type AchievementId,
   computeAchievements,
-  levelFor
+  levelFor,
+  type Visit
 } from './achievements'
 import { createTtlCache } from './ttl-cache'
 
@@ -21,16 +22,21 @@ import { createTtlCache } from './ttl-cache'
  * (`attendance-ticket.ts`). Com o check-in por localização (WEB-408), as
  * visitas dele entram aqui também.
  */
-async function readVisits(userId: string) {
+export async function readVisits(userId: string) {
   return db
     .select({
       // A visita é do dia do jogo, não do lançamento: o bar que confirma pela
       // comanda lança até 48 h depois (WEB-412).
       at: event.startsAt,
+      eventId: event.id,
       barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
       city: bar.city,
+      // Foto e situação do bar: o perfil do amigo (`readMonth`) usa a mesma
+      // leitura para os bares em comum.
+      photoUrl: bar.photoUrl,
+      barActive: bar.isActive,
       sportId: sport.id,
       sportName: sport.name
     })
@@ -131,13 +137,17 @@ export function sharePercent(have: number, total: number) {
   return Math.max(1, Math.round((have / total) * 100))
 }
 
-export async function readAchievements(userId: string) {
-  const [visits, reviews, shares] = await Promise.all([
-    readVisits(userId),
+/** `visits` vem pronta quando quem chama já leu as visitas (`readMonth`). */
+export async function readAchievements(
+  userId: string,
+  visits: Promise<Visit[]> = readVisits(userId)
+) {
+  const [visitRows, reviews, shares] = await Promise.all([
+    visits,
     readReviews(userId),
     shareCache.get('all', readShares)
   ])
-  const achievements = computeAchievements(visits, reviews).map((a) => ({
+  const achievements = computeAchievements(visitRows, reviews).map((a) => ({
     ...a,
     share: shares[a.id]
   }))
