@@ -1,3 +1,4 @@
+import { getCommercialDay } from '@findsports_oficial/api/lib/commercial-analytics/commercial-day'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
 import { pinDoPlano } from '@/components/app/map-icons'
@@ -136,7 +137,7 @@ export function filterDiscoveryBars({
     if (!gamesTodayOnly) return true
     const nextEvent = getNextEvent(bar)
     return nextEvent
-      ? new Date(nextEvent.startsAt).toDateString() === now.toDateString()
+      ? getCommercialDay(new Date(nextEvent.startsAt)) === getCommercialDay(now)
       : false
   })
 }

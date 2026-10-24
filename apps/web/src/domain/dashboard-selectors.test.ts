@@ -262,6 +262,20 @@ describe('dashboard display selectors', () => {
     ).toEqual(['today'])
   })
 
+  test('games-today counts the day in Brasília, not in the browser', () => {
+    // 22:30 em Brasília já é dia 14 em UTC.
+    const late = makeBar('late', '2026-08-14T01:30:00.000Z')
+    expect(
+      filterDiscoveryBars({
+        bars: [late],
+        favoriteIds: new Set(),
+        favoritesOnly: false,
+        gamesTodayOnly: true,
+        now: new Date('2026-08-13T15:00:00.000Z')
+      }).map((bar) => bar.id)
+    ).toEqual(['late'])
+  })
+
   test('applies optimistic add and remove without changing rich cache records', () => {
     const favorites = [{ barId: 'kept' }, { barId: 'removed' }]
     const resolved = resolveFavoriteIds(favorites, {
