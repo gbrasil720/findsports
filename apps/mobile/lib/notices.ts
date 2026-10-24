@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { firstName, formatTime } from './explore'
 import { matchName, type NearBar } from './search'
 
@@ -68,9 +69,6 @@ type BarGame = {
   participantFreeText: string | null
 }
 
-const barGameTitle = (game: BarGame) =>
-  game.participants.join(' × ') || game.participantFreeText || game.championship
-
 /** Uma pessoa de `friends.notices`. */
 export type FriendNotice = {
   id: string
@@ -98,7 +96,7 @@ export function callLine(call: CallNotice, now: number) {
       : day === dayKey(now + DAY)
         ? 'amanhã'
         : noticeTime(call.startsAt, now).toLocaleLowerCase('pt-BR')
-  return `${barGameTitle(call)} · ${call.barName} · ${when} ${formatTime(call.startsAt)}`
+  return `${gameTitle(call)} · ${call.barName} · ${when} ${formatTime(call.startsAt)}`
 }
 
 export type NoticeTab = 'all' | 'games' | 'friends'
@@ -233,7 +231,7 @@ export function buildNotices(
       eventId: game.eventId,
       barId: game.barId,
       barName: game.barName,
-      title: barGameTitle(game),
+      title: gameTitle(game),
       startsAt: game.startsAt
     })
   // O lembrete aparece no dia do jogo, ou só a partir de N minutos antes
@@ -252,7 +250,7 @@ export function buildNotices(
         eventId: game.eventId,
         barId: game.barId,
         barName: game.barName,
-        title: barGameTitle(game)
+        title: gameTitle(game)
       })
   return notices.sort(
     (a, b) =>

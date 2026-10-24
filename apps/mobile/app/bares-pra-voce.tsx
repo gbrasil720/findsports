@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Location from 'expo-location'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
@@ -76,7 +77,6 @@ import { authClient } from '@/lib/auth-client'
 import { env } from '@/lib/env'
 import { type Coordinates, searchCenter } from '@/lib/explore'
 import { dayKey } from '@/lib/filters'
-import { gameTitle } from '@/lib/my-games'
 import { todayGoing } from '@/lib/notices'
 import {
   isToday,

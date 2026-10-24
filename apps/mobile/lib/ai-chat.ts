@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type {
   ChatBar,
   ChatEvent,
@@ -393,7 +394,6 @@ export function fromSearchBar(
   isLive: (game: { startsAt: string; endsAt: string | null }) => boolean
 ): ChatBar {
   const game = bar.nextEvent
-  const names = game?.participants.map((p) => p.team.name) ?? []
   return {
     id: bar.id,
     name: bar.name,
@@ -406,8 +406,7 @@ export function fromSearchBar(
     game: game
       ? {
           id: game.id,
-          title:
-            names.join(' × ') || game.participantFreeText || game.championship,
+          title: gameTitle(game),
           startsAt: game.startsAt,
           live: isLive(game)
         }

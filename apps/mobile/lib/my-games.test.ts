@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test'
 import {
   calendarEvent,
   formatCode,
-  gameTitle,
   pastLabel,
   shortDate,
   thisMonth
@@ -10,17 +9,6 @@ import {
 
 test('o código sai em dois blocos', () => {
   expect(formatCode('A7K29X')).toBe('A7K·29X')
-})
-
-test('o jogo é nomeado pelos times, senão pelo texto, senão pelo campeonato', () => {
-  const base = { participantFreeText: null, championship: 'Brasileirão' }
-  expect(gameTitle({ ...base, participants: ['Grêmio', 'Inter'] })).toBe(
-    'Grêmio × Inter'
-  )
-  expect(
-    gameTitle({ ...base, participants: [], participantFreeText: 'UFC 300' })
-  ).toBe('UFC 300')
-  expect(gameTitle({ ...base, participants: [] })).toBe('Brasileirão')
 })
 
 test('validado vence; código não usado é não validado; sem código, encerrado', () => {

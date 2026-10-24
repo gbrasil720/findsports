@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 
 /*
@@ -11,19 +12,6 @@ export type MyGame = inferRouterOutputs<AppRouter>['attendance']['mine'][number]
 /** "A7K·29": o código em dois blocos, mais fácil de ditar no balcão. */
 export const formatCode = (code: string) =>
   `${code.slice(0, 3)}·${code.slice(3)}`
-
-/** "Corinthians × Palmeiras", senão o texto livre, senão o campeonato. */
-export function gameTitle(game: {
-  participants: string[]
-  participantFreeText: string | null
-  championship: string
-}) {
-  return (
-    game.participants.join(' × ') ||
-    game.participantFreeText ||
-    game.championship
-  )
-}
 
 /**
  * Como o jogo que passou terminou, como no design ("Validado"...). Sem o

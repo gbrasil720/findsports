@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
@@ -54,7 +55,7 @@ import {
   unit
 } from '@/lib/achievements'
 import { firstName, formatTime, searchCenter, teamMark } from '@/lib/explore'
-import { formatCode, gameTitle } from '@/lib/my-games'
+import { formatCode } from '@/lib/my-games'
 import {
   buildNotices,
   type CallNotice,

@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
@@ -17,12 +18,7 @@ import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { G, Path } from 'react-native-svg'
 import { Card, FilterChip } from '@/components/card'
-import {
-  matchLine,
-  type Palette,
-  Photo,
-  usePalette
-} from '@/components/explore'
+import { type Palette, Photo, usePalette } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
@@ -48,7 +44,6 @@ import {
 } from '@/components/ui'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
-import { gameTitle } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 import {
   type BarSort,
@@ -113,7 +108,7 @@ export default function YourBars() {
     hit(
       s.bar.name,
       s.bar.neighborhood,
-      ...s.bar.events.map((game) => matchLine(game))
+      ...s.bar.events.map((game) => gameTitle(game))
     )
   )
   const openBar = (barId: string) => router.push(`/bar/${barId}` as Href)
@@ -582,7 +577,7 @@ function Saved({
                       </View>
                     }
                     name={s.bar.name}
-                    line={matchLine(game)}
+                    line={gameTitle(game)}
                     saved
                     onOpen={() => onOpen(s.barId)}
                     onToggle={() => onToggle(s.barId)}

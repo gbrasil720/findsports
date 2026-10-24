@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
@@ -43,7 +44,6 @@ import { formatTime } from '@/lib/explore'
 import {
   calendarEvent,
   formatCode,
-  gameTitle,
   type MyGame,
   pastLabel,
   shortDate,
