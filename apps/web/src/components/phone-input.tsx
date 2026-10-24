@@ -77,7 +77,7 @@ export function PhoneInput({
         name={name}
         type="tel"
         inputMode="tel"
-        value={formatPhone(digits, 'BR')}
+        value={formatPhone(digits)}
         onChange={handleDigitsChange}
         placeholder={placeholder}
         autoComplete="tel-national"
