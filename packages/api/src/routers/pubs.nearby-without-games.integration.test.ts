@@ -3,6 +3,7 @@ import { inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event, sport } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
+import { resetAppConfig, setAppConfig } from '../lib/app-config'
 import { contextFor, load } from './integration-seed'
 
 /**
@@ -76,7 +77,11 @@ integrationTest(
           city: 'Teste',
           latitude: (ORIGIN.lat + b.km * KM_IN_LAT).toFixed(8),
           longitude: ORIGIN.lng.toFixed(8),
-          isActive: b.active
+          isActive: b.active,
+          // Nota acima do piso, para conferir a exibição pública.
+          ...(b.key === 'vazio-perto'
+            ? { ratingCount: 5, ratingPositive: 4 }
+            : {})
         }))
       )
       await db.insert(event).values(
@@ -105,7 +110,22 @@ integrationTest(
       ])
       expect(found[0]?.nextEvent).toBeUndefined()
       expect(found[0]?.distance_km).toBeCloseTo(0.5, 1)
+
+      // A nota pública segue a flag na hora, como na busca.
+      await setAppConfig('rating.public_display', true, null)
+      const comNota = await fan.pubs.nearbyWithoutGames({
+        ...ORIGIN,
+        radiusKm: 3
+      })
+      expect(comNota[0]?.rating?.percentage).toBe(80)
+      await setAppConfig('rating.public_display', false, null)
+      const semNota = await fan.pubs.nearbyWithoutGames({
+        ...ORIGIN,
+        radiusKm: 3
+      })
+      expect(semNota[0]?.rating).toBeNull()
     } finally {
+      await resetAppConfig('rating.public_display')
       await db.delete(user).where(
         inArray(
           user.id,
