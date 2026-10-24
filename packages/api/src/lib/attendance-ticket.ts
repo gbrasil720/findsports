@@ -20,7 +20,7 @@ import { TRPCError } from '@trpc/server'
  * `note` e os estados `pending` e `declined` atrapalharem.
  */
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 /** Colisão de código é rara (36^6); o laço só evita falhar por azar. */
 const CODE_ATTEMPTS = 5
