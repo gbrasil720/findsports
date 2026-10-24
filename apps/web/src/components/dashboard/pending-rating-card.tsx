@@ -1,3 +1,4 @@
+import type { PostGameItem } from '@findsports_oficial/api/lib/post-game'
 import {
   RATING_REASONS,
   type RatingReasonId
@@ -13,20 +14,9 @@ import { toastWithUndo } from '@/lib/undo-toast'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
-export type PendingRating = {
-  eventId: string
-  barId: string
-  barName: string
-  neighborhood: string
-  championship: string
-  participantFreeText: string | null
-  participants: string[]
-  startsAt: string
-  sport: { name: string; slug: string }
-}
-
 type Props = {
-  pending: PendingRating[]
+  /** Os itens de `postGame.pending` com "Voltaria?" aberto. */
+  pending: PostGameItem[]
   /** O jogo que vem na frente (o "Avaliar" de Meus jogos). */
   first?: string
 }
@@ -67,10 +57,10 @@ export function PendingRatingCard({ pending, first }: Props) {
 
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: trpc.ratings.getPending.queryKey()
+      queryKey: trpc.postGame.pending.queryKey()
     })
   const undo = useMutation(
-    trpc.ratings.remove.mutationOptions({
+    trpc.postGame.undo.mutationOptions({
       onSuccess: (_data, { eventId }) => {
         setFront(eventId)
         return refresh()
@@ -80,11 +70,11 @@ export function PendingRatingCard({ pending, first }: Props) {
   // Só some quando a resposta confirma. Otimismo aqui esconderia falha de
   // rede e o torcedor acharia que avaliou.
   const submit = useMutation(
-    trpc.ratings.submit.mutationOptions({
-      onSuccess: async (_data, { barId, eventId }) => {
+    trpc.postGame.answer.mutationOptions({
+      onSuccess: async (_data, { eventId }) => {
         await refresh()
         toastWithUndo('Obrigado! Sua resposta ajuda outros torcedores.', () =>
-          undo.mutateAsync({ barId, eventId })
+          undo.mutateAsync({ eventId, rating: true })
         )
       },
       onError: (err) =>
@@ -101,12 +91,7 @@ export function PendingRatingCard({ pending, first }: Props) {
   if (!item) return null
 
   const answer = (wouldReturn: boolean) =>
-    submit.mutate({
-      barId: item.barId,
-      eventId: item.eventId,
-      wouldReturn,
-      reasons
-    })
+    submit.mutate({ eventId: item.eventId, rating: { wouldReturn, reasons } })
   const toggleReason = (id: RatingReasonId) =>
     setPicked({
       eventId: item.eventId,

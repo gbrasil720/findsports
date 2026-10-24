@@ -40,19 +40,11 @@ function MyGamesPage() {
     meta: { errorToast: false }
   })
   // Jogo que ainda tem "Você foi?" ou "Voltaria?" ganha o "Avaliar".
-  const ratings = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
+  const postGame = useQuery({
+    ...trpc.postGame.pending.queryOptions(),
     meta: { errorToast: false }
   })
-  const reports = useQuery({
-    ...trpc.attendance.pendingReports.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const toRate = new Set(
-    [...(ratings.data ?? []), ...(reports.data ?? [])].map(
-      (item) => item.eventId
-    )
-  )
+  const toRate = new Set(postGame.data?.map((item) => item.eventId))
   const [announcement, setAnnouncement] = useState('')
   const games = query.data ?? []
   // O servidor manda do mais recente para o mais antigo; as próximas vão do
