@@ -289,11 +289,8 @@ for (const [status, label] of [
   })
 }
 
-// WEB-344: o plano do card não volta em "Outros planos", e a Visão geral não
-// chama de "Plano atual" a assinatura que acabou.
-test('assinatura encerrada: "Outros planos" e a Visão geral seguem o card', async ({
-  page
-}) => {
+// WEB-344: o plano do card não volta em "Outros planos".
+test('assinatura encerrada: "Outros planos" segue o card', async ({ page }) => {
   await openBilling(page, {
     subscription: {
       plan: 'starter',
@@ -310,16 +307,6 @@ test('assinatura encerrada: "Outros planos" e a Visão geral seguem o card', asy
     others.getByRole('link', { name: 'Contratar Pro' })
   ).toBeVisible()
   await expect(others.getByRole('link', { name: /Starter/ })).toHaveCount(0)
-
-  await page.goto('/admin')
-  const overview = page.locator('#admin-visao')
-  await expect(
-    overview.getByText('Assinatura encerrada', { exact: true })
-  ).toBeVisible()
-  await expect(overview).not.toContainText('Plano atual')
-  await expect(overview).toContainText(
-    'Plano: Starter • Assinatura do plano Starter encerrada'
-  )
 })
 
 test('bar sem assinatura', async ({ page }) => {

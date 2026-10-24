@@ -1,185 +1,177 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
-import { insert } from '../../fixtures/db'
-import { createPub, type Plan } from '../../fixtures/pubs'
+import { insert, query } from '../../fixtures/db'
+import { createEvent, createTicket } from '../../fixtures/going'
+import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Visão geral (analytics comerciais) por plano: Starter vê só aberturas em
-// até 30 dias; Pro ganha telefone, WhatsApp e rota em até 365 dias; Elite tem
-// todo o histórico e a atividade diária.
+// "Hoje na casa" (`/admin`): a noite, quem vai e quem chegou (lista do Elite),
+// a oferta da casa e a semana nas analytics de cada plano.
 
-/** Bar do plano com uma abertura de perfil e um clique em cada canal, hoje. */
-async function openOverview(page: Page, plan: Plan) {
-  const pub = await createPub({ subscription: { plan } })
-  const fan = await createUser()
-  const today = new Date().toLocaleDateString('sv-SE', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  for (const type of [
-    'profile_view',
-    'phone_clicked',
-    'whatsapp_opened',
-    'directions_opened'
-  ]) {
-    await insert('bar_commercial_event', {
-      id: randomUUID(),
-      bar_id: pub.barId,
-      actor_user_id: fan.id,
-      type,
-      occurred_at: new Date(),
-      commercial_day: today
-    })
-  }
+/** O dia da casa vira às 6h de Brasília, como na tela. */
+const DIA = new Date(Date.now() - 6 * 3_600_000).toLocaleDateString('sv-SE', {
+  timeZone: 'America/Sao_Paulo'
+})
+const noite = (hm: string) => new Date(`${DIA}T${hm}:00-03:00`)
+
+/** Navegador às 21h do dia da casa, qualquer que seja a hora do CI. */
+async function openHoje(page: Page, options: PubOptions = {}) {
+  const pub = await createPub(options)
+  await page.clock.setFixedTime(noite('21:00'))
   await signIn(page, pub.user)
-  await page.goto('/admin')
   return pub
 }
 
-const periods = (page: Page) =>
-  page.getByRole('region', { name: 'Período das analytics' })
-const overview = (page: Page) =>
-  page.getByRole('region', { name: 'Visão geral' })
-const LOCKED = 'Exclusivo do plano superior'
+const kpi = (page: Page, rotulo: string) =>
+  page
+    .getByRole('region', { name: 'Números de hoje' })
+    .locator('> *')
+    .filter({ hasText: rotulo })
+const semana = (page: Page) => page.getByRole('region', { name: 'Esta semana' })
 
-test('Starter: 30 dias, só aberturas', async ({ page }) => {
-  await openOverview(page, 'starter')
-
-  await expect(periods(page)).toContainText('Seu plano permite até 30 dias.')
-  await expect(
-    periods(page).getByRole('button', { name: '30 dias' })
-  ).toBeVisible()
-  for (const name of ['12 meses', 'Tudo']) {
-    await expect(periods(page).getByRole('button', { name })).toHaveCount(0)
-  }
-  await expect(overview(page)).toContainText('abriram 1 vez no total')
-  // Telefone, WhatsApp e rota: os três canais travados.
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(3)
-  await expect(overview(page)).not.toContainText('Atividade diária')
-})
-
-test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
+test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
   page
 }) => {
-  await openOverview(page, 'pro')
-
-  await expect(periods(page)).toContainText('Seu plano permite até 365 dias.')
-  await expect(
-    periods(page).getByRole('button', { name: '12 meses' })
-  ).toBeVisible()
-  await expect(periods(page).getByRole('button', { name: 'Tudo' })).toHaveCount(
-    0
+  const pub = await openHoje(page, { bar: { house_offer: 'Chopp em dobro' } })
+  const live = await createEvent(pub.barId, { startsAt: noite('20:45') })
+  const later = await createEvent(pub.barId, { startsAt: noite('22:30') })
+  // Fim longo: a lista de quem vai só traz jogo com a validação aberta, e o
+  // CI pode rodar de madrugada.
+  await query('UPDATE event SET ends_at = $2 WHERE id = $1', [
+    live.eventId,
+    noite('23:59')
+  ])
+  const arrived = await createTicket(live.eventId)
+  await createTicket(live.eventId)
+  await createTicket(later.eventId)
+  const [code] = await query<{ id: string }>(
+    'SELECT id FROM reservation_code WHERE reservation_id = $1',
+    [arrived.reservationId]
   )
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Telefone')
-  await expect(overview(page)).not.toContainText('Atividade diária')
-  // WEB-251: um torcedor com três ações é uma pessoa interessada, não 300%.
-  await expect(overview(page)).toContainText('100.0%')
-  await expect(overview(page)).not.toContainText('300.0%')
-})
-
-test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
-  await openOverview(page, 'elite')
-
-  await expect(periods(page)).toContainText(
-    'Seu plano permite todo o histórico disponível.'
-  )
-  await expect(
-    periods(page).getByRole('button', { name: 'Tudo' })
-  ).toBeVisible()
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Atividade diária')
-})
-
-// WEB-344: card de plano e Desempenho contam a mesma história quando o plano
-// gravado não vale.
-test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', async ({
-  page
-}) => {
-  const pub = await createPub({
-    subscription: {
-      plan: 'elite',
-      status: 'trialing',
-      currentPeriodEnd: new Date(Date.now() - 86_400_000)
-    }
+  await insert('reservation_code_use', {
+    id: randomUUID(),
+    code_id: code?.id,
+    used_at: noite('20:50')
   })
-  await signIn(page, pub.user)
-  await page.goto('/admin')
 
-  await expect(page.locator('#admin-visao')).toContainText('Trial encerrado')
-  await expect(overview(page)).toContainText(
-    'Plano: Starter • Trial do plano Elite encerrado'
-  )
+  await page.goto('/admin')
+  await expect(
+    page.getByRole('heading', { name: 'Hoje na casa' })
+  ).toBeVisible()
+  await expect(
+    page.getByText('2 jogos · 3 vão assistir · 1 já chegou')
+  ).toBeVisible()
+  await expect(kpi(page, 'jogos hoje')).toContainText('2')
+  await expect(kpi(page, 'vão assistir hoje')).toContainText('3')
+  await expect(kpi(page, 'códigos validados')).toContainText('1')
+
+  const jogos = page.getByRole('list', { name: 'Jogos de hoje' })
+  const aoVivo = jogos
+    .getByRole('listitem')
+    .filter({ hasText: live.championship })
+  await expect(aoVivo).toContainText('Ao vivo')
+  await expect(aoVivo).toContainText('20:45 · 2 vão · 1 chegou')
+  await expect(
+    jogos.getByRole('listitem').filter({ hasText: later.championship })
+  ).toContainText('22:30 · 1 vai · 0 chegaram')
+
+  const chegaram = page.getByRole('region', { name: 'Chegaram agora' })
+  await expect(chegaram).toContainText('1 validado')
+  await expect(chegaram.getByRole('listitem')).toHaveCount(1)
+  await expect(chegaram.getByRole('listitem')).toContainText(arrived.guestName)
+  await expect(chegaram.getByRole('listitem')).toContainText('20:50')
+  await expect(chegaram.getByRole('listitem')).toContainText('Oferta liberada')
+
+  await expect(semana(page)).toContainText('códigos validados')
+  await expect(semana(page)).toContainText('pediram rota')
+  await expect(
+    semana(page).getByRole('list', { name: 'Vão assistir por dia' })
+  ).toBeVisible()
+
+  // Desligar apaga o texto no servidor; religar na mesma visita o devolve.
+  const oferta = page.getByRole('switch', { name: 'Oferta da casa' })
+  await expect(oferta).toHaveAttribute('aria-checked', 'true')
+  await oferta.click()
+  await expect(oferta).toHaveAttribute('aria-checked', 'false')
+  await expect
+    .poll(async () => {
+      const [bar] = await query<{ house_offer: string | null }>(
+        'SELECT house_offer FROM bar WHERE id = $1',
+        [pub.barId]
+      )
+      return bar?.house_offer
+    })
+    .toBeNull()
+  await oferta.click()
+  await expect(oferta).toHaveAttribute('aria-checked', 'true')
+  await expect
+    .poll(async () => {
+      const [bar] = await query<{ house_offer: string | null }>(
+        'SELECT house_offer FROM bar WHERE id = $1',
+        [pub.barId]
+      )
+      return bar?.house_offer
+    })
+    .toBe('Chopp em dobro')
 })
 
-// WEB-357: o teste do cadastro que vence sem contratação tira o bar do ar
-// (cron diário). O dono lê que o bar não está visível, não o limite de jogos
-// do Starter, e o caminho é contratar.
-test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho para contratar', async ({
+test('Pro: sem a lista do Elite, nada de contagem de quem vai', async ({
   page
 }) => {
-  const pub = await createPub({
-    subscription: {
-      plan: 'elite',
-      status: 'trialing',
-      currentPeriodEnd: new Date(Date.now() - 86_400_000)
-    },
-    bar: { is_active: false }
+  const pub = await openHoje(page, { subscription: { plan: 'pro' } })
+  const { eventId, championship } = await createEvent(pub.barId, {
+    startsAt: noite('21:30')
   })
-  await signIn(page, pub.user)
-  // O aviso de limite depende da política: só vale conferir depois dela.
-  const policy = page.waitForResponse((response) =>
-    response.url().includes('pub.getMyEventCreationPolicy')
-  )
+  // Fora do Elite quem marca não ganha código: só a presença.
+  const fan = await createUser()
+  await insert('attendance', { user_id: fan.id, event_id: eventId })
+
   await page.goto('/admin')
-  await policy
-
-  const panel = page.locator('#admin-visao')
-  await expect(panel).toContainText('Seu bar não está visível na plataforma')
-  await expect(panel).toContainText('Trial encerrado')
-  await expect(panel).not.toContainText(/restantes?/)
+  await expect(page.getByText('1 jogo', { exact: true })).toBeVisible()
+  await expect(kpi(page, 'vão assistir hoje')).toContainText('—')
   await expect(
-    panel.getByRole('link', { name: 'Regularizar assinatura' })
-  ).toHaveCount(0)
-
-  const plans = panel.getByRole('link', { name: 'Ver planos' })
-  await expect(plans).toHaveAttribute('href', '/plan?origin=admin')
-  await plans.click()
-  await expect(
-    page.getByRole('heading', { name: 'Continue no plano Elite.' })
-  ).toBeVisible()
-  await expect(
-    page.getByText('Contrate o plano para o bar voltar às buscas e ao mapa')
-  ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Continuar com Elite' })
-  ).toBeVisible()
-})
-
-test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
-  page
-}) => {
-  const pub = await createPub({ subscription: null })
-  await signIn(page, pub.user)
-  // O aviso de limite depende da política: só vale conferir depois dela.
-  const policy = page.waitForResponse((response) =>
-    response.url().includes('pub.getMyEventCreationPolicy')
-  )
-  await page.goto('/admin')
-  await policy
-
-  const panel = page.locator('#admin-visao')
-  await expect(panel).toContainText('Sem plano')
-  await expect(
-    panel.getByRole('link', { name: 'Escolher um plano' })
+    kpi(page, 'vão assistir hoje').getByRole('link', { name: 'Elite' })
   ).toHaveAttribute('href', '/plan?origin=admin')
-  await expect(panel).not.toContainText('Plano atual')
-  // Sem assinatura o bar cai no limite do Starter, mas não lê aviso do
-  // Starter nem a contagem dele: o Starter é só o default da coluna.
-  await expect(panel).not.toContainText(/Plano Starter —|no plano Starter/)
-  await expect(panel).not.toContainText(/restantes?/)
-  // O Desempenho segue o card: não chama de Starter quem não tem plano.
-  await expect(panel).toContainText('Sem plano • Nenhuma assinatura ativa')
-  await expect(panel).not.toContainText('Plano: Starter')
+  await expect(
+    page
+      .getByRole('list', { name: 'Jogos de hoje' })
+      .getByRole('listitem')
+      .filter({ hasText: championship })
+  ).toContainText('21:30')
+  await expect(
+    page.getByRole('region', { name: 'Chegaram agora' })
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('switch', { name: 'Oferta da casa' })
+  ).toHaveCount(0)
+  await expect(semana(page)).toContainText('pediram rota')
+  await expect(semana(page)).not.toContainText('códigos validados')
+})
+
+test('Starter sem jogo hoje: noite vazia, só aberturas na semana e "Novo jogo"', async ({
+  page
+}) => {
+  const pub = await openHoje(page, { subscription: { plan: 'starter' } })
+  const fan = await createUser()
+  await insert('bar_commercial_event', {
+    id: randomUUID(),
+    bar_id: pub.barId,
+    actor_user_id: fan.id,
+    type: 'profile_view',
+    occurred_at: noite('12:00'),
+    commercial_day: DIA
+  })
+
+  await page.goto('/admin')
+  await expect(page.getByText('Nenhum jogo marcado para hoje.')).toBeVisible()
+  await expect(semana(page).getByRole('listitem').first()).toContainText(
+    '1viram o bar'
+  )
+  await expect(semana(page)).not.toContainText('pediram rota')
+  await expect(semana(page)).toContainText('salvaram')
+
+  await page.getByRole('link', { name: 'Novo jogo' }).click()
+  await expect(page).toHaveURL(/\/admin\/jogos\?novo=1$/)
 })
