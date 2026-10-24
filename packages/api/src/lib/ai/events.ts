@@ -8,6 +8,9 @@ export type ChatBar = {
   id: string
   name: string
   neighborhood: string | null
+  /** Para o "Ver no mapa" enquadrar os bares da resposta (WEB-432). */
+  latitude: number
+  longitude: number
   distanceKm: number | null
   photoUrl: string | null
   plan: string | null

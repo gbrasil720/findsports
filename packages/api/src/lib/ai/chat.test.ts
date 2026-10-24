@@ -178,6 +178,8 @@ describe('eventos da conversa (R24)', () => {
       id,
       name,
       neighborhood: 'Pinheiros',
+      latitude: '-23.5614',
+      longitude: String(-46.69 - km / 100),
       distance_km: km,
       photo_url: null,
       plan: 'pro',
@@ -302,7 +304,16 @@ describe('eventos da conversa (R24)', () => {
       ]
     })
     expect(events[6]).toMatchObject({
-      bars: [{ id: ZE.id, distanceKm: 0.8, ratingPercent: 87 }, { id: CASA.id }]
+      bars: [
+        {
+          id: ZE.id,
+          distanceKm: 0.8,
+          ratingPercent: 87,
+          latitude: -23.5614,
+          longitude: -46.698
+        },
+        { id: CASA.id, latitude: -23.5614, longitude: -46.713 }
+      ]
     })
     expect(events.at(-1)).toEqual({
       type: 'text',
