@@ -18,6 +18,7 @@ import {
   receiptCycleLabel,
   receiptStampLabel
 } from '@/lib/subscription-receipt'
+import './subscription-receipt.css'
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Ativa',
