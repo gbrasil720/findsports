@@ -6,6 +6,38 @@ import type { CSSProperties, ReactNode } from 'react'
  * cor de destaque do tema (vermelho no claro, acid no escuro).
  */
 const ICONES = {
+  // Rodada 3: avisos do painel (`alert`, `info`).
+  alert: {
+    b: (
+      <>
+        <circle cx="12" cy="12" r="9.5" />
+      </>
+    ),
+    d: (
+      <>
+        <rect x="10.8" y="6.2" width="2.4" height="8" rx="1.2" />
+        <circle cx="12" cy="17.4" r="1.5" />
+      </>
+    ),
+    a: null
+  },
+  info: {
+    b: (
+      <>
+        <circle cx="12" cy="12" r="9.5" />
+      </>
+    ),
+    d: (
+      <>
+        <rect x="10.8" y="10.2" width="2.4" height="7.6" rx="1.2" />
+      </>
+    ),
+    a: (
+      <>
+        <circle cx="12" cy="6.8" r="1.5" />
+      </>
+    )
+  },
   map: {
     b: (
       <>
