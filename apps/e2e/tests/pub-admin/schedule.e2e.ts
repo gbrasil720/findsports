@@ -297,12 +297,20 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
   await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
   await expect(dialog).toBeHidden()
 
-  // No limite: botão travado, motivo e caminho para o upgrade.
+  // No limite (1ab): botão com cadeado, o aviso e o caminho para o upgrade,
+  // e à direita o card do plano no limite com o que o Pro libera.
   await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
-  await expect(page.getByText('Limite do plano atingido.')).toBeVisible()
+  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
+  await expect(aviso).toContainText('Limite de jogos atingido até')
   await expect(
-    page.getByRole('link', { name: 'Fazer upgrade' })
-  ).toHaveAttribute('href', '/plan')
+    aviso.getByRole('link', { name: 'Fazer upgrade' })
+  ).toHaveAttribute('href', '/plan?origin=admin')
+  const plano = page.getByRole('region', { name: 'Seu plano' })
+  await expect(plano).toContainText('Limite atingido')
+  await expect(plano).toContainText('5 de 5 jogos usados')
+  await expect(page.getByRole('region', { name: 'No Pro' })).toContainText(
+    'Jogos ilimitados'
+  )
 })
 
 test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
@@ -340,13 +348,12 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   await page.reload()
   await gotoSchedule(page)
   await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
+  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
+  await expect(aviso).toContainText(
+    'Pagamento pendente — 0 de 5 jogos restantes'
+  )
   await expect(
-    page.getByText(
-      'Plano Elite com pagamento pendente: limite de jogos atingido.'
-    )
-  ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Regularizar assinatura' })
+    aviso.getByRole('link', { name: 'Regularizar assinatura' })
   ).toHaveAttribute('href', '/admin/billing')
   await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
 
@@ -371,7 +378,9 @@ for (const plan of ['pro', 'elite'] as const) {
     await gotoSchedule(page)
 
     await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeEnabled()
-    await expect(page.getByText('Limite do plano atingido.')).toHaveCount(0)
+    await expect(
+      page.getByRole('region', { name: 'Aviso do plano' })
+    ).toHaveCount(0)
   })
 }
 
@@ -383,8 +392,8 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
 
   await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
   await expect(
-    page.getByText('Ative um plano para adicionar eventos.').first()
-  ).toBeVisible()
+    page.getByRole('region', { name: 'Aviso do plano' })
+  ).toContainText('Seu bar não está visível na plataforma')
 
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
