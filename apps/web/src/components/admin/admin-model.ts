@@ -1,7 +1,3 @@
-import type {
-  AnalyticsComparisonMode,
-  EventComparisonTarget
-} from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { SubscriptionPlan as DbSubscriptionPlan } from '@findsports_oficial/db'
@@ -55,46 +51,6 @@ export type PlanState =
     }
 
 /* ------------------------------------------------------------------ */
-/* Analytics state machines                                            */
-/* ------------------------------------------------------------------ */
-
-export type AnalyticsOverviewState =
-  | { status: 'loading' }
-  | {
-      status: 'error'
-      message?: string
-      retry: () => void
-      retryable: boolean
-    }
-  | { status: 'empty' }
-  | { status: 'partial'; data: AnalyticsOverviewData }
-  | { status: 'ready'; data: AnalyticsOverviewData }
-
-export type EventAnalyticsState =
-  | { status: 'loading' }
-  | {
-      status: 'error'
-      message?: string
-      retry: () => void
-      retryable: boolean
-    }
-  | { status: 'blocked' }
-  | { status: 'empty' }
-  | {
-      status: 'ready'
-      items: EventAnalyticsRow[]
-      comparisonMode?: AnalyticsComparisonMode
-      comparisonTarget?: EventComparisonTarget
-      comparison?: EventComparisonData
-      comparisonLoading?: boolean
-      onComparisonTargetChange?: (
-        target: EventComparisonTarget | undefined
-      ) => void
-      from: string
-      to: string
-    }
-
-/* ------------------------------------------------------------------ */
 /* Formatting helpers                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -124,19 +80,6 @@ export const LOCKED_ANALYTICS_VALUE = 'Exclusivo do plano superior'
 
 export function formatAnalyticsValue(value: number | null): string {
   return value === null ? LOCKED_ANALYTICS_VALUE : value.toLocaleString('pt-BR')
-}
-
-export function sumAnalyticsActions(data: {
-  directionsOpened: number | null
-  phoneClicked: number | null
-  whatsappOpened: number | null
-}): number | null {
-  return [data.directionsOpened, data.whatsappOpened, data.phoneClicked].reduce<
-    number | null
-  >(
-    (total, value) => (total === null || value === null ? null : total + value),
-    0
-  )
 }
 
 /**

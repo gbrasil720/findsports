@@ -2,8 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   formatAnalyticsValue,
   formatInterestRate,
-  getInterestRate,
-  sumAnalyticsActions
+  getInterestRate
 } from './admin-model'
 
 describe('admin analytics display helpers', () => {
@@ -20,22 +19,5 @@ describe('admin analytics display helpers', () => {
     expect(getInterestRate(1, 4)).toBe(0.25)
     expect(getInterestRate(1, 0)).toBeNull()
     expect(formatInterestRate(0, 0)).toBe('—')
-  })
-
-  it('sums actions only when every channel is visible', () => {
-    expect(
-      sumAnalyticsActions({
-        directionsOpened: 3,
-        phoneClicked: 2,
-        whatsappOpened: 1
-      })
-    ).toBe(6)
-    expect(
-      sumAnalyticsActions({
-        directionsOpened: null,
-        phoneClicked: null,
-        whatsappOpened: null
-      })
-    ).toBeNull()
   })
 })
