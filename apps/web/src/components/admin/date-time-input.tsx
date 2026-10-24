@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Icone } from '../painel'
 
 /**
  * Data e hora com máscara `dd/mm/aaaa hh:mm` (WEB-306).
@@ -94,6 +95,11 @@ const PROBLEM_MESSAGE: Record<DateTimeProblem, string> = {
   time: 'O horário vai de 00:00 a 23:59.'
 }
 
+/** "21:30" de um valor `aaaa-mm-ddThh:mm`; `null` sem hora completa. */
+export function timeOf(datetimeLocal: string | undefined): string | null {
+  return datetimeLocal ? (datetimeLocal.split('T')[1] ?? null) : null
+}
+
 type Props = {
   label: string
   /** Texto com máscara, como está no campo — não o valor convertido. */
@@ -102,6 +108,10 @@ type Props = {
   required?: boolean
   /** Erro que só o formulário conhece (ex.: término antes do início). */
   error?: string
+  /** Linha de ajuda; o padrão explica o formato. */
+  hint?: string
+  /** Ícone de calendário à esquerda, como o "Começa" do design. */
+  icone?: boolean
 }
 
 export function DateTimeInput({
@@ -109,9 +119,12 @@ export function DateTimeInput({
   value,
   onChange,
   required,
-  error
+  error,
+  hint = `Dia, mês, ano e horário de 24 h: ${DATE_TIME_PLACEHOLDER}.`,
+  icone = false
 }: Props) {
   const ids = useId()
+  const inputId = `${ids}-input`
   const hintId = `${ids}-hint`
   const errorId = `${ids}-error`
   // "Incompleto" só vira erro ao sair do campo: antes disso é só digitação.
@@ -147,29 +160,36 @@ export function DateTimeInput({
     onChange(next)
   }
 
+  // As classes do `Campo` do painel, com o texto de ajuda e o erro próprios.
   return (
-    <div>
-      <label className="block">
-        <span className="onside-label">{label}</span>
+    <div className="painel-campo">
+      <div className="painel-campo-topo">
+        <label htmlFor={inputId}>{label}</label>
+      </div>
+      <div
+        className="painel-campo-caixa"
+        data-invalido={message ? true : undefined}
+      >
+        {icone ? <Icone nome="cal" tamanho={18} /> : null}
         <input
+          id={inputId}
           type="text"
           inputMode="numeric"
           autoComplete="off"
           value={value}
           onChange={handleChange}
           onBlur={() => setLeft(true)}
-          className="onside-input font-semibold"
           placeholder={DATE_TIME_PLACEHOLDER}
           required={required}
           aria-invalid={message ? true : undefined}
           aria-describedby={message ? `${hintId} ${errorId}` : hintId}
         />
-      </label>
-      <p id={hintId} className="mt-1 text-[10px] text-[var(--onside-muted)]">
-        Dia, mês, ano e horário de 24 h: {DATE_TIME_PLACEHOLDER}.
-      </p>
+      </div>
+      <span id={hintId} className="painel-campo-dica">
+        {hint}
+      </span>
       {message ? (
-        <p id={errorId} className="onside-field-error" role="alert">
+        <p id={errorId} className="jogos-erro" role="alert">
           {message}
         </p>
       ) : null}

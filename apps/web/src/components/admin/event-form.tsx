@@ -9,13 +9,18 @@ import {
 } from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
-import { type ReactNode, useId, useState } from 'react'
-import Check from 'reicon-react/icons/Check'
+import { useId, useState } from 'react'
 import { groupTeamsByKind, TeamGroup } from '@/components/sports/team-groups'
-import { TeamSearchField, useTeamSearch } from '@/components/sports/team-picker'
+import { useTeamSearch } from '@/components/sports/team-picker'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
-import { DateTimeInput, formatDateTime, parseDateTime } from './date-time-input'
+import { Badge, Botao, Campo, Chip, EmBreve, Icone, Toggle } from '../painel'
+import {
+  DateTimeInput,
+  formatDateTime,
+  parseDateTime,
+  timeOf
+} from './date-time-input'
 
 // Tênis entra pelo jogo de simples (um contra um); dupla vai no texto livre.
 const DIRECT_CONFRONTATION_SLUGS = new Set([
@@ -25,6 +30,19 @@ const DIRECT_CONFRONTATION_SLUGS = new Set([
   'futebol-americano',
   'tenis'
 ])
+
+/** A ordem dos esportes no design (`SPORTS`); o que não está nela vai no fim. */
+const SPORT_ORDER = [
+  'futebol',
+  'basquete',
+  'volei',
+  'formula-1',
+  'mma-ufc',
+  'tenis',
+  'futebol-americano'
+]
+const bySportOrder = (a: { slug: string }, b: { slug: string }) =>
+  (SPORT_ORDER.indexOf(a.slug) >>> 0) - (SPORT_ORDER.indexOf(b.slug) >>> 0)
 
 type EventForm = {
   sportId: string
@@ -44,64 +62,44 @@ type Props = {
   initial: EventForm
   sports: Sport[]
   onSave: (form: EventForm) => void
-  onCancel: () => void
   isSaving: boolean
   loadingSports: boolean
   /** Nomes dos times do jogo em edição: podem não estar entre os em destaque. */
   initialParticipants?: { id: string; name: string }[]
+  /** Jogo novo publica; o que já existe só salva. */
+  editing?: boolean
+  /** Para a prévia "Assim aparece no app". */
+  barName?: string
+  houseOffer?: string | null
+  /** O bar emite código para quem marca "Vou assistir aqui" (Elite). */
+  showsGoing?: boolean
   error?: string
 }
 
-/**
- * Contador e aviso de limite sob um campo de texto, como no editor da oferta
- * da casa: o campo deixa digitar além, mostra quanto passou e o SALVAR trava.
- * Cortar no `maxLength` engoliria em silêncio o fim de um texto colado.
- */
-function FieldLimit({
-  errorId,
-  subject,
-  length,
-  max,
-  children
-}: {
-  errorId: string
-  subject: string
-  length: number
-  max: number
-  /** Texto de apoio do campo, à esquerda do contador. */
-  children?: ReactNode
-}) {
+/** Contador sob o campo e o aviso de quanto passou do limite do servidor. */
+function limitError(subject: string, length: number, max: number) {
   const over = length - max
-  return (
-    <>
-      <div className="mt-1 flex items-start gap-2">
-        {children ? (
-          <p className="text-[10px] text-[var(--onside-muted)]">{children}</p>
-        ) : null}
-        <p
-          className={`ml-auto shrink-0 font-[family-name:var(--onside-mono)] text-xs tabular-nums ${over > 0 ? 'text-[var(--onside-live-text)]' : 'text-[var(--onside-muted)]'}`}
-          aria-hidden="true"
-        >
-          {length}/{max}
-        </p>
-      </div>
-      {over > 0 ? (
-        <p id={errorId} className="onside-field-error" role="alert">
-          {subject} aceita até {max} caracteres. Tire {over}.
-        </p>
-      ) : null}
-    </>
-  )
+  return over > 0
+    ? `${subject} aceita até ${max} caracteres. Tire ${over}.`
+    : null
 }
 
+/**
+ * Formulário do jogo (telas 1p/1q): esporte, campeonato, times, horário, o que
+ * o jogo tem e a prévia do app. Rascunho, lista de quem vai e oferta por jogo
+ * ainda não existem no servidor: aparecem com "em breve".
+ */
 export function EventFormComponent({
   initial,
   sports,
   onSave,
-  onCancel,
   isSaving,
   loadingSports,
   initialParticipants = [],
+  editing = false,
+  barName,
+  houseOffer = null,
+  showsGoing = false,
   error
 }: Props) {
   const trpc = useTRPC()
@@ -160,27 +158,20 @@ export function EventFormComponent({
     return name && !featuredIds.has(id) ? [{ id, name }] : []
   })
 
+  const confrontoFechado = hasLimit && form.participantIds.length >= 2
+
   const renderChip = (t: { id: string; name: string }) => {
     const selected = form.participantIds.includes(t.id)
     const maxReached = hasLimit && form.participantIds.length >= 2 && !selected
-    const disabled = maxReached || hasFreeText
     return (
-      <button
+      <Chip
         key={t.id}
-        type="button"
-        onClick={() => !disabled && toggleTeam(t)}
-        disabled={disabled}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
-          selected
-            ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-            : disabled
-              ? 'bg-[var(--onside-stone)] text-[var(--onside-muted)] cursor-not-allowed opacity-50'
-              : 'bg-[var(--onside-stone)] text-[var(--onside-ink)] hover:bg-[var(--onside-stone)]'
-        }`}
+        ativo={selected}
+        onClick={() => toggleTeam(t)}
+        disabled={maxReached || hasFreeText}
       >
-        {selected && <Check size={12} color="currentColor" />}
         {t.name}
-      </button>
+      </Chip>
     )
   }
 
@@ -206,10 +197,16 @@ export function EventFormComponent({
   const endsAtValid =
     ends.value === '' || (!!ends.value && !!starts.value && !endsBeforeStart)
   // Os mesmos números do servidor (`pub.createEvent`), contados igual.
-  const championshipTooLong =
-    form.championship.length > EVENT_CHAMPIONSHIP_MAX_LENGTH
-  const freeTextTooLong =
-    form.participantFreeText.length > EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  const championshipError = limitError(
+    'O campeonato',
+    form.championship.length,
+    EVENT_CHAMPIONSHIP_MAX_LENGTH
+  )
+  const freeTextError = limitError(
+    'O texto livre',
+    form.participantFreeText.length,
+    EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  )
   const missing = [
     !form.sportId && 'esporte',
     form.championship.trim().length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
@@ -223,257 +220,340 @@ export function EventFormComponent({
     !!starts.value &&
     !startProblem &&
     endsAtValid &&
-    !championshipTooLong &&
-    !freeTextTooLong
+    !championshipError &&
+    !freeTextError
+
+  const previewTitle =
+    matchup.length === 2
+      ? matchup.join(' × ')
+      : form.participantFreeText.trim() ||
+        form.championship.trim() ||
+        'Seu jogo'
 
   return (
-    <div className="max-h-[70dvh] space-y-4 overflow-y-auto overscroll-contain pr-1">
-      <label className="block" aria-busy={loadingSports || undefined}>
-        <span className="onside-label">Esporte *</span>
-        <select
-          value={form.sportId}
-          onChange={(e) => handleSportChange(e.target.value)}
-          disabled={loadingSports}
-          required
-          className="onside-select font-semibold"
+    <>
+      <div className="jogos-folha-corpo jogos-form">
+        <fieldset
+          className="jogos-form-grupo"
+          aria-busy={loadingSports || undefined}
         >
-          <option value="">
-            {loadingSports ? 'Carregando esportes…' : 'Selecione um esporte'}
-          </option>
-          {sports.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
+          <legend>Esporte</legend>
+          {loadingSports ? (
+            <p className="painel-muted" role="status">
+              Carregando esportes…
+            </p>
+          ) : (
+            <div className="jogos-chips">
+              {[...sports].sort(bySportOrder).map((s) => (
+                <Chip
+                  key={s.id}
+                  ativo={s.id === form.sportId}
+                  onClick={() => handleSportChange(s.id)}
+                >
+                  {s.name}
+                </Chip>
+              ))}
+            </div>
+          )}
+        </fieldset>
 
-      <div>
-        <label className="block">
-          <span className="onside-label">Campeonato *</span>
-          <input
+        <div>
+          <Campo
+            rotulo="Campeonato"
+            aside={
+              <span
+                aria-hidden="true"
+                data-erro={!!championshipError || undefined}
+              >
+                {form.championship.length}/{EVENT_CHAMPIONSHIP_MAX_LENGTH}
+              </span>
+            }
             value={form.championship}
             onChange={(e) => setForm({ ...form, championship: e.target.value })}
-            className="onside-input font-semibold"
             placeholder="Ex: Brasileirão Série A, Copa do Mundo..."
             required
-            aria-invalid={championshipTooLong || undefined}
+            aria-invalid={!!championshipError || undefined}
             aria-describedby={
-              championshipTooLong ? championshipErrorId : undefined
+              championshipError ? championshipErrorId : undefined
             }
           />
-        </label>
-        <FieldLimit
-          errorId={championshipErrorId}
-          subject="O campeonato"
-          length={form.championship.length}
-          max={EVENT_CHAMPIONSHIP_MAX_LENGTH}
-        />
+          {championshipError ? (
+            <p id={championshipErrorId} className="jogos-erro" role="alert">
+              {championshipError}
+            </p>
+          ) : null}
+        </div>
+
+        {form.sportId ? (
+          <div className="jogos-form-grupo">
+            <span className="jogos-form-rotulo">Times</span>
+            {loadingTeams ? (
+              <div className="jogos-chips" role="status" aria-busy="true">
+                <span className="sr-only">Carregando times…</span>
+                <Skeleton className="h-[34px] w-24 bg-[var(--painel-sub)]" />
+                <Skeleton className="h-[34px] w-28 bg-[var(--painel-sub)]" />
+                <Skeleton className="h-[34px] w-20 bg-[var(--painel-sub)]" />
+              </div>
+            ) : teams.length > 0 || pickedOutside.length > 0 ? (
+              <>
+                <Campo
+                  aria-label="Buscar time ou atleta"
+                  placeholder="Buscar time"
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  maxLength={60}
+                  value={search.text}
+                  onChange={(e) => search.setText(e.target.value)}
+                  inicio={
+                    <Icone
+                      nome="search"
+                      tamanho={18}
+                      acento="var(--painel-muted)"
+                      className="painel-muted"
+                    />
+                  }
+                />
+                <div className="jogos-form-times" aria-live="polite">
+                  {search.active ? (
+                    search.results.isError ? (
+                      <p role="alert">Não foi possível buscar.</p>
+                    ) : !search.results.data ? (
+                      <p className="painel-muted" role="status">
+                        Buscando…
+                      </p>
+                    ) : search.results.data.length === 0 ? (
+                      <p className="painel-muted">
+                        Nada com “{search.query}”. Use o texto livre abaixo.
+                      </p>
+                    ) : (
+                      <div className="jogos-chips">
+                        {search.results.data.map(renderChip)}
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      {pickedOutside.length > 0 ? (
+                        <div className="jogos-chips">
+                          {pickedOutside.map(renderChip)}
+                        </div>
+                      ) : null}
+                      {/* Confronto fechado: só os dois marcados, para a folha
+                          não virar um mural; desmarcar um traz a lista de volta. */}
+                      {confrontoFechado ? (
+                        <div className="jogos-chips">
+                          {teams
+                            .filter((t) => form.participantIds.includes(t.id))
+                            .map(renderChip)}
+                        </div>
+                      ) : (
+                        groupTeamsByKind(teams).map((group) => (
+                          <TeamGroup key={group.label} label={group.label}>
+                            {group.teams.map(renderChip)}
+                          </TeamGroup>
+                        ))
+                      )}
+                    </>
+                  )}
+                </div>
+                {matchup.length >= 2 ? (
+                  <div className="jogos-confronto">
+                    <b aria-live="polite">
+                      <span className="sr-only">Confronto: </span>
+                      {matchup.join(' × ')}
+                    </b>
+                    <span className="painel-muted">
+                      o primeiro é o mandante
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          participantIds: [...prev.participantIds].reverse()
+                        }))
+                      }
+                    >
+                      Inverter
+                    </button>
+                  </div>
+                ) : !hasFreeText ? (
+                  <p className="jogos-dica">
+                    {form.participantIds.length}
+                    {hasLimit ? '/2' : ''} selecionado
+                    {form.participantIds.length !== 1 ? 's' : ''}
+                    {hasLimit ? ' — máximo 2' : ''}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+
+            <Campo
+              aria-label="Times ou participantes em texto livre"
+              value={form.participantFreeText}
+              onChange={(e) => {
+                const participantFreeText = e.target.value
+                setForm((prev) => ({
+                  ...prev,
+                  participantFreeText,
+                  participantIds: participantFreeText ? [] : prev.participantIds
+                }))
+              }}
+              placeholder={
+                teams.length > 0
+                  ? 'Ou digite algo diferente... (ex: outros, classificatória)'
+                  : 'Ex: Max Verstappen, Flamengo × Palmeiras...'
+              }
+              aria-invalid={!!freeTextError || undefined}
+              aria-describedby={freeTextError ? freeTextErrorId : undefined}
+              dica={
+                <>
+                  {teams.length > 0
+                    ? hasFreeText
+                      ? 'Escreveu texto livre — chips de times desabilitados. Limpe o campo para voltar a selecioná-los.'
+                      : 'Use os chips acima para times cadastrados, ou escreva livremente.'
+                    : 'Texto livre — use para esportes sem times fixos como F1 ou UFC.'}{' '}
+                  <span
+                    aria-hidden="true"
+                    className="jogos-contador"
+                    data-erro={!!freeTextError || undefined}
+                  >
+                    {form.participantFreeText.length}/
+                    {EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH}
+                  </span>
+                </>
+              }
+            />
+            {freeTextError ? (
+              <p id={freeTextErrorId} className="jogos-erro" role="alert">
+                {freeTextError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="jogos-form-horario">
+          <DateTimeInput
+            label="Começa"
+            icone
+            value={startsText}
+            onChange={setStartsText}
+            required
+            error={
+              startProblem
+                ? EVENT_START_PROBLEM_MESSAGE[startProblem]
+                : undefined
+            }
+          />
+          <DateTimeInput
+            label="Termina"
+            hint="Opcional"
+            value={endsText}
+            onChange={setEndsText}
+            error={
+              endsBeforeStart
+                ? 'Término deve ser posterior ao início.'
+                : undefined
+            }
+          />
+        </div>
+
+        <fieldset className="jogos-form-grupo">
+          <legend>Neste jogo</legend>
+          <div className="jogos-chips">
+            {(
+              [
+                ['onBigScreen', 'Telão'],
+                ['withSound', 'Som do jogo ligado']
+              ] as const
+            ).map(([key, label]) => (
+              <Chip
+                key={key}
+                ativo={form[key]}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, [key]: !prev[key] }))
+                }
+              >
+                {label}
+              </Chip>
+            ))}
+          </div>
+          <p className="jogos-dica">
+            Vem das características do bar. Desmarque o que este jogo não tem.
+          </p>
+        </fieldset>
+
+        <div className="jogos-sub jogos-sub-lista">
+          <div className="jogos-sub-linha">
+            <div>
+              <b>
+                Lista de quem vai <EmBreve />
+              </b>
+              <span>
+                Torcedores marcam “Vou assistir aqui” e recebem um código.
+              </span>
+            </div>
+            <Toggle
+              ligado={showsGoing}
+              onChange={() => {}}
+              disabled
+              rotulo="Lista de quem vai neste jogo"
+            />
+          </div>
+          <div className="jogos-sub-linha">
+            <div>
+              <b>
+                Oferta da casa neste jogo <EmBreve />
+              </b>
+              <span>{houseOffer ?? 'Sem oferta da casa no seu espaço.'}</span>
+            </div>
+            <Toggle
+              ligado={!!houseOffer}
+              onChange={() => {}}
+              disabled
+              rotulo="Oferta da casa neste jogo"
+            />
+          </div>
+        </div>
+
+        <div className="jogos-form-grupo">
+          <span className="jogos-form-rotulo">Assim aparece no app</span>
+          <div className="jogos-previa">
+            <span className="painel-disp jogos-previa-hora">
+              {timeOf(starts.value) ?? '--:--'}
+            </span>
+            <div>
+              <b>{previewTitle}</b>
+              <span>
+                {[form.championship.trim(), barName]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </div>
+            {houseOffer ? <Badge tipo="acid">Oferta</Badge> : null}
+          </div>
+        </div>
+
+        {error ? (
+          <p className="jogos-erro" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {missing.length > 0 ? (
+          <p id={missingId} className="jogos-dica">
+            Para salvar, falta preencher: {missing.join(', ')}.
+          </p>
+        ) : null}
       </div>
 
-      <DateTimeInput
-        label="Data e horário *"
-        value={startsText}
-        onChange={setStartsText}
-        required
-        error={
-          startProblem ? EVENT_START_PROBLEM_MESSAGE[startProblem] : undefined
-        }
-      />
-
-      <DateTimeInput
-        label="Horário de término"
-        value={endsText}
-        onChange={setEndsText}
-        error={
-          endsBeforeStart ? 'Término deve ser posterior ao início.' : undefined
-        }
-      />
-
-      {form.sportId && (
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--onside-muted)] mb-2 block">
-            Times / participantes
-          </span>
-
-          {loadingTeams ? (
-            <div
-              className="flex flex-wrap gap-2 py-2"
-              role="status"
-              aria-busy="true"
-              aria-live="polite"
-            >
-              <span className="sr-only">Carregando times…</span>
-              <Skeleton className="h-9 w-24" />
-              <Skeleton className="h-9 w-28" />
-              <Skeleton className="h-9 w-20" />
-            </div>
-          ) : teams.length > 0 || pickedOutside.length > 0 ? (
-            <>
-              <div className="mb-3">
-                <TeamSearchField
-                  value={search.text}
-                  onChange={search.setText}
-                />
-              </div>
-              <div className="mb-3 space-y-3" aria-live="polite">
-                {search.active ? (
-                  search.results.isError ? (
-                    <p className="text-xs" role="alert">
-                      Não foi possível buscar.
-                    </p>
-                  ) : !search.results.data ? (
-                    <p className="text-xs opacity-70" role="status">
-                      Buscando…
-                    </p>
-                  ) : search.results.data.length === 0 ? (
-                    <p className="text-xs opacity-70">
-                      Nada com “{search.query}”. Use o texto livre abaixo.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {search.results.data.map(renderChip)}
-                    </div>
-                  )
-                ) : (
-                  <>
-                    {pickedOutside.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {pickedOutside.map(renderChip)}
-                      </div>
-                    ) : null}
-                    {groupTeamsByKind(teams).map((group) => (
-                      <TeamGroup key={group.label} label={group.label}>
-                        {group.teams.map(renderChip)}
-                      </TeamGroup>
-                    ))}
-                  </>
-                )}
-              </div>
-              {!hasFreeText && (
-                <p className="text-[10px] text-[var(--onside-muted)] mb-2">
-                  {form.participantIds.length}
-                  {hasLimit ? '/2' : ''} selecionado
-                  {form.participantIds.length !== 1 ? 's' : ''}
-                  {hasLimit ? ' — máximo 2' : ''}
-                </p>
-              )}
-              {matchup.length >= 2 && (
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-sm" aria-live="polite">
-                    Confronto: {matchup.join(' × ')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        participantIds: [...prev.participantIds].reverse()
-                      }))
-                    }
-                    className="onside-btn onside-btn-ghost"
-                  >
-                    Inverter
-                  </button>
-                  <p className="w-full text-[10px] text-[var(--onside-muted)]">
-                    O primeiro time marcado é o mandante.
-                  </p>
-                </div>
-              )}
-            </>
-          ) : null}
-
-          <input
-            value={form.participantFreeText}
-            onChange={(e) => {
-              const participantFreeText = e.target.value
-              setForm((prev) => ({
-                ...prev,
-                participantFreeText,
-                participantIds: participantFreeText ? [] : prev.participantIds
-              }))
-            }}
-            className="onside-input font-semibold"
-            aria-label="Times ou participantes em texto livre"
-            placeholder={
-              teams.length > 0
-                ? 'Ou digite algo diferente... (ex: outros, classificatória)'
-                : 'Ex: Max Verstappen, Flamengo × Palmeiras...'
-            }
-            aria-invalid={freeTextTooLong || undefined}
-            aria-describedby={freeTextTooLong ? freeTextErrorId : undefined}
-          />
-          <FieldLimit
-            errorId={freeTextErrorId}
-            subject="O texto livre"
-            length={form.participantFreeText.length}
-            max={EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH}
-          >
-            {teams.length > 0
-              ? hasFreeText
-                ? 'Escreveu texto livre — chips de times desabilitados. Limpe o campo para voltar a selecioná-los.'
-                : 'Use os chips acima para times cadastrados, ou escreva livremente.'
-              : 'Texto livre — use para esportes sem times fixos como F1 ou UFC.'}
-          </FieldLimit>
-        </div>
-      )}
-
-      <fieldset>
-        <legend className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--onside-muted)] mb-2 block">
-          Neste jogo
-        </legend>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ['onBigScreen', 'Telão'],
-              ['withSound', 'Som do jogo ligado']
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={form[key]}
-              onClick={() =>
-                setForm((prev) => ({ ...prev, [key]: !prev[key] }))
-              }
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors ${
-                form[key]
-                  ? 'bg-[var(--onside-acid)] text-[var(--onside-ink)]'
-                  : 'bg-[var(--onside-stone)] text-[var(--onside-ink)]'
-              }`}
-            >
-              {form[key] && <Check size={12} color="currentColor" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-[10px] text-[var(--onside-muted)]">
-          Vem das características do bar. Desmarque o que este jogo não tem.
-        </p>
-      </fieldset>
-
-      {error && (
-        <p className="text-xs text-[var(--onside-live-text)]" role="alert">
-          {error}
-        </p>
-      )}
-
-      {missing.length > 0 && (
-        <p id={missingId} className="text-[var(--onside-muted)] text-xs">
-          Para salvar, falta preencher: {missing.join(', ')}.
-        </p>
-      )}
-
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="onside-btn onside-btn-ghost"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
+      <div className="jogos-folha-pe">
+        {/* Rascunho não existe no modelo do jogo: em breve. */}
+        <Botao disabled title="Em breve">
+          Salvar rascunho
+        </Botao>
+        <Botao
+          variante="acid"
           onClick={() =>
             onSave({
               ...form,
@@ -483,12 +563,11 @@ export function EventFormComponent({
           }
           disabled={!canSave || isSaving}
           aria-describedby={missing.length > 0 ? missingId : undefined}
-          className="onside-btn onside-btn-acid"
         >
-          {isSaving ? 'Salvando…' : 'Salvar'}
-        </button>
+          {isSaving ? 'Salvando…' : editing ? 'Salvar' : 'Publicar jogo'}
+        </Botao>
       </div>
-    </div>
+    </>
   )
 }
 

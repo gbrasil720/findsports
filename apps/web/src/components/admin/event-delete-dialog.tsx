@@ -7,6 +7,7 @@ import {
 } from '@findsports_oficial/ui/components/dialog'
 import { useRef } from 'react'
 import { countLabel } from '@/lib/plural'
+import { Botao, propsBotao } from '../painel'
 import type { AdminEvent } from './admin-model'
 
 type Deletion = AdminEvent['deletion']
@@ -114,52 +115,43 @@ export function EventDeleteDialog({
         if (!next) onCancel()
       }}
     >
-      <DialogContent
-        initialFocus={cancelRef}
-        className="onside-dialog max-w-[calc(100vw-2rem)] p-6 sm:max-w-sm"
-      >
-        <DialogTitle className="onside-display text-2xl">
+      <DialogContent initialFocus={cancelRef} className="jogos-dialogo">
+        <DialogTitle
+          className="painel-disp"
+          style={{ ['--painel-disp-size' as string]: '28px' }}
+        >
           {block ? 'Este jogo não pode ser excluído' : 'Excluir este jogo?'}
         </DialogTitle>
-        <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
+        <DialogDescription className="mt-2">
           {block
             ? `${title}. ${block.reason}`
             : `${title} sai da sua grade e do seu perfil. Não dá para desfazer.`}
         </DialogDescription>
         {block ? (
-          <ul className="mt-3 space-y-1 text-[var(--onside-ink)] text-sm">
+          <ul className="mt-3 space-y-1">
             {block.wayOut.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
         ) : (
-          consequences && (
-            <p className="mt-3 text-[var(--onside-ink)] text-sm">
-              {consequences}
-            </p>
-          )
+          consequences && <p className="mt-3">{consequences}</p>
         )}
         {!block && error ? (
-          <p className="onside-field-error" role="alert">
+          <p className="jogos-erro mt-3" role="alert">
             {error}
           </p>
         ) : null}
         <div className="mt-6 flex flex-wrap gap-2">
           {block ? null : (
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isDeleting}
-              className="onside-btn onside-btn-danger"
-            >
+            <Botao variante="danger" onClick={onConfirm} disabled={isDeleting}>
               {isDeleting ? 'Excluindo…' : 'Excluir jogo'}
-            </button>
+            </Botao>
           )}
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="onside-btn onside-btn-outline"
+            {...propsBotao()}
           >
             {block ? 'Entendi' : 'Cancelar'}
           </button>
