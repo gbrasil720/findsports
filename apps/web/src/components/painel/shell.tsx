@@ -20,6 +20,7 @@ import {
 import { FeedbackDialog } from '@/components/app/feedback-dialog'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
+import { isLapsed } from '@/lib/lapsed-plan'
 import { getPlan } from '@/lib/plan-catalog'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
@@ -78,9 +79,19 @@ export function PainelShell({ children }: { children: ReactNode }) {
 
   const nomeBar = bar?.name ?? ''
   const dono = session?.user?.name ?? ''
-  const plano = subscription?.currentPlan
-    ? getPlan(subscription.currentPlan).name
-    : null
+  // Selo do bar (1v/1w): fora do ar é "Sem plano"; plano parado, o nome em
+  // vermelho; em dia, o plano em acid.
+  const selo =
+    bar?.isActive === false
+      ? { tipo: 'live' as const, texto: 'Sem plano' }
+      : subscription && isLapsed(subscription.standing)
+        ? { tipo: 'live' as const, texto: getPlan(subscription.plan).name }
+        : subscription?.currentPlan
+          ? {
+              tipo: 'acid' as const,
+              texto: getPlan(subscription.currentPlan).name
+            }
+          : null
 
   const nav: ItemNav[] = [
     { to: '/admin', rotulo: 'Hoje', icone: 'sun' },
@@ -136,7 +147,7 @@ export function PainelShell({ children }: { children: ReactNode }) {
               <b>{nomeBar || '…'}</b>
               {bar?.neighborhood ? <span>{bar.neighborhood}</span> : null}
             </div>
-            {plano ? <Badge tipo="acid">{plano}</Badge> : null}
+            {selo ? <Badge tipo={selo.tipo}>{selo.texto}</Badge> : null}
           </div>
 
           <nav className="painel-nav" aria-label="Painel do bar">
