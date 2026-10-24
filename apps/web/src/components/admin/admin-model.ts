@@ -6,7 +6,6 @@ import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-p
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { SubscriptionPlan as DbSubscriptionPlan } from '@findsports_oficial/db'
 import type { inferRouterOutputs } from '@trpc/server'
-import type { PubOutput } from '@/domain/pub-profile'
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
 
@@ -55,15 +54,6 @@ export type PlanState =
       standing: SubscriptionStanding | null
     }
 
-/**
- * O perfil público do próprio bar (`pubs.getById`), com as regras de plano e
- * de recebimento já resolvidas pelo servidor. É o que a prévia mostra.
- */
-export type ProfileState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; profile: PubOutput }
-
 /* ------------------------------------------------------------------ */
 /* Analytics state machines                                            */
 /* ------------------------------------------------------------------ */
@@ -103,22 +93,6 @@ export type EventAnalyticsState =
       from: string
       to: string
     }
-
-/* ------------------------------------------------------------------ */
-/* Readiness diagnostics                                               */
-/* ------------------------------------------------------------------ */
-
-export type ReadinessCheck = {
-  key: string
-  label: string
-  done: boolean
-}
-
-export type ProfileReadiness = {
-  checks: ReadinessCheck[]
-  score: number
-  total: number
-}
 
 /* ------------------------------------------------------------------ */
 /* Formatting helpers                                                  */
