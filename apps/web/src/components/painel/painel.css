@@ -1,0 +1,791 @@
+/*
+ * Painel do bar (`/admin/*`): tokens, peças e shell do design "Bar Web"
+ * (Rodada 2). Valores tirados de `w-core.js` do projeto: `L` (claro), `D`
+ * (escuro) e as sombras `sh`. O painel segue o tema do sistema
+ * (`prefers-color-scheme`); o resto do site continua só no claro.
+ *
+ * Só carrega nas rotas do painel (link no `head` de `routes/admin.tsx`), e
+ * tudo vive dentro de `.painel`: landing, Houdini e páginas públicas não veem
+ * nada daqui. As fontes são as de `styles/onside/tokens.css`
+ * (`--onside-display`, `--onside-body`, `--onside-mono`), que valem porque a
+ * raiz do painel também é `.onside-app`.
+ */
+
+.painel {
+  --painel-acid: #c9f135;
+  --painel-ink: #12120f;
+  --painel-paper: #f1eee6;
+  --painel-live-fill: #e8320c;
+
+  --painel-bg: #f1eee6;
+  --painel-fg: #12120f;
+  --painel-card: #faf8f3;
+  --painel-card2: #f1eee6;
+  --painel-line: rgb(18 18 15 / 10%);
+  --painel-line2: rgb(18 18 15 / 16%);
+  --painel-muted: #55554f;
+  --painel-body: #3a3a35;
+  /* Fundo de bloco dentro de card (`sub`) e de painel lateral (`panel`). */
+  --painel-sub: #e7e3db;
+  --painel-panel: #e7e3db;
+  /* Texto de destaque (`tint`), acento dos ícones (`acc`), "ao vivo" em texto. */
+  --painel-tint: #c92b0c;
+  --painel-acc: #e8320c;
+  --painel-live: #c92b0c;
+  --painel-field: #fff;
+  /* Superfície "ink" (faixa escura): tinta no claro, cartão no escuro. */
+  --painel-surface-ink: #12120f;
+
+  --painel-icone-base: 0.3;
+  --painel-av: #e7e3db;
+  --painel-track: rgb(18 18 15 / 10%);
+  --painel-prog-fill: #12120f;
+  --painel-badge-pub-bg: #e7e3db;
+  --painel-badge-pub-fg: #12120f;
+  --painel-badge-ink-bg: #12120f;
+  --painel-badge-ink-fg: #c9f135;
+  --painel-draft-line: rgb(18 18 15 / 35%);
+  --painel-btn-ink-bg: #12120f;
+  --painel-btn-ink-fg: #f1eee6;
+  --painel-toggle-on: #12120f;
+  --painel-toggle-knob-on: #c9f135;
+  --painel-toggle-off: #cfcbc2;
+  --painel-hover: rgb(18 18 15 / 5%);
+  --painel-nav-on-bg: #faf8f3;
+  --painel-focus-ring:
+    inset 0 0 0 1.5px #12120f, 0 0 0 3px rgb(201 241 53 / 60%);
+
+  /* Sombras: deslocamento sólido + contorno + sombra longa (`sh` do design). */
+  --painel-sh-tail:
+    inset 0 0 0 1px rgb(18 18 15 / 8%), 0 20px 34px -22px rgb(18 18 15 / 45%);
+  --painel-sh: 4px 4px 0 rgb(18 18 15 / 9%), var(--painel-sh-tail);
+  --painel-sh-hero: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
+  --painel-sh-live: 5px 5px 0 rgb(232 50 12 / 28%), var(--painel-sh-tail);
+  --painel-sh-acid: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
+  --painel-sh-ink: 5px 5px 0 #12120f, var(--painel-sh-tail);
+  /* Sombra dura do botão acid e do chip ligado. */
+  --painel-sh-btn: 3px 3px 0 #12120f;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .painel {
+    --painel-bg: #12120f;
+    --painel-fg: #f1eee6;
+    --painel-card: #1c1c18;
+    --painel-card2: #1c1c18;
+    --painel-line: rgb(241 238 230 / 10%);
+    --painel-line2: rgb(241 238 230 / 16%);
+    --painel-muted: #aaa9a4;
+    --painel-body: #d6d3cb;
+    --painel-sub: #262621;
+    --painel-panel: #0c0c0a;
+    --painel-tint: #c9f135;
+    --painel-acc: #c9f135;
+    --painel-live: #f3421d;
+    --painel-field: #22221e;
+    --painel-surface-ink: #1c1c18;
+
+    --painel-icone-base: 0.35;
+    --painel-av: #34342e;
+    --painel-track: #2c2c27;
+    --painel-badge-pub-bg: #2e2e29;
+    --painel-badge-pub-fg: #f1eee6;
+    --painel-badge-ink-bg: #f1eee6;
+    --painel-badge-ink-fg: #12120f;
+    --painel-draft-line: rgb(241 238 230 / 35%);
+    --painel-btn-ink-bg: #f1eee6;
+    --painel-btn-ink-fg: #12120f;
+    --painel-toggle-on: #c9f135;
+    --painel-toggle-knob-on: #12120f;
+    --painel-toggle-off: #3a3a34;
+    --painel-hover: rgb(241 238 230 / 6%);
+    --painel-nav-on-bg: rgb(241 238 230 / 8%);
+    --painel-focus-ring:
+      inset 0 0 0 1.5px #c9f135, 0 0 0 3px rgb(201 241 53 / 18%);
+
+    --painel-sh-tail:
+      inset 0 0 0 1px rgb(241 238 230 / 9%), 0 20px 34px -22px rgb(0 0 0 / 90%);
+    --painel-sh: 4px 4px 0 rgb(0 0 0 / 60%), var(--painel-sh-tail);
+    --painel-sh-hero: 5px 5px 0 rgb(201 241 53 / 22%), var(--painel-sh-tail);
+    --painel-sh-live: 5px 5px 0 rgb(232 50 12 / 30%), var(--painel-sh-tail);
+    --painel-sh-acid: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
+    --painel-sh-ink: var(--painel-sh);
+    --painel-sh-btn: 3px 3px 0 #000;
+
+    color-scheme: dark;
+  }
+}
+
+/* `.onside-app` pinta papel e tinta; o painel troca pelos tokens do tema. */
+.onside-app.painel {
+  background: var(--painel-bg);
+  color: var(--painel-fg);
+  font-family: var(--onside-body);
+}
+
+/* ─── Texto ─── */
+
+.painel .painel-disp {
+  font: 400 var(--painel-disp-size, 40px) / 1.04 var(--onside-display);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  word-spacing: 0.08em;
+  margin: 0;
+}
+
+.painel .painel-mono {
+  font: 600 13px / 1 var(--onside-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.painel .painel-muted {
+  color: var(--painel-muted);
+}
+
+.painel-icone {
+  display: block;
+  flex: none;
+}
+
+/* ─── Card ─── */
+
+.painel .painel-card {
+  border-radius: 7px;
+  background: var(--painel-card);
+  color: var(--painel-fg);
+  box-shadow: var(--painel-sh);
+  padding: 18px 20px;
+  min-width: 0;
+}
+.painel .painel-card[data-kind="hero"] {
+  box-shadow: var(--painel-sh-hero);
+}
+.painel .painel-card[data-kind="live"] {
+  box-shadow: var(--painel-sh-live);
+}
+.painel .painel-card[data-kind="acid"] {
+  box-shadow: var(--painel-sh-acid);
+}
+.painel .painel-card[data-kind="ink"] {
+  box-shadow: var(--painel-sh-ink);
+}
+
+/* ─── Botão ─── */
+
+.painel .painel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--painel-btn-h, 44px);
+  padding: 0 18px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--painel-fg);
+  font: 700 14px / 1 var(--onside-body);
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform var(--onside-motion-fast) var(--onside-ease-out),
+    background-color var(--onside-motion-fast) var(--onside-ease-out);
+}
+.painel .painel-btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+}
+.painel .painel-btn:disabled,
+.painel .painel-btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.painel .painel-btn[data-variante="acid"] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: var(--painel-sh-btn);
+}
+.painel .painel-btn[data-variante="ink"] {
+  background: var(--painel-btn-ink-bg);
+  color: var(--painel-btn-ink-fg);
+}
+.painel .painel-btn[data-variante="sec"] {
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+}
+.painel .painel-btn[data-variante="danger"] {
+  color: var(--painel-live);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+}
+@media (hover: hover) {
+  .painel .painel-btn[data-variante="sec"]:hover:not(:disabled),
+  .painel .painel-btn[data-variante="danger"]:hover:not(:disabled),
+  .painel .painel-icon-btn:hover:not(:disabled) {
+    background: var(--painel-hover);
+  }
+}
+
+.painel .painel-icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--painel-icon-btn, 40px);
+  height: var(--painel-icon-btn, 40px);
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--painel-fg);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+  cursor: pointer;
+}
+.painel .painel-icon-btn[data-quadrado] {
+  border-radius: 6px;
+}
+.painel .painel-icon-btn-ponto {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--painel-live-fill);
+  box-shadow: 0 0 0 2px var(--painel-bg);
+}
+
+/* ─── Badge ─── */
+
+.painel .painel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px 7px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.painel .painel-badge[data-tipo="live"] {
+  background: var(--painel-live-fill);
+  color: #fff;
+}
+.painel .painel-badge[data-tipo="pub"] {
+  background: var(--painel-badge-pub-bg);
+  color: var(--painel-badge-pub-fg);
+}
+.painel .painel-badge[data-tipo="draft"] {
+  color: var(--painel-fg);
+  box-shadow: inset 0 0 0 1px var(--painel-draft-line);
+}
+.painel .painel-badge[data-tipo="acid"] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+}
+.painel .painel-badge[data-tipo="ink"] {
+  background: var(--painel-badge-ink-bg);
+  color: var(--painel-badge-ink-fg);
+}
+.painel .painel-badge[data-tipo="muted"] {
+  color: var(--painel-muted);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+}
+
+/* ─── Chip e Seg ─── */
+
+.painel .painel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: var(--painel-chip-h, 34px);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--painel-fg);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+  font: 600 13px / 1 var(--onside-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.painel .painel-chip[aria-pressed="true"],
+.painel .painel-chip[aria-checked="true"] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: var(--painel-sh-btn);
+}
+.painel .painel-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.painel .painel-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* ─── Toggle ─── */
+
+.painel .painel-toggle {
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: 46px;
+  height: 28px;
+  padding: 3px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--painel-toggle-off);
+  cursor: pointer;
+  transition: background-color var(--onside-motion-base) var(--onside-ease-out);
+}
+.painel .painel-toggle > span {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition:
+    transform var(--onside-motion-base) var(--onside-ease-out),
+    background-color var(--onside-motion-base) var(--onside-ease-out);
+}
+.painel .painel-toggle[aria-checked="true"] {
+  background: var(--painel-toggle-on);
+}
+.painel .painel-toggle[aria-checked="true"] > span {
+  transform: translateX(18px);
+  background: var(--painel-toggle-knob-on);
+}
+.painel .painel-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Campo ─── */
+
+.painel .painel-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.painel .painel-campo-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.painel .painel-campo-topo > :last-child:not(:first-child),
+.painel .painel-campo-dica {
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--painel-muted);
+}
+.painel .painel-campo-caixa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--painel-campo-h, 46px);
+  padding: 0 14px;
+  border-radius: 5px;
+  background: var(--painel-field);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+  font-size: 15px;
+  color: var(--painel-muted);
+}
+.painel .painel-campo-caixa[data-area] {
+  align-items: flex-start;
+  padding: 12px 14px;
+}
+.painel .painel-campo-caixa:focus-within {
+  box-shadow: var(--painel-focus-ring);
+}
+.painel .painel-campo-caixa :is(input, textarea, select) {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--painel-fg);
+  font: inherit;
+  line-height: 1.45;
+}
+.painel .painel-campo-caixa textarea {
+  resize: vertical;
+}
+.painel .painel-campo-caixa :is(input, textarea)::placeholder {
+  color: var(--painel-muted);
+}
+/* A caixa mostra o foco; o contorno do controle sobraria por dentro dela. */
+.painel .painel-campo-caixa :is(input, textarea, select):focus-visible {
+  outline: none;
+}
+
+/* ─── Avatar de iniciais ─── */
+
+.painel .painel-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--painel-avatar, 32px);
+  height: var(--painel-avatar, 32px);
+  border-radius: 6px;
+  background: var(--painel-av);
+  color: var(--painel-fg);
+  font-size: calc(var(--painel-avatar, 32px) * 0.36);
+  font-weight: 700;
+  line-height: 1;
+}
+.painel .painel-avatar[data-ativo] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+}
+
+/* ─── Barra de progresso ─── */
+
+.painel .painel-prog {
+  height: var(--painel-prog-h, 6px);
+  border-radius: calc(var(--painel-prog-h, 6px) / 2);
+  background: var(--painel-track);
+  overflow: hidden;
+}
+.painel .painel-prog > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--painel-prog-fill);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-prog > span {
+    background: var(--painel-prog-cor, var(--painel-acid));
+  }
+  .painel .painel-kpi-valor[data-destaque] {
+    color: var(--painel-acid);
+  }
+}
+
+/* ─── KPI ─── */
+
+.painel .painel-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+}
+.painel .painel-kpi-valor {
+  font: 400 var(--painel-kpi-size, 42px) / 1 var(--onside-display);
+}
+.painel .painel-kpi-rotulo {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--painel-muted);
+}
+
+/* ─── Cabeçalhos ─── */
+
+.painel .painel-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+.painel .painel-page-head-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.painel .painel-page-head-kicker,
+.painel .painel-page-head-linha {
+  margin: 0;
+  font-size: 14px;
+  color: var(--painel-muted);
+}
+.painel .painel-page-head-linha {
+  font-size: 15px;
+}
+.painel .painel-page-head-linha b {
+  color: var(--painel-fg);
+}
+.painel .painel-page-head-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.painel .painel-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.painel .painel-hd > :first-child {
+  margin: 0;
+  font-size: var(--painel-hd-size, 16px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.painel .painel-hd > :last-child:not(:first-child) {
+  font-size: 13px;
+  color: var(--painel-muted);
+  white-space: nowrap;
+}
+
+/* ─── Conteúdo antigo dentro do shell novo ───
+ * As telas de antes só têm o tema claro. Enquanto não são refeitas, ficam
+ * numa folha clara, para não sair tinta sobre tinta no escuro. */
+@media (prefers-color-scheme: dark) {
+  .painel .painel-legado {
+    padding: 20px;
+    border-radius: 8px;
+    background: var(--onside-paper);
+    color: var(--onside-ink);
+    color-scheme: light;
+  }
+}
+
+/* ─── Shell: barra lateral + conteúdo ─── */
+
+.painel {
+  display: flex;
+  min-height: 100dvh;
+}
+
+.painel .painel-lateral {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 22px;
+  width: 252px;
+  height: 100dvh;
+  padding: 22px 16px;
+  overflow-y: auto;
+  background: var(--painel-bg);
+  border-right: 1px solid var(--painel-line);
+}
+
+.painel .painel-logo {
+  display: flex;
+  padding: 0 8px;
+}
+.painel .painel-logo img {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+.painel .painel-logo .painel-logo-icone {
+  display: none;
+  width: 34px;
+  height: 34px;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-logo img {
+    filter: invert(1) brightness(1.05);
+  }
+}
+
+.painel .painel-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh);
+}
+.painel .painel-bar-texto {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+.painel .painel-bar-texto b {
+  display: block;
+  font-size: 15px;
+}
+.painel .painel-bar-texto span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel :is(.painel-bar-texto, .painel-dono-texto) :is(b, span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.painel .painel-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.painel .painel-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: var(--painel-muted);
+  text-decoration: none;
+  --painel-acc-nav: var(--painel-muted);
+}
+.painel .painel-nav a > span:first-of-type {
+  flex: 1;
+  font-size: 14.5px;
+  font-weight: 500;
+}
+.painel .painel-nav-n {
+  font: 600 11.5px / 1 var(--onside-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--painel-muted);
+}
+@media (hover: hover) {
+  .painel .painel-nav a:hover {
+    color: var(--painel-fg);
+  }
+}
+.painel .painel-nav a[aria-current="page"] {
+  background: var(--painel-nav-on-bg);
+  box-shadow: var(--painel-sh);
+  color: var(--painel-fg);
+  --painel-acc-nav: var(--painel-acc);
+}
+.painel .painel-nav a[aria-current="page"] > span:first-of-type {
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-nav a[aria-current="page"] {
+    box-shadow: inset 0 0 0 1px rgb(241 238 230 / 10%);
+  }
+}
+
+.painel .painel-lateral-pe {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: auto;
+}
+.painel .painel-lateral-pe > .painel-btn {
+  width: 100%;
+  --painel-btn-h: 48px;
+}
+
+.painel .painel-dono {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 6px 0;
+  border: 0;
+  border-top: 1px solid var(--painel-line);
+  background: transparent;
+  color: var(--painel-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.painel .painel-dono-texto {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+.painel .painel-dono-texto b {
+  display: block;
+  font-size: 13.5px;
+}
+.painel .painel-dono-texto span {
+  display: block;
+  font-size: 12px;
+  color: var(--painel-muted);
+}
+
+.painel .painel-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  padding: 32px 36px 44px;
+}
+
+/* Trilho de ícones (tablet, tela 1l): até 1180 px. */
+@media (max-width: 1180px) {
+  .painel .painel-lateral {
+    width: 76px;
+    padding: 20px 12px;
+    align-items: center;
+  }
+  .painel .painel-logo {
+    padding: 0;
+  }
+  .painel .painel-logo .painel-logo-marca {
+    display: none;
+  }
+  .painel .painel-logo .painel-logo-icone {
+    display: block;
+  }
+  .painel .painel-bar {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .painel .painel-nav a {
+    justify-content: center;
+    width: 52px;
+    padding: 0;
+  }
+  .painel .painel-lateral-pe {
+    align-items: center;
+  }
+  .painel .painel-lateral-pe > .painel-btn {
+    width: 48px;
+    padding: 0;
+  }
+  .painel .painel-dono {
+    justify-content: center;
+    padding: 0;
+    border-top: 0;
+  }
+  .painel :is(.painel-bar, .painel-dono) > :not(.painel-avatar),
+  .painel .painel-nav a > :not(.painel-icone),
+  .painel .painel-lateral-pe > .painel-btn > :not(.painel-icone) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .painel .painel-main {
+    gap: 18px;
+    padding: 24px 26px;
+  }
+}
+
+/* Celular: o design não tem; o trilho encolhe e o conteúdo ganha a largura. */
+@media (max-width: 640px) {
+  .painel .painel-lateral {
+    width: 60px;
+    padding: 16px 6px;
+  }
+  .painel .painel-nav a {
+    width: 44px;
+  }
+  .painel .painel-lateral-pe > .painel-btn {
+    width: 44px;
+    --painel-btn-h: 44px;
+  }
+  .painel .painel-main {
+    padding: 20px 16px 32px;
+  }
+}
