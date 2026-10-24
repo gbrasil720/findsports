@@ -492,14 +492,17 @@ export const friendsRouter = router({
           code: 'NOT_FOUND',
           message: 'Pessoa não encontrada.'
         })
-      const row = await readFriendship(me, person.id)
+      const [row, mutual] = await Promise.all([
+        readFriendship(me, person.id),
+        mutualCounts(me, [person.id])
+      ])
       const relation = relationOf(me, person.id, row)
       const { activityVisibility, ...shown } = person
       const base = {
         ...shown,
         relation,
         friendsSince: row?.acceptedAt?.toISOString() ?? null,
-        mutual: (await mutualCounts(me, [person.id])).get(person.id) ?? 0
+        mutual: mutual.get(person.id) ?? 0
       }
       if (!canSeeActivity(activityVisibility, relation))
         return {
