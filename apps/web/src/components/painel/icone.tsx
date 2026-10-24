@@ -353,6 +353,20 @@ const ICONES = {
     ),
     a: null
   },
+  // O "som do jogo" do card do app (`sound` em `apps/mobile/components/ui.tsx`).
+  sound: {
+    b: (
+      <path
+        d="M16 7.5a6 6 0 0 1 0 9M18.6 4.8a10 10 0 0 1 0 14.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    ),
+    d: <path d="M3 9h4l5-4.5v15L7 15H3z" />,
+    a: null
+  },
   star: {
     b: null,
     d: (
