@@ -304,36 +304,41 @@ async function lerCartoes(ids: string[]) {
   )
 }
 
-async function comGastoMedio<T extends { id: string }>(bars: T[]) {
-  const cartoes = await lerCartoes(bars.map((achado) => achado.id))
-  return bars.map((achado) => ({
-    ...achado,
-    averageSpendCents: cartoes.get(achado.id)?.averageSpendCents ?? null
-  }))
-}
-
 /**
- * O card do bar no app (07 do design): além do gasto médio, as
- * características declaradas e quantos marcaram presença no próximo jogo.
- * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
- * segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele sai `null`,
- * e jogo vazio não vira número na tela; junto vão as iniciais de quem vai.
+ * O card do bar (07 do design), completado depois do cache: o que muda sem
+ * esperar o TTL. Gasto médio e características (`lerCartoes`), quantos
+ * marcaram presença no próximo jogo e, nas linhas que têm nota, a exibição
+ * pública dela (`rating.public_display`).
+ *
+ * A contagem segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele
+ * sai `null`, e jogo vazio não vira número na tela; junto vão as iniciais de
+ * quem vai. A nota sai depois do cache, e não dentro dele: desligar a
+ * exibição costuma ser a reação a um problema, e uma página guardada
+ * continuaria mostrando a nota por até um TTL.
  */
-async function comCartao<
-  T extends { id: string; nextEvent?: { id: string } | undefined }
+async function toBarCards<
+  T extends {
+    id: string
+    nextEvent?: { id: string } | undefined
+    /** Só as linhas que têm nota: a de `searchByLocation` não tem. */
+    rating?: object | null
+  }
 >(bars: T[]) {
   const eventIds = bars.flatMap((achado) =>
     achado.nextEvent ? [achado.nextEvent.id] : []
   )
-  const [cartoes, vao] = await Promise.all([
+  const [cartoes, vao, notaPublica] = await Promise.all([
     lerCartoes(bars.map((achado) => achado.id)),
-    readGoing(eventIds)
+    readGoing(eventIds),
+    getAppConfig('rating.public_display')
   ])
   return bars.map((achado) => {
     const cartao = cartoes.get(achado.id)
     const going = achado.nextEvent ? vao.get(achado.nextEvent.id) : undefined
+    const nota =
+      'rating' in achado && !notaPublica ? { ...achado, rating: null } : achado
     return {
-      ...achado,
+      ...(nota as T),
       averageSpendCents: cartao?.averageSpendCents ?? null,
       amenities: cartao?.amenities ?? [],
       goingCount: going?.count ?? null,
@@ -436,19 +441,8 @@ export const pubsRouter = router({
         () => executar(normalizado)
       )
 
-      // A nota é retirada DEPOIS do cache, não dentro dele: a flag pode virar
-      // a qualquer momento e o cache tem TTL próprio. Filtrar antes deixaria
-      // páginas já guardadas continuarem entregando nota por até um TTL
-      // depois de a exibição ser desligada — e desligar exibição costuma ser
-      // a reação a um problema, ou seja, exatamente a hora em que a demora
-      // não é aceitável.
-      const bars = await comCartao(pagina.bars)
-      return {
-        ...pagina,
-        bars: notaPublica
-          ? bars
-          : bars.map((achado) => ({ ...achado, rating: null }))
-      }
+      // Gasto, presença e a nota pública saem DEPOIS do cache (`toBarCards`).
+      return { ...pagina, bars: await toBarCards(pagina.bars) }
     }),
 
   /**
@@ -876,7 +870,7 @@ export const pubsRouter = router({
       const pagina = await cacheLocal.get(chaveBuscaLocal(input), () =>
         executarBuscaLocal(input)
       )
-      return { ...pagina, bars: await comGastoMedio(pagina.bars) }
+      return { ...pagina, bars: await toBarCards(pagina.bars) }
     }),
 
   /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
@@ -965,11 +959,7 @@ export const pubsRouter = router({
         result.rows as LinhaBusca[],
         Number.POSITIVE_INFINITY
       )
-      const notaPublica = await getAppConfig('rating.public_display')
-      const completos = await comCartao(bars)
-      return notaPublica
-        ? completos
-        : completos.map((achado) => ({ ...achado, rating: null }))
+      return toBarCards(bars)
     }),
 
   /**
