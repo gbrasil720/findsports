@@ -27,7 +27,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { pubProcedure, router } from '../index'
 import {
-  AMENITIES,
+  MAX_AMENITY_IDS,
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
@@ -356,7 +356,7 @@ export const pubRouter = router({
         // das características. Array vazio desmarca tudo, e `undefined` não
         // toca no que já está gravado — a foto e a descrição seguem a mesma
         // convenção nesta mutation.
-        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_IDS).optional(),
         screenCount: z
           .number()
           .int()

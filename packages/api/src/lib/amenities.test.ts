@@ -4,6 +4,8 @@ import {
   AMENITIES,
   AMENITY_GROUPS,
   amenitiesByGroup,
+  findAmenity,
+  HIDDEN_AMENITY_IDS,
   MAX_SCREEN_COUNT,
   motivoTelasInvalido,
   normalizeAmenityIds,
@@ -17,6 +19,25 @@ describe('vocabulário de características', () => {
 
     expect(new Set(ids).size).toBe(ids.length)
     expect(new Set(slugs).size).toBe(slugs.length)
+  })
+
+  it('id escondido não volta para a lista', () => {
+    for (const id of HIDDEN_AMENITY_IDS) {
+      expect(AMENITIES.some((amenity) => amenity.id === id)).toBe(false)
+    }
+  })
+
+  it('segue os grupos do design (2c)', () => {
+    expect(AMENITY_GROUPS.map((group) => group.label)).toEqual([
+      'Para ver o jogo',
+      'O espaço',
+      'Comida e bebida',
+      'Pagamento',
+      'Para chegar'
+    ])
+    expect(
+      AMENITIES.filter((a) => a.group === 'payment').map((a) => a.label)
+    ).toEqual(['Pix', 'Cartão', 'Vale-refeição', 'Couvert'])
   })
 
   it('só usa grupos que existem', () => {
@@ -44,6 +65,11 @@ describe('normalizeAmenityIds', () => {
     expect(normalizeAmenityIds([1, 9999])).toEqual([1])
     expect(normalizeAmenityIds([9999])).toEqual([])
   })
+
+  it('mantém "Pix e cartão" (14): escondido, não apagado (WEB-455)', () => {
+    expect(normalizeAmenityIds([17, 14, 16])).toEqual([14, 16, 17])
+    expect(writableAmenityIds([14, 16])).toEqual([14, 16])
+  })
 })
 
 describe('amenitiesByGroup', () => {
@@ -59,8 +85,10 @@ describe('amenitiesByGroup', () => {
     expect(amenitiesByGroup([])).toEqual([])
   })
 
-  it('ignora id desconhecido', () => {
+  it('ignora id desconhecido e escondido', () => {
     expect(amenitiesByGroup([9999])).toEqual([])
+    expect(amenitiesByGroup([14])).toEqual([])
+    expect(findAmenity(14)).toBeUndefined()
   })
 
   it('mantém a ordem do vocabulário dentro do grupo', () => {
