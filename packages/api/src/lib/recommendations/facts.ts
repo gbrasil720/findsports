@@ -3,6 +3,7 @@ import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
 
 import { getAppConfig } from '../app-config/db-source'
 import { hasPublicRating, ratingPercentage } from '../rating'
+import { visit } from '../visits'
 import {
   DAY_MS,
   jaccard,
@@ -116,7 +117,7 @@ export async function loadRecommendationFacts(input: {
       JOIN bar b ON b.id = ids.id
     `),
     // A assinatura do ranking (favoritos, "voltaria" e intenção forte), com
-    // as visitas validadas no balcão: é o "onde você foi 4 vezes".
+    // as visitas (`visits.ts`): é o "onde você foi 4 vezes".
     db.execute(sql`
       WITH positive AS (
         SELECT ufb.bar_id AS id FROM user_favorite_bars ufb
@@ -137,14 +138,8 @@ export async function loadRecommendationFacts(input: {
         b.name,
         b.amenities,
         (
-          SELECT COUNT(DISTINCT e.id)
-          FROM reservation_code_use u
-          JOIN reservation_code c ON c.id = u.code_id
-          JOIN reservation r ON r.id = c.reservation_id
-          JOIN event e ON e.id = r.event_id
-          WHERE r.user_id = ${input.userId}
-            AND e.bar_id = b.id
-            AND u.undone_at IS NULL
+          SELECT COUNT(*) FROM ${visit}
+          WHERE ${visit.userId} = ${input.userId} AND ${visit.barId} = b.id
         )::int AS visits
       FROM positive
       JOIN bar b ON b.id = positive.id
