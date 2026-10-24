@@ -175,12 +175,7 @@ export function BarPreview({
           {previewBar ? (
             <BarCard
               bar={previewBar}
-              isHovered={false}
               isFavorite={false}
-              onMouseEnter={() => {}}
-              onMouseLeave={() => {}}
-              onFocus={() => {}}
-              onBlur={() => {}}
               onFavorite={() => {}}
             />
           ) : eventsState.status === 'error' ? (

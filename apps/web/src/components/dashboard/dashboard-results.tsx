@@ -1,14 +1,16 @@
 import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
+import { useState } from 'react'
 import Basketball from 'reicon-react/icons/Basketball'
 import ChevronRight from 'reicon-react/icons/ChevronRight'
 import Football from 'reicon-react/icons/Football'
 import Location from 'reicon-react/icons/Location'
 import Store from 'reicon-react/icons/Store'
-import { type MapBar, OnsideMap } from '@/components/app/onside-map'
-import type {
-  DiscoveryBar,
-  DiscoveryResultState
+import { OnsideMap } from '@/components/app/onside-map'
+import {
+  type DiscoveryBar,
+  type DiscoveryResultState,
+  toMapBars
 } from '@/domain/dashboard-selectors'
 import {
   type Coordinates,
@@ -25,18 +27,15 @@ export type SuggestionKind = 'brasileirao' | 'nba' | 'region'
 type Props = {
   resultState: DiscoveryResultState
   bars: DiscoveryBar[]
-  mapBars: MapBar[]
   radiusKm: RadiusKm
   hasActiveFilters: boolean
   locationState: LocationState
   coords: Coordinates | null
   /** A cidade que o torcedor informou; sem ela a busca cai em São Paulo. */
   profileCity: SearchCity | null
-  hoveredId: string | null
   favoriteIds: ReadonlySet<string>
   favoritePending: boolean
   classicPlacementGuaranteed: boolean
-  onHover: (barId: string | null) => void
   onFavorite: (barId: string) => void
   onRequestLocation: () => void
   onRadiusChange: (radiusKm: RadiusKm) => void
@@ -207,7 +206,12 @@ function ResultsSkeleton() {
   )
 }
 
-function ResultContent(props: Props) {
+type HoverProps = {
+  hoveredId: string | null
+  onHover: (barId: string | null) => void
+}
+
+function ResultContent(props: Props & HoverProps) {
   const { resultState } = props
 
   if (resultState.status === 'loading') {
@@ -255,10 +259,7 @@ function ResultContent(props: Props) {
       isFavorite={props.favoriteIds.has(bar.id)}
       favoritePending={props.favoritePending}
       classicPlacementGuaranteed={props.classicPlacementGuaranteed}
-      onMouseEnter={() => props.onHover(bar.id)}
-      onMouseLeave={() => props.onHover(null)}
-      onFocus={() => props.onHover(bar.id)}
-      onBlur={() => props.onHover(null)}
+      onHover={props.onHover}
       onFavorite={props.onFavorite}
     />
   ))
@@ -268,15 +269,18 @@ export function DashboardResults(props: Props) {
   const {
     resultState,
     bars,
-    mapBars,
     coords,
     profileCity,
     locationState,
     radiusKm,
-    hoveredId,
-    onHover,
     onSelectMapBar
   } = props
+  // O destaque do hover mora aqui, e não na rota: trocar de card renderiza
+  // a lista e o mapa, não a página com os filtros.
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  // Calculado a cada render daqui, e não na rota: o pino passa a "ao vivo"
+  // pela hora do render, e o hover (que não renderiza mais a rota) redesenha.
+  const mapBars = toMapBars(bars)
   const loading = resultState.status === 'loading'
   const locationError =
     locationState === 'denied' || locationState === 'unavailable'
@@ -299,7 +303,11 @@ export function DashboardResults(props: Props) {
             </p>
           ) : null}
           <div className="space-y-3">
-            <ResultContent {...props} />
+            <ResultContent
+              {...props}
+              hoveredId={hoveredId}
+              onHover={setHoveredId}
+            />
           </div>
         </section>
 
@@ -316,7 +324,7 @@ export function DashboardResults(props: Props) {
             showUserLocation={Boolean(coords) && !locationError}
             radiusKm={radiusKm}
             hoveredId={hoveredId}
-            onHover={onHover}
+            onHover={setHoveredId}
             onSelect={onSelectMapBar}
           />
           <div className="onside-map-label pointer-events-none">

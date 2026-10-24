@@ -22,8 +22,7 @@ import {
   type FavoriteOverrides,
   filterDiscoveryBars,
   resolveFavoriteIds,
-  type SportsState,
-  toMapBars
+  type SportsState
 } from '@/domain/dashboard-selectors'
 import {
   type LocationState,
@@ -126,7 +125,6 @@ function FanDashboard() {
   const [amenities, setAmenities] = useState<number[]>([])
   const [teamIds, setTeamIds] = useState<string[]>([])
   const [sort, setSort] = useState<SearchSort>('relevance')
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [gamesTodayOnly, setGamesTodayOnly] = useState(false)
   const [favoriteOverrides, setFavoriteOverrides] = useState<FavoriteOverrides>(
@@ -354,7 +352,6 @@ function FanDashboard() {
       }),
     [resultBars, favoriteIds, favoritesOnly, gamesTodayOnly]
   )
-  const mapBars = toMapBars(displayedBars)
   // Só torcedor registra evento comercial (WEB-311): com admin personificando
   // o servidor recusaria com 403, então exposição e clique nem são enviados.
   const classicPlacementGuaranteed =
@@ -679,13 +676,11 @@ function FanDashboard() {
       <DashboardResults
         resultState={resultState}
         bars={displayedBars}
-        mapBars={mapBars}
         radiusKm={radiusKm}
         hasActiveFilters={activeFilters.length > 0}
         locationState={locationState}
         coords={coords}
         profileCity={profileCity}
-        hoveredId={hoveredId}
         favoriteIds={favoriteIds}
         favoritePending={
           favoritesQuery.isLoading ||
@@ -693,7 +688,6 @@ function FanDashboard() {
           unfavoriteMutation.isPending
         }
         classicPlacementGuaranteed={classicPlacementGuaranteed}
-        onHover={setHoveredId}
         onFavorite={toggleFavorite}
         onRequestLocation={() => requestLocation(true)}
         onRadiusChange={handleRadiusChange}
