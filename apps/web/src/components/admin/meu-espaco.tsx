@@ -275,7 +275,7 @@ export function MeuEspaco() {
     )
     switch (item.key) {
       case 'jogo':
-        return botao('Adicionar', () => void navigate({ to: '/admin/jogos' }))
+        return botao('Adicionar', () => void navigate({ to: '/admin/jogos', search: { novo: 1 } }))
       case 'foto':
         return botao('Adicionar', foto.escolher)
       case 'caracteristicas':
