@@ -1,5 +1,4 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { QueryClient } from '@tanstack/react-query'
 import {
   createTRPCClient,
   httpBatchLink,
@@ -10,8 +9,9 @@ import { createTRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { fetch as streamFetch } from 'expo/fetch'
 import { authClient } from './auth-client'
 import { env } from './env'
+import { queryClient } from './query-client'
 
-export const queryClient = new QueryClient()
+export { queryClient }
 
 // Só o TIPO do router atravessa a fronteira (`import type`): nenhum código de
 // servidor entra no bundle do app.
