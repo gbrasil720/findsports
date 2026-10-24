@@ -309,13 +309,3 @@ export function roundSummary(round: Round, now: number) {
       : listWords(parts)
   return `${capital(joined)}. As próximas sugestões já levam isso em conta.`
 }
-
-/** "Bar Original · quando passar futebol" / "· em jogo do Corinthians". */
-export function alertLine(
-  barName: string,
-  alert: { sport?: string; team?: string }
-) {
-  return alert.team
-    ? `${barName} · em jogo do ${alert.team}`
-    : `${barName} · quando passar ${sportWord(alert.sport ?? '')}`
-}
