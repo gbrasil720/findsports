@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { type ReactNode, useId, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
+import { AvisoVisual } from '@/components/admin/avisos'
 import {
   CancelPlanDialog,
   type PerdaCancelamento
@@ -183,20 +184,26 @@ function BillingPage() {
   const canCancel = canCancelSubscription(subscription)
   // Renovação só de quem segue pagando: plano parado, encerrado ou com
   // cancelamento marcado não renova.
-  const renewal =
-    subscription?.currentPeriodEnd && !lapsed && !ended && !cancelNotice
+  // Pagamento pendente (3s/3t): aviso no topo, e o card diz que a cobrança
+  // não foi confirmada. O Stripe não nos dá a data da cobrança recusada.
+  const pendente = lapsed === 'past_due' && planInfo !== null
+  const renewal = pendente
+    ? 'por mês · cobrança não confirmada'
+    : subscription?.currentPeriodEnd && !lapsed && !ended && !cancelNotice
       ? (getTrialNotice(subscription) ??
         `por mês · renova ${diaMes(subscription.currentPeriodEnd)}`)
       : 'por mês'
-  const planNote = lapsed
-    ? `${LAPSED_COPY[lapsed].cause} ${
-        contractInPlan
-          ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
-          : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'
-      }`
-    : ended
-      ? 'Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano ser contratado.'
-      : null
+  const planNote = pendente
+    ? null
+    : lapsed
+      ? `${LAPSED_COPY[lapsed].cause} ${
+          contractInPlan
+            ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
+            : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'
+        }`
+      : ended
+        ? 'Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano ser contratado.'
+        : null
 
   const kpis: { valor: number; rotulo: string }[] = overview
     ? [
@@ -224,6 +231,39 @@ function BillingPage() {
           </Link>
         }
       />
+
+      {pendente && planInfo ? (
+        <AvisoVisual
+          aviso={{
+            tipo: 'pendente',
+            tom: 'atencao',
+            titulo: LAPSED_COPY.past_due.title(planInfo.name),
+            texto: `${LAPSED_COPY.past_due.cause} Recursos do plano, como ${
+              shownPlan === 'elite'
+                ? 'a oferta da casa e a lista de quem vai'
+                : 'o cardápio no perfil'
+            }, ficam suspensos até a assinatura ser regularizada.`,
+            acao: {
+              rotulo: 'Atualizar pagamento',
+              para: '/plan',
+              variante: 'acid'
+            }
+          }}
+          botao={
+            hasProviderCustomer ? (
+              <Botao
+                variante="acid"
+                altura={40}
+                className="painel-aviso-botao"
+                disabled={openingPortal}
+                onClick={handleOpenPortal}
+              >
+                {openingPortal ? 'Abrindo portal…' : 'Atualizar pagamento'}
+              </Botao>
+            ) : undefined
+          }
+        />
+      ) : null}
 
       <PlanChangedNotice
         pending={planFrom && planTo ? { from: planFrom, to: planTo } : null}
@@ -360,7 +400,7 @@ function BillingPage() {
                   >
                     {openingPortal
                       ? 'Abrindo portal…'
-                      : 'Regularizar no portal'}
+                      : 'Regularizar assinatura'}
                   </Botao>
                 ) : (
                   <Link
