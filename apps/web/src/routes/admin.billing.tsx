@@ -492,10 +492,12 @@ function BillingPage() {
                   return (
                     <li
                       key={fatura.id}
-                      className={`flex items-center gap-3.5 py-3 ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
+                      className={`flex flex-wrap items-center gap-x-3.5 gap-y-2 py-3 ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
                     >
-                      <Icone nome="doc" tamanho={22} />
-                      <div className="min-w-0 flex-1">
+                      <Icone nome="doc" tamanho={22} className="shrink-0" />
+                      {/* Sem espaço (celular estreito), valor, selo e PDF
+                          descem para a linha de baixo, à direita. */}
+                      <div className="min-w-36 flex-1">
                         <b className="block text-[14.5px]">{mes}</b>
                         <span className="text-[12.5px] text-[var(--painel-muted)]">
                           {fatura.situation === 'trial'
@@ -509,27 +511,29 @@ function BillingPage() {
                               : `Pago em ${diaMes(fatura.paidAt ?? fatura.createdAt)}`}
                         </span>
                       </div>
-                      <span className="font-[family-name:var(--onside-mono)] font-semibold text-[14px] leading-none">
-                        {/* "R$ 269" como no design; centavos só quando há. */}
-                        {Number.isInteger(fatura.amountReais)
-                          ? formatPlanPrice(fatura.amountReais)
-                          : reais(fatura.amountReais)}
-                      </span>
-                      <Badge tipo={badge.tipo}>{badge.label}</Badge>
-                      <span className="w-[72px] text-right">
-                        {/* O teste de R$ 0 não tem o que baixar (3o). */}
-                        {fatura.pdfUrl && fatura.situation !== 'trial' ? (
-                          <a
-                            href={fatura.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Baixar PDF da fatura de ${mes}`}
-                            className="font-bold text-[13.5px]"
-                          >
-                            Baixar PDF
-                          </a>
-                        ) : null}
-                      </span>
+                      <div className="ml-auto flex shrink-0 items-center gap-3.5">
+                        <span className="font-[family-name:var(--onside-mono)] font-semibold text-[14px] leading-none">
+                          {/* "R$ 269" como no design; centavos só quando há. */}
+                          {Number.isInteger(fatura.amountReais)
+                            ? formatPlanPrice(fatura.amountReais)
+                            : reais(fatura.amountReais)}
+                        </span>
+                        <Badge tipo={badge.tipo}>{badge.label}</Badge>
+                        <span className="w-[72px] text-right">
+                          {/* O teste de R$ 0 não tem o que baixar (3o). */}
+                          {fatura.pdfUrl && fatura.situation !== 'trial' ? (
+                            <a
+                              href={fatura.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Baixar PDF da fatura de ${mes}`}
+                              className="font-bold text-[13.5px]"
+                            >
+                              Baixar PDF
+                            </a>
+                          ) : null}
+                        </span>
+                      </div>
                     </li>
                   )
                 })}
