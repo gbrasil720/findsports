@@ -164,6 +164,10 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   await expect(
     page.getByRole('button', { name: 'Gerenciar assinatura' })
   ).toBeVisible()
+  // Fora do Elite o card segue com as visitas do mês (WEB-446).
+  await expect(currentPlan(page)).toContainText('viram o bar este mês')
+  await expect(currentPlan(page)).toContainText('se interessaram este mês')
+  await expect(currentPlan(page)).not.toContainText('marcaram que iam')
   // Antes do portal, a retenção (3q): o que se perde e a troca para baixo.
   await cancelShortcut(page).click()
   const dialog = page.getByRole('dialog')
@@ -171,7 +175,8 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
     dialog.getByRole('heading', { name: /Cancelar\s*o Pro\?/ })
   ).toBeVisible()
   await expect(dialog).toContainText('Mudar para o Starter')
-  // Presenças e clássicos são do Elite: o Pro não vê esses números.
+  // Presenças e clássicos são do Elite: o Pro vê quem viu o bar.
+  await expect(dialog).toContainText('pessoas que viram o bar este mês')
   await expect(dialog).not.toContainText('marcaram que iam')
   await expect(dialog).not.toContainText('clássicos')
   // O motivo ainda não é gravado.
