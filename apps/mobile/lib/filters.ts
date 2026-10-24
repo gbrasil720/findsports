@@ -1,5 +1,5 @@
-import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 
 /*
  * Filtros do Explorar (19d do design) e os atalhos no topo do mapa (19e).
