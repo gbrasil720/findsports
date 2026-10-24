@@ -8,12 +8,6 @@ describe('router contract', () => {
     expect('analytics' in appRouter).toBe(false)
   })
 
-  it('commercialAnalytics exposes recordCommercialEvent', () => {
-    expectTypeOf(appRouter.commercialAnalytics).toHaveProperty(
-      'recordCommercialEvent'
-    )
-  })
-
   it('commercialAnalytics exposes getMyAnalyticsOverview', () => {
     expectTypeOf(appRouter.commercialAnalytics).toHaveProperty(
       'getMyAnalyticsOverview'
@@ -29,12 +23,6 @@ describe('router contract', () => {
   it('commercialAnalytics exposes getMyEntitlements', () => {
     expectTypeOf(appRouter.commercialAnalytics).toHaveProperty(
       'getMyEntitlements'
-    )
-  })
-
-  it('commercialAnalytics exposes canViewEventType', () => {
-    expectTypeOf(appRouter.commercialAnalytics).toHaveProperty(
-      'canViewEventType'
     )
   })
 

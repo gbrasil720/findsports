@@ -16,6 +16,7 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
 import { getCommercialDay } from '../lib/commercial-analytics/commercial-day'
+import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
 import { contextFor, inAMonth, load, seedBar } from './integration-seed'
 
@@ -24,7 +25,7 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 integrationTest(
   'WEB-96: serializa registros paralelos e não aceita o 31º evento na janela',
   async () => {
-    const { db, appRouter } = await load()
+    const { db } = await load()
     const fanUserId = crypto.randomUUID()
     const pubUserId = crypto.randomUUID()
     const barId = crypto.randomUUID()
@@ -80,10 +81,10 @@ integrationTest(
       }))
       await db.insert(event).values(sourceEvents)
 
-      const caller = appRouter.createCaller(contextFor(fanUserId, 'fan', now))
+      const ctx = contextFor(fanUserId, 'fan', now)
       const results = await Promise.allSettled(
         sourceEvents.map((ev) =>
-          caller.commercialAnalytics.recordCommercialEvent({
+          recordCommercialEvent(ctx, {
             pubId: barId,
             type: 'profile_view',
             sourceEventId: ev.id

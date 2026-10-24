@@ -1,19 +1,16 @@
 import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-import { adminProcedure, fanProcedure, pubProcedure, router } from '../index'
+import { adminProcedure, pubProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
   assertAnalyticsPeriodAllowed,
-  COMMERCIAL_EVENT_TYPES,
   COMMERCIAL_TIME_ZONE,
-  canViewEventType,
   getAnalyticsEntitlements,
   getComparisonMetrics,
   getMyAnalyticsOverview,
   getMyEventAnalytics,
-  recordCommercialEvent,
   resolveBarAndPlan,
   runAndRecordAnalyticsRetention
 } from '../lib/commercial-analytics'
@@ -123,23 +120,6 @@ export function parseAnalyticsRange(input: { from: string; to: string }): {
 
 export const commercialAnalyticsRouter = router({
   /**
-   * Record a commercial event (fan action on a bar profile).
-   * Authenticated fan only. No impersonation.
-   */
-  recordCommercialEvent: fanProcedure
-    .input(
-      z.object({
-        pubId: z.string().uuid(),
-        type: z.enum(COMMERCIAL_EVENT_TYPES),
-        sourceEventId: z.string().uuid().optional(),
-        recommendationRunId: z.string().uuid().optional()
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      return recordCommercialEvent(ctx, input)
-    }),
-
-  /**
    * Get analytics overview for the authenticated pub's bar.
    * Tenant-safe: bar derived from session.
    */
@@ -237,16 +217,6 @@ export const commercialAnalyticsRouter = router({
     const { plan } = await resolveBarAndPlan(ctx.session.user.id)
     return getAnalyticsEntitlements(plan)
   }),
-
-  /**
-   * Check if a specific event type is accessible for the pub's plan.
-   */
-  canViewEventType: pubProcedure
-    .input(z.object({ eventType: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const { plan } = await resolveBarAndPlan(ctx.session.user.id)
-      return canViewEventType(plan, input.eventType)
-    }),
 
   /**
    * Admin: retenção de analytics (ESC-10).

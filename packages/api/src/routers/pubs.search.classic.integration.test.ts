@@ -15,6 +15,7 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
+import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import { encodeCursor } from '../lib/keyset-cursor'
 import { contextFor, load } from './integration-seed'
 
@@ -247,18 +248,19 @@ integrationTest(
         locationIds.indexOf(eliteClassic.barId)
       )
 
-      await caller.commercialAnalytics.recordCommercialEvent({
+      const fanCtx = contextFor(fanId, 'fan', now)
+      await recordCommercialEvent(fanCtx, {
         pubId: eliteClassic.barId,
         type: 'classic_exposure',
         sourceEventId: eliteClassic.eventId
       })
-      await caller.commercialAnalytics.recordCommercialEvent({
+      await recordCommercialEvent(fanCtx, {
         pubId: eliteClassic.barId,
         type: 'classic_click',
         sourceEventId: eliteClassic.eventId
       })
       await expect(
-        caller.commercialAnalytics.recordCommercialEvent({
+        recordCommercialEvent(fanCtx, {
           pubId: proClassic.barId,
           type: 'classic_click',
           sourceEventId: proClassic.eventId
