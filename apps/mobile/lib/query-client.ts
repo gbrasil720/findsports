@@ -1,4 +1,11 @@
-import { MutationCache, QueryClient } from '@tanstack/react-query'
+import {
+  focusManager,
+  MutationCache,
+  onlineManager,
+  QueryClient
+} from '@tanstack/react-query'
+import * as Network from 'expo-network'
+import { AppState } from 'react-native'
 
 /**
  * Por 30 s a resposta vale como está: trocar de tela não repete a mesma
@@ -16,4 +23,19 @@ export const queryClient = new QueryClient({
       queryClient.invalidateQueries({ refetchType: 'none' })
     }
   })
+})
+
+// Voltar do segundo plano conta como foco: o que passou do `staleTime` e está
+// na tela é buscado de novo. Sem rede, as consultas esperam ela voltar.
+focusManager.setEventListener((setFocused) => {
+  const sub = AppState.addEventListener('change', (state) =>
+    setFocused(state === 'active')
+  )
+  return () => sub.remove()
+})
+onlineManager.setEventListener((setOnline) => {
+  const sub = Network.addNetworkStateListener((state) =>
+    setOnline(state.isConnected !== false)
+  )
+  return () => sub.remove()
 })
