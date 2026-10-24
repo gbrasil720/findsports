@@ -152,7 +152,7 @@ integrationTest(
 
       const after = await t.rows()
       expect(after.reasons).toEqual([{ plan: 'pro', reason: 'too_expensive' }])
-      expect({ ...after, reasons: [] }).toEqual(before)
+      expect({ ...after, reasons: before.reasons }).toEqual(before)
     } finally {
       await t.cleanup()
     }
