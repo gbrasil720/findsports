@@ -169,6 +169,45 @@ test('CEP preenche o endereço e o número vai junto da rua', async ({
   })
 })
 
+test('resposta atrasada de um CEP antigo não preenche por cima do atual', async ({
+  page
+}) => {
+  await openProfile(page)
+  let soltarPrimeiro = () => {}
+  const primeiroSolto = new Promise<void>((r) => {
+    soltarPrimeiro = r
+  })
+  let primeiroRespondido = () => {}
+  const primeiroFim = new Promise<void>((r) => {
+    primeiroRespondido = r
+  })
+  await page.route('https://viacep.com.br/ws/**', async (route) => {
+    const antigo = route.request().url().includes('/01001000/')
+    if (antigo) await primeiroSolto
+    await route.fulfill({
+      json: {
+        logradouro: antigo ? 'Rua Antiga' : 'Rua Atual',
+        bairro: antigo ? 'Sé' : 'Vila Madalena',
+        localidade: 'São Paulo',
+        uf: 'SP'
+      }
+    })
+    if (antigo) primeiroRespondido()
+  })
+  const rua = info(page).getByLabel('Rua', { exact: true })
+
+  await info(page).getByLabel('CEP').fill('01001000')
+  await info(page).getByLabel('CEP').fill('05433000')
+  await expect(rua).toHaveValue('Rua Atual')
+  // A primeira busca resolve por último e é ignorada.
+  soltarPrimeiro()
+  await primeiroFim
+  await page.waitForTimeout(200)
+  await expect(rua).toHaveValue('Rua Atual')
+  await expect(info(page).getByLabel('Bairro')).toHaveValue('Vila Madalena')
+  await expect(info(page).getByText('Encontrado')).toBeVisible()
+})
+
 test('CEP que o ViaCEP não acha avisa e deixa o endereço como está', async ({
   page
 }) => {
