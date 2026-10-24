@@ -44,6 +44,7 @@ import {
 import { searchCenter } from '@/lib/explore'
 import {
   BAR_ITEMS,
+  CHIP_GROUPS,
   defaultShortcuts,
   MAX_SHORTCUTS,
   type Shortcut,
@@ -103,6 +104,10 @@ export default function ShortcutsScreen() {
     { title: 'Quando', keys: ['hoje', 'amanha'] },
     { title: 'Esporte', keys: sportList.map((s) => `esporte:${s.slug}`) },
     { title: 'No bar', keys: BAR_ITEMS.map((i) => `item:${i.id}`) },
+    ...CHIP_GROUPS.map((g) => ({
+      title: g.title,
+      keys: g.items.map((i) => `item:${i.id}`)
+    })),
     { title: 'Distância', keys: ['raio:1', 'raio:2', 'raio:5'] }
   ]
     .map((g) => ({ ...g, keys: g.keys.filter((k) => !list.includes(k)) }))

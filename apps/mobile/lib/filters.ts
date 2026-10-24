@@ -179,8 +179,45 @@ export const BAR_ITEMS = [
   { id: 6, label: 'Acessível', icon: 'person' }
 ] as const
 
-/** "Pagamento": o cadastro do bar só tem Pix e cartão juntos. */
-export const PIX_E_CARTAO = 14
+/**
+ * As características em chip, abaixo de "No bar" (WEB-455). "Pagamento" é a
+ * do design (19d), com Couvert ("cobra couvert", decisão do dono); "Comida e
+ * bebida" e "Para chegar" trazem os itens novos do catálogo que a folha do
+ * design não desenha, com os nomes de grupo do painel do bar.
+ */
+export const CHIP_GROUPS = [
+  {
+    title: 'Pagamento',
+    items: [
+      { id: 16, label: 'Pix' },
+      { id: 17, label: 'Cartão' },
+      { id: 18, label: 'Vale-refeição' },
+      { id: 19, label: 'Couvert' }
+    ]
+  },
+  {
+    title: 'Comida e bebida',
+    items: [
+      { id: 21, label: 'Drinks' },
+      { id: 20, label: 'Opção vegetariana' }
+    ]
+  },
+  {
+    title: 'Para chegar',
+    items: [
+      { id: 22, label: 'Perto do metrô' },
+      { id: 23, label: 'Bicicletário' }
+    ]
+  }
+] as const
+
+/** O nome curto de uma característica do filtro ("Telão", "Pix"). */
+export function itemLabel(id: number): string | undefined {
+  return (
+    BAR_ITEMS.find((i) => i.id === id)?.label ??
+    CHIP_GROUPS.flatMap((g) => g.items).find((i) => i.id === id)?.label
+  )
+}
 
 /** Raios do filtro de distância. */
 export const RADII = [1, 2, 5, 10] as const
@@ -200,7 +237,8 @@ export function shortcutLabel(
   if (kind === 'item') {
     const item = BAR_ITEMS.find((i) => i.id === Number(value))
     if (item) return { label: item.label, icon: item.icon }
-    return Number(value) === PIX_E_CARTAO ? { label: 'Pix e cartão' } : null
+    const label = itemLabel(Number(value))
+    return label ? { label } : null
   }
   if (kind === 'raio') return { label: `Até ${value} km` }
   return null

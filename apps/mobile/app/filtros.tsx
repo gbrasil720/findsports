@@ -24,11 +24,11 @@ import { searchCenter } from '@/lib/explore'
 import {
   activeCount,
   BAR_ITEMS,
+  CHIP_GROUPS,
   defaultShortcuts,
   type Filters,
   MAX_SHORTCUTS,
   NO_FILTERS,
-  PIX_E_CARTAO,
   RADII,
   type Shortcut,
   searchInput,
@@ -49,8 +49,8 @@ import { trpc } from '@/lib/trpc'
  * "Só bares com jogo publicado" esconde os bares sem jogo que completam o
  * Explorar; desligado por padrão, ao contrário do design, que o desenha
  * ligado, porque mostrar esses bares foi decisão do dono (21/10/2026).
- * "Pagamento" é um chip só porque o cadastro do bar tem "Pix e cartão"
- * juntos.
+ * Abaixo de "No bar", as características em chip (`CHIP_GROUPS`): Pagamento
+ * do design e os itens novos do catálogo (WEB-455).
  */
 
 export default function FiltersSheet() {
@@ -466,39 +466,41 @@ export default function FiltersSheet() {
           </View>
         </Section>
 
-        <Section title="Pagamento">
-          <View style={{ flexDirection: 'row' }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{
-                selected: draft.amenities.includes(PIX_E_CARTAO)
-              }}
-              onPress={() => {
-                haptic.select()
-                setDraft(toggleAmenity(draft, PIX_E_CARTAO))
-              }}
-              style={[
-                styles.pay,
-                draft.amenities.includes(PIX_E_CARTAO)
-                  ? { backgroundColor: ACID, borderColor: ACID }
-                  : { borderColor: palette.line }
-              ]}
-            >
-              <Text
-                style={[
-                  text(13, 'SemiBold', 1.2),
-                  {
-                    color: draft.amenities.includes(PIX_E_CARTAO)
-                      ? INK
-                      : palette.ink
-                  }
-                ]}
-              >
-                Pix e cartão
-              </Text>
-            </Pressable>
-          </View>
-        </Section>
+        {CHIP_GROUPS.map((group) => (
+          <Section key={group.title} title={group.title}>
+            <View style={styles.chips}>
+              {group.items.map((item) => {
+                const on = draft.amenities.includes(item.id)
+                return (
+                  <Pressable
+                    key={item.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    onPress={() => {
+                      haptic.select()
+                      setDraft(toggleAmenity(draft, item.id))
+                    }}
+                    style={[
+                      styles.pay,
+                      on
+                        ? { backgroundColor: ACID, borderColor: ACID }
+                        : { borderColor: palette.line }
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        text(13, 'SemiBold', 1.2),
+                        { color: on ? INK : palette.ink }
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </Section>
+        ))}
 
         <View
           style={[
@@ -789,6 +791,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 1
   },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   pay: {
     height: 34,
     paddingHorizontal: 12,
