@@ -851,7 +851,9 @@ invente layout que o projeto não tem.
   Citação tocada rola até o card e o faz piscar. Tirar um chip de "Entendi assim" refaz a
   busca sem IA: a `key` do chip é `<argumento de pubs.search>:<valor>` (mais
   `neighborhood:` e `origin:`), e `chipSearch` monta a busca com os que sobram. "Ver no
-  mapa" leva o Explorar ao ponto da busca (o `ChatBar` não traz coordenadas). Chips de local
+  mapa" enquadra no Explorar os bares da resposta e o ponto da busca (`mapFocus`, WEB-432;
+  o `ChatBar` traz `latitude` e `longitude`), na faixa livre entre os chips e a folha
+  (`frameRegion`, a mesma conta do raio). Chips de local
   e dia só no campo do início (24a); "+" troca o contexto depois. Recentes (até 20, com a
   conversa inteira) ficam no aparelho, em `busca-ia-recentes.json` (`Paths.document`): o
   servidor não guarda texto. Depois do "Confirmar" (24e) a frase é do app (`confirmText`) e
