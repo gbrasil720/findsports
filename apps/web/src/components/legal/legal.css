@@ -5,16 +5,6 @@
  */
 
 /*
- * O `overflow-x: hidden` global em html e body (globals.css) transforma o
- * body em contêiner de rolagem, e aí o índice `sticky` nunca gruda: quem rola
- * é o documento. `clip` corta o transbordo do mesmo jeito sem criar contêiner.
- */
-html:has(.onside-legal),
-html:has(.onside-legal) body {
-  overflow-x: clip;
-}
-
-/*
  * Aviso de aceite no formulário de cadastro. Fica
  * fora de `.onside-legal` porque aparece em telas com outras cascas; herda a
  * cor do formulário para servir em fundo claro e escuro.
