@@ -224,7 +224,12 @@ export const hour = (value: string | Date) =>
 
 /** "Corinthians × Palmeiras · 21:30 · Brasileirão" (Achei o jogo, 24b). */
 function gameDetail(game: TitledGame & { startsAt: string | Date }) {
-  return [gameTitle(game), hour(game.startsAt), game.championship]
+  const title = gameTitle(game)
+  return [
+    title,
+    hour(game.startsAt),
+    title === game.championship ? '' : game.championship
+  ]
     .filter(Boolean)
     .join(' · ')
 }

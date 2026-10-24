@@ -236,7 +236,9 @@ function UpcomingCard({
             )}
           </h3>
           <p className="text-[var(--onside-muted)] text-sm">
-            {gameTitle(game)} · {game.championship}
+            {gameTitle(game) === game.championship
+              ? game.championship
+              : `${gameTitle(game)} · ${game.championship}`}
           </p>
         </div>
         <span

@@ -363,7 +363,10 @@ function NextGame({
             style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
             numberOfLines={1}
           >
-            {gameTitle(game)} · {game.championship}
+            {/* Fora de confronto o título já é o campeonato: não repete. */}
+            {gameTitle(game) === game.championship
+              ? game.championship
+              : `${gameTitle(game)} · ${game.championship}`}
           </Text>
         </View>
       </Pressable>
