@@ -264,6 +264,7 @@ export async function recordCommercialEvent(
       ) classic ON true
       WHERE e.id = ${sourceEventId ?? null}
         AND e.bar_id = ${pubId}
+        AND e.published_at IS NOT NULL
     ),
     checks AS (
       SELECT CASE
@@ -278,6 +279,8 @@ export async function recordCommercialEvent(
           AND NOT EXISTS (
             SELECT 1 FROM event e
             WHERE e.id = ${sourceEventId ?? null} AND e.bar_id = ${pubId}
+              -- Rascunho (WEB-436) não aparece para ninguém: não recebe evento.
+              AND e.published_at IS NOT NULL
           ) THEN 'event_mismatch'
         WHEN ${isClassicPlacement} AND ${sourceEventId ?? null}::text IS NULL
           THEN 'classic_event_required'
