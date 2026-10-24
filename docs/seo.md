@@ -75,19 +75,20 @@ das páginas legais.
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
-| `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`). Id que não existe, sem sessão: 404 |
+| `/pub/:id` | não | `noindex`: "O bar está no app" (o web é só para bares), uma página de passagem para o app, aberta sem sessão. Título com o nome do bar, para a prévia de link. Id que não existe: 404 |
+| `/torcedor` | não | `noindex`: onde o torcedor logado cai no web, a mesma página sem bar |
 | `/convite/:código` | não | `noindex`: só abre o app no convite de amigo (`onside://convite/…`); os amigos não têm tela no web |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
-| `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
+| `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404; `/dashboard` saiu e é 404) |
 
 Fora de `www.onside.sh` (o `workers.dev` do `onside-web`, o preview por PR e
 `houdini.onside.sh`) o Worker manda `X-Robots-Tag: noindex, nofollow`
 (`applyHostIndexing`, em `apps/web/src/start.ts`): a mesma home em dois hosts seria conteúdo
 duplicado.
 
-Não existe página pública de bar nem de jogo: a do bar exige login, e jogo não
-tem página própria (cada bar cadastra o seu `event`). Por isso o sitemap tem só
+Não existe página de bar indexável nem de jogo: a do bar só leva ao app, e
+jogo não tem página própria (cada bar cadastra o seu `event`). Por isso o sitemap tem só
 a home e as páginas legais.
 
 As páginas saem renderizadas do servidor (TanStack Start no Worker): o
