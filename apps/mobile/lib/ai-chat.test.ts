@@ -270,7 +270,42 @@ describe('busca com IA (Rodada 24)', () => {
         'pinheiros'
       ).map((b) => b.id)
     ).toEqual(['a'])
-    expect(mapFocus(chips, here, 5)).toEqual({ ...here, km: 6 })
+    // Sem bares, o ponto da busca num quadro de 2× o raio.
+    expect(mapFocus([], chips, here, 5)).toEqual({
+      ...here,
+      kmTall: 6,
+      kmWide: 6
+    })
+    expect(mapFocus([], chips, null, 5)).toBeNull()
+  })
+
+  it('"Ver no mapa" enquadra os bares da resposta e o ponto da busca (WEB-432)', () => {
+    const at = (latitude: number, longitude: number) =>
+      ({ latitude, longitude }) as ChatBar
+    const here = { lat: -23.56, lng: -46.69 }
+    // Bares ao norte e a leste do ponto: o quadro vai do ponto ao bar mais
+    // longe, com folga, e o centro fica entre eles.
+    const box = mapFocus(
+      [at(-23.53, -46.69), at(-23.56, -46.66), at(Number.NaN, 0)],
+      [],
+      here,
+      3
+    )
+    expect(box?.lat).toBeCloseTo(-23.545, 6)
+    expect(box?.lng).toBeCloseTo(-46.675, 6)
+    expect(box?.kmTall).toBeCloseTo(0.03 * 111 * 1.4, 6)
+    expect(box?.kmWide).toBeCloseTo(
+      0.03 * 111.32 * Math.cos((-23.545 * Math.PI) / 180) * 1.4,
+      6
+    )
+    // Sem ponto da busca, só os bares; um bar só (ou colados) não fecha o
+    // mapa abaixo de 1,6 km.
+    expect(mapFocus([at(-23.5, -46.6)], [], null, 3)).toEqual({
+      lat: -23.5,
+      lng: -46.6,
+      kmTall: 1.6,
+      kmWide: 1.6
+    })
   })
 
   it('bar da busca normal vira o card do chat', () => {
@@ -279,6 +314,8 @@ describe('busca com IA (Rodada 24)', () => {
         id: 'a',
         name: 'Zé',
         neighborhood: 'Pinheiros',
+        latitude: '-23.5614',
+        longitude: '-46.6912',
         distance_km: 0.8,
         photo_url: null,
         plan: 'pro',
@@ -306,6 +343,7 @@ describe('busca com IA (Rodada 24)', () => {
     })
     expect(bar.ratingPercent).toBe(87)
     expect(bar.distanceKm).toBe(0.8)
+    expect([bar.latitude, bar.longitude]).toEqual([-23.5614, -46.6912])
   })
 
   it('seguimento: até três perguntas, "Ver no mapa" em segundo com bares', () => {
