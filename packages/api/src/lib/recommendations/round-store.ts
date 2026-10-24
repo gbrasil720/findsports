@@ -1,4 +1,5 @@
 import { and, db, eq, sql } from '@findsports_oficial/db'
+import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
 import { recommendationRound } from '@findsports_oficial/db/schema/recommendation'
 import {
   clampSearchRadiusKm,
@@ -184,8 +185,8 @@ export async function readExpansion(input: {
       JOIN bar b ON b.id = e.bar_id
       JOIN sport s ON s.id = e.sport_id
       WHERE b.is_active
-        AND e.starts_at >= ${input.now}
-        AND e.starts_at < ${input.now}::timestamp + INTERVAL '14 days'
+        AND e.starts_at >= ${utcNowSql(input.now)}
+        AND e.starts_at < ${utcNowSql(input.now)} + INTERVAL '14 days'
         AND ST_DWithin(
           b.geo,
           ST_SetSRID(ST_MakePoint(${input.where.lng}, ${input.where.lat}), 4326)::geography,
@@ -234,7 +235,7 @@ export async function hydrateRound(
       FROM event e
       JOIN sport s ON s.id = e.sport_id
       WHERE e.bar_id IN (SELECT jsonb_array_elements_text(${ids}::jsonb))
-        AND e.starts_at > ${now}
+        AND e.starts_at > ${utcNowSql(now)}
       ORDER BY e.bar_id, e.starts_at, e.id
     `),
     db.execute(sql`

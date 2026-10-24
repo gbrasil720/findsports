@@ -1,4 +1,5 @@
 import { db, sql } from '@findsports_oficial/db'
+import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
 
 import { getAppConfig } from '../app-config/db-source'
 import { hasPublicRating, ratingPercentage } from '../rating'
@@ -94,7 +95,7 @@ export async function loadRecommendationFacts(input: {
           JOIN event_participants ep ON ep.event_id = e.id
           JOIN recent_teams rt ON rt.team_id = ep.team_id
           JOIN team t ON t.id = ep.team_id
-          WHERE e.bar_id = b.id AND e.starts_at >= ${input.now}
+          WHERE e.bar_id = b.id AND e.starts_at >= ${utcNowSql(input.now)}
           ORDER BY e.starts_at, t.name
           LIMIT 1
         ) AS team,
@@ -105,7 +106,7 @@ export async function loadRecommendationFacts(input: {
             FROM event e
             JOIN sport s ON s.id = e.sport_id
             WHERE e.bar_id = b.id
-              AND e.starts_at >= ${input.now}::timestamp - INTERVAL '120 days'
+              AND e.starts_at >= ${utcNowSql(input.now)} - INTERVAL '120 days'
             GROUP BY s.id, s.name
             ORDER BY COUNT(*) DESC, s.name
             LIMIT 2
