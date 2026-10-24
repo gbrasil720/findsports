@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   formatDayLabel,
+  formatEventTime,
   formatGameSubtitle,
   formatMatchup,
   getBarInitials,
@@ -137,31 +138,63 @@ describe('formatGameSubtitle', () => {
 })
 
 describe('formatDayLabel', () => {
-  const base = new Date('2026-08-19T12:00:00')
+  const base = new Date('2026-08-19T12:00:00-03:00')
 
   it('chama o dia corrente de Hoje', () => {
-    expect(formatDayLabel(new Date('2026-08-19T23:00:00'), base)).toBe('Hoje')
+    expect(formatDayLabel(new Date('2026-08-19T20:00:00-03:00'), base)).toBe(
+      'Hoje'
+    )
   })
 
   it('chama o dia seguinte de Amanhã', () => {
-    expect(formatDayLabel(new Date('2026-08-20T09:00:00'), base)).toBe('Amanhã')
+    expect(formatDayLabel(new Date('2026-08-20T09:00:00-03:00'), base)).toBe(
+      'Amanhã'
+    )
   })
 
   it('escreve a data para os demais dias', () => {
-    const label = formatDayLabel(new Date('2026-08-25T09:00:00'), base)
-    expect(label).not.toBe('Hoje')
-    expect(label).not.toBe('Amanhã')
-    expect(label.length).toBeGreaterThan(0)
+    const date = new Date('2026-08-26T16:00:00-03:00')
+    expect(formatDayLabel(date, base)).toBe('quarta-feira, 26 de ago.')
+    expect(formatDayLabel(date, base, 'short')).toBe('qua., 26 de ago.')
+  })
+
+  // 22:30 em Brasília já é dia 20 em UTC: o rótulo segue o bar, não o navegador.
+  it('conta o dia no relógio de Brasília, não no do navegador', () => {
+    const late = new Date('2026-08-19T22:30:00-03:00')
+    expect(formatDayLabel(late, base)).toBe('Hoje')
+    expect(formatDayLabel(new Date('2026-08-20T23:30:00-03:00'), base)).toBe(
+      'Amanhã'
+    )
+    expect(
+      formatDayLabel(new Date('2026-08-26T22:30:00-03:00'), base, 'short')
+    ).toBe('qua., 26 de ago.')
+    // Às 23:00 de Brasília ainda é hoje, mesmo com o UTC já no dia seguinte.
+    expect(formatDayLabel(late, new Date('2026-08-19T23:00:00-03:00'))).toBe(
+      'Hoje'
+    )
+  })
+})
+
+describe('formatEventTime', () => {
+  it('mostra a hora de Brasília', () => {
+    expect(formatEventTime(new Date('2026-08-19T22:30:00-03:00'))).toBe('22:30')
+    expect(formatEventTime(new Date('2026-08-19T09:05:00-03:00'))).toBe('09:05')
   })
 })
 
 describe('groupEventsByDay', () => {
   it('agrupa por dia e ordena por horário dentro do dia', () => {
-    const base = new Date('2026-08-19T12:00:00')
+    const base = new Date('2026-08-19T12:00:00-03:00')
     const events = [
-      makeEvent({ id: 'tarde', startsAt: new Date('2026-08-19T21:00:00') }),
-      makeEvent({ id: 'amanha', startsAt: new Date('2026-08-20T16:00:00') }),
-      makeEvent({ id: 'cedo', startsAt: new Date('2026-08-19T16:00:00') })
+      makeEvent({
+        id: 'noite',
+        startsAt: new Date('2026-08-19T22:30:00-03:00')
+      }),
+      makeEvent({
+        id: 'amanha',
+        startsAt: new Date('2026-08-20T16:00:00-03:00')
+      }),
+      makeEvent({ id: 'cedo', startsAt: new Date('2026-08-19T16:00:00-03:00') })
     ]
 
     const groups = groupEventsByDay(events, base)
@@ -169,7 +202,7 @@ describe('groupEventsByDay', () => {
     expect(groups.map((group) => group.label)).toEqual(['Hoje', 'Amanhã'])
     expect(groups[0]?.events.map((event) => event.id)).toEqual([
       'cedo',
-      'tarde'
+      'noite'
     ])
   })
 
