@@ -18,13 +18,13 @@ import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.xml]'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as TorcedorRouteImport } from './routes/torcedor'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
-import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
@@ -38,9 +38,6 @@ import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
-import { Route as dashboardDashboardGamesRouteImport } from './routes/(dashboard)/dashboard_.games'
-import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
-import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -106,6 +103,11 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TorcedorRoute = TorcedorRouteImport.update({
+  id: '/torcedor',
+  path: '/torcedor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
   id: '/(auth)/forgot-password',
   path: '/forgot-password',
@@ -134,11 +136,6 @@ const authTwoFactorRoute = authTwoFactorRouteImport.update({
 const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
   id: '/(auth)/verify-email',
   path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
-  id: '/(dashboard)/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -203,22 +200,6 @@ const HoudiniEntrarRoute = HoudiniEntrarRouteImport.update({
 const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
   id: '/plan_/confirmed',
   path: '/plan/confirmed',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const dashboardDashboardGamesRoute = dashboardDashboardGamesRouteImport.update({
-  id: '/(dashboard)/dashboard_/games',
-  path: '/dashboard/games',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const dashboardDashboardProfileRoute =
-  dashboardDashboardProfileRouteImport.update({
-    id: '/(dashboard)/dashboard_/profile',
-    path: '/dashboard/profile',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
-  id: '/(onboarding)/onboarding/fan',
-  path: '/onboarding/fan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const onboardingOnboardingPubRoute = onboardingOnboardingPubRouteImport.update({
@@ -327,13 +308,13 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/torcedor': typeof TorcedorRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
   '/reset-password': typeof authResetPasswordRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
-  '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/jogos': typeof AdminJogosRoute
@@ -346,9 +327,6 @@ export interface FileRoutesByFullPath {
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
-  '/dashboard/games': typeof dashboardDashboardGamesRoute
-  '/dashboard/profile': typeof dashboardDashboardProfileRoute
-  '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -378,13 +356,13 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/torcedor': typeof TorcedorRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/login': typeof authLoginRoute
   '/reset-password': typeof authResetPasswordRoute
   '/signup': typeof authSignupRoute
   '/two-factor': typeof authTwoFactorRoute
   '/verify-email': typeof authVerifyEmailRoute
-  '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/jogos': typeof AdminJogosRoute
@@ -397,9 +375,6 @@ export interface FileRoutesByTo {
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin': typeof AdminIndexRoute
   '/guia': typeof GuiaIndexRoute
-  '/dashboard/games': typeof dashboardDashboardGamesRoute
-  '/dashboard/profile': typeof dashboardDashboardProfileRoute
-  '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -430,13 +405,13 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/termos': typeof TermosRoute
+  '/torcedor': typeof TorcedorRoute
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/reset-password': typeof authResetPasswordRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
-  '/(dashboard)/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
   '/admin/jogos': typeof AdminJogosRoute
@@ -450,9 +425,6 @@ export interface FileRoutesById {
   '/plan_/confirmed': typeof PlanConfirmedRoute
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
-  '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
-  '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
-  '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -485,13 +457,13 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/sitemap.xml'
     | '/termos'
+    | '/torcedor'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
-    | '/dashboard'
     | '/admin/billing'
     | '/admin/configuracoes'
     | '/admin/jogos'
@@ -504,9 +476,6 @@ export interface FileRouteTypes {
     | '/plan/confirmed'
     | '/admin/'
     | '/guia/'
-    | '/dashboard/games'
-    | '/dashboard/profile'
-    | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
@@ -536,13 +505,13 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/sitemap.xml'
     | '/termos'
+    | '/torcedor'
     | '/forgot-password'
     | '/login'
     | '/reset-password'
     | '/signup'
     | '/two-factor'
     | '/verify-email'
-    | '/dashboard'
     | '/admin/billing'
     | '/admin/configuracoes'
     | '/admin/jogos'
@@ -555,9 +524,6 @@ export interface FileRouteTypes {
     | '/plan/confirmed'
     | '/admin'
     | '/guia'
-    | '/dashboard/games'
-    | '/dashboard/profile'
-    | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
     | '/api/auth/$'
@@ -587,13 +553,13 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/sitemap.xml'
     | '/termos'
+    | '/torcedor'
     | '/(auth)/forgot-password'
     | '/(auth)/login'
     | '/(auth)/reset-password'
     | '/(auth)/signup'
     | '/(auth)/two-factor'
     | '/(auth)/verify-email'
-    | '/(dashboard)/dashboard'
     | '/admin/billing'
     | '/admin/configuracoes'
     | '/admin/jogos'
@@ -607,9 +573,6 @@ export interface FileRouteTypes {
     | '/plan_/confirmed'
     | '/admin/'
     | '/guia/'
-    | '/(dashboard)/dashboard_/games'
-    | '/(dashboard)/dashboard_/profile'
-    | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
     | '/api/auth/$'
@@ -641,20 +604,17 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermosRoute: typeof TermosRoute
+  TorcedorRoute: typeof TorcedorRoute
   authForgotPasswordRoute: typeof authForgotPasswordRoute
   authLoginRoute: typeof authLoginRoute
   authResetPasswordRoute: typeof authResetPasswordRoute
   authSignupRoute: typeof authSignupRoute
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
-  dashboardDashboardRoute: typeof dashboardDashboardRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
-  dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
-  dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
-  onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -729,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/torcedor': {
+      id: '/torcedor'
+      path: '/torcedor'
+      fullPath: '/torcedor'
+      preLoaderRoute: typeof TorcedorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/forgot-password': {
       id: '/(auth)/forgot-password'
       path: '/forgot-password'
@@ -769,13 +736,6 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof authVerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(dashboard)/dashboard': {
-      id: '/(dashboard)/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -867,27 +827,6 @@ declare module '@tanstack/react-router' {
       path: '/plan/confirmed'
       fullPath: '/plan/confirmed'
       preLoaderRoute: typeof PlanConfirmedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(dashboard)/dashboard_/games': {
-      id: '/(dashboard)/dashboard_/games'
-      path: '/dashboard/games'
-      fullPath: '/dashboard/games'
-      preLoaderRoute: typeof dashboardDashboardGamesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(dashboard)/dashboard_/profile': {
-      id: '/(dashboard)/dashboard_/profile'
-      path: '/dashboard/profile'
-      fullPath: '/dashboard/profile'
-      preLoaderRoute: typeof dashboardDashboardProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(onboarding)/onboarding/fan': {
-      id: '/(onboarding)/onboarding/fan'
-      path: '/onboarding/fan'
-      fullPath: '/onboarding/fan'
-      preLoaderRoute: typeof onboardingOnboardingFanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(onboarding)/onboarding/pub': {
@@ -1105,20 +1044,17 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermosRoute: TermosRoute,
+  TorcedorRoute: TorcedorRoute,
   authForgotPasswordRoute: authForgotPasswordRoute,
   authLoginRoute: authLoginRoute,
   authResetPasswordRoute: authResetPasswordRoute,
   authSignupRoute: authSignupRoute,
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,
-  dashboardDashboardRoute: dashboardDashboardRoute,
   ConviteCodeRoute: ConviteCodeRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
-  dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
-  dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
-  onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

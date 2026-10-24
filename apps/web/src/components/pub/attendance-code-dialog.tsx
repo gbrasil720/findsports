@@ -25,7 +25,7 @@ type Props = {
 /**
  * O código do balcão logo depois do "Vou assistir aqui" num bar Elite. Na
  * linha embaixo do botão ele passava despercebido; aqui ele vem grande, com o
- * que fazer com ele e onde achá-lo depois (Meus jogos, `/dashboard/games`).
+ * que fazer com ele e onde achá-lo depois (Meus jogos, no app).
  * No bar que confirma pela comanda, o recado é para o garçom.
  */
 export function AttendanceCodeDialog({
@@ -83,12 +83,12 @@ export function AttendanceCodeDialog({
         ) : null}
         <p className="mt-3 text-[var(--onside-muted)] text-sm">
           Não precisa anotar: ele fica guardado em <strong>Meus jogos</strong>,
-          no menu da sua conta, e também aqui na página do bar.
+          no app.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link to="/dashboard/games" className="onside-btn onside-btn-ink">
-            Ver em Meus jogos
+          <Link to="/torcedor" className="onside-btn onside-btn-ink">
+            Ver no app
           </Link>
           <button
             ref={closeRef}
