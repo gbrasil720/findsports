@@ -66,18 +66,14 @@ export default function MyGames() {
   const soon = useSoon()
   useStatusBar('auto')
   const mine = useQuery(trpc.attendance.mine.queryOptions())
-  const ratings = useQuery(trpc.ratings.getPending.queryOptions())
-  const reports = useQuery(trpc.attendance.pendingReports.queryOptions())
+  const postGame = useQuery(trpc.postGame.pending.queryOptions())
   const now = Date.now()
   const games = mine.data ?? []
   // O servidor manda do mais recente ao mais antigo; os próximos vão do mais
   // perto ao mais longe.
   const upcoming = games.filter((game) => !game.ended).reverse()
   const past = games.filter((game) => game.ended)
-  const toRate = new Set([
-    ...(ratings.data ?? []).map((item) => item.eventId),
-    ...(reports.data ?? []).map((item) => item.eventId)
-  ])
+  const toRate = new Set(postGame.data?.map((item) => item.eventId))
   const [first, ...rest] = upcoming
 
   // "Próximas" e "Anteriores" levam à seção, não filtram: o design mostra as
@@ -121,7 +117,7 @@ export default function MyGames() {
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
 
   const pull = usePullRefresh(() =>
-    Promise.all([mine.refetch(), ratings.refetch(), reports.refetch()])
+    Promise.all([mine.refetch(), postGame.refetch()])
   )
 
   return (

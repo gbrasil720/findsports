@@ -103,7 +103,7 @@ export default function FanTabs() {
   const { coach: forceCoach } = useGlobalSearchParams<{ coach?: string }>()
   const coach = useCoachPending(forceCoach === '1')
   const pending = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
+    ...trpc.postGame.pending.queryOptions(),
     retry: false
   })
   // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
