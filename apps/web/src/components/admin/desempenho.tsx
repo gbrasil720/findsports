@@ -159,6 +159,7 @@ function useSeletorPeriodo(periodo: Periodo, escolher: (p: Periodo) => void) {
   const form = rascunho ? (
     <Card className="desemp-personalizado">
       <form
+        method="post"
         onSubmit={(event) => {
           event.preventDefault()
           const problema = erroDoPersonalizado(rascunho, maxDias)
