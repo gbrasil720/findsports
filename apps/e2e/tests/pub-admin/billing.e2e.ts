@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { createEvent, createTicket } from '../../fixtures/going'
 import { painelLink } from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { stripeSubscription } from '../../fixtures/stripe'
@@ -73,6 +74,18 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
     customerId,
     pub.user.id
   ])
+  // O mês do bar (WEB-446): dois marcaram que iam a um jogo de agora, um
+  // código validado no balcão.
+  const { eventId } = await createEvent(pub.barId, { startsAt: new Date() })
+  const [ticket] = await Promise.all([
+    createTicket(eventId),
+    createTicket(eventId)
+  ])
+  await query(
+    `INSERT INTO reservation_code_use (id, code_id)
+     SELECT gen_random_uuid()::text, id FROM reservation_code WHERE reservation_id = $1`,
+    [ticket.reservationId]
+  )
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
@@ -81,8 +94,12 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   await expect(currentPlan(page)).toContainText('R$ 297')
   await expect(currentPlan(page)).toContainText('Preço de fundador')
   await expect(currentPlan(page)).toContainText(/por mês · renova \d+ /)
-  // O que o plano rendeu no mês, dos números do analytics.
-  await expect(currentPlan(page)).toContainText('viram o bar este mês')
+  // O que o plano rendeu no mês (3o).
+  const kpi = (label: string) =>
+    currentPlan(page).locator('dl > div', { hasText: label })
+  await expect(kpi('marcaram que iam este mês')).toContainText('2')
+  await expect(kpi('clássicos no topo este mês')).toContainText('0')
+  await expect(kpi('códigos validados este mês')).toContainText('1')
   // Faturas, dados da nota e PIX ainda não existem: aparecem "em breve".
   await expect(
     page.getByRole('region', { name: 'Faturas' }).getByText('em breve')
@@ -154,7 +171,9 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
     dialog.getByRole('heading', { name: /Cancelar\s*o Pro\?/ })
   ).toBeVisible()
   await expect(dialog).toContainText('Mudar para o Starter')
-  await expect(dialog).toContainText('pessoas que viram o bar este mês')
+  // Presenças e clássicos são do Elite: o Pro não vê esses números.
+  await expect(dialog).not.toContainText('marcaram que iam')
+  await expect(dialog).not.toContainText('clássicos')
   // O motivo ainda não é gravado.
   await expect(
     dialog.getByRole('button', { name: 'Pouco movimento' })
