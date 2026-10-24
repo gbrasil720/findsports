@@ -327,7 +327,7 @@ novo antes do texto se a resposta escolheu outros ou outra ordem: a última list
 até 3 sugestões, `thoughtMs`, `searches`). Trava, braços, reserva e `ai_run` são os do chat.
 `marcar_vou_assistir` e `lembrar` só propõem: a proposta vira `ai_proposal` depois da linha
 do `ai_run` e só `ai.confirm` executa (uma vez, só o dono; "Vou assistir" pelo
-`attendance.set`, chamado por `createFriendCall`, lembrete por `recommendations.remind` com
+`setAttendance`, chamado por `createFriendCall`, lembrete por `recommendations.remind` com
 `beforeMinutes: 180`, o "Me lembrar 3 h antes", que aparece em Avisos 3 h antes do jogo e,
 com push (WEB-416), avisa nessa hora; sem `beforeMinutes`, o "Lembrar" de Bares pra você vale o dia;
 cada ação grava `ai_action`; falha volta com `code` estável, `ConfirmFailure`). Só propõe
@@ -497,7 +497,8 @@ invente layout que o projeto não tem.
   outros. **Não existe reserva de mesa** (decisão do
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
-  (`packages/api/src/lib/attendance-ticket.ts`).
+  (`packages/api/src/lib/attendance-ticket.ts`). Toda marcação passa por `setAttendance`
+  (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
   tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
@@ -599,11 +600,11 @@ invente layout que o projeto não tem.
   altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
 - **Chamado de amigo ("Chamar Marina", Rodada 24):** tabela `friend_call` (um por de, para e
   jogo; pending, going, not_now). Quem cria é `createFriendCall`
-  (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa como no
-  `attendance.set`, bar fora do ar é `NOT_FOUND`, repetido devolve `duplicate`), chamado
+  (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa pela mesma
+  precondição de marcar presença, `attendableGame`, bar fora do ar é `NOT_FOUND`, repetido devolve `duplicate`), chamado
   pelo `ai.confirm`. `friends.respondCall` só pelo destinatário e uma vez (o `update` só
-  pega linha `pending`; se a presença falhar, volta a pendente): "Vou também" passa por
-  `attendance.set` (código no Elite), "Agora não" não avisa quem chamou. Desfazer ou
+  pega linha `pending`, na mesma transação da presença: se ela falhar, nada muda): "Vou
+  também" passa por `setAttendance` (código no Elite), "Agora não" não avisa quem chamou. Desfazer ou
   recusar amizade apaga os chamados da dupla. Em Avisos (`CallCard` em `app/avisos.tsx`),
   aba Amigos e Tudo: `calls` (pendente some quando o jogo começa) e `callsAccepted` ("Marina
   vai também"); o "Vou também" sai dos dois lados se a presença for desmarcada. A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g (notificação)
