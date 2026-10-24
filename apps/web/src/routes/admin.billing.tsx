@@ -74,6 +74,25 @@ function thisMonth() {
   return { from: `${today.slice(0, 8)}01`, to: today }
 }
 
+/** "Outubro 2026", no mês de Brasília. */
+const mesAno = (date: string | Date) => {
+  const texto = new Date(date)
+    .toLocaleDateString('pt-BR', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo'
+    })
+    .replace(' de ', ' ')
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+/** Selo de cada fatura (3o, 3s). */
+const FATURA_BADGE = {
+  paid: { label: 'Pago', tipo: 'acid' },
+  trial: { label: 'Teste', tipo: 'pub' },
+  pending: { label: 'Pendente', tipo: 'live' }
+} as const satisfies Record<string, { label: string; tipo: BadgeTipo }>
+
 /** Situação que não é a de sempre (ativo) ganha selo; por `status`, mais `trial_ended`. */
 const STATUS_BADGE: Record<string, { label: string; tipo: BadgeTipo }> = {
   trialing: { label: 'Trial gratuito', tipo: 'acid' },
@@ -113,6 +132,17 @@ function BillingPage() {
     meta: { errorToast: false },
     retry: false
   }).data
+  // Faturas do Stripe (WEB-443), também à parte. Sem assinatura no Stripe
+  // (teste do cadastro) não há fatura a buscar.
+  const hasStripeSubscription = Boolean(subscription?.externalSubscriptionId)
+  const invoicesQuery = useQuery({
+    ...trpc.pub.getMyInvoices.queryOptions(),
+    enabled: hasStripeSubscription,
+    meta: { errorToast: false },
+    retry: false
+  })
+  const invoices = invoicesQuery.data?.invoices
+  const failedChargeAt = invoicesQuery.data?.lastFailedChargeAt
   // O que o plano rendeu no mês (WEB-446): só números que o servidor calcula,
   // e os que o plano não libera vêm nulos. Sem nenhum (plano parado, falha),
   // a linha some.
@@ -196,10 +226,12 @@ function BillingPage() {
   // Renovação só de quem segue pagando: plano parado, encerrado ou com
   // cancelamento marcado não renova.
   // Pagamento pendente (3s/3t): aviso no topo, e o card diz que a cobrança
-  // não foi confirmada. O Stripe não nos dá a data da cobrança recusada.
+  // não foi confirmada, com a data da recusa quando o Stripe a tem.
   const pendente = lapsed === 'past_due' && planInfo !== null
   const renewal = pendente
-    ? 'por mês · cobrança não confirmada'
+    ? failedChargeAt
+      ? `por mês · cobrança de ${diaMes(failedChargeAt)} não confirmada`
+      : 'por mês · cobrança não confirmada'
     : subscription?.currentPeriodEnd && !lapsed && !ended && !cancelNotice
       ? (getTrialNotice(subscription) ??
         `por mês · renova ${diaMes(subscription.currentPeriodEnd)}`)
@@ -451,12 +483,69 @@ function BillingPage() {
             </Card>
           )}
 
-          <Secao titulo="Faturas" icone="doc" aside={<EmBreve />}>
-            <p className="py-3 text-[13.5px] text-[var(--painel-muted)] leading-normal">
-              {hasProviderCustomer
-                ? 'As faturas e os recibos de cada cobrança ficam no portal da Stripe, e o recibo também chega por e-mail a cada pagamento.'
-                : 'Nenhum pagamento registrado ainda.'}
-            </p>
+          <Secao titulo="Faturas" icone="doc">
+            {invoices?.length ? (
+              <ul className="mb-3">
+                {invoices.map((fatura, index) => {
+                  const mes = mesAno(fatura.createdAt)
+                  const badge = FATURA_BADGE[fatura.situation]
+                  return (
+                    <li
+                      key={fatura.id}
+                      className={`flex items-center gap-3.5 py-3 ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
+                    >
+                      <Icone nome="doc" tamanho={22} />
+                      <div className="min-w-0 flex-1">
+                        <b className="block text-[14.5px]">{mes}</b>
+                        <span className="text-[12.5px] text-[var(--painel-muted)]">
+                          {fatura.situation === 'trial'
+                            ? fatura.trialEndsAt
+                              ? `${planInfo?.name ?? 'Teste'} grátis até ${diaMes(fatura.trialEndsAt)}`
+                              : 'Teste grátis'
+                            : fatura.situation === 'pending'
+                              ? fatura.failedAt
+                                ? `Cartão recusado em ${diaMes(fatura.failedAt)}`
+                                : 'Cobrança não confirmada'
+                              : `Pago em ${diaMes(fatura.paidAt ?? fatura.createdAt)}`}
+                        </span>
+                      </div>
+                      <span className="font-[family-name:var(--onside-mono)] font-semibold text-[14px] leading-none">
+                        {reais(fatura.amountReais)}
+                      </span>
+                      <Badge tipo={badge.tipo}>{badge.label}</Badge>
+                      <span className="w-[72px] text-right">
+                        {/* O teste de R$ 0 não tem o que baixar (3o). */}
+                        {fatura.pdfUrl && fatura.situation !== 'trial' ? (
+                          <a
+                            href={fatura.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Baixar PDF da fatura de ${mes}`}
+                            className="font-bold text-[13.5px]"
+                          >
+                            Baixar PDF
+                          </a>
+                        ) : null}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : hasStripeSubscription && invoicesQuery.isLoading ? (
+              <div className="flex flex-col gap-2 py-3" aria-busy="true">
+                <span className="sr-only">Carregando faturas…</span>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : (
+              <p className="py-3 text-[13.5px] text-[var(--painel-muted)] leading-normal">
+                {!hasStripeSubscription
+                  ? 'Nenhum pagamento registrado ainda.'
+                  : invoicesQuery.data
+                    ? 'Nenhuma fatura emitida ainda.'
+                    : 'Não foi possível carregar as faturas agora. Elas também ficam no portal da Stripe.'}
+              </p>
+            )}
             {hasProviderCustomer ? (
               <Botao
                 altura={40}
