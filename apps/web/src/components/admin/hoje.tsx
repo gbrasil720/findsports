@@ -21,6 +21,7 @@ import {
   propsBotao,
   Toggle
 } from '@/components/painel'
+import { ehRascunho } from '@/domain/painel-jogos'
 import { countLabel, plural } from '@/lib/plural'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
@@ -451,13 +452,15 @@ function LinhaDaNoite({
                     const de = ondeEsta(b.inicio)
                     const ate = ondeEsta(b.fim)
                     const linha = linhaDoJogo(b.jogo.id)
-                    const vao = lista ? linha?.reservedPeople : null
+                    const rascunho = ehRascunho(b.jogo)
+                    const vao =
+                      lista && !rascunho ? linha?.reservedPeople : null
                     const chegaram = linha?.arrivals ?? 0
                     return (
                       <li
                         key={b.jogo.id}
                         className="hoje-jogo"
-                        data-estado={b.estado}
+                        data-estado={rascunho ? 'draft' : b.estado}
                         style={{
                           left: `${de}%`,
                           width: `calc(${ate - de}% - 4px)`,
@@ -466,7 +469,9 @@ function LinhaDaNoite({
                       >
                         <div className="hoje-jogo-topo">
                           <b>{gameTitle(b.jogo)}</b>
-                          {b.estado === 'live' ? (
+                          {rascunho ? (
+                            <Badge tipo="draft">Rascunho</Badge>
+                          ) : b.estado === 'live' ? (
                             <Badge tipo="live">Ao vivo</Badge>
                           ) : b.estado === 'past' ? (
                             <Badge tipo="muted">Encerrado</Badge>
@@ -476,11 +481,13 @@ function LinhaDaNoite({
                         </div>
                         <span className="hoje-jogo-linha">
                           {hora(b.jogo.startsAt)} ·{' '}
-                          {vao == null
-                            ? b.jogo.championship
-                            : vao > 0
-                              ? `${vao} ${plural(vao, 'vai', 'vão')} · ${chegaram} ${plural(chegaram, 'chegou', 'chegaram')}`
-                              : 'ninguém marcou ainda'}
+                          {rascunho
+                            ? 'rascunho'
+                            : vao == null
+                              ? b.jogo.championship
+                              : vao > 0
+                                ? `${vao} ${plural(vao, 'vai', 'vão')} · ${chegaram} ${plural(chegaram, 'chegou', 'chegaram')}`
+                                : 'ninguém marcou ainda'}
                         </span>
                         {vao ? (
                           <Progresso

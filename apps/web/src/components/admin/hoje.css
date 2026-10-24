@@ -167,6 +167,12 @@
       4px 4px 0 rgb(232 50 12 / 35%);
   }
 }
+/* Rascunho (WEB-436): tracejado, sem fundo, como no `tl2` do design. */
+.painel .hoje-jogo[data-estado="draft"] {
+  border: 1.5px dashed var(--painel-draft-line);
+  background: none;
+  box-shadow: none;
+}
 .painel .hoje-agora {
   position: absolute;
   top: 18px;
