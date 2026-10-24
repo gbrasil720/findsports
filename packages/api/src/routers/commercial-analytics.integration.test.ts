@@ -1030,3 +1030,30 @@ integrationTest(
     }
   }
 )
+
+// O `pg` manda `Date` no fuso do processo ("…23:59:59.999-03:00"), e o
+// Postgres, ao comparar com `timestamp` sem fuso, descarta o deslocamento:
+// numa máquina em Brasília o fim do dia virava 20:59 UTC e o jogo das 21h
+// sumia do período. No Worker e no CI (UTC) o erro não aparece.
+integrationTest(
+  'jogo da noite entra no período com o processo no fuso de Brasília',
+  async () => {
+    const tz = process.env.TZ
+    process.env.TZ = 'America/Sao_Paulo'
+    const seed = await seedBar('elite', 'active', inAMonth())
+    try {
+      const noite = await seed.seedGame({
+        startsAt: new Date('2026-09-17T00:30:00.000Z') // qua 16/09, 21h30
+      })
+      const result = await seed.owner.commercialAnalytics.getMyEventAnalytics({
+        from: '2026-09-16',
+        to: '2026-09-16'
+      })
+      expect(result.events.map((item) => item.eventId)).toEqual([noite])
+    } finally {
+      if (tz === undefined) delete process.env.TZ
+      else process.env.TZ = tz
+      await seed.cleanup()
+    }
+  }
+)
