@@ -509,8 +509,11 @@ invente layout que o projeto não tem.
   (menu "Você"; fica na pilha da aba, com a barra; tocar "Você" numa tela da pilha abre o menu
   por cima dela, com `disablePopToTop` na aba, e fechar deixa a pessoa onde estava) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
   do celular pelo formulário de evento do iOS (`expo-calendar/legacy`, sem pedir permissão); "Avaliar" abre o pós-jogo
-  `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
-  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). "O que pesou?" são as
+  `app/pos-jogo/[eventId].tsx`: "Você foi?" e "Voltaria?" são um item da fila
+  `postGame.pending` e vão juntos em `postGame.answer`, numa transação
+  (`packages/api/src/lib/post-game.ts`; web e app leem a mesma fila; `attendance.report`,
+  `ratings.submit` e os vizinhos ficam como adaptadores do web publicado antes). Marcar
+  "Vou assistir aqui" libera a avaliação, e "Não fui" a recusa. "O que pesou?" são as
   seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
   reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
   avaliação do dashboard web usa as mesmas. Não há avaliação "verificada": todas entram
@@ -543,7 +546,7 @@ invente layout que o projeto não tem.
   novo. Para ver com dados: `apps/mobile/scripts/conquistas.sql` (`-v fan=<e-mail>`).
 - **Perfil (10, tela 2l):** `app/(fan)/voce/perfil.tsx`, aberto pelo menu "Você". Só lê
   o que já existe (`achievements.mine`, `attendance.visits` e `mine`, `pubs.getFavorites`,
-  `getMyPreferences`, `getMyCity`, `ratings.getPending`); as contas ficam em `lib/profile.ts`.
+  `getMyPreferences`, `getMyCity`, `postGame.pending`); as contas ficam em `lib/profile.ts`.
   "Suas comunidades" do design não entrou (comunidades não existem), "Tenho um bar"
   saiu a pedido do dono; a engrenagem, "Raio de busca" e "Esportes" abrem as
   Configurações.
