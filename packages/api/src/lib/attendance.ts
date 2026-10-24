@@ -8,11 +8,15 @@ import {
   sql
 } from '@findsports_oficial/db'
 import {
-  DEFAULT_EVENT_DURATION_INTERVAL,
   getEventEnd,
   getValidationWindow,
   VALIDATION_WINDOW_MARGIN_HOURS
 } from '@findsports_oficial/db/event-window'
+import {
+  eventEndedSql,
+  eventEndSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import {
   attendance,
   attendanceReport
@@ -39,8 +43,7 @@ import { getLateEntryWindow } from './reservation-validation'
  * bar recebe só o sinal relativo, nunca a contagem.
  */
 
-/** Fim derivado em SQL, o mesmo de `getEventEnd`. */
-const eventEnd = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval)`
+const eventEnd = eventEndSql()
 
 /** Piso de exibição (WEB-123). Abaixo dele, só o botão. */
 export const ATTENDANCE_DISPLAY_FLOOR = 15
@@ -410,7 +413,7 @@ export async function readInterestSignal(
   const games = await db
     .select({
       eventId: event.id,
-      ended: sql<boolean>`${eventEnd} <= now()`,
+      ended: eventEndedSql(),
       count: sql<number>`count(${attendance.userId})::int`
     })
     .from(event)
@@ -479,8 +482,8 @@ export async function readAttendanceQuestions(
         eq(attendance.userId, userId),
         eventId ? eq(attendance.eventId, eventId) : undefined,
         eq(bar.isActive, true),
-        sql`${eventEnd} <= now()`,
-        sql`${eventEnd} > now() - ${`${ATTENDANCE_REPORT_WINDOW_DAYS} days`}::interval`
+        eventEndedSql(),
+        sql`${eventEnd} > ${utcNowSql()} - ${`${ATTENDANCE_REPORT_WINDOW_DAYS} days`}::interval`
       )
     )
     .orderBy(sql`${event.startsAt} desc`)
@@ -526,7 +529,7 @@ export function readUnregisteredAlerts() {
     .where(
       and(
         eq(reservation.status, 'confirmed'),
-        sql`${eventEnd} + ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`}::interval < now()`
+        sql`${eventEnd} + ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`}::interval < ${utcNowSql()}`
       )
     )
     .groupBy(bar.id)

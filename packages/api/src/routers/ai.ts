@@ -1,5 +1,6 @@
 import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, isNull, or } from '@findsports_oficial/db'
+import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { bar } from '@findsports_oficial/db/schema/platform'
@@ -33,7 +34,6 @@ import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import { aiGate, runAi } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
-import { stillOnProfile } from '../lib/event-profile-window'
 import { createFriendCall } from '../lib/friend-calls'
 import { byMatchOrder } from '../lib/game-participants'
 import { attendanceRouter } from './attendance'
@@ -353,7 +353,7 @@ async function readProposalBar(
     columns: { name: true, neighborhood: true },
     with: {
       events: {
-        where: (game) => and(eq(game.id, eventId), stillOnProfile(game, now)),
+        where: (game) => and(eq(game.id, eventId), eventNotEndedSql(game, now)),
         columns: {
           startsAt: true,
           championship: true,

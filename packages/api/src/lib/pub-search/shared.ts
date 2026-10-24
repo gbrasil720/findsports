@@ -1,5 +1,9 @@
 import { type SQL, sql } from '@findsports_oficial/db'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import {
+  eventNotEndedSql,
+  onBrasiliaDaysSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import { z } from 'zod'
 
 import { declaredAmenityIds, HOUSE_OFFER_AMENITY_ID } from '../amenities'
@@ -42,8 +46,8 @@ const MAX_LIVE_SPAN_INTERVAL = '24 hours'
  * perfil público (`@findsports_oficial/db/event-window`).
  */
 export const jogoNaoAcabou = (e: SQL) => sql`
-  ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
-  AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
+  ${e}.starts_at >= ${utcNowSql()} - ${MAX_LIVE_SPAN_INTERVAL}::interval
+  AND ${eventNotEndedSql({ startsAt: sql`${e}.starts_at`, endsAt: sql`${e}.ends_at` })}`
 
 /**
  * Elite vigente. Lê `subscription`, e não `bar.plan`: a projeção só acompanha
@@ -291,11 +295,8 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   const eventFilter = sql.join(
     [
       sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
-      // O dia pedido é o de Brasília; `starts_at` guarda UTC sem fuso.
-      date
-        ? sql`AND e.starts_at >= ((${date}::date)::timestamp AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')
-            AND e.starts_at < ((${date}::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
-        : sql``,
+      // O dia pedido é o de Brasília.
+      date ? sql`AND ${onBrasiliaDaysSql(sql`e.starts_at`, date)}` : sql``,
       teamIds?.length
         ? sql`AND EXISTS (
               SELECT 1 FROM event_participants ep
