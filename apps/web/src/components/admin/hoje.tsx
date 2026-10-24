@@ -397,12 +397,8 @@ function LinhaDaNoite({
         }[e.key]
         if (passo === undefined) return
         e.preventDefault()
-        el.scrollBy({
-          left: passo,
-          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-            ? 'instant'
-            : 'smooth'
-        })
+        // Tecla não anima: a hora salta na hora (e o reduzir movimento vale sozinho).
+        el.scrollBy({ left: passo, behavior: 'instant' })
       }}
     >
       <div
