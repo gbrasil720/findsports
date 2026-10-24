@@ -1,11 +1,14 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq, sql } from '@findsports_oficial/db'
+import {
+  brasiliaDaySql,
+  eventEndSql
+} from '@findsports_oficial/db/event-window-sql'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
-import { EVENT_LIVE_WINDOW_HOURS } from '../event-profile-window'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
-import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
+import { getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
 import { getAnalyticsPlan } from './entitlements'
 import type {
@@ -453,17 +456,12 @@ async function getEventAnalyticsSnapshots(
       GREATEST(
         EXTRACT(
           EPOCH FROM (
-            COALESCE(
-              e.ends_at,
-              e.starts_at + (${EVENT_LIVE_WINDOW_HOURS} * interval '1 hour')
-            ) - e.starts_at
+            ${eventEndSql('e')} - e.starts_at
           )
         ) / 3600,
         0.25
       ) AS window_hours,
-      EXTRACT(
-        ISODOW FROM (e.starts_at AT TIME ZONE ${COMMERCIAL_TIME_ZONE})
-      ) AS weekday,
+      EXTRACT(ISODOW FROM ${brasiliaDaySql(sql`e.starts_at`)}) AS weekday,
       COALESCE(bruto.unique_visitors, 0) AS unique_visitors,
       COALESCE(bruto.interested_people, 0) AS interested_people,
       COALESCE(bruto.profile_views, 0) + COALESCE(podado.profile_views, 0) AS profile_views,

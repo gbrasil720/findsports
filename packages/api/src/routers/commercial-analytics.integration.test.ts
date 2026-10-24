@@ -978,3 +978,55 @@ integrationTest(
     }
   }
 )
+
+// O dia da semana do jogo é o de Brasília: o de sábado às 22h (domingo no
+// UTC) se compara com os sábados. Antes, `starts_at AT TIME ZONE` lia a
+// coluna UTC como hora de Brasília e o jogo das 21h–23h59 caía no dia seguinte.
+integrationTest(
+  'comparação por dia da semana usa o dia de Brasília do jogo',
+  async () => {
+    const seed = await seedBar('elite', 'active', inAMonth())
+    const saturdayNight = new Date('2026-09-13T01:00:00.000Z') // sáb 12/09, 22h
+    const wednesday = new Date('2026-09-16T23:00:00.000Z') // qua 16/09, 20h
+    const pastSaturday = new Date('2026-08-15T18:00:00.000Z') // sáb 15/08, 15h
+    try {
+      const current = await seed.seedGame({ startsAt: saturdayNight })
+      const other = await seed.seedGame({ startsAt: wednesday })
+      const past = await seed.seedGame({ startsAt: pastSaturday })
+      await seed.db.insert(barCommercialEvent).values(
+        [
+          [current, saturdayNight],
+          [other, wednesday],
+          [past, pastSaturday]
+        ].map(([eventId, at]) => ({
+          id: crypto.randomUUID(),
+          barId: seed.barId,
+          actorUserId: seed.fanId,
+          type: 'profile_view' as const,
+          sourceEventId: eventId as string,
+          sourceEventChampionship: 'Campeonato de integração',
+          sourceEventStartsAt: at as Date,
+          occurredAt: at as Date,
+          commercialDay: getCommercialDay(at as Date)
+        }))
+      )
+
+      const result = await seed.owner.commercialAnalytics.getMyEventAnalytics({
+        from: '2026-09-01',
+        to: '2026-09-30',
+        comparisonTarget: { type: 'event_to_bar', eventId: current }
+      })
+
+      const weekdays = result.comparison?.benchmarks
+        ?.filter((item) => item.scope === 'weekday')
+        .map((item) => item.weekday)
+      expect(weekdays?.length).toBeGreaterThan(0)
+      expect(new Set(weekdays)).toEqual(new Set([6]))
+    } finally {
+      await seed.db
+        .delete(barCommercialEvent)
+        .where(eq(barCommercialEvent.barId, seed.barId))
+      await seed.cleanup()
+    }
+  }
+)
