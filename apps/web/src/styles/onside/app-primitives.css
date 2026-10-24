@@ -40,21 +40,12 @@
 }
 
 /*
- * Kicker em ink ou no vermelho de texto. A cor do kicker só muda por
+ * Kicker no vermelho de texto. A cor do kicker só muda por
  * modificador: classe utilitária de cor perde para esta folha, que fica fora
  * de `@layer` (ver `onside-label-ink`).
  */
-.onside-app .onside-kicker-ink {
-  color: var(--onside-ink);
-}
-
 .onside-app .onside-kicker-live {
   color: var(--onside-live-text);
-}
-
-/* Kicker usado como etiqueta com moldura: o tamanho do `onside-badge`. */
-.onside-app .onside-kicker-sm {
-  font-size: 10px;
 }
 
 .onside-app .onside-text-muted-on-ink {
@@ -739,28 +730,6 @@
 /* Filtro já aplicado: nasce no stone que os outros chips só têm no hover. */
 .onside-app .onside-chip-stone {
   background: var(--onside-stone);
-}
-
-.onside-app .onside-chip-stack {
-  flex-direction: column;
-  gap: 2px;
-  min-width: 3.75rem;
-  padding: 6px 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.onside-app .onside-chip-note {
-  font-family: var(--onside-mono);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  line-height: 1;
-  color: var(--onside-muted);
-}
-
-.onside-app .onside-chip[aria-pressed="true"] .onside-chip-note {
-  color: var(--onside-ink);
-  opacity: 0.7;
 }
 
 /* ─── Tablist ───
