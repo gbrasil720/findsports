@@ -496,20 +496,11 @@ export function Photo({
   style: ViewStyle
   big?: boolean
 }) {
-  // Foto que não carrega cai para as iniciais em vez de um quadro vazio.
+  // As iniciais ficam sempre por baixo e a foto cobre quando carrega: foto
+  // lenta ou quebrada mostra as iniciais desde o primeiro quadro, não um
+  // quadro vazio. Carregada, as iniciais saem (foto com transparência).
   const palette = usePalette()
-  const [failed, setFailed] = useState(false)
-  if (uri && !failed)
-    return (
-      <Image
-        source={{ uri }}
-        // O quadro do design enquanto a foto carrega (ou se ela não vem).
-        style={
-          [style, { backgroundColor: big ? '#2a2a25' : palette.mark }] as never
-        }
-        onError={() => setFailed(true)}
-      />
-    )
+  const [loaded, setLoaded] = useState(false)
   return (
     <View
       style={[
@@ -518,14 +509,23 @@ export function Photo({
         { backgroundColor: big ? '#2a2a25' : palette.mark }
       ]}
     >
-      <Text
-        style={[
-          text(big ? 34 : 19, 'Bold', 1.2),
-          { color: big ? 'rgba(241,238,230,.22)' : palette.ink }
-        ]}
-      >
-        {initials(name)}
-      </Text>
+      {loaded ? null : (
+        <Text
+          style={[
+            text(big ? 34 : 19, 'Bold', 1.2),
+            { color: big ? 'rgba(241,238,230,.22)' : palette.ink }
+          ]}
+        >
+          {initials(name)}
+        </Text>
+      )}
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          onLoad={() => setLoaded(true)}
+        />
+      ) : null}
     </View>
   )
 }
@@ -1345,5 +1345,9 @@ const styles = StyleSheet.create({
   km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
   rowWhen: { alignItems: 'flex-end', paddingRight: 4, gap: 3 },
   rowTime: { fontFamily: 'Anton', fontSize: 24, marginVertical: -7 },
-  noPhoto: { alignItems: 'center', justifyContent: 'center' }
+  noPhoto: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  }
 })
