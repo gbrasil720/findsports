@@ -1,4 +1,8 @@
 import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
+import {
   type ChatSearch,
   PROPOSAL_TOOLS,
   READ_TOOLS,
@@ -65,7 +69,7 @@ export type ChatTurnResult = {
 }
 
 const NOW = new Intl.DateTimeFormat('pt-BR', {
-  timeZone: 'America/Sao_Paulo',
+  timeZone: BRASILIA_TIME_ZONE,
   weekday: 'long',
   day: '2-digit',
   month: '2-digit',
@@ -79,14 +83,15 @@ const WEEKDAY = new Intl.DateTimeFormat('pt-BR', {
 
 /** Os próximos sete dias com o dia da semana: modelo erra a conta sozinho. */
 function nextDays(now: Date) {
-  const today = now.toLocaleDateString('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  })
   return Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(`${today}T12:00:00Z`)
-    day.setUTCDate(day.getUTCDate() + i)
-    const label = i === 0 ? 'hoje' : i === 1 ? 'amanhã' : WEEKDAY.format(day)
-    return `${label} = ${day.toISOString().slice(0, 10)}`
+    const day = brasiliaDay(now, i)
+    const label =
+      i === 0
+        ? 'hoje'
+        : i === 1
+          ? 'amanhã'
+          : WEEKDAY.format(new Date(`${day}T12:00:00Z`))
+    return `${label} = ${day}`
   }).join('; ')
 }
 
