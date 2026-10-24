@@ -63,7 +63,8 @@ export default function Layout() {
     'Archivo-Regular': require('../assets/fonts/Archivo-Regular.ttf'),
     'Archivo-SemiBold': require('../assets/fonts/Archivo-SemiBold.ttf'),
     'Archivo-Bold': require('../assets/fonts/Archivo-Bold.ttf'),
-    'GeistMono-SemiBold': require('../assets/fonts/GeistMono-SemiBold.ttf')
+    'GeistMono-SemiBold': require('../assets/fonts/GeistMono-SemiBold.ttf'),
+    'GeistMono-Bold': require('../assets/fonts/GeistMono-Bold.ttf')
   })
   const agenda = useTodayAgenda()
   const ready = fontsLoaded && agenda !== undefined
