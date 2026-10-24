@@ -231,10 +231,8 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   await expect(dialog).toContainText('pessoas que viram o bar este mês')
   await expect(dialog).not.toContainText('marcaram que iam')
   await expect(dialog).not.toContainText('clássicos')
-  // O motivo ainda não é gravado.
-  await expect(
-    dialog.getByRole('button', { name: 'Pouco movimento' })
-  ).toBeDisabled()
+  // Fechar sem confirmar não grava motivo (WEB-445).
+  await dialog.getByRole('button', { name: 'Muito caro' }).click()
   await dialog.getByRole('button', { name: 'Manter o Pro' }).click()
   await expect(dialog).toHaveCount(0)
   expect(
@@ -251,8 +249,21 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   ).toHaveLength(0)
 
   await cancelShortcut(page).click()
+  // Um motivo só: escolher outro troca (3q).
+  const muitoCaro = dialog.getByRole('button', { name: 'Muito caro' })
+  const poucoMovimento = dialog.getByRole('button', { name: 'Pouco movimento' })
+  await muitoCaro.click()
+  await poucoMovimento.click()
+  await expect(poucoMovimento).toHaveAttribute('aria-pressed', 'true')
+  await expect(muitoCaro).toHaveAttribute('aria-pressed', 'false')
   await dialog.getByRole('button', { name: 'Cancelar mesmo assim' }).click()
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
+  expect(
+    await query(
+      'SELECT plan, reason FROM subscription_cancel_reason WHERE bar_id = $1',
+      [pub.barId]
+    )
+  ).toEqual([{ plan: 'pro', reason: 'low_traffic' }])
 
   const calls = (await (
     await page.request.get(`${STUB_URL}/stripe/calls`)
