@@ -1,3 +1,4 @@
+import { cancelReasonLabel } from '@findsports_oficial/api/lib/cancel-reasons'
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useQuery } from '@tanstack/react-query'
@@ -429,6 +430,19 @@ function Resumo({ ficha }: { ficha: Ficha }) {
               <div>
                 <dt>Cancela em</dt>
                 <dd>{formatDateTime(sub.cancelAt)}</dd>
+              </div>
+            ) : null}
+            {ficha.cancelReason ? (
+              <div>
+                <dt>Motivo do cancelamento</dt>
+                <dd>
+                  {cancelReasonLabel(ficha.cancelReason.reason)}
+                  <span className="hd-mono hd-small" style={{ fontSize: 11 }}>
+                    {' '}
+                    · {PLAN_NAMES[ficha.cancelReason.plan]} ·{' '}
+                    {formatDateTime(ficha.cancelReason.createdAt)}
+                  </span>
+                </dd>
               </div>
             ) : null}
           </dl>
