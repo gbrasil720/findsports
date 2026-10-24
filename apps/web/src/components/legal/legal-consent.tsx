@@ -1,6 +1,7 @@
 import { Checkbox } from '@findsports_oficial/ui/components/checkbox'
 import { Field, FieldLabel } from '@findsports_oficial/ui/components/field'
 import { Link } from '@tanstack/react-router'
+import './legal.css'
 
 type LegalConsentProps = {
   checked: boolean

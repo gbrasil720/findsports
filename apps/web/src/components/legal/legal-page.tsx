@@ -7,6 +7,7 @@ import type {
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
 import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
+import './legal.css'
 
 const CONTACT_EMAIL = 'contato@onside.sh'
 const HERO_ID = 'top'
