@@ -55,6 +55,7 @@ import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/gr
 import { Route as HoudiniAppIaRouteImport } from './routes/houdini/_app/ia'
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
+import { Route as onboardingOnboardingPubNoArRouteImport } from './routes/(onboarding)/onboarding.pub_.no-ar'
 import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
 import { Route as HoudiniAppPessoasUserIdRouteImport } from './routes/houdini/_app/pessoas_.$userId'
 
@@ -287,6 +288,12 @@ const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   path: '/pessoas',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const onboardingOnboardingPubNoArRoute =
+  onboardingOnboardingPubNoArRouteImport.update({
+    id: '/(onboarding)/onboarding/pub_/no-ar',
+    path: '/onboarding/pub/no-ar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HoudiniAppBaresBarIdRoute = HoudiniAppBaresBarIdRouteImport.update({
   id: '/bares_/$barId',
   path: '/bares/$barId',
@@ -344,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/': typeof HoudiniAppIndexRoute
+  '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
@@ -391,6 +399,7 @@ export interface FileRoutesByTo {
   '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
@@ -442,6 +451,7 @@ export interface FileRoutesById {
   '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
+  '/(onboarding)/onboarding/pub_/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/_app/pessoas_/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
@@ -493,6 +503,7 @@ export interface FileRouteTypes {
     | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/'
+    | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -540,6 +551,7 @@ export interface FileRouteTypes {
     | '/houdini/ia'
     | '/houdini/jogos'
     | '/houdini/pessoas'
+    | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
   id:
@@ -590,6 +602,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/jogos'
     | '/houdini/_app/pessoas'
     | '/houdini/_app/'
+    | '/(onboarding)/onboarding/pub_/no-ar'
     | '/houdini/_app/bares_/$barId'
     | '/houdini/_app/pessoas_/$userId'
   fileRoutesById: FileRoutesById
@@ -622,6 +635,7 @@ export interface RootRouteChildren {
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
+  onboardingOnboardingPubNoArRoute: typeof onboardingOnboardingPubNoArRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -948,6 +962,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppPessoasRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/(onboarding)/onboarding/pub_/no-ar': {
+      id: '/(onboarding)/onboarding/pub_/no-ar'
+      path: '/onboarding/pub/no-ar'
+      fullPath: '/onboarding/pub/no-ar'
+      preLoaderRoute: typeof onboardingOnboardingPubNoArRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/houdini/_app/bares_/$barId': {
       id: '/houdini/_app/bares_/$barId'
       path: '/bares/$barId'
@@ -1062,6 +1083,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
+  onboardingOnboardingPubNoArRoute: onboardingOnboardingPubNoArRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

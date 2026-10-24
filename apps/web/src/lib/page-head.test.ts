@@ -122,8 +122,7 @@ describe('o que cada página herda da raiz', () => {
       '../routes/(auth)/login.tsx',
       '../routes/(auth)/forgot-password.tsx',
       '../routes/(auth)/reset-password.tsx',
-      '../routes/(auth)/two-factor.tsx',
-      '../components/auth-brand-copy.tsx'
+      '../routes/(auth)/two-factor.tsx'
     ]) {
       const fonte = await ler(arquivo)
       expect(fonte).not.toContain('<h2 className="onside-display mb-6')

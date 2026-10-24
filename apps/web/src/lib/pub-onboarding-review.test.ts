@@ -6,7 +6,8 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
     expect(
       getPubOnboardingReview({ emailVerified: true, goesToPlan: true })
     ).toEqual({
-      titulo: 'Pronto para colocar seu bar no ar',
+      titulo: 'Pronto para colocar',
+      tint: 'seu bar no ar',
       texto:
         'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão. Em seguida você conhece os planos.',
       botao: 'Colocar meu bar no ar'
@@ -19,7 +20,8 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
       goesToPlan: true
     })
     expect(review).toEqual({
-      titulo: 'Falta só confirmar seu e-mail',
+      titulo: 'Falta só',
+      tint: 'confirmar seu e-mail',
       texto:
         'Revise os dados do bar. Ao continuar, você confirma seu e-mail. Depois disso salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão. Em seguida você conhece os planos.',
       botao: 'Confirmar meu e-mail'

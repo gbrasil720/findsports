@@ -1,36 +1,54 @@
 import {
+  AMENITIES,
+  AMENITY_GROUPS,
   declaredAmenityIds,
   findAmenity,
+  HOUSE_OFFER_AMENITY_ID,
+  MAX_SCREEN_COUNT,
   motivoTelasInvalido
 } from '@findsports_oficial/api/lib/amenities'
 import {
   ehUf,
-  motivoTelefoneInvalido
+  motivoTelefoneInvalido,
+  UFS
 } from '@findsports_oficial/api/lib/bar-profile-validation'
+import {
+  ONBOARDING_TRIAL,
+  PLAN_NAMES
+} from '@findsports_oficial/api/lib/plan-limits'
 import { useMutation } from '@tanstack/react-query'
 import {
   createFileRoute,
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Check from 'reicon-react/icons/Check'
-import Location from 'reicon-react/icons/Location'
-import Search from 'reicon-react/icons/Search'
-import Store from 'reicon-react/icons/Store'
+import {
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react'
 import { toast } from 'sonner'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
-import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
-import { OnboardingStep } from '@/components/onboarding/onboarding-step'
-import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
-import { PubInfoForm } from '@/components/onboarding/pub-info-form'
-import { StepProgress } from '@/components/onboarding/step-progress'
-import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { entradaHead } from '@/components/entrada/auth'
+import { MapaPrevia, ObShell, Previa } from '@/components/entrada/onboarding'
+import {
+  Badge,
+  Botao,
+  Campo,
+  CampoTexto,
+  Card,
+  Chip,
+  Icone,
+  type IconeNome
+} from '@/components/painel'
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { useSession } from '@/hooks/use-session'
+import { useSignOut } from '@/hooks/use-sign-out'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
+import { buscarCep, formatarCep } from '@/lib/cep'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
 import {
@@ -41,43 +59,73 @@ import {
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
-import { roleAccountLabel } from '@/lib/roles'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'
-import { formatStoredPhone } from '@/utils/format-phone'
+import { formatPhone, formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
-  head: () => ({
-    meta: [
-      { title: 'Cadastre seu bar — Onside' },
-      {
-        name: 'description',
-        content:
-          'Coloque seu bar no radar dos torcedores. Cadastre em 1 minuto e comece a atrair clientes nos dias de jogo.'
-      },
-      { name: 'robots', content: 'noindex' }
-    ]
-  }),
+  head: () =>
+    entradaHead({
+      path: '/onboarding/pub',
+      title: 'Cadastre seu bar — Onside',
+      description:
+        'Coloque seu bar no radar dos torcedores. Cadastre em 1 minuto e comece a atrair clientes nos dias de jogo.',
+      indexable: false
+    }),
   component: PubOnboarding
 })
 
-const STEPS = [
-  'Boas-vindas',
-  'Seu estabelecimento',
-  'O que seu bar oferece',
-  'Revisão'
-] as const
+const ULTIMO_PASSO = 3
 
-const WELCOME_FEATURES = [
-  { icon: Store, text: 'Divulgue sua programação de jogos' },
-  { icon: Search, text: 'Apareça pra torcedores perto de você' },
-  { icon: Check, text: 'Lote nos dias de clássico' }
+const BOAS_VINDAS: readonly (readonly [IconeNome, string])[] = [
+  ['cal', 'Divulgue sua programação de jogos'],
+  ['map', 'Apareça pra torcedores perto de você'],
+  ['fire', 'Lote nos dias de clássico']
 ]
+
+/** "Com oferta da casa" não se marca: é o filtro da busca (ver `amenities.ts`). */
+const ITENS = AMENITIES.filter(({ id }) => id !== HOUSE_OFFER_AMENITY_ID)
+
+/** "Rua Aspicuelta, 214" volta a rua e número separados (rascunho e revisão). */
+function separarNumero(endereco: string): [string, string] {
+  const m = endereco.match(/^(.*\S)\s*,\s*([^,]+)$/)
+  return m ? [m[1] as string, (m[2] as string).trim()] : [endereco, '']
+}
+
+function Titulo({
+  linhas,
+  tamanho,
+  ref
+}: {
+  linhas: { texto: string; tint?: boolean }[]
+  tamanho: number
+  ref?: Ref<HTMLHeadingElement>
+}) {
+  return (
+    <h1
+      ref={ref}
+      tabIndex={-1}
+      className="entrada-disp"
+      style={{ '--entrada-disp': `${tamanho}px`, outline: 'none' } as never}
+    >
+      {linhas.map((linha) => (
+        <span
+          key={linha.texto}
+          className={linha.tint ? 'entrada-tint' : undefined}
+        >
+          {linha.texto}
+        </span>
+      ))}
+    </h1>
+  )
+}
 
 function PubOnboarding() {
   const navigate = useNavigate()
   const callbackUrl = getCallbackUrl(useLocation().href)
   const trpc = useTRPC()
+  const sair = useSignOut('/')
   const headingRef = useRef<HTMLHeadingElement>(null)
   const user = Route.useRouteContext({
     select: (context) => context.session?.user
@@ -92,7 +140,12 @@ function PubOnboarding() {
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
+  const [cep, setCep] = useState('')
+  const [cepStatus, setCepStatus] = useState<
+    'idle' | 'buscando' | 'achou' | 'nao'
+  >('idle')
+  const [rua, setRua] = useState('')
+  const [numero, setNumero] = useState('')
   const [neighborhood, setNeighborhood] = useState('')
   const [city, setCity] = useState('São Paulo')
   // Nasce com a UF da cidade que já vem preenchida; trocar a cidade concilia
@@ -106,17 +159,19 @@ function PubOnboarding() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
+  const address = [rua.trim(), numero.trim()].filter(Boolean).join(', ')
   const draft = useMemo<PubOnboardingDraft>(
     () => ({
       name: name.trim(),
-      address: address.trim(),
+      address,
       neighborhood: neighborhood.trim(),
       city: city.trim() || undefined,
       uf: ehUf(uf) ? uf : undefined,
       phone: phone.trim() || undefined,
       description: description.trim() || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
-      screenCount: screenCount ?? undefined
+      screenCount: screenCount ?? undefined,
+      cep: cep || undefined
     }),
     [
       name,
@@ -127,7 +182,8 @@ function PubOnboarding() {
       phone,
       description,
       amenities,
-      screenCount
+      screenCount,
+      cep
     ]
   )
 
@@ -135,22 +191,20 @@ function PubOnboarding() {
   // teste é o `completePub`.
   const revisao = getPubOnboardingReview({
     emailVerified: conta?.emailVerified === true,
-    goesToPlan: callbackUrl === '/dashboard'
+    goesToPlan: callbackUrl === '/admin'
   })
 
-  const seguirParaPlano = async () => {
+  const seguir = async () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     // `onboardingCompleted` mudou no banco por fora do better-auth; sem
     // regravar o cache de sessão o guard da rota devolveria o usuário
     // para cá.
     await refreshSessionCache()
-    // Deep link que esperou a liberação volta para ele; sem destino, o plano.
-    // `await`: o botão segue em "salvando" até a próxima tela abrir, em vez
-    // de voltar ao normal com a revisão ainda na tela (WEB-286).
+    // Deep link que esperou a liberação volta para ele; sem destino, a tela
+    // "Seu bar está no ar" (4r). `await`: o botão segue em "salvando" até a
+    // próxima tela abrir (WEB-286).
     await navigate(
-      callbackUrl === '/dashboard'
-        ? { to: '/plan', search: { trial: 'started' } }
-        : { to: callbackUrl }
+      callbackUrl === '/admin' ? { to: PUB_LIVE_PATH } : { to: callbackUrl }
     )
   }
 
@@ -158,7 +212,7 @@ function PubOnboarding() {
     trpc.onboarding.completePub.mutationOptions({
       onSuccess: async () => {
         analytics.onboardingCompleted({ role: 'pub' })
-        await seguirParaPlano()
+        await seguir()
       },
       onError: async (err, draft) => {
         const concluido = mensagemOnboardingJaConcluido(err)
@@ -167,7 +221,7 @@ function PubOnboarding() {
           return
         }
         toast.info(concluido)
-        await seguirParaPlano()
+        await seguir()
       }
     })
   )
@@ -175,11 +229,9 @@ function PubOnboarding() {
   // `/verify-email` manda de volta para cá quando o servidor recusa o
   // rascunho: os campos voltam preenchidos, no passo que dá para corrigir.
   //
-  // WEB-262: só o rascunho desta conta volta, e com aviso e saída — os campos
-  // do passo seguinte também vêm preenchidos, e sem o aviso o dono publicava
-  // uma descrição antiga sem ter visto. O que não serve (outra conta, vencido)
-  // sai do navegador aqui. A conta é a da sessão ou, vindo do cadastro ainda
-  // sem sessão, o e-mail que a aba acabou de cadastrar.
+  // WEB-262: só o rascunho desta conta volta, e com aviso e saída. O que não
+  // serve (outra conta, vencido) sai do navegador aqui. A conta é a da sessão
+  // ou, vindo do cadastro ainda sem sessão, o e-mail que a aba cadastrou.
   //
   // O rascunho gravado no meio do wizard volta no passo em que o dono parou;
   // o que passou pela revisão não tem passo e abre no formulário.
@@ -196,8 +248,11 @@ function PubOnboarding() {
       localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
       return
     }
+    const [salvaRua, salvoNumero] = separarNumero(salvo.address)
     setName(salvo.name)
-    setAddress(salvo.address)
+    setRua(salvaRua)
+    setNumero(salvoNumero)
+    setCep(salvo.cep ?? '')
     setNeighborhood(salvo.neighborhood)
     setCity(salvo.city ?? 'São Paulo')
     // Rascunho de antes do campo vem sem UF (WEB-270): a cidade preenche
@@ -211,17 +266,14 @@ function PubOnboarding() {
     setScreenCount(salvo.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)
-    setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
+    setStep(Math.min(salvo.step ?? 1, ULTIMO_PASSO))
   }, [contaEmail])
 
-  // Recarregar a página no meio do wizard zerava os quatro passos: o rascunho
-  // só era gravado ao concluir a revisão. Agora ele acompanha o preenchimento,
-  // com o passo, pela mesma regra da WEB-262 (só com dono); `seguirParaPlano`
-  // o apaga quando o bar é criado. Vem depois do efeito acima de propósito: se
-  // a conta mudou, aquele tira o rascunho da anterior e este grava o da atual.
-  //
-  // Nas boas-vindas não há o que guardar. Formulário em branco apaga em vez de
-  // gravar, para o "Descartar" não voltar como rascunho vazio.
+  // O rascunho acompanha o preenchimento, com o passo, pela mesma regra da
+  // WEB-262 (só com dono); `seguir` o apaga quando o bar é criado. Vem depois
+  // do efeito acima de propósito: se a conta mudou, aquele tira o rascunho da
+  // anterior e este grava o da atual. Nas boas-vindas não há o que guardar;
+  // formulário em branco apaga, para o "Descartar" não voltar como rascunho.
   useEffect(() => {
     const email = contaEmail ?? readPendingEmail()
     if (step === 0 || !email) return
@@ -236,13 +288,10 @@ function PubOnboarding() {
   }, [contaEmail, step, draft])
 
   // WEB-349: a rota é pública por causa de quem acabou de se cadastrar nesta
-  // aba. Em aba sem sessão e sem esse cadastro (aba nova, link direto) não há
-  // de quem guardar o rascunho: o dono preenchia tudo e, ao concluir, perdia.
-  // Pede o login antes, com o mesmo destino das rotas protegidas, e volta.
-  //
-  // O destino sai de `window.location`, e não do `useLocation`: este muda
-  // assim que a navegação começa, com o wizard ainda montado, e o efeito
-  // dispararia de novo levando o próprio `/login` como destino.
+  // aba. Em aba sem sessão e sem esse cadastro não há de quem guardar o
+  // rascunho: pede o login antes, com o mesmo destino das rotas protegidas.
+  // O destino sai de `window.location`: o `useLocation` muda assim que a
+  // navegação começa, e o efeito dispararia de novo levando o `/login`.
   useEffect(() => {
     if (sessionEmail || readPendingEmail()) return
     navigate({
@@ -257,7 +306,10 @@ function PubOnboarding() {
   const discardDraft = () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     setName('')
-    setAddress('')
+    setCep('')
+    setCepStatus('idle')
+    setRua('')
+    setNumero('')
     setNeighborhood('')
     setCity('São Paulo')
     setUf('SP')
@@ -274,28 +326,24 @@ function PubOnboarding() {
     headingRef.current?.focus({ preventScroll: step === 0 })
   }, [step])
 
-  const handleFieldChange = (field: string, value: string) => {
-    switch (field) {
-      case 'name':
-        setName(value)
-        break
-      case 'address':
-        setAddress(value)
-        break
-      case 'neighborhood':
-        setNeighborhood(value)
-        break
-      case 'city':
-        setCity(value)
-        break
-      case 'uf':
-        setUf(value)
-        break
-      case 'phone':
-        setPhone(value)
-        setPhoneError(null)
-        break
+  const mudarCep = async (valor: string) => {
+    const formatado = formatarCep(valor)
+    setCep(formatado)
+    if (formatado.length < 9) {
+      setCepStatus('idle')
+      return
     }
+    setCepStatus('buscando')
+    const achado = await buscarCep(formatado)
+    if (!achado) {
+      setCepStatus('nao')
+      return
+    }
+    setCepStatus('achou')
+    if (achado.rua) setRua(achado.rua)
+    if (achado.bairro) setNeighborhood(achado.bairro)
+    setCity(achado.cidade)
+    if (achado.uf) setUf(achado.uf)
   }
 
   const toggleAmenity = (id: number) => {
@@ -306,9 +354,8 @@ function PubOnboarding() {
     )
   }
 
-  // WEB-270: o botão desabilitado diz o que falta, no mesmo tom do "Para
-  // salvar, falta preencher: …" do formulário de evento. O texto e o
-  // `disabled` saem da mesma conta, para um nunca contradizer o outro.
+  // WEB-270: o botão desabilitado diz o que falta. O texto e o `disabled`
+  // saem da mesma conta, para um nunca contradizer o outro.
   const blockedHint = (() => {
     if (step === 1) {
       const curto = (valor: string, minimo: number, rotulo: string) =>
@@ -316,7 +363,8 @@ function PubOnboarding() {
         (valor.trim() ? `${rotulo} (pelo menos ${minimo} caracteres)` : rotulo)
       const faltando = [
         curto(name, 2, 'nome do estabelecimento'),
-        curto(address, 5, 'endereço'),
+        curto(rua, 3, 'rua'),
+        !numero.trim() && 'número',
         curto(neighborhood, 2, 'bairro'),
         !ehUf(uf) && 'estado (UF)'
       ].filter(Boolean)
@@ -324,17 +372,14 @@ function PubOnboarding() {
         ? `Para continuar, falta preencher: ${faltando.join(', ')}.`
         : null
     }
-    // A regra do número está ao lado do campo, no checklist (WEB-280).
     if (step === 2 && motivoTelasInvalido(screenCount) !== null) {
       return 'Para continuar, corrija o número de telas.'
     }
     return null
   })()
-  const canAdvance = blockedHint === null
 
   const next = () => {
     setError(null)
-
     // Mesma regra do servidor, conferida aqui porque sem e-mail confirmado o
     // cadastro só é enviado depois, de `/verify-email`, longe deste campo.
     if (step === 1) {
@@ -342,213 +387,488 @@ function PubOnboarding() {
       setPhoneError(motivo)
       if (motivo) return
     }
-
-    if (step < STEPS.length - 1) {
+    if (step < ULTIMO_PASSO) {
       setStep((s) => s + 1)
-    } else {
-      if (conta?.emailVerified) {
-        completeMutation.mutate(draft)
-        return
-      }
-      // Sem e-mail confirmado o cadastro só é enviado de `/verify-email`. Sem
-      // sessão e sem cadastro nesta aba não há de quem guardar o rascunho;
-      // `/verify-email` oferece o login.
-      const email = conta?.email ?? readPendingEmail()
-      if (email) {
-        localStorage.setItem(
-          PUB_ONBOARDING_DRAFT_KEY,
-          serializePubOnboardingDraft(draft, email)
-        )
-      }
-      navigate({ to: '/verify-email' })
+      return
     }
+    if (conta?.emailVerified) {
+      completeMutation.mutate(draft)
+      return
+    }
+    // Sem e-mail confirmado o cadastro só é enviado de `/verify-email`.
+    const email = conta?.email ?? readPendingEmail()
+    if (email) {
+      localStorage.setItem(
+        PUB_ONBOARDING_DRAFT_KEY,
+        serializePubOnboardingDraft(draft, email)
+      )
+    }
+    navigate({ to: '/verify-email' })
   }
 
   const back = () => step > 0 && setStep((s) => s - 1)
 
-  return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label={roleAccountLabel('pub')} />
-      <StepProgress step={step} steps={STEPS} />
+  const chips = [
+    ...amenities.flatMap((id) => findAmenity(id)?.label ?? []),
+    ...(screenCount
+      ? [`${screenCount} ${screenCount === 1 ? 'tela' : 'telas'}`]
+      : [])
+  ]
+  const lugar = [neighborhood.trim(), city.trim()].filter(Boolean).join(' · ')
 
-      <OnboardingStep step={step}>
-        {step === 0 && (
-          <WelcomeStep
-            eyebrow="Seu bar no radar dos torcedores."
-            title={
-              <>
-                Vamos lotar sua casa nos{' '}
-                <span className="text-[var(--onside-acid)]">
-                  próximos clássicos
-                </span>
-                .
-              </>
-            }
-            subtitle="Cadastre seu bar em 1 minuto. Torcedores da região já podem te encontrar."
-            features={WELCOME_FEATURES}
-          />
-        )}
-
-        {step === 1 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              Conta um pouco do seu bar.
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Essas informações aparecem para torcedores que buscam bares perto
-              deles.
-            </p>
-            {draftRestored ? (
-              <div
-                className="onside-callout onside-callout-stone mb-6"
-                role="status"
-              >
-                <p className="text-sm">
-                  Recuperamos o cadastro que você começou neste navegador.
-                  Confira os dados deste passo e do próximo antes de continuar.
-                </p>
-                <button
-                  type="button"
-                  onClick={discardDraft}
-                  className="font-semibold text-sm underline underline-offset-2"
-                >
-                  Descartar e começar do zero
-                </button>
-              </div>
-            ) : null}
-            <PubInfoForm
-              name={name}
-              address={address}
-              neighborhood={neighborhood}
-              city={city}
-              uf={uf}
-              phone={phone}
-              onChange={handleFieldChange}
-              onCityBlur={() => conciliarUfComCidade(city, setUf)}
-              errors={phoneError ? { phone: phoneError } : undefined}
-            />
-          </div>
-        )}
-
-        {step === 2 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              O que o torcedor encontra aí?
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Marque o que o seu bar tem. É isso que aparece no seu perfil e o
-              que o torcedor usa para filtrar a busca. Dá para pular e preencher
-              depois.
-            </p>
-            <PubAmenitiesStep
-              amenities={amenities}
-              onToggleAmenity={toggleAmenity}
-              screenCount={screenCount}
-              onScreenCountChange={setScreenCount}
-              description={description}
-              onDescriptionChange={setDescription}
-            />
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="py-4 text-center md:py-6">
-            <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
-              <Check size={40} color="currentColor" aria-hidden="true" />
-            </div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
-            >
-              {revisao.titulo}
-            </h2>
-            <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
-              {revisao.texto}
-            </p>
-            <div className="inline-flex flex-wrap justify-center gap-2">
-              <span className="onside-badge onside-badge-on-ink">
-                {name.trim() || '…'}
-              </span>
-              <span className="onside-badge onside-badge-on-ink">
-                <Location size={12} color="currentColor" aria-hidden="true" />
-                {neighborhood.trim() || '…'}
-              </span>
-              {amenities.map((id) => {
-                const amenity = findAmenity(id)
-                if (!amenity) return null
-
-                return (
-                  <span
-                    key={amenity.id}
-                    className="onside-badge onside-badge-acid-on-ink"
-                  >
-                    {amenity.label}
-                  </span>
-                )
-              })}
-            </div>
-            {/* WEB-281: o que os selos não mostram. Opcional vazio não entra;
-                cidade vazia aparece como o servidor vai gravar. */}
-            <dl className="mx-auto mt-6 grid max-w-md gap-3 text-left text-sm">
-              {[
-                ['Endereço', address.trim()],
-                ['Cidade', `${city.trim() || 'São Paulo'}, ${uf}`],
-                ['Telefone', formatStoredPhone(phone)],
-                ['Telas', screenCount === null ? '' : String(screenCount)],
-                ['Descrição', description.trim()]
-              ]
-                .filter(([, value]) => value)
-                .map(([label, value]) => (
-                  <div key={label}>
-                    <dt className="font-[family-name:var(--onside-mono)] text-[10px] text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] uppercase tracking-[0.16em]">
-                      {label}
-                    </dt>
-                    <dd className="whitespace-pre-line break-words text-[var(--onside-paper)]">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-          </div>
-        )}
-      </OnboardingStep>
-
-      {error && (
-        <p
-          className="mt-4 text-center text-[var(--onside-live-text)] text-sm"
-          role="alert"
-        >
+  const pe = (rotulo: string, extra?: ReactNode) => (
+    <>
+      {error ? (
+        <p className="entrada-erro" role="alert">
           {error}
         </p>
-      )}
+      ) : null}
+      {blockedHint ? (
+        <p className="entrada-ob-texto" id="ob-falta" aria-live="polite">
+          {blockedHint}
+        </p>
+      ) : null}
+      {extra}
+      <div className="entrada-ob-pe">
+        {step > 0 ? (
+          <Botao variante="sec" onClick={back}>
+            Voltar
+          </Botao>
+        ) : null}
+        <Botao
+          variante="acid"
+          icone={step === 0 ? 'right' : undefined}
+          onClick={next}
+          disabled={blockedHint !== null || completeMutation.isPending}
+          aria-describedby={blockedHint ? 'ob-falta' : undefined}
+        >
+          {completeMutation.isPending ? 'Salvando…' : rotulo}
+        </Botao>
+      </div>
+    </>
+  )
 
-      <OnboardingNavigation
-        step={step}
-        totalSteps={STEPS.length}
-        canAdvance={canAdvance}
-        blockedHint={blockedHint}
-        isPending={completeMutation.isPending}
-        onBack={back}
-        onNext={next}
-        nextLabel={
-          step === 2 &&
-          amenities.length === 0 &&
-          screenCount === null &&
-          !description.trim()
-            ? 'Pular'
-            : undefined
+  const acao =
+    step === 2 ? (
+      <button
+        type="button"
+        className="entrada-ob-acao"
+        onClick={() => setStep(3)}
+      >
+        Pular
+      </button>
+    ) : (
+      <button type="button" className="entrada-ob-acao" onClick={sair}>
+        Sair
+      </button>
+    )
+
+  const recuperado = draftRestored ? (
+    <div className="entrada-ob-aviso" role="status">
+      <span>
+        Recuperamos o cadastro que você começou neste navegador. Confira os
+        dados antes de continuar.
+      </span>
+      <button type="button" onClick={discardDraft}>
+        Descartar e começar do zero
+      </button>
+    </div>
+  ) : null
+
+  if (step === 0) {
+    return (
+      <ObShell
+        passo={0}
+        acao={acao}
+        ladoFoto
+        lado={
+          <div className="entrada-ob-pinos" aria-hidden="true">
+            <span>Casa 92</span>
+            <span>Boteco Sete</span>
+            <span>
+              <Icone nome="pin" tamanho={18} acento="var(--painel-ink)" />
+              Seu bar aqui
+            </span>
+          </div>
         }
-        lastLabel={revisao.botao}
+      >
+        <p className="entrada-ob-eyebrow">Seu bar no radar dos torcedores.</p>
+        <Titulo
+          ref={headingRef}
+          tamanho={76}
+          linhas={[
+            { texto: 'Vamos lotar sua casa nos' },
+            { texto: 'próximos clássicos.', tint: true }
+          ]}
+        />
+        <p
+          className="entrada-ob-texto"
+          data-corpo
+          style={{ fontSize: 17, maxWidth: 520 }}
+        >
+          Cadastre seu bar em 1 minuto. Torcedores da região já podem te
+          encontrar.
+        </p>
+        <div className="entrada-ob-itens">
+          {BOAS_VINDAS.map(([icone, texto]) => (
+            <Card key={texto}>
+              <Icone nome={icone} tamanho={22} />
+              {texto}
+            </Card>
+          ))}
+        </div>
+        {pe('Começar')}
+      </ObShell>
+    )
+  }
+
+  if (step === 1) {
+    return (
+      <ObShell
+        passo={1}
+        acao={acao}
+        lado={
+          <Previa
+            nome={name.trim()}
+            sub={lugar || 'Seus jogos aparecem aqui'}
+            extra={<MapaPrevia />}
+          />
+        }
+      >
+        <Titulo
+          ref={headingRef}
+          tamanho={52}
+          linhas={[{ texto: 'Conta um pouco do seu bar.' }]}
+        />
+        {recuperado}
+        <div className="entrada-ob-grade">
+          <Campo
+            className="entrada-c6"
+            id="pub-name"
+            name="name"
+            rotulo="Nome do estabelecimento *"
+            placeholder="Ex: Bar do Zé"
+            autoComplete="organization"
+            maxLength={100}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Campo
+            className="entrada-c3"
+            id="pub-cep"
+            name="cep"
+            rotulo="CEP"
+            aside={
+              <a
+                href="https://buscacepinter.correios.com.br/app/endereco/index.php"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Não sei o CEP
+              </a>
+            }
+            inputMode="numeric"
+            autoComplete="postal-code"
+            placeholder="00000-000"
+            value={cep}
+            onChange={(e) => void mudarCep(e.target.value)}
+            fim={
+              cepStatus === 'achou' ? (
+                <Badge tipo="acid">✓ Encontrado</Badge>
+              ) : cepStatus === 'buscando' ? (
+                <Badge tipo="muted">Buscando…</Badge>
+              ) : null
+            }
+            dica={
+              cepStatus === 'nao'
+                ? 'Não achamos esse CEP. Preencha o endereço abaixo.'
+                : undefined
+            }
+          />
+          <Campo
+            className="entrada-c3"
+            id="pub-phone"
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            rotulo="Telefone"
+            placeholder="(11) 90000-0000"
+            autoComplete="tel-national"
+            value={formatStoredPhone(phone)}
+            onChange={(e) => {
+              const digitos = e.target.value.replace(/\D/g, '').slice(0, 11)
+              setPhone(digitos ? `+55${digitos}` : '')
+              setPhoneError(null)
+            }}
+            aria-invalid={phoneError ? true : undefined}
+            dica={
+              phoneError ? (
+                <span className="entrada-erro" role="alert">
+                  {phoneError}
+                </span>
+              ) : undefined
+            }
+          />
+          {cepStatus === 'achou' ? (
+            <div className="entrada-ob-cep entrada-c6">
+              <span>
+                <Icone nome="bolt" tamanho={14} acento="var(--painel-tint)" />
+                Preenchido pelo CEP
+              </span>
+              <span>Toque para corrigir</span>
+            </div>
+          ) : null}
+          <Campo
+            className="entrada-c4"
+            id="pub-street"
+            name="street"
+            rotulo="Rua *"
+            placeholder="Ex: Rua Aspicuelta"
+            autoComplete="address-line1"
+            maxLength={200}
+            value={rua}
+            onChange={(e) => setRua(e.target.value)}
+          />
+          <Campo
+            className="entrada-c2"
+            id="pub-number"
+            name="number"
+            rotulo="Número *"
+            placeholder="Ex: 123"
+            autoComplete="address-line2"
+            maxLength={20}
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+          />
+          <Campo
+            className="entrada-c3"
+            id="pub-neighborhood"
+            name="neighborhood"
+            rotulo="Bairro *"
+            placeholder="Ex: Vila Madalena"
+            autoComplete="address-level3"
+            maxLength={100}
+            value={neighborhood}
+            onChange={(e) => setNeighborhood(e.target.value)}
+          />
+          <Campo
+            className="entrada-c2"
+            id="pub-city"
+            name="city"
+            rotulo="Cidade *"
+            placeholder="São Paulo"
+            autoComplete="address-level2"
+            maxLength={100}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            onBlur={() => conciliarUfComCidade(city, setUf)}
+          />
+          <div className="painel-campo entrada-c1">
+            <div className="painel-campo-topo">
+              <label htmlFor="pub-uf">UF *</label>
+            </div>
+            <div className="painel-campo-caixa">
+              <select
+                id="pub-uf"
+                name="uf"
+                value={uf}
+                onChange={(e) => setUf(e.target.value)}
+                autoComplete="address-level1"
+                aria-label="Estado (UF)"
+              >
+                <option value="">—</option>
+                {Object.entries(UFS).map(([sigla, nomeUf]) => (
+                  <option key={sigla} value={sigla} title={nomeUf}>
+                    {sigla}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        {pe('Continuar')}
+      </ObShell>
+    )
+  }
+
+  if (step === 2) {
+    const telas = screenCount ?? 0
+    return (
+      <ObShell
+        passo={2}
+        acao={acao}
+        lado={
+          <Previa
+            foto
+            nome={name.trim()}
+            sub={[neighborhood.trim(), address].filter(Boolean).join(' · ')}
+            chips={chips}
+          />
+        }
+      >
+        <Titulo
+          ref={headingRef}
+          tamanho={46}
+          linhas={[{ texto: 'O que o torcedor encontra aí?' }]}
+        />
+        <p className="entrada-ob-texto" style={{ marginTop: -6 }}>
+          Marque o que o seu bar tem. É isso que aparece no seu perfil e o que o
+          torcedor usa para filtrar a busca. Dá para pular e preencher depois.
+        </p>
+        <div className="entrada-ob-grupos">
+          {AMENITY_GROUPS.map((grupo) => {
+            const itens = (
+              <fieldset key={grupo.key} className="entrada-ob-grupo">
+                <legend>{grupo.label}</legend>
+                <div>
+                  {ITENS.filter((item) => item.group === grupo.key).map(
+                    (item) => (
+                      <Chip
+                        key={item.id}
+                        ativo={amenities.includes(item.id)}
+                        onClick={() => toggleAmenity(item.id)}
+                      >
+                        {item.label}
+                      </Chip>
+                    )
+                  )}
+                </div>
+              </fieldset>
+            )
+            if (grupo.key !== 'watch') return itens
+            return (
+              <div key={grupo.key} className="entrada-ob-telas">
+                {itens}
+                <div>
+                  <span id="ob-telas">Quantas telas?</span>
+                  <fieldset
+                    className="entrada-stepper"
+                    aria-labelledby="ob-telas"
+                  >
+                    <button
+                      type="button"
+                      aria-label="Menos uma tela"
+                      disabled={telas <= 0}
+                      onClick={() =>
+                        setScreenCount(telas <= 1 ? null : telas - 1)
+                      }
+                    >
+                      −
+                    </button>
+                    <b aria-live="polite">{screenCount ?? '—'}</b>
+                    <button
+                      type="button"
+                      aria-label="Mais uma tela"
+                      disabled={telas >= MAX_SCREEN_COUNT}
+                      onClick={() => setScreenCount(telas + 1)}
+                    >
+                      +
+                    </button>
+                  </fieldset>
+                </div>
+              </div>
+            )
+          })}
+          <CampoTexto
+            id="pub-description"
+            name="description"
+            rotulo="Mais alguma coisa? (opcional)"
+            placeholder="Ex: mesa de sinuca no fundo e happy hour até as 20h nos dias de jogo"
+            altura={70}
+            rows={2}
+            maxLength={500}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <p className="entrada-ob-declara">
+            Você declara que seu bar oferece o que marcar aqui. A Onside não
+            verifica essas informações — elas aparecem no seu perfil como
+            declaradas por você.
+          </p>
+        </div>
+        {pe('Continuar')}
+      </ObShell>
+    )
+  }
+
+  const enderecoCompleto = [
+    address,
+    neighborhood.trim(),
+    `${city.trim() || 'São Paulo'}${ehUf(uf) ? `, ${uf}` : ''}`,
+    cep
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const contato = [
+    phone ? formatPhone(phone.slice(3)) : '',
+    conta?.email ?? readPendingEmail()
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const linhas: [IconeNome, string, string | null, (() => void) | null][] = [
+    ['pin', 'Endereço', enderecoCompleto, () => setStep(1)],
+    ['cal', 'Horário', null, null],
+    ['phone', 'Contato', contato, () => setStep(1)],
+    ['ticket', 'Oferta da casa', null, null]
+  ]
+
+  return (
+    <ObShell
+      passo={3}
+      acao={acao}
+      lado={
+        <Previa
+          foto
+          nome={name.trim()}
+          sub={`${neighborhood.trim()} · ★ novo`}
+          chips={[`${PLAN_NAMES[ONBOARDING_TRIAL.plan]} · teste`, ...chips]}
+        />
+      }
+    >
+      <Titulo
+        ref={headingRef}
+        tamanho={56}
+        linhas={[
+          { texto: revisao.titulo },
+          { texto: revisao.tint, tint: true }
+        ]}
       />
-    </OnboardingLayout>
+      <p className="entrada-ob-texto" data-corpo>
+        {revisao.texto}
+      </p>
+      {recuperado}
+      <Card className="entrada-ob-revisao">
+        {linhas.map(([icone, rotulo, valor, editar]) => (
+          <div key={rotulo}>
+            <Icone nome={icone} tamanho={20} />
+            <div>
+              {rotulo}
+              {valor ? (
+                <b>{valor}</b>
+              ) : (
+                <b data-vazio>
+                  {editar
+                    ? 'Não informado'
+                    : 'Você preenche depois, em Meu espaço'}
+                </b>
+              )}
+            </div>
+            {editar ? (
+              <button
+                type="button"
+                onClick={editar}
+                aria-label={`Editar ${rotulo.toLowerCase()}`}
+              >
+                Editar
+              </button>
+            ) : null}
+          </div>
+        ))}
+      </Card>
+      <p className="entrada-ob-letra">
+        Ao continuar você aceita os Termos de Uso.
+      </p>
+      {pe(revisao.botao)}
+    </ObShell>
   )
 }

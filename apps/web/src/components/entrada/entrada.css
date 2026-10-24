@@ -18,6 +18,8 @@
   letter-spacing: -0.01em;
   word-spacing: 0.08em;
   margin: 0;
+  /* Quebra como no design; `.onside-app h1` liga o `balance`. */
+  text-wrap: wrap;
 }
 .painel .entrada-disp > span {
   display: block;
@@ -597,5 +599,669 @@
     gap: 6px;
     align-items: center;
     justify-content: center;
+  }
+}
+
+/* ─── obShell: o onboarding do bar ─── */
+
+.painel .entrada-ob {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.painel .entrada-ob-topo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 32px;
+  height: 72px;
+  padding: 0 48px;
+  border-bottom: 1px solid var(--painel-line);
+}
+.painel .entrada-ob-passos {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.painel .entrada-ob-passos li {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--painel-muted);
+  white-space: nowrap;
+}
+.painel .entrada-ob-passos i {
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(18 18 15 / 12%);
+}
+.painel .entrada-ob-passos li[data-feito] {
+  color: var(--painel-fg);
+}
+.painel .entrada-ob-passos li[data-feito] i {
+  background: var(--painel-fg);
+}
+.painel .entrada-ob-passos li[aria-current] {
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-ob-passos i {
+    background: #2e2e29;
+  }
+  .painel .entrada-ob-passos li[data-feito] i {
+    background: var(--painel-acid);
+  }
+}
+.painel .entrada-ob-acao {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--painel-muted);
+  font: 600 14px / 1 var(--onside-body);
+  cursor: pointer;
+}
+.painel .entrada-ob-corpo {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+}
+.painel .entrada-ob-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 48px 64px;
+}
+.painel .entrada-ob-lado {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  overflow: hidden;
+  background: var(--painel-panel);
+  border-left: 1px solid var(--painel-line);
+}
+.painel .entrada-ob-pe {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+.painel .entrada-ob-pe .painel-btn {
+  --painel-btn-h: 52px;
+}
+.painel .entrada-ob-pe .painel-btn[data-variante="acid"] {
+  padding: 0 32px;
+}
+.painel .entrada-ob-texto {
+  margin: 0;
+  max-width: 600px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--painel-muted);
+}
+.painel .entrada-ob-texto[data-corpo] {
+  color: var(--painel-body);
+}
+.painel .entrada-ob-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  max-width: 640px;
+  padding: 12px 14px;
+  border-radius: 7px;
+  background: var(--painel-sub);
+  font-size: 13.5px;
+}
+.painel .entrada-ob-aviso button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--painel-fg);
+  font: 700 13.5px / 1.3 var(--onside-body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Boas-vindas (4n/4s) */
+.painel .entrada-ob-eyebrow {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--painel-tint);
+}
+.painel .entrada-ob-itens {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+  margin-top: 6px;
+}
+.painel .entrada-ob-itens .painel-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.painel .entrada-ob-lado[data-foto] {
+  padding: 0;
+  background: var(--painel-ink);
+  border-left: 0;
+}
+.painel .entrada-ob-lado[data-foto]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/hero-bar.jpg") center / cover;
+  opacity: 0.92;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-ob-lado[data-foto]::before {
+    opacity: 0.35;
+    filter: grayscale(0.4);
+  }
+}
+.painel .entrada-ob-pinos {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.painel .entrada-ob-pinos > span {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--painel-paper);
+  color: var(--painel-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.painel .entrada-ob-pinos > span:nth-child(1) {
+  transform: translateX(-110px);
+}
+.painel .entrada-ob-pinos > span:nth-child(2) {
+  transform: translateX(90px);
+}
+.painel .entrada-ob-pinos > span:nth-child(3) {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 7px;
+  background: var(--painel-acid);
+  font-size: 15px;
+  box-shadow: 4px 4px 0 #000;
+}
+
+/* Estabelecimento (4o/4t): grade de 6 colunas */
+.painel .entrada-ob-grade {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 640px;
+}
+.painel .entrada-ob-grade > .entrada-c6 {
+  grid-column: span 6;
+}
+.painel .entrada-ob-grade > .entrada-c4 {
+  grid-column: span 4;
+}
+.painel .entrada-ob-grade > .entrada-c3 {
+  grid-column: span 3;
+}
+.painel .entrada-ob-grade > .entrada-c2 {
+  grid-column: span 2;
+}
+.painel .entrada-ob-grade > .entrada-c1 {
+  grid-column: span 1;
+}
+.painel .entrada-ob-cep {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel .entrada-ob-cep > span:first-child {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.painel .entrada-ob-grade a {
+  color: inherit;
+}
+
+/* Características (4p/4u) */
+.painel .entrada-ob-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 660px;
+}
+.painel .entrada-ob-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.painel .entrada-ob-grupo legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--painel-muted);
+}
+.painel .entrada-ob-grupo > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.painel .entrada-ob-telas {
+  display: flex;
+  gap: 0;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.painel .entrada-ob-telas > fieldset {
+  flex: 1;
+  min-width: 0;
+}
+.painel .entrada-ob-telas > div:last-child {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--painel-muted);
+}
+.painel .entrada-stepper {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.painel .entrada-stepper button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--painel-fg);
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+  font: 700 16px / 1 var(--onside-body);
+  cursor: pointer;
+}
+.painel .entrada-stepper button:last-child {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: none;
+}
+.painel .entrada-stepper button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.painel .entrada-stepper b {
+  min-width: 20px;
+  font: 400 24px / 1 var(--onside-display);
+  text-align: center;
+  color: var(--painel-fg);
+}
+.painel .entrada-ob-declara {
+  margin: -6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+
+/* Revisão (4q/4v) */
+.painel .entrada-ob-revisao {
+  max-width: 640px;
+  padding: 4px 18px;
+}
+.painel .entrada-ob-revisao > div {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 0;
+}
+.painel .entrada-ob-revisao > div + div {
+  border-top: 1px solid var(--painel-line);
+}
+.painel .entrada-ob-revisao > div > div {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel .entrada-ob-revisao b {
+  display: block;
+  font-size: 14.5px;
+  color: var(--painel-fg);
+  overflow-wrap: anywhere;
+}
+.painel .entrada-ob-revisao b[data-vazio] {
+  font-weight: 500;
+  color: var(--painel-muted);
+}
+.painel .entrada-ob-revisao button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--painel-fg);
+  font: 700 13.5px / 1 var(--onside-body);
+  cursor: pointer;
+}
+.painel .entrada-ob-letra {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+
+/* Prévia "Assim o torcedor vê" */
+.painel .entrada-previa {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 400px;
+  max-width: 100%;
+}
+.painel .entrada-previa-rotulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--painel-muted);
+}
+.painel .entrada-previa-card {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh-hero);
+}
+.painel .entrada-previa-foto {
+  height: 150px;
+  background: url("/hero-bar.jpg") center / cover;
+}
+.painel .entrada-previa-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+}
+.painel .entrada-previa-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.painel .entrada-previa-bar > div {
+  flex: 1;
+  min-width: 0;
+}
+.painel .entrada-previa-bar b {
+  display: block;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.painel .entrada-previa-bar span {
+  font-size: 13px;
+  color: var(--painel-muted);
+}
+.painel .entrada-previa-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.painel .entrada-previa-mapa {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 160px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    135deg,
+    #e3dfd6 0 8px,
+    #ebe7df 8px 16px
+  );
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-previa-mapa {
+    background: repeating-linear-gradient(
+      135deg,
+      #22221e 0 8px,
+      #1c1c18 8px 16px
+    );
+  }
+}
+.painel .entrada-previa-mapa > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: 0 0 0 6px rgb(201 241 53 / 25%);
+}
+.painel .entrada-previa-oferta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.painel .entrada-medalha {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 10px;
+  background: var(--painel-ink);
+  color: var(--painel-paper);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-medalha {
+    background: #262621;
+  }
+}
+
+/* No ar (4r/4w) */
+.painel .entrada-noar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 620px;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.painel .entrada-noar-confete {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+}
+.painel .entrada-noar-texto {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 72px 64px;
+}
+.painel .entrada-noar-check {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow:
+    0 0 0 12px rgb(201 241 53 / 14%),
+    0 0 0 28px rgb(201 241 53 / 6%);
+}
+.painel .entrada-noar-texto > p {
+  margin: 0;
+  max-width: 480px;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--painel-body);
+}
+.painel .entrada-noar-texto > p b {
+  color: var(--painel-fg);
+}
+.painel .entrada-noar-plano {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  max-width: 480px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh);
+  font-size: 13px;
+  color: var(--painel-muted);
+}
+.painel .entrada-noar-plano b {
+  display: block;
+  font-size: 15px;
+  color: var(--painel-fg);
+}
+.painel .entrada-noar-planos {
+  width: fit-content;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--painel-muted);
+  text-decoration: none;
+}
+.painel .entrada-noar-lado {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 44px 44px 36px;
+  background: var(--painel-panel);
+  border-left: 1px solid var(--painel-line);
+}
+.painel .entrada-noar-kicker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--painel-live);
+}
+.painel .entrada-noar-lado > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.painel .entrada-noar-lado p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--painel-muted);
+}
+.painel .entrada-noar-sugestoes {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1.5px var(--painel-line2);
+  font-size: 13.5px;
+  color: var(--painel-muted);
+}
+.painel .entrada-noar-sugestoes > div {
+  flex: 1;
+}
+.painel .entrada-noar-sugestoes b {
+  display: block;
+  font-size: 15px;
+  color: var(--painel-fg);
+}
+.painel .entrada-noar-pe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+  text-align: center;
+}
+.painel .entrada-noar-pe .painel-btn {
+  width: 100%;
+  --painel-btn-h: 54px;
+  font-size: 15.5px;
+}
+.painel .entrada-noar-pe > a:last-child {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--painel-muted);
+  text-decoration: none;
+}
+
+/* Tablet e celular: uma coluna; a prévia vai para baixo do formulário. */
+@media (max-width: 1100px) {
+  .painel .entrada-ob-corpo,
+  .painel .entrada-noar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .painel .entrada-ob-lado {
+    border-left: 0;
+    border-top: 1px solid var(--painel-line);
+  }
+  .painel .entrada-ob-lado[data-foto] {
+    min-height: 280px;
+  }
+  .painel .entrada-noar-lado {
+    border-left: 0;
+    border-top: 1px solid var(--painel-line);
+  }
+}
+@media (max-width: 760px) {
+  .painel .entrada-ob-topo {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 14px 16px;
+    padding: 16px;
+  }
+  .painel .entrada-ob-passos {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .painel .entrada-ob-passos li span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .painel .entrada-ob-acao {
+    margin-left: auto;
+  }
+  .painel .entrada-ob-form,
+  .painel .entrada-noar-texto {
+    padding: 28px 16px;
+  }
+  .painel .entrada-ob-lado,
+  .painel .entrada-noar-lado {
+    padding: 28px 16px;
+  }
+  .painel .entrada-ob-grade > * {
+    grid-column: span 6;
   }
 }
