@@ -66,6 +66,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
+import type { RatingReasonId } from '../lib/rating-reasons'
 import { assertCanValidateReservations } from '../lib/reservation-validation'
 import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
 import { utcIso } from '../lib/utc-timestamp'
@@ -555,6 +556,7 @@ export const pubRouter = router({
     const rows = await db.execute(sql`
       SELECT
         r.would_return,
+        r.reasons,
         r.created_at,
         e.championship,
         e.participant_free_text,
@@ -579,6 +581,7 @@ export const pubRouter = router({
       recent: (
         rows.rows as {
           would_return: boolean
+          reasons: RatingReasonId[] | null
           created_at: string
           championship: string
           participant_free_text: string | null
@@ -587,6 +590,8 @@ export const pubRouter = router({
         }[]
       ).map((row) => ({
         wouldReturn: row.would_return,
+        // "O que pesou?" (WEB-398): as etiquetas, sem quem marcou.
+        reasons: row.reasons ?? [],
         createdAt: row.created_at,
         championship: row.championship,
         participantFreeText: row.participant_free_text,

@@ -115,6 +115,15 @@ integrationTest(
         negative: []
       })
 
+      // O dono vê as etiquetas de cada resposta, abaixo do piso também, sem
+      // saber quem marcou ("Meu espaço").
+      const doDono = await seeded.owner.pub.getMyRatings()
+      expect(doDono.recent.map((item) => item.reasons).sort()).toEqual([
+        [],
+        ['food'],
+        ['sound', 'screen']
+      ])
+
       // Com a exibição da nota desligada, o resumo some junto.
       await setAppConfig('rating.public_display', false, null)
       const hidden = await seeded.fan.pubs.getById({ id: seeded.barId })
