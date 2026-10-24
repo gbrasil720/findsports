@@ -1,26 +1,33 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { getAnalyticsRange } from '@/components/admin/analytics-period'
-import { ScheduleTab } from '@/components/admin/schedule-tab'
-import { CabecalhoPagina } from '@/components/painel'
+import { useCallback } from 'react'
+import jogosCss from '@/components/painel-jogos/jogos.css?url'
+import { JogosPage } from '@/components/painel-jogos/jogos-page'
 
 export const Route = createFileRoute('/admin/jogos')({
-  head: () => ({ meta: [{ title: 'Jogos — Painel do Bar — Onside' }] }),
-  // `?novo=1`: abre o formulário de jogo novo ("Novo jogo" do Hoje).
-  validateSearch: (search: Record<string, unknown>): { novo?: 1 } =>
-    search.novo === 1 || search.novo === '1' ? { novo: 1 } : {},
-  component: JogosPage
+  // `?jogo=<id>` abre o jogo; `?novo=1` abre o formulário de jogo novo
+  // ("Novo jogo" do Hoje, fim do onboarding).
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { jogo?: string; novo?: 1 } => ({
+    ...(typeof search.jogo === 'string' ? { jogo: search.jogo } : {}),
+    ...(String(search.novo) === '1' ? { novo: 1 as const } : {})
+  }),
+  head: () => ({
+    meta: [{ title: 'Jogos — Painel do Bar — Onside' }],
+    links: [{ rel: 'stylesheet', href: jogosCss }]
+  }),
+  component: JogosRoute
 })
 
-// Por enquanto, a grade de antes dentro do shell novo.
-function JogosPage() {
-  const [analyticsRange] = useState(() => getAnalyticsRange('30d'))
+function JogosRoute() {
+  const { jogo, novo } = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const tirarNovo = useCallback(
+    () =>
+      void navigate({ search: ({ novo: _, ...rest }) => rest, replace: true }),
+    [navigate]
+  )
   return (
-    <>
-      <CabecalhoPagina titulo="Jogos" />
-      <div className="painel-legado">
-        <ScheduleTab active analyticsRange={analyticsRange} />
-      </div>
-    </>
+    <JogosPage jogoInicial={jogo} novo={novo === 1} onNovoAberto={tirarNovo} />
   )
 }

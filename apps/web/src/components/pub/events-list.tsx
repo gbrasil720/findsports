@@ -44,8 +44,7 @@ function EmptyAgenda({
         <OwnerNudge
           action={{
             label: 'Cadastrar jogo',
-            to: '/admin',
-            hash: 'admin-grade'
+            to: '/admin/jogos'
           }}
         >
           O torcedor está vendo esta mesma seção vazia.
