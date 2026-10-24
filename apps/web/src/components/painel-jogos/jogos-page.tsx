@@ -23,7 +23,11 @@ import {
   useMySubscription,
   useShowsGoing
 } from '@/components/admin/admin-queries'
-import { DesempenhoDosJogos } from '@/components/admin/desempenho-dos-jogos'
+import {
+  getAnalyticsRange,
+  getAvailableAnalyticsPeriods
+} from '@/components/admin/analytics-period'
+import { usePeriodoDesempenho } from '@/components/admin/desempenho-contas'
 import { EventDeleteDialog } from '@/components/admin/event-delete-dialog'
 import {
   type EventForm,
@@ -61,6 +65,7 @@ import {
   Icone,
   Seg
 } from '../painel'
+import { ComoCadaJogoFoi } from './como-cada-jogo-foi'
 import { JogoAberto, type JogoQuemVai } from './jogo-aberto'
 import { ListaJogos, SemanaJogos } from './lista'
 
@@ -163,13 +168,16 @@ type Vista = 'lista' | 'semana'
 export function JogosPage({
   jogoInicial,
   novo,
-  onNovoAberto
+  onNovoAberto,
+  passados
 }: {
   jogoInicial?: string
   /** `?novo=1` (Hoje, fim do onboarding): abre o "Novo jogo" quando pode. */
   novo?: boolean
   /** Tira o `?novo=1` da URL, para recarregar não abrir de novo. */
   onNovoAberto?: () => void
+  /** `?passados=1` (o "Ver os jogos" do Desempenho): abre em Passados. */
+  passados?: boolean
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -225,7 +233,11 @@ export function JogosPage({
   })
 
   const [busca, setBusca] = useState('')
-  const [filtro, setFiltro] = useState<FiltroJogos>('proximos')
+  const [filtro, setFiltro] = useState<FiltroJogos>(
+    passados ? 'passados' : 'proximos'
+  )
+  // Passados mostra "Como cada jogo foi" no período do Desempenho.
+  const [periodo, escolherPeriodo] = usePeriodoDesempenho()
   const [vista, setVista] = useState<Vista>('lista')
   // A semana vai de domingo a sábado (decisão do dono), com hoje marcado; as
   // setas andam sete dias.
@@ -418,7 +430,7 @@ export function JogosPage({
   const proximos = filtrarJogos(events, 'proximos', now)
   const naLista = filtrarJogos(visiveis, filtro, now)
   const abertoId =
-    !larga || vista === 'semana'
+    !larga || vista === 'semana' || filtro === 'passados'
       ? null
       : aberto === undefined
         ? (naLista[0]?.id ?? null)
@@ -597,59 +609,88 @@ export function JogosPage({
               setAberto(undefined)
             }}
           >
-            Passados
+            Passados · {filtrarJogos(events, 'passados', now).length}
           </Chip>
         </fieldset>
-        <div className="jogos-barra-dir">
-          {vista === 'semana' ? (
-            <div className="jogos-semana-nav">
-              <BotaoIcone
-                icone="back"
-                rotulo="Semana anterior"
-                quadrado
-                tamanho={34}
-                onClick={() => setSemana((s) => somarDias(s, -7))}
+        {filtro === 'passados' ? (
+          <div className="passados-periodo">
+            Mesmo período do Desempenho
+            {entitlements ? (
+              <Seg
+                rotulo="Período"
+                valor={periodo.preset}
+                onChange={(preset) => {
+                  if (preset !== 'custom') {
+                    escolherPeriodo({
+                      preset,
+                      range: getAnalyticsRange(
+                        preset,
+                        new Date(),
+                        bar ? new Date(bar.createdAt) : undefined
+                      )
+                    })
+                  }
+                }}
+                itens={getAvailableAnalyticsPeriods(
+                  entitlements.maxDaysRetention
+                ).map((op) => ({ valor: op.id, rotulo: op.label }))}
               />
-              <span aria-live="polite">{rotuloSemana(semana)}</span>
-              <BotaoIcone
-                icone="right"
-                rotulo="Próxima semana"
-                quadrado
-                tamanho={34}
-                onClick={() => setSemana((s) => somarDias(s, 7))}
-              />
-            </div>
-          ) : null}
-          {planLine ? <span className="jogos-plano">{planLine}</span> : null}
-          <Seg
-            rotulo="Ver como"
-            valor={vista}
-            onChange={(v) => {
-              setVista(v)
-              if (v === 'semana') setFiltro('proximos')
-            }}
-            itens={[
-              { valor: 'lista', rotulo: 'Lista' },
-              { valor: 'semana', rotulo: 'Semana' }
-            ]}
-          />
-        </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="jogos-barra-dir">
+            {vista === 'semana' ? (
+              <div className="jogos-semana-nav">
+                <BotaoIcone
+                  icone="back"
+                  rotulo="Semana anterior"
+                  quadrado
+                  tamanho={34}
+                  onClick={() => setSemana((s) => somarDias(s, -7))}
+                />
+                <span aria-live="polite">{rotuloSemana(semana)}</span>
+                <BotaoIcone
+                  icone="right"
+                  rotulo="Próxima semana"
+                  quadrado
+                  tamanho={34}
+                  onClick={() => setSemana((s) => somarDias(s, 7))}
+                />
+              </div>
+            ) : null}
+            {planLine ? <span className="jogos-plano">{planLine}</span> : null}
+            <Seg
+              rotulo="Ver como"
+              valor={vista}
+              onChange={(v) => {
+                setVista(v)
+                if (v === 'semana') setFiltro('proximos')
+              }}
+              itens={[
+                { valor: 'lista', rotulo: 'Lista' },
+                { valor: 'semana', rotulo: 'Semana' }
+              ]}
+            />
+          </div>
+        )}
       </div>
 
-      <section className="jogos-sug" aria-label="Sugestões da rodada">
-        <div className="jogos-sug-texto">
-          <span>
-            <Icone nome="spark" tamanho={20} acento="var(--painel-acid)" />
-            Sugestões da rodada <EmBreve />
-          </span>
-          <span>
-            Jogos que os torcedores perto do bar seguem e não estão na grade.
-          </span>
-        </div>
-        <Botao variante="acid" icone="plus" disabled title="Em breve">
-          Adicionar como rascunho
-        </Botao>
-      </section>
+      {filtro === 'passados' ? null : (
+        <section className="jogos-sug" aria-label="Sugestões da rodada">
+          <div className="jogos-sug-texto">
+            <span>
+              <Icone nome="spark" tamanho={20} acento="var(--painel-acid)" />
+              Sugestões da rodada <EmBreve />
+            </span>
+            <span>
+              Jogos que os torcedores perto do bar seguem e não estão na grade.
+            </span>
+          </div>
+          <Botao variante="acid" icone="plus" disabled title="Em breve">
+            Adicionar como rascunho
+          </Botao>
+        </section>
+      )}
 
       {eventsState.status === 'loading' ? (
         <div role="status" aria-busy="true" className="jogos-lista">
@@ -693,6 +734,8 @@ export function JogosPage({
             Adicionar primeiro jogo
           </Botao>
         </Card>
+      ) : filtro === 'passados' ? (
+        <ComoCadaJogoFoi range={periodo.range} />
       ) : vista === 'semana' ? (
         <SemanaJogos
           dias={montarSemana(semana, visiveis, now)}
@@ -727,9 +770,7 @@ export function JogosPage({
               <p className="jogos-dica">
                 {busca.trim()
                   ? `Nada com “${busca.trim()}”.`
-                  : filtro === 'passados'
-                    ? 'Nenhum jogo passado.'
-                    : 'Nenhum jogo daqui para frente.'}
+                  : 'Nenhum jogo daqui para frente.'}
               </p>
             )}
           </div>
@@ -741,8 +782,6 @@ export function JogosPage({
           ) : null}
         </div>
       )}
-
-      <DesempenhoDosJogos />
 
       <Dialog
         open={!!folha && (folha.tipo === 'novo' || !!eventoFolha)}
