@@ -45,7 +45,6 @@ beforeAll(() => {
   process.env.DATABASE_URL ??= 'postgres://localhost/findsports_dev'
   process.env.BETTER_AUTH_SECRET ??= 'test-secret-with-at-least-32-chars'
   process.env.BETTER_AUTH_URL ??= 'http://localhost:3001'
-  process.env.CORS_ORIGIN ??= 'http://localhost:3001'
 })
 
 afterEach(() => {

@@ -10,7 +10,6 @@ const rawEnv = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     PUBLIC_APP_URL: z.url().optional(),
-    CORS_ORIGIN: z.url(),
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
     RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_FROM_EMAIL: z.email().optional(),

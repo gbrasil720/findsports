@@ -240,7 +240,7 @@ não exercitar o cache em si — isso fica com o teste unitário
 
 - **`vite dev`, não o build.** O build de produção usa o driver HTTP do Neon e
   falha com `fetch failed` contra Postgres local.
-- **Origem.** `BETTER_AUTH_URL`, `CORS_ORIGIN` e `PUBLIC_APP_URL` são
+- **Origem.** `BETTER_AUTH_URL` e `PUBLIC_APP_URL` são
   `http://127.0.0.1:<E2E_PORT>`, e o `baseURL` do Playwright também. Trocar um
   só dá `Invalid origin` no login. `127.0.0.1`, e não `localhost`: no macOS o
   `localhost` do Vite pode abrir só em `::1`.
