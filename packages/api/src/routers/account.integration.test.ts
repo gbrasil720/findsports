@@ -115,3 +115,29 @@ integrationTest(
     }
   }
 )
+
+integrationTest('bar exporta a conta, o bar, o plano e os jogos', async () => {
+  const ctx = await seedBar('elite', 'active', null)
+  const { db } = ctx
+  try {
+    await ctx.seedGame({ startsAt: new Date(Date.now() + 86_400_000) })
+    await db.insert(attendance).values({
+      userId: ctx.fanId,
+      eventId: await ctx.seedGame({
+        startsAt: new Date(Date.now() - 86_400_000)
+      })
+    })
+
+    const data = await ctx.owner.account.exportBarData()
+    expect(data.bar?.name).toBe('Bar de integração')
+    expect(data.subscription?.plan).toBe('elite')
+    expect(data.games).toHaveLength(2)
+    // De torcedor, nada: nem quem marcou presença.
+    expect(JSON.stringify(data)).not.toContain(ctx.fanId)
+
+    // Só bar exporta por aqui.
+    await expect(ctx.fan.account.exportBarData()).rejects.toThrow('bar')
+  } finally {
+    await ctx.cleanup()
+  }
+})

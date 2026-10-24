@@ -5,6 +5,7 @@ import {
   bar,
   event,
   sport,
+  subscription,
   team,
   userFavoriteBars,
   userFavoriteTeams,
@@ -12,9 +13,11 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { friendship } from '@findsports_oficial/db/schema/social'
-import { fanProcedure, router } from '../index'
+import { fanProcedure, pubProcedure, router } from '../index'
 import { readAchievements } from '../lib/achievements-read'
+import { findAmenity } from '../lib/amenities'
 import { readMyGames } from '../lib/attendance'
+import { participantNames } from '../lib/game-participants'
 
 /*
  * "Baixar meus dados" (Privacidade, 11i do design; WEB-419). O app grava o
@@ -174,6 +177,100 @@ export const accountRouter = router({
             unlockedAt: iso(a.unlockedAt ? new Date(a.unlockedAt) : null)
           }))
       }
+    }
+  }),
+
+  /**
+   * "Baixar meus dados" do painel do bar (Configurações, 2e): a conta, o bar,
+   * o plano e os jogos cadastrados. De torcedor não sai nada, nem quem marcou
+   * presença: são dados dos outros. O web baixa o arquivo direto.
+   */
+  exportBarData: pubProcedure.query(async ({ ctx }) => {
+    const me = ctx.session.user.id
+    const [[profile], [own]] = await Promise.all([
+      db
+        .select({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          twoFactorEnabled: user.twoFactorEnabled,
+          createdAt: user.createdAt
+        })
+        .from(user)
+        .where(eq(user.id, me)),
+      db.select().from(bar).where(eq(bar.userId, me))
+    ])
+    const [plan, games] = own
+      ? await Promise.all([
+          db
+            .select({
+              plan: subscription.plan,
+              status: subscription.status,
+              currentPeriodEnd: subscription.currentPeriodEnd,
+              cancelAt: subscription.cancelAt
+            })
+            .from(subscription)
+            .where(eq(subscription.barId, own.id))
+            .then(([row]) => row ?? null),
+          db
+            .select({
+              championship: event.championship,
+              participants: participantNames(sql`${event.id}`),
+              participantFreeText: event.participantFreeText,
+              startsAt: event.startsAt,
+              endsAt: event.endsAt
+            })
+            .from(event)
+            .where(eq(event.barId, own.id))
+            .orderBy(event.startsAt)
+        ])
+      : [null, []]
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: profile
+        ? { ...profile, createdAt: iso(profile.createdAt) }
+        : null,
+      bar: own
+        ? {
+            name: own.name,
+            description: own.description,
+            phone: own.phone,
+            phoneAcceptsWhatsapp: own.phoneAcceptsWhatsapp,
+            address: own.address,
+            neighborhood: own.neighborhood,
+            city: own.city,
+            uf: own.uf,
+            photoUrl: own.photoUrl,
+            amenities: own.amenities.flatMap(
+              (id) => findAmenity(id)?.label ?? []
+            ),
+            screenCount: own.screenCount,
+            openingHours: own.openingHours,
+            houseOffer: own.houseOffer,
+            confirmsCodesLater: own.confirmsCodesLater,
+            menuUrl: own.menuUrl,
+            averageSpendCents: own.averageSpendCents,
+            isActive: own.isActive,
+            ratings: { total: own.ratingCount, positive: own.ratingPositive },
+            createdAt: iso(own.createdAt)
+          }
+        : null,
+      subscription: plan
+        ? {
+            ...plan,
+            currentPeriodEnd: iso(plan.currentPeriodEnd),
+            cancelAt: iso(plan.cancelAt)
+          }
+        : null,
+      games: games.map((game) => ({
+        championship: game.championship,
+        participants: game.participants.length
+          ? game.participants
+          : game.participantFreeText,
+        startsAt: iso(game.startsAt),
+        endsAt: iso(game.endsAt)
+      }))
     }
   })
 })
