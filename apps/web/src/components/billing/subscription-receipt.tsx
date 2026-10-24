@@ -407,8 +407,8 @@ function PaperContent({
         </p>
       </footer>
       <p className="onside-receipt-legal">
-        Comprovante de contratação, não é documento fiscal. As faturas ficam no
-        portal da Stripe, em Plano e cobrança.
+        Comprovante de contratação, não é documento fiscal. As faturas ficam em
+        Plano e cobrança.
       </p>
     </article>
   )
