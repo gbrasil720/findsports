@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import type { inferRouterOutputs } from '@trpc/server'
 
 /*
@@ -42,7 +43,7 @@ export const shortDate = (date: string | Date) =>
     .toLocaleDateString('pt-BR', {
       day: 'numeric',
       month: 'short',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: TZ
     })
     .replace('.', '')
     .replace(' de ', ' ')
@@ -54,7 +55,7 @@ export const fullDate = (date: string | Date) =>
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: TZ
     })
     .replaceAll('/', '.')
 

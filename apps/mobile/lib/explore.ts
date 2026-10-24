@@ -1,4 +1,7 @@
-import { getEventEnd } from '@findsports_oficial/db/event-window'
+import {
+  isEventLive,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 
 /*
  * Contas do Explorar ("07" do design) que não dependem de tela: de onde a
@@ -20,15 +23,8 @@ export function searchCenter(
   return { lat, lng }
 }
 
-type Game = { startsAt: string | Date; endsAt: string | Date | null }
-
-/** Começou e ainda não passou do fim (informado ou derivado). */
-export function isLive(game: Game, now = Date.now()) {
-  return (
-    new Date(game.startsAt).getTime() <= now &&
-    now <= getEventEnd(game).getTime()
-  )
-}
+/** Começou e ainda não chegou ao fim (informado ou derivado). */
+export const isLive = isEventLive
 
 /** "0,8 km"; abaixo de 1 km o design também escreve em km. */
 export function formatKm(km: number) {
@@ -40,7 +36,7 @@ export function formatTime(date: string | Date) {
   return new Date(date).toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 }
 
@@ -69,7 +65,7 @@ export function greeting(now = new Date()) {
     now.toLocaleString('en-US', {
       hour: 'numeric',
       hourCycle: 'h23',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: TZ
     })
   )
   if (hour >= 5 && hour < 12) return 'Bom dia'

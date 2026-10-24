@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
@@ -91,7 +92,7 @@ export function usePalette(): Palette {
 const DAY = 86_400_000
 const dayOf = (value: number | string | Date) =>
   new Date(value).toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 
 /** "Hoje", "Amanhã", "Ontem" ou "sáb., 18/10". */
@@ -103,7 +104,7 @@ export function dayLabel(date: string | Date, now: number) {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 }
 

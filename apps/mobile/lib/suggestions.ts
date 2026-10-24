@@ -1,4 +1,8 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import {
+  brasiliaDay,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 import type { inferRouterOutputs } from '@trpc/server'
 import { BAR_ITEMS, PIX_E_CARTAO } from './filters'
 
@@ -14,7 +18,6 @@ export type Round = NonNullable<Today['round']>
 export type Suggestion = Round['items'][number]
 export type AxisKey = keyof Suggestion['axes']
 
-const TZ = 'America/Sao_Paulo'
 const DAY = 86_400_000
 
 export const SLOT_LABEL: Record<Suggestion['slot'], string> = {
@@ -225,8 +228,7 @@ export function axisLine(item: Suggestion, key: AxisKey, radiusKm: number) {
   }
 }
 
-const dayKey = (value: string | number) =>
-  new Date(value).toLocaleDateString('en-CA', { timeZone: TZ })
+const dayKey = (value: string | number) => brasiliaDay(value)
 
 export const isToday = (startsAt: string, now: number) =>
   dayKey(startsAt) === dayKey(now)

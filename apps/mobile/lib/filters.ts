@@ -1,9 +1,10 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+
 /*
  * Filtros do Explorar (19d do design) e os atalhos no topo do mapa (19e).
  * Contas puras; o estado mora em `components/explore-state.tsx`.
  */
 
-const TZ = 'America/Sao_Paulo'
 const DAY = 86_400_000
 
 /** O que a busca recebe além do centro. `null` é "qualquer". */
@@ -30,8 +31,7 @@ export const NO_FILTERS: Filters = {
 }
 
 /** "2026-10-20": o dia de Brasília de `now` mais `plus` dias. */
-export const dayKey = (now: number, plus = 0) =>
-  new Date(now + plus * DAY).toLocaleDateString('en-CA', { timeZone: TZ })
+export const dayKey = (now: number, plus = 0) => brasiliaDay(now, plus)
 
 /** Quantos filtros estão ligados: o número do botão e do "Limpar". */
 export const activeCount = (f: Filters) =>

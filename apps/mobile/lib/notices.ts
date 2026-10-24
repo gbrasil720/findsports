@@ -1,3 +1,7 @@
+import {
+  brasiliaDay,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { firstName, formatTime } from './explore'
 import { matchName, type NearBar } from './search'
@@ -12,7 +16,6 @@ import { matchName, type NearBar } from './search'
  * existem no produto. Contas puras; a tela fica em `app/avisos.tsx`.
  */
 
-const TZ = 'America/Sao_Paulo'
 const DAY = 86_400_000
 
 export type Notice =
@@ -124,8 +127,7 @@ type MyGame = {
 
 type Medal = { id: string; unlockedAt: string | null }
 
-const dayKey = (date: string | number) =>
-  new Date(date).toLocaleDateString('en-CA', { timeZone: TZ })
+const dayKey = (date: string | number) => brasiliaDay(date)
 
 /** Até 30 dias para trás; jogos dos seus times, até sete dias à frente. */
 export function buildNotices(

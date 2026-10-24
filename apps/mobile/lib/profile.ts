@@ -1,11 +1,10 @@
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import { dayKey } from './your-bars'
 
 /*
  * Perfil (2l do design, seção 10): as contas da tela, puras e no dia de
  * Brasília. A tela fica em `app/(fan)/voce/perfil.tsx`.
  */
-
-const TZ = 'America/Sao_Paulo'
 
 /** "torcedor desde set. 2026". */
 export function memberSince(createdAt: string | Date) {

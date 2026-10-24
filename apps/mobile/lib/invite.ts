@@ -1,3 +1,4 @@
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import * as SecureStore from 'expo-secure-store'
 
 /*
@@ -16,7 +17,7 @@ export const inviteMessage = (code: string) =>
 export const monthName = (now = new Date()) =>
   now.toLocaleDateString('pt-BR', {
     month: 'long',
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 
 /*

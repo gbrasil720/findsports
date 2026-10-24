@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
@@ -196,16 +197,7 @@ export default function Notices() {
 
   // O jogo marcado para hoje que ainda não acabou: o cartão do topo.
   const today = (mine.data ?? [])
-    .filter(
-      (g) =>
-        !g.ended &&
-        new Date(g.startsAt).toLocaleDateString('en-CA', {
-          timeZone: 'America/Sao_Paulo'
-        }) ===
-          new Date(now).toLocaleDateString('en-CA', {
-            timeZone: 'America/Sao_Paulo'
-          })
-    )
+    .filter((g) => !g.ended && brasiliaDay(g.startsAt) === brasiliaDay(now))
     .sort(
       (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
     )[0]

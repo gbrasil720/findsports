@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -88,8 +89,7 @@ import { trpc } from '@/lib/trpc'
  */
 
 /** O dia de hoje em Brasília, como `pubs.search` recebe (`AAAA-MM-DD`). */
-const today = () =>
-  new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+const today = () => brasiliaDay(Date.now())
 
 /**
  * `capture`: esta é a tela que a aba "Você" fotografa para pôr sob o menu.
@@ -163,9 +163,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     (bar) =>
       bar.nextEvent &&
       (isLive(bar.nextEvent, now) ||
-        new Date(bar.nextEvent.startsAt).toLocaleDateString('en-CA', {
-          timeZone: 'America/Sao_Paulo'
-        }) === today())
+        brasiliaDay(bar.nextEvent.startsAt) === today())
   ).length
 
   const favorites = useFavorites()

@@ -1,3 +1,7 @@
+import {
+  brasiliaDay,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import type {
   ChatBar,
@@ -272,8 +276,7 @@ export const barsFound = (turns: Turn[]) =>
   Math.max(0, ...turns.map((t) => shownReply(t).bars.length))
 
 const DAY = 86_400_000
-const ymd = (value: number) =>
-  new Date(value).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+const ymd = (value: number) => brasiliaDay(value)
 
 /** "Hoje", "Ontem", "Seg" (até uma semana) ou "12/10". */
 export function recentWhen(at: number, now: number) {
@@ -283,14 +286,14 @@ export function recentWhen(at: number, now: number) {
   if (days > 0 && days < 7) {
     const weekday = new Date(at)
       .toLocaleDateString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
+        timeZone: TZ,
         weekday: 'short'
       })
       .replace('.', '')
     return weekday.charAt(0).toLocaleUpperCase('pt-BR') + weekday.slice(1)
   }
   return new Date(at).toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: TZ,
     day: '2-digit',
     month: '2-digit'
   })
@@ -488,10 +491,7 @@ export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
 
 // --- Quando o chat volta -------------------------------------------------------
 
-const day = (value: Date | number) =>
-  new Date(value).toLocaleDateString('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  })
+const day = (value: Date | number) => brasiliaDay(value)
 
 /** Quando o chat volta: "amanhã à 0h" ou "em 1º de novembro". */
 export function resumeLabel(resumesAt: string, now: number) {
@@ -499,12 +499,12 @@ export function resumeLabel(resumesAt: string, now: number) {
   if (day(at) === day(now + 86_400_000)) return 'amanhã à 0h'
   const dayOfMonth = Number(
     at.toLocaleDateString('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
+      timeZone: TZ,
       day: 'numeric'
     })
   )
   const month = at.toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: TZ,
     month: 'long'
   })
   return `em ${dayOfMonth === 1 ? '1º' : dayOfMonth} de ${month}`
@@ -513,7 +513,7 @@ export function resumeLabel(resumesAt: string, now: number) {
 /** "19:02", no horário de Brasília. */
 export const clock = (value: number | string) =>
   new Date(value).toLocaleTimeString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: TZ,
     hour: '2-digit',
     minute: '2-digit'
   })
