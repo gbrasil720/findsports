@@ -2,13 +2,13 @@ import {
   RATING_REASONS,
   type RatingReasonId
 } from '@findsports_oficial/api/lib/rating-reasons'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Xmark from 'reicon-react/icons/Xmark'
 import { toast } from 'sonner'
 import { formatDayLabel } from '@/domain/pub-profile'
-import { getGameTitle } from '@/domain/reservation-validation'
 import { toastWithUndo } from '@/lib/undo-toast'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -128,7 +128,7 @@ export function PendingRatingCard({ pending, first }: Props) {
         Voltaria pra ver jogo no {item.barName}?
       </h2>
       <p className="mt-1 text-[var(--onside-muted)] text-sm">
-        {getGameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
+        {gameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
         {item.neighborhood}
       </p>
 

@@ -1,7 +1,7 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { formatDayLabel } from '@/domain/pub-profile'
-import { getGameTitle } from '@/domain/reservation-validation'
 import { toastWithUndo } from '@/lib/undo-toast'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -112,7 +112,7 @@ export function AttendanceReportCard({ first }: { first?: string } = {}) {
             Você foi ao {item.barName}?
           </h2>
           <p className="mt-1 text-[var(--onside-muted)] text-sm">
-            {getGameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
+            {gameTitle(item)} · {formatDayLabel(new Date(item.startsAt))} ·{' '}
             {item.neighborhood}
           </p>
           {item.offer ? (

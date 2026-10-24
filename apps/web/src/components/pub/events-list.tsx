@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { ReactNode } from 'react'
 import Chat from 'reicon-react/icons/Chat'
 import { useMinuteNow } from '@/components/app/minute-tick'
@@ -5,7 +6,6 @@ import { getEventTemporalState } from '@/domain/events'
 import {
   formatEventTime,
   formatGameSubtitle,
-  formatMatchup,
   groupEventsByDay,
   type ProfileEvent
 } from '@/domain/pub-profile'
@@ -134,10 +134,10 @@ export function EventsList<T extends ProfileEvent>({
 
                       <span className="min-w-0">
                         <span className="block truncate font-semibold text-[var(--onside-ink)] text-sm">
-                          {formatMatchup(event)}
+                          {gameTitle(event)}
                         </span>
                         <span className="block truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-                          {formatGameSubtitle(formatMatchup(event), [
+                          {formatGameSubtitle(gameTitle(event), [
                             event.sport.name,
                             event.championship
                           ])}

@@ -3,6 +3,7 @@ import {
   getCommercialDay
 } from '@findsports_oficial/api/lib/commercial-analytics/commercial-day'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { buildDirectionsUrl } from '@/lib/maps-link'
 import { buildWhatsAppLink } from '@/lib/whatsapp-link'
@@ -83,7 +84,7 @@ export function resolveProfileActions(
       acceptsWhatsapp: pub.phoneAcceptsWhatsapp,
       event: heroEvent
         ? {
-            matchup: formatMatchup(heroEvent),
+            matchup: gameTitle(heroEvent),
             when: `${formatDayLabel(heroEvent.startsAt).toLowerCase()} às ${formatEventTime(heroEvent.startsAt)}`
           }
         : null
@@ -129,23 +130,9 @@ export function resolveHeroEvent<T extends ProfileEvent>(
 }
 
 /**
- * Rótulo do confronto. Times cadastrados ganham `×`; sem times, vale o texto
- * livre que o bar escreveu; sem nada disso, o campeonato carrega sozinho.
- */
-export function formatMatchup(event: ProfileEvent): string {
-  const teams = event.participants
-    .map((item) => item.team?.name)
-    .filter((name): name is string => Boolean(name))
-
-  if (teams.length > 0) return teams.join(' × ')
-  if (event.participantFreeText) return event.participantFreeText
-  return event.championship
-}
-
-/**
  * Linha de apoio de um jogo: as partes juntas por " · ", menos a que já é o
  * título. Jogo sem times nem texto livre tem o campeonato como título
- * (`formatMatchup`, `getGameTitle`), e repetido embaixo o card dizia
+ * (`gameTitle`), e repetido embaixo o card dizia
  * "Brasileirão / Brasileirão" (WEB-307).
  */
 export function formatGameSubtitle(title: string, parts: string[]): string {

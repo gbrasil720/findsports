@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -10,7 +11,6 @@ import {
   pastLabel
 } from '@/domain/my-games'
 import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
-import { getGameTitle } from '@/domain/reservation-validation'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -129,7 +129,7 @@ function MyGamesPage() {
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{game.barName}</p>
                         <p className="truncate text-[var(--onside-muted)] text-sm">
-                          {getGameTitle(game)} ·{' '}
+                          {gameTitle(game)} ·{' '}
                           {new Date(game.startsAt).toLocaleDateString('pt-BR', {
                             day: 'numeric',
                             month: 'short',
@@ -236,7 +236,7 @@ function UpcomingCard({
             )}
           </h3>
           <p className="text-[var(--onside-muted)] text-sm">
-            {getGameTitle(game)} · {game.championship}
+            {gameTitle(game)} · {game.championship}
           </p>
         </div>
         <span

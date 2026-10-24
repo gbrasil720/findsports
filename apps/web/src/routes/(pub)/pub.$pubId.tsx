@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -27,7 +28,6 @@ import { OwnerPreviewBanner } from '@/components/pub/owner-notice'
 import { buildBarFacts } from '@/domain/bar-facts'
 import { getOffAirBar } from '@/domain/my-games'
 import {
-  formatMatchup,
   normalizePub,
   resolveHeroEvent,
   resolveProfileActions
@@ -525,7 +525,7 @@ function PubPage() {
                       code={game.attendance.code}
                       validated={game.attendance.validated}
                       forWaiter={normalizedPub.confirmsCodesLater}
-                      gameLabel={formatMatchup(game)}
+                      gameLabel={gameTitle(game)}
                       compact
                     />
                   )

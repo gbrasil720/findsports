@@ -1,11 +1,11 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import type { inferRouterOutputs } from '@trpc/server'
 import Check from 'reicon-react/icons/Check'
 import EyeSlash from 'reicon-react/icons/EyeSlash'
 import Xmark from 'reicon-react/icons/Xmark'
 import { formatDayLabel, formatGameSubtitle } from '@/domain/pub-profile'
-import { getGameTitle } from '@/domain/reservation-validation'
 
 type Ratings = inferRouterOutputs<AppRouter>['pub']['getMyRatings']
 
@@ -166,10 +166,10 @@ export function RatingsPanel({ state }: Props) {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-sm">
-                    {getGameTitle(item)}
+                    {gameTitle(item)}
                   </p>
                   <p className="text-[var(--onside-muted)] text-xs">
-                    {formatGameSubtitle(getGameTitle(item), [
+                    {formatGameSubtitle(gameTitle(item), [
                       item.championship,
                       formatDayLabel(new Date(item.startsAt)),
                       item.wouldReturn ? 'Voltaria' : 'Não voltaria'
