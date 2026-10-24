@@ -185,7 +185,10 @@ export const BAR_ITEMS = [
  * bebida" e "Para chegar" trazem os itens novos do catálogo que a folha do
  * design não desenha, com os nomes de grupo do painel do bar.
  */
-export const CHIP_GROUPS = [
+export const CHIP_GROUPS: readonly {
+  title: string
+  items: readonly { id: number; label: string }[]
+}[] = [
   {
     title: 'Pagamento',
     items: [
@@ -209,7 +212,7 @@ export const CHIP_GROUPS = [
       { id: 23, label: 'Bicicletário' }
     ]
   }
-] as const
+]
 
 /** O nome curto de uma característica do filtro ("Telão", "Pix"). */
 export function itemLabel(id: number): string | undefined {

@@ -9,9 +9,9 @@ import {
   MAX_SHORTCUTS,
   NO_FILTERS,
   SEARCH_LIMIT,
-  shortcutLabel,
   searchInput,
   searchRadius,
+  shortcutLabel,
   shortcutOn,
   sportCode,
   sportsMineFirst,
@@ -127,7 +127,7 @@ describe('searchRadius', () => {
 
 describe('características em chip (WEB-455)', () => {
   test('Pagamento separa Pix, Cartão e Vale-refeição, com Couvert', () => {
-    expect(CHIP_GROUPS[0].items.map((i) => i.label)).toEqual([
+    expect(CHIP_GROUPS[0]?.items.map((i) => i.label)).toEqual([
       'Pix',
       'Cartão',
       'Vale-refeição',
