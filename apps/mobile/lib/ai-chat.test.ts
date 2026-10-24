@@ -335,6 +335,7 @@ describe('busca com IA (Rodada 24)', () => {
           ok: true,
           code: 'A7K29',
           eventTitle: 'COR × PAL',
+          participants: ['COR', 'PAL'],
           startsAt: '',
           barName: 'Zé',
           neighborhood: 'Vila Madalena'

@@ -374,6 +374,7 @@ export async function dublaConfirm(
           ok: true,
           code: 'A7K29',
           eventTitle: 'Corinthians × Palmeiras',
+          participants: ['Corinthians', 'Palmeiras'],
           startsAt: tonight(now),
           barName: 'Bar do Zé',
           neighborhood: 'Vila Madalena'

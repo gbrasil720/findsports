@@ -1,10 +1,10 @@
 import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, isNull, or } from '@findsports_oficial/db'
+import { gameTitle, participantNames } from '@findsports_oficial/db/game-title'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-
 import type { Context } from '../context'
 import { fanProcedure, router } from '../index'
 import {
@@ -16,7 +16,6 @@ import {
 import {
   contextCaller,
   dateOf,
-  gameTitle,
   hour,
   type PendingProposal,
   PROPOSAL_NAMES,
@@ -493,7 +492,9 @@ export const aiRouter = router({
           going = {
             ok: true as const,
             code: marked.code,
-            eventTitle: gameTitle(game) ?? '',
+            eventTitle: game ? gameTitle(game) : '',
+            // Os times, para o ticket pôr um por linha sem quebrar o título.
+            participants: game ? participantNames(game) : [],
             startsAt: game ? new Date(game.startsAt).toISOString() : '',
             barName: b.name,
             neighborhood: b.neighborhood ?? null

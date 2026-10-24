@@ -1,6 +1,7 @@
 import { db, sql } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
 import { getEventEnd } from '@findsports_oficial/db/event-window'
+import { gameTitle, type TitledGame } from '@findsports_oficial/db/game-title'
 
 import type { Context } from '../../context'
 import { pubsRouter } from '../../routers/pubs'
@@ -214,20 +215,6 @@ const brt = (value: string | Date) =>
     minute: '2-digit'
   })
 
-type GameLike = {
-  participants: { team: { name: string } }[]
-  participantFreeText: string | null
-  championship: string
-}
-
-export function gameTitle(game: GameLike | null | undefined) {
-  if (!game) return null
-  const names = game.participants.map((p) => p.team.name)
-  return names.length === 2
-    ? `${names[0]} × ${names[1]}`
-    : (game.participantFreeText ?? game.championship)
-}
-
 export const hour = (value: string | Date) =>
   new Date(value).toLocaleTimeString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -236,7 +223,7 @@ export const hour = (value: string | Date) =>
   })
 
 /** "Corinthians × Palmeiras · 21:30 · Brasileirão" (Achei o jogo, 24b). */
-function gameDetail(game: GameLike & { startsAt: string | Date }) {
+function gameDetail(game: TitledGame & { startsAt: string | Date }) {
   return [gameTitle(game), hour(game.startsAt), game.championship]
     .filter(Boolean)
     .join(' · ')
@@ -259,7 +246,7 @@ export function toChatBar(b: SearchBar, now: Date): ChatBar {
     game: e
       ? {
           id: e.id,
-          title: gameTitle(e) ?? e.championship,
+          title: gameTitle(e),
           startsAt: e.startsAt,
           live: new Date(e.startsAt) <= now && now < getEventEnd(e)
         }
@@ -714,7 +701,7 @@ const gameWords = (text: string) =>
 /** Todas as palavras do jogo pedido estão no jogo do bar (em qualquer ordem). */
 function sameGame(
   wanted: string,
-  game: GameLike & { startsAt: string | Date }
+  game: TitledGame & { startsAt: string | Date }
 ) {
   const words = gameWords(wanted)
   const have = new Set(
@@ -765,7 +752,7 @@ async function propose(
       bar: quoted(b.name)
     })
   }
-  const title = gameTitle(game) ?? game.championship
+  const title = gameTitle(game)
   step(ctx, {
     id: 'game',
     label: 'Achei o jogo',
