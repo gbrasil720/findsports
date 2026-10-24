@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { and, eq, inArray, or } from '@findsports_oficial/db'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { event } from '@findsports_oficial/db/schema/platform'
 import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { contextFor, load, refusal, seedBar } from './integration-seed'
@@ -232,6 +233,35 @@ integrationTest('chamado de amigo: casos de borda', async () => {
     expect(await marked(marina.id, game)).toHaveLength(
       winner.status === 'going' ? 1 : 0
     )
+
+    // Jogo que começou depois do chamado: "Vou também" é recusado e o
+    // chamado segue pendente, na mesma transação da presença.
+    const late = await elite.seedGame()
+    const lateCall = await call(late)
+    if (!lateCall.ok) throw new Error('chamado não criado')
+    await db
+      .update(event)
+      .set({ startsAt: new Date(Date.now() - 60_000) })
+      .where(eq(event.id, late))
+    expect(
+      (
+        await refusal(
+          as(marina.id).respondCall({
+            callId: lateCall.callId,
+            answer: 'going'
+          })
+        )
+      ).code
+    ).toBe('PRECONDITION_FAILED')
+    const [stillPending] = await db
+      .select({
+        status: friendCall.status,
+        respondedAt: friendCall.respondedAt
+      })
+      .from(friendCall)
+      .where(eq(friendCall.id, lateCall.callId))
+    expect(stillPending).toEqual({ status: 'pending', respondedAt: null })
+    expect(await marked(marina.id, late)).toHaveLength(0)
 
     // Presença desmarcada: "vai também" e "Você vai" somem dos dois lados.
     const other = await elite.seedGame()
