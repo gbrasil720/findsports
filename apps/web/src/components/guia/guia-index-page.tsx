@@ -2,6 +2,7 @@ import ArrowRight from 'reicon-react/icons/ArrowRight'
 import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
 import { FAN_CLOSING, GUIA_ARTICLES } from './guia-articles'
 import { GUIA_DESCRIPTION, GUIA_PATH, GUIA_TITLE } from './guia-head'
+import '@/components/legal/legal.css'
 
 const HERO_ID = 'top'
 
