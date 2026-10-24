@@ -18,8 +18,8 @@ import { event } from './platform'
  *
  * Criar uma reserva também grava presença; cancelar a reserva não a apaga.
  * Recusada pelo bar, a reserva leva junto só a presença que ela mesma criou
- * (`source`, WEB-296). O número absoluto nunca sai para o bar, só o sinal
- * relativo de interesse.
+ * (`source`, WEB-296). O número absoluto só sai para o bar Elite (Hoje,
+ * Plano e cobrança); os outros planos recebem só o sinal relativo de interesse.
  */
 export const attendance = pgTable(
   'attendance',
