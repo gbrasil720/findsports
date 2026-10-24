@@ -761,7 +761,10 @@ function ResumoDosJogos({ jogos }: { jogos: EventAnalyticsRow[] | undefined }) {
             search={{ passados: 1 }}
             className="desemp-link"
           >
-            Ver os {ordenados.length} jogos em Jogos · Passados →
+            {ordenados.length === 1
+              ? 'Ver o jogo'
+              : `Ver os ${ordenados.length} jogos`}{' '}
+            em Jogos · Passados →
           </Link>
         </>
       )}
