@@ -34,9 +34,9 @@ import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import { aiGate, runAi } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
+import { setAttendance } from '../lib/attendance'
 import { createFriendCall } from '../lib/friend-calls'
 import { byMatchOrder } from '../lib/game-participants'
-import { attendanceRouter } from './attendance'
 import { recommendationsRouter } from './recommendations'
 
 /*
@@ -485,9 +485,12 @@ export const aiRouter = router({
           // presença está feita e a resposta não pode virar falha.
           const b = await readProposalBar(p.barId, p.eventId, userId, now)
           const game = b.events[0]
-          const marked = await attendanceRouter
-            .createCaller(ctx)
-            .set({ eventId: p.eventId, attending: true })
+          const marked = await setAttendance({
+            userId,
+            eventId: p.eventId,
+            attending: true,
+            now
+          })
           await record('going')
           going = {
             ok: true as const,

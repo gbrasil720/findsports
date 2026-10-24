@@ -1,8 +1,8 @@
 import { and, db, eq, or, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { event } from '@findsports_oficial/db/schema/platform'
 import { friendCall } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
+import { attendableGame } from './attendance'
 import { readFriendship } from './friends'
 import { participantNames } from './game-participants'
 import { utcIso } from './utc-timestamp'
@@ -19,9 +19,9 @@ export type FriendCallResult =
 
 /**
  * Chama um amigo aceito para um jogo num bar. Um chamado por (de, para,
- * jogo): repetir devolve `duplicate` e não cria outro. Jogo começado recusa,
- * a mesma regra do `attendance.set`: o "Vou também" não teria como marcar
- * presença. Bar fora do ar conta como jogo inexistente.
+ * jogo): repetir devolve `duplicate` e não cria outro. A precondição é a de
+ * marcar presença (`attendableGame`): jogo começado recusa, porque o "Vou
+ * também" não teria como marcar; bar fora do ar conta como jogo inexistente.
  */
 export async function createFriendCall(input: {
   fromUserId: string
@@ -33,14 +33,10 @@ export async function createFriendCall(input: {
   const relation = await readFriendship(fromUserId, toUserId)
   if (!relation?.acceptedAt || fromUserId === toUserId)
     return { ok: false, reason: 'not_friends' }
-  const game = await db.query.event.findFirst({
-    where: eq(event.id, eventId),
-    columns: { barId: true, startsAt: true },
-    with: { bar: { columns: { isActive: true } } }
-  })
-  if (!game?.bar.isActive || game.barId !== barId)
+  const found = await attendableGame(eventId)
+  if (found.ok ? found.game.barId !== barId : found.reason === 'not_found')
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
-  if (game.startsAt <= new Date()) return { ok: false, reason: 'past_game' }
+  if (!found.ok) return { ok: false, reason: 'past_game' }
   const [created] = await db
     .insert(friendCall)
     .values({ fromUserId, toUserId, eventId, barId })
