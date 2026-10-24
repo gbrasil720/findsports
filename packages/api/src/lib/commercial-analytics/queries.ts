@@ -7,6 +7,7 @@ import {
 } from '@findsports_oficial/db/event-window-sql'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
+import { brasiliaWindows } from '../ai/limits'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import { buildEventComparison } from './comparison'
@@ -590,4 +591,63 @@ export async function getMyEventAnalytics(
   }
 
   return response
+}
+
+/**
+ * O que o plano rendeu no mês de Brasília que contém `now` (Plano e cobrança,
+ * 3o e 3q; WEB-446):
+ * - `going`: presenças marcadas ("Vou assistir aqui") nos jogos do bar do mês,
+ *   pela data do jogo;
+ * - `validatedCodes`: códigos validados no balcão e não desfeitos. O lançado
+ *   depois pela comanda (`late`, WEB-412) conta na data do jogo, como a visita;
+ * - `classicsOnTop`: clássicos em que o bar apareceu no topo da busca (jogos
+ *   distintos com `classic_exposure` no mês).
+ *
+ * Os brutos de analytics ficam 395 dias, então o mês corrente nunca depende
+ * dos rollups.
+ */
+export async function getMonthNumbers(
+  barId: string,
+  now = new Date()
+): Promise<{ going: number; validatedCodes: number; classicsOnTop: number }> {
+  const { monthStart, nextMonth } = brasiliaWindows(now)
+  const from = sql`${monthStart.toISOString()}::timestamptz`
+  const to = sql`${nextMonth.toISOString()}::timestamptz`
+  // `starts_at` é `timestamp` guardando UTC: vira instante antes de comparar.
+  const startsAt = sql`(e.starts_at AT TIME ZONE 'UTC')`
+
+  const result = await db.execute(sql`
+    SELECT
+      (
+        SELECT COUNT(*)
+        FROM attendance a
+        JOIN event e ON e.id = a.event_id
+        WHERE e.bar_id = ${barId}
+          AND ${startsAt} >= ${from} AND ${startsAt} < ${to}
+      ) AS going,
+      (
+        SELECT COUNT(*)
+        FROM reservation_code_use u
+        JOIN reservation_code rc ON rc.id = u.code_id
+        JOIN reservation r ON r.id = rc.reservation_id
+        JOIN event e ON e.id = r.event_id
+        WHERE e.bar_id = ${barId}
+          AND u.undone_at IS NULL
+          AND CASE WHEN u.late THEN ${startsAt} ELSE u.used_at END >= ${from}
+          AND CASE WHEN u.late THEN ${startsAt} ELSE u.used_at END < ${to}
+      ) AS validated_codes,
+      (
+        SELECT COUNT(DISTINCT source_event_id)
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+          AND type = 'classic_exposure'
+          AND occurred_at >= ${from} AND occurred_at < ${to}
+      ) AS classics_on_top
+  `)
+  const row = result.rows[0] as Record<string, string | number>
+  return {
+    going: Number(row.going),
+    validatedCodes: Number(row.validated_codes),
+    classicsOnTop: Number(row.classics_on_top)
+  }
 }
