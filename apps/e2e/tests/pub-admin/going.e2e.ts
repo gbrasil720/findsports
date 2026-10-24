@@ -81,7 +81,7 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     'aria-current',
     'page'
   )
-  const panel = page.locator('#admin-quem-vai')
+  const panel = page.getByRole('main')
   await expect(panel.getByRole('note')).toContainText(
     'A lista de quem vai é um recurso do plano Elite.'
   )
@@ -102,4 +102,34 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   await expect(
     page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
+})
+
+// WEB-412: o bar Elite que confirma pela comanda lança em Quem vai os códigos
+// anotados; "Faltou lançar?" diz quem ainda falta.
+test('bar que confirma pela comanda lança o código anotado em Quem vai', async ({
+  page
+}) => {
+  const pub = await createPub({ bar: { confirms_codes_later: true } })
+  const { eventId, championship } = await createEvent(pub.barId, {
+    startsAt: new Date(Date.now() - 3_600_000)
+  })
+  const ticket = await createTicket(eventId)
+  await signIn(page, pub.user)
+
+  await page.goto('/admin/quem-vai')
+  const comanda = page.getByRole('region', {
+    name: 'Lançar códigos da comanda'
+  })
+  await expect(comanda).toContainText('Faltou lançar?')
+  await expect(comanda).toContainText(ticket.guestName)
+
+  await comanda.getByLabel('Códigos anotados').fill(ticket.code.toLowerCase())
+  await comanda.getByRole('button', { name: 'Lançar código' }).click()
+  await expect(comanda).toContainText('1 código lançado')
+  await expect(comanda).not.toContainText('Faltou lançar?')
+
+  const game = page.getByRole('article', { name: championship })
+  await expect(
+    game.getByRole('listitem').filter({ hasText: ticket.guestName })
+  ).toContainText('Validou')
 })

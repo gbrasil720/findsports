@@ -73,7 +73,7 @@ test('a barra lateral leva às rotas, o hash antigo também, e Configurações r
   await page.goto('/admin#admin-grade')
   await expect(page).toHaveURL(/\/admin\/jogos$/)
   await expect(
-    page.getByRole('heading', { name: 'Minha grade', level: 2 })
+    page.getByRole('heading', { name: 'Jogos', level: 1 })
   ).toBeVisible()
 })
 
@@ -108,9 +108,9 @@ test('Elite tem a aba Quem vai, e o jogo novo não pergunta de reserva', async (
   await openSpace(page, { subscription: { plan: 'elite' } })
   await expect(painelLink(page, 'Quem vai')).toBeVisible()
   await page.goto('/admin/jogos')
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
-  await expect(dialog.getByLabel('Campeonato')).toBeVisible()
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await expect(dialog.getByLabel('Campeonato', { exact: true })).toBeVisible()
   await expect(dialog).not.toContainText(/reserva/i)
 })
 
