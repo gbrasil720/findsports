@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { WebView } from 'react-native-webview'
 import { usePalette } from '@/components/theme'
-import { ACCENT, ACID, INK } from '@/components/ui'
+import { ACID, INK } from '@/components/ui'
 import type { MedalId } from '@/lib/medals'
 
 /*
@@ -70,8 +70,6 @@ export function useMedalPalette() {
     glow: p.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)',
     fill: p.dark ? ACID : INK,
     track: p.dark ? '#2c2c27' : p.mark,
-    /** Texto de destaque: o número do nível, "Conquista desbloqueada". */
-    hot: p.dark ? ACID : ACCENT,
     body: p.dark ? '#d6d3cb' : '#3d3d38',
     edge: p.dark ? 'rgba(241,238,230,.10)' : 'rgba(18,18,15,.12)',
     pick: p.dark ? 'rgba(201,241,53,.1)' : 'rgba(201,241,53,.45)',
