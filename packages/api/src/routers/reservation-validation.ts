@@ -31,6 +31,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import type { SubscriptionForPlan } from '../lib/current-plan'
 import { byMatchOrder } from '../lib/game-participants'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
 import { canValidateReservations } from '../lib/reservation-intake'
@@ -71,7 +72,7 @@ type Reader = Pick<typeof db, 'select'>
 const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
   const ownBar = await db.query.bar.findFirst({
     where: eq(bar.userId, ctx.session.user.id),
-    columns: { id: true },
+    columns: { id: true, confirmsCodesLater: true },
     with: { subscription: true }
   })
   if (!ownBar) {
@@ -85,7 +86,7 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
     assertCanValidateReservations(subscription)
   }
 
-  return next({ ctx })
+  return next({ ctx: { ownBar } })
 })
 
 /**
@@ -128,17 +129,18 @@ async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
   return row
 }
 
-/** `logLate` e `notLogged` só servem ao bar que confirma pela comanda. */
-async function assertConfirmsCodesLater(ownerId: string) {
-  const ownBar = await db.query.bar.findFirst({
-    where: eq(bar.userId, ownerId),
-    columns: { confirmsCodesLater: true },
-    with: { subscription: true }
-  })
+/**
+ * `logLate` e `notLogged` só servem ao bar que confirma pela comanda. Recebe
+ * o bar que o `validatorProcedure` já leu.
+ */
+function assertConfirmsCodesLater(ownBar: {
+  confirmsCodesLater: boolean
+  subscription?: SubscriptionForPlan | null
+}) {
   // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
   // plano fica só com a validação na hora, na janela de sempre.
-  assertCanValidateReservations(ownBar?.subscription ?? null)
-  if (!ownBar?.confirmsCodesLater) {
+  assertCanValidateReservations(ownBar.subscription ?? null)
+  if (!ownBar.confirmsCodesLater) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message:
@@ -446,7 +448,7 @@ export const reservationValidationRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      await assertConfirmsCodesLater(userId)
+      assertConfirmsCodesLater(ctx.ownBar)
 
       const attemptKey = validationAttemptKey(userId)
       const codes = [
@@ -560,7 +562,7 @@ export const reservationValidationRouter = router({
    */
   notLogged: validatorProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-    await assertConfirmsCodesLater(userId)
+    assertConfirmsCodesLater(ctx.ownBar)
     const now = new Date()
     // O prazo (48 h depois do fim) se confere abaixo; o corte só limita a busca.
     const since = new Date(now.getTime() - 7 * 24 * 3_600_000)
