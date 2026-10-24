@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from '@findsports_oficial/db'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { bar } from '@findsports_oficial/db/schema/platform'
 import { gameReminder } from '@findsports_oficial/db/schema/recommendation'
 import { friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
@@ -671,6 +672,83 @@ integrationTest(
       await db.execute(
         sql`DELETE FROM ai_run WHERE user_id IS NULL AND cost_usd = 1`
       )
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'confirmar no bar que saiu do ar não marca presença e diz o porquê',
+  async () => {
+    const { db, appRouter } = await load()
+    const seeded = await seedBar('elite', 'active', inAMonth(), {
+      name: 'Bar R24 Fora do Ar'
+    })
+    const gameId = await seeded.seedGame({
+      startsAt: new Date(Date.now() + 2 * 3_600_000)
+    })
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    const [run] = await db
+      .insert(aiRun)
+      .values({
+        userId: seeded.fanId,
+        feature: 'chat',
+        variant: 'a',
+        assignedModel: CHAT_MODELS.a,
+        status: 'ok'
+      })
+      .returning({ runId: aiRun.runId })
+    if (!run) throw new Error('sem ai_run')
+    const proposal = () =>
+      db
+        .insert(aiProposal)
+        .values({
+          runId: run.runId,
+          userId: seeded.fanId,
+          barId: seeded.barId,
+          eventId: gameId,
+          offersGoing: true
+        })
+        .returning({ id: aiProposal.id })
+        .then(([row]) => row?.id ?? '')
+    const confirm = async () =>
+      fan.ai.confirm({
+        runId: run.runId,
+        proposalId: await proposal(),
+        actions: { going: true, call: false, remind: false }
+      })
+
+    try {
+      const offAir = await db
+        .update(bar)
+        .set({ isActive: false })
+        .where(eq(bar.id, seeded.barId))
+        .returning({ id: bar.id })
+      expect(offAir).toHaveLength(1)
+      expect((await confirm()).going).toEqual({
+        ok: false,
+        code: 'refused',
+        reason: 'Bar não encontrado.'
+      })
+      expect(
+        await db
+          .select()
+          .from(attendance)
+          .where(eq(attendance.userId, seeded.fanId))
+      ).toHaveLength(0)
+
+      // De volta ao ar, o mesmo pedido marca, com o título do jogo.
+      await db
+        .update(bar)
+        .set({ isActive: true })
+        .where(eq(bar.id, seeded.barId))
+      expect((await confirm()).going).toMatchObject({
+        ok: true,
+        eventTitle: 'Campeonato de integração',
+        barName: 'Bar R24 Fora do Ar'
+      })
+    } finally {
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
       await seeded.cleanup()
     }
   }
