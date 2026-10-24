@@ -193,3 +193,39 @@ test('Starter: só 30 dias, canais travados e sem Comparar jogos', async ({
     page.getByRole('region', { name: 'Comparar jogos' })
   ).toHaveCount(0)
 })
+
+test('Comparar jogos: quatro à vista, o resto atrás do "+N" (1z)', async ({
+  page
+}) => {
+  const pub = await createPub({ subscription: { plan: 'pro' } })
+  const jogos = []
+  for (let i = 1; i <= 6; i++) {
+    jogos.push(
+      await createEvent(pub.barId, {
+        startsAt: new Date(Date.now() - (i + 1) * DAY)
+      })
+    )
+  }
+  await signIn(page, pub.user)
+  await page.goto('/admin/jogos?passados=1')
+
+  const escolha = page
+    .getByRole('region', { name: 'Comparar jogos' })
+    .getByRole('group', { name: 'Jogos comparados' })
+  const chips = escolha.getByRole('button', { name: /^Campeonato E2E/ })
+  await expect(chips).toHaveCount(4)
+  await expect(escolha.getByRole('button', { pressed: true })).toHaveCount(3)
+  const mais = escolha.getByRole('button', { name: 'Mostrar mais 2 jogos' })
+  await expect(mais).toHaveText('+2')
+  await mais.click()
+  await expect(mais).toHaveCount(0)
+  await expect(chips).toHaveCount(6)
+
+  // Qualquer jogo do período entra na comparação.
+  const ultimo = jogos.at(-1)?.championship ?? ''
+  await escolha.getByRole('button', { name: ultimo }).click()
+  await expect(escolha.getByRole('button', { name: ultimo })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+})
