@@ -63,7 +63,8 @@ integrationTest('o título em SQL é o mesmo das telas', async () => {
     const games = {
       // Mandante informado: Beta joga em casa.
       dois: [b, a],
-      tres: [a, b, c],
+      tresComLivre: [a, b, c],
+      tresSemLivre: [a, b, c],
       um: [c],
       branco: '   ',
       livre: 'UFC 300',
@@ -79,7 +80,12 @@ integrationTest('o título em SQL é o mesmo das telas', async () => {
         sportId,
         championship: `Campeonato ${mark}`,
         startsAt: new Date(),
-        participantFreeText: typeof value === 'string' ? value : null
+        participantFreeText:
+          typeof value === 'string'
+            ? value
+            : key === 'tresComLivre'
+              ? 'GP de teste'
+              : null
       }))
     )
     await db.insert(eventParticipants).values(
@@ -111,10 +117,10 @@ integrationTest('o título em SQL é o mesmo das telas', async () => {
     const tsTitles = new Map(fromTs.map((game) => [game.id, gameTitle(game)]))
 
     expect(tsTitles.get(ids.dois)).toBe(`Beta ${mark} × Alfa ${mark}`)
-    expect(tsTitles.get(ids.tres)).toBe(
-      `Alfa ${mark} × Beta ${mark} × Gama ${mark}`
-    )
-    expect(tsTitles.get(ids.um)).toBe(`Gama ${mark}`)
+    // Três ou mais não é confronto: texto livre, senão o campeonato.
+    expect(tsTitles.get(ids.tresComLivre)).toBe('GP de teste')
+    expect(tsTitles.get(ids.tresSemLivre)).toBe(`Campeonato ${mark}`)
+    expect(tsTitles.get(ids.um)).toBe(`Campeonato ${mark}`)
     expect(tsTitles.get(ids.branco)).toBe(`Campeonato ${mark}`)
     expect(tsTitles.get(ids.livre)).toBe('UFC 300')
     expect(tsTitles.get(ids.nada)).toBe(`Campeonato ${mark}`)
