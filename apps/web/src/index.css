@@ -1,7 +1,6 @@
 @import "@findsports_oficial/ui/globals.css";
 @import "./styles/onside/app.css";
 @import "./components/landing/onside-page.css";
-@import "./components/landing/onside.css";
 @import "./components/legal/legal.css";
 @import "./components/consent/cookie-consent.css";
 @import "./components/impersonation-banner.css";
