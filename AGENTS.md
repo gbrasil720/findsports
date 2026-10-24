@@ -527,8 +527,11 @@ invente layout que o projeto não tem.
   vermelho entra no lugar do acid em texto e a bloqueada sai em cinza-pedra
   (`useMedalPalette` em `components/medal.tsx`, `LOCKED_LIGHT` em `lib/medals.ts`). As regras são do
   servidor (`packages/api/src/lib/achievements.ts`, `achievements.mine`): nada é gravado,
-  tudo sai do código validado no balcão (o check-in do WEB-408 entra em
-  `achievements-read.ts`) e das avaliações. A 2k abre sozinha quando sai medalha nova
+  tudo sai das visitas e das avaliações. **Visita** é uma fonte só,
+  `packages/api/src/lib/visits.ts` (uma linha por torcedor e jogo; hoje o código validado
+  no balcão e não desfeito): conquistas, "Já fui", amigos e recomendações a leem, e o
+  check-in do WEB-408 entra lá como segunda fonte. "Quem vai", o alerta interno e a
+  análise comercial leem o código de propósito (é o registro do bar, não a visita). A 2k abre sozinha quando sai medalha nova
   (`components/achievement-watcher.tsx`; a tela do código pergunta a cada 5 s até o
   balcão validar). **A medalha 3D é uma WebView**, não `expo-gl`: o three roda no WebGL
   do Safari (`assets/medal/viewer.html`), porque o `expo-gl` congelava a tela quando uma
