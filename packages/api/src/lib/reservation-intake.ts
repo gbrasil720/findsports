@@ -1,8 +1,10 @@
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { VALIDATION_WINDOW_MARGIN_INTERVAL } from '@findsports_oficial/db/event-window'
 import {
-  DEFAULT_EVENT_DURATION_INTERVAL,
-  VALIDATION_WINDOW_MARGIN_INTERVAL
-} from '@findsports_oficial/db/event-window'
+  eventEndSql,
+  eventNotEndedSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import { event } from '@findsports_oficial/db/schema/platform'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
@@ -38,13 +40,13 @@ export function assertCanEnableReservations(
 }
 
 /** Jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
-export const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
+export const notEnded = eventNotEndedSql()
 
 /**
  * Janela de validação ainda aberta: o fim derivado mais a margem de
  * `getValidationWindow`, inclusivo como `assertWindowOpen`.
  */
-export const validationOpen = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) + ${VALIDATION_WINDOW_MARGIN_INTERVAL}::interval >= now()`
+export const validationOpen = sql<boolean>`${eventEndSql()} + ${VALIDATION_WINDOW_MARGIN_INTERVAL}::interval >= ${utcNowSql()}`
 
 /**
  * Gerir o que já existe (WEB-341): ver a fila, responder e validar código.

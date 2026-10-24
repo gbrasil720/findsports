@@ -12,7 +12,12 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDayStartSql,
+  brasiliaTodaySql,
+  eventNotEndedSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import {
   bar,
   event,
@@ -99,12 +104,12 @@ const isFreeText = sql<boolean>`(
 const hasWarning = sql`(${isDuplicate} OR ${isFreeText})`
 
 /** O jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
-const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
+const notEnded = eventNotEndedSql()
 
-// As colunas são `timestamp` em UTC; "hoje" é o dia em Brasília.
+// "Hoje" é o dia em Brasília.
 const PERIOD: Record<'today' | 'week' | 'all', SQL | undefined> = {
-  today: sql`${event.startsAt} < ((((now() AT TIME ZONE 'America/Sao_Paulo')::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`,
-  week: sql`${event.startsAt} < (now() AT TIME ZONE 'UTC') + interval '7 days'`,
+  today: sql`${event.startsAt} < ${brasiliaDayStartSql(brasiliaTodaySql(), 1)}`,
+  week: sql`${event.startsAt} < ${utcNowSql()} + interval '7 days'`,
   all: undefined
 }
 

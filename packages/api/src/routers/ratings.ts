@@ -1,8 +1,10 @@
 import { and, db, eq, sql } from '@findsports_oficial/db'
+import { getEventEnd } from '@findsports_oficial/db/event-window'
 import {
-  DEFAULT_EVENT_DURATION_INTERVAL,
-  getEventEnd
-} from '@findsports_oficial/db/event-window'
+  eventEndedSql,
+  eventEndSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -165,15 +167,8 @@ export const ratingsRouter = router({
       JOIN bar b ON b.id = i.bar_id
       JOIN sport s ON s.id = e.sport_id
       WHERE b.is_active
-        -- Jogo acabado: fim informado, ou início mais a janela ao vivo.
-        AND COALESCE(
-          e.ends_at,
-          e.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval
-        ) <= NOW()
-        AND COALESCE(
-          e.ends_at,
-          e.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval
-        ) > NOW() - ${`${RATING_WINDOW_DAYS} days`}::interval
+        AND ${eventEndedSql('e')}
+        AND ${eventEndSql('e')} > ${utcNowSql()} - ${`${RATING_WINDOW_DAYS} days`}::interval
         AND NOT EXISTS (
           SELECT 1 FROM bar_rating r
           WHERE r.bar_id = i.bar_id

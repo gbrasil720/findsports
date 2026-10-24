@@ -10,6 +10,7 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
+import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -44,7 +45,6 @@ import {
   getSubscriptionStanding,
   type SubscriptionStanding
 } from '../lib/current-plan'
-import { stillOnProfile } from '../lib/event-profile-window'
 import { resolveEventScreen } from '../lib/event-screen'
 import {
   favoriteTeamIdsSchema,
@@ -503,8 +503,8 @@ export const pubsRouter = router({
             columns: { plan: true, status: true, currentPeriodEnd: true }
           },
           events: {
-            // Jogo ao vivo continua na página (`event-profile-window.ts`).
-            where: (event) => stillOnProfile(event, now),
+            // Jogo ao vivo continua na página até o fim derivado.
+            where: (event) => eventNotEndedSql(event, now),
             with: {
               sport: true,
               participants: {
@@ -737,7 +737,7 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
-              where: (event) => stillOnProfile(event, now),
+              where: (event) => eventNotEndedSql(event, now),
               // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
               with: {

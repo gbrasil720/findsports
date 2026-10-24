@@ -48,13 +48,16 @@ export function eventEndSql(e: EventClock = event): SQL {
 }
 
 /** O fim derivado chegou (`hasEventEnded`). */
-export function eventEndedSql(e: EventClock = event, now?: Date): SQL {
-  return sql`(${eventEndSql(e)} <= ${utcNowSql(now)})`
+export function eventEndedSql(e: EventClock = event, now?: Date): SQL<boolean> {
+  return sql<boolean>`(${eventEndSql(e)} <= ${utcNowSql(now)})`
 }
 
 /** Ainda não acabou: o próximo ou o que está rolando (`!hasEventEnded`). */
-export function eventNotEndedSql(e: EventClock = event, now?: Date): SQL {
-  return sql`(${eventEndSql(e)} > ${utcNowSql(now)})`
+export function eventNotEndedSql(
+  e: EventClock = event,
+  now?: Date
+): SQL<boolean> {
+  return sql<boolean>`(${eventEndSql(e)} > ${utcNowSql(now)})`
 }
 
 /** O dia de Brasília (`date`) de um `timestamp` UTC (`brasiliaDay`). */
@@ -84,6 +87,6 @@ export function onBrasiliaDaysSql(
   ts: AnyColumn | SQL,
   from: string | SQL,
   days = 1
-): SQL {
-  return sql`(${ts} >= ${brasiliaDayStartSql(from)} AND ${ts} < ${brasiliaDayStartSql(from, days)})`
+): SQL<boolean> {
+  return sql<boolean>`(${ts} >= ${brasiliaDayStartSql(from)} AND ${ts} < ${brasiliaDayStartSql(from, days)})`
 }
