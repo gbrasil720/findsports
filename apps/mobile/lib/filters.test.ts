@@ -1,12 +1,15 @@
 import { describe, expect, test } from 'bun:test'
+import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import {
   activeCount,
   applyShortcut,
+  CHIP_GROUPS,
   dayKey,
   defaultShortcuts,
   MAX_SHORTCUTS,
   NO_FILTERS,
   SEARCH_LIMIT,
+  shortcutLabel,
   searchInput,
   searchRadius,
   shortcutOn,
@@ -119,5 +122,27 @@ describe('searchRadius', () => {
 
   test('nunca passa do teto', () => {
     expect(searchRadius(NO_FILTERS, 80)).toBe(50)
+  })
+})
+
+describe('características em chip (WEB-455)', () => {
+  test('Pagamento separa Pix, Cartão e Vale-refeição, com Couvert', () => {
+    expect(CHIP_GROUPS[0].items.map((i) => i.label)).toEqual([
+      'Pix',
+      'Cartão',
+      'Vale-refeição',
+      'Couvert'
+    ])
+  })
+
+  test('cada chip é o item do catálogo com o mesmo nome', () => {
+    for (const item of CHIP_GROUPS.flatMap((g) => g.items)) {
+      expect(findAmenity(item.id)?.label).toBe(item.label)
+    }
+  })
+
+  test('o atalho de um chip tem nome; o antigo "Pix e cartão" (14), não', () => {
+    expect(shortcutLabel('item:18', SPORTS)).toEqual({ label: 'Vale-refeição' })
+    expect(shortcutLabel('item:14', SPORTS)).toBeNull()
   })
 })
