@@ -15,13 +15,23 @@ import {
  * resto da grade; dia é `AAAA-MM-DD`.
  */
 
-type Jogo = { startsAt: string | Date; endsAt: string | Date | null }
+type Jogo = {
+  startsAt: string | Date
+  endsAt: string | Date | null
+  /** Nulo é rascunho (WEB-436); ausente conta como publicado. */
+  publishedAt?: string | Date | null
+}
 
-export type FiltroJogos = 'proximos' | 'passados'
+export type FiltroJogos = 'proximos' | 'rascunhos' | 'passados'
+
+/** Salvo sem publicar: só o painel vê (WEB-436). */
+export const ehRascunho = (jogo: Jogo) => jogo.publishedAt === null
 
 /**
- * "Próximos" é o que ainda não acabou (o ao vivo entra, e por ter começado
- * antes fica no topo); "Passados", do mais recente para trás.
+ * "Próximos" é o que ainda não acabou, rascunho incluído (o ao vivo entra, e
+ * por ter começado antes fica no topo); "Rascunhos", todos, até o que já
+ * passou da data, para o dono apagar; "Passados", só o que foi ao ar, do mais
+ * recente para trás.
  */
 export function filtrarJogos<T extends Jogo>(
   jogos: readonly T[],
@@ -30,8 +40,13 @@ export function filtrarJogos<T extends Jogo>(
 ): T[] {
   const passado = (jogo: T) =>
     getEventTemporalState(jogo.startsAt, jogo.endsAt, now) === 'past'
+  if (filtro === 'rascunhos') {
+    return jogos.filter(ehRascunho).sort(compareEventStartsAscending)
+  }
   return filtro === 'passados'
-    ? jogos.filter(passado).sort(compareEventStartsDescending)
+    ? jogos
+        .filter((jogo) => passado(jogo) && !ehRascunho(jogo))
+        .sort(compareEventStartsDescending)
     : jogos.filter((jogo) => !passado(jogo)).sort(compareEventStartsAscending)
 }
 

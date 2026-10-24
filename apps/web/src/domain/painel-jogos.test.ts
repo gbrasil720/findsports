@@ -40,6 +40,26 @@ describe('filtrarJogos', () => {
       semanaPassada
     ])
   })
+
+  test('rascunho: em próximos e em rascunhos, nunca em passados', () => {
+    const rascunho = { ...jogo('2026-10-14T00:00:00Z'), publishedAt: null }
+    const velho = { ...jogo('2026-10-04T00:00:00Z'), publishedAt: null }
+    const comRascunhos = [...todos, velho, rascunho]
+    expect(filtrarJogos(comRascunhos, 'rascunhos', NOW.getTime())).toEqual([
+      velho,
+      rascunho
+    ])
+    expect(filtrarJogos(comRascunhos, 'proximos', NOW.getTime())).toEqual([
+      aoVivo,
+      hojeANoite,
+      amanha,
+      rascunho
+    ])
+    expect(filtrarJogos(comRascunhos, 'passados', NOW.getTime())).toEqual([
+      ontem,
+      semanaPassada
+    ])
+  })
 })
 
 test('busca sem acento nem caixa, palavra por palavra', () => {
