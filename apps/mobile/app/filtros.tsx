@@ -472,7 +472,7 @@ export default function FiltersSheet() {
               {group.items.map((item) => {
                 const on = draft.amenities.includes(item.id)
                 return (
-                  <Pressable
+                  <ScalePress
                     key={item.id}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
@@ -495,7 +495,7 @@ export default function FiltersSheet() {
                     >
                       {item.label}
                     </Text>
-                  </Pressable>
+                  </ScalePress>
                 )
               })}
             </View>
@@ -792,8 +792,10 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // Altura mínima, não fixa: com fonte grande o rótulo cresce sem cortar.
   pay: {
-    height: 34,
+    minHeight: 34,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 5,
     borderWidth: 1,
