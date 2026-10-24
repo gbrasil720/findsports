@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
   },
   badgeNumber: { fontFamily: 'Anton', color: INK, marginVertical: -6 },
   badgeLabel: {
-    fontFamily: 'GeistMono-Bold',
+    fontFamily: 'GeistMono-SemiBold',
     color: INK,
     letterSpacing: 0.36,
     marginTop: 1
