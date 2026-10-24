@@ -12,25 +12,25 @@ import { submitSignup, uniqueEmail, VERIFICATION_SUBJECT } from './forms'
 const RESET_SUBJECT = 'Redefina a senha da sua conta Onside'
 const NEW_PASSWORD = 'senha-nova-e2e-456'
 
-/** Cadastro de torcedor pelo formulário. */
-async function signupFan(page: Page) {
+/** Cadastro de bar pelo formulário: cai no onboarding, sem sessão. */
+async function signupBar(page: Page) {
   const email = uniqueEmail('verify')
   await page.goto('/signup')
   await submitSignup(page, { name: 'Verificação E2E', email })
-  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page).toHaveURL(/\/onboarding\/pub$/)
   return email
 }
 
 test.describe('verificação de e-mail', () => {
-  test('link do e-mail confirma e leva o torcedor novo ao onboarding', async ({
+  test('link do e-mail confirma e leva o bar novo ao onboarding', async ({
     page
   }) => {
-    const email = await signupFan(page)
+    const email = await signupBar(page)
     const { link } = await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
 
     await page.goto(link)
 
-    await expect(page).toHaveURL(/\/onboarding\/fan$/)
+    await expect(page).toHaveURL(/\/onboarding\/pub$/)
     const [user] = await query<{ email_verified: boolean }>(
       'SELECT email_verified FROM "user" WHERE email = $1',
       [email]
@@ -57,15 +57,17 @@ test.describe('verificação de e-mail', () => {
     })
     await page.goto(link)
 
-    await expect(page).toHaveURL(/\/dashboard$/)
+    // Torcedor (cadastrado pelo app) cai na página do app.
+    await expect(page).toHaveURL(/\/torcedor$/)
     expect(
       visited.some((url) => url.includes('/verify-email?confirmed=1'))
     ).toBe(true)
   })
 
   test('reenviar link manda um e-mail novo', async ({ page }) => {
-    const email = await signupFan(page)
+    const email = await signupBar(page)
     const first = await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
+    await page.goto('/verify-email')
 
     await page.getByRole('button', { name: 'Reenviar link' }).click()
 
@@ -100,7 +102,7 @@ test('esqueci a senha responde igual para e-mail existente e inexistente', async
     replies.push({ status: reply.status(), body: await reply.json() })
 
     await expect(
-      page.getByRole('heading', { name: /CONFIRA SUA CAIXA DE ENTRADA/ })
+      page.getByRole('heading', { name: /Confira sua caixa de entrada/i })
     ).toBeVisible()
     await expect(page.getByText(email)).toBeVisible()
   }
@@ -117,14 +119,14 @@ test.describe('redefinir senha', () => {
       .getByRole('button', { name: 'Enviar link de recuperação' })
       .click()
     await expect(
-      page.getByRole('heading', { name: /CONFIRA SUA CAIXA DE ENTRADA/ })
+      page.getByRole('heading', { name: /Confira sua caixa de entrada/i })
     ).toBeVisible()
     return (await lastEmailTo(email, { subject: RESET_SUBJECT })).link
   }
 
   const invalidLink = (page: Page) =>
     expect(
-      page.getByRole('heading', { name: /ESSE LINK NÃO VALE MAIS/ })
+      page.getByRole('heading', { name: /Esse link não vale mais/i })
     ).toBeVisible()
 
   test('sucesso derruba todas as sessões, cai no /login e o link não vale de novo', async ({

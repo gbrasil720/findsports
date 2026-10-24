@@ -61,7 +61,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     const fanPage = await fanContext.newPage()
     await fanPage.goto(`/pub/${bar?.id}`)
     await expect(
-      fanPage.getByRole('heading', { name: 'Bar do Trial' })
+      fanPage.getByRole('heading', { name: 'Bar do Trial', exact: true })
     ).toBeVisible()
   } finally {
     await fanContext.close()
@@ -69,7 +69,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
 })
 
 // WEB-238: a revisão prometia só "escolher o plano".
-test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /plan', async ({
+test('a revisão avisa que o bar entra no ar com o plano grátis, e o "no ar" leva aos planos', async ({
   page
 }) => {
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
@@ -78,8 +78,11 @@ test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /
 
   await page.getByRole('button', { name: 'Começar', exact: true }).click()
   await page.getByLabel('Nome do estabelecimento').fill('Bar da Revisão')
-  await page.getByLabel('Endereço').fill(`Rua da Revisão ${owner.id}, 1`)
-  await page.getByLabel('Bairro').fill('Pinheiros')
+  await page
+    .getByLabel('Rua *', { exact: true })
+    .fill(`Rua da Revisão ${owner.id}`)
+  await page.getByLabel('Número *', { exact: true }).fill('1')
+  await page.getByLabel('Bairro *', { exact: true }).fill('Pinheiros')
   await page.getByRole('button', { name: 'Continuar', exact: true }).click()
   await page.getByRole('button', { name: 'Pular', exact: true }).click()
 
@@ -91,20 +94,12 @@ test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /
       'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão. Em seguida você conhece os planos.'
     )
   ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'Escolher meu plano' })
-  ).toHaveCount(0)
   await page.getByRole('button', { name: 'Colocar meu bar no ar' }).click()
 
-  // O teste já começou no cadastro: o diálogo diz isso antes dos planos.
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
-  const confirmacao = page.getByRole('dialog')
-  await expect(
-    confirmacao.getByRole('heading', {
-      name: 'Seu bar está no ar com o Elite grátis.'
-    })
-  ).toBeVisible()
-  await confirmacao.getByRole('button', { name: 'Ver os planos' }).click()
+  // "Seu bar está no ar" (4r): o teste grátis e o caminho para os planos.
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
+  await expect(page.getByText('Elite grátis por 120 dias')).toBeVisible()
+  await page.getByRole('link', { name: 'Conhecer os planos →' }).click()
   await expect(page).toHaveURL(/\/plan$/)
   await expect(
     page.getByRole('heading', { name: /^Você está no Elite até / })

@@ -108,6 +108,6 @@ test('WEB-269: sem rede, a aba controlada pelo service worker abre a página off
   )
 
   // Antes da correção esta navegação morria em `net::ERR_FAILED`.
-  await page.goto(`${ORIGIN}/dashboard`)
+  await page.goto(`${ORIGIN}/admin`)
   await expect(page).toHaveTitle('Sem conexão — Onside')
 })

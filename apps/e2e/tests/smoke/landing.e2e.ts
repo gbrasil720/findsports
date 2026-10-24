@@ -90,9 +90,7 @@ test('desktop sem WebGL: o pôster fica, sem erro no console', async ({
   expect(errors).toEqual([])
 })
 
-test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
-  page
-}) => {
+test('o CTA do bar leva ao cadastro do bar', async ({ page }) => {
   await page.goto('/')
   const cta = page.locator('[data-cta="footer_pub_signup"]')
   await expect(cta).toHaveText('Cadastre seu bar')
@@ -101,12 +99,8 @@ test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
   await cta.click()
   await expect(page).toHaveURL(/\/signup\?role=pub$/)
   await expect(
-    page.getByRole('button', { name: 'Dono de Bar' })
-  ).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
+    page.getByRole('heading', { level: 1, name: 'Cadastrar meu bar' })
+  ).toBeVisible()
 })
 
 // O nome da chamada diz para onde ela leva, e é ele que o `cta_clicked` manda:

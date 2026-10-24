@@ -1,8 +1,7 @@
 import type { Page } from '@playwright/test'
-import { signIn, storageState } from '../../fixtures/auth'
+import { storageState } from '../../fixtures/auth'
 import { query, resetAppConfig } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
 
 // Feitiços do Houdini (antes /internal/flags, WEB-181). Serial: grava
 // `app_config`, global.
@@ -230,20 +229,4 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
       expect(await stored(key)).toBeUndefined()
     })
   }
-})
-
-test('ligar rating.public_display mostra a ordem por avaliação na busca', async ({
-  page
-}) => {
-  await page.goto('/houdini/feiticos')
-  await spell(page, KEY).getByRole('switch', { name: KEY }).click()
-  await expect(page.getByText(`${KEY} lançado por 1 h.`)).toBeVisible()
-
-  // A mesma aba vira torcedor: a busca lê a chave pública na carga seguinte.
-  await page.context().clearCookies()
-  await signIn(page, await createUser())
-  await page.goto('/dashboard')
-  await expect(
-    page.getByRole('button', { name: 'Melhor avaliados' })
-  ).toBeVisible()
 })

@@ -1,338 +1,113 @@
 import { randomUUID } from 'node:crypto'
-import type { Page } from '@playwright/test'
-import { signIn } from '../../fixtures/auth'
-import { query } from '../../fixtures/db'
-import {
-  createEvent,
-  days,
-  hours,
-  isFavorite,
-  pubAt,
-  signInFanAt,
-  team,
-  uniqueSpot
-} from '../../fixtures/fan'
+import { storageState } from '../../fixtures/auth'
+import { createEvent, days, hours, team } from '../../fixtures/fan'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
 
-// Página pública do bar, `/pub/$pubId` (WEB-178).
+// O link de um bar, `/pub/$pubId` (design 4x–4z): o web é só para bares, e a
+// página do bar virou "O <bar> está no app", aberta sem sessão.
 
-/**
- * O painel de ações: "Fale com o bar" (WEB-353), ou "Como chegar" quando o bar
- * não deixou WhatsApp nem telefone. No celular o título e os botões dele somem: os botões estão na
- * barra presa ao pé da janela (WEB-370).
- */
-const actionsPanel = (page: Page) =>
-  page.locator('section', {
-    has: page.locator('p.onside-kicker', {
-      hasText: /Fale com o bar|Como chegar/
-    })
-  })
-
-/** Onde os botões de ação estão à mostra: a barra no celular, o painel fora dele. */
-const actionButtons = (page: Page, isMobile: boolean) =>
-  isMobile ? page.locator('.onside-pub-actionbar') : actionsPanel(page)
-
-const intents = (fanId: string, barId: string) =>
-  query<{ type: string }>(
-    'SELECT type FROM bar_commercial_event WHERE actor_user_id = $1 AND bar_id = $2 ORDER BY type',
-    [fanId, barId]
-  ).then((rows) => rows.map((row) => row.type))
-
-test.describe('deslogado', () => {
-  test('diálogo de login é obrigatório e não fecha', async ({ page }) => {
-    const { barId } = await createPub()
-
-    await page.goto(`/pub/${barId}`)
-    const dialog = page.getByRole('dialog', {
-      name: 'Autenticação obrigatória'
-    })
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByText('Acesso exclusivo')).toBeVisible()
-
-    await page.keyboard.press('Escape')
-    await page.mouse.click(5, 5)
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('link', { name: 'Entrar' })).toHaveAttribute(
-      'href',
-      new RegExp(`callbackUrl=.*${barId}`)
-    )
-    await expect(
-      dialog.getByRole('link', { name: 'Criar conta grátis' })
-    ).toHaveAttribute('href', new RegExp(`callbackUrl=.*${barId}`))
-  })
-
-  // WEB-182: o diálogo manda `callbackUrl` relativo.
-  test('login a partir do diálogo volta para a página do bar', async ({
-    page
-  }) => {
-    const { barId } = await createPub()
-    const fan = await createUser()
-
-    await page.goto(`/pub/${barId}`)
-    // O "Entrar" do cabeçalho também existe; o do diálogo é o que leva o
-    // `callbackUrl`, e o fundo do diálogo intercepta clique no outro.
-    await page
-      .getByRole('dialog', { name: 'Autenticação obrigatória' })
-      .getByRole('link', { name: 'Entrar' })
-      .click()
-    await expect(page).toHaveURL(/\/login/)
-    await page.getByLabel('E-mail').fill(fan.email)
-    await page.getByLabel('Senha', { exact: true }).fill(fan.password)
-    await page.getByRole('button', { name: 'Acessar minha conta' }).click()
-
-    await expect(page).toHaveURL(new RegExp(`/pub/${barId}$`))
-  })
-})
-
-test('torcedor favorita e vê oferta, cardápio e contatos', async ({
+test('mostra o cartão do bar e o caminho para o app', async ({
   page,
   isMobile
 }) => {
-  const spot = uniqueSpot()
-  const menuUrl = `https://cardapio.example.com/${randomUUID()}`
-  const pub = await pubAt(spot, {
-    bar: {
-      house_offer: 'Chopp em dobro no intervalo',
-      menu_url: menuUrl,
-      phone: '11987654321',
-      phone_accepts_whatsapp: true
-    }
+  const name = `Bar Link ${randomUUID().slice(0, 6)}`
+  const { barId } = await createPub({
+    bar: { name, neighborhood: 'Vila Madalena' }
   })
-  await createEvent({ barId: pub.barId, startsAt: days(2) })
-  const fan = await signInFanAt(page, spot)
+  const [corinthians, palmeiras] = await Promise.all([
+    team('corinthians'),
+    team('palmeiras')
+  ])
+  await createEvent({
+    barId,
+    startsAt: hours(-1),
+    teamIds: [corinthians.id, palmeiras.id]
+  })
 
-  await page.goto(`/pub/${pub.barId}`)
-  await expect(
-    page.getByRole('heading', { level: 1, name: pub.name })
-  ).toBeVisible()
-
-  // Favoritar
-  await page.getByRole('button', { name: 'Adicionar aos favoritos' }).click()
-  await expect(
-    page.getByRole('button', { name: 'Remover dos favoritos' })
-  ).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
-
-  // Oferta da casa (todo Elite com oferta) e cardápio (Pro/Elite)
-  const offer = page.getByRole('region', { name: 'Oferta da casa' })
-  await expect(offer).toContainText('Chopp em dobro no intervalo')
-  await expect(page.locator(`a[href="${menuUrl}"]`)).toBeVisible()
-
-  // Contatos: WhatsApp, rota e telefone — cada clique registra a intenção
-  const panel = actionButtons(page, isMobile)
-  const whatsapp = panel.locator('a[href^="https://wa.me/5511987654321"]')
-  const directions = panel.locator('a[href*="google.com/maps"]')
-  const phone = panel.locator('a[href="tel:11987654321"]')
-  await expect(whatsapp).toBeVisible()
-  await expect(directions).toBeVisible()
-  await expect(phone).toBeVisible()
-
-  // Pelo teclado: no celular os botões estão na barra presa ao pé da janela,
-  // e em `vite dev` as devtools ficam por cima dos cantos dela.
-  for (const link of [whatsapp, directions]) {
-    const popup = page.waitForEvent('popup')
-    await link.press('Enter')
-    await (await popup).close()
-  }
-  // `tel:` abriria o discador; o handler do app roda antes do padrão. Em
-  // string porque o tsconfig da suíte não carrega os tipos do DOM.
-  await page.evaluate(
-    `document.addEventListener("click", (event) => {
-      if (event.target.closest('a[href^="tel:"]')) event.preventDefault()
-    }, true)`
+  const response = await page.goto(`/pub/${barId}`)
+  expect(response?.status()).toBe(200)
+  await expect(page).toHaveTitle(`${name} — Onside`)
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    /noindex/
   )
-  await phone.press('Enter')
-  await expect
-    .poll(() => intents(fan.id, pub.barId))
-    .toEqual(
-      expect.arrayContaining([
-        'directions_opened',
-        'phone_clicked',
-        'whatsapp_opened'
-      ])
-    )
-})
-
-test('"Vou assistir aqui" só em jogo futuro', async ({ page }) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(spot)
-  const future = `Futuro ${randomUUID().slice(0, 6)}`
-  const live = `Ao vivo ${randomUUID().slice(0, 6)}`
-  const futureId = await createEvent({
-    barId: pub.barId,
-    startsAt: days(2),
-    freeText: future
-  })
-  await createEvent({
-    barId: pub.barId,
-    startsAt: hours(-0.5),
-    endsAt: hours(1.5),
-    freeText: live
-  })
-  const fan = await signInFanAt(page, spot)
-
-  await page.goto(`/pub/${pub.barId}`)
-  await expect(page.getByText(live).first()).toBeVisible()
-  await expect(page.getByRole('group', { name: live })).toHaveCount(0)
-
-  const game = page.getByRole('group', { name: future })
-  await game.getByRole('button', { name: 'Vou assistir aqui' }).click()
-  // Bar Elite: o código abre num diálogo, que esconde a página até fechar.
-  const dialog = page.getByRole('dialog', { name: 'Seu código para o balcão' })
-  await expect(dialog).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(dialog).toHaveCount(0)
   await expect(
-    game.getByText('Você vai assistir aqui', { exact: true })
+    page.getByRole('heading', { level: 1, name: `${name} está no app.` })
   ).toBeVisible()
-  await expect
-    .poll(
-      async () =>
-        (
-          await query(
-            'SELECT 1 FROM attendance WHERE user_id = $1 AND event_id = $2',
-            [fan.id, futureId]
-          )
-        ).length
-    )
-    .toBe(1)
-})
 
-test('oferta só no Elite, e sem contato o painel é só "Como chegar"', async ({
-  page,
-  isMobile
-}) => {
-  const spot = uniqueSpot()
-  // O Pro guarda a oferta de quando era Elite; o Elite não cadastrou nenhuma.
-  const pro = await pubAt(spot, {
-    subscription: { plan: 'pro' },
-    bar: { house_offer: 'Oferta guardada' }
-  })
-  const elite = await pubAt(spot)
-  for (const { barId } of [pro, elite]) {
-    await createEvent({ barId, startsAt: days(2) })
-  }
-  await signInFanAt(page, spot)
+  // O cartão: Elite (o padrão do `createPub`), ao vivo e o jogo.
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+  await expect(page.getByText('Vila Madalena · São Paulo')).toBeVisible()
+  await expect(page.getByText('Elite', { exact: true })).toBeVisible()
+  await expect(page.getByText('Ao vivo', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText(`${corinthians.name} × ${palmeiras.name}`)
+  ).toBeVisible()
 
-  for (const { barId, name } of [pro, elite]) {
-    await page.goto(`/pub/${barId}`)
-    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+  if (isMobile) {
+    // 4z: o "Abrir no app" leva ao bar no app.
     await expect(
-      page.getByRole('region', { name: 'Oferta da casa' })
-    ).toHaveCount(0)
-    await expect(page.getByText('Oferta guardada')).toHaveCount(0)
-    // O título não promete lugar (WEB-353); e estes bares não têm WhatsApp
-    // nem telefone, então também não promete conversa.
-    await expect(actionsPanel(page).locator('p.onside-kicker')).toHaveText(
-      'Como chegar'
-    )
-    await expect(actionsPanel(page)).not.toContainText('Fale com o bar')
-    // Um "Como chegar" só: o do painel some onde a barra fixa existe.
-    const directions = page.getByRole('link', { name: 'Como chegar' })
-    await expect(directions).toHaveCount(1)
+      page.getByRole('link', { name: 'Abrir no app' })
+    ).toHaveAttribute('href', `onside://bar/${barId}`)
+  } else {
+    // 4x: o QR leva a esta página, que no celular tem o "Abrir no app".
     await expect(
-      actionButtons(page, isMobile).getByRole('link', { name: 'Como chegar' })
+      page.getByRole('img', { name: 'QR code: abre esta página no celular' })
     ).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Abrir no app' })).toBeHidden()
   }
 })
 
-test('dono vê o banner de pré-visualização, publicado ou não', async ({
-  page
-}) => {
-  const active = await createPub()
-  await signIn(page, active.user)
-  await page.goto(`/pub/${active.barId}`)
-  await expect(
-    page.getByText('Você está vendo seu perfil como o torcedor vê')
-  ).toBeVisible()
+test('bar sem plano e sem jogo: só nome e bairro', async ({ page }) => {
+  const name = `Bar Quieto ${randomUUID().slice(0, 6)}`
+  const { barId } = await createPub({ bar: { name }, subscription: null })
 
-  const inactive = await createPub({ bar: { is_active: false } })
-  await page.context().clearCookies()
-  await signIn(page, inactive.user)
-  await page.goto(`/pub/${inactive.barId}`)
-  await expect(
-    page.getByText('Prévia do seu perfil — ainda fora do ar')
-  ).toBeVisible()
-
-  // WEB-345: fora do ar por assinatura encerrada tem outro motivo e outro
-  // caminho de volta.
-  const ended = await createPub({
-    bar: { is_active: false },
-    subscription: { status: 'cancelled' }
-  })
-  await page.context().clearCookies()
-  await signIn(page, ended.user)
-  await page.goto(`/pub/${ended.barId}`)
-  await expect(
-    page.getByText('Seu bar está fora do ar: a assinatura terminou')
-  ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Contratar um plano' })
-  ).toHaveAttribute('href', '/plan')
-  await expect(page.getByText('ainda fora do ar')).toHaveCount(0)
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
+  await expect(page.getByText('Elite', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Ao vivo', { exact: true })).toHaveCount(0)
 })
 
-// WEB-345: com um jogo só, "Também vai passar" dizia que o bar não tinha jogo
-// logo abaixo do destaque, e o card da busca trazia os times em outra ordem.
-test('jogo único fica só no destaque, e os times saem na ordem do card', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(spot)
-  const arsenal = await team('arsenal')
-  const argentina = await team('argentina')
-  // Gravados fora da ordem alfabética.
-  await createEvent({
-    barId: pub.barId,
-    startsAt: days(2),
-    teamIds: [arsenal.id, argentina.id]
-  })
-  await signInFanAt(page, spot)
-  const matchup = `${argentina.name} × ${arsenal.name}`
+test('jogo de outro dia leva o dia junto da hora', async ({ page }) => {
+  const { barId } = await createPub()
+  const freeText = `Jogo ${randomUUID().slice(0, 6)}`
+  await createEvent({ barId, startsAt: days(3), freeText })
 
-  await page.goto('/dashboard')
-  await expect(
-    page
-      .locator('.onside-bar-card', {
-        has: page.getByRole('link', { name: `Ver ${pub.name}` })
-      })
-      .getByTitle(matchup)
-  ).toBeVisible()
-
-  await page.goto(`/pub/${pub.barId}`)
-  await expect(page.getByText(matchup).first()).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'Também vai passar' })
-  ).toHaveCount(0)
-  await expect(
-    page.getByText('Esse bar ainda não cadastrou jogos')
-  ).toHaveCount(0)
-
-  // Com um segundo jogo a seção volta, só com ele.
-  const second = `Segundo ${randomUUID().slice(0, 6)}`
-  await createEvent({ barId: pub.barId, startsAt: days(3), freeText: second })
-  await page.goto(`/pub/${pub.barId}`)
-  const agenda = page.locator('section', { hasText: 'Também vai passar' })
-  await expect(agenda.getByText(second)).toBeVisible()
-  await expect(agenda.getByText(matchup)).toHaveCount(0)
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText(freeText)).toBeVisible()
+  await expect(page.locator('.entrada-teaser-hora')).toHaveText(
+    /^\p{L}{3} \d{2}:\d{2}$/u
+  )
 })
 
-// NOT_FOUND não é refeito (WEB-360): a tela desiste na primeira resposta.
-for (const [label, barId] of [
-  [
-    'inativo',
-    async () => (await createPub({ bar: { is_active: false } })).barId
-  ],
-  ['inexistente', async () => randomUUID()]
-] as const) {
-  test(`bar ${label} devolve o torcedor ao dashboard`, async ({ page }) => {
-    const id = await barId()
-    await signInFanAt(page, uniqueSpot())
+test('bar inexistente é 404 e bar fora do ar fica sem cartão', async ({
+  page
+}) => {
+  const missing = await page.goto(`/pub/${randomUUID()}`)
+  expect(missing?.status()).toBe(404)
 
-    await page.goto(`/pub/${id}`)
-    await expect(page.getByText('Bar não encontrado.')).toBeVisible()
-    await expect(page).toHaveURL(/\/dashboard$/)
+  const { barId } = await createPub({ bar: { is_active: false } })
+  const offAir = await page.goto(`/pub/${barId}`)
+  expect(offAir?.status()).toBe(200)
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'A Onside para torcedores está no app.'
+    })
+  ).toBeVisible()
+})
+
+test.describe('com sessão de torcedor', () => {
+  test.use({ storageState: storageState('fan') })
+
+  test('o link do bar abre a mesma página', async ({ page }) => {
+    const name = `Bar do Fã ${randomUUID().slice(0, 6)}`
+    const { barId } = await createPub({ bar: { name } })
+    await page.goto(`/pub/${barId}`)
+    await expect(page).toHaveURL(new RegExp(`/pub/${barId}$`))
+    await expect(
+      page.getByRole('heading', { level: 1, name: `${name} está no app.` })
+    ).toBeVisible()
   })
-}
+})

@@ -5,15 +5,17 @@ import { query } from '../../fixtures/db'
 import { createPub } from '../../fixtures/pubs'
 import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
 import { answerCookieConsent, expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
 import { openAccountSettings } from './forms'
 
 // WEB-175 — configurações da conta: senha, sessões e exclusão.
 
 const NEW_PASSWORD = 'senha-trocada-e2e-789'
 
+/** O web é do bar: as contas destes testes são de bar. */
+const pubUser = async () => (await createPub()).user
+
 test('trocar senha', async ({ page }) => {
-  const user = await createUser()
+  const user = await pubUser()
   await signIn(page, user)
   await openAccountSettings(page)
 
@@ -47,7 +49,7 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
   browser,
   extraHTTPHeaders
 }) => {
-  const user = await createUser()
+  const user = await pubUser()
   await signIn(page, user)
 
   // Outro "dispositivo": contexto próprio, no mesmo IP aleatório do teste
@@ -60,13 +62,15 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
   try {
     const otherPage = await other.newPage()
     await signIn(otherPage, user)
-    await otherPage.goto('/dashboard')
-    await expect(otherPage).toHaveURL(/\/dashboard$/)
+    await otherPage.goto('/admin')
+    await expect(otherPage).toHaveURL(/\/admin$/)
 
     await openAccountSettings(page)
+    // `.last()`: no painel a seção da conta fica dentro de outra seção.
     const sessions = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Acessos ativos' }) })
+      .last()
     await expect(sessions.getByRole('article')).toHaveCount(2)
     await expect(sessions.getByText('Este dispositivo')).toHaveCount(1)
 
@@ -76,18 +80,18 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
     await expect(page.getByText('Acesso encerrado.')).toBeVisible()
     await expect(sessions.getByRole('article')).toHaveCount(1)
 
-    await otherPage.goto('/dashboard')
+    await otherPage.goto('/admin')
     await expect(otherPage).toHaveURL(/\/login\?callbackUrl=/)
     // Quem revogou continua dentro.
-    await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await page.goto('/admin')
+    await expect(page).toHaveURL(/\/admin$/)
   } finally {
     await other.close()
   }
 })
 
 test('excluir conta exige senha e a confirmação digitada', async ({ page }) => {
-  const user = await createUser()
+  const user = await pubUser()
   await signIn(page, user)
   await openAccountSettings(page)
 
