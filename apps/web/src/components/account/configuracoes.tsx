@@ -192,6 +192,7 @@ function ContaEAcesso({ nome, email }: { nome: string; email: string }) {
     <Secao id="conta" titulo="Conta e acesso" icone="gear">
       {editando ? (
         <form
+          method="post"
           className="flex flex-wrap items-end gap-3 py-3"
           noValidate
           onSubmit={(e) => {
