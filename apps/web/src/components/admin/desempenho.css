@@ -709,6 +709,16 @@
   padding: 0;
   border: 0;
 }
+/* Nome longo de jogo quebra a linha dentro do chip em vez de vazar do card. */
+.painel .comparar-jogos .painel-chip {
+  max-width: 100%;
+  height: auto;
+  min-height: var(--painel-chip-h);
+  padding-block: 6px;
+  line-height: 1.25;
+  text-align: left;
+  white-space: normal;
+}
 .painel .comparar-bloco {
   margin-top: 18px;
   padding-top: 14px;
