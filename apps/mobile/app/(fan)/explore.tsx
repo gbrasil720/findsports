@@ -474,12 +474,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const sheet = useAnimatedStyle(() => ({
     transform: [{ translateY: y.get() }]
   }))
-  // A seta de "Lista" vira com a folha, não depois dela.
-  const rest = useAnimatedStyle(() => ({
+  // No meio, o segundo card aparece e some num degradê antes da barra de
+  // abas: diz que a lista continua. O degradê se desfaz quando a folha sobe.
+  const veil = useAnimatedStyle(() => ({
     opacity: interpolate(
       y.get(),
       [snaps[1] - 120, snaps[1] - 8],
-      [1, 0],
+      [0, 1],
       Extrapolation.CLAMP
     )
   }))
@@ -489,6 +490,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   useEffect(() => {
     if (!expanded) settle(snaps[1])
   }, [selected])
+  // A seta de "Lista" vira com a folha, não depois dela.
   const arrow = useAnimatedStyle(() => ({
     transform: [
       {
@@ -945,39 +947,24 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                       onPress={() => open(chosen)}
                     />
                   ) : (
-                    // Na abertura, só o primeiro card, sem a hora (20a); os
-                    // outros aparecem conforme a folha sobe. Os sem jogo vêm
-                    // depois, com um título.
-                    [...bars, ...quiet].map((bar, index) => {
-                      const head =
-                        index === bars.length ? (
+                    // Fora da lista aberta, os cards vão sem a hora (20a). Os
+                    // sem jogo vêm depois, com um título.
+                    [...bars, ...quiet].map((bar, index) => (
+                      <View key={bar.id} style={{ gap: 12 }}>
+                        {index === bars.length ? (
                           <QuietHead
-                            key="quiet"
                             alone={bars.length === 0}
                             radiusKm={radiusKm}
                           />
-                        ) : null
-                      return index === 0 ? (
-                        <View key={bar.id} style={{ gap: 12 }}>
-                          {head}
-                          <BarRow
-                            bar={bar}
-                            now={now}
-                            compact={!expanded}
-                            onPress={() => open(bar)}
-                          />
-                        </View>
-                      ) : (
-                        <Animated.View key={bar.id} style={[{ gap: 12 }, rest]}>
-                          {head}
-                          <BarRow
-                            bar={bar}
-                            now={now}
-                            onPress={() => open(bar)}
-                          />
-                        </Animated.View>
-                      )
-                    })
+                        ) : null}
+                        <BarRow
+                          bar={bar}
+                          now={now}
+                          compact={!expanded}
+                          onPress={() => open(bar)}
+                        />
+                      </View>
+                    ))
                   )}
                 </Animated.View>
               )}
@@ -1031,12 +1018,39 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             </Animated.ScrollView>
           </GestureDetector>
         </GestureDetector>
+        {/* Só com mais de um card: sozinho, o degradê cobriria o fim da lista. */}
+        {!chosen && bars.length + quiet.length > 1 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.veil,
+              {
+                top: height - top - snaps[1] - tabSpace - VEIL_ABOVE_TABS
+              },
+              veil
+            ]}
+          >
+            <LinearGradient
+              colors={[
+                palette.dark ? 'rgba(22,22,19,0)' : 'rgba(241,238,230,0)',
+                palette.sheet
+              ]}
+              style={{ height: VEIL_HEIGHT }}
+            />
+            <View style={{ flex: 1, backgroundColor: palette.sheet }} />
+          </Animated.View>
+        ) : null}
       </Animated.View>
 
       {soon.toast}
     </View>
   )
 }
+
+/** O degradê da folha no meio: começa tantos pt acima da barra de abas… */
+const VEIL_ABOVE_TABS = 16
+/** …e chega à cor da folha nesta altura, já por baixo do vidro da barra. */
+const VEIL_HEIGHT = 64
 
 /** Abaixo disso, a lista do Explorar se completa com bares sem jogo. */
 const FEW_BARS = 5
@@ -1159,6 +1173,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -6 },
     elevation: 12
   },
+  veil: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheetDark: {
     shadowOpacity: 0.7,
     borderTopWidth: StyleSheet.hairlineWidth,
