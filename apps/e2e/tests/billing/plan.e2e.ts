@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
-import { deliverSubscription, stripeSubscription } from '../../fixtures/stripe'
+import {
+  deliverSubscription,
+  seedStripeInvoices,
+  stripeInvoice,
+  stripeSubscription
+} from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
 
 // `/plan` e `/plan/confirmed`. O checkout em si está em
@@ -441,16 +446,27 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
   await expect(page).toHaveURL(/\/plan\/confirmed$/)
 
   const subscriptionId = `sub_e2e_${user.id}`
+  const subscription = stripeSubscription({
+    id: subscriptionId,
+    status: 'active',
+    plan: 'pro',
+    userId: user.id,
+    founderDiscount: true
+  })
+  // A fatura que o checkout gerou, de onde sai o PDF do comprovante.
+  await seedStripeInvoices(request, subscription, [
+    stripeInvoice({
+      id: `in_${subscriptionId}`,
+      customer: subscription.customer,
+      status: 'paid',
+      total: 11900,
+      created: new Date()
+    })
+  ])
   const webhook = await deliverSubscription(
     request,
     'customer.subscription.created',
-    stripeSubscription({
-      id: subscriptionId,
-      status: 'active',
-      plan: 'pro',
-      userId: user.id,
-      founderDiscount: true
-    })
+    subscription
   )
   expect(webhook.ok(), await webhook.text()).toBe(true)
 
@@ -470,7 +486,11 @@ test('/plan/confirmed com a marca espera o webhook e imprime o recibo', async ({
     page.getByRole('link', { name: /Cadastre os jogos da semana/ })
   ).toHaveAttribute('href', '/admin/jogos')
   await expect(page.getByText('Revise a oferta da casa')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Baixar PDF/ })).toBeDisabled()
+  // O PDF é o da fatura da contratação, no Stripe (WEB-443).
+  await expect(page.getByRole('link', { name: 'Baixar PDF' })).toHaveAttribute(
+    'href',
+    `https://pay.stripe.com/invoice/in_${subscriptionId}/pdf`
+  )
   await expect(receipt).toContainText(subscriptionId.slice(-16))
   // Recibo confirmado apaga a marca.
   const { origins } = await page.context().storageState()
