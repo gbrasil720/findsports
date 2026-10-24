@@ -46,7 +46,6 @@ function render(form: Partial<EventForm>) {
         initial={{ ...FILLED, ...form }}
         sports={[{ id: 'futebol-id', name: 'Futebol', slug: 'futebol' }]}
         onSave={() => {}}
-        onCancel={() => {}}
         isSaving={false}
         loadingSports={false}
       />
@@ -54,7 +53,7 @@ function render(form: Partial<EventForm>) {
   )
   const doc = new JSDOM(markup).window.document
   const save = [...doc.querySelectorAll('button')].find(
-    (button) => button.textContent === 'Salvar'
+    (button) => button.textContent === 'Publicar jogo'
   )
   return {
     fields: [...doc.querySelectorAll('input[placeholder="dd/mm/aaaa hh:mm"]')],
@@ -163,7 +162,6 @@ test('telão e som do jogo saem marcados como vieram das características', () =
         initial={FILLED}
         sports={[{ id: 'futebol-id', name: 'Futebol', slug: 'futebol' }]}
         onSave={() => {}}
-        onCancel={() => {}}
         isSaving={false}
         loadingSports={false}
       />
