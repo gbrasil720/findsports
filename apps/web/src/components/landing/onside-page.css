@@ -1,0 +1,228 @@
+/*
+ * Base de `.onside-page`, a casca das páginas do site fora do app: landing,
+ * termos, guia, 404 e convite. Fica no CSS de toda página porque o 404 e a
+ * tela de erro podem aparecer em qualquer rota. O resto da landing está em
+ * `onside.css`, que só a landing (e o cabeçalho e o rodapé dela) carrega.
+ */
+/* ─── Page shell ─── */
+.onside-page {
+  --onside-header-h: 74px;
+  /* Curvas de animação do protótipo da landing, em `cubic-bezier`. */
+  --onside-ease-power3: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --onside-ease-power4: cubic-bezier(0.23, 1, 0.32, 1);
+  --onside-ease-back: cubic-bezier(0.34, 1.85, 0.64, 1);
+  --onside-ease-back-strong: cubic-bezier(0.34, 2, 0.64, 1);
+
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+  background: var(--onside-paper);
+  color: var(--onside-ink);
+  font-family: var(--onside-body);
+  font-size: 16px;
+  line-height: 1.5;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+/*
+ * O contêiner que rola é o documento, não `.onside-page` — `scroll-padding`
+ * aqui não fazia nada, e âncoras alcançadas por foco de teclado paravam
+ * debaixo do cabeçalho fixo. O recuo tem de morar no scroller.
+ */
+html:has(.onside-page) {
+  scroll-padding-top: calc(74px + 16px);
+}
+
+/* 760px, como `--onside-header-h`: é onde o cabeçalho encolhe para 66px. */
+@media (max-width: 760px) {
+  html:has(.onside-page) {
+    scroll-padding-top: calc(66px + 16px);
+  }
+}
+
+.onside-page > main {
+  display: block;
+  width: 100%;
+}
+
+.onside-page *,
+.onside-page *::before,
+.onside-page *::after {
+  box-sizing: border-box;
+}
+
+.onside-page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.onside-page button,
+.onside-page input {
+  font: inherit;
+}
+
+.onside-page button {
+  color: inherit;
+}
+
+.onside-page img {
+  max-width: 100%;
+}
+
+.onside-page [hidden] {
+  display: none !important;
+}
+
+/* Mesma política de foco do app; os tokens vêm de `onside/tokens.css`. */
+.onside-page :focus-visible {
+  outline: var(--onside-focus-width) solid var(--onside-focus-color);
+  outline-offset: var(--onside-focus-offset);
+}
+
+.onside-page h1,
+.onside-page h2,
+.onside-page h3,
+.onside-page p {
+  margin-top: 0;
+}
+
+.onside-page h1,
+.onside-page h2 {
+  font-family: var(--onside-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  /* Anton accented caps reach 1.101em above the baseline; 1.15 keeps them
+     clear of the previous line without losing the tight display rhythm. O
+     desenho da v2 usa 1.02–1.05, e ali o til de "NÃO" entra no "O" de cima
+     ("GOOGLE" vira "GQOGLE"): os títulos da landing ficam com este valor. */
+  line-height: 1.15;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.onside-page h1 em,
+.onside-page h2 em {
+  color: var(--onside-live);
+  font-style: normal;
+}
+
+.onside-page .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── Skip link ─── */
+.onside-page .onside-skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 1000;
+  transform: translateY(-150%);
+  background: var(--onside-acid);
+  border: 2px solid var(--onside-ink);
+  padding: 10px 14px;
+  font-weight: 700;
+  color: var(--onside-ink);
+}
+
+.onside-page .onside-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* ─── Shell / sections ─── */
+.onside-page .onside-shell {
+  box-sizing: border-box;
+  width: min(calc(100% - 48px), var(--onside-max));
+  max-width: var(--onside-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-inline: 0;
+}
+
+.onside-page .onside-brand,
+.onside-page .onside-brand-link {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+}
+
+.onside-page .onside-brand-wordmark {
+  height: 32px;
+  width: auto;
+  max-width: min(168px, 42vw);
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.onside-page .onside-live-dot {
+  position: relative;
+  isolation: isolate;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--onside-live);
+  flex: none;
+}
+
+.onside-page .onside-live-dot::after {
+  position: absolute;
+  z-index: -1;
+  inset: -5px;
+  border-radius: inherit;
+  background: rgb(232 50 12 / 22%);
+  content: "";
+  animation: onside-landing-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes onside-landing-pulse {
+  50% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+/* ─── Anchor targets ─── */
+.onside-page [id] {
+  scroll-margin-top: calc(var(--onside-header-h) + 16px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.onside-page) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (max-width: 760px) {
+  .onside-page {
+    /* Bate com `.onside-nav-wrap { height: 66px }` logo abaixo. */
+    --onside-header-h: 66px;
+  }
+
+  .onside-page .onside-shell {
+    width: min(calc(100% - 30px), var(--onside-max));
+  }
+}
+
+@media (max-width: 380px) {
+  .onside-page .onside-brand-wordmark {
+    height: 28px;
+    max-width: min(140px, 48vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onside-page .onside-live-dot::after {
+    animation: none;
+  }
+}
