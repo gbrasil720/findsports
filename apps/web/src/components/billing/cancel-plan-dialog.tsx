@@ -1,7 +1,11 @@
+import {
+  CANCEL_REASONS,
+  type CancelReasonId
+} from '@findsports_oficial/api/lib/cancel-reasons'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { Botao, Card, Chip, EmBreve, propsBotao } from '@/components/painel'
+import { Botao, Card, Chip, propsBotao } from '@/components/painel'
 import { startCheckout } from '@/lib/billing-client'
 import {
   formatPlanPrice,
@@ -23,13 +27,6 @@ const MANTEM: Partial<Record<SubscriptionPlan, string>> = {
   starter: 'Mantém o bar nas buscas e no mapa'
 }
 
-const MOTIVOS = [
-  'Pouco movimento',
-  'Muito caro',
-  'Fechei por um tempo',
-  'Outro'
-]
-
 /** Número real que o bar perde; a linha some quando ele não existe. */
 export type PerdaCancelamento = { valor: number; rotulo: string }
 
@@ -37,7 +34,8 @@ export type PerdaCancelamento = { valor: number; rotulo: string }
  * Cancelar com retenção (3q/3r): o que o bar perde, a troca para o plano de
  * baixo e o cancelamento de verdade. Quem cancela é o portal do Stripe, aberto
  * já no fluxo de cancelamento (WEB-339): a URL vem de `pub.openSubscriptionCancel`,
- * e não da rota do plugin, que apaga o registro quando o Stripe recusa.
+ * e não da rota do plugin, que apaga o registro quando o Stripe recusa. O
+ * motivo é opcional e vai junto (WEB-445).
  */
 export function CancelPlanDialog({
   plan,
@@ -59,6 +57,7 @@ export function CancelPlanDialog({
   const keep = useRef<HTMLButtonElement>(null)
   const [changing, setChanging] = useState(false)
   const [changeFailed, setChangeFailed] = useState(false)
+  const [reason, setReason] = useState<CancelReasonId | null>(null)
   const cancel = useMutation(
     trpc.pub.openSubscriptionCancel.mutationOptions({
       onSuccess: ({ url }) => {
@@ -164,13 +163,18 @@ export function CancelPlanDialog({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <span className="flex items-center gap-2 font-semibold text-[13.5px]">
-          Por que está cancelando? <EmBreve />
+        <span className="font-semibold text-[13.5px]">
+          Por que está cancelando?
         </span>
         <div className="flex flex-wrap gap-1.5">
-          {MOTIVOS.map((motivo) => (
-            <Chip key={motivo} disabled>
-              {motivo}
+          {CANCEL_REASONS.map((motivo) => (
+            <Chip
+              key={motivo.id}
+              ativo={reason === motivo.id}
+              disabled={opening}
+              onClick={() => setReason(reason === motivo.id ? null : motivo.id)}
+            >
+              {motivo.label}
             </Chip>
           ))}
         </div>
@@ -188,7 +192,7 @@ export function CancelPlanDialog({
           altura={50}
           className="min-w-[180px] !flex-1"
           disabled={opening || changing}
-          onClick={() => cancel.mutate()}
+          onClick={() => cancel.mutate(reason ? { reason } : undefined)}
         >
           {opening ? 'Abrindo portal…' : 'Cancelar mesmo assim'}
         </Botao>
