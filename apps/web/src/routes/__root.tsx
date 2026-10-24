@@ -293,7 +293,9 @@ function RootDocument() {
       <Toaster richColors />
       {isDev ? (
         <>
-          <TanStackRouterDevtools position="bottom-left" />
+          {/* No canto de cima: embaixo à esquerda ele cobria o menu do dono na
+              barra lateral do painel, que gruda no fim da tela. */}
+          <TanStackRouterDevtools position="top-right" />
           <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
         </>
       ) : null}
