@@ -1,0 +1,428 @@
+/*
+ * "Hoje na casa" (`/admin`): medidas de `hoje2`, `tl2`, `weekList`,
+ * `arrivals`, `offerCard`, `dayChart`, `reviews` e `promo` do design (gen
+ * `w-r2.js` e `w-p1.js`). Tokens e peças em `components/painel/painel.css`.
+ */
+
+.painel .hoje {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+/* ─── Números do dia ─── */
+
+.painel .hoje-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.painel .hoje-kpi-topo {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.painel .hoje-sinal {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+}
+.painel .hoje-sinal > span {
+  width: 4px;
+  border-radius: 1px;
+  background: var(--painel-line2);
+}
+.painel .hoje-selo-plano {
+  text-decoration: none;
+}
+
+/* ─── A noite ─── */
+
+.painel .hoje-noite-card {
+  padding: 18px 22px 14px;
+}
+.painel .hoje-noite-rolagem {
+  overflow-x: auto;
+}
+.painel .hoje-noite {
+  position: relative;
+  min-width: 760px;
+  margin-top: 10px;
+}
+.painel .hoje-horas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.painel .hoje-horas > div {
+  flex: 1;
+  height: calc(100% - 6px);
+  padding-left: 6px;
+  border-left: 1px solid var(--painel-line);
+}
+.painel .hoje-horas span {
+  font: 600 11px / 1 var(--onside-mono);
+  color: var(--painel-muted);
+}
+.painel .hoje-noite ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .hoje-noite-vazia {
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  color: var(--painel-muted);
+}
+.painel .hoje-noite-vazia span {
+  padding: 4px 8px;
+  background: var(--painel-card);
+}
+.painel .hoje-jogo {
+  position: absolute;
+  height: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh);
+}
+.painel .hoje-jogo-topo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.painel .hoje-jogo-topo b {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.painel .hoje-jogo-linha {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A barra da linha do tempo é sempre a do escuro (`prog(D, …)`). */
+.painel .hoje-jogo .painel-prog {
+  margin-top: 2px;
+  background: #2c2c27;
+}
+.painel .hoje-jogo .painel-prog > span {
+  background: var(--painel-acid);
+}
+.painel .hoje-jogo[data-estado="live"] {
+  background: var(--painel-ink);
+  color: var(--painel-paper);
+  box-shadow: 4px 4px 0 var(--painel-live-fill);
+}
+.painel .hoje-jogo[data-estado="live"] .hoje-jogo-linha {
+  color: #aaa9a4;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .hoje-jogo[data-estado="live"] {
+    background: #22140f;
+    box-shadow:
+      inset 0 0 0 1.5px var(--painel-live-fill),
+      4px 4px 0 rgb(232 50 12 / 35%);
+  }
+}
+.painel .hoje-agora {
+  position: absolute;
+  top: 18px;
+  bottom: 0;
+  width: 2px;
+  background: var(--painel-live-fill);
+  pointer-events: none;
+}
+.painel .hoje-agora span {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  padding: 2px 4px;
+  font: 700 11px / 1 var(--onside-mono);
+  color: var(--painel-live);
+  background: var(--painel-card);
+  white-space: nowrap;
+}
+
+/* ─── Oferta, chegadas, semana, avaliações ─── */
+
+.painel .hoje-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.painel .hoje-grade[data-colunas="2"] {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+.painel .hoje-coluna {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.painel .hoje-oferta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+}
+.painel .hoje-oferta-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.painel .hoje-oferta-texto b {
+  font-size: 15px;
+}
+.painel .hoje-oferta-texto span {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--painel-muted);
+  overflow-wrap: anywhere;
+}
+.painel .hoje-oferta-texto .hoje-erro {
+  margin-top: 4px;
+  color: var(--painel-live);
+}
+
+.painel .hoje-chegaram {
+  padding: 18px 20px 8px;
+}
+.painel .hoje-avaliacoes {
+  padding: 18px 20px 6px;
+}
+.painel .hoje-semana {
+  padding: 18px 20px 12px;
+}
+
+.painel .hoje-lista {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .hoje-lista > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+}
+.painel .hoje-lista > li + li {
+  border-top: 1px solid var(--painel-line);
+}
+.painel .hoje-lista > li > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.painel .hoje-lista b {
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+.painel .hoje-lista > li > div > span {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.painel .hoje-voto {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--painel-av);
+  color: var(--painel-fg);
+}
+.painel .hoje-voto[data-sim="true"] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+}
+
+.painel .hoje-vazio {
+  margin: 12px 0 10px;
+  font-size: 13.5px;
+  color: var(--painel-muted);
+}
+.painel .hoje-tentar {
+  font-weight: 700;
+  color: var(--painel-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.painel .hoje-espaco {
+  margin-top: 12px;
+}
+
+.painel .hoje-semana-lista {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .hoje-semana-lista > li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 0;
+}
+.painel .hoje-semana-lista > li + li {
+  border-top: 1px solid var(--painel-line);
+}
+.painel .hoje-semana-n {
+  min-width: 90px;
+  font: 400 28px / 1 var(--onside-display);
+}
+.painel .hoje-semana-rotulo {
+  flex: 1;
+  font-size: 14px;
+}
+
+/* Vão assistir por dia (`dayChart`, 110 px). */
+.painel .hoje-dias {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 110px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .hoje-dias > li {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.painel .hoje-dias-n {
+  font: 600 11px / 1 var(--onside-mono);
+  color: var(--painel-muted);
+}
+.painel .hoje-dias-barra {
+  width: 100%;
+  border-radius: 4px 4px 2px 2px;
+  background: rgb(18 18 15 / 12%);
+}
+.painel .hoje-dias-rotulo {
+  font-size: 12px;
+  color: var(--painel-muted);
+}
+.painel .hoje-dias > li[data-hoje] .hoje-dias-n,
+.painel .hoje-dias > li[data-hoje] .hoje-dias-rotulo {
+  color: var(--painel-fg);
+  font-weight: 700;
+}
+.painel .hoje-dias > li[data-hoje] .hoje-dias-barra {
+  background: var(--painel-acid);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .hoje-dias-barra {
+    background: #2e2e29;
+  }
+}
+
+/* Destaque do jogo (`promo`): ainda não existe, fica com o selo. */
+.painel .hoje-promo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 7px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: 4px 4px 0 var(--painel-ink);
+}
+.painel .hoje-promo > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.painel .hoje-promo b {
+  font-size: 15px;
+}
+.painel .hoje-promo span {
+  font-size: 13px;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .hoje-promo {
+    box-shadow: 4px 4px 0 #000;
+  }
+}
+
+/* ─── Tablet (1l/1m): trilho de ícones, duas colunas ─── */
+
+@media (max-width: 1180px) {
+  .painel .hoje {
+    gap: 18px;
+  }
+  /* O tamanho do `CabecalhoPagina` vem inline; só o `font-size` muda. */
+  .painel .hoje h1.painel-disp {
+    font-size: 44px;
+  }
+  .painel .hoje-ver-app {
+    display: none;
+  }
+  .painel .hoje-kpis {
+    gap: 12px;
+    --painel-kpi-size: 34px;
+  }
+  .painel .hoje-grade,
+  .painel .hoje-grade[data-colunas="2"] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  /* As colunas se desfazem: quem chegou ao lado da semana, o resto embaixo. */
+  .painel .hoje-coluna {
+    display: contents;
+  }
+  .painel .hoje-chegaram {
+    order: 1;
+  }
+  .painel .hoje-semana {
+    order: 2;
+  }
+  .painel .hoje-oferta {
+    order: 3;
+  }
+  .painel .hoje-avaliacoes {
+    order: 4;
+  }
+  .painel .hoje-promo {
+    order: 5;
+  }
+}
+
+@media (max-width: 760px) {
+  .painel .hoje h1.painel-disp {
+    font-size: 40px;
+  }
+  .painel .hoje-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .painel .hoje-grade,
+  .painel .hoje-grade[data-colunas="2"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
