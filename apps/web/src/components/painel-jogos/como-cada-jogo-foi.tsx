@@ -423,7 +423,17 @@ function CompararJogos({
  * Desempenho, o melhor jogo, a tabela com a linha que abre canais e códigos e,
  * no Pro e no Elite, "Comparar jogos".
  */
-export function ComoCadaJogoFoi({ range }: { range: AnalyticsDateRange }) {
+/**
+ * `encerrados`: os jogos que já acabaram. O período do Desempenho vai até
+ * hoje e traz o jogo de hoje à noite, que ainda não é passado.
+ */
+export function ComoCadaJogoFoi({
+  range,
+  encerrados
+}: {
+  range: AnalyticsDateRange
+  encerrados: ReadonlySet<string>
+}) {
   const trpc = useTRPC()
   const entitlements = useMyAnalyticsEntitlements()
   const consulta = useQuery({
@@ -454,7 +464,9 @@ export function ComoCadaJogoFoi({ range }: { range: AnalyticsDateRange }) {
     )
   }
 
-  const jogos = jogosPorPublico(consulta.data.events)
+  const jogos = jogosPorPublico(
+    consulta.data.events.filter((jogo) => encerrados.has(jogo.eventId))
+  )
   const melhor = melhorJogo(jogos)
   // O servidor manda `null` fora do Elite.
   const codigos = jogos.some((jogo) => jogo.reservedPeople !== null)
