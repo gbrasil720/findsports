@@ -20,6 +20,7 @@ import {
   houseOfferLength,
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
+import { juntarEndereco, separarNumero } from '@/lib/cep'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
 import type { AdminBar, PlanState } from './admin-model'
@@ -38,7 +39,9 @@ export type DiaRascunho = { open: boolean; opens: string; closes: string }
 export type Rascunho = {
   name: string
   phone: string
-  address: string
+  /** `address` separado em rua e número; gravado junto (`juntarEndereco`). */
+  rua: string
+  numero: string
   neighborhood: string
   city: string
   uf: string
@@ -62,10 +65,12 @@ export const SEMANA_PADRAO: DiaRascunho[] = Array.from({ length: 7 }, () => ({
 
 export function rascunhoDoBar(bar: AdminBar): Rascunho {
   const hours = normalizeOpeningHours(bar.openingHours)
+  const [rua, numero] = separarNumero(bar.address ?? '')
   return {
     name: bar.name ?? '',
     phone: bar.phone ?? '',
-    address: bar.address ?? '',
+    rua,
+    numero,
     neighborhood: bar.neighborhood ?? '',
     city: bar.city ?? '',
     uf: bar.uf ?? '',
@@ -119,7 +124,8 @@ export type CardapioAlterado = {
 export type Erros = Partial<
   Record<
     | 'name'
-    | 'address'
+    | 'rua'
+    | 'numero'
     | 'neighborhood'
     | 'city'
     | 'phone'
@@ -160,7 +166,6 @@ export function alteracoes(
   // Nome e endereço são obrigatórios: o servidor recusa curto demais.
   for (const [campo, min, msg] of [
     ['name', 2, 'Informe o nome do bar.'],
-    ['address', 5, 'Informe a rua e o número.'],
     ['neighborhood', 2, 'Informe o bairro.'],
     ['city', 2, 'Informe a cidade.']
   ] as const) {
@@ -168,6 +173,18 @@ export function alteracoes(
     if (valor === base[campo].trim()) continue
     if (valor.length < min) erros[campo] = msg
     else perfil[campo] = valor
+  }
+  // Rua e número vão juntos em `address`, só quando um dos dois mudou: o bar
+  // gravado sem vírgula abre com tudo na rua e não muda ao salvar outra coisa.
+  if (
+    r.rua.trim() !== base.rua.trim() ||
+    r.numero.trim() !== base.numero.trim()
+  ) {
+    if (r.rua.trim().length < 3) erros.rua = 'Informe a rua.'
+    if (!r.numero.trim()) erros.numero = 'Informe o número.'
+    if (!erros.rua && !erros.numero) {
+      perfil.address = juntarEndereco(r.rua, r.numero)
+    }
   }
   // Sem UF escolhida vira "não mexer" (WEB-270).
   if (r.uf !== base.uf && ehUf(r.uf)) perfil.uf = r.uf

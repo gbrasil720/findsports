@@ -32,7 +32,6 @@ import {
   Card,
   type CardKind,
   Chip,
-  EmBreve,
   Icone,
   type IconeNome,
   Progresso,
@@ -41,6 +40,7 @@ import {
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { getEventTemporalState } from '@/domain/events'
 import { formatDayLabel } from '@/domain/pub-profile'
+import { useCep } from '@/lib/cep'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
@@ -146,6 +146,20 @@ export function MeuEspaco() {
     },
     onRemoveSuccess: invalidateBar
   })
+  // O CEP só preenche o rascunho, como no cadastro: não vai ao servidor.
+  const cep = useCep((achado) =>
+    setRascunho((prev) => {
+      const atual = prev ?? (bar ? rascunhoDoBar(bar) : null)
+      if (!atual) return prev
+      return {
+        ...atual,
+        ...(achado.rua && { rua: achado.rua }),
+        ...(achado.bairro && { neighborhood: achado.bairro }),
+        city: achado.cidade,
+        ...(achado.uf && { uf: achado.uf })
+      }
+    })
+  )
 
   // O layout só monta a rota com o bar carregado.
   if (!bar) return null
@@ -315,7 +329,13 @@ export function MeuEspaco() {
         titulo="Meu espaço"
         acoes={
           <>
-            <Botao disabled={!sujo || salvando} onClick={descartar}>
+            <Botao
+              disabled={!sujo || salvando}
+              onClick={() => {
+                descartar()
+                cep.definir('')
+              }}
+            >
               Descartar
             </Botao>
             <Botao
@@ -382,6 +402,7 @@ export function MeuEspaco() {
               setRascunho={setRascunho}
               base={base}
               erros={erros}
+              cep={cep}
               whatsapp={
                 Boolean(bar.phoneAcceptsWhatsapp) &&
                 r.phone === base.phone &&
@@ -699,6 +720,7 @@ function Informacoes({
   setRascunho,
   base,
   erros,
+  cep,
   whatsapp
 }: {
   r: Rascunho
@@ -706,6 +728,7 @@ function Informacoes({
   setRascunho: (fn: (prev: Rascunho | null) => Rascunho) => void
   base: Rascunho
   erros: Erros
+  cep: ReturnType<typeof useCep>
   whatsapp: boolean
 }) {
   return (
@@ -737,20 +760,43 @@ function Informacoes({
         dica={<Erro texto={erros.phone} />}
       />
       <Campo
-        className="col-span-3 sm:col-span-2"
+        className="col-span-6 sm:col-span-2"
         rotulo="CEP"
-        disabled
+        inputMode="numeric"
+        autoComplete="postal-code"
         placeholder="00000-000"
-        fim={<EmBreve />}
+        value={cep.cep}
+        onChange={(e) => void cep.mudar(e.target.value)}
+        fim={
+          cep.status === 'achou' || cep.status === 'buscando' ? (
+            <span className="text-[12px] text-[var(--painel-muted)]">
+              {cep.status === 'achou' ? 'Encontrado' : 'Buscando…'}
+            </span>
+          ) : null
+        }
+        dica={
+          cep.status === 'nao'
+            ? 'Não achamos esse CEP. Preencha o endereço.'
+            : undefined
+        }
       />
       <Campo
-        className="col-span-6 sm:col-span-4"
-        rotulo="Rua e número"
+        className="col-span-4 sm:col-span-3"
+        rotulo="Rua"
         autoComplete="address-line1"
-        value={r.address}
-        onChange={(e) => mudar({ address: e.target.value })}
-        aria-invalid={erros.address ? true : undefined}
-        dica={<Erro texto={erros.address} />}
+        value={r.rua}
+        onChange={(e) => mudar({ rua: e.target.value })}
+        aria-invalid={erros.rua ? true : undefined}
+        dica={<Erro texto={erros.rua} />}
+      />
+      <Campo
+        className="col-span-2 sm:col-span-1"
+        rotulo="Número"
+        autoComplete="address-line2"
+        value={r.numero}
+        onChange={(e) => mudar({ numero: e.target.value })}
+        aria-invalid={erros.numero ? true : undefined}
+        dica={<Erro texto={erros.numero} />}
       />
       <Campo
         className="col-span-6 sm:col-span-3"
