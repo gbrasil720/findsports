@@ -102,7 +102,7 @@ export const AMENITIES: readonly Amenity[] = [
  * escrita os aceitam (o bar não perde o que tinha ao salvar), mas eles não
  * estão em `AMENITIES`, então não aparecem em checklist, página nem filtro.
  *
- * 14 era "Pix e cartão": virou Pix (16) e Cartão (17), e a migration 0073 deu
+ * 14 era "Pix e cartão": virou Pix (16) e Cartão (17), e a migration 0075 deu
  * os dois a quem o tinha marcado (WEB-455). O 14 continua gravado, escondido.
  */
 export const HIDDEN_AMENITY_IDS: readonly number[] = [14]
