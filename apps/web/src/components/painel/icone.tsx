@@ -322,6 +322,24 @@ const ICONES = {
     ),
     a: null
   },
+  chart: {
+    b: (
+      <>
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+      </>
+    ),
+    d: (
+      <>
+        <rect x="6.5" y="11" width="2.6" height="6.5" rx="1" />
+        <rect x="10.7" y="7" width="2.6" height="10.5" rx="1" />
+      </>
+    ),
+    a: (
+      <>
+        <rect x="14.9" y="9.5" width="2.6" height="8" rx="1" />
+      </>
+    )
+  },
   spark: {
     b: (
       <>
