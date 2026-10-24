@@ -78,15 +78,6 @@ export function toggleShortcut(list: Shortcut[], key: Shortcut): Shortcut[] {
   return [...list, key]
 }
 
-/** Move o atalho de `from` para `to` (arrastar na 19e). */
-export function moveShortcut(list: Shortcut[], from: number, to: number) {
-  const next = [...list]
-  const [item] = next.splice(from, 1)
-  if (item === undefined) return list
-  next.splice(Math.max(0, Math.min(to, next.length)), 0, item)
-  return next
-}
-
 type Sport = { id: string; slug: string }
 
 /** O atalho está ligado nos filtros de agora? */

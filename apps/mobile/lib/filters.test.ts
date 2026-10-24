@@ -5,7 +5,6 @@ import {
   dayKey,
   defaultShortcuts,
   MAX_SHORTCUTS,
-  moveShortcut,
   NO_FILTERS,
   shortcutOn,
   sportCode,
@@ -52,19 +51,13 @@ describe('filtros e atalhos (19d, 19e)', () => {
     ).toBe(6)
   })
 
-  test('fileira: até cinco, sem repetir, e reordena', () => {
+  test('fileira: até cinco, sem repetir', () => {
     const base = defaultShortcuts('futebol')
     expect(base).toEqual(['hoje', 'item:1', 'item:4', 'esporte:futebol'])
     const five = toggleShortcut(base, 'amanha')
     expect(five).toHaveLength(MAX_SHORTCUTS)
     expect(toggleShortcut(five, 'raio:2')).toBe(five)
     expect(toggleShortcut(five, 'hoje')).not.toContain('hoje')
-    expect(moveShortcut(base, 3, 0)).toEqual([
-      'esporte:futebol',
-      'hoje',
-      'item:1',
-      'item:4'
-    ])
   })
 
   test('sigla e ordem dos esportes', () => {
