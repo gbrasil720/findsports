@@ -141,7 +141,7 @@ test('bar com assinatura em curso: a confirmação avisa do encerramento e do re
   await signIn(page, user)
   await page.goto('/admin/configuracoes')
 
-  await page.getByRole('button', { name: 'Excluir minha conta' }).click()
+  await page.getByRole('button', { name: 'Excluir conta', exact: true }).click()
   const dialog = page.getByRole('dialog', {
     name: 'Excluir conta permanentemente'
   })
@@ -199,7 +199,7 @@ test('Stripe recusa encerrar a assinatura: a conta fica e o dono lê que pode te
   await signIn(page, user)
   await page.goto('/admin/configuracoes')
 
-  await page.getByRole('button', { name: 'Excluir minha conta' }).click()
+  await page.getByRole('button', { name: 'Excluir conta', exact: true }).click()
   const dialog = page.getByRole('dialog', {
     name: 'Excluir conta permanentemente'
   })
@@ -235,7 +235,7 @@ test('bar que cancelou exclui a conta, mesmo com o período pago no futuro (WEB-
   await page.goto('/admin/configuracoes')
 
   await expect(
-    page.getByRole('button', { name: 'Excluir minha conta' })
+    page.getByRole('button', { name: 'Excluir conta', exact: true })
   ).toBeEnabled()
 
   const response = await page.request.post('/api/auth/delete-user', {
