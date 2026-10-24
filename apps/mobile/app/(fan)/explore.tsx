@@ -151,7 +151,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     enabled: few,
     placeholderData: keepPreviousData
   })
-  const quiet = few ? (nearby.data ?? []) : []
+  // As duas consultas vêm de momentos diferentes (cache, `keepPreviousData`):
+  // um jogo que começa ou acaba entre elas punha o mesmo bar nas duas listas,
+  // e a chave repetia. Quem já está na busca não entra como "sem jogo".
+  const foundIds = new Set(found.map((bar) => bar.id))
+  const quiet = few
+    ? (nearby.data ?? []).filter((bar) => !foundIds.has(bar.id))
+    : []
   const todayCount = bars.filter(
     // Jogo que começou ontem à noite e ainda rola também é "hoje".
     (bar) =>
