@@ -1,4 +1,5 @@
 import { db, sql } from '@findsports_oficial/db'
+import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
 
 import { utcIso } from '../utc-timestamp'
 import {
@@ -152,7 +153,7 @@ export async function loadRecommendationCandidates(input: {
       JOIN preferences pref ON pref.sport_id = e.sport_id
       CROSS JOIN params p
       WHERE b.is_active
-        AND e.starts_at >= ${input.now}
+        AND e.starts_at >= ${utcNowSql(input.now)}
         AND ST_DWithin(b.geo, p.origin, p.expanded_radius)
       GROUP BY b.id
       ORDER BY MIN(e.starts_at), b.id
@@ -334,14 +335,14 @@ export async function loadRecommendationCandidates(input: {
       LEFT JOIN recent_sports recent_sport ON recent_sport.sport_id = e.sport_id
       LEFT JOIN event_participants ep ON ep.event_id = e.id
       LEFT JOIN recent_teams recent_team ON recent_team.team_id = ep.team_id
-      WHERE e.bar_id = eligible.id AND e.starts_at >= ${input.now}
+      WHERE e.bar_id = eligible.id AND e.starts_at >= ${utcNowSql(input.now)}
     ) event_info ON true
     LEFT JOIN LATERAL (
       SELECT sport.name
       FROM event e
       JOIN sport ON sport.id = e.sport_id
       JOIN preferences pref ON pref.sport_id = e.sport_id
-      WHERE e.bar_id = eligible.id AND e.starts_at >= ${input.now}
+      WHERE e.bar_id = eligible.id AND e.starts_at >= ${utcNowSql(input.now)}
       ORDER BY e.starts_at, e.id
       LIMIT 1
     ) matched_sport ON true
@@ -355,7 +356,7 @@ export async function loadRecommendationCandidates(input: {
         sport.slug AS sport_slug
       FROM event e
       JOIN sport ON sport.id = e.sport_id
-      WHERE e.bar_id = eligible.id AND e.starts_at >= ${input.now}
+      WHERE e.bar_id = eligible.id AND e.starts_at >= ${utcNowSql(input.now)}
       ORDER BY e.starts_at, e.id
       LIMIT 1
     ) next_event ON true
