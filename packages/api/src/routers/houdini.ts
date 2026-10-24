@@ -11,7 +11,8 @@ import {
 import {
   brasiliaDaySql,
   brasiliaDayStartSql,
-  brasiliaTodaySql
+  brasiliaTodaySql,
+  utcNowSql
 } from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
@@ -62,7 +63,7 @@ const spDaysUntilEnd = sql<number>`(${brasiliaDaySql(subscription.currentPeriodE
 
 const upcomingGames = sql<number>`(
   SELECT count(*)::int FROM ${event}
-  WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+  WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > ${utcNowSql()}
 )`
 
 // ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
@@ -165,8 +166,8 @@ export const houdiniRouter = router({
           and(
             eq(bar.isActive, false),
             signupTrial,
-            sql`${subscription.currentPeriodEnd} <= (now() AT TIME ZONE 'UTC')`,
-            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC') - interval '7 days'`,
+            sql`${subscription.currentPeriodEnd} <= ${utcNowSql()}`,
+            sql`${subscription.currentPeriodEnd} > ${utcNowSql()} - interval '7 days'`,
             sql`${lastOnOff} IS DISTINCT FROM 'bar.take_off_air'`
           )
         )

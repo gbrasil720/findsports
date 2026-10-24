@@ -3,7 +3,13 @@ import { eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, inAMonth, load, seedBar } from './integration-seed'
+import {
+  contextFor,
+  inAMonth,
+  load,
+  seedBar,
+  withClock
+} from './integration-seed'
 
 /** Início do Houdini e ⌘K (WEB-391). */
 
@@ -202,6 +208,29 @@ integrationTest(
     }
   }
 )
+
+// `starts_at` é `timestamp` em UTC: comparado com `now()` cru, a sessão em
+// Brasília contava como futuro o jogo que começou há até 3 h.
+for (const session of ['UTC', 'America/Sao_Paulo']) {
+  integrationTest(
+    `ampulheta conta só os jogos que ainda vão começar (sessão ${session})`,
+    () =>
+      withClock({ session }, async () => {
+        const caller = await admin()
+        const seed = await seedBar('pro', 'trialing', inDays(2))
+        try {
+          await seed.seedGame({
+            startsAt: new Date(Date.now() - 2 * 3_600_000)
+          })
+          await seed.seedGame()
+          const { ending } = await caller.houdini.ampulheta()
+          expect(ending.find((b) => b.id === seed.barId)?.upcomingGames).toBe(1)
+        } finally {
+          await seed.cleanup()
+        }
+      })
+  )
+}
 
 integrationTest('houdini é só de admin', async () => {
   const { appRouter } = await load()
