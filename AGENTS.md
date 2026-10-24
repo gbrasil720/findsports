@@ -432,6 +432,18 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   diálogos de senha, 2FA e exclusão são os de `components/account/*`. "Baixar meus dados"
   baixa o JSON de `account.exportBarData` (conta, bar, plano e jogos; nada de torcedor).
   Avisos por e-mail são "em breve".
+- **Web só para bares (decisão do dono, 24/10/2026).** Não há mais tela de torcedor no
+  web: quem não é bar e entra cai em `/torcedor` (`FAN_HOME`, `utils/auth-guards.ts`),
+  "a Onside de torcedor está no app"; o link de um bar, `/pub/$pubId`, é a mesma página
+  com o cartão do bar (`functions/get-bar-teaser.ts`, sem sessão, `noindex`), QR para a
+  própria página e "Abrir no app" (`onside://bar/<id>`) no celular. Lojas: em breve.
+- **Entrada:** login, cadastro (sempre `role: 'pub'`, sem escolha de perfil), recuperação
+  de senha e confirmação de e-mail no `AuthSplit`; onboarding do bar no `ObShell`, com a
+  prévia "Assim o torcedor vê" ao lado. Peças e estilos em `components/entrada/`
+  (`entradaHead` carrega o `painel.css` e o `entrada.css`), no tema do sistema. O CEP
+  preenche o endereço pelo ViaCEP, do navegador (`lib/cep.ts`; o servidor não recebe CEP).
+  Depois do cadastro, `/onboarding/pub/no-ar` (`PUB_LIVE_PATH`, a única `/onboarding/*`
+  aberta a bar pronto), com o atalho para cadastrar o primeiro jogo.
 
 ### Houdini (painel interno)
 

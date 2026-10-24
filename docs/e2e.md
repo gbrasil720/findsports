@@ -92,7 +92,7 @@ apps/e2e/
 |---|---|
 | `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
 | `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
-| `tests/fan` | WEB-178 — busca, mapa, página do bar, Meus jogos, perfil |
+| `tests/fan` | WEB-178 — o link do bar (`/pub/$pubId`), que leva ao app (o painel do torcedor saiu do web) |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
 | `tests/houdini` | WEB-181, WEB-393 — o Houdini (painel interno) |
@@ -128,8 +128,8 @@ import { createUser } from '../../fixtures/users'
 test.describe('com a sessão pronta de torcedor', () => {
   test.use({ storageState: storageState('fan') })
 
-  test('abre o dashboard', async ({ page }) => {
-    await page.goto('/dashboard')
+  test('cai na página do app', async ({ page }) => {
+    await page.goto('/torcedor')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 })
