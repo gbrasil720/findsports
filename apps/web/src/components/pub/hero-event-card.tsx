@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import Calendar from 'reicon-react/icons/Calendar'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { getEventTemporalState } from '@/domain/events'
@@ -5,7 +6,6 @@ import {
   formatDayLabel,
   formatEventTime,
   formatGameSubtitle,
-  formatMatchup,
   type ProfileEvent
 } from '@/domain/pub-profile'
 
@@ -100,10 +100,10 @@ export function HeroEventCard({ event, fromSearch }: Props) {
 
         <div className="min-w-0">
           <p className="onside-display text-2xl md:text-3xl">
-            {formatMatchup(event)}
+            {gameTitle(event)}
           </p>
           <p className="mt-1 font-[family-name:var(--onside-mono)] text-[11px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
-            {formatGameSubtitle(formatMatchup(event), [
+            {formatGameSubtitle(gameTitle(event), [
               event.sport.name,
               event.championship
             ])}

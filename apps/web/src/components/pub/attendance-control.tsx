@@ -1,9 +1,10 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import { toast } from 'sonner'
 import { formatCode } from '@/domain/my-games'
-import { formatMatchup, type ProfileEvent } from '@/domain/pub-profile'
+import type { ProfileEvent } from '@/domain/pub-profile'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { AttendanceCodeDialog } from './attendance-code-dialog'
@@ -168,7 +169,7 @@ export function HeroAttendance({
       code={attendance.code}
       validated={attendance.validated}
       forWaiter={forWaiter}
-      gameLabel={formatMatchup(game)}
+      gameLabel={gameTitle(game)}
     />
   )
 }

@@ -1,8 +1,8 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
-import { getGameTitle } from '@/domain/reservation-validation'
 import { countLabel } from '@/lib/plural'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { isRetryableError } from '@/lib/user-facing-error'
@@ -88,7 +88,7 @@ export function GoingTab({
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <h3 id={`going-${game.id}`} className="font-bold text-lg">
-                      {getGameTitle(game)}
+                      {gameTitle(game)}
                     </h3>
                     <p className="font-[family-name:var(--onside-mono)] text-sm">
                       {formatDayLabel(startsAt)} · {formatEventTime(startsAt)}

@@ -101,19 +101,6 @@ export function getArrivalBlocker(
   return status === 'open' ? null : getWindowMessage(reservation.window, status)
 }
 
-export function getGameTitle(
-  game: Pick<
-    ValidatedGame,
-    'championship' | 'participants' | 'participantFreeText'
-  >
-): string {
-  return (
-    game.participants.join(' × ') ||
-    game.participantFreeText ||
-    game.championship
-  )
-}
-
 export function getCounterLabel(usedCount: number, maxUses: number): string {
   return `${usedCount} de ${countLabel(maxUses, 'validado', 'validados')}`
 }

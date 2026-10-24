@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { ReactNode, Ref } from 'react'
 import Check from 'reicon-react/icons/Check'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
@@ -7,7 +8,6 @@ import {
   getAllValidatedMessage,
   getArrivalBlocker,
   getCounterLabel,
-  getGameTitle,
   type ValidatedReservation
 } from '@/domain/reservation-validation'
 
@@ -57,10 +57,10 @@ export function ReservationSummary({
         <div>
           <dt className="text-[var(--onside-muted)] text-xs">Jogo</dt>
           <dd className="font-semibold [overflow-wrap:anywhere]">
-            {getGameTitle(reservation.event)}
+            {gameTitle(reservation.event)}
           </dd>
           <dd className="text-[var(--onside-muted)]">
-            {formatGameSubtitle(getGameTitle(reservation.event), [
+            {formatGameSubtitle(gameTitle(reservation.event), [
               reservation.event.championship,
               formatDateTime(reservation.event.startsAt)
             ])}

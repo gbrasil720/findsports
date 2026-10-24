@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
   formatDayLabel,
   formatEventTime,
   formatGameSubtitle,
-  formatMatchup,
   getBarInitials,
   getPlanPresentation,
   groupEventsByDay,
@@ -98,29 +98,6 @@ describe('resolveHeroEvent', () => {
   })
 })
 
-describe('formatMatchup', () => {
-  it('usa os times quando existem', () => {
-    const event = makeEvent({
-      participants: [
-        { team: { name: 'Palmeiras', logoUrl: null } },
-        { team: { name: 'Santos', logoUrl: null } }
-      ],
-      participantFreeText: 'ignorado'
-    })
-
-    expect(formatMatchup(event)).toBe('Palmeiras × Santos')
-  })
-
-  it('cai para o texto livre do bar', () => {
-    const event = makeEvent({ participantFreeText: 'Clássico paulista' })
-    expect(formatMatchup(event)).toBe('Clássico paulista')
-  })
-
-  it('cai para o campeonato quando não há mais nada', () => {
-    expect(formatMatchup(makeEvent())).toBe('Brasileirão')
-  })
-})
-
 describe('formatGameSubtitle', () => {
   it('mostra o campeonato quando o título são os times', () => {
     expect(
@@ -131,7 +108,7 @@ describe('formatGameSubtitle', () => {
   it('não repete o campeonato que já é o título (WEB-307)', () => {
     const event = makeEvent()
     expect(
-      formatGameSubtitle(formatMatchup(event), ['Futebol', event.championship])
+      formatGameSubtitle(gameTitle(event), ['Futebol', event.championship])
     ).toBe('Futebol')
     expect(formatGameSubtitle('Brasileirão', ['Brasileirão'])).toBe('')
   })
