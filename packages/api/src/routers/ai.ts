@@ -1,6 +1,6 @@
 import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, isNull, or } from '@findsports_oficial/db'
-import { gameTitle, participantNames } from '@findsports_oficial/db/game-title'
+import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
@@ -493,8 +493,9 @@ export const aiRouter = router({
             ok: true as const,
             code: marked.code,
             eventTitle: game ? gameTitle(game) : '',
-            // Os times, para o ticket pôr um por linha sem quebrar o título.
-            participants: game ? participantNames(game) : [],
+            // Os dois lados do confronto, um por linha no ticket; vazio fora
+            // de confronto (o ticket mostra o título).
+            participants: (game && matchSides(game)) || [],
             startsAt: game ? new Date(game.startsAt).toISOString() : '',
             barName: b.name,
             neighborhood: b.neighborhood ?? null

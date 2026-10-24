@@ -27,16 +27,17 @@ const barWith = (game: {
 const team = (name: string) => ({ team: { name, logoUrl: null } })
 
 test('o card do chat dá o título do jogo pela regra de todas as telas', () => {
-  // Um time só: antes saía o campeonato.
+  // Três pilotos não são confronto: o texto livre (antes, o chat o usava
+  // mesmo vazio, e o card saía sem título).
   expect(
     toChatBar(
       barWith({
-        participants: [team('Verstappen')],
-        participantFreeText: null
+        participants: [team('Norris'), team('Piastri'), team('Leclerc')],
+        participantFreeText: 'GP de São Paulo'
       }),
       now
     ).game?.title
-  ).toBe('Verstappen')
+  ).toBe('GP de São Paulo')
   // Texto livre vazio: antes o título saía vazio, no lugar do campeonato.
   expect(
     toChatBar(barWith({ participants: [], participantFreeText: '' }), now).game
