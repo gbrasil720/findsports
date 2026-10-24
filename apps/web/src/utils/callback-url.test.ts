@@ -10,9 +10,9 @@ describe('getCallbackUrl', () => {
       origin
     )
 
-  it('returns /dashboard when no callbackUrl', () => {
-    expect(getCallbackUrl('/some-page?foo=bar', origin)).toBe('/dashboard')
-    expect(getCallbackUrl('/login', origin)).toBe('/dashboard')
+  it('returns /admin when no callbackUrl', () => {
+    expect(getCallbackUrl('/some-page?foo=bar', origin)).toBe('/admin')
+    expect(getCallbackUrl('/login', origin)).toBe('/admin')
   })
 
   it('returns a relative callbackUrl with its query', () => {
@@ -47,8 +47,8 @@ describe('getCallbackUrl', () => {
     '/\t/evil.com/pub/abc',
     'javascript:alert(1)',
     'data:text/html,hi'
-  ])('returns /dashboard for other-origin callbackUrl %p', (callbackUrl) => {
-    expect(login(callbackUrl)).toBe('/dashboard')
+  ])('returns /admin for other-origin callbackUrl %p', (callbackUrl) => {
+    expect(login(callbackUrl)).toBe('/admin')
   })
 })
 
@@ -56,7 +56,7 @@ describe('withCallbackUrl', () => {
   const origin = 'http://localhost:3001'
 
   it('leaves the path alone for the default destination', () => {
-    expect(withCallbackUrl('/verify-email', '/dashboard')).toBe('/verify-email')
+    expect(withCallbackUrl('/verify-email', '/admin')).toBe('/verify-email')
   })
 
   it('round-trips through getCallbackUrl, with or without a query', () => {

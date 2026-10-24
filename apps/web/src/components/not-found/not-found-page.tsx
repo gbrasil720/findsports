@@ -52,7 +52,7 @@ export function NotFoundPage() {
                   <ArrowRight size={16} aria-hidden="true" focusable="false" />
                 </span>
               </Link>
-              <Link to="/dashboard" className="onside-not-found-secondary">
+              <Link to="/torcedor" className="onside-not-found-secondary">
                 Ir para bares perto de você
                 <span aria-hidden="true">
                   <ArrowRight size={14} aria-hidden="true" focusable="false" />
