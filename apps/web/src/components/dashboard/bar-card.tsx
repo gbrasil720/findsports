@@ -6,32 +6,10 @@ import Location from 'reicon-react/icons/Location'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import type { DiscoveryCardBar } from '@/domain/dashboard-selectors'
 import { getEventTemporalState } from '@/domain/events'
+import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { getPlan } from '@/lib/plan-catalog'
-
-function formatStartsAt(startsAt: string | Date): string {
-  return new Date(startsAt).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: undefined
-  })
-}
-
-function formatDate(startsAt: string | Date): string {
-  const d = new Date(startsAt)
-  const today = new Date()
-  const tomorrow = new Date()
-  tomorrow.setDate(today.getDate() + 1)
-
-  if (d.toDateString() === today.toDateString()) return 'Hoje'
-  if (d.toDateString() === tomorrow.toDateString()) return 'Amanhã'
-  return d.toLocaleDateString('pt-BR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short'
-  })
-}
 
 function isNew(createdAt?: string): boolean {
   if (!createdAt) return false
@@ -205,8 +183,8 @@ export function BarCard({
                 </span>
               ) : upcoming ? (
                 <span className="font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--bar-card-muted)] uppercase tracking-widest tabular-nums">
-                  {formatDate(event.startsAt)} às{' '}
-                  {formatStartsAt(event.startsAt)}
+                  {formatDayLabel(new Date(event.startsAt), undefined, 'short')}{' '}
+                  às {formatEventTime(new Date(event.startsAt))}
                 </span>
               ) : null
             ) : (
