@@ -23,7 +23,6 @@ export const RECOMMENDER_MODELS = {
 } as const
 
 export type ChatVariant = keyof typeof CHAT_MODELS
-export type RecommenderVariant = 'a' | keyof typeof RECOMMENDER_MODELS
 
 /**
  * Raciocínio no mínimo nos dois braços do chat. O GPT-6 Luna só aceita
