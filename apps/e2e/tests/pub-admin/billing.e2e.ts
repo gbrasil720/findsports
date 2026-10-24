@@ -99,7 +99,7 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
     currentPlan(page).locator('dl > div', { hasText: label })
   await expect(kpi('marcaram que iam este mês')).toContainText('2')
   await expect(kpi('clássicos no topo este mês')).toContainText('0')
-  await expect(kpi('códigos validados este mês')).toContainText('1')
+  await expect(kpi('código validado este mês')).toContainText('1')
   // Faturas, dados da nota e PIX ainda não existem: aparecem "em breve".
   await expect(
     page.getByRole('region', { name: 'Faturas' }).getByText('em breve')
