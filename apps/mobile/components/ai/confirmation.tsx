@@ -354,6 +354,7 @@ export function DecisionLine({
 export function CodeCard({
   code,
   title,
+  participants,
   when,
   place,
   palette,
@@ -362,6 +363,8 @@ export function CodeCard({
   code: string
   /** "Corinthians × Palmeiras". */
   title: string
+  /** Os times, um por linha; sem times, o título numa linha só. */
+  participants: string[]
   /** "hoje 21:30". */
   when: string
   /** "Bar do Zé · Vila Madalena". */
@@ -370,7 +373,7 @@ export function CodeCard({
   onPress: () => void
 }) {
   const press = usePressScale(0.98)
-  const [home, away] = title.split(' × ')
+  const [home, ...away] = participants.length ? participants : [title]
   // O picote recorta na cor da folha; a sombra acid aparece no furo.
   const ticket = {
     ...PALETTE.dark,
@@ -395,7 +398,11 @@ export function CodeCard({
               </Text>
               <View style={{ marginTop: 4 + 0.2425 * 24 }}>
                 <Text style={styles.match}>{home}</Text>
-                {away ? <Text style={styles.match}>× {away}</Text> : null}
+                {away.map((name) => (
+                  <Text key={name} style={styles.match}>
+                    × {name}
+                  </Text>
+                ))}
               </View>
               <Text
                 style={[
