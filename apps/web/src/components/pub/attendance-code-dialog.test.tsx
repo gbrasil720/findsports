@@ -72,15 +72,15 @@ describe('AttendanceCodeDialog', () => {
     expect(text).toContain(
       'Mostre este código no balcão do bar no dia do jogo para ganhar a oferta da casa. Ele vale uma vez só.'
     )
-    expect(text).toContain('fica guardado em Meus jogos, no menu da sua conta')
+    expect(text).toContain('fica guardado em Meus jogos, no app')
     expect(text).not.toContain('Oferta da casa:')
   })
 
-  test('leva a Meus jogos e tem botão de fechar', () => {
+  test('leva ao app e tem botão de fechar', () => {
     const { doc } = renderizar()
     const link = doc.querySelector('a')
-    expect(link?.getAttribute('href')).toBe('/dashboard/games')
-    expect(link?.textContent).toBe('Ver em Meus jogos')
+    expect(link?.getAttribute('href')).toBe('/torcedor')
+    expect(link?.textContent).toBe('Ver no app')
     expect(
       [...doc.querySelectorAll('button')].map((b) => b.textContent)
     ).toEqual(['Fechar'])

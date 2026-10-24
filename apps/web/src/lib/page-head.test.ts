@@ -127,7 +127,9 @@ describe('o que cada página herda da raiz', () => {
     ]) {
       const fonte = await ler(arquivo)
       expect(fonte).not.toContain('<h2 className="onside-display mb-6')
-      if (arquivo.includes('routes')) expect(fonte).toContain('pageHead(')
+      // `entradaHead` é o `pageHead` com os estilos das telas de entrada.
+      if (arquivo.includes('routes'))
+        expect(fonte).toMatch(/\b(pageHead|entradaHead)\(/)
     }
   })
 })

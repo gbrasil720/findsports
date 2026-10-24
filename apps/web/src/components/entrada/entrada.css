@@ -1,0 +1,601 @@
+/*
+ * Entrada do web do bar (design "Bar Web", página 4, Rodada 2): login,
+ * cadastro e recuperação de conta (`authSplit`), o onboarding do bar
+ * (`obShell`) e a página "está no app" de quem chega pelo link de um bar
+ * (`getApp`). Usa os tokens e as peças de `components/painel` (o
+ * `painel.css` carrega junto, pelo `ENTRADA_LINKS`) e, como o painel, segue
+ * o tema do sistema.
+ */
+
+.painel.entrada {
+  display: block;
+  min-height: 100dvh;
+}
+
+.painel .entrada-disp {
+  font: 400 min(var(--entrada-disp, 64px), 12.5vw) / 1.04 var(--onside-display);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  word-spacing: 0.08em;
+  margin: 0;
+}
+.painel .entrada-disp > span {
+  display: block;
+}
+.painel .entrada-tint {
+  color: var(--painel-tint);
+}
+
+.painel .entrada-link {
+  color: var(--painel-fg);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.painel .entrada-erro {
+  color: var(--painel-live);
+  font-weight: 600;
+}
+.painel .entrada-campo-erro .painel-campo-caixa {
+  box-shadow: inset 0 0 0 1.5px var(--painel-live);
+}
+.painel .entrada-campo-fim {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--painel-fg);
+  font: 700 13px / 1 var(--onside-body);
+  cursor: pointer;
+}
+
+/* Marca: o arquivo é tinta; no escuro (e sobre a foto) vira papel. */
+.painel .entrada-marca {
+  display: block;
+  width: auto;
+}
+.painel .entrada-marca[data-sobre-foto] {
+  filter: invert(1) brightness(1.05);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-marca {
+    filter: invert(1) brightness(1.05);
+  }
+}
+
+/* ─── authSplit: foto à esquerda, formulário à direita ─── */
+
+.painel .entrada-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100dvh;
+}
+.painel .entrada-foto {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px 52px;
+  background: var(--painel-ink) url("/hero-bar.jpg") center / cover;
+  color: var(--painel-paper);
+  overflow: hidden;
+}
+.painel .entrada-foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(18 18 15 / 55%),
+    rgb(18 18 15 / 92%) 70%
+  );
+}
+.painel .entrada-foto > * {
+  position: relative;
+}
+.painel .entrada-foto-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.painel .entrada-para-bares {
+  font: 600 11px / 1 var(--onside-mono);
+  letter-spacing: 0.12em;
+  color: var(--painel-acid);
+}
+.painel .entrada-foto-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.painel .entrada-foto-texto .entrada-tint {
+  color: var(--painel-acid);
+}
+.painel .entrada-foto-texto p:not(.entrada-disp) {
+  margin: 0;
+  max-width: 460px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #d6d3cb;
+}
+.painel .entrada-foto-itens {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 460px;
+}
+.painel .entrada-foto-itens > div {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 7px;
+  background: rgb(28 28 24 / 85%);
+  box-shadow: inset 0 0 0 1px rgb(241 238 230 / 10%);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.painel .entrada-form-lado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  background: var(--painel-bg);
+}
+.painel .entrada-form-topo {
+  display: none;
+}
+.painel .entrada-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 420px;
+}
+.painel .entrada-form > form,
+.painel .entrada-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.painel .entrada-kicker {
+  margin: 0;
+  font-size: 14px;
+  color: var(--painel-muted);
+}
+.painel .entrada-linha {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .entrada-nota {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+  text-align: center;
+}
+.painel .entrada-cta {
+  width: 100%;
+  --painel-btn-h: 52px;
+  font-size: 15px;
+}
+
+/* "É torcedor?" */
+.painel .entrada-torcedor {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 7px;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh);
+  color: var(--painel-fg);
+  text-decoration: none;
+}
+.painel .entrada-torcedor img {
+  display: block;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+}
+.painel .entrada-torcedor > div {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--painel-muted);
+}
+.painel .entrada-torcedor b {
+  display: block;
+  font-size: 14px;
+  color: var(--painel-fg);
+}
+.painel .entrada-torcedor > span {
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* Força da senha (4 traços) */
+.painel .entrada-forca {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: -6px;
+}
+.painel .entrada-forca > i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--painel-line2);
+}
+.painel .entrada-forca > i[data-on] {
+  background: var(--painel-fg);
+}
+.painel .entrada-forca > span {
+  min-width: 40px;
+  margin-left: 6px;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+
+/* Aceite dos termos: caixa de 20 px, tinta com check acid (acid no escuro). */
+.painel .entrada-aceite {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+  cursor: pointer;
+}
+.painel .entrada-aceite input {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--painel-line2);
+  cursor: pointer;
+}
+.painel .entrada-aceite input:checked {
+  background:
+    var(--painel-btn-ink-bg)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c9f135' d='m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z'/%3E%3C/svg%3E")
+    center / 13px no-repeat;
+  box-shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-aceite input:checked {
+    background-color: var(--painel-acid);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2312120f' d='m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z'/%3E%3C/svg%3E");
+  }
+}
+.painel .entrada-aceite input:focus-visible {
+  outline: 2px solid var(--painel-acid);
+  outline-offset: 2px;
+}
+.painel .entrada-aceite a {
+  color: var(--painel-fg);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* Celular e tablet em pé: só o formulário, com a marca em cima. */
+@media (max-width: 900px) {
+  .painel .entrada-split {
+    grid-template-columns: 1fr;
+  }
+  .painel .entrada-foto {
+    display: none;
+  }
+  .painel .entrada-form-lado {
+    justify-content: flex-start;
+    padding: 24px 16px 40px;
+  }
+  .painel .entrada-form-topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 28px;
+  }
+  .painel .entrada-form-topo .entrada-para-bares {
+    color: var(--painel-tint);
+  }
+}
+
+/* ─── getApp: "O Bar do Zé está no app" ─── */
+
+.painel .entrada-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.painel .entrada-app-topo {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  height: 72px;
+  padding: 0 56px;
+  border-bottom: 1px solid var(--painel-line);
+  font-size: 14px;
+  font-weight: 700;
+}
+.painel .entrada-app-meio {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 64px;
+  padding: 48px 96px;
+}
+.painel .entrada-app-meio:not([data-com-bar]) {
+  grid-template-columns: minmax(0, 760px);
+}
+.painel .entrada-app-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.painel .entrada-app-icone {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 15px;
+}
+.painel .entrada-app-icone img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+}
+.painel .entrada-app-icone small {
+  display: none;
+}
+.painel .entrada-app-linha,
+.painel .entrada-app-linha-cel {
+  margin: 0;
+  max-width: 540px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--painel-muted);
+}
+.painel .entrada-app-linha-cel {
+  display: none;
+}
+.painel .entrada-app-qr {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  margin-top: 10px;
+}
+.painel .entrada-app-qr > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--painel-muted);
+}
+.painel .entrada-qr {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--painel-line2);
+}
+.painel .entrada-lojas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.painel .entrada-loja {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex: none;
+  height: 52px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: var(--painel-ink);
+  color: var(--painel-paper);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .entrada-loja {
+    box-shadow: inset 0 0 0 1px rgb(241 238 230 / 16%);
+  }
+}
+.painel .entrada-loja > i {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: #3a3a34;
+}
+.painel .entrada-loja > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.painel .entrada-loja small {
+  font-size: 10.5px;
+  color: #aaa9a4;
+}
+.painel .entrada-loja b {
+  font-size: 16px;
+}
+.painel .entrada-app-cartao {
+  display: flex;
+  justify-content: center;
+}
+.painel .entrada-app-pe {
+  display: none;
+}
+
+/* O cartão do bar é sempre escuro, nos dois temas. */
+.painel .entrada-teaser {
+  width: 100%;
+  max-width: 460px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--painel-ink);
+  color: var(--painel-paper);
+  box-shadow: 6px 6px 0 var(--painel-acid);
+  --painel-muted: #aaa9a4;
+}
+.painel .entrada-teaser-foto {
+  position: relative;
+  height: 200px;
+  background: center / cover no-repeat;
+}
+.painel .entrada-teaser-foto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(18 18 15 / 0%) 40%, #12120f);
+}
+.painel .entrada-teaser-corpo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: -30px;
+  padding: 0 18px 18px;
+}
+.painel .entrada-teaser-selos {
+  display: flex;
+  gap: 6px;
+}
+.painel .entrada-teaser-lugar {
+  font-size: 13.5px;
+  color: #aaa9a4;
+}
+.painel .entrada-teaser-jogo {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 7px;
+  background: #1c1c18;
+  box-shadow: inset 0 0 0 1px rgb(241 238 230 / 9%);
+}
+.painel .entrada-teaser-hora {
+  font: 400 24px / 1 var(--onside-display);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.painel .entrada-teaser-jogo > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.painel .entrada-teaser-jogo b {
+  font-size: 14px;
+}
+.painel .entrada-teaser-jogo span {
+  font-size: 12px;
+  color: #aaa9a4;
+}
+
+/* Celular (4z): título numa cor só, cartão no meio e o "Abrir no app" no pé. */
+@media (max-width: 760px) {
+  .painel .entrada-app-topo {
+    display: none;
+  }
+  .painel .entrada-app-meio,
+  .painel .entrada-app-meio:not([data-com-bar]) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 18px 20px;
+  }
+  .painel .entrada-app-texto {
+    display: contents;
+  }
+  .painel .entrada-app-icone {
+    order: 1;
+    font-size: 14px;
+  }
+  .painel .entrada-app-icone img {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+  }
+  .painel .entrada-app-icone > span {
+    display: flex;
+    flex-direction: column;
+  }
+  .painel .entrada-app-icone small {
+    display: block;
+    font-size: 12px;
+    color: var(--painel-muted);
+  }
+  .painel .entrada-app-titulo {
+    order: 2;
+    font-size: 44px;
+  }
+  .painel .entrada-app-titulo > span {
+    display: inline;
+    color: inherit;
+  }
+  .painel .entrada-app-titulo > span + span::before {
+    content: " ";
+  }
+  .painel .entrada-app-cartao {
+    order: 3;
+  }
+  .painel .entrada-teaser {
+    max-width: none;
+  }
+  .painel .entrada-teaser-foto {
+    height: 170px;
+  }
+  .painel .entrada-app-linha,
+  .painel .entrada-app-qr {
+    display: none;
+  }
+  .painel .entrada-app-linha-cel {
+    display: block;
+    order: 4;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .painel .entrada-app-pe {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 20px 34px;
+    text-align: center;
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+  .painel .entrada-app-pe .entrada-cta {
+    --painel-btn-h: 54px;
+    font-size: 16px;
+  }
+  .painel .entrada-app-pe > span {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+}

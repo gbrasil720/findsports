@@ -1,7 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import AlertCircle from 'reicon-react/icons/AlertCircle'
-import Edit from 'reicon-react/icons/Edit'
-import Eye from 'reicon-react/icons/Eye'
 
 /**
  * A camada que só o dono do bar enxerga.
@@ -14,88 +12,6 @@ import Eye from 'reicon-react/icons/Eye'
  * Nada disso chega ao torcedor: um bar constrangido na frente do cliente
  * converte menos, não mais.
  */
-/**
- * `isPublished` é `bar.is_active` do servidor, e ele nasce `false`. Enquanto
- * está `false` esta página existe só para o dono — dizer "como o torcedor vê"
- * sem dizer que nenhum torcedor vê ainda seria a mesma promessa vazia que a
- * prévia já dava quando respondia "Bar não encontrado.".
- */
-export function OwnerPreviewBanner({
-  isPublished = true,
-  offAirReason = null
-}: {
-  isPublished?: boolean
-  /**
-   * Fora do ar porque acabou o que mantinha o bar lá, e não por nunca ter ido
-   * ao ar: `subscription` é plano contratado que terminou, `trial` é o teste
-   * do cadastro vencido sem contratação. `null` enquanto o bar está no ar.
-   */
-  offAirReason?: 'subscription' | 'trial' | null
-}) {
-  // Bar que já esteve no ar não está "ainda" fora dele: o caminho de volta é
-  // contratar um plano, não terminar o cadastro (WEB-345).
-  if (!isPublished && offAirReason) {
-    return (
-      <div className="onside-callout onside-callout-warn" role="status">
-        <Eye
-          size={18}
-          color="currentColor"
-          className="mt-0.5 shrink-0"
-          aria-hidden="true"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm">
-            {offAirReason === 'trial'
-              ? 'Seu bar está fora do ar: o teste grátis terminou'
-              : 'Seu bar está fora do ar: a assinatura terminou'}
-          </p>
-          <p className="text-sm opacity-90">
-            Contrate um plano para voltar às buscas. Enquanto isso, só você abre
-            esta página.
-          </p>
-        </div>
-        <Link to="/plan" className="onside-btn onside-btn-ink shrink-0">
-          Contratar um plano
-        </Link>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className={`onside-callout ${isPublished ? 'onside-callout-stone' : 'onside-callout-warn'}`}
-      role="status"
-    >
-      <Eye
-        size={18}
-        color="currentColor"
-        className="mt-0.5 shrink-0"
-        aria-hidden="true"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-sm">
-          {isPublished
-            ? 'Você está vendo seu perfil como o torcedor vê'
-            : 'Prévia do seu perfil — ainda fora do ar'}
-        </p>
-        <p className="text-sm opacity-90">
-          {isPublished
-            ? 'Os avisos desta página aparecem só para você.'
-            : 'Só você abre esta página enquanto o bar não é publicado. Os avisos daqui também aparecem só para você.'}
-        </p>
-      </div>
-      <Link
-        to="/admin"
-        hash="admin-espaco"
-        className="onside-btn onside-btn-ink shrink-0"
-      >
-        <Edit size={14} color="currentColor" aria-hidden="true" />
-        <span className="ml-1.5">Editar</span>
-      </Link>
-    </div>
-  )
-}
-
 type NudgeProps = {
   children: string
   action?: { label: string; to: string; hash?: string }
