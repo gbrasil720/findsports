@@ -8,6 +8,11 @@ import {
   type SQL,
   sql
 } from '@findsports_oficial/db'
+import {
+  brasiliaDaySql,
+  brasiliaDayStartSql,
+  brasiliaTodaySql
+} from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
@@ -49,11 +54,11 @@ const signupTrial = and(
  */
 const trialEndingThisWeek = and(
   signupTrial,
-  sql`(${subscription.currentPeriodEnd} IS NULL OR ${subscription.currentPeriodEnd} < ((date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') + interval '7 days') AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`
+  sql`(${subscription.currentPeriodEnd} IS NULL OR ${subscription.currentPeriodEnd} < ${brasiliaDayStartSql(brasiliaTodaySql(), 7)})`
 )
 
 /** Dias entre hoje e o fim do teste, contados no calendário de Brasília. */
-const spDaysUntilEnd = sql<number>`(((${subscription.currentPeriodEnd} AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date - (now() AT TIME ZONE 'America/Sao_Paulo')::date)`
+const spDaysUntilEnd = sql<number>`(${brasiliaDaySql(subscription.currentPeriodEnd)} - ${brasiliaTodaySql()})`
 
 const upcomingGames = sql<number>`(
   SELECT count(*)::int FROM ${event}

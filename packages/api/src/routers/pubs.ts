@@ -10,7 +10,13 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
-import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDaySql,
+  brasiliaTodaySql,
+  eventNotEndedSql,
+  onBrasiliaDaysSql
+} from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -358,7 +364,6 @@ export const pubsRouter = router({
    * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
    */
   todayGames: publicProcedure.query(async () => {
-    const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
     const games = await db.execute<{ title: string; starts_at: string }>(sql`
       SELECT g.title, g.starts_at
       FROM (
@@ -372,8 +377,7 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
-          AND e.starts_at >= ${dayStart}
-          AND e.starts_at < ${dayStart} + interval '1 day'
+          AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
       ) g
       GROUP BY g.title, g.starts_at
       ORDER BY g.starts_at, g.title
@@ -898,7 +902,6 @@ export const pubsRouter = router({
     )
     .query(async ({ input }) => {
       const origin = sql`ST_SetSRID(ST_MakePoint(${input.lng}, ${input.lat}), 4326)::geography`
-      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
       const result = await db.execute<{ bars: string }>(sql`
         SELECT count(*) AS bars
         FROM bar b
@@ -907,8 +910,7 @@ export const pubsRouter = router({
           AND EXISTS (
             SELECT 1 FROM event e
             WHERE e.bar_id = b.id
-              AND e.starts_at >= ${dayStart}
-              AND e.starts_at < ${dayStart} + interval '1 day'
+              AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
           )
       `)
       return { bars: Number(result.rows[0]?.bars ?? 0) }
@@ -979,6 +981,8 @@ export const pubsRouter = router({
       })
     )
     .query(async ({ input }) => {
+      // O mesmo agora para o SQL e para os sete dias, senão discordam à meia-noite.
+      const now = new Date()
       const filtros = montarFiltrosBusca({
         ...input,
         limit: 1,
@@ -986,32 +990,22 @@ export const pubsRouter = router({
           ? normalizeAmenityIds(input.amenities)
           : undefined
       })
-      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
       const result = await db.execute<{ day: string; games: number }>(sql`
-        SELECT to_char(
-            (e.starts_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo',
-            'YYYY-MM-DD'
-          ) AS day,
+        SELECT to_char(${brasiliaDaySql(sql`e.starts_at`)}, 'YYYY-MM-DD') AS day,
           count(*)::int AS games
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
           AND ST_DWithin(b.geo, ${filtros.origin}, ${filtros.radiusMeters})
-          AND e.starts_at >= ${dayStart}
-          AND e.starts_at < ${dayStart} + interval '7 days'
+          AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql(now), 7)}
           ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
           ${filtros.amenityFilter(sql`b`)}
         GROUP BY 1
       `)
       const games = new Map(result.rows.map((row) => [row.day, row.games]))
-      const today = new Date().toLocaleDateString('en-CA', {
-        timeZone: 'America/Sao_Paulo'
-      })
       return Array.from({ length: 7 }, (_, i) => {
-        const day = new Date(`${today}T12:00:00Z`)
-        day.setUTCDate(day.getUTCDate() + i)
-        const key = day.toISOString().slice(0, 10)
-        return { day: key, games: games.get(key) ?? 0 }
+        const day = brasiliaDay(now, i)
+        return { day, games: games.get(day) ?? 0 }
       })
     }),
 
