@@ -74,8 +74,7 @@ export default defineConfig({
       reuseExistingServer: false
     },
     {
-      // `vite dev`, e não o build: o build usa o driver HTTP do Neon, que não
-      // fala com Postgres local. Migra e semeia antes de subir.
+      // `vite dev`, e não o build. Migra e semeia antes de subir.
       command: [
         'cd ../../packages/db',
         'bunx drizzle-kit migrate',
