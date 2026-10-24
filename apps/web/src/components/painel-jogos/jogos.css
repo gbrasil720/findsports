@@ -189,6 +189,18 @@
   margin: auto 0;
   font-size: 13px;
 }
+/* Celular: a linha não tem largura para os dois; o "Publicar" desce. */
+@media (max-width: 640px) {
+  .painel .jogos-linha[data-rascunho] {
+    padding-right: 18px;
+    padding-bottom: 62px;
+  }
+  .painel .jogos-linha-publicar {
+    top: auto;
+    bottom: 14px;
+    margin: 0;
+  }
+}
 .painel .jogos-hora {
   flex: none;
   width: 66px;
