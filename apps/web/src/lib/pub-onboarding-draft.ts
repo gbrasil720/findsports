@@ -5,6 +5,10 @@ import {
   motivoTelefoneInvalido,
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
+import {
+  type OpeningHours,
+  openingHoursSchema
+} from '@findsports_oficial/api/lib/opening-hours'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 
 export const PUB_ONBOARDING_DRAFT_KEY = 'onside:pub-onboarding-draft'
@@ -24,6 +28,9 @@ export type PubOnboardingDraft = {
   description?: string
   amenities?: number[]
   screenCount?: number
+  /** Da Revisão (WEB-448); opcionais, como no Meu espaço. */
+  openingHours?: OpeningHours
+  houseOffer?: string
   /** Só para o formulário voltar com ele; o servidor não recebe CEP. */
   cep?: string
   /**
@@ -82,11 +89,17 @@ export function parsePubOnboardingDraft(
     }
     // UF que não é sigla e passo que não é número saem sozinhos, sem derrubar
     // o resto do rascunho.
-    const { step } = parsed.draft
+    // Horário fora do formato e oferta que não é texto também: o servidor
+    // recusaria o cadastro inteiro por eles.
+    const { step, openingHours, houseOffer } = parsed.draft
     return {
       ...parsed.draft,
       uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
-      step: Number.isInteger(step) && Number(step) > 0 ? step : undefined
+      step: Number.isInteger(step) && Number(step) > 0 ? step : undefined,
+      openingHours: openingHoursSchema.safeParse(openingHours).success
+        ? openingHours
+        : undefined,
+      houseOffer: typeof houseOffer === 'string' ? houseOffer : undefined
     }
   } catch {
     return null

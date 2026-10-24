@@ -98,6 +98,34 @@ describe('rascunho do onboarding de bar', () => {
       )
     ).toBeNull()
   })
+
+  it('leva o horário e a oferta da revisão; o que o servidor recusaria sai (WEB-448)', () => {
+    const ler = (draft: object) =>
+      parsePubOnboardingDraft(
+        JSON.stringify({ draft, email: 'dona', expiresAt: 9_000 }),
+        'dona',
+        2_000
+      )
+    const openingHours = [
+      { opens: '12:00', closes: '22:00' },
+      null,
+      null,
+      null,
+      null,
+      { opens: '17:00', closes: '02:00' },
+      { opens: '17:00', closes: '02:00' }
+    ]
+    const completo = { ...DRAFT, openingHours, houseOffer: 'Chopp em dobro' }
+    expect(ler(completo)).toEqual(completo)
+    for (const ruim of [
+      [{ opens: '17:00', closes: '17:00' }, null, null, null, null, null, null],
+      [null],
+      'seg a sex'
+    ]) {
+      expect(ler({ ...DRAFT, openingHours: ruim })).toEqual(DRAFT)
+    }
+    expect(ler({ ...DRAFT, houseOffer: 42 })).toEqual(DRAFT)
+  })
 })
 
 describe('recusa do cadastro do bar', () => {
