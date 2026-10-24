@@ -70,12 +70,15 @@ export default function CounterCode() {
   const queryClient = useQueryClient()
   // Enquanto o código espera o balcão, a tela pergunta de tempos em tempos:
   // validado, ela troca para "Validado" e a conquista nova (se houver) abre.
+  // Sem jogo, sem código ou com erro não há o que esperar.
   const mine = useQuery({
     ...trpc.attendance.mine.queryOptions(),
-    refetchInterval: (query) =>
-      query.state.data?.find((item) => item.eventId === eventId)?.validated
-        ? false
-        : 5000
+    refetchInterval: (query) => {
+      const item = query.state.data?.find((each) => each.eventId === eventId)
+      return query.state.status !== 'error' && item?.code && !item.validated
+        ? 5000
+        : false
+    }
   })
   const game = mine.data?.find((item) => item.eventId === eventId)
   const validated = Boolean(game?.validated)
