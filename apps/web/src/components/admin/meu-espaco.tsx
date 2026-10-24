@@ -920,7 +920,7 @@ function HoraCampo({
   mudar: (valor: string) => void
 }) {
   return (
-    <div className="painel-campo-caixa w-[118px] [--painel-campo-h:40px]">
+    <div className="painel-campo-caixa w-[140px] [--painel-campo-h:40px]">
       <input
         type="time"
         aria-label={rotulo}
