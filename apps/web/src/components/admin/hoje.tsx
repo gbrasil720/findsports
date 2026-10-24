@@ -610,10 +610,9 @@ function DesempenhoMini() {
           <MiniGrafico dias={serieDiaria(desempenho.data)} />
         </>
       )}
-      {/* ponytail: <a> até a rota /admin/desempenho entrar no branch; depois, Link. */}
-      <a href="/admin/desempenho" className="hoje-desempenho-link">
+      <Link to="/admin/desempenho" className="hoje-desempenho-link">
         Ver desempenho →
-      </a>
+      </Link>
     </Secao>
   )
 }
