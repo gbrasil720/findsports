@@ -1,21 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { buildSeries, niceMax, tickIndexes } from './daily-chart-model'
 
-/** Todos os `y` de um caminho: `M`/`L` e os três pontos de cada `C`. */
-const ysOf = (path: string) =>
-  [...path.matchAll(/-?[\d.]+,(-?[\d.]+)/g)].map((match) => Number(match[1]))
-
 describe('gráfico de atividade diária', () => {
-  test('a curva suave não inventa pico nem vale', () => {
-    const values = [0, 0, 40, 5, 5, 38, 39, 2, 60, 0]
-    const { ys, runs } = buildSeries(values, 60)
-    const [lowest, highest] = [Math.min(...ys), Math.max(...ys)]
-
-    for (const y of runs.flatMap((run) => ysOf(run.line))) {
-      // Nenhum ponto de controle sai da faixa dos dados.
-      expect(y).toBeGreaterThanOrEqual(lowest)
-      expect(y).toBeLessThanOrEqual(highest)
-    }
+  test('segmentos retos de um dia ao outro, sem curva', () => {
+    const { runs } = buildSeries([0, 40, 20], 40)
+    expect(runs.map((run) => run.line)).toEqual(['M0,100L50,0', 'M50,0L100,50'])
+    expect(runs.some((run) => run.line.includes('C'))).toBe(false)
   })
 
   test('só o trecho em que o valor sobe é marcado como subida', () => {

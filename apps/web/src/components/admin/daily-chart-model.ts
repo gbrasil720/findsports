@@ -16,44 +16,6 @@ export function niceMax(max: number): number {
   )
 }
 
-/**
- * Tangentes da interpolação cúbica monótona (Fritsch–Carlson). É o que deixa
- * a curva suave sem inventar pico: entre dois dias ela nunca passa do maior
- * nem fica abaixo do menor dos dois valores.
- */
-function monotoneTangents(xs: number[], ys: number[]): number[] {
-  const last = xs.length - 1
-  const secants = xs
-    .slice(1)
-    .map((x, i) => ((ys[i + 1] ?? 0) - (ys[i] ?? 0)) / (x - (xs[i] ?? 0)))
-  const secant = (i: number) => secants[i] ?? 0
-  const tangents = ys.map((_, i) =>
-    i === 0
-      ? secant(0)
-      : i === last
-        ? secant(last - 1)
-        : secant(i - 1) * secant(i) <= 0
-          ? 0
-          : (secant(i - 1) + secant(i)) / 2
-  )
-  for (let i = 0; i < last; i++) {
-    const d = secant(i)
-    if (d === 0) {
-      tangents[i] = 0
-      tangents[i + 1] = 0
-      continue
-    }
-    const a = (tangents[i] ?? 0) / d
-    const b = (tangents[i + 1] ?? 0) / d
-    const length = Math.hypot(a, b)
-    if (length > 3) {
-      tangents[i] = ((3 * a) / length) * d
-      tangents[i + 1] = ((3 * b) / length) * d
-    }
-  }
-  return tangents
-}
-
 export type ChartRun = {
   /** O valor sobe do começo ao fim do trecho. */
   up: boolean
@@ -64,9 +26,10 @@ export type ChartRun = {
 }
 
 /**
- * Pontos de uma série e a curva dela, partida em trechos seguidos de mesma
- * direção: subida de um lado, queda e empate do outro. É essa divisão que
- * deixa pintar só a subida.
+ * Pontos de uma série e a linha dela, em segmentos retos de um dia ao outro
+ * (`dchart` do design), partida em trechos seguidos de mesma direção: subida
+ * de um lado, queda e empate do outro. É essa divisão que deixa pintar só a
+ * subida.
  */
 export function buildSeries(
   values: number[],
@@ -75,21 +38,19 @@ export function buildSeries(
   const count = values.length
   const xs = values.map((_, i) => (count === 1 ? 50 : (i / (count - 1)) * 100))
   const ys = values.map((value) => 100 - (value / top) * 100)
-  const tangents = count > 1 ? monotoneTangents(xs, ys) : [0]
 
   const open: { up: boolean; x0: number; x1: number; d: string }[] = []
   for (let i = 0; i < count - 1; i++) {
     const [x0, x1] = [xs[i] ?? 0, xs[i + 1] ?? 0]
     const [y0, y1] = [ys[i] ?? 0, ys[i + 1] ?? 0]
-    const third = (x1 - x0) / 3
-    const curve = `C${round(x0 + third)},${round(y0 + (tangents[i] ?? 0) * third)} ${round(x1 - third)},${round(y1 - (tangents[i + 1] ?? 0) * third)} ${round(x1)},${round(y1)}`
+    const segment = `L${round(x1)},${round(y1)}`
     const up = (values[i + 1] ?? 0) > (values[i] ?? 0)
     const previous = open.at(-1)
     if (previous && previous.up === up) {
-      previous.d += curve
+      previous.d += segment
       previous.x1 = x1
     } else {
-      open.push({ up, x0, x1, d: `${round(x0)},${round(y0)}${curve}` })
+      open.push({ up, x0, x1, d: `${round(x0)},${round(y0)}${segment}` })
     }
   }
 
