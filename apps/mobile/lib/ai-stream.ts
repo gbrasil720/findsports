@@ -1,10 +1,5 @@
 import { type Dubla, dublaConfirm, dublaConverse } from './ai-dubla'
-import type {
-  ChatEvent,
-  ConfirmInput,
-  ConfirmResult,
-  ConverseInput
-} from './ai-events'
+import type { ChatEvent, ConfirmInput, ConverseInput } from './ai-events'
 import { trpcClient } from './trpc'
 
 /*
