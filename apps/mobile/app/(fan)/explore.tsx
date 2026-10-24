@@ -68,9 +68,9 @@ import {
   shortcutOn
 } from '@/lib/filters'
 import {
-  buildIndex,
   expandGroup,
   hoodNames,
+  indexCache,
   type Layer,
   type MapBar,
   mapLayers,
@@ -239,6 +239,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     map.current?.animateToRegion(region, reduced ? 0 : 400)
   // A região à vista decide grupos, pontos e rótulos (Rodada 20).
   const [view, setView] = useState<Region>(region)
+  const [indexOf] = useState(indexCache)
   // Os sem jogo entram no mapa como ponto oco, fora dos grupos e dos rótulos.
   const listed = [...bars, ...quiet]
   const chosen = listed.find((bar) => bar.id === selected) ?? null
@@ -261,7 +262,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const mapBars = bars.map(toMapBar)
   const quietBars = quiet.map(toMapBar)
   // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
-  const index = buildIndex(mapBars.filter((b) => b.id !== selected))
+  const index = indexOf(mapBars.filter((b) => b.id !== selected))
   const chosenBar =
     [...mapBars, ...quietBars].find((b) => b.id === selected) ?? null
   const layers = mapLayers(
