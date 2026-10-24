@@ -39,6 +39,7 @@ import {
   planChargeForCurrentPlan,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
+import { plural } from '@/lib/plural'
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -197,11 +198,11 @@ function BillingPage() {
         ? 'Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano ser contratado.'
         : null
 
-  const kpis = [
-    { valor: month?.going, rotulo: 'marcaram que iam' },
-    { valor: month?.classicsOnTop, rotulo: 'clássicos no topo' },
-    { valor: month?.validatedCodes, rotulo: 'códigos validados' }
-  ].filter((kpi): kpi is { valor: number; rotulo: string } => kpi.valor != null)
+  const kpis = comPlural([
+    [month?.going, 'marcou que ia', 'marcaram que iam'],
+    [month?.classicsOnTop, 'clássico no topo', 'clássicos no topo'],
+    [month?.validatedCodes, 'código validado', 'códigos validados']
+  ])
 
   return (
     <>
@@ -349,7 +350,7 @@ function BillingPage() {
                       <dt className="mt-[3px] text-[12.5px] text-[var(--painel-muted)]">
                         {kpi.rotulo} este mês
                       </dt>
-                      <dd className="font-[family-name:var(--onside-display)] text-[30px] leading-none">
+                      <dd className="font-[family-name:var(--onside-display)] text-[24px] leading-none sm:text-[30px]">
                         {kpi.valor.toLocaleString('pt-BR')}
                       </dd>
                     </div>
@@ -586,26 +587,37 @@ function CancelPlan({
   const upcoming = events?.filter(
     (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   ).length
-  const perdas: PerdaCancelamento[] = [
-    ...(going !== null
-      ? [
-          {
-            valor: going,
-            rotulo: 'pessoas que marcaram que iam ao bar este mês'
-          }
-        ]
-      : []),
-    ...(classics !== null
-      ? [{ valor: classics, rotulo: 'clássicos com o bar no topo da busca' }]
-      : []),
-    ...(upcoming
-      ? [{ valor: upcoming, rotulo: 'jogos marcados saem das buscas' }]
-      : []),
-    ...(props.plan === 'elite'
-      ? [{ valor: 1, rotulo: 'pin exclusivo no mapa' }]
-      : [])
-  ]
+  const perdas: PerdaCancelamento[] = comPlural([
+    [
+      going,
+      'pessoa que marcou que ia ao bar este mês',
+      'pessoas que marcaram que iam ao bar este mês'
+    ],
+    [
+      classics,
+      'clássico com o bar no topo da busca',
+      'clássicos com o bar no topo da busca'
+    ],
+    [
+      upcoming || null,
+      'jogo marcado sai das buscas',
+      'jogos marcados saem das buscas'
+    ],
+    [props.plan === 'elite' ? 1 : null, 'pin exclusivo no mapa', '']
+  ])
   return <CancelPlanDialog {...props} perdas={perdas} />
+}
+
+/**
+ * Números com rótulo no singular ou no plural ("1 código validado"); o que
+ * vem nulo (o plano não libera, sem dado) sai da lista.
+ */
+function comPlural(
+  linhas: [valor: number | null | undefined, um: string, varios: string][]
+) {
+  return linhas.flatMap(([valor, um, varios]) =>
+    valor == null ? [] : [{ valor, rotulo: plural(valor, um, varios) }]
+  )
 }
 
 /** Card de seção (`sec` do design): ícone, título e, à direita, um selo. */
