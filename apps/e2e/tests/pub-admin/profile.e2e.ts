@@ -9,9 +9,9 @@ import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// "Meu espaço": edição do perfil, geocoding só quando o endereço muda
-// (WEB-146), foto pelo upload direto para o R2, recursos pagos de um bar
-// Elite, avaliações e prévia.
+// "Meu espaço" (2c/2d): um formulário só, salvo por "Salvar alterações";
+// geocoding só quando o endereço muda (WEB-146), foto pelo upload direto para
+// o R2, recursos pagos de um bar Elite, avaliações e prévia.
 
 /** Bar com rua única: as consultas ao stub da LocationIQ são filtradas por ela. */
 async function openProfile(page: Page) {
@@ -27,10 +27,13 @@ async function geocodedStreets(page: Page): Promise<string[]> {
   return ((await response.json()) as { street: string }[]).map((c) => c.street)
 }
 
-const editor = (page: Page) => page.locator('#admin-profile-editor')
+const info = (page: Page) =>
+  page.getByRole('region', { name: 'Informações', exact: true })
+const fotos = (page: Page) =>
+  page.getByRole('region', { name: 'Fotos', exact: true })
 
 const pickPhoto = (page: Page, file: Parameters<Locator['setInputFiles']>[0]) =>
-  editor(page).locator('input[type="file"]').setInputFiles(file)
+  page.locator('input[type="file"]').setInputFiles(file)
 
 /**
  * Erros não tratados da página, inclusive promessa rejeitada sem `catch`
@@ -42,24 +45,33 @@ function collectPageErrors(page: Page) {
   return errors
 }
 
-async function save(page: Page) {
-  const saved = page.waitForResponse(/pub\.updateMe/)
-  await editor(page).getByRole('button', { name: 'Salvar' }).click()
+const saveButton = (page: Page) =>
+  page.getByRole('button', { name: 'Salvar alterações' })
+
+async function save(page: Page, path = /pub\.updateMe/) {
+  const saved = page.waitForResponse(path)
+  await saveButton(page).click()
   return saved
 }
+
+/** O aviso do topo, quando o servidor recusa o que foi salvo. */
+const saveError = (page: Page) =>
+  page.getByRole('main').getByRole('alert').first()
 
 test('mudar só a descrição salva sem chamar o geocoding', async ({ page }) => {
   const { barId, street } = await openProfile(page)
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page)
-    .getByLabel('Descrição (opcional)')
+  await expect(saveButton(page)).toBeDisabled()
+  await info(page)
+    .getByLabel('Descrição')
     .fill('Telão de 100 polegadas e chope gelado.')
   expect((await save(page)).ok()).toBe(true)
 
-  await expect(
-    editor(page).getByText('Telão de 100 polegadas e chope gelado.')
-  ).toBeVisible()
+  await expect(page.getByText('Alterações salvas.')).toBeVisible()
+  await expect(saveButton(page)).toBeDisabled()
+  await expect(info(page).getByLabel('Descrição')).toHaveValue(
+    'Telão de 100 polegadas e chope gelado.'
+  )
   const [bar] = await query('SELECT description FROM bar WHERE id = $1', [
     barId
   ])
@@ -67,15 +79,37 @@ test('mudar só a descrição salva sem chamar o geocoding', async ({ page }) =>
   expect(await geocodedStreets(page)).not.toContain(street)
 })
 
+test('Descartar volta ao que está gravado, sem salvar', async ({ page }) => {
+  const { barId } = await openProfile(page)
+  let updates = 0
+  page.on('request', (req) => {
+    if (req.url().includes('pub.updateMe')) updates++
+  })
+
+  const nome = info(page).getByLabel('Nome do estabelecimento')
+  const antes = await nome.inputValue()
+  await nome.fill('Outro nome')
+  // A prévia mostra o rascunho antes de salvar.
+  await expect(
+    page.getByRole('img', { name: /Prévia da página de Outro nome/ })
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Descartar' }).click()
+
+  await expect(nome).toHaveValue(antes)
+  await expect(saveButton(page)).toBeDisabled()
+  expect(updates).toBe(0)
+  const [bar] = await query('SELECT name FROM bar WHERE id = $1', [barId])
+  expect(bar?.name).toBe(antes)
+})
+
 test('mudar o endereço geocodifica a rua nova e grava', async ({ page }) => {
   const { barId } = await openProfile(page)
   const newStreet = `Rua Nova E2E ${randomUUID().slice(0, 8)}, 42`
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('Endereço').fill(newStreet)
+  await info(page).getByLabel('Rua e número').fill(newStreet)
   expect((await save(page)).ok()).toBe(true)
 
-  await expect(editor(page).getByText(newStreet)).toBeVisible()
+  await expect(info(page).getByLabel('Rua e número')).toHaveValue(newStreet)
   expect(await geocodedStreets(page)).toContain(newStreet)
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(newStreet)
@@ -88,8 +122,7 @@ test('escolher a UF num bar sem UF geocodifica com o estado e grava', async ({
 }) => {
   const { barId, street } = await openProfile(page)
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  const uf = editor(page).getByLabel('Estado (UF)')
+  const uf = info(page).getByLabel('UF', { exact: true })
   await expect(uf).toHaveValue('')
   await uf.selectOption('SP')
   expect((await save(page)).ok()).toBe(true)
@@ -110,15 +143,14 @@ test('endereço que o geocoding não acha é recusado com a mensagem certa', asy
   const pageErrors = collectPageErrors(page)
   const { barId, street } = await openProfile(page)
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('Endereço').fill('Rua inexistente, 1')
+  await info(page).getByLabel('Rua e número').fill('Rua inexistente, 1')
   expect((await save(page)).ok()).toBe(false)
 
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(saveError(page)).toHaveText(
     'Não encontramos esse endereço em São Paulo. Confira a rua, o número e a cidade.'
   )
-  // O formulário continua aberto, e nada foi gravado.
-  await expect(editor(page).getByLabel('Endereço')).toHaveValue(
+  // O rascunho continua na tela, e nada foi gravado.
+  await expect(info(page).getByLabel('Rua e número')).toHaveValue(
     'Rua inexistente, 1'
   )
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
@@ -137,14 +169,12 @@ test('telefone inválido é recusado no navegador, sem rejeição não tratada',
     if (req.url().includes('pub.updateMe')) updates++
   })
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('Telefone').fill('11887654321')
-  await editor(page).getByRole('button', { name: 'Salvar' }).click()
+  await info(page).getByLabel('Telefone').fill('11887654321')
+  await saveButton(page).click()
 
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(info(page).getByRole('alert')).toHaveText(
     'Celular deve começar com 9 depois do DDD. Confira o telefone.'
   )
-  await expect(editor(page).getByLabel('Telefone')).toBeVisible()
   expect(updates).toBe(0)
   const [bar] = await query('SELECT phone FROM bar WHERE id = $1', [barId])
   expect(bar?.phone).toBeNull()
@@ -157,11 +187,10 @@ test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço
   const { barId, street } = await openProfile(page)
   const newStreet = `Rua falha-geocoding ${randomUUID().slice(0, 8)}, 1`
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('Endereço').fill(newStreet)
+  await info(page).getByLabel('Rua e número').fill(newStreet)
   expect((await save(page)).ok()).toBe(false)
 
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(saveError(page)).toHaveText(
     'Não foi possível validar o endereço agora. Tente novamente em instantes.'
   )
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
@@ -192,11 +221,16 @@ test('trocar a foto sobe para o R2 e grava a URL do bar', async ({ page }) => {
     new RegExp(`^${MEDIA_PUBLIC_ORIGIN}/bars/${barId}/photo\\?v=\\d+$`)
   )
   await expect(
-    editor(page).locator(`img[src="${bar?.photo_url}"]`)
+    fotos(page).locator(`img[src="${bar?.photo_url}"]`)
   ).toBeVisible()
+  await expect(
+    fotos(page).getByRole('button', { name: 'Trocar' })
+  ).toBeVisible()
+  // A foto não espera o "Salvar alterações".
+  await expect(saveButton(page)).toBeDisabled()
 })
 
-test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não tratada', async ({
+test('falha ao gravar a URL da foto aparece na foto, sem rejeição não tratada', async ({
   page
 }) => {
   const pageErrors = collectPageErrors(page)
@@ -211,22 +245,15 @@ test('falha ao gravar a URL da foto aparece no avatar, sem rejeição não trata
   })
 
   // O upload conclui; quem falha é a gravação da URL (WEB-212).
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(fotos(page).getByRole('alert')).toHaveText(
     'Erro ao fazer upload. Tente novamente.'
   )
   expect(uploads).toHaveLength(1)
   const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
   expect(bar?.photo_url).toBeNull()
   expect(pageErrors).toEqual([])
-
-  // A falha da foto é do avatar: abrir o formulário do perfil não a herda.
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await expect(
-    editor(page).getByRole('button', { name: 'Salvar' })
-  ).toBeVisible()
-  await expect(editor(page).getByRole('alert')).toHaveText([
-    'Erro ao fazer upload. Tente novamente.'
-  ])
+  // A falha da foto é da foto: o formulário não a herda.
+  await expect(page.getByRole('main').getByRole('alert')).toHaveCount(1)
 })
 
 test('foto em formato errado é recusada no navegador, sem upload', async ({
@@ -240,7 +267,7 @@ test('foto em formato errado é recusada no navegador, sem upload', async ({
     mimeType: 'image/gif',
     buffer: Buffer.from('GIF89a')
   })
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(fotos(page).getByRole('alert')).toHaveText(
     'Formato inválido. Use JPG, PNG ou WebP.'
   )
   expect(uploads).toEqual([])
@@ -278,27 +305,35 @@ test('foto acima de 5 MB é recusada no navegador, sem upload', async ({
     mimeType: 'image/png',
     buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
   })
-  await expect(editor(page).getByRole('alert')).toHaveText(
+  await expect(fotos(page).getByRole('alert')).toHaveText(
     'Arquivo muito grande. Máximo 5MB.'
   )
   expect(uploads).toEqual([])
 })
 
-test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
+test('edita nome, telefone, características e telas, e confirma o WhatsApp', async ({
   page
 }) => {
   const { barId } = await openProfile(page)
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('Nome do bar').fill('Bar Renomeado E2E')
-  await editor(page).getByLabel('Telefone').fill('11987654321')
-  await editor(page).getByRole('button', { name: 'Telão / projetor' }).click()
-  await editor(page).getByRole('button', { name: 'Área externa' }).click()
-  await editor(page).getByLabel('Quantas telas?').fill('4')
+  await info(page)
+    .getByLabel('Nome do estabelecimento')
+    .fill('Bar Renomeado E2E')
+  await info(page).getByLabel('Telefone').fill('11987654321')
+  const caracteristicas = page.getByRole('region', { name: 'Características' })
+  await caracteristicas
+    .getByRole('button', { name: 'Telão / projetor' })
+    .click()
+  await caracteristicas.getByRole('button', { name: 'Área externa' }).click()
+  for (let i = 0; i < 4; i++) {
+    await caracteristicas
+      .getByRole('button', { name: 'Uma tela a mais' })
+      .click()
+  }
   expect((await save(page)).ok()).toBe(true)
 
   await expect(
-    editor(page).getByRole('heading', { name: 'Bar Renomeado E2E' })
+    page.getByRole('img', { name: /Prévia da página de Bar Renomeado E2E/ })
   ).toBeVisible()
   const [bar] = await query(
     `SELECT name, phone, amenities, screen_count, phone_accepts_whatsapp
@@ -314,10 +349,10 @@ test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
   })
 
   // Telefone novo fica pendente até o dono confirmar que é WhatsApp.
-  const whatsapp = page.getByRole('article', { name: 'WhatsApp do bar' })
-  await expect(whatsapp).toContainText('Pendente')
-  await whatsapp.getByRole('button', { name: 'Ativar WhatsApp' }).click()
-  await expect(whatsapp).toContainText('Contato disponível no perfil')
+  const perfil = page.getByRole('region', { name: /^Perfil \d de 6$/ })
+  await perfil.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(info(page).getByText('✓ WhatsApp')).toBeVisible()
+  await expect(perfil.getByRole('button', { name: 'Confirmar' })).toHaveCount(0)
   const [after] = await query(
     'SELECT phone_accepts_whatsapp FROM bar WHERE id = $1',
     [barId]
@@ -325,7 +360,7 @@ test('edita nome, telefone, comodidades e telas, e ativa o WhatsApp', async ({
   expect(after?.phone_accepts_whatsapp).toBe(true)
 })
 
-test('"Com oferta da casa" não se marca no checklist, e o antigo "Aceita reserva" gravado sai ao salvar', async ({
+test('"Com oferta da casa" não se marca nas características, e o antigo "Aceita reserva" gravado sai ao salvar', async ({
   page
 }) => {
   // 10 era "Aceita reserva", de quando o bar a marcava à mão; hoje é o filtro
@@ -333,16 +368,18 @@ test('"Com oferta da casa" não se marca no checklist, e o antigo "Aceita reserv
   const pub = await createPub({ bar: { amenities: [10] } })
   await signIn(page, pub.user)
   await page.goto('/admin/meu-espaco')
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
+  const caracteristicas = page.getByRole('region', { name: 'Características' })
 
   await expect(
-    editor(page).getByRole('button', { name: 'Estacionamento próximo' })
+    caracteristicas.getByRole('button', { name: 'Estacionamento próximo' })
   ).toBeVisible()
   for (const name of ['Com oferta da casa', 'Aceita reserva']) {
-    await expect(editor(page).getByRole('button', { name })).toHaveCount(0)
+    await expect(caracteristicas.getByRole('button', { name })).toHaveCount(0)
   }
 
-  await editor(page).getByRole('button', { name: 'Telão / projetor' }).click()
+  await caracteristicas
+    .getByRole('button', { name: 'Telão / projetor' })
+    .click()
   expect((await save(page)).ok()).toBe(true)
   const [bar] = await query('SELECT amenities FROM bar WHERE id = $1', [
     pub.barId
@@ -350,29 +387,58 @@ test('"Com oferta da casa" não se marca no checklist, e o antigo "Aceita reserv
   expect(bar?.amenities).toEqual([1])
 })
 
-test('Elite salva cardápio, preço médio e oferta', async ({ page }) => {
+test('horário: informar, salvar e tirar da página', async ({ page }) => {
+  const { barId } = await openProfile(page)
+  const horario = page.getByRole('region', {
+    name: 'Horário de funcionamento'
+  })
+
+  await horario.getByRole('button', { name: 'Informar horário' }).click()
+  await horario.getByLabel('Domingo', { exact: true }).uncheck()
+  await horario.getByLabel('Sexta, fecha').fill('02:00')
+  expect((await save(page, /pub\.updateOpeningHours/)).ok()).toBe(true)
+  await expect(saveButton(page)).toBeDisabled()
+
+  const [bar] = await query('SELECT opening_hours FROM bar WHERE id = $1', [
+    barId
+  ])
+  expect(bar?.opening_hours?.[0]).toBeNull()
+  expect(bar?.opening_hours?.[5]).toEqual({ opens: '17:00', closes: '02:00' })
+
+  await horario
+    .getByRole('button', { name: 'Tirar o horário da página' })
+    .click()
+  expect((await save(page, /pub\.updateOpeningHours/)).ok()).toBe(true)
+  const [after] = await query('SELECT opening_hours FROM bar WHERE id = $1', [
+    barId
+  ])
+  expect(after?.opening_hours).toBeNull()
+})
+
+test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
+  page
+}) => {
   const { barId } = await openProfile(page)
 
-  const menu = page.getByRole('region', { name: 'Cardápio e preço médio' })
+  const menu = page.getByRole('region', { name: 'Cardápio e preço' })
   await menu
-    .getByLabel(/Link do cardápio/)
+    .getByLabel('Link do cardápio')
     .fill('https://cardapio.e2e.test/menu')
-  // WEB-353: com erro de validação na tela, Salvar não fica disponível.
-  const spend = menu.getByLabel(/Preço médio por pessoa/)
+  // WEB-353: com erro de validação, nada é enviado.
+  const spend = menu.getByLabel('Preço médio por pessoa')
   await spend.fill('1500')
-  await spend.blur()
+  await saveButton(page).click()
   await expect(menu.getByRole('alert')).toContainText('O valor aceita até')
-  await expect(menu.getByRole('button', { name: 'Salvar' })).toBeDisabled()
   await spend.fill('85,50')
-  await menu.getByRole('button', { name: 'Salvar' }).click()
-  await expect(menu.getByText('Cardápio e preço médio salvos.')).toBeVisible()
 
   const offer = page.getByRole('region', { name: 'Oferta da casa' })
-  await offer
-    .getByLabel('Sua oferta (opcional)')
-    .fill('Chope em dobro no intervalo')
-  await offer.getByRole('button', { name: 'Salvar oferta' }).click()
-  await expect(offer.getByText('Oferta salva.')).toBeVisible()
+  await offer.getByLabel('Oferta da casa').fill('Chope em dobro no intervalo')
+  // A prévia do app mostra a oferta antes de salvar.
+  await expect(page.getByRole('img', { name: /Prévia/ })).toContainText(
+    'Chope em dobro no intervalo'
+  )
+  expect((await save(page, /pub\.updateHouseOffer/)).ok()).toBe(true)
+  await expect(page.getByText('Alterações salvas.')).toBeVisible()
 
   const [saved] = await query(
     'SELECT menu_url, average_spend_cents, house_offer FROM bar WHERE id = $1',
@@ -385,9 +451,7 @@ test('Elite salva cardápio, preço médio e oferta', async ({ page }) => {
   })
 })
 
-test('painel de avaliações e prévia de como o torcedor vê', async ({
-  page
-}) => {
+test('avaliações e prévia de como o torcedor vê', async ({ page }) => {
   const pub = await createPub()
   const { eventId } = await createEvent(pub.barId, {
     startsAt: new Date(Date.now() - 2 * 86_400_000)
@@ -399,28 +463,26 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
       bar_id: pub.barId,
       actor_user_id: fan.id,
       event_id: eventId,
-      would_return: wouldReturn
+      would_return: wouldReturn,
+      reasons: wouldReturn ? ['screen', 'sound'] : []
     })
   }
   await signIn(page, pub.user)
   await page.goto('/admin/meu-espaco')
 
-  const ratings = page.getByRole('region', {
-    name: 'Voltariam pra ver jogo aqui?'
-  })
+  const ratings = page.getByRole('region', { name: 'Avaliações' })
   await expect(ratings).toContainText('50%')
   // Duas avaliações, abaixo do piso público de 3: o dono é avisado.
   await expect(ratings).toContainText('Ainda não aparece para o torcedor')
   await expect(ratings).toContainText('falta 1')
   await expect(ratings.getByRole('listitem')).toHaveCount(2)
+  // "O que pesou?" (WEB-398), sem quem respondeu.
+  await expect(ratings).toContainText('Telão')
+  await expect(ratings).toContainText('Som do jogo')
 
-  // A seção mais interna com o título (a aba inteira também é `section`).
-  const preview = page
-    .locator('section', {
-      has: page.getByRole('heading', { name: 'Como o torcedor vê' })
-    })
-    .last()
+  const preview = page.getByRole('img', { name: /Prévia da página/ })
   await expect(preview).toContainText(`Bar E2E ${pub.barId.slice(0, 8)}`)
-  await expect(preview).toContainText('Perfil')
-  await expect(preview).not.toContainText('indisponível')
+  await expect(preview).toContainText('Vou assistir aqui')
+  // Elite em dia: o selo aparece como para o torcedor.
+  await expect(preview).toContainText('Elite')
 })

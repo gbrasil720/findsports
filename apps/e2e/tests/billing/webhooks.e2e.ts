@@ -183,7 +183,7 @@ for (const status of ['past_due', 'unpaid'] as const) {
     // Só a seção da tela: o cabeçalho e o resto podem repetir o texto.
     await expect(
       page
-        .locator('#admin-espaco')
+        .getByRole('region', { name: 'Cardápio e preço' })
         .getByText('Plano Pro com pagamento pendente')
     ).toBeVisible()
     await expect(
