@@ -14,7 +14,7 @@ export function getPageSurface(pathname: string): PageSurface {
   if (pathname.startsWith('/onboarding') || pathname.startsWith('/plan')) {
     return 'activation'
   }
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/pub')) {
+  if (pathname.startsWith('/torcedor') || pathname.startsWith('/pub')) {
     return 'fan'
   }
   if (pathname.startsWith('/admin')) return 'pub'

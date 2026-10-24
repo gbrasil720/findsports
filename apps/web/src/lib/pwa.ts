@@ -1,14 +1,14 @@
 /**
  * PWA — cabeçalho, detecção de plataforma e memória de dispensa (WEB-72).
  *
- * O app instalável cobre só o produto logado: `/dashboard`, `/admin`, `/plan`
- * e subpáginas. A landing fica de fora de propósito — quem instala já é
- * usuário, e abrir o ícone da tela inicial para cair numa página de aquisição
+ * O app instalável cobre só o produto logado: `/admin`, `/plan` e
+ * subpáginas (o painel do torcedor saiu do web). A landing fica de fora de
+ * propósito — quem instala já é usuário, e abrir o ícone da tela inicial para cair numa página de aquisição
  * seria um defeito com atalho permanente.
  *
  * O `scope` do manifest é `/` porque `scope` aceita um caminho só, e ele
- * precisa ser prefixo de `start_url` e da URL do manifest. `/dashboard` e
- * `/admin` são irmãos: o único prefixo comum é a raiz. O que restringe o
+ * precisa ser prefixo de `start_url` (`/app`) e da URL do manifest: o único
+ * prefixo comum é a raiz. O que restringe o
  * convite não é o `scope`, é **onde o `<link rel="manifest">` é declarado** —
  * e ele só é declarado nas rotas acima, nunca no `__root.tsx`. O Houdini é
  * outro app, com manifest próprio (`/houdini.webmanifest`, em `houdini.tsx`).

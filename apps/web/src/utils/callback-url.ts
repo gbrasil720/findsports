@@ -1,4 +1,4 @@
-export function getSafeCallbackUrl(url: string, fallback = '/dashboard') {
+export function getSafeCallbackUrl(url: string, fallback = '/admin') {
   if (!url.startsWith('/') || url.startsWith('//') || url.includes('\\')) {
     return fallback
   }
@@ -15,21 +15,19 @@ export function getCallbackUrl(
 ): string {
   try {
     const url = new URL(locationHref, origin).searchParams.get('callbackUrl')
-    if (!url) return '/dashboard'
+    if (!url) return '/admin'
     const parsed = new URL(url, origin)
-    return parsed.origin === origin
-      ? parsed.pathname + parsed.search
-      : '/dashboard'
+    return parsed.origin === origin ? parsed.pathname + parsed.search : '/admin'
   } catch {
-    return '/dashboard'
+    return '/admin'
   }
 }
 
 // WEB-211: o destino do cadastro viaja na URL, e não no `sessionStorage`: o
-// link do e-mail de verificação abre em outra aba. `/dashboard` é o padrão de
+// link do e-mail de verificação abre em outra aba. `/admin` é o padrão de
 // `getCallbackUrl`, então nem vai junto.
 export function withCallbackUrl(path: string, callbackUrl: string): string {
-  if (callbackUrl === '/dashboard') return path
+  if (callbackUrl === '/admin') return path
   const separator = path.includes('?') ? '&' : '?'
   return `${path}${separator}callbackUrl=${encodeURIComponent(callbackUrl)}`
 }
