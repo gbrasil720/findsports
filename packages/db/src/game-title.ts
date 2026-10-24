@@ -1,6 +1,9 @@
 /**
- * Título de um jogo: os times na ordem do confronto, por " × "; sem times, o
- * texto livre que o bar escreveu; sem nada disso, o campeonato.
+ * Título de um jogo. Com exatamente dois participantes é um confronto:
+ * "A × B", na ordem do confronto. Com qualquer outro número (nenhum, um, ou
+ * três ou mais, como numa corrida, que não é confronto) vale o texto livre que
+ * o bar escreveu e, com ele em branco, o nome do campeonato. Decisão do dono
+ * em 24/10/2026.
  *
  * É a regra de toda tela (web, app, chat da IA). A mesma regra existe em SQL
  * para as leituras cruas (`gameTitle` em
@@ -21,7 +24,7 @@ export type TitledGame = {
   championship: string
 }
 
-/** Os nomes dos times do jogo, na ordem em que vieram. */
+/** Os nomes dos participantes do jogo, na ordem em que vieram. */
 export function participantNames(
   game: Pick<TitledGame, 'participants'>
 ): string[] {
@@ -32,11 +35,20 @@ export function participantNames(
   })
 }
 
-/** "Corinthians × Palmeiras", senão o texto livre, senão o campeonato. */
+/**
+ * Os dois lados do confronto, para a tela que põe um de cada lado (escudos,
+ * ticket do código). `null` quando o jogo não tem exatamente dois.
+ */
+export function matchSides(
+  game: Pick<TitledGame, 'participants'>
+): [string, string] | null {
+  const names = participantNames(game)
+  return names.length === 2 ? [names[0] as string, names[1] as string] : null
+}
+
+/** "Corinthians × Palmeiras"; fora do confronto, o texto livre ou o campeonato. */
 export function gameTitle(game: TitledGame): string {
-  return (
-    participantNames(game).join(' × ') ||
-    game.participantFreeText?.trim() ||
-    game.championship
-  )
+  const sides = matchSides(game)
+  if (sides) return sides.join(' × ')
+  return game.participantFreeText?.trim() || game.championship
 }
