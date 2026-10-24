@@ -24,6 +24,13 @@ Regras que valem para não perder o que foi ganho:
   `zod` clássico punha 64 KB minificados em toda página. Módulo que o
   `__root.tsx`, o `router.tsx` ou o `head` de uma rota importam vai para o
   JavaScript inicial de todas as páginas.
+- **CSS por rota.** O `index.css` (link do `__root.tsx`) vai em toda página:
+  Tailwind, tokens, app, a casca `.onside-page` (`onside-page.css`), aviso de
+  cookies, 404 e tela de erro (estes dois aparecem em qualquer rota). O CSS de
+  uma área entra por `import './x.css'` no componente dela, e o Start põe o
+  `<link>` só nas rotas que usam o componente: landing (`onside.css`, que a
+  home, os termos e o guia carregam pelo cabeçalho e rodapé), `legal.css` e o
+  recibo do plano. Folha de uma área só não volta para o `index.css`.
 - **Medição de terceiros com prioridade baixa** (beacon do Cloudflare Web
   Analytics no `__root.tsx`).
 
@@ -38,7 +45,7 @@ bunx vite preview --mode cloudflare --port 3031
 ```
 
 O `vite preview` não comprime as respostas, e a borda da Cloudflare comprime:
-sem compressão o CSS sai com 228 KB em vez de 35 KB e o resultado não vale.
+sem compressão o CSS da home sai com 201 KB em vez de 32 KB e o resultado não vale.
 Ponha um proxy com gzip na frente (algumas linhas de `Bun.serve` com
 `Bun.gzipSync`) e meça nele.
 
