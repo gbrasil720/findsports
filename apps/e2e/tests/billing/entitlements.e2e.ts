@@ -47,17 +47,15 @@ for (const { name, subscription, allowed } of cases) {
   }) => {
     const { user } = await createPub({ subscription })
     await signIn(page, user)
-    await page.goto('/admin#admin-espaco')
+    await page.goto('/admin/meu-espaco')
 
     const field = page.getByLabel('Link do cardápio (opcional)')
     if (allowed) {
       await expect(field).toBeVisible()
     } else {
-      // Só a aba aberta: as outras ficam montadas e podem repetir o texto.
+      // Só a seção da tela: o cabeçalho e o resto podem repetir o texto.
       await expect(
-        page
-          .getByRole('tabpanel', { name: 'Meu espaço' })
-          .getByText('Trial do plano Pro encerrado')
+        page.locator('#admin-espaco').getByText('Trial do plano Pro encerrado')
       ).toBeVisible()
       await expect(field).toHaveCount(0)
     }

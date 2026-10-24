@@ -18,7 +18,7 @@ async function openProfile(page: Page) {
   const street = `Rua E2E ${randomUUID().slice(0, 8)}, 100`
   const pub = await createPub({ bar: { address: street } })
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-espaco')
+  await page.goto('/admin/meu-espaco')
   return { ...pub, street }
 }
 
@@ -332,7 +332,7 @@ test('"Com oferta da casa" não se marca no checklist, e o antigo "Aceita reserv
   // "Com oferta da casa" da busca, que ninguém marca.
   const pub = await createPub({ bar: { amenities: [10] } })
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-espaco')
+  await page.goto('/admin/meu-espaco')
   await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
 
   await expect(
@@ -403,7 +403,7 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
     })
   }
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-espaco')
+  await page.goto('/admin/meu-espaco')
 
   const ratings = page.getByRole('region', {
     name: 'Voltariam pra ver jogo aqui?'
