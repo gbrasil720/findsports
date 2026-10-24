@@ -942,7 +942,7 @@
   align-items: center;
   padding: 13px 0;
 }
-.painel .entrada-ob-revisao > div + div {
+.painel .entrada-ob-revisao > * + * {
   border-top: 1px solid var(--painel-line);
 }
 .painel .entrada-ob-revisao > div > div {
@@ -951,23 +951,35 @@
   font-size: 12.5px;
   color: var(--painel-muted);
 }
-.painel .entrada-ob-revisao b {
+.painel .entrada-ob-revisao > div b {
   display: block;
   font-size: 14.5px;
   color: var(--painel-fg);
   overflow-wrap: anywhere;
 }
-.painel .entrada-ob-revisao b[data-vazio] {
+.painel .entrada-ob-revisao > div b[data-vazio] {
   font-weight: 500;
   color: var(--painel-muted);
 }
-.painel .entrada-ob-revisao button {
+.painel .entrada-ob-revisao > div > button {
   border: 0;
   background: none;
   padding: 0;
   color: var(--painel-fg);
   font: 700 13.5px / 1 var(--onside-body);
   cursor: pointer;
+}
+/* Horário e oferta abertos pelo "Editar" da linha (WEB-448). */
+.painel .entrada-ob-painel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 4px 0 16px 34px;
+  border-top: 0;
+}
+.painel .entrada-ob-painel > :first-child {
+  align-self: stretch;
 }
 .painel .entrada-ob-letra {
   margin: 0;
@@ -1021,6 +1033,20 @@
 .painel .entrada-previa-bar span {
   font-size: 13px;
   color: var(--painel-muted);
+}
+.painel .entrada-previa-oferta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+}
+.painel .entrada-previa-oferta b {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .painel .entrada-previa-chips {
   display: flex;
