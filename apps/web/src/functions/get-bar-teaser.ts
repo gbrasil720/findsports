@@ -4,7 +4,7 @@ import {
 } from '@findsports_oficial/api/lib/attendance'
 import { issuesCounterCode } from '@findsports_oficial/api/lib/current-plan'
 import { byMatchOrder } from '@findsports_oficial/api/lib/game-participants'
-import { db, eq } from '@findsports_oficial/db'
+import { and, db, eq, isNotNull } from '@findsports_oficial/db'
 import { isEventLive } from '@findsports_oficial/db/event-window'
 import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 import { gameTitle } from '@findsports_oficial/db/game-title'
@@ -54,7 +54,9 @@ export const getBarTeaser = createServerFn({ method: 'GET' })
             columns: { plan: true, status: true, currentPeriodEnd: true }
           },
           events: {
-            where: (event) => eventNotEndedSql(event, now),
+            // Rascunho (WEB-436) não aparece fora do painel.
+            where: (event) =>
+              and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
             orderBy: (event, { asc }) => [asc(event.startsAt)],
             limit: 1,
             columns: {
