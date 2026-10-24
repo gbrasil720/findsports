@@ -9,7 +9,7 @@ import {
   countReceiptLines,
   SubscriptionReceipt
 } from '@/components/billing/subscription-receipt'
-import { Botao, Card, EmBreve, Icone, propsBotao } from '@/components/painel'
+import { Botao, Card, Icone, IconeBotao, propsBotao } from '@/components/painel'
 import painelCss from '@/components/painel/painel.css?url'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
@@ -227,6 +227,14 @@ function SubscriptionConfirmed() {
     meta: { errorToast: false },
     retry: false
   }).data?.card
+  // PDF do comprovante: a fatura da contratação, a mais nova da assinatura
+  // logo depois do checkout (WEB-443). Sem ela, o botão não aparece.
+  const receiptPdf = useQuery({
+    ...trpc.pub.getMyInvoices.queryOptions(),
+    enabled: confirmed && Boolean(subscription?.externalSubscriptionId),
+    meta: { errorToast: false },
+    retry: false
+  }).data?.invoices[0]?.pdfUrl
   const hasPlan = (stage === 'printing' || stage === 'done') && plan !== null
   const barName = barQuery.data?.name ?? null
   const kicker =
@@ -396,15 +404,17 @@ function SubscriptionConfirmed() {
               </>
             ) : hasPlan ? (
               <>
-                <Botao
-                  altura={50}
-                  icone="doc"
-                  disabled
-                  className="!flex-1 !rounded-[25px]"
-                  title="Em breve"
-                >
-                  Baixar PDF <EmBreve />
-                </Botao>
+                {receiptPdf ? (
+                  <a
+                    href={receiptPdf}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    {...propsBotao({ altura: 50 }, '!flex-1 !rounded-[25px]')}
+                  >
+                    <IconeBotao nome="doc" />
+                    Baixar PDF
+                  </a>
+                ) : null}
                 <Link
                   to="/admin"
                   {...propsBotao(
