@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
 import { Botao, Card, Medalha, propsBotao } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
+import { ehRascunho } from '@/domain/painel-jogos'
 import { getPlan, getPlanLosses, getPlanLossNote } from '@/lib/plan-catalog'
 import { RECEIPT_POLL_INTERVAL_MS } from '@/lib/subscription-receipt'
 import { useTRPC } from '@/utils/trpc'
@@ -25,8 +26,11 @@ function PlanLossList({
 }: Change & { onTrial?: boolean; className?: string }) {
   const bar = useMyBar().data
   const events = useMyEvents().data
+  // Rascunho (WEB-436) não está nas buscas: não se perde.
   const upcoming = events?.filter(
-    (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
+    (item) =>
+      !ehRascunho(item) &&
+      getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   )
   const numbers =
     bar && upcoming ? { ...bar, upcomingEvents: upcoming.length } : null
