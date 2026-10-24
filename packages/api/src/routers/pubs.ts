@@ -265,19 +265,22 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
 }
 
 /**
- * Gasto médio declarado dos bares de uma página de busca (WEB-144), pela
- * regra do perfil: só com Pro/Elite vigente pela assinatura (`canShowBarMenu`),
- * nunca por `bar.plan`, que só acompanha o fim do trial uma vez por dia.
+ * O que o card do bar lê da tabela `bar` depois do cache, numa consulta só:
+ * o gasto médio declarado (WEB-144) e as características.
  *
- * Roda depois do cache, pelo mesmo motivo da nota: um trial que vence ou uma
- * assinatura que vira `past_due` esconde o valor na hora, e não um TTL depois.
+ * O gasto segue a regra do perfil: só com Pro/Elite vigente pela assinatura
+ * (`canShowBarMenu`), nunca por `bar.plan`, que só acompanha o fim do trial
+ * uma vez por dia. Roda depois do cache pelo mesmo motivo da nota: um trial
+ * que vence ou uma assinatura que vira `past_due` esconde o valor na hora, e
+ * não um TTL depois.
  */
-async function comGastoMedio<T extends { id: string }>(bars: T[]) {
-  const rows = bars.length
+async function lerCartoes(ids: string[]) {
+  const rows = ids.length
     ? await db
         .select({
           id: bar.id,
           averageSpendCents: bar.averageSpendCents,
+          amenities: bar.amenities,
           subscription: {
             plan: subscription.plan,
             status: subscription.status,
@@ -286,60 +289,53 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
         })
         .from(bar)
         .leftJoin(subscription, eq(subscription.barId, bar.id))
-        .where(
-          inArray(
-            bar.id,
-            bars.map((achado) => achado.id)
-          )
-        )
+        .where(inArray(bar.id, ids))
     : []
-  const gasto = new Map(
+  return new Map(
     rows.map((row) => [
       row.id,
-      canShowBarMenu(row.subscription) ? row.averageSpendCents : null
+      {
+        averageSpendCents: canShowBarMenu(row.subscription)
+          ? row.averageSpendCents
+          : null,
+        amenities: declaredAmenityIds(row.amenities)
+      }
     ])
   )
+}
+
+async function comGastoMedio<T extends { id: string }>(bars: T[]) {
+  const cartoes = await lerCartoes(bars.map((achado) => achado.id))
   return bars.map((achado) => ({
     ...achado,
-    averageSpendCents: gasto.get(achado.id) ?? null
+    averageSpendCents: cartoes.get(achado.id)?.averageSpendCents ?? null
   }))
 }
 
 /**
- * O que o card do bar no app mostra além da busca (07 do design): as
+ * O card do bar no app (07 do design): além do gasto médio, as
  * características declaradas e quantos marcaram presença no próximo jogo.
  * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
  * segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele sai `null`,
  * e jogo vazio não vira número na tela; junto vão as iniciais de quem vai.
  */
-async function comCaracteristicasEPresenca<
+async function comCartao<
   T extends { id: string; nextEvent?: { id: string } | undefined }
 >(bars: T[]) {
   const eventIds = bars.flatMap((achado) =>
     achado.nextEvent ? [achado.nextEvent.id] : []
   )
-  const [declarados, vao] = await Promise.all([
-    bars.length
-      ? db
-          .select({ id: bar.id, amenities: bar.amenities })
-          .from(bar)
-          .where(
-            inArray(
-              bar.id,
-              bars.map((achado) => achado.id)
-            )
-          )
-      : [],
+  const [cartoes, vao] = await Promise.all([
+    lerCartoes(bars.map((achado) => achado.id)),
     readGoing(eventIds)
   ])
-  const caracteristicas = new Map(
-    declarados.map((row) => [row.id, declaredAmenityIds(row.amenities)])
-  )
   return bars.map((achado) => {
+    const cartao = cartoes.get(achado.id)
     const going = achado.nextEvent ? vao.get(achado.nextEvent.id) : undefined
     return {
       ...achado,
-      amenities: caracteristicas.get(achado.id) ?? [],
+      averageSpendCents: cartao?.averageSpendCents ?? null,
+      amenities: cartao?.amenities ?? [],
       goingCount: going?.count ?? null,
       goingInitials: going?.initials ?? []
     }
@@ -446,9 +442,7 @@ export const pubsRouter = router({
       // depois de a exibição ser desligada — e desligar exibição costuma ser
       // a reação a um problema, ou seja, exatamente a hora em que a demora
       // não é aceitável.
-      const bars = await comCaracteristicasEPresenca(
-        await comGastoMedio(pagina.bars)
-      )
+      const bars = await comCartao(pagina.bars)
       return {
         ...pagina,
         bars: notaPublica
@@ -989,9 +983,7 @@ export const pubsRouter = router({
         Number.POSITIVE_INFINITY
       )
       const notaPublica = await getAppConfig('rating.public_display')
-      const completos = await comCaracteristicasEPresenca(
-        await comGastoMedio(bars)
-      )
+      const completos = await comCartao(bars)
       return notaPublica
         ? completos
         : completos.map((achado) => ({ ...achado, rating: null }))
