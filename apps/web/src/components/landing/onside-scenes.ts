@@ -203,7 +203,7 @@ let SHARED: Shared | undefined
 
 function shared(): Shared {
   if (SHARED) return SHARED
-  // O pino do app (map-icons.ts): gota 36×46 com contorno ink e círculo paper, extrudada. Ponta na origem.
+  // O pino do antigo mapa do web: gota 36×46 com contorno ink e círculo paper, extrudada. Ponta na origem.
   const k = 0.056
   const P = (x: number, y: number): [number, number] => [
     (x - 18) * k,
@@ -796,7 +796,7 @@ export function mapa(
       u.tvMat.color.copy(tmp)
       u.spillMat.opacity = (0.08 + 0.3 * u.glow) * u.flick
       u.signMat.color.copy(signDim).lerp(signHot, u.glow)
-      // the app pin: grows 42/36 on highlight (like map-icons.ts), hovers a touch, always faces the camera
+      // the app pin: grows 42/36 on highlight (like the old web map pin), hovers a touch, always faces the camera
       const ps = 1 + (42 / 36 - 1) * u.glow
       u.pin.scale.set(ps, ps, ps)
       const bob = Math.sin(t * 1.4 + u.phase) * 0.1 + 0.12

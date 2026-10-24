@@ -2,8 +2,8 @@
 
 Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
 descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
-Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Stripe e tiles
-do mapa são dublês.
+Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos) e Stripe são
+dublês.
 
 ```bash
 bun run test:e2e                              # tudo, nos dois projetos
@@ -51,7 +51,7 @@ Os argumentos depois de `--` chegam inteiros ao Playwright; o script só faz
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
-| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API do Stripe e tiles) |
+| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ e API do Stripe) |
 | `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
 
 Várias worktrees podem rodar ao mesmo tempo desde que cada uma tenha portas e
@@ -81,7 +81,7 @@ vazio.
 apps/e2e/
   playwright.config.ts   projetos, webServer, trace/vídeo só em falha
   env.ts                 portas, URLs, segredos de teste, ambiente do servidor
-  stubs/server.ts        LocationIQ + API do Stripe + TileJSON/tiles vazios (Bun)
+  stubs/server.ts        LocationIQ + API do Stripe (Bun)
   fixtures/              blocos para os testes — um arquivo por assunto
   tests/setup.setup.ts   estado global limpo + uma sessão por papel
   tests/smoke/           sentinela e prova de que cada dublê está ligado
@@ -207,7 +207,6 @@ com o de `/privacidade` (WEB-240).
 | R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
 | Stripe (webhook) | `STRIPE_WEBHOOK_SECRET` de teste no servidor; o helper assina como o Stripe (`stripe-signature: t=…,v1=HMAC-SHA256`). O app não confia no corpo do evento: busca no Stripe (o stub) o estado atual da assinatura, então ela precisa estar semeada | `deliverSubscription(request, tipo, stripeSubscription({ id, status, plan, userId }))` em `fixtures/stripe.ts` semeia e entrega; `sendStripeWebhook(request, evento)` só entrega. Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
 | Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`) e lido/atualizado em `/v1/customers/<id>` (sempre sem endereço, para o app mandar o do cadastro), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido, até `setFounderCoupon(request, estado)` trocar a resposta: `'exhausted'` é o cupom esgotado, `'missing'` o 404 de cupom que não existe na conta — daí a sessão que mandar cupom é recusada, como no Stripe. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`, e `DELETE /v1/subscriptions/<id>` a encerra (passa a `canceled`; 404 sem semear), que é o que a exclusão da conta chama (WEB-336). Saldo do cliente e prévia da próxima fatura (`expand[]=customer` e `POST /v1/invoices/create_preview`, WEB-350) saem de `seedStripeBalance(request, assinatura, { balance, nextAmountDue })`, em centavos; sem semear, saldo zero, e assinatura que não está no stub responde 404 (o app segue sem o saldo). Cartão salvo: `stripeSubscription({ cardLast4 })` põe a forma de pagamento na assinatura, e o stub só a devolve como objeto com `expand[]=default_payment_method`. | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
-| Mapa | `VITE_MAP_TILES_URL` aponta para o TileJSON do stub (`/tiles.json`); tiles MVT respondem 204: o mapa monta, marcadores aparecem | — |
 | Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
 
 Rede externa está bloqueada no Chromium (`--host-resolver-rules`): o que não é

@@ -46,16 +46,6 @@ export const env = createEnv({
   clientPrefix: 'VITE_',
   client: {
     /**
-     * Basemap (WEB-73, WEB-218).
-     *
-     * TileJSON (`.json`) no Worker ou, enquanto Infra não migra, URL pública
-     * do `.pmtiles` no R2 — o cliente escolhe pelo sufixo (`map-style.ts`).
-     *
-     * Não é segredo: substituiu o par Google Maps (`VITE_GOOGLE_MAPS_*`).
-     */
-    VITE_MAP_TILES_URL: z.optional(z.url()),
-
-    /**
      * Projeto do PostHog. Ausente = sem analytics, que é o estado normal em
      * desenvolvimento. `initPostHog` já trata.
      */
@@ -79,7 +69,6 @@ export const env = createEnv({
     VITE_E2E_CONSENT_BANNER: z.optional(z.string())
   },
   runtimeEnv: {
-    VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
     VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,

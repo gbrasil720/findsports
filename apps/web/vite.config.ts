@@ -11,27 +11,7 @@ export default defineConfig(({ mode }) => ({
      * (WEB-333). Sem ele aqui o `vite dev` o descobre no meio da visita,
      * reempacota as dependências e recarrega a página.
      */
-    include: ['three'],
-    /**
-     * WEB-73: o worker do MapLibre e a thread principal trocam mensagens
-     * tipadas registradas em `maplibre-gl-shared.mjs`. Pré-empacotado, o lado
-     * principal passa a usar a cópia de `.vite/deps` enquanto o worker carrega
-     * o arquivo original — duas instâncias do mesmo módulo, e o handshake
-     * trava. Sem erro: o canvas aparece e nada é decodificado.
-     *
-     * Só afeta `vite dev`; no build o Rollup empacota os dois a partir da
-     * mesma origem.
-     */
-    exclude: ['maplibre-gl']
-  },
-  /**
-   * WEB-73: o worker do MapLibre é um módulo ES e importa
-   * `./maplibre-gl-shared.mjs`. O padrão do Vite é emitir worker como IIFE, e
-   * aí o `new Worker(url, { type: 'module' })` do MapLibre carrega um script
-   * que não é módulo. Ver `onside-map.tsx` para o resto da história.
-   */
-  worker: {
-    format: 'es'
+    include: ['three']
   },
   server: {
     port: 3001,

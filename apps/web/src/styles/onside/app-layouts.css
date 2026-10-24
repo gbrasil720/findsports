@@ -104,35 +104,6 @@
   }
 }
 
-/* ─── Map chrome ─── */
-.onside-app .onside-map-frame {
-  position: relative;
-  border: 1.5px solid var(--onside-ink);
-  border-radius: 0;
-  overflow: hidden;
-  background: var(--onside-stone);
-}
-
-.onside-app .onside-map-label {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 2;
-  padding: 6px 10px;
-  border: 1.5px solid var(--onside-ink);
-  background: var(--onside-paper);
-  font-family: var(--onside-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.onside-app .onside-map-label.is-bottom {
-  top: auto;
-  bottom: 12px;
-}
-
 /* ─── Admin layout ─── */
 .onside-app .onside-admin-grid {
   display: grid;

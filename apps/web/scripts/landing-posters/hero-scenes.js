@@ -61,7 +61,7 @@
     SHARED.cyl = new THREE.CylinderGeometry(0.5, 0.5, 1, 18);
     SHARED.head = new THREE.SphereGeometry(0.5, 22, 16);
     SHARED.ring = new THREE.RingGeometry(0.5, 0.9, 40);
-    // O pino do app (map-icons.ts): gota 36×46 com contorno ink e círculo paper, extrudada. Ponta na origem.
+    // O pino do antigo mapa do web: gota 36×46 com contorno ink e círculo paper, extrudada. Ponta na origem.
     const k = 0.056, P = (x, y) => [(x - 18) * k, (45.5 - y) * k];
     function drop(scale) {
       const s = new THREE.Shape(); const q = (x, y) => { const [a, b] = P(x, y); return [a * scale, b * scale]; };
@@ -307,7 +307,7 @@
         tmp.copy(tvBase).lerp(tvHot, tvMix).multiplyScalar(u.flick); u.tvMat.color.copy(tmp);
         u.spillMat.opacity = (0.08 + 0.3 * u.glow) * u.flick;
         u.signMat.color.copy(signDim).lerp(signHot, u.glow);
-        // the app pin: grows 42/36 on highlight (like map-icons.ts), hovers a touch, always faces the camera
+        // the app pin: grows 42/36 on highlight (like the old web map pin), hovers a touch, always faces the camera
         const ps = 1 + (42 / 36 - 1) * u.glow; u.pin.scale.set(ps, ps, ps);
         const bob = Math.sin(t * 1.4 + u.phase) * 0.1 + 0.12;
         u.pin.position.y = 3.1 + bob;
