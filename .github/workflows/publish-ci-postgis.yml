@@ -21,6 +21,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ghcr.io/gbrasil720/findsports/ci-postgis
   BASE_IMAGE: public.ecr.aws/docker/library/postgres:17-alpine
+  POSTGIS_REF: 2bcd236e3af9ec6e668db51eb37162a79f0eaeaa
 
 jobs:
   publish:
@@ -37,7 +38,11 @@ jobs:
       - name: Build PostGIS (PostGIS 3.5 / Postgres 17 alpine)
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch master https://github.com/postgis/docker-postgis.git /tmp/docker-postgis
+          # Commit fixo: o master do docker-postgis tirou 17-3.5/alpine em 18/10/2026
+          # (#463), e um clone do master quebrava o build.
+          git init -q /tmp/docker-postgis
+          git -C /tmp/docker-postgis fetch -q --depth 1 https://github.com/postgis/docker-postgis.git "${POSTGIS_REF}"
+          git -C /tmp/docker-postgis checkout -q FETCH_HEAD
           docker build \
             --build-arg "BASE_IMAGE=${BASE_IMAGE}" \
             -t "${IMAGE_NAME}:17-3.5-alpine" \
