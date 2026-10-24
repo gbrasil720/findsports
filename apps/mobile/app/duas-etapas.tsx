@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard'
 import { useRouter } from 'expo-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Linking,
   Share,
@@ -73,6 +73,7 @@ export default function TwoFactorSetup() {
     clearTimeout(copiedTimer.current)
     copiedTimer.current = setTimeout(() => setCopied(null), 1500)
   }
+  useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
   const begin = async () => {
     setError(null)
