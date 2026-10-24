@@ -1,7 +1,11 @@
 import Edit from 'reicon-react/icons/Edit'
 import Trash from 'reicon-react/icons/Trash'
 import { getEventTemporalState } from '@/domain/events'
-import { formatGameSubtitle } from '@/domain/pub-profile'
+import {
+  formatDayLabel,
+  formatEventTime,
+  formatGameSubtitle
+} from '@/domain/pub-profile'
 import type { AdminEvent } from './admin-model'
 import { getDeleteBlock } from './event-delete-dialog'
 
@@ -21,32 +25,6 @@ function getTimeUntil(startsAt: string | Date): string {
   return `em ${days} dia${days !== 1 ? 's' : ''}`
 }
 
-function formatEventDate(startsAt: string | Date): {
-  date: string
-  time: string
-} {
-  const d = new Date(startsAt)
-  const today = new Date()
-  const tomorrow = new Date()
-  tomorrow.setDate(today.getDate() + 1)
-
-  let date: string
-  if (d.toDateString() === today.toDateString()) date = 'Hoje'
-  else if (d.toDateString() === tomorrow.toDateString()) date = 'Amanhã'
-  else
-    date = d.toLocaleDateString('pt-BR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short'
-    })
-
-  const time = d.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-  return { date, time }
-}
-
 type Props = {
   event: AdminEvent
   /** Presenças do jogo sobre a média do bar; ausente sem histórico. */
@@ -63,7 +41,7 @@ export function EventListItem({
   onDelete,
   isDeleting
 }: Props) {
-  const { date, time } = formatEventDate(e.startsAt)
+  const startsAt = new Date(e.startsAt)
   const temporalState = getEventTemporalState(e.startsAt, e.endsAt)
   const live = temporalState === 'live'
   const past = temporalState === 'past'
@@ -86,14 +64,14 @@ export function EventListItem({
     >
       <div className="text-center">
         <div className="mb-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-widest leading-none">
-          {date}
+          {formatDayLabel(startsAt, undefined, 'short')}
         </div>
         <div
           className={`onside-display text-xl tabular-nums ${
             past ? 'text-[var(--onside-muted)]' : 'text-[var(--onside-ink)]'
           }`}
         >
-          {time}
+          {formatEventTime(startsAt)}
         </div>
         {live && (
           <div className="mt-1.5 flex items-center justify-center gap-1">

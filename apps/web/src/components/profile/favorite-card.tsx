@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
-import { formatProfileEventDate } from './profile-formatters'
+import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import type { Favorite } from './profile-model'
 
 type Props = {
@@ -40,7 +40,8 @@ export function FavoriteCard({ favorite, onUnfavorite, isPending }: Props) {
                 : nextEvent.participantFreeText || nextEvent.championship}
             </div>
             <div className="mt-0.5 text-[var(--onside-muted)] text-xs">
-              {formatProfileEventDate(nextEvent.startsAt)}
+              {formatDayLabel(new Date(nextEvent.startsAt), undefined, 'short')}
+              , {formatEventTime(new Date(nextEvent.startsAt))}
             </div>
           </div>
         ) : (

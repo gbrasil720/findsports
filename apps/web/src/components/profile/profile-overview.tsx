@@ -6,7 +6,7 @@ import Fire from 'reicon-react/icons/Fire'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
 import Medal from 'reicon-react/icons/Medal'
-import { formatProfileEventDate } from './profile-formatters'
+import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import type {
   BarRecommendation,
   CompletionItem,
@@ -241,7 +241,12 @@ export function ProfileOverview({
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="font-bold text-[var(--onside-ink)] text-xs">
-                      {formatProfileEventDate(event.startsAt)}
+                      {formatDayLabel(
+                        new Date(event.startsAt),
+                        undefined,
+                        'short'
+                      )}
+                      , {formatEventTime(new Date(event.startsAt))}
                     </div>
                     <div className="text-[10px] text-[var(--onside-muted)] uppercase tracking-wide">
                       {event.sport.name}
