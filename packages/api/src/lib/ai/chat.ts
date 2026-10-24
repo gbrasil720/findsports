@@ -22,8 +22,7 @@ import type { AiCall, AiStatus } from './run'
  * recebem a mesma coisa (Chat Completions, mesmo prompt, mesmas ferramentas,
  * raciocínio desligado).
  *
- * Com `emit` (R24, `ai.converse`), cada passo sai como evento enquanto
- * acontece: "Entendi o pedido" na primeira ferramenta, as ferramentas e seus
+ * Cada passo sai como evento enquanto acontece (R24, `ai.converse`): "Entendi o pedido" na primeira ferramenta, as ferramentas e seus
  * resultados, "Comparar e ordenar" antes da resposta, e o texto no fim.
  */
 
@@ -190,7 +189,7 @@ export type ConverseDeps = {
   context?: string[]
   /** "Refazer": a mesma pergunta pede outra resposta. */
   temperature?: number
-  emit?: Emit
+  emit: Emit
 }
 
 /**
@@ -259,24 +258,22 @@ export async function converse(
       cited === null ? null : [...new Set(cited)],
       bars
     )
-    if (emit) {
-      if (ranking)
-        emit({
-          type: 'step',
-          id: 'rank',
-          label: 'Comparar e ordenar',
-          state: 'done'
-        })
-      // Os cards já saíram na busca; se a resposta escolheu outros (ou outra
-      // ordem), a lista final substitui, e o [[n]] aponta para ela.
-      const ids = bars.map((b) => b.id)
-      if (ids.join() !== (deps.state.shown ?? []).join())
-        emit({
-          type: 'bars',
-          bars: bars.map((b) => toChatBar(b, deps.now))
-        })
-      emit({ type: 'text', text: clean })
-    }
+    if (ranking)
+      emit({
+        type: 'step',
+        id: 'rank',
+        label: 'Comparar e ordenar',
+        state: 'done'
+      })
+    // Os cards já saíram na busca; se a resposta escolheu outros (ou outra
+    // ordem), a lista final substitui, e o [[n]] aponta para ela.
+    const ids = bars.map((b) => b.id)
+    if (ids.join() !== deps.state.shown.join())
+      emit({
+        type: 'bars',
+        bars: bars.map((b) => toChatBar(b, deps.now))
+      })
+    emit({ type: 'text', text: clean })
     return {
       reply: {
         text: clean,
@@ -297,8 +294,7 @@ export async function converse(
       messages,
       tools: last
         ? [RESPOND_TOOL]
-        : // Proposta só existe onde há tela para confirmar (`ai.converse`).
-          [...READ_TOOLS, ...(emit ? PROPOSAL_TOOLS : []), RESPOND_TOOL],
+        : [...READ_TOOLS, ...PROPOSAL_TOOLS, RESPOND_TOOL],
       tool_choice: last
         ? { type: 'function', function: { name: 'responder' } }
         : 'auto',
@@ -320,7 +316,7 @@ export async function converse(
       if (text.trim()) return finish(text, ids, args.sugestoes)
       throw new Error('responder sem texto.')
     }
-    if (!toolCalls.length && emit) {
+    if (!toolCalls.length) {
       const first = calls[0] as ToolCall
       const tags = requestTags(
         first.function.name,
@@ -367,7 +363,7 @@ export async function converse(
       })
     }
     // Com bares na mão, a próxima volta do modelo compara e responde.
-    if (emit && !ranking && deps.state.bars.size) {
+    if (!ranking && deps.state.bars.size) {
       ranking = true
       emit({
         type: 'step',

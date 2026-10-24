@@ -18,7 +18,9 @@ const CASA = bar('22222222-2222-4222-8222-222222222222', 'Casa 92')
 const stateWith = (...bars: SearchBar[]): ToolState => ({
   bars: new Map(bars.map((b) => [b.id, b])),
   opened: new Map(),
-  lastSearch: null
+  lastSearch: null,
+  proposals: [],
+  shown: []
 })
 
 const toolCall = (name: string, args: unknown, id = name) => ({
@@ -83,7 +85,8 @@ describe('conversa de uma mensagem', () => {
     },
     state,
     now: new Date('2026-10-21T18:00:00Z'),
-    hasOrigin: true
+    hasOrigin: true,
+    emit: () => {}
   })
 
   it('busca, responde e confere: bar inventado não sai', async () => {
@@ -233,6 +236,7 @@ describe('eventos da conversa (R24)', () => {
       origin: { lat: -23.56, lng: -46.69 },
       radiusKm: 3,
       now: NOW,
+      userId: 'torcedor',
       day: 'today' as const,
       placeLabel: 'Pinheiros',
       emit
@@ -335,6 +339,9 @@ describe('eventos da conversa (R24)', () => {
       origin: { lat: -23.56, lng: -46.69 },
       radiusKm: 3,
       now: NOW,
+      userId: 'torcedor',
+      day: null,
+      placeLabel: null,
       emit: (e: ChatEvent) => events.push(e)
     }
     await converse('bar', [], {
@@ -352,24 +359,6 @@ describe('eventos da conversa (R24)', () => {
     expect(events.at(-2)?.type).toBe('bars')
     // Sem time pedido: nada de "Achei o jogo".
     expect(events.some((e) => e.type === 'step' && e.id === 'game')).toBe(false)
-  })
-
-  it('sem emit (ai.chat antigo): sem ferramenta de proposta', async () => {
-    const bodies: { tools: { function: { name: string } }[] }[] = []
-    await converse('oi', [], {
-      call: async (_m, input) => {
-        bodies.push(input as never)
-        return toolCall('responder', { texto: 'Oi.', bares: [] })
-      },
-      models: ['modelo-a', 'modelo-b'],
-      runTool: async () => ({}),
-      state: stateWith(),
-      now: NOW,
-      hasOrigin: true
-    })
-    const names = bodies[0]?.tools.map((t) => t.function.name)
-    expect(names).not.toContain('marcar_vou_assistir')
-    expect(names).not.toContain('lembrar')
   })
 })
 
@@ -406,7 +395,10 @@ describe('proposta (R24)', () => {
         origin: null,
         radiusKm: 3,
         now: NOW,
-        userId: 'torcedor'
+        userId: 'torcedor',
+        day: null,
+        placeLabel: null,
+        emit: () => {}
       },
       state
     )
@@ -421,21 +413,21 @@ describe('proposta (R24)', () => {
       erro: 'Esse jogo não está marcado nesse bar.',
       jogos: [{ titulo: 'Corinthians × Palmeiras' }]
     })
-    expect(state.proposals ?? []).toHaveLength(0)
+    expect(state.proposals).toHaveLength(0)
   })
 
   it('jogo pedido em outra ordem, com x e sem acento: acha', async () => {
     const { state } = await propose('vou no zé', {
       jogo: 'PALMEIRAS x corinthians'
     })
-    expect(state.proposals?.[0]?.game.id).toBe('jogo-cor')
+    expect(state.proposals[0]?.game.id).toBe('jogo-cor')
   })
 
   it('"chamar" com nome que não está na mensagem é ignorado', async () => {
     const { result, state } = await propose('marca que vou no Bar do Zé', {
       chamar: 'Marina'
     })
-    expect(state.proposals?.[0]?.friend).toBeNull()
+    expect(state.proposals[0]?.friend).toBeNull()
     expect(result.dados).toMatchObject({
       chamar_ignorado: 'O torcedor não escreveu esse nome na mensagem.'
     })
@@ -443,7 +435,7 @@ describe('proposta (R24)', () => {
 
   it('"chamar" com menos de 3 letras é ignorado mesmo na mensagem', async () => {
     const { state } = await propose('vou no zé, chama a Bia', { chamar: 'a' })
-    expect(state.proposals?.[0]?.friend).toBeNull()
+    expect(state.proposals[0]?.friend).toBeNull()
   })
 
   it('mensagem sem pedido de marcar, chamar ou lembrar: não propõe', async () => {
@@ -451,6 +443,6 @@ describe('proposta (R24)', () => {
       chamar: 'Corinthians'
     })
     expect(result.erro).toContain('não pediu')
-    expect(state.proposals ?? []).toHaveLength(0)
+    expect(state.proposals).toHaveLength(0)
   })
 })

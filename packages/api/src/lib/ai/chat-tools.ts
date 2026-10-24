@@ -292,9 +292,9 @@ export type ToolState = {
   opened: Map<string, string>
   lastSearch: ChatSearch | null
   /** Propostas desta mensagem, na ordem (R24). */
-  proposals?: PendingProposal[]
+  proposals: PendingProposal[]
   /** Ids da última lista mandada no evento `bars`. */
-  shown?: string[]
+  shown: string[]
 }
 
 export type ToolContext = {
@@ -304,12 +304,12 @@ export type ToolContext = {
   origin: { lat: number; lng: number } | null
   radiusKm: number
   now: Date
-  userId?: string
+  userId: string
   /** Chip de dia do app: vale quando o modelo não passa data. */
-  day?: 'today' | 'tomorrow' | null
+  day: 'today' | 'tomorrow' | null
   /** O que o chip de local mostra ("Vila Madalena"), só para texto. */
-  placeLabel?: string | null
-  emit?: Emit
+  placeLabel: string | null
+  emit: Emit
 }
 
 type Args = Record<string, unknown>
@@ -387,7 +387,7 @@ type ToolReport = {
 const step = (
   ctx: ToolContext,
   event: Omit<Extract<ChatEvent, { type: 'step' }>, 'type'>
-) => ctx.emit?.({ type: 'step', ...event })
+) => ctx.emit({ type: 'step', ...event })
 
 /**
  * "Perto de Pinheiros" é ponto de partida, não filtro, mas o modelo às vezes
@@ -489,7 +489,7 @@ async function searchBars(
     validDate,
     neighborhood
   )
-  ctx.emit?.({
+  ctx.emit({
     type: 'tool',
     id: '',
     name: 'buscar_bares',
@@ -542,7 +542,7 @@ async function searchBars(
       ...report.params.filter(([k]) => k !== 'time' && k !== 'campeonato')
     ]
   }
-  ctx.emit?.({
+  ctx.emit({
     type: 'tool',
     id: '',
     name: 'buscar_bares',
@@ -558,7 +558,7 @@ async function searchBars(
   for (const b of bars) state.bars.set(b.id, b)
   if (bars.length) {
     state.shown = bars.map((b) => b.id)
-    ctx.emit?.({ type: 'bars', bars: bars.map((b) => toChatBar(b, ctx.now)) })
+    ctx.emit({ type: 'bars', bars: bars.map((b) => toChatBar(b, ctx.now)) })
   }
   step(ctx, {
     id: 'search',
@@ -777,8 +777,7 @@ async function propose(
   const term = named ? fold(named.replace(/^@/, '')) : ''
   const asked =
     named && term.length >= 3 && fold(ctx.message).includes(term) ? named : null
-  const friend =
-    asked && ctx.userId ? await findFriend(ctx.userId, asked) : null
+  const friend = asked ? await findFriend(ctx.userId, asked) : null
   const proposal: PendingProposal = {
     bar: { id: b.id, name: b.name, photoUrl: b.photoUrl ?? null },
     game: {
@@ -791,7 +790,6 @@ async function propose(
     friend,
     remind: kind === 'lembrar' || args.lembrar === true
   }
-  state.proposals ??= []
   state.proposals.push(proposal)
   state.opened.set(b.id, b.name)
   report.state = 'wait'
@@ -903,14 +901,12 @@ export async function runTool(
   // O id da chamada vai em todo evento da ferramenta, inclusive nos que a
   // própria ferramenta manda enquanto roda.
   const emit = ctx.emit
-  const scoped: ToolContext = emit
-    ? {
-        ...ctx,
-        emit: (e) => emit(e.type === 'tool' ? { ...e, id: callId } : e)
-      }
-    : ctx
+  const scoped: ToolContext = {
+    ...ctx,
+    emit: (e) => emit(e.type === 'tool' ? { ...e, id: callId } : e)
+  }
   if (name !== 'buscar_bares')
-    emit?.({ type: 'tool', id: callId, name, label: label(), state: 'run' })
+    emit({ type: 'tool', id: callId, name, label: label(), state: 'run' })
   let result: unknown
   try {
     result = await execute(name, args, scoped, state, report)
@@ -921,7 +917,7 @@ export async function runTool(
       erro: error instanceof Error ? error.message : 'Falha na consulta.'
     }
   }
-  emit?.({
+  emit({
     type: 'tool',
     id: callId,
     name,

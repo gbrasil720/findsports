@@ -209,7 +209,8 @@ async function talk(
     bars: new Map(),
     opened: new Map(),
     lastSearch: null,
-    proposals: []
+    proposals: [],
+    shown: []
   }
   const toolCtx = {
     caller: contextCaller(ctx),
@@ -276,7 +277,7 @@ async function talk(
         ids: reply.invented
       })
     )
-  for (const p of state.proposals ?? []) {
+  for (const p of state.proposals) {
     const [row] = await db
       .insert(aiProposal)
       .values({
