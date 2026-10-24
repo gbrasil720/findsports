@@ -420,6 +420,18 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   validação aberta, com as peças do jogo aberto (`PessoaQuemVai`); `#jogo-<id>` rola até
   o jogo ("Ver os 24 →"). O bar Elite que confirma pela comanda lança os códigos aqui
   (`admin/late-code-entry.tsx`), com o "Faltou lançar?".
+- **Meu espaço** (`/admin/meu-espaco`, `components/admin/meu-espaco.tsx`, contas em
+  `espaco-model.ts`): um formulário só, com rascunho local até "Salvar alterações", que
+  manda cada parte à sua mutation (`updateMe`, `updateMenuInfo`, `updateHouseOffer`,
+  `updateOpeningHours`) só se ela mudou; cardápio (Pro) e oferta (Elite) só entram com o
+  plano em dia (`recursoPago`). Foto e "como o código é conferido" (WEB-412) gravam na
+  hora. A prévia ao lado (`espaco-previa.tsx`) é a página do bar no app, desenhada do
+  rascunho; Card e Mapa são "em breve". CEP e galeria também: o bar guarda rua e número
+  num campo só.
+- **Configurações** (`/admin/configuracoes`, `components/account/configuracoes.tsx`): os
+  diálogos de senha, 2FA e exclusão são os de `components/account/*`. "Baixar meus dados"
+  baixa o JSON de `account.exportBarData` (conta, bar, plano e jogos; nada de torcedor).
+  Avisos por e-mail são "em breve".
 
 ### Houdini (painel interno)
 
