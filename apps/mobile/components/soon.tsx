@@ -1,5 +1,5 @@
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
@@ -47,6 +47,7 @@ export function useSoon() {
     setMessage(sentence)
     timer.current = setTimeout(() => setMessage(null), 1600)
   }, [])
+  useEffect(() => () => clearTimeout(timer.current), [])
   const toast = message ? (
     <Animated.View entering={IN} pointerEvents="none" style={styles.wrap}>
       <Glass tone="dark" style={styles.toast}>
