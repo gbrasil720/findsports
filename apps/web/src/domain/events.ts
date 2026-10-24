@@ -1,4 +1,4 @@
-import { getEventEnd } from '@findsports_oficial/db/event-window'
+import { hasEventEnded } from '@findsports_oficial/db/event-window'
 
 export type EventTemporalState = 'upcoming' | 'live' | 'past'
 
@@ -7,13 +7,9 @@ export function getEventTemporalState(
   endsAt: string | Date | null,
   now: string | Date | number = Date.now()
 ): EventTemporalState {
-  const startsAtMs = new Date(startsAt).getTime()
-  const endsAtMs = getEventEnd({ startsAt, endsAt }).getTime()
-  const nowMs = typeof now === 'number' ? now : new Date(now).getTime()
-
-  if (nowMs < startsAtMs) return 'upcoming'
-  if (nowMs <= endsAtMs) return 'live'
-  return 'past'
+  const nowMs = new Date(now).getTime()
+  if (nowMs < new Date(startsAt).getTime()) return 'upcoming'
+  return hasEventEnded({ startsAt, endsAt }, nowMs) ? 'past' : 'live'
 }
 
 export function compareEventStartsAscending(

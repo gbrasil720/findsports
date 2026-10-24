@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
 import {
   keepPreviousData,
   useMutation,
@@ -65,7 +66,7 @@ const LIMIT_FIELDS: Array<{
   { key: 'chatMonthlyMessages', label: 'Mensagens do chat no mês', unit: 'n' }
 ]
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 function usd(value: number | null, digits = 2) {
   if (value === null) return '—'

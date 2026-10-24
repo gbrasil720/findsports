@@ -140,18 +140,10 @@ export function formatGameSubtitle(title: string, parts: string[]): string {
 }
 
 /**
- * Dia e hora de jogo saem sempre no relógio de Brasília, onde os bares estão,
- * e não no fuso do navegador de quem lê: o jogo das 22:30 de quarta não vira
- * "quinta, 01:30" para quem abre o app de fora do Brasil.
- */
-function nextDay(day: string): string {
-  const date = new Date(`${day}T12:00:00Z`)
-  date.setUTCDate(date.getUTCDate() + 1)
-  return date.toISOString().slice(0, 10)
-}
-
-/**
  * "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo.
+ * Dia e hora saem sempre no relógio de Brasília, onde os bares estão, e não
+ * no fuso do navegador de quem lê: o jogo das 22:30 de quarta não vira
+ * "quinta, 01:30" para quem abre o app de fora do Brasil.
  * `short` é a forma dos cards ("qua., 26 de ago."); `long`, a do perfil
  * ("quarta-feira, 26 de ago.").
  */
@@ -161,10 +153,9 @@ export function formatDayLabel(
   weekday: 'long' | 'short' = 'long'
 ): string {
   const day = brasiliaDay(date)
-  const today = brasiliaDay(now)
 
-  if (day === today) return 'Hoje'
-  if (day === nextDay(today)) return 'Amanhã'
+  if (day === brasiliaDay(now)) return 'Hoje'
+  if (day === brasiliaDay(now, 1)) return 'Amanhã'
 
   return date.toLocaleDateString('pt-BR', {
     weekday,

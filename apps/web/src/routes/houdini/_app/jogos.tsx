@@ -5,6 +5,10 @@ import {
 } from '@findsports_oficial/db/event-limits'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
+import {
   keepPreviousData,
   useMutation,
   useQuery,
@@ -43,7 +47,7 @@ const WARN_SHORT: Record<Warning['kind'], string> = {
   free_text: 'time fora do catálogo'
 }
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 /** Dia e hora em Brasília, no formato dos campos `date` e `time`. */
 function brt(date: Date | string) {
@@ -53,9 +57,11 @@ function brt(date: Date | string) {
   return { day, time: time.slice(0, 5) }
 }
 
-// ponytail: Brasília em -03:00 fixo; o Brasil não tem horário de verão desde 2019.
 function fromBrt(day: string, time: string) {
-  return new Date(`${day}T${time}:00-03:00`)
+  const [hours = 0, minutes = 0] = time.split(':').map(Number)
+  return new Date(
+    brasiliaDayStart(day).getTime() + (hours * 60 + minutes) * 60_000
+  )
 }
 
 function whenLabel(startsAt: Date | string) {

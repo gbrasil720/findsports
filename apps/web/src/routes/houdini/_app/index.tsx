@@ -1,5 +1,9 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
@@ -28,7 +32,7 @@ function greeting(now = new Date()) {
   return 'Boa tarde.'
 }
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 const day = (date: Date) => date.toLocaleDateString('pt-BR', { timeZone: TZ })
 
 /** "hoje 14:02", "ontem 22:05" ou "12/10 09:30", no horário de Brasília. */
@@ -40,9 +44,8 @@ function when(value: Date | string) {
     timeZone: TZ
   })
   const now = new Date()
-  if (day(date) === day(now)) return `hoje ${time}`
-  if (day(date) === day(new Date(now.getTime() - 86_400_000)))
-    return `ontem ${time}`
+  if (brasiliaDay(date) === brasiliaDay(now)) return `hoje ${time}`
+  if (brasiliaDay(date) === brasiliaDay(now, -1)) return `ontem ${time}`
   return `${day(date).slice(0, 5)} ${time}`
 }
 

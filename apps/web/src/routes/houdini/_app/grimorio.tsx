@@ -1,3 +1,7 @@
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -38,19 +42,13 @@ const FILTERS = [
 ] as const
 
 function dayLabel(date: Date | string) {
-  const day = new Date(date).toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+  if (brasiliaDay(date) === brasiliaDay(new Date())) return 'Hoje'
+  return new Date(date).toLocaleDateString('pt-BR', {
+    timeZone: BRASILIA_TIME_ZONE,
     weekday: 'long',
     day: '2-digit',
     month: 'long'
   })
-  const today = new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long'
-  })
-  return day === today ? 'Hoje' : day
 }
 
 function byDay(entries: GrimorioEntry[]) {
