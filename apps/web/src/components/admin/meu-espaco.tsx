@@ -337,7 +337,7 @@ export function MeuEspaco() {
         </p>
       ) : null}
 
-      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid items-start gap-7 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Secao
             titulo={`Perfil ${feitos} de ${checklist.length}`}
@@ -511,7 +511,7 @@ export function MeuEspaco() {
           />
         </div>
 
-        <div className="xl:sticky xl:top-5">
+        <div className="min-[1100px]:sticky min-[1100px]:top-5">
           <EspacoPrevia
             rascunho={r}
             photoUrl={bar.photoUrl}
