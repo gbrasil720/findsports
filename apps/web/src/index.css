@@ -3,7 +3,6 @@
 @import "./components/landing/onside-page.css";
 @import "./components/consent/cookie-consent.css";
 @import "./components/impersonation-banner.css";
-@import "./components/billing/subscription-receipt.css";
 @import "./components/not-found/not-found-page.css";
 @import "./components/onboarding/invite-state-page.css";
 @source "./**/*.{ts,tsx}";
