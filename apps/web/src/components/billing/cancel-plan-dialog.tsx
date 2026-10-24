@@ -126,10 +126,10 @@ export function CancelPlanDialog({
               key={perda.rotulo}
               className={`flex items-center gap-3.5 py-[11px] ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
             >
-              <span className="min-w-12 font-[family-name:var(--onside-display)] text-[28px] text-[var(--painel-live)] leading-none">
+              <span className="min-w-12 shrink-0 font-[family-name:var(--onside-display)] text-[28px] text-[var(--painel-live)] leading-none">
                 {perda.valor.toLocaleString('pt-BR')}
               </span>
-              <span className="text-[14.5px]">{perda.rotulo}</span>
+              <span className="min-w-0 text-[14.5px]">{perda.rotulo}</span>
             </div>
           ))}
         </Card>
