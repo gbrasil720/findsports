@@ -18,6 +18,7 @@ import {
   event,
   eventParticipants,
   subscription,
+  subscriptionCancelReason,
   subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
@@ -43,6 +44,7 @@ import {
 import { readBillingBalance } from '../lib/billing-balance'
 import { readInvoices } from '../lib/billing-invoices'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
+import { cancelReasonSchema } from '../lib/cancel-reasons'
 import {
   canCancelSubscription,
   getCurrentPlan,
@@ -953,32 +955,47 @@ export const pubRouter = router({
     )
   }),
 
-  // "Cancelar assinatura" de `/admin/billing` (WEB-339): só a URL do portal,
-  // sem escrita no banco. Mutation porque cria uma sessão no Stripe.
-  openSubscriptionCancel: pubProcedure.mutation(async ({ ctx }) => {
-    const { subscription: current } = await getOwnBar(ctx.session.user.id)
-    const subscriptionId = current?.externalSubscriptionId
-    if (
-      !current ||
-      !subscriptionId ||
-      !canCancelSubscription({
-        ...current,
-        standing: getSubscriptionStanding(current)
-      })
-    ) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'Não há assinatura em vigor para cancelar.'
-      })
-    }
-    return {
-      url: await createSubscriptionCancelUrl(
+  // "Cancelar assinatura" de `/admin/billing` (WEB-339): a URL do portal. A
+  // assinatura não muda aqui; o único registro é o motivo, quando o dono
+  // escolheu um (WEB-445), gravado depois de o portal abrir, para tentativa
+  // que falhou no Stripe não contar duas vezes. Mutation porque cria uma
+  // sessão no Stripe.
+  openSubscriptionCancel: pubProcedure
+    .input(z.object({ reason: cancelReasonSchema.optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const { id: barId, subscription: current } = await getOwnBar(
+        ctx.session.user.id
+      )
+      const subscriptionId = current?.externalSubscriptionId
+      if (
+        !current ||
+        !subscriptionId ||
+        !canCancelSubscription({
+          ...current,
+          standing: getSubscriptionStanding(current)
+        })
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Não há assinatura em vigor para cancelar.'
+        })
+      }
+      const url = await createSubscriptionCancelUrl(
         stripeClient,
         subscriptionId,
         new URL('/admin/billing', env.BETTER_AUTH_URL).href
       )
-    }
-  }),
+      if (input?.reason) {
+        // O motivo é opcional: falhar ao gravá-lo não segura o cancelamento.
+        await db
+          .insert(subscriptionCancelReason)
+          .values({ barId, plan: current.plan, reason: input.reason })
+          .catch((error: unknown) =>
+            console.error('subscription_cancel_reason_insert_failed', error)
+          )
+      }
+      return { url }
+    }),
 
   // Troca o plano do teste grátis do cadastro, sem cartão e sem Stripe
   // (WEB-358). A regra vai no próprio UPDATE, e não numa leitura antes: o

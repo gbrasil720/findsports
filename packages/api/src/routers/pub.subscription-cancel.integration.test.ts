@@ -2,7 +2,10 @@ import { afterEach, expect, spyOn, test } from 'bun:test'
 import type { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { eq } from '@findsports_oficial/db'
 import { stripeSubscription } from '@findsports_oficial/db/schema/auth'
-import { subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  subscription,
+  subscriptionCancelReason
+} from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { inAMonth, seedBar } from './integration-seed'
 
@@ -77,7 +80,14 @@ async function seedSubscribed(
     app: await seeded.db
       .select()
       .from(subscription)
-      .where(eq(subscription.barId, seeded.barId))
+      .where(eq(subscription.barId, seeded.barId)),
+    reasons: await seeded.db
+      .select({
+        plan: subscriptionCancelReason.plan,
+        reason: subscriptionCancelReason.reason
+      })
+      .from(subscriptionCancelReason)
+      .where(eq(subscriptionCancelReason.barId, seeded.barId))
   })
   return {
     ...seeded,
@@ -126,6 +136,61 @@ integrationTest(
     }
   }
 )
+
+// WEB-445: o motivo escolhido no "Por que está cancelando?" vai junto.
+integrationTest(
+  'com motivo: grava o motivo e o plano, sem mexer na assinatura',
+  async () => {
+    const t = await seedSubscribed({})
+    try {
+      const before = await t.rows()
+      await stubStripe('active')
+
+      expect(
+        await t.owner.pub.openSubscriptionCancel({ reason: 'too_expensive' })
+      ).toEqual({ url: 'https://billing.stripe.test/sessao' })
+
+      const after = await t.rows()
+      expect(after.reasons).toEqual([{ plan: 'pro', reason: 'too_expensive' }])
+      expect({ ...after, reasons: [] }).toEqual(before)
+    } finally {
+      await t.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'com motivo e o Stripe recusando: o motivo não é gravado (a nova tentativa conta uma vez)',
+  async () => {
+    const t = await seedSubscribed({})
+    try {
+      await stubStripe('active', () =>
+        Promise.reject(new Error('Request timed out'))
+      )
+      await expect(
+        t.owner.pub.openSubscriptionCancel({ reason: 'paused' })
+      ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
+      expect((await t.rows()).reasons).toEqual([])
+    } finally {
+      await t.cleanup()
+    }
+  }
+)
+
+integrationTest('motivo fora da lista é recusado', async () => {
+  const t = await seedSubscribed({})
+  try {
+    const stripe = await stubStripe('active')
+    await expect(
+      t.owner.pub.openSubscriptionCancel({
+        reason: 'qualquer' as 'other'
+      })
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+    expect(stripe.retrieve).not.toHaveBeenCalled()
+  } finally {
+    await t.cleanup()
+  }
+})
 
 integrationTest(
   'Stripe dizendo past_due com o banco ainda em dia: erro, e nenhuma linha é apagada',
