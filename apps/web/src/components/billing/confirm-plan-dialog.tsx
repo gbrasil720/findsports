@@ -14,7 +14,8 @@ const dia = (date: Date) =>
     .toLocaleDateString('pt-BR', {
       day: 'numeric',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo'
     })
     .replaceAll(' de ', ' ')
     .replace('.', '')

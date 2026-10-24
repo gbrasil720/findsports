@@ -24,7 +24,8 @@ export function TrialStartedDialog({
   const date = new Date(until).toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo'
   })
 
   return (
