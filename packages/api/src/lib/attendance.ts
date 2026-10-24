@@ -234,10 +234,15 @@ const MY_GAMES_LIMIT = 50
 /**
  * "Meus jogos": os jogos em que o torcedor marcou "Vou assistir aqui", com o
  * código do balcão onde há (bar Elite). O código só sai enquanto vale, até a
- * janela de validação fechar; depois, fica só se foi validado.
+ * janela de validação fechar; depois, fica só se foi validado. `limit: null`
+ * traz todos (o arquivo de "Baixar meus dados").
  */
-export async function readMyGames(userId: string, now = new Date()) {
-  const rows = await db
+export async function readMyGames(
+  userId: string,
+  now = new Date(),
+  limit: number | null = MY_GAMES_LIMIT
+) {
+  const query = db
     .select({
       eventId: event.id,
       championship: event.championship,
@@ -283,7 +288,8 @@ export async function readMyGames(userId: string, now = new Date()) {
     )
     .where(eq(attendance.userId, userId))
     .orderBy(sql`${event.startsAt} desc`)
-    .limit(MY_GAMES_LIMIT)
+    .$dynamic()
+  const rows = await (limit === null ? query : query.limit(limit))
 
   return rows.map(
     ({
