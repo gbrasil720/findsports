@@ -74,13 +74,12 @@ import {
   suggestSearchCities
 } from '../lib/search-city'
 import { searchRadiusKmSchema } from '../lib/search-radius'
-import { createSharedCache } from '../lib/shared-cache'
+import { createTtlCache } from '../lib/ttl-cache'
 import { utcIso } from '../lib/utc-timestamp'
 
 /**
- * ESC-08: catálogos e buscas são iguais para todo mundo. Sem KV o cache
- * vive na instância; com Upstash Redis as instâncias passam a
- * compartilhar. Nada derivado de sessão entra aqui.
+ * ESC-08: catálogos e buscas são iguais para todo mundo. O cache vive na
+ * instância. Nada derivado de sessão entra aqui.
  */
 const CATALOGO_TTL_MS = 5 * 60_000
 /** Jogos em destaque e busca dependem de NOW(); janela curta. */
@@ -141,11 +140,10 @@ const ownerOffAirReason = (standing: SubscriptionStanding | null) =>
       ? ('subscription' as const)
       : null
 
-const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
-  prefix: 'pubs.sports',
+const cacheEsportes = createTtlCache<(typeof sport.$inferSelect)[]>({
   ttlMs: CATALOGO_TTL_MS
 })
-const cacheTimes = createSharedCache<
+const cacheTimes = createTtlCache<
   {
     id: string
     sportId: string
@@ -154,17 +152,14 @@ const cacheTimes = createSharedCache<
     isNationalTeam: boolean
   }[]
 >({
-  prefix: 'pubs.teams',
   ttlMs: CATALOGO_TTL_MS,
   maxEntries: 50
 })
-const cacheBusca = createSharedCache<SearchPage>({
-  prefix: 'pubs.search',
+const cacheBusca = createTtlCache<SearchPage>({
   ttlMs: BUSCA_TTL_MS,
   maxEntries: 200
 })
-const cacheLocal = createSharedCache<LocationPage>({
-  prefix: 'pubs.location',
+const cacheLocal = createTtlCache<LocationPage>({
   ttlMs: BUSCA_TTL_MS,
   maxEntries: 200
 })

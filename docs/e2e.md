@@ -229,8 +229,8 @@ novo — vale na requisição seguinte.
 A alternativa, "criar o dado antes do primeiro request que lê", não se sustenta
 com workers paralelos batendo no mesmo servidor: a chave do cache de busca é a
 consulta, e um teste leria a busca que outro deixou em cache. O custo é o E2E
-não exercitar o cache em si — isso fica com os testes unitários
-(`ttl-cache.test.ts`, `shared-cache.test.ts`).
+não exercitar o cache em si — isso fica com o teste unitário
+(`ttl-cache.test.ts`).
 
 `E2E_DISABLE_CACHES`, `E2E_EMAIL_OUTBOX`, `LOCATIONIQ_BASE_URL`,
 `STRIPE_API_BASE_URL` e `E2E_DATABASE_URL` são recusadas por `packages/env` quando

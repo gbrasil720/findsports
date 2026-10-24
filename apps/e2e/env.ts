@@ -63,8 +63,6 @@ export const SERVER_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
   STRIPE_API_BASE_URL: STUB_URL,
-  UPSTASH_REDIS_REST_URL: '',
-  UPSTASH_REDIS_REST_TOKEN: '',
   VITE_MAP_TILES_URL: `${STUB_URL}/tiles.json`,
   VITE_POSTHOG_KEY: '',
   // Sem análise em `vite dev` o aviso de cookies não existiria. Isto liga só
