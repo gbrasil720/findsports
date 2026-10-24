@@ -57,6 +57,7 @@ async function checkEligibility(input: {
     SELECT
       e.starts_at,
       e.ends_at,
+      b.is_active,
       EXISTS (
         SELECT 1 FROM bar_commercial_event ce
         WHERE ce.bar_id = ${input.barId}
@@ -71,15 +72,26 @@ async function checkEligibility(input: {
         WHERE a.user_id = ${input.userId} AND a.event_id = e.id
       ) AS has_intent
     FROM event e
+    JOIN bar b ON b.id = e.bar_id
     WHERE e.id = ${input.eventId} AND e.bar_id = ${input.barId}
   `)
 
   const row = rows.rows[0] as
-    | { starts_at: string; ends_at: string | null; has_intent: boolean }
+    | {
+        starts_at: string
+        ends_at: string | null
+        is_active: boolean
+        has_intent: boolean
+      }
     | undefined
 
   if (!row) {
     return { ok: false, reason: 'Jogo não encontrado neste bar.' }
+  }
+
+  // Como em `getPending`: bar fora do ar não recebe avaliação.
+  if (!row.is_active) {
+    return { ok: false, reason: 'Este bar não está no ar.' }
   }
 
   if (!row.has_intent) {
