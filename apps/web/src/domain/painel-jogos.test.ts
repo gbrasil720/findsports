@@ -3,6 +3,7 @@ import {
   agruparPorDia,
   casaBusca,
   filtrarJogos,
+  inicioDaSemana,
   marcouHa,
   montarSemana,
   rotuloDia,
@@ -76,30 +77,44 @@ describe('semana', () => {
   test('sete dias com os jogos de cada um, hoje e os que já passaram', () => {
     const noite = jogo('2026-10-13T00:30:00Z')
     const sabado = jogo('2026-10-17T19:00:00Z')
-    const fora = jogo('2026-10-19T19:00:00Z')
-    const dias = montarSemana('2026-10-12', [sabado, fora, noite], NOW)
+    const fora = jogo('2026-10-18T19:00:00Z')
+    const dias = montarSemana(
+      inicioDaSemana('2026-10-12'),
+      [sabado, fora, noite],
+      NOW
+    )
     expect(dias.map((d) => `${d.numero} ${d.semana}`)).toEqual([
+      '11 Dom',
       '12 Seg',
       '13 Ter',
       '14 Qua',
       '15 Qui',
       '16 Sex',
-      '17 Sáb',
-      '18 Dom'
+      '17 Sáb'
     ])
-    expect(dias[0]?.hoje).toBe(true)
-    expect(dias[0]?.jogos).toEqual([noite])
-    expect(dias[5]?.jogos).toEqual([sabado])
+    expect(dias[0]?.passado).toBe(true)
+    expect(dias[1]?.hoje).toBe(true)
+    expect(dias[1]?.jogos).toEqual([noite])
+    expect(dias[6]?.jogos).toEqual([sabado])
     expect(dias.flatMap((d) => d.jogos)).not.toContain(fora)
 
-    const anterior = montarSemana('2026-10-05', [], NOW)
+    const anterior = montarSemana('2026-10-04', [], NOW)
     expect(anterior.every((d) => d.passado)).toBe(true)
   })
 
+  test('a semana começa no domingo', () => {
+    expect(inicioDaSemana('2026-10-11')).toBe('2026-10-11')
+    expect(inicioDaSemana('2026-10-12')).toBe('2026-10-11')
+    expect(inicioDaSemana('2026-10-17')).toBe('2026-10-11')
+    expect(inicioDaSemana('2026-11-01')).toBe('2026-11-01')
+    expect(inicioDaSemana('2026-01-02')).toBe('2025-12-28')
+  })
+
   test('rótulo da semana, com a virada de mês', () => {
-    expect(rotuloSemana('2026-10-12', NOW)).toBe('12 a 18 out')
-    expect(rotuloSemana('2026-10-26', NOW)).toBe('26 out a 1 nov')
-    expect(rotuloSemana('2026-12-28', NOW)).toBe('28 dez a 3 jan 2027')
+    expect(rotuloSemana('2026-10-11', NOW)).toBe('11 a 17 out')
+    expect(rotuloSemana('2026-10-25', NOW)).toBe('25 a 31 out')
+    expect(rotuloSemana('2026-11-29', NOW)).toBe('29 nov a 5 dez')
+    expect(rotuloSemana('2026-12-27', NOW)).toBe('27 dez a 2 jan 2027')
   })
 })
 

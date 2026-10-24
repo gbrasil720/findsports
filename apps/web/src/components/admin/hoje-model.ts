@@ -73,11 +73,14 @@ export function hora(at: Instante | number): string {
   })
 }
 
-/** Os sete dias da semana de `dia`, de segunda a domingo, com o rótulo. */
+/**
+ * Os sete dias da semana de `dia`, de domingo a sábado (decisão do dono,
+ * 24/10/2026), com o rótulo.
+ */
 export function semanaDe(dia: string): { dia: string; rotulo: string }[] {
-  const segunda = somaDias(dia, -((diaDaSemana(dia) + 6) % 7))
+  const domingo = somaDias(dia, -diaDaSemana(dia))
   return Array.from({ length: 7 }, (_, i) => {
-    const d = somaDias(segunda, i)
+    const d = somaDias(domingo, i)
     return { dia: d, rotulo: DIAS[diaDaSemana(d)] }
   })
 }

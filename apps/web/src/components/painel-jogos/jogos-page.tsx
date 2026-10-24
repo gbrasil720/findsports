@@ -34,6 +34,7 @@ import {
   casaBusca,
   type FiltroJogos,
   filtrarJogos,
+  inicioDaSemana,
   montarSemana,
   rotuloSemana,
   somarDias
@@ -226,9 +227,11 @@ export function JogosPage({
   const [busca, setBusca] = useState('')
   const [filtro, setFiltro] = useState<FiltroJogos>('proximos')
   const [vista, setVista] = useState<Vista>('lista')
-  // A semana corre a partir de hoje (o "hoje" é a primeira coluna, como no
-  // design); as setas andam sete dias.
-  const [semana, setSemana] = useState(() => brasiliaDay(Date.now()))
+  // A semana vai de domingo a sábado (decisão do dono), com hoje marcado; as
+  // setas andam sete dias.
+  const [semana, setSemana] = useState(() =>
+    inicioDaSemana(brasiliaDay(Date.now()))
+  )
   // `undefined`: o primeiro da lista; `null`: o dono fechou.
   const [aberto, setAberto] = useState<string | null | undefined>(jogoInicial)
   const [folha, setFolha] = useState<Folha | null>(null)
