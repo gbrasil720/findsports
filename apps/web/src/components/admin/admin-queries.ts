@@ -64,3 +64,22 @@ export function useEventsState(): EventsState {
         }
       : { status: 'ready', events: data }
 }
+
+/**
+ * "Quem vai" existe para o bar Elite e para o que ainda tem código em aberto
+ * para honrar (WEB-341). `undefined` enquanto o plano não chegou: quem decide
+ * esconder ou redirecionar espera a resposta. O servidor confere o plano de
+ * novo; aqui só decide se a seção existe.
+ */
+export function useShowsGoing(): boolean | undefined {
+  const trpc = useTRPC()
+  const subscription = useMySubscription()
+  const hasOpen = useQuery({
+    ...trpc.barReservations.hasOpen.queryOptions(),
+    meta: { errorToast: false }
+  })
+  if (subscription.data?.currentPlan === 'elite') return true
+  if (hasOpen.data === true) return true
+  if (subscription.isPending || hasOpen.isPending) return undefined
+  return false
+}
