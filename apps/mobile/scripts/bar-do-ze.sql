@@ -21,7 +21,7 @@ insert into bar (id, user_id, name, description, phone, address, neighborhood, c
 values ('b0b0b0b0-0000-4000-8000-000000000e01', 'ze-dono', 'Bar do Zé',
   'Boteco da Vila Madalena com telão e som do jogo.', '', 'Rua Aspicuelta, 214',
   'Vila Madalena', 'São Paulo', 'SP', -23.55680000, -46.68780000,
-  :'photo', true, 'elite', '{1,2,3,4,5,6,7,12,13,15,14}', 6,
+  :'photo', true, 'elite', '{1,2,3,4,5,6,7,12,13,15,16,17}', 6,
   142, 124, 'Chopp em dobro até o intervalo para quem mostrar o código da Onside.', 8000,
   -- Seg a qui 17–00, sex e sáb 17–02, domingo 12–22 (posição 0 = domingo).
   '[{"opens":"12:00","closes":"22:00"},{"opens":"17:00","closes":"00:00"},{"opens":"17:00","closes":"00:00"},{"opens":"17:00","closes":"00:00"},{"opens":"17:00","closes":"00:00"},{"opens":"17:00","closes":"02:00"},{"opens":"17:00","closes":"02:00"}]');
