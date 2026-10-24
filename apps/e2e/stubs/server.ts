@@ -37,6 +37,9 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   a exclusão da conta chama (WEB-336);
  * - `POST /v1/invoices/create_preview`: a prévia da próxima fatura da
  *   assinatura semeada, com `amount_due` = `nextAmountDue`; 404 sem ela;
+ * - `GET /v1/invoices?subscription=` e `GET /v1/charges?customer=`: faturas e
+ *   cobranças semeadas em `POST /stripe/invoices` (`{ subscription, customer,
+ *   invoices, charges }`), ou lista vazia (WEB-443);
  * - `GET /v1/coupons/{id}`: cupom válido. `POST /stripe/coupon` com
  *   `{ state }` troca a resposta para todo cupom: `exhausted` (`valid: false`,
  *   teto de usos batido) ou `missing` (404, cupom que não existe nesta conta);
@@ -73,6 +76,10 @@ const stripeBalances = new Map<
   string,
   { balance: number; nextAmountDue: number }
 >()
+
+/** Faturas semeadas, por assinatura, e cobranças, por cliente (WEB-443). */
+const stripeInvoices = new Map<string, unknown[]>()
+const stripeCharges = new Map<string, unknown[]>()
 
 /** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
 let couponState: 'valid' | 'exhausted' | 'missing' = 'valid'
@@ -138,6 +145,17 @@ Bun.serve({
         nextAmountDue: number
       }
       stripeBalances.set(customer, seeded)
+      return Response.json({ ok: true })
+    }
+    if (url.pathname === '/stripe/invoices' && request.method === 'POST') {
+      const seeded = (await request.json()) as {
+        subscription: string
+        customer: string
+        invoices: unknown[]
+        charges: unknown[]
+      }
+      stripeInvoices.set(seeded.subscription, seeded.invoices)
+      stripeCharges.set(seeded.customer, seeded.charges)
       return Response.json({ ok: true })
     }
     if (
@@ -259,6 +277,13 @@ async function stripe(request: Request, url: URL) {
       customer: found.customer,
       amount_due: stripeBalances.get(found.customer)?.nextAmountDue ?? 0
     })
+  }
+
+  if (request.method === 'GET' && path === '/invoices') {
+    return list(stripeInvoices.get(query.subscription ?? '') ?? [])
+  }
+  if (request.method === 'GET' && path === '/charges') {
+    return list(stripeCharges.get(query.customer ?? '') ?? [])
   }
 
   if (request.method === 'GET' && path === '/prices') {

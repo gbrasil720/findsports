@@ -166,6 +166,74 @@ export async function seedStripeBalance(
   }
 }
 
+const unix = (date: Date) => Math.floor(date.getTime() / 1000)
+
+/**
+ * Fatura como o Stripe lista, só com o que o app lê (WEB-443). `total` em
+ * centavos; paga com R$ 0 é a do teste grátis, até `trialEnd`.
+ */
+export function stripeInvoice(options: {
+  id: string
+  customer: string
+  status: 'paid' | 'open' | 'draft' | 'void'
+  total: number
+  created: Date
+  /** Tentativas de cobrança da fatura em aberto. */
+  attempts?: number
+  trialEnd?: Date
+}) {
+  return {
+    id: options.id,
+    object: 'invoice',
+    customer: options.customer,
+    status: options.status,
+    total: options.total,
+    created: unix(options.created),
+    attempt_count: options.attempts ?? 0,
+    status_transitions: {
+      paid_at: options.status === 'paid' ? unix(options.created) : null
+    },
+    lines: {
+      object: 'list',
+      data: [
+        {
+          period: {
+            start: unix(options.created),
+            end: unix(options.trialEnd ?? options.created)
+          }
+        }
+      ]
+    },
+    invoice_pdf: `https://pay.stripe.com/invoice/${options.id}/pdf`
+  }
+}
+
+/**
+ * Põe no "Stripe" (o stub) as faturas da assinatura e as cobranças do
+ * cliente dela (`created` de uma recusada é a data que o app mostra).
+ */
+export async function seedStripeInvoices(
+  request: APIRequestContext,
+  subscription: { id: string; customer: string },
+  invoices: ReturnType<typeof stripeInvoice>[],
+  charges: { status: 'failed' | 'succeeded'; created: Date }[] = []
+) {
+  const seeded = await request.post(`${STUB_URL}/stripe/invoices`, {
+    data: {
+      subscription: subscription.id,
+      customer: subscription.customer,
+      invoices,
+      charges: charges.map((charge, index) => ({
+        id: `ch_e2e_${subscription.id}_${index}`,
+        object: 'charge',
+        status: charge.status,
+        created: unix(charge.created)
+      }))
+    }
+  })
+  if (!seeded.ok()) throw new Error('stub do Stripe recusou as faturas')
+}
+
 /**
  * O que o "Stripe" (o stub) passa a dizer do cupom de fundador: `exhausted`
  * bateu o teto de usos, `missing` não existe nesta conta. O estado é global:
