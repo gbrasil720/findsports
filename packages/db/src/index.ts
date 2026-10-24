@@ -66,7 +66,6 @@ export {
   gte,
   inArray,
   isNull,
-  like,
   lte,
   notInArray,
   or,
