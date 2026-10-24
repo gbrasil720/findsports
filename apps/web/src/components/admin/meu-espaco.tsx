@@ -767,12 +767,14 @@ function Informacoes({
         placeholder="00000-000"
         value={cep.cep}
         onChange={(e) => void cep.mudar(e.target.value)}
-        fim={
-          cep.status === 'achou' || cep.status === 'buscando' ? (
-            <span className="text-[12px] text-[var(--painel-muted)]">
-              {cep.status === 'achou' ? 'Encontrado' : 'Buscando…'}
-            </span>
-          ) : null
+        // No rótulo, não dentro da caixa como no 2c: com 1280 px de tela a
+        // caixa tem duas colunas e o "Encontrado" cortava o CEP.
+        aside={
+          cep.status === 'achou'
+            ? 'Encontrado'
+            : cep.status === 'buscando'
+              ? 'Buscando…'
+              : undefined
         }
         dica={
           cep.status === 'nao'
