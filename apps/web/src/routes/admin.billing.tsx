@@ -25,6 +25,7 @@ import {
   propsBotao
 } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
+import { ehRascunho } from '@/domain/painel-jogos'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
@@ -709,8 +710,11 @@ function CancelPlan({
   classics: number | null
 }) {
   const events = useMyEvents().data
+  // Rascunho (WEB-436) não está nas buscas: não sai delas.
   const upcoming = events?.filter(
-    (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
+    (item) =>
+      !ehRascunho(item) &&
+      getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   ).length
   const perdas: PerdaCancelamento[] = comPlural([
     [

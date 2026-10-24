@@ -34,6 +34,7 @@ import {
 } from '@/components/painel'
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { getEventTemporalState } from '@/domain/events'
+import { ehRascunho } from '@/domain/painel-jogos'
 import { formatDayLabel } from '@/domain/pub-profile'
 import { useCep } from '@/lib/cep'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
@@ -186,7 +187,8 @@ export function MeuEspaco() {
   const sujo = temAlteracao(pendente) || Object.keys(pendente.erros).length > 0
   const erros: Erros = tentou ? pendente.erros : {}
 
-  const eventList = events.data ?? []
+  // Rascunho (WEB-436) não está no app: nem no checklist nem na prévia.
+  const eventList = (events.data ?? []).filter((e) => !ehRascunho(e))
   const temProximoJogo = eventList.some(
     (e) => getEventTemporalState(e.startsAt, e.endsAt, now) === 'upcoming'
   )
@@ -531,7 +533,7 @@ export function MeuEspaco() {
             rascunho={r}
             photoUrl={bar.photoUrl}
             elite={oferta.status === 'liberado'}
-            events={events.data ?? null}
+            events={events.data ? eventList : null}
             nota={profile.data?.rating?.percentage ?? null}
             now={new Date(now)}
           />
