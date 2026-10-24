@@ -228,8 +228,8 @@ export function monthStart(now = new Date()) {
 
 /** O que o perfil do amigo compara (11d): o mês de cada um. */
 export async function readMonth(userId: string, now = new Date()) {
-  // Uma leitura das visitas serve ao mês e às conquistas. Vem uma linha por
-  // chegada validada: o jogo conta uma vez, e os bares saem do mais recente.
+  // Uma leitura das visitas (uma por jogo) serve ao mês e às conquistas; os
+  // bares saem do mais recente.
   const read = readVisits(userId)
   const [rows, achievements] = await Promise.all([
     read,
