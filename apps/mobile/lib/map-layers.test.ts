@@ -3,6 +3,7 @@ import {
   buildIndex,
   expandGroup,
   hoodNames,
+  indexCache,
   labelBudget,
   type MapBar,
   mapLayers,
@@ -162,5 +163,18 @@ describe('mapa sem amontoado (20d)', () => {
     expect(labelBudget({ ...NEAR, longitudeDelta: 0.01 })).toBe(
       Number.POSITIVE_INFINITY
     )
+  })
+})
+
+describe('indexCache', () => {
+  test('refaz o índice só quando os bares mudam', () => {
+    const indexOf = indexCache()
+    const bars = () => [bar('a', -23.56, -46.68), bar('b', -23.57, -46.69)]
+    const first = indexOf(bars())
+    // Mesmos bares em objetos novos, como a cada render: o mesmo índice.
+    expect(indexOf(bars())).toBe(first)
+    const live = indexOf([bar('a', -23.56, -46.68, { live: true })])
+    expect(live).not.toBe(first)
+    expect(live.getClusters([-180, -90, 180, 90], 20)).toHaveLength(1)
   })
 })
