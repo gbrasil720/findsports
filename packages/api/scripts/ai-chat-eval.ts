@@ -18,7 +18,11 @@
 
 import { db, sql } from '@findsports_oficial/db'
 import { getAiBinding } from '../src/lib/ai/binding'
-import { type ChatTurnResult, converse } from '../src/lib/ai/chat'
+import {
+  type ChatTurnResult,
+  converse,
+  PROPOSAL_RULE
+} from '../src/lib/ai/chat'
 import {
   AMENITY_TERMS,
   contextCaller,
@@ -297,7 +301,9 @@ async function main() {
       const state: ToolState = {
         bars: new Map(),
         opened: new Map(),
-        lastSearch: null
+        lastSearch: null,
+        proposals: [],
+        shown: []
       }
       let tokensIn = 0
       let tokensOut = 0
@@ -331,7 +337,7 @@ async function main() {
             return raw
           },
           models: [model, model],
-          runTool: (name, args) =>
+          runTool: (name, args, callId) =>
             runTool(
               name,
               args,
@@ -340,13 +346,21 @@ async function main() {
                 message: c.pedido,
                 origin: VILA_MADALENA,
                 radiusKm: 5,
-                now
+                now,
+                userId: ctx.session.user.id,
+                day: null,
+                placeLabel: null,
+                emit: () => {}
               },
-              state
+              state,
+              callId
             ),
           state,
           now,
-          hasOrigin: true
+          hasOrigin: true,
+          // O prompt e as ferramentas de produção, propostas incluídas.
+          context: [PROPOSAL_RULE],
+          emit: () => {}
         })
       } catch (e) {
         error = e instanceof Error ? e.message : String(e)
