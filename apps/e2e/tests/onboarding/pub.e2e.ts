@@ -185,6 +185,7 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
   await horario.getByLabel('Domingo, fecha').fill('22:00')
   await horario.getByRole('button', { name: 'Pronto' }).click()
   await expect(horario).toHaveCount(0)
+  await expect(button(page, 'Editar horário')).toBeFocused()
 
   await button(page, 'Editar oferta da casa').click()
   await page

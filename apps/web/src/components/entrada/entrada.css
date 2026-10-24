@@ -981,6 +981,22 @@
 .painel .entrada-ob-painel > :first-child {
   align-self: stretch;
 }
+/* No celular estreito o painel perde o recuo e as horas dividem a linha:
+ * as duas caixas de 140px passavam da borda em 320px. */
+@media (max-width: 520px) {
+  .painel .entrada-ob-painel {
+    padding-left: 0;
+  }
+  .painel .entrada-ob-painel li > div {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .painel .entrada-ob-painel li .painel-campo-caixa {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+}
 .painel .entrada-ob-letra {
   margin: 0;
   font-size: 12.5px;

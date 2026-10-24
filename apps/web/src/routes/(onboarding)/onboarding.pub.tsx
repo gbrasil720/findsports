@@ -930,6 +930,7 @@ function PubOnboarding() {
                     aria-label={`Editar ${rotulo.toLowerCase()}`}
                     aria-expanded={painel ? aberto : undefined}
                     aria-controls={painel ? `ob-painel-${painel}` : undefined}
+                    id={painel ? `ob-editar-${painel}` : undefined}
                   >
                     Editar
                   </button>
@@ -961,7 +962,11 @@ function PubOnboarding() {
                   <Botao
                     variante="ink"
                     altura={36}
-                    onClick={() => setEditando(null)}
+                    onClick={() => {
+                      setEditando(null)
+                      // O "Pronto" some com o painel: o foco volta ao "Editar".
+                      document.getElementById(`ob-editar-${painel}`)?.focus()
+                    }}
                   >
                     Pronto
                   </Botao>
