@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type ButtonHTMLAttributes, useState } from 'react'
 import { openBillingPortal } from '@/lib/billing-client'
 
 /**
@@ -6,11 +6,9 @@ import { openBillingPortal } from '@/lib/billing-client'
  * o mesmo de "Gerenciar assinatura": o app só leva até lá, e o webhook da
  * reativação limpa o aviso.
  */
-export function ReactivateSubscriptionButton({
-  className
-}: {
-  className: string
-}) {
+export function ReactivateSubscriptionButton(
+  props: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>
+) {
   const [opening, setOpening] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -33,14 +31,14 @@ export function ReactivateSubscriptionButton({
     <>
       <button
         type="button"
+        {...props}
         onClick={handleOpenPortal}
         disabled={opening}
-        className={className}
       >
         {opening ? 'Abrindo portal…' : 'Reativar assinatura'}
       </button>
       {failed ? (
-        <span role="alert" className="text-[var(--onside-live-text)]">
+        <span role="alert" className="text-[var(--painel-live)]">
           {' '}
           Não foi possível abrir o portal. Tente novamente.
         </span>
