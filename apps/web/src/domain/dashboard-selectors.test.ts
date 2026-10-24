@@ -129,6 +129,9 @@ describe('deriveDiscoveryResultState', () => {
       photo_url: null,
       created_at: '2026-08-01T00:00:00.000Z',
       averageSpendCents: null,
+      amenities: [],
+      goingCount: null,
+      goingInitials: [],
       plan: 'starter' as const,
       distance_km: 1
     }
@@ -191,6 +194,9 @@ describe('deriveDiscoveryResultState', () => {
       photo_url: null,
       created_at: '2026-08-01T00:00:00.000Z',
       averageSpendCents: null,
+      amenities: [],
+      goingCount: null,
+      goingInitials: [],
       plan: 'starter' as const,
       distance_km: 1
     }
@@ -337,6 +343,9 @@ describe('dashboard display selectors', () => {
           photo_url: null,
           created_at: '2026-08-01T00:00:00.000Z',
           averageSpendCents: null,
+          amenities: [],
+          goingCount: null,
+          goingInitials: [],
           plan: 'pro',
           distance_km: 1
         }
