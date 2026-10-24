@@ -1,8 +1,8 @@
 import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
 
 /**
- * Dublês HTTP que o servidor (LocationIQ, Stripe) e o navegador (tiles do mapa)
- * chamam fora do alcance do `page.route`. Sobe pelo `webServer` do Playwright.
+ * Dublês HTTP que o servidor (LocationIQ, Stripe) chama fora do alcance do
+ * `page.route`. Sobe pelo `webServer` do Playwright.
  *
  * LocationIQ, decidido pelo endereço pedido — sem estado, então testes em
  * paralelo não se atrapalham:
@@ -147,23 +147,6 @@ Bun.serve({
       return new Response('<!doctype html><title>Stripe (stub)</title>', {
         headers: { 'content-type': 'text/html' }
       })
-    }
-
-    if (url.pathname === '/tiles.json') {
-      return Response.json(
-        {
-          tilejson: '3.0.0',
-          tiles: [`${STUB_URL}/tiles/{z}/{x}/{y}.mvt`],
-          minzoom: 0,
-          maxzoom: 15,
-          bounds: [-74.1, -33.9, -34.7, 5.4]
-        },
-        { headers: { ...cors, 'content-type': 'application/json' } }
-      )
-    }
-
-    if (/^\/tiles\/\d+\/\d+\/\d+\.mvt$/.test(url.pathname)) {
-      return new Response(null, { status: 204, headers: cors })
     }
 
     return new Response('not found', { status: 404 })

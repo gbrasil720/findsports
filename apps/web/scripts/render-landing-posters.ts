@@ -292,7 +292,7 @@ async function render(shot: Shot) {
       }
       const round = (value: number) => Math.round(value * 100) / 100
       // A cabeça do pino é um círculo de raio 16 no desenho de 36×46
-      // (`map-icons.ts`), na escala 0,056 da cena; centro em (18, 17).
+      // (o do antigo mapa do web), na escala 0,056 da cena; centro em (18, 17).
       const headY = (45.5 - 17) * 0.056
       const headR = 16 * 0.056
       const spots =

@@ -354,13 +354,12 @@ Import shared components: `import { Button } from "@findsports_oficial/ui/compon
 
 ### Mapa
 
-MapLibre GL JS com basemap Protomaps: archive `.pmtiles` no R2, tiles ZXY via
-Worker `apps/tiles` em `tiles.onside.sh` (WEB-218). Componente em
-`apps/web/src/components/app/onside-map.tsx`, estilo em
-`apps/web/src/lib/map-style.ts`, glyphs e sprite em `apps/web/public/map/`.
-**Antes de mexer em tiles, estilo ou rebuild, leia `docs/map-tiles.md`** —
-runbook, deploy do Worker e armadilhas (URL absoluta para sprite/glyphs,
-`maplibre-gl` fora do `optimizeDeps` do Vite).
+O web não tem mais mapa (painel do bar, Rodada 3, 24/10/2026): o mapa MapLibre do
+torcedor saiu com o painel do torcedor, e o app usa o mapa nativo
+(`react-native-maps`, ver "App mobile"). O Worker `apps/tiles` (`tiles.onside.sh`),
+o archive `.pmtiles` no R2 e `apps/web/scripts/build-map-tiles.ts` continuam como
+estão, sem quem os use: são infra de produção e só saem por decisão do dono. O
+runbook segue em `docs/map-tiles.md`; o código do mapa está no histórico do git.
 
 ### SEO
 

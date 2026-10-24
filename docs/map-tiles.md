@@ -1,5 +1,14 @@
 # Basemap próprio — MapLibre + Protomaps (WEB-73, WEB-218)
 
+> **Sem uso desde 24/10/2026.** O web passou a ser só do bar, e o mapa do
+> torcedor saiu com o resto: componente (`onside-map.tsx`), estilo
+> (`map-style.ts`), glyphs e sprite (`apps/web/public/map/`) e as dependências
+> `maplibre-gl`/`pmtiles` foram apagados do web. O app usa o mapa nativo. O
+> Worker `onside-tiles`, o archive no R2 e o script de build continuam no ar,
+> sem quem os chame: são infra de produção e não se apagam sem o dono. Para
+> reviver o mapa no web, o código está no histórico do git; o runbook abaixo
+> descreve como era.
+
 O mapa não depende mais de fornecedor com faturamento. O basemap inteiro é **um
 arquivo** `.pmtiles` no R2; o navegador **não** lê esse arquivo direto — um
 Worker Cloudflare (`onside-tiles`) fatia o archive em tiles ZXY e cacheia cada
@@ -10,8 +19,8 @@ resposta na borda.
 | Biblioteca | `maplibre-gl` (BSD), npm | — |
 | Archive | `.pmtiles` no bucket R2 `onside-maps` | armazenamento (egress grátis) |
 | API de tiles | Worker `onside-tiles` em `tiles.onside.sh` | Workers Paid (WEB-218) |
-| Glyphs e sprite | `apps/web/public/map/`, mesma origem | — |
-| Estilo | `apps/web/src/lib/map-style.ts` | — |
+| Glyphs e sprite | `apps/web/public/map/`, mesma origem (apagado) | — |
+| Estilo | `apps/web/src/lib/map-style.ts` (apagado) | — |
 | Geocoding | LocationIQ (`LOCATIONIQ_API_KEY`) | tier grátis, 5.000/dia |
 
 Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
