@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
-import { Botao, Card, propsBotao } from '@/components/painel'
+import { Botao, Card, Medalha, propsBotao } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
 import { getPlan, getPlanLosses, getPlanLossNote } from '@/lib/plan-catalog'
 import { RECEIPT_POLL_INTERVAL_MS } from '@/lib/subscription-receipt'
 import { useTRPC } from '@/utils/trpc'
-import { Medalha, PainelModal } from './planos'
+import { PainelModal } from './planos'
 
 type Change = { from: SubscriptionPlan; to: SubscriptionPlan }
 

@@ -5,7 +5,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Fragment, type ReactNode, useState } from 'react'
 import { ConfirmPlanDialog } from '@/components/billing/confirm-plan-dialog'
 import { DowngradeConfirmDialog } from '@/components/billing/plan-change'
-import { Medalha, PlanosFrame } from '@/components/billing/planos'
+import { PlanosFrame } from '@/components/billing/planos'
 import planosCss from '@/components/billing/planos.css?url'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { TrialStartedDialog } from '@/components/billing/trial-started-dialog'
@@ -16,6 +16,7 @@ import {
   Chip,
   EmBreve,
   Icone,
+  Medalha,
   Progresso,
   propsBotao
 } from '@/components/painel'
@@ -354,7 +355,7 @@ function PlanSelection() {
           <section className="pl-tinta grid items-center gap-9 px-8 py-7 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="flex flex-col gap-3">
               <span className="flex items-center gap-2.5">
-                <Medalha plano={marked} />
+                <Medalha plano={marked} sobreTinta />
                 <span className="font-bold text-[var(--painel-acid)] text-sm">
                   Trial gratuito · sem cartão
                 </span>
@@ -418,7 +419,7 @@ function PlanSelection() {
         ) : (
           <section className="pl-tinta flex flex-col gap-3 px-8 py-7">
             <span className="flex items-center gap-2.5">
-              {subscription ? <Medalha plano={marked} /> : null}
+              {subscription ? <Medalha plano={marked} sobreTinta /> : null}
               <span className="font-bold text-[var(--painel-acid)] text-sm">
                 {header.kicker}
               </span>

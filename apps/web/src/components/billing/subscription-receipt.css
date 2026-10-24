@@ -302,13 +302,21 @@
 }
 
 /* Medalha no papel: sempre a do tema claro, o papel é claro nos dois. */
-.onside-receipt-paper .pl-medalha {
-  background: #12120f;
-  color: #f1eee6;
+.painel .onside-receipt-paper .painel-medalha {
+  --md-bg: #e7e3db;
+  --md-fg: #12120f;
+  --md-ring: rgb(18 18 15 / 14%);
 }
-.onside-receipt-paper .pl-medalha:not([data-plano="elite"]) {
-  background: #e7e3db;
-  color: #12120f;
+.painel .onside-receipt-paper .painel-medalha[data-plano="pro"] {
+  --md-bg: #12120f;
+  --md-fg: #c9f135;
+  --md-ring: #12120f;
+}
+.painel .onside-receipt-paper .painel-medalha[data-plano="elite"] {
+  --md-bg: #c9f135;
+  --md-fg: #12120f;
+  --md-ring: #12120f;
+  --md-sombra: 2px 2px 0 #12120f;
 }
 
 .onside-receipt-title {

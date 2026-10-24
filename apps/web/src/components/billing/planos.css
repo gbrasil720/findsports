@@ -65,33 +65,6 @@
 }
 
 /* Medalha do plano (`medal` do design). */
-.painel .pl-medalha {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--pl-medalha, 44px);
-  height: var(--pl-medalha, 44px);
-  border-radius: 10px;
-  background: var(--painel-sub);
-  color: var(--painel-fg);
-}
-.painel .pl-medalha[data-plano="elite"] {
-  background: var(--painel-ink);
-  color: var(--painel-paper);
-}
-.painel .pl-tinta .pl-medalha,
-.painel .pl-modal-tinta .pl-medalha {
-  background: #262621;
-  color: var(--painel-paper);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .pl-medalha,
-  .painel .pl-medalha[data-plano="elite"] {
-    background: #262621;
-    color: var(--painel-fg);
-  }
-}
-
 /* Tabela "Tudo que muda entre os planos". */
 .painel .pl-tabela {
   --pl-hl: rgb(201 241 53 / 28%);

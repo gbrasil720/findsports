@@ -117,21 +117,3 @@ export function MapaPrevia() {
     </div>
   )
 }
-
-/** A medalha do plano (`medal` do design), para o "Elite grátis por 120 dias". */
-export function MedalhaPlano({ tamanho = 46 }: { tamanho?: number }) {
-  return (
-    <span
-      className="entrada-medalha"
-      style={{ width: tamanho, height: tamanho }}
-      aria-hidden="true"
-    >
-      <Icone
-        nome="medal"
-        tamanho={Math.round(tamanho * 0.62)}
-        acento="var(--painel-live-fill)"
-        base={0.35}
-      />
-    </span>
-  )
-}

@@ -5,8 +5,7 @@ import {
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useMyBar } from '@/components/admin/admin-queries'
 import { entradaHead } from '@/components/entrada/auth'
-import { MedalhaPlano } from '@/components/entrada/onboarding'
-import { EmBreve, Icone, propsBotao } from '@/components/painel'
+import { EmBreve, Icone, Medalha, propsBotao } from '@/components/painel'
 
 /**
  * "Seu bar está no ar" (design 4r/4w): a tela depois do cadastro do bar, com o
@@ -87,7 +86,7 @@ function NoAr() {
             Agora falta o que o torcedor procura: <b>onde vai passar o jogo</b>.
           </p>
           <div className="entrada-noar-plano">
-            <MedalhaPlano />
+            <Medalha plano={ONBOARDING_TRIAL.plan} tamanho={46} />
             <div>
               <b>
                 {plano} grátis por {ONBOARDING_TRIAL.days} dias

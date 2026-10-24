@@ -19,11 +19,13 @@
  * - `Kpi` (número em Anton + rótulo; `topo`, `destaque`)
  * - `CabecalhoPagina` (kicker + título `h1` + linha + ações; `pageHead`)
  * - `CabecalhoCard` (título + meta; `hd`)
+ * - `Medalha` do plano (chevrons e estrela; `sobreTinta` no card escuro)
  * - `PainelShell` (barra lateral + conteúdo; já montado por `routes/admin.tsx`)
  *
  * Conteúdo antigo (só claro) dentro do shell vai num `<div className="painel-legado">`,
  * que vira uma folha clara no tema escuro.
  */
 export { Icone, type IconeNome } from './icone'
+export { Medalha } from './medalha'
 export * from './pecas'
 export { PainelShell } from './shell'
