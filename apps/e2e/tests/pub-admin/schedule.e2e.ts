@@ -197,9 +197,16 @@ test('duplica um jogo para a semana seguinte', async ({ page }) => {
   const day = nextWeek.toLocaleDateString('pt-BR', {
     timeZone: 'America/Sao_Paulo'
   })
-  expect(await dialog.getByLabel('Começa').inputValue()).toMatch(
-    new RegExp(`^${day} `)
+  // Fora do foco, por extenso ("Sáb, 17 out · 21:00", 1p); no foco, a máscara.
+  const comeca = dialog.getByLabel('Começa')
+  await expect(comeca).toHaveValue(
+    new RegExp(
+      `^\\p{L}{3}, ${nextWeek.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: 'America/Sao_Paulo' })} \\p{L}{3} · \\d{2}:\\d{2}$`,
+      'u'
+    )
   )
+  await comeca.focus()
+  expect(await comeca.inputValue()).toMatch(new RegExp(`^${day} `))
   await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
   await expect(dialog).toBeHidden()
 
