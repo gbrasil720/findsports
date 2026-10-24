@@ -13,8 +13,9 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-qr-code'
-import { dayLabel, PALETTE, Perforation } from '@/components/explore'
+import { dayLabel, Perforation } from '@/components/explore'
 import { Glass } from '@/components/glass'
+import { PALETTE } from '@/components/theme'
 import {
   ACID,
   BackButton,

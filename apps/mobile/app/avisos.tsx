@@ -18,7 +18,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { HardShadow, type Palette, usePalette } from '@/components/explore'
+import { HardShadow } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import {
   AddButton,
@@ -35,6 +35,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,

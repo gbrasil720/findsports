@@ -18,7 +18,7 @@ import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { G, Path } from 'react-native-svg'
 import { Card, FilterChip } from '@/components/card'
-import { type Palette, Photo, usePalette } from '@/components/explore'
+import { Photo } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
@@ -29,6 +29,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,

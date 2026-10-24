@@ -6,9 +6,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, OfferCard } from '@/components/card'
-import { dayLabel, type Palette, usePalette } from '@/components/explore'
+import { dayLabel } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

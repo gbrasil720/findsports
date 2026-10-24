@@ -12,7 +12,6 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { usePalette } from '@/components/explore'
 import {
   AddButton,
   PersonRow,
@@ -20,6 +19,7 @@ import {
   type Relation,
   useFriendActions
 } from '@/components/friends'
+import { usePalette } from '@/components/theme'
 import {
   BackButton,
   Icon,

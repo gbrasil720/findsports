@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
-import type { Palette } from '@/components/explore'
 import { haptic, usePressScale } from '@/components/motion'
+import type { Palette } from '@/components/theme'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*

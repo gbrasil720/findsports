@@ -38,17 +38,16 @@ import {
   MapDrop,
   MapGroup,
   MeDot,
-  type Palette,
   QuietDot,
   RadiusCircle,
-  type SearchBar,
-  usePalette
+  type SearchBar
 } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, POP_FAST, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   Icon,

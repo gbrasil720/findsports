@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Card } from '@/components/card'
-import { usePalette } from '@/components/explore'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
 import { ScoreBadge } from '@/components/suggestions'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

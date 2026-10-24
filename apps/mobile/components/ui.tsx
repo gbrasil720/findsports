@@ -42,6 +42,14 @@ import {
   SWAP,
   usePress
 } from '@/components/motion'
+import {
+  ACID,
+  INK,
+  LIVE,
+  PALETTE,
+  PAPER,
+  type Palette
+} from '@/components/theme'
 
 /*
  * As peças das telas de conta ("04 Conta" do design): botão de voltar em
@@ -49,56 +57,51 @@ import {
  * Medidas do design a 390 x 844.
  */
 
-export const INK = '#12120f'
-export const PAPER = '#f1eee6'
-export const ACID = '#c9f135'
-export const LIVE = '#e8320c'
-export const MUTED = '#55554f'
-export const ACCENT = '#c92b0c'
+export { ACCENT, ACID, INK, LIVE, MUTED, PAPER } from '@/components/theme'
 
 /*
- * Cores que seguem o tema do sistema. O design só desenha as telas de conta
- * e o onboarding no claro; no escuro valem as mesmas formas com tinta e papel
- * trocados e o acid no lugar do vermelho (a regra da tab bar do design). São
- * cores dinâmicas do iOS: trocam sozinhas, então servem no `StyleSheet` de
- * módulo e no SVG. Onde a cor é calculada em JS (`interpolateColor`,
- * gradiente), use `useColorScheme`.
+ * Cores que seguem o tema do sistema, tiradas da tabela de
+ * `components/theme.tsx`. São cores dinâmicas do iOS: trocam sozinhas, então
+ * servem no `StyleSheet` de módulo e no SVG. Onde a cor é calculada em JS
+ * (`interpolateColor`, gradiente), use `usePalette()`.
  *
- * ponytail: no Android ficam no claro; trocar por um hook de tema quando o
- * app for testado lá.
+ * ponytail: no Android ficam no claro; lá a fonte é `usePalette()`, trocar
+ * estas por ela quando o app for testado no Android.
  */
 export const themed = (light: string, dark: string) =>
   (Platform.OS === 'ios'
     ? DynamicColorIOS({ light, dark })
     : light) as unknown as string
+const fromTable = (key: Exclude<keyof Palette, 'dark'>) =>
+  themed(PALETTE.light[key], PALETTE.dark[key])
 /** Texto e traço: tinta no claro, papel no escuro. */
-export const FG = themed(INK, PAPER)
+export const FG = fromTable('ink')
 /** Fundo da tela. */
-export const BG = themed(PAPER, INK)
+export const BG = fromTable('bg')
 /** O detalhe dos ícones: vermelho no claro, acid no escuro (em acid, passe LIVE). */
-export const SPARK = themed(LIVE, ACID)
+export const SPARK = fromTable('accent')
 /** Texto secundário. */
-export const SUB = themed(MUTED, '#aaa9a4')
+export const SUB = fromTable('muted')
 /** O trecho em destaque do título. */
-export const HOT = themed(ACCENT, ACID)
+export const HOT = fromTable('hot')
 /** Card sobre o fundo. */
-export const CARD = themed('#faf8f3', '#1c1c18')
+export const CARD = fromTable('card')
 /** Caixa de texto. */
-export const FIELD = themed('#fffdf8', '#1c1c18')
+export const FIELD = fromTable('field')
 /** Placa apagada (mapa vazio, capa sem foto). */
-export const STONE = themed('#e7e3db', '#2a2a25')
+export const STONE = fromTable('mark')
 /** Borda fina de card. */
-export const LINE = themed('rgba(18,18,15,.08)', 'rgba(241,238,230,.1)')
+export const LINE = fromTable('cardLine')
 /** Borda de campo e trilho vazio. */
-export const LINE_STRONG = themed('rgba(18,18,15,.14)', 'rgba(241,238,230,.16)')
+export const LINE_STRONG = fromTable('fieldLine')
 /** A sombra dura dos botões acid: tinta some no fundo de tinta, vira preto. */
-export const EDGE = themed(INK, '#000')
+export const EDGE = fromTable('edge')
 // O visto acid na caixa de tinta; na caixa de papel (escuro), tinta.
 const CHECK = themed(ACID, INK)
 const FIELD_DROP = themed('rgba(18,18,15,.05)', 'rgba(0,0,0,.5)')
 const PLACEHOLDER = themed('rgba(85,85,79,.6)', 'rgba(170,169,164,.6)')
 /** A sombra dura dos cards ("4px 4px 0"). */
-export const DROP = themed('rgba(18,18,15,.09)', '#000')
+export const DROP = fromTable('drop')
 
 /** Texto em Archivo com a altura de linha 1,4 do design. */
 export const text = (

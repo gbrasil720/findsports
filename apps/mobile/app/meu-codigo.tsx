@@ -15,11 +15,11 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-qr-code'
-import { usePalette } from '@/components/explore'
 import { Avatar } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

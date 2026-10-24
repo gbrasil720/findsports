@@ -6,9 +6,9 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import type { Palette } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
+import type { Palette } from '@/components/theme'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*

@@ -16,7 +16,7 @@ import {
 import Animated, { FadeOut } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { dayLabel, type Palette, Photo, usePalette } from '@/components/explore'
+import { dayLabel, Photo } from '@/components/explore'
 import { MedalImage } from '@/components/medal'
 import {
   ErrorText,
@@ -26,6 +26,7 @@ import {
   SWAP,
   usePressScale
 } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

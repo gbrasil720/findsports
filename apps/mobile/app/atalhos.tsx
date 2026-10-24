@@ -27,9 +27,10 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { Card } from '@/components/card'
-import { Chip, type Palette, usePalette } from '@/components/explore'
+import { Chip } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { EASE, haptic } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,

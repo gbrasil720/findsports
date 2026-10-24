@@ -17,7 +17,6 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { type Palette, usePalette } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import {
   type ArtProps,
@@ -28,6 +27,7 @@ import {
 } from '@/components/intro-art'
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
 import { SplashDone } from '@/components/splash'
+import { type Palette, usePalette } from '@/components/theme'
 import { PillButton, useStatusBar } from '@/components/ui'
 
 /*

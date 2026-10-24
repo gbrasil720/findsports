@@ -6,7 +6,7 @@ import Animated, {
   useReducedMotion
 } from 'react-native-reanimated'
 import { WebView } from 'react-native-webview'
-import { usePalette } from '@/components/explore'
+import { usePalette } from '@/components/theme'
 import { ACCENT, ACID, INK } from '@/components/ui'
 import type { MedalId } from '@/lib/medals'
 
