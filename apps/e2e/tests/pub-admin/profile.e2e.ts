@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import { MEDIA_PUBLIC_ORIGIN, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
+import { team } from '../../fixtures/fan'
 import { createEvent } from '../../fixtures/going'
 import { interceptMediaUploads } from '../../fixtures/media'
 import { createPub } from '../../fixtures/pubs'
@@ -597,4 +598,56 @@ test('avaliações e prévia de como o torcedor vê', async ({ page }) => {
   await expect(preview).toContainText('Vou assistir aqui')
   // Elite em dia: o selo aparece como para o torcedor.
   await expect(preview).toContainText('Elite')
+})
+
+test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async ({
+  page
+}) => {
+  const pub = await createPub({ bar: { amenities: [1, 2] } })
+  const { eventId } = await createEvent(pub.barId, {
+    startsAt: new Date(Date.now() - 30 * 60_000)
+  })
+  const [corinthians, palmeiras] = await Promise.all([
+    team('corinthians'),
+    team('palmeiras')
+  ])
+  for (const [position, t] of [corinthians, palmeiras].entries()) {
+    await insert('event_participants', {
+      event_id: eventId,
+      team_id: t.id,
+      position
+    })
+  }
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  await info(page).getByLabel('Nome do estabelecimento').fill('Bar do Rascunho')
+
+  const abas = page.getByRole('group', { name: 'Prévia' })
+  await abas.getByRole('button', { name: 'Card' }).click()
+  await expect(abas.getByRole('button', { name: 'Card' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+  const card = page.getByRole('img', {
+    name: 'Prévia do card de Bar do Rascunho na lista do app'
+  })
+  // Ao vivo, Elite em dia, confronto com as siglas, e sem distância.
+  await expect(card).toContainText('Ao vivo')
+  await expect(card).toContainText('Elite')
+  await expect(card).toContainText('COR')
+  await expect(card).toContainText('Corinthians')
+  await expect(card).toContainText('Consolação')
+  await expect(card).not.toContainText('km')
+
+  await abas.getByRole('button', { name: 'Mapa' }).click()
+  const mapa = page.getByRole('img', {
+    name: 'Prévia do pino de Bar do Rascunho no mapa do app'
+  })
+  await expect(mapa).toContainText('Bar do Rascunho')
+  await expect(mapa).toContainText('AO VIVO')
+
+  await abas.getByRole('button', { name: 'Página' }).click()
+  await expect(
+    page.getByRole('img', { name: /Prévia da página de Bar do Rascunho/ })
+  ).not.toContainText('km')
 })
