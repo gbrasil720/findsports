@@ -4,7 +4,7 @@ import {
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
 import { TRPCError } from '@trpc/server'
-import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
+import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
 
 /**
  * Regras da oferta da casa (WEB-120) que dependem do plano.
@@ -14,13 +14,6 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  * trial uma vez por dia.
  */
 
-export function canConfigureHouseOffer(
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return getCurrentPlan(subscription, now) === 'elite'
-}
-
 /**
  * Esconder o formulário não é validação: o procedimento chama isto antes de
  * gravar, e a recusa vale para qualquer escrita — salvar, editar ou limpar.
@@ -29,7 +22,7 @@ export function assertCanConfigureHouseOffer(
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): void {
-  if (!canConfigureHouseOffer(subscription, now)) {
+  if (!issuesCounterCode(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A oferta da casa é um recurso do plano Elite.'

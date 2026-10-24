@@ -3,68 +3,10 @@ import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import { TRPCError } from '@trpc/server'
 import {
   assertCanConfigureHouseOffer,
-  canConfigureHouseOffer,
   parseHouseOfferInput
 } from './house-offer'
 
 const now = new Date('2026-09-13T12:00:00.000Z')
-const tomorrow = new Date('2026-09-14T12:00:00.000Z')
-const yesterday = new Date('2026-09-12T12:00:00.000Z')
-
-describe('canConfigureHouseOffer', () => {
-  test('Elite ativo configura', () => {
-    expect(
-      canConfigureHouseOffer(
-        { plan: 'elite', status: 'active', currentPeriodEnd: null },
-        now
-      )
-    ).toBe(true)
-  })
-
-  test('Elite em trial vigente configura', () => {
-    expect(
-      canConfigureHouseOffer(
-        { plan: 'elite', status: 'trialing', currentPeriodEnd: tomorrow },
-        now
-      )
-    ).toBe(true)
-  })
-
-  test.each(['starter', 'pro'] as const)('%s ativo não configura', (plan) => {
-    expect(
-      canConfigureHouseOffer(
-        { plan, status: 'active', currentPeriodEnd: null },
-        now
-      )
-    ).toBe(false)
-  })
-
-  test.each([
-    'past_due',
-    'inactive',
-    'cancelled'
-  ] as const)('Elite em %s não configura', (status) => {
-    expect(
-      canConfigureHouseOffer(
-        { plan: 'elite', status, currentPeriodEnd: tomorrow },
-        now
-      )
-    ).toBe(false)
-  })
-
-  test('trial Elite vencido não configura', () => {
-    expect(
-      canConfigureHouseOffer(
-        { plan: 'elite', status: 'trialing', currentPeriodEnd: yesterday },
-        now
-      )
-    ).toBe(false)
-  })
-
-  test('bar sem assinatura não configura', () => {
-    expect(canConfigureHouseOffer(null, now)).toBe(false)
-  })
-})
 
 describe('assertCanConfigureHouseOffer', () => {
   test('recusa com FORBIDDEN', () => {

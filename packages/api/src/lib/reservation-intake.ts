@@ -8,7 +8,7 @@ import {
 import { event } from '@findsports_oficial/db/schema/platform'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
-import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
+import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
 
 /**
  * O que o bar Elite tem por causa do código do balcão: a lista de quem vai e
@@ -20,18 +20,11 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  * tabelas da antiga reserva (`attendance-ticket.ts`).
  */
 
-function canEnableReservations(
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return getCurrentPlan(subscription, now) === 'elite'
-}
-
 export function assertCanEnableReservations(
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): void {
-  if (!canEnableReservations(subscription, now)) {
+  if (!issuesCounterCode(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A lista de quem vai é um recurso do plano Elite.'
@@ -61,8 +54,7 @@ export async function canManageReservations(
   now = new Date()
 ): Promise<boolean> {
   return (
-    canEnableReservations(subscription, now) ||
-    (await hasOpenReservations(barId))
+    issuesCounterCode(subscription, now) || (await hasOpenReservations(barId))
   )
 }
 
@@ -77,7 +69,7 @@ export async function canValidateReservations(
   now = new Date()
 ): Promise<boolean> {
   return (
-    canEnableReservations(subscription, now) ||
+    issuesCounterCode(subscription, now) ||
     (await hasOpenReservations(barId, validationOpen))
   )
 }

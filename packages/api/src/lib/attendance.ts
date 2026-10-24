@@ -40,7 +40,7 @@ import {
   retireTicket,
   type Tx
 } from './attendance-ticket'
-import { getCurrentPlan } from './current-plan'
+import { issuesCounterCode } from './current-plan'
 import { participantNames } from './game-participants'
 import { getLateEntryWindow } from './reservation-validation'
 import { visit } from './visits'
@@ -133,7 +133,7 @@ export async function setAttendance(
         target: [attendance.userId, attendance.eventId],
         set: { source: 'manual' }
       })
-    if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
+    if (issuesCounterCode(game.bar.subscription ?? null, now)) {
       await issueTicket(tx, userId, eventId, game.bar.houseOffer)
       ticket = await readTicket(tx, userId, eventId)
     }
@@ -410,12 +410,12 @@ export async function readMyGames(
       // Pela comanda só vale com o Elite: o bar que perdeu o plano não lança mais.
       const confirmsCodesLater =
         row.confirmsCodesLater &&
-        getCurrentPlan(
+        issuesCounterCode(
           plan && planStatus
             ? { plan, status: planStatus, currentPeriodEnd }
             : null,
           now
-        ) === 'elite'
+        )
       const lastChance = confirmsCodesLater
         ? getLateEntryWindow({ startsAt: row.startsAt, endsAt }).closesAt
         : window.closesAt
