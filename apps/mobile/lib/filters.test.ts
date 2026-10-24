@@ -6,6 +6,9 @@ import {
   defaultShortcuts,
   MAX_SHORTCUTS,
   NO_FILTERS,
+  SEARCH_LIMIT,
+  searchInput,
+  searchRadius,
   shortcutOn,
   sportCode,
   sportsMineFirst,
@@ -71,5 +74,50 @@ describe('filtros e atalhos (19d, 19e)', () => {
       's2',
       's1'
     ])
+  })
+})
+
+describe('searchInput', () => {
+  const center = { lat: -23.56, lng: -46.69 }
+
+  test('sem filtro, só centro, raio e o limite', () => {
+    expect(searchInput(NO_FILTERS, center, 3)).toEqual({
+      ...center,
+      radiusKm: 3,
+      date: undefined,
+      sportId: undefined,
+      amenities: undefined,
+      limit: SEARCH_LIMIT
+    })
+  })
+
+  test('leva dia, esporte e características', () => {
+    const input = searchInput(
+      { ...NO_FILTERS, date: '2026-10-21', sportId: 's1', amenities: [1, 4] },
+      center,
+      5
+    )
+    expect(input).toMatchObject({
+      date: '2026-10-21',
+      sportId: 's1',
+      amenities: [1, 4]
+    })
+  })
+
+  test('o "Ver N bares" conta no limite do mapa', () => {
+    // Antes os filtros pediam 50 e o mapa 30: o botão dizia "Ver 42 bares"
+    // e o Explorar mostrava 30.
+    expect(SEARCH_LIMIT).toBe(30)
+  })
+})
+
+describe('searchRadius', () => {
+  test('o do filtro ganha do perfil', () => {
+    expect(searchRadius({ ...NO_FILTERS, radius: 10 }, 3)).toBe(10)
+    expect(searchRadius(NO_FILTERS, 3)).toBe(3)
+  })
+
+  test('nunca passa do teto', () => {
+    expect(searchRadius(NO_FILTERS, 80)).toBe(50)
   })
 })
