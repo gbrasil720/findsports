@@ -1,12 +1,7 @@
-import { and, db, eq, isNull, sql } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event, sport } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
-import {
-  reservation,
-  reservationCode,
-  reservationCodeUse
-} from '@findsports_oficial/db/schema/reservation'
 import {
   ACHIEVEMENTS,
   type AchievementId,
@@ -15,12 +10,11 @@ import {
   type Visit
 } from './achievements'
 import { createTtlCache } from './ttl-cache'
+import { visit } from './visits'
 
 /**
- * Leitura das conquistas (WEB-403). A visita é o código validado no balcão e
- * não desfeito: o ingresso mora em `reservation`/`reservation_code`
- * (`attendance-ticket.ts`). Com o check-in por localização (WEB-408), as
- * visitas dele entram aqui também.
+ * Leitura das conquistas (WEB-403): as visitas (`visits.ts`), uma por jogo,
+ * com o bar e o esporte.
  */
 export async function readVisits(userId: string) {
   return db
@@ -40,18 +34,11 @@ export async function readVisits(userId: string) {
       sportId: sport.id,
       sportName: sport.name
     })
-    .from(reservationCodeUse)
-    .innerJoin(
-      reservationCode,
-      eq(reservationCode.id, reservationCodeUse.codeId)
-    )
-    .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
-    .innerJoin(event, eq(event.id, reservation.eventId))
-    .innerJoin(bar, eq(bar.id, event.barId))
+    .from(visit)
+    .innerJoin(event, eq(event.id, visit.eventId))
+    .innerJoin(bar, eq(bar.id, visit.barId))
     .innerJoin(sport, eq(sport.id, event.sportId))
-    .where(
-      and(eq(reservation.userId, userId), isNull(reservationCodeUse.undoneAt))
-    )
+    .where(eq(visit.userId, userId))
 }
 
 async function readReviews(userId: string) {
@@ -78,8 +65,8 @@ const shareCache = createTtlCache<Record<AchievementId, number>>({
 async function readShares() {
   const visits = db
     .select({
-      userId: reservation.userId,
-      bars: sql<number>`count(distinct ${event.barId})::int`.as('bars'),
+      userId: visit.userId,
+      bars: sql<number>`count(distinct ${visit.barId})::int`.as('bars'),
       bairros:
         sql<number>`count(distinct (${bar.city}, ${bar.neighborhood}))::int`.as(
           'bairros'
@@ -88,16 +75,10 @@ async function readShares() {
         'esportes'
       )
     })
-    .from(reservationCodeUse)
-    .innerJoin(
-      reservationCode,
-      eq(reservationCode.id, reservationCodeUse.codeId)
-    )
-    .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
-    .innerJoin(event, eq(event.id, reservation.eventId))
-    .innerJoin(bar, eq(bar.id, event.barId))
-    .where(isNull(reservationCodeUse.undoneAt))
-    .groupBy(reservation.userId)
+    .from(visit)
+    .innerJoin(event, eq(event.id, visit.eventId))
+    .innerJoin(bar, eq(bar.id, visit.barId))
+    .groupBy(visit.userId)
     .as('visits')
   const reviews = db
     .select({
