@@ -212,3 +212,138 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'perfil do amigo: jogo com código de várias pessoas conta uma vez, e os bares em comum saem do mais recente',
+  async () => {
+    const { db, appRouter } = await load()
+    const { bar, event, sport } = await import(
+      '@findsports_oficial/db/schema/platform'
+    )
+    const { reservation, reservationCode, reservationCodeUse } = await import(
+      '@findsports_oficial/db/schema/reservation'
+    )
+    const { monthStart } = await import('../lib/friends')
+    const fans = { ana: crypto.randomUUID(), beto: crypto.randomUUID() }
+    const owners = [1, 2, 3].map(() => crypto.randomUUID())
+    const bars = owners.map(() => crypto.randomUUID())
+    const sportId = crypto.randomUUID()
+    const start = monthStart()
+    await db.insert(user).values([
+      ...Object.entries(fans).map(([name, id]) => ({
+        id,
+        name,
+        email: `${id}@integration.invalid`,
+        emailVerified: true,
+        role: 'fan' as const,
+        onboardingCompleted: true,
+        activityVisibility: 'friends' as const
+      })),
+      ...owners.map((id) => ({
+        id,
+        name: 'Dono',
+        email: `${id}@integration.invalid`,
+        emailVerified: true,
+        role: 'pub' as const
+      }))
+    ])
+    await db.insert(friendship).values({
+      requesterId: fans.ana,
+      addresseeId: fans.beto,
+      via: 'search',
+      acceptedAt: new Date()
+    })
+    await db.insert(bar).values(
+      bars.map((id, i) => ({
+        id,
+        userId: owners[i] ?? '',
+        name: `Bar do perfil ${i + 1}`,
+        address: 'Rua descartável, 1',
+        neighborhood: `Bairro ${i + 1}`,
+        city: 'Teste',
+        latitude: '-23.55052000',
+        longitude: '-46.63330800',
+        isActive: true
+      }))
+    )
+    await db
+      .insert(sport)
+      .values({ id: sportId, name: `Esporte ${sportId}`, slug: sportId })
+    // Dois jogos neste mês (bares 1 e 2) e um no mês passado (bar 3).
+    const games = await db
+      .insert(event)
+      .values(
+        [
+          new Date(start.getTime() + 3_600_000),
+          new Date(start.getTime() + 2 * 3_600_000),
+          new Date(start.getTime() - 5 * 86_400_000)
+        ].map((startsAt, i) => ({
+          barId: bars[i] ?? '',
+          sportId,
+          championship: 'Campeonato de integração',
+          startsAt
+        }))
+      )
+      .returning({ id: event.id })
+    const visit = async (userId: string, game: number, uses: number) => {
+      const [res] = await db
+        .insert(reservation)
+        .values({
+          eventId: games[game]?.id ?? '',
+          userId,
+          partySize: uses,
+          status: 'confirmed'
+        })
+        .returning({ id: reservation.id })
+      const [code] = await db
+        .insert(reservationCode)
+        .values({
+          code: `PF${crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
+          reservationId: res?.id ?? '',
+          maxUses: uses
+        })
+        .returning({ id: reservationCode.id })
+      await db.insert(reservationCodeUse).values(
+        Array.from({ length: uses }, () => ({
+          id: crypto.randomUUID(),
+          codeId: code?.id ?? '',
+          validatedByUserId: owners[game] ?? ''
+        }))
+      )
+    }
+    try {
+      // Ana levou duas pessoas no jogo do bar 1: três chegadas, um jogo.
+      await visit(fans.ana, 0, 3)
+      await visit(fans.ana, 1, 1)
+      await visit(fans.ana, 2, 1)
+      await visit(fans.beto, 0, 1)
+      await visit(fans.beto, 2, 1)
+
+      const as = (id: string) => appRouter.createCaller(contextFor(id, 'fan'))
+      const profile = await as(fans.beto).friends.profile({ userId: fans.ana })
+      if (!profile.visible) throw new Error('perfil deveria estar visível')
+      expect(profile.month.them).toMatchObject({
+        bars: 2,
+        games: 2,
+        neighborhoods: 2
+      })
+      expect(profile.month.me).toMatchObject({
+        bars: 1,
+        games: 1,
+        neighborhoods: 1
+      })
+      expect(profile.barsInCommon.map((b) => b.id)).toEqual([
+        bars[0] ?? '',
+        bars[2] ?? ''
+      ])
+      expect(profile.level).toEqual(
+        (await as(fans.ana).achievements.mine()).level
+      )
+    } finally {
+      await db
+        .delete(user)
+        .where(inArray(user.id, [...owners, ...Object.values(fans)]))
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
