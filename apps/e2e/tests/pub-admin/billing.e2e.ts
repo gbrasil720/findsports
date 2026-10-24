@@ -20,12 +20,10 @@ async function openBilling(page: Page, options: PubOptions = {}) {
 }
 
 const currentPlan = (page: Page) =>
-  page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  page.getByRole('region', { name: 'Seu plano' })
 
 const cancelShortcut = (page: Page) =>
-  page.getByRole('button', { name: 'Cancelar assinatura' })
+  page.getByRole('button', { name: 'Cancelar plano' })
 
 test('o painel leva à cobrança e à validação', async ({ page }) => {
   const pub = await createPub()
@@ -35,7 +33,7 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
   await painelLink(page, 'Plano e cobrança').click()
   await expect(page).toHaveURL(/\/admin\/billing$/)
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Assinatura e pagamentos' })
+    page.getByRole('heading', { level: 1, name: 'Plano e cobrança' })
   ).toBeVisible()
 
   await page.goto('/admin')
@@ -81,11 +79,18 @@ test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   await expect(currentPlan(page)).toContainText('Elite')
   await expect(currentPlan(page)).toContainText('R$ 269')
   await expect(currentPlan(page)).toContainText('R$ 297')
-  await expect(currentPlan(page)).toContainText('Ativo')
-  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
+  await expect(currentPlan(page)).toContainText('Preço de fundador')
+  await expect(currentPlan(page)).toContainText(/por mês · renova \d+ /)
+  // O que o plano rendeu no mês, dos números do analytics.
+  await expect(currentPlan(page)).toContainText('viram o bar este mês')
+  // Faturas, dados da nota e PIX ainda não existem: aparecem "em breve".
   await expect(
-    currentPlan(page).getByRole('link', { name: 'Fazer upgrade' })
-  ).toHaveCount(0)
+    page.getByRole('region', { name: 'Faturas' }).getByText('em breve')
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Dados da nota' }).getByText('em breve')
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Usar PIX' })).toBeDisabled()
   await expect(
     page.getByText(/faturas e os recibos de cada cobrança ficam no portal/)
   ).toBeVisible()
@@ -139,14 +144,38 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
-  await expect(currentPlan(page)).toContainText(
-    '“Cancelar assinatura” abre o portal direto no cancelamento.'
-  )
-  // Ação secundária: "Gerenciar assinatura" segue sendo o botão do card.
   await expect(
-    currentPlan(page).getByRole('button', { name: 'Gerenciar assinatura' })
+    page.getByRole('button', { name: 'Gerenciar assinatura' })
   ).toBeVisible()
+  // Antes do portal, a retenção (3q): o que se perde e a troca para baixo.
   await cancelShortcut(page).click()
+  const dialog = page.getByRole('dialog')
+  await expect(
+    dialog.getByRole('heading', { name: /Cancelar\s*o Pro\?/ })
+  ).toBeVisible()
+  await expect(dialog).toContainText('Mudar para o Starter')
+  await expect(dialog).toContainText('pessoas que viram o bar este mês')
+  // O motivo ainda não é gravado.
+  await expect(
+    dialog.getByRole('button', { name: 'Pouco movimento' })
+  ).toBeDisabled()
+  await dialog.getByRole('button', { name: 'Manter o Pro' }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(
+    (
+      (await (await page.request.get(`${STUB_URL}/stripe/calls`)).json()) as {
+        path: string
+        body: Record<string, string>
+      }[]
+    ).filter(
+      (call) =>
+        call.path === '/billing_portal/sessions' &&
+        call.body.customer === customerId
+    )
+  ).toHaveLength(0)
+
+  await cancelShortcut(page).click()
+  await dialog.getByRole('button', { name: 'Cancelar mesmo assim' }).click()
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
 
   const calls = (await (
@@ -184,7 +213,7 @@ test('Starter vê o caminho para o upgrade', async ({ page }) => {
   await openBilling(page, { subscription: { plan: 'starter' } })
   await expect(currentPlan(page)).toContainText('Starter')
   await expect(
-    currentPlan(page).getByRole('link', { name: 'Fazer upgrade' })
+    currentPlan(page).getByRole('link', { name: 'Trocar plano' })
   ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
@@ -211,9 +240,7 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   // WEB-343: o card mostra o preço de fundador que /plan promete. O cupom
   // esgotado, com a tabela cheia, está em `checkout.serial.e2e.ts`.
   await expect(currentPlan(page)).toContainText('R$ 119')
-  await expect(currentPlan(page)).toContainText(
-    'Com desconto de fundador no checkout'
-  )
+  await expect(currentPlan(page)).toContainText('Preço de fundador')
   // WEB-264: trial do cadastro não tem cliente no Stripe — sem portal para
   // abrir e sem pagamento; o caminho é contratar em `/plan` (WEB-31).
   await expect(
@@ -281,7 +308,7 @@ for (const [status, label] of [
     await expect(currentPlan(page)).toContainText('Pro')
     await expect(currentPlan(page)).toContainText(label)
     await expect(currentPlan(page)).toContainText('Assinatura encerrada')
-    await expect(currentPlan(page)).not.toContainText('Próxima cobrança')
+    await expect(currentPlan(page)).not.toContainText('renova')
     await expect(cancelShortcut(page)).toHaveCount(0)
     await expect(
       currentPlan(page).getByRole('link', { name: 'Contratar plano' })
@@ -289,8 +316,11 @@ for (const [status, label] of [
   })
 }
 
-// WEB-344: o plano do card não volta em "Outros planos".
-test('assinatura encerrada: "Outros planos" segue o card', async ({ page }) => {
+// WEB-344: o card mostra o plano encerrado; os outros planos ficam em `/plan`
+// ("Ver todos os planos").
+test('assinatura encerrada: o card segue o plano encerrado', async ({
+  page
+}) => {
   await openBilling(page, {
     subscription: {
       plan: 'starter',
@@ -300,13 +330,9 @@ test('assinatura encerrada: "Outros planos" segue o card', async ({ page }) => {
     bar: { is_active: false }
   })
   await expect(currentPlan(page)).toContainText('Starter')
-  const others = page.getByRole('complementary').filter({
-    has: page.getByRole('heading', { name: 'Outros planos' })
-  })
   await expect(
-    others.getByRole('link', { name: 'Contratar Pro' })
-  ).toBeVisible()
-  await expect(others.getByRole('link', { name: /Starter/ })).toHaveCount(0)
+    page.getByRole('link', { name: 'Ver todos os planos' })
+  ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
 test('bar sem assinatura', async ({ page }) => {

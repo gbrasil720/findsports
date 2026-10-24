@@ -64,9 +64,8 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
 
   await signIn(page, user)
   await page.goto('/plan')
-  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
-  await page.getByRole('radio', { name: /^Starter,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Continuar com Starter' }).click()
+  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Mudar para o Starter' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(
@@ -92,8 +91,8 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   await expect(dialog).toHaveCount(0)
   expect(await portalSessions()).toHaveLength(0)
 
-  await page.getByRole('button', { name: 'Continuar com Starter' }).click()
-  await dialog.getByRole('button', { name: 'Continuar com Starter' }).click()
+  await page.getByRole('button', { name: 'Mudar para o Starter' }).click()
+  await dialog.getByRole('button', { name: 'Mudar para o Starter' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/portal/**`)
   const [portal] = await portalSessions()
   const returnUrl = `${BASE_URL}/admin/billing?planFrom=elite&planTo=starter`
@@ -107,7 +106,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
 
   // Voltou do portal sem confirmar: o plano é o mesmo, e nada de aviso.
   const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
+    has: page.getByRole('heading', { name: 'Seu plano' })
   })
   await page.goto(returnUrl)
   await expect(currentPlan).toContainText('Elite')
@@ -151,10 +150,9 @@ test('teste grátis: plano menor também confirma, sem prometer crédito, e segu
   await page.goto('/plan')
 
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+    page.getByRole('heading', { name: /^Você está no Elite até / })
   ).toBeVisible()
-  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Contratar Pro' }).click()
+  await page.getByRole('button', { name: 'ou contratar o Pro' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(
@@ -165,6 +163,11 @@ test('teste grátis: plano menor também confirma, sem prometer crédito, e segu
   // Em teste grátis não há o que creditar (WEB-350).
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(0)
 
-  await dialog.getByRole('button', { name: 'Contratar Pro' }).click()
+  await dialog.getByRole('button', { name: 'Contratar o Pro' }).click()
+  // Depois do que perde, o resumo da contratação: o teste segue até o fim.
+  await expect(
+    dialog.getByRole('heading', { name: 'Confirmar Pro' })
+  ).toBeVisible()
+  await dialog.getByRole('button', { name: 'Confirmar · R$ 0 hoje' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 })
