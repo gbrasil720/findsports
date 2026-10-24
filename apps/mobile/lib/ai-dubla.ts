@@ -47,6 +47,7 @@ function bar(
   name: string,
   neighborhood: string,
   km: number,
+  [latitude, longitude]: [number, number],
   plan: string,
   rating: number,
   game: ChatBar['game']
@@ -55,6 +56,8 @@ function bar(
     id: `00000000-0000-4000-8000-0000000000a${i}`,
     name,
     neighborhood,
+    latitude,
+    longitude,
     distanceKm: km,
     photoUrl: photo,
     plan,
@@ -69,24 +72,42 @@ export function dublaBars(now: number): ChatBar[] {
   const day = new Date(now - 3 * HOUR).toISOString().slice(0, 10)
   const tomorrow = new Date(Date.parse(`${day}T16:00:00-03:00`) + 24 * HOUR)
   return [
-    bar(1, 'Bar do Zé', 'Vila Madalena', 0.8, 'elite', 87, {
-      id: 'ev-dubla-1',
-      title: 'Corinthians × Palmeiras',
-      startsAt: new Date(now - 20 * 60_000).toISOString(),
-      live: true
-    }),
-    bar(2, 'Casa 92', 'Pinheiros', 1.4, 'pro', 92, {
+    bar(
+      1,
+      'Bar do Zé',
+      'Vila Madalena',
+      0.8,
+      [-23.5535, -46.6905],
+      'elite',
+      87,
+      {
+        id: 'ev-dubla-1',
+        title: 'Corinthians × Palmeiras',
+        startsAt: new Date(now - 20 * 60_000).toISOString(),
+        live: true
+      }
+    ),
+    bar(2, 'Casa 92', 'Pinheiros', 1.4, [-23.5672, -46.6923], 'pro', 92, {
       id: 'ev-dubla-2',
       title: 'Grêmio × Internacional',
       startsAt: tonight(now),
       live: false
     }),
-    bar(3, 'Empório Matilde', 'Vila Madalena', 2.3, 'pro', 78, {
-      id: 'ev-dubla-3',
-      title: 'Flamengo × Fluminense',
-      startsAt: tomorrow.toISOString(),
-      live: false
-    })
+    bar(
+      3,
+      'Empório Matilde',
+      'Vila Madalena',
+      2.3,
+      [-23.5468, -46.6997],
+      'pro',
+      78,
+      {
+        id: 'ev-dubla-3',
+        title: 'Flamengo × Fluminense',
+        startsAt: tomorrow.toISOString(),
+        live: false
+      }
+    )
   ]
 }
 

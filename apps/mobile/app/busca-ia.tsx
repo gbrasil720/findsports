@@ -473,10 +473,11 @@ export default function AiSearch() {
     })
   }
 
-  // "Ver no mapa": o Explorar vai até o ponto da busca (o card do chat não
-  // traz coordenadas).
+  // "Ver no mapa": o Explorar enquadra os bares da resposta à vista e o
+  // ponto da busca (WEB-432).
   const showOnMap = () => {
-    const focus = mapFocus(chips, fieldOrigin, radiusKm)
+    const shown = last ? barsOf(last, shownReply(last)) : []
+    const focus = mapFocus(shown, chips, fieldOrigin, radiusKm)
     if (!focus) return
     explore.setFocus(focus)
     router.back()

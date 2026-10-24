@@ -12,6 +12,7 @@ import type {
   Proposal,
   Source
 } from './ai-events'
+import type { MapFrame } from './map-layers'
 
 /*
  * Contas da busca com IA (Rodada 24, WEB-400) sem tela: os eventos de
@@ -376,6 +377,8 @@ type FoundBar = {
   id: string
   name: string
   neighborhood: string | null
+  latitude: string
+  longitude: string
   distance_km: number
   photo_url: string | null
   plan: string | null
@@ -401,6 +404,8 @@ export function fromSearchBar(
     id: bar.id,
     name: bar.name,
     neighborhood: bar.neighborhood,
+    latitude: Number(bar.latitude),
+    longitude: Number(bar.longitude),
     distanceKm: bar.distance_km,
     photoUrl: bar.photo_url,
     plan: bar.plan,
@@ -417,19 +422,49 @@ export function fromSearchBar(
   }
 }
 
-/** "Ver no mapa": o ponto da busca (chip `origin`, senão o do campo). */
+// O menor quadro do "Ver no mapa" e a folga em volta dos bares: a gota sobe
+// da ponta, e um bar na borda do quadro ficaria cortado pelo cabeçalho.
+const MIN_FRAME_KM = 1.6
+const FRAME_MARGIN = 1.4
+
+/**
+ * "Ver no mapa" (WEB-432): o quadro com os bares da resposta e o ponto da
+ * busca (chip `origin`, senão o do campo), com folga. Sem bares, o ponto num
+ * quadro de 2× o raio.
+ */
 export function mapFocus(
+  bars: { latitude: number; longitude: number }[],
   chips: FilterChip[],
   fallback: Point | null,
   radiusKm: number
-) {
+): MapFrame | null {
   const search = chipSearch(chips, [], fallback)
-  if (!search) return null
-  const { lat, lng } = search.input
+  const points = bars
+    .map((b) => ({ lat: b.latitude, lng: b.longitude }))
+    .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+  if (!points.length) {
+    if (!search) return null
+    const { lat, lng } = search.input
+    const km = Math.max(MIN_FRAME_KM, (search.input.radiusKm ?? radiusKm) * 2)
+    return { lat, lng, kmTall: km, kmWide: km }
+  }
+  if (search) points.push({ lat: search.input.lat, lng: search.input.lng })
+  const lats = points.map((p) => p.lat)
+  const lngs = points.map((p) => p.lng)
+  const south = Math.min(...lats)
+  const north = Math.max(...lats)
+  const west = Math.min(...lngs)
+  const east = Math.max(...lngs)
+  const lat = (south + north) / 2
+  const cosLat = Math.cos((lat * Math.PI) / 180)
   return {
     lat,
-    lng,
-    km: Math.max(1.6, (search.input.radiusKm ?? radiusKm) * 2)
+    lng: (west + east) / 2,
+    kmTall: Math.max(MIN_FRAME_KM, (north - south) * 111 * FRAME_MARGIN),
+    kmWide: Math.max(
+      MIN_FRAME_KM,
+      (east - west) * 111.32 * cosLat * FRAME_MARGIN
+    )
   }
 }
 
