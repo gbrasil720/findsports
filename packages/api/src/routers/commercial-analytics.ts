@@ -9,6 +9,7 @@ import {
   assertAnalyticsPeriodAllowed,
   getAnalyticsEntitlements,
   getComparisonMetrics,
+  getMonthNumbers,
   getMyAnalyticsOverview,
   getMyEventAnalytics,
   resolveBarAndPlan,
@@ -157,6 +158,26 @@ export const commercialAnalyticsRouter = router({
       // enxerga vêm nulas, nunca vazam o valor (mesma regra do overview).
       return applyEventBreakdownEntitlements(result, entitlements)
     }),
+
+  /**
+   * O mês do bar em Plano e cobrança (3o, 3q; WEB-446): presenças marcadas,
+   * códigos validados e clássicos no topo. O que o plano não enxerga vem
+   * nulo, pela mesma regra do analytics por jogo e do overview.
+   */
+  getMyMonthNumbers: pubProcedure.query(async ({ ctx }) => {
+    const { barId, plan } = await resolveBarAndPlan(ctx.session.user.id)
+    const entitlements = getAnalyticsEntitlements(plan)
+    const month = await getMonthNumbers(barId)
+    return {
+      going: entitlements.canViewReservations ? month.going : null,
+      validatedCodes: entitlements.canViewReservations
+        ? month.validatedCodes
+        : null,
+      classicsOnTop: entitlements.canViewClassicPlacement
+        ? month.classicsOnTop
+        : null
+    }
+  }),
 
   /**
    * Get entitlements for the authenticated pub's plan.
