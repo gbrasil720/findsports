@@ -437,9 +437,11 @@ function Resumo({ ficha }: { ficha: Ficha }) {
                 <dt>Motivo do cancelamento</dt>
                 <dd>
                   {cancelReasonLabel(ficha.cancelReason.reason)}
-                  <span className="hd-mono hd-small" style={{ fontSize: 11 }}>
-                    {' '}
-                    · {PLAN_NAMES[ficha.cancelReason.plan]} ·{' '}
+                  <span
+                    className="hd-mono hd-small"
+                    style={{ display: 'block', fontSize: 11 }}
+                  >
+                    {PLAN_NAMES[ficha.cancelReason.plan]} ·{' '}
                     {formatDateTime(ficha.cancelReason.createdAt)}
                   </span>
                 </dd>
