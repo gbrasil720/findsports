@@ -1,4 +1,5 @@
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 import { userFavoriteBars } from '@findsports_oficial/db/schema/platform'
 import {
   barGameAlert,
@@ -453,7 +454,7 @@ export const recommendationsRouter = router({
         JOIN sport s ON s.id = e.sport_id
         LEFT JOIN team t ON t.id = a.team_id
         WHERE a.user_id = ${userId}
-          AND e.starts_at >= ${now}::timestamp - INTERVAL '3 hours'
+          AND ${eventNotEndedSql('e', now)}
           AND (
             a.sport_id = e.sport_id
             OR EXISTS (
@@ -473,7 +474,7 @@ export const recommendationsRouter = router({
         JOIN event e ON e.id = r.event_id
         JOIN bar b ON b.id = e.bar_id AND b.is_active
         WHERE r.user_id = ${userId}
-          AND e.starts_at >= ${now}::timestamp - INTERVAL '3 hours'
+          AND ${eventNotEndedSql('e', now)}
       `)
     ])
     type Row = {
