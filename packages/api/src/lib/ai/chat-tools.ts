@@ -245,6 +245,8 @@ export function toChatBar(b: SearchBar, now: Date): ChatBar {
     id: b.id,
     name: b.name,
     neighborhood: b.neighborhood ?? null,
+    latitude: Number(b.latitude),
+    longitude: Number(b.longitude),
     distanceKm:
       typeof b.distance_km === 'number'
         ? Math.round(b.distance_km * 10) / 10

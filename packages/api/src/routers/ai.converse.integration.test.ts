@@ -133,6 +133,10 @@ integrationTest(
       expect(bars).toMatchObject({
         bars: [{ id: seeded.barId, name: 'Bar R24 Busca' }]
       })
+      // As coordenadas chegam em número, para o "Ver no mapa" (WEB-432).
+      const card = bars?.type === 'bars' ? bars.bars[0] : undefined
+      expect(card?.latitude).toBeCloseTo(ORIGIN.lat + 0.005, 6)
+      expect(card?.longitude).toBeCloseTo(ORIGIN.lng, 6)
       expect(events.find((e) => e.type === 'text')).toEqual({
         type: 'text',
         text: 'O **Bar R24** [[1]] passa o jogo.'

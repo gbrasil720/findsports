@@ -10,6 +10,8 @@ const barWith = (game: {
     id: 'bar',
     name: 'Bar do Zé',
     neighborhood: 'Pinheiros',
+    latitude: '-23.5614',
+    longitude: '-46.6912',
     distance_km: 1,
     photo_url: null,
     plan: 'pro',
@@ -52,4 +54,13 @@ test('o card do chat dá o título do jogo pela regra de todas as telas', () => 
       now
     ).game?.title
   ).toBe('Corinthians × Palmeiras')
+})
+
+test('o card do chat leva as coordenadas do bar em número (WEB-432)', () => {
+  const card = toChatBar(
+    barWith({ participants: [], participantFreeText: null }),
+    now
+  )
+  expect(card.latitude).toBe(-23.5614)
+  expect(card.longitude).toBe(-46.6912)
 })
