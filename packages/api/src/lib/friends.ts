@@ -1,4 +1,8 @@
 import { and, db, eq, isNull, or, sql } from '@findsports_oficial/db'
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { friendship } from '@findsports_oficial/db/schema/social'
 import { readAchievements, readVisits } from './achievements-read'
@@ -219,11 +223,7 @@ export async function mutualInitials(me: string, ids: string[]) {
 
 /** O primeiro dia do mês de Brasília, em UTC (como `event.starts_at`). */
 export function monthStart(now = new Date()) {
-  const [year, month] = now
-    .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-    .split('-')
-  // Meia-noite em Brasília é 03:00 UTC (sem horário de verão desde 2019).
-  return new Date(`${year}-${month}-01T03:00:00Z`)
+  return brasiliaDayStart(`${brasiliaDay(now).slice(0, 7)}-01`)
 }
 
 /** O que o perfil do amigo compara (11d): o mês de cada um. */

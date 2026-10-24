@@ -17,6 +17,7 @@
  */
 
 import { db, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { getAiBinding } from '../src/lib/ai/binding'
 import {
   type ChatTurnResult,
@@ -222,10 +223,7 @@ function arg(name: string) {
 }
 
 function dateFor(day: Day, now: Date) {
-  const today = now.toLocaleDateString('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  const d = new Date(`${today}T12:00:00Z`)
+  const d = new Date(`${brasiliaDay(now)}T12:00:00Z`)
   const add =
     day === 'hoje'
       ? 0

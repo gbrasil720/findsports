@@ -1,6 +1,10 @@
 import { db, sql } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
-import { getEventEnd } from '@findsports_oficial/db/event-window'
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay,
+  isEventLive
+} from '@findsports_oficial/db/event-window'
 import { gameTitle, type TitledGame } from '@findsports_oficial/db/game-title'
 
 import type { Context } from '../../context'
@@ -207,7 +211,7 @@ const quoted = (text: string | null | undefined) =>
 
 const brt = (value: string | Date) =>
   new Date(value).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRASILIA_TIME_ZONE,
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
@@ -217,7 +221,7 @@ const brt = (value: string | Date) =>
 
 export const hour = (value: string | Date) =>
   new Date(value).toLocaleTimeString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
+    timeZone: BRASILIA_TIME_ZONE,
     hour: '2-digit',
     minute: '2-digit'
   })
@@ -253,7 +257,7 @@ export function toChatBar(b: SearchBar, now: Date): ChatBar {
           id: e.id,
           title: gameTitle(e),
           startsAt: e.startsAt,
-          live: new Date(e.startsAt) <= now && now < getEventEnd(e)
+          live: isEventLive(e, now)
         }
       : null,
     averageSpendCents: b.averageSpendCents ?? null
@@ -327,23 +331,12 @@ async function originFor(ctx: ToolContext, city: string | null) {
 
 /** A data de Brasília de hoje ou amanhã, como `pubs.search` recebe. */
 export function dateOf(day: 'today' | 'tomorrow', now: Date) {
-  const today = now.toLocaleDateString('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  if (day === 'today') return today
-  const next = new Date(`${today}T12:00:00Z`)
-  next.setUTCDate(next.getUTCDate() + 1)
-  return next.toISOString().slice(0, 10)
+  return brasiliaDay(now, day === 'today' ? 0 : 1)
 }
 
 export function dayChip(date: string, now: Date) {
-  const today = now.toLocaleDateString('en-CA', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  const tomorrow = new Date(`${today}T12:00:00Z`)
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
-  if (date === today) return 'Hoje'
-  if (date === tomorrow.toISOString().slice(0, 10)) return 'Amanhã'
+  if (date === brasiliaDay(now)) return 'Hoje'
+  if (date === brasiliaDay(now, 1)) return 'Amanhã'
   return new Date(`${date}T12:00:00Z`).toLocaleDateString('pt-BR', {
     weekday: 'short',
     day: '2-digit',

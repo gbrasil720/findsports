@@ -1,3 +1,7 @@
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import type { AppConfigValue } from '../app-config/registry'
 
 /**
@@ -13,23 +17,16 @@ import type { AppConfigValue } from '../app-config/registry'
  */
 export type AiLimits = AppConfigValue<'ai.limits'>
 
-/**
- * Começo do dia e do mês de Brasília que contém `now`, e o começo dos
- * seguintes. ponytail: fuso fixo em -03:00, o Brasil não tem horário de verão
- * desde 2019; se voltar, trocar pelo deslocamento do `Intl`.
- */
+/** Começo do dia e do mês de Brasília que contém `now`, e o começo dos seguintes. */
 export function brasiliaWindows(now: Date) {
-  const [y, m, d] = now
-    .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-    .split('-')
-    .map(Number) as [number, number, number]
-  const at = (year: number, month: number, day: number) =>
-    new Date(Date.UTC(year, month - 1, day, 3))
+  const today = brasiliaDay(now)
+  const [y, m] = today.split('-').map(Number) as [number, number]
+  const nextMonth = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10)
   return {
-    dayStart: at(y, m, d),
-    nextDay: at(y, m, d + 1),
-    monthStart: at(y, m, 1),
-    nextMonth: at(y, m + 1, 1)
+    dayStart: brasiliaDayStart(today),
+    nextDay: brasiliaDayStart(brasiliaDay(now, 1)),
+    monthStart: brasiliaDayStart(`${today.slice(0, 7)}-01`),
+    nextMonth: brasiliaDayStart(nextMonth)
   }
 }
 
