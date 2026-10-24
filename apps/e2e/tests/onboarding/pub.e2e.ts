@@ -101,7 +101,7 @@ const storedDraft = async (page: Page) =>
 async function barOf(userId: string) {
   return query(
     `SELECT name, address, neighborhood, city, uf, phone, description, amenities,
-            screen_count, is_active
+            screen_count, is_active, opening_hours, house_offer
      FROM bar WHERE user_id = $1`,
     [userId]
   )
@@ -162,6 +162,41 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
   ]) {
     await expect(page.locator('body')).toContainText(dado)
   }
+
+  // WEB-448: horário e oferta se preenchem aqui, no painel do "Editar".
+  const revisao = page.locator('.entrada-ob-revisao')
+  await button(page, 'Editar horário').click()
+  const horario = page.getByRole('region', { name: 'Horário' })
+  await horario.getByRole('button', { name: 'Informar horário' }).click()
+  await horario.getByLabel('Domingo, abre').fill('12:00')
+  await horario.getByLabel('Domingo, fecha').fill('22:00')
+  for (const dia of ['Sexta', 'Sábado']) {
+    await horario.getByLabel(`${dia}, fecha`).fill('02:00')
+  }
+  await expect(revisao).toContainText(
+    'Seg a qui 17–00 · Sex e sáb 17–02 · Dom 12–22'
+  )
+  // Abre e fecha na mesma hora: o servidor recusaria, o botão segura.
+  await horario.getByLabel('Domingo, fecha').fill('12:00')
+  await expect(horario.getByRole('alert')).toHaveText(
+    'Abre e fecha no mesmo horário: ajuste o dia marcado.'
+  )
+  await expect(button(page, CONCLUIR)).toBeDisabled()
+  await horario.getByLabel('Domingo, fecha').fill('22:00')
+  await horario.getByRole('button', { name: 'Pronto' }).click()
+  await expect(horario).toHaveCount(0)
+
+  await button(page, 'Editar oferta da casa').click()
+  await page
+    .getByRole('region', { name: 'Oferta da casa' })
+    .getByLabel('Oferta da casa')
+    .fill('Chopp em dobro até o intervalo')
+  // A prévia mostra a oferta como o torcedor vê.
+  await expect(page.locator('aside')).toContainText(
+    'Chopp em dobro até o intervalo'
+  )
+  await expect(revisao).toContainText('Chopp em dobro até o intervalo')
+
   await button(page, CONCLUIR).click()
   await expect(page).toHaveURL(NO_AR)
   await expect(
@@ -184,7 +219,14 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
     // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
     amenities: [1],
     screen_count: 4,
-    is_active: true
+    is_active: true,
+    opening_hours: [
+      { opens: '12:00', closes: '22:00' },
+      ...Array(4).fill({ opens: '17:00', closes: '00:00' }),
+      { opens: '17:00', closes: '02:00' },
+      { opens: '17:00', closes: '02:00' }
+    ],
+    house_offer: 'Chopp em dobro até o intervalo'
   })
   const [user] = await query(
     'SELECT onboarding_completed FROM "user" WHERE id = $1',
