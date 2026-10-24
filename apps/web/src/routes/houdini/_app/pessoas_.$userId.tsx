@@ -18,6 +18,7 @@ import { authClient } from '@/lib/auth-client'
 import { appHref } from '@/lib/houdini-host'
 import { type AppRole, roleLabel } from '@/lib/roles'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { FAN_HOME } from '@/utils/auth-guards'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/pessoas_/$userId')({
@@ -105,7 +106,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
     }
     // Recarga inteira: o próximo pedido já leva o cookie da outra conta.
     window.location.href = appHref(
-      account.role === 'pub' ? '/admin' : '/dashboard',
+      account.role === 'pub' ? '/admin' : FAN_HOME,
       new URL(window.location.href)
     )
   }
