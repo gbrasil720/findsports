@@ -5,7 +5,7 @@ import {
 } from '@findsports_oficial/db/event-window'
 import type { ReservationStatus } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
-import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
+import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
 import type { JanelaLimite } from './rate-limit-store'
 
 /**
@@ -45,7 +45,7 @@ export function assertCanValidateReservations(
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): void {
-  if (getCurrentPlan(subscription, now) !== 'elite') {
+  if (!issuesCounterCode(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A validação de códigos é um recurso do plano Elite.'

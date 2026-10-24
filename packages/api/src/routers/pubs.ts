@@ -47,8 +47,8 @@ import { getAppConfig } from '../lib/app-config'
 import { type Going, readFanAttendance, readGoing } from '../lib/attendance'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
-  getCurrentPlan,
   getSubscriptionStanding,
+  issuesCounterCode,
   type SubscriptionStanding
 } from '../lib/current-plan'
 import { resolveEventScreen } from '../lib/event-screen'
@@ -567,7 +567,7 @@ export const pubsRouter = router({
 
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
-      const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
+      const elite = issuesCounterCode(subscription ?? null, now)
       const fan = ctx.session.user.role === 'fan'
       const [attendance, going, reasons] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
