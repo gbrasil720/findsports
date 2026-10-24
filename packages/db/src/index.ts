@@ -65,6 +65,7 @@ export {
   eq,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lte,
   notInArray,
