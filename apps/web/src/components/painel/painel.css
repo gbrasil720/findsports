@@ -587,6 +587,19 @@
   }
 }
 
+/* Avisos antigos fora do `painel-legado` (o erro de carregar do
+ * `admin/query-error`, que o layout e as telas usam): no escuro, papel e
+ * tinta viram os do painel, e o botão tinta inverte junto. */
+@media (prefers-color-scheme: dark) {
+  .painel .onside-callout:not(.painel-legado *) {
+    --onside-paper: var(--painel-card);
+    --onside-ink: var(--painel-fg);
+  }
+  .painel .onside-callout-warn:not(.painel-legado *) {
+    background: color-mix(in srgb, #e0a82e 18%, var(--painel-card));
+  }
+}
+
 /* ─── Conteúdo antigo dentro do shell novo ───
  * As telas de antes só têm o tema claro. Enquanto não são refeitas, ficam
  * numa folha clara, para não sair tinta sobre tinta no escuro. */
