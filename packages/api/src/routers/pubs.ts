@@ -44,7 +44,7 @@ import {
   getSubscriptionStanding,
   type SubscriptionStanding
 } from '../lib/current-plan'
-import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import { stillOnProfile } from '../lib/event-profile-window'
 import { resolveEventScreen } from '../lib/event-screen'
 import {
   favoriteTeamIdsSchema,
@@ -476,7 +476,6 @@ export const pubsRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const now = new Date()
-      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
       const result = await db.query.bar.findFirst({
         where: and(
@@ -510,19 +509,8 @@ export const pubsRouter = router({
             columns: { plan: true, status: true, currentPeriodEnd: true }
           },
           events: {
-            // Jogo ao vivo continua na página: o corte é o fim provável do
-            // jogo, não o início. Ver `event-profile-window.ts`.
-            //
-            // O predicado é montado com operadores do Drizzle, e não com SQL
-            // cru: `event.starts_at` é `timestamp` sem fuso, e comparar com
-            // `now()` (que é `timestamptz`) faria o Postgres converter usando
-            // o fuso da sessão — a janela mudaria de tamanho conforme o
-            // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
-            where: (event, { and, gte, isNotNull, isNull, or }) =>
-              or(
-                and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
-              ),
+            // Jogo ao vivo continua na página (`event-profile-window.ts`).
+            where: (event) => stillOnProfile(event, now),
             with: {
               sport: true,
               participants: {
@@ -741,7 +729,6 @@ export const pubsRouter = router({
   getFavorites: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
     const now = new Date()
-    const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
     const favorites = await db.query.userFavoriteBars.findMany({
       where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
@@ -756,11 +743,7 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
-              where: (event, { and, gte, isNotNull, isNull, or }) =>
-                or(
-                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
-                ),
+              where: (event) => stillOnProfile(event, now),
               // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
               with: {
