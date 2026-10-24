@@ -154,7 +154,9 @@ export async function getEventCreationPolicy(
     .select({ value: count() })
     .from(event)
     .where(
-      and(eq(event.barId, barSnapshot.id), gte(event.createdAt, period.start))
+      // Conta o que foi publicado no período: rascunho (nulo) fica de fora
+      // até ir ao ar (WEB-436).
+      and(eq(event.barId, barSnapshot.id), gte(event.publishedAt, period.start))
     )
 
   return buildEventCreationPolicy({
