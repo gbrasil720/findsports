@@ -1,10 +1,4 @@
-import {
-  DEFAULT_EVENT_DURATION_MS,
-  getEventEnd
-} from '@findsports_oficial/db/event-window'
-
-// Fim derivado vem da fonte única compartilhada com o servidor (WEB-119).
-export const LIVE_WINDOW_MS = DEFAULT_EVENT_DURATION_MS
+import { getEventEnd } from '@findsports_oficial/db/event-window'
 
 export type EventTemporalState = 'upcoming' | 'live' | 'past'
 

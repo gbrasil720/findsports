@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { getEventTemporalState, LIVE_WINDOW_MS } from './events'
+import { DEFAULT_EVENT_DURATION_MS } from '@findsports_oficial/db/event-window'
+import { getEventTemporalState } from './events'
 
 const START = new Date('2026-08-13T12:00:00.000Z')
 
@@ -14,13 +15,21 @@ describe('getEventTemporalState', () => {
   test('is live from the start through the existing three-hour boundary', () => {
     expect(getEventTemporalState(START, null, START)).toBe('live')
     expect(
-      getEventTemporalState(START, null, START.getTime() + LIVE_WINDOW_MS)
+      getEventTemporalState(
+        START,
+        null,
+        START.getTime() + DEFAULT_EVENT_DURATION_MS
+      )
     ).toBe('live')
   })
 
   test('is past after the three-hour boundary', () => {
     expect(
-      getEventTemporalState(START, null, START.getTime() + LIVE_WINDOW_MS + 1)
+      getEventTemporalState(
+        START,
+        null,
+        START.getTime() + DEFAULT_EVENT_DURATION_MS + 1
+      )
     ).toBe('past')
   })
 
@@ -38,7 +47,7 @@ describe('getEventTemporalState', () => {
       getEventTemporalState(
         START,
         longEnd,
-        START.getTime() + LIVE_WINDOW_MS + 1
+        START.getTime() + DEFAULT_EVENT_DURATION_MS + 1
       )
     ).toBe('live')
   })
