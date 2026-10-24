@@ -1,0 +1,194 @@
+/*
+ * Planos, confirmação e cobrança do painel do bar (design "Bar Web", telas
+ * 3h–3r). Usa os tokens de `components/painel/painel.css` (`--painel-*`):
+ * `/plan` e `/plan/confirmed` carregam aquele arquivo no `head`, e
+ * `/admin/billing` o herda do layout do painel.
+ */
+
+/* `/plan` e `/plan/confirmed`: fora do shell, com cabeçalho próprio. O fundo
+ * da página acompanha o tema também abaixo do conteúdo. */
+.painel.pl-frame {
+  flex-direction: column;
+}
+:root:has(.pl-frame) {
+  background: #f1eee6;
+}
+:root:has(.pl-frame) body {
+  background: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:has(.pl-frame) {
+    background: #12120f;
+  }
+}
+.painel .pl-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 0 48px;
+  border-bottom: 1px solid var(--painel-line);
+}
+@media (max-width: 640px) {
+  .painel .pl-topo {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+}
+
+/* Faixa tinta (teste em destaque, plano atual): tinta no claro, cartão no
+ * escuro, com o texto e as peças de dentro no tema escuro. */
+.painel .pl-tinta {
+  --painel-fg: #f1eee6;
+  --painel-muted: #aaa9a4;
+  --painel-line: rgb(241 238 230 / 10%);
+  --painel-line2: rgb(241 238 230 / 16%);
+  --painel-track: #2c2c27;
+  --painel-prog-fill: #c9f135;
+  --painel-acc: #c9f135;
+  --painel-tint: #c9f135;
+  --painel-icone-base: 0.35;
+  --painel-hover: rgb(241 238 230 / 6%);
+  --painel-sh-btn: 3px 3px 0 #000;
+  border-radius: 9px;
+  background: var(--painel-surface-ink);
+  color: var(--painel-fg);
+  box-shadow: 6px 6px 0 var(--painel-acid);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .pl-tinta {
+    box-shadow:
+      6px 6px 0 var(--painel-acid),
+      inset 0 0 0 1px rgb(241 238 230 / 10%);
+  }
+}
+
+/* Medalha do plano (`medal` do design). */
+.painel .pl-medalha {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--pl-medalha, 44px);
+  height: var(--pl-medalha, 44px);
+  border-radius: 10px;
+  background: var(--painel-sub);
+  color: var(--painel-fg);
+}
+.painel .pl-medalha[data-plano="elite"] {
+  background: var(--painel-ink);
+  color: var(--painel-paper);
+}
+.painel .pl-tinta .pl-medalha,
+.painel .pl-modal-tinta .pl-medalha {
+  background: #262621;
+  color: var(--painel-paper);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .pl-medalha,
+  .painel .pl-medalha[data-plano="elite"] {
+    background: #262621;
+    color: var(--painel-fg);
+  }
+}
+
+/* Tabela "Tudo que muda entre os planos". */
+.painel .pl-tabela {
+  --pl-hl: rgb(201 241 53 / 28%);
+  /* Contém o `sr-only` das células: sem isto o texto escondido, absoluto,
+   * escapava da rolagem da tabela e alargava a página no celular. */
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+}
+@media (prefers-color-scheme: dark) {
+  .painel .pl-tabela {
+    --pl-hl: rgb(201 241 53 / 8%);
+  }
+}
+.painel .pl-tabela [data-hl] {
+  background: var(--pl-hl);
+}
+.painel .pl-tabela .pl-col[data-hl] {
+  border-radius: 8px 8px 0 0;
+  box-shadow: inset 0 3px 0 var(--painel-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .pl-tabela .pl-col[data-hl] {
+    box-shadow: inset 0 3px 0 var(--painel-acid);
+  }
+}
+.painel .pl-tabela .pl-celula {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--painel-line);
+  font-size: 13.5px;
+}
+.painel .pl-tabela .pl-celula:first-child,
+.painel .pl-tabela .pl-rotulo {
+  padding-left: 0;
+}
+.painel .pl-tabela .pl-rotulo {
+  font-size: 14px;
+}
+/* Celular: a tabela rola de lado, com a coluna do rótulo mais estreita. */
+@media (max-width: 760px) {
+  .painel .pl-tabela-rolo {
+    overflow-x: auto;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  .painel .pl-tabela {
+    min-width: 680px;
+    grid-template-columns: 180px repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Diálogo do painel (3j, 3q): cartão com a sombra dura do design. Ganha do
+ * `.onside-app [data-slot="dialog-content"]` do resto do app. */
+.painel [data-slot="dialog-content"].pl-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(calc(100vw - 32px), var(--pl-modal-w, 520px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 26px 28px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--painel-card2);
+  color: var(--painel-fg);
+  font-family: var(--onside-body);
+  box-shadow:
+    8px 8px 0 var(--painel-ink),
+    0 40px 80px -30px rgb(0 0 0 / 60%);
+}
+@media (prefers-color-scheme: dark) {
+  .painel [data-slot="dialog-content"].pl-modal {
+    box-shadow:
+      8px 8px 0 #000,
+      0 40px 80px -30px rgb(0 0 0 / 60%),
+      inset 0 0 0 1px rgb(241 238 230 / 9%);
+  }
+}
+/* Em tela baixa o diálogo inteiro rola; nenhum bloco encolhe por cima do outro. */
+.painel .pl-modal > * {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .painel [data-slot="dialog-content"].pl-modal {
+    padding: 20px 18px;
+  }
+}
+
+.painel .pl-check {
+  color: var(--painel-fg);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .pl-check {
+    color: var(--painel-acid);
+  }
+}

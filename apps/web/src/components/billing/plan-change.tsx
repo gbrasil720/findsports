@@ -1,18 +1,14 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
+import { Botao, Card, propsBotao } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
 import { getPlan, getPlanLosses, getPlanLossNote } from '@/lib/plan-catalog'
 import { RECEIPT_POLL_INTERVAL_MS } from '@/lib/subscription-receipt'
 import { useTRPC } from '@/utils/trpc'
+import { Medalha, PainelModal } from './planos'
 
 type Change = { from: SubscriptionPlan; to: SubscriptionPlan }
 
@@ -36,9 +32,7 @@ function PlanLossList({
     bar && upcoming ? { ...bar, upcomingEvents: upcoming.length } : null
 
   return (
-    <ul
-      className={`mt-3 space-y-2 text-[var(--onside-ink)] text-sm ${className ?? ''}`}
-    >
+    <ul className={`mt-3 space-y-2 text-sm ${className ?? ''}`}>
       {getPlanLosses(from, to).map((loss) => {
         const note = numbers
           ? getPlanLossNote(loss.key, numbers, onTrial)
@@ -81,54 +75,43 @@ export function DowngradeConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <Dialog
-      open
-      onOpenChange={(next) => {
-        if (!next) onCancel()
-      }}
+    <PainelModal
+      titulo={`Trocar para o ${getPlan(to).name}?`}
+      icone={<Medalha plano={to} tamanho={52} />}
+      inicio={cancelRef}
+      onClose={onCancel}
     >
-      <DialogContent
-        initialFocus={cancelRef}
-        className="onside-dialog flex max-w-[calc(100vw-2rem)] flex-col p-6 sm:max-w-lg"
-      >
-        <DialogTitle className="onside-display text-2xl">
-          Trocar para o {getPlan(to).name}?
-        </DialogTitle>
-        <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
+      <div>
+        <p className="text-[15px] text-[var(--painel-muted)]">
           Seu bar sai do {getPlan(from).name} e deixa de ter:
-        </DialogDescription>
-        {/* Só a lista rola: título, crédito e botões ficam à vista. */}
-        <PlanLossList
-          from={from}
-          to={to}
-          onTrial={onTrial}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        />
-        {earnsCredit ? (
-          <p className="mt-4 text-[var(--onside-ink)] text-sm">
-            A diferença vira crédito na sua conta e abate as próximas
-            mensalidades (não é reembolsada no cartão).
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="onside-btn onside-btn-ink"
-          >
-            {confirmLabel}
-          </button>
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={onCancel}
-            className="onside-btn onside-btn-outline"
-          >
-            Manter o {getPlan(from).name}
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </p>
+        <PlanLossList from={from} to={to} onTrial={onTrial} />
+      </div>
+      {earnsCredit ? (
+        <p className="text-sm">
+          A diferença vira crédito na sua conta e abate as próximas mensalidades
+          (não é reembolsada no cartão).
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2.5">
+        <Botao
+          variante="ink"
+          altura={48}
+          className="!flex-1"
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </Botao>
+        <button
+          ref={cancelRef}
+          type="button"
+          {...propsBotao({ variante: 'acid', altura: 48 }, '!flex-1')}
+          onClick={onCancel}
+        >
+          Manter o {getPlan(from).name}
+        </button>
+      </div>
+    </PainelModal>
   )
 }
 
@@ -172,9 +155,9 @@ export function PlanChangedNotice({ pending }: { pending: Change | null }) {
   const hasLosses = getPlanLosses(changed.from, changed.to).length > 0
 
   return (
-    <div className="onside-callout onside-callout-acid mb-6" role="status">
+    <Card kind="acid" role="status">
       <div>
-        <p className="font-semibold text-sm">
+        <p className="font-bold text-[15px]">
           Plano alterado para {getPlan(changed.to).name}.
         </p>
         {hasLosses ? (
@@ -187,6 +170,6 @@ export function PlanChangedNotice({ pending }: { pending: Change | null }) {
           </>
         ) : null}
       </div>
-    </div>
+    </Card>
   )
 }
