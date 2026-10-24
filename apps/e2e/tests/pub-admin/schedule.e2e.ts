@@ -459,3 +459,45 @@ test('sem histórico, a grade avisa que ainda reúne dados de interesse', async 
     })
   ).toBeVisible()
 })
+
+// Rascunho (WEB-436): salva sem publicar, fica só no painel e vai ao ar pelo
+// "Publicar" da linha.
+test('salva um jogo em rascunho, fora do perfil, e publica depois', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page)
+  await gotoSchedule(page)
+
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Rascunho E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  await dialog.getByRole('button', { name: 'Salvar rascunho' }).click()
+  await expect(dialog).toBeHidden()
+
+  const row = page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
+  await expect(row).toContainText('Rascunho E2E · rascunho')
+  await page.getByRole('button', { name: 'Rascunhos · 1' }).click()
+  await expect(row).toHaveCount(1)
+  expect(
+    await query(
+      'SELECT id FROM event WHERE bar_id = $1 AND published_at IS NULL',
+      [barId]
+    )
+  ).toHaveLength(1)
+
+  // O perfil público não mostra o rascunho.
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText('Rascunho E2E')).toHaveCount(0)
+
+  await gotoSchedule(page)
+  await row.getByRole('button', { name: /^Publicar/ }).click()
+  await expect(row).toContainText('Publicado')
+  await expect(
+    page.getByRole('button', { name: 'Rascunhos · 0' })
+  ).toBeVisible()
+
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText('Rascunho E2E').first()).toBeVisible()
+})
