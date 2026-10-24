@@ -6,17 +6,19 @@ import {
   useNavigate
 } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import Envelope from 'reicon-react/icons/Envelope'
-import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
-import { AuthBrandPanel } from '@/components/auth-brand-panel'
-import { AuthInputField } from '@/components/auth-input-field'
-import { AuthPasswordField } from '@/components/auth-password-field'
-import { OnsideBrand } from '@/components/brand/onside-brand'
+import {
+  AuthSplit,
+  CampoForm,
+  CampoSenha,
+  CardTorcedor,
+  Disp,
+  entradaHead
+} from '@/components/entrada/auth'
+import { Botao } from '@/components/painel'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
-import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import {
   createTwoFactorChallenge,
@@ -27,11 +29,11 @@ import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
   head: () =>
-    pageHead({
+    entradaHead({
       path: '/login',
       title: 'Entrar — Onside',
       description:
-        'Entre na sua conta Onside e encontre o bar certo pro seu jogo.',
+        'Entre no painel do seu bar na Onside: jogos, quem vai e o código no balcão.',
       indexable: false
     }),
   component: LoginPage
@@ -53,7 +55,6 @@ function validatePassword({ value }: { value: string }) {
 function LoginPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
@@ -126,153 +127,107 @@ function LoginPage() {
   }
 
   return (
-    <div className="onside-app flex">
-      <AuthBrandPanel variant="login">
-        <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
-          <span className="onside-live-dot" aria-hidden="true" />
-          Área exclusiva
-        </div>
-        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
-          O JOGO <span className="text-[var(--onside-acid)]">COMEÇA AQUI.</span>
-        </p>
-        {/*
-         * "o maior mapa de bares esportivos do Brasil" era superlativo que o
-         * produto ainda não sustenta. A frase que fica é a que ele já cumpre.
-         */}
-        <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
-          Entre na sua conta e veja quais bares estão passando o seu jogo.
-        </p>
-      </AuthBrandPanel>
-
-      <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
-        <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
-          <Link to="/" aria-label="Onside — página inicial">
-            <OnsideBrand />
-          </Link>
-          <p className="mt-4 max-w-[28ch] text-sm text-[var(--onside-muted)]">
-            O jogo{' '}
-            <span className="font-semibold text-[var(--onside-ink)]">
-              começa aqui
-            </span>
-            .
+    <AuthSplit
+      foto={
+        <>
+          <Disp
+            nivel={0}
+            tamanho={64}
+            linhas={[
+              { texto: 'Seu bar no' },
+              { texto: 'radar dos torcedores.', tint: true }
+            ]}
+            className="entrada-foto-titulo"
+          />
+          <p>
+            Programe os jogos, veja quem vai assistir e valide o código no
+            balcão, daqui ou do app.
           </p>
-        </div>
+        </>
+      }
+    >
+      <p className="entrada-kicker">Onside para bares</p>
+      <Disp tamanho={64} linhas={[{ texto: 'Entrar' }]} />
+      <p className="entrada-linha">
+        Ainda não cadastrou o bar?{' '}
+        <Link
+          to="/signup"
+          search={callbackUrl === '/admin' ? {} : { callbackUrl }}
+          className="entrada-link"
+        >
+          Cadastrar meu bar
+        </Link>
+      </p>
 
-        <div className="w-full max-w-[420px]">
-          <div className="mb-8">
-            <p className="onside-kicker">Entrar</p>
-            <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
-              DE VOLTA AO{' '}
-              <span className="text-[var(--onside-live-text)]">JOGO.</span>
-            </h1>
-            <p className="text-sm text-[var(--onside-muted)]">
-              Não tem conta?{' '}
-              <Link
-                to="/signup"
-                className="font-semibold text-[var(--onside-ink)] underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
-              >
-                Cadastre-se grátis
-              </Link>
-            </p>
-          </div>
+      <form
+        method="post"
+        ref={formRef}
+        noValidate
+        style={{ marginTop: 6 }}
+        onSubmit={(e) => {
+          e.preventDefault()
+          form.handleSubmit()
+        }}
+      >
+        {/*
+         * O formulário é `noValidate`, então o navegador não valida nada.
+         * Validar também no envio é o que faz a mensagem aparecer sob o campo
+         * e `aria-invalid` ir junto (os validadores só rodavam no `blur`).
+         */}
+        <form.Field
+          name="email"
+          validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
+        >
+          {(field) => (
+            <CampoForm
+              field={field}
+              rotulo="E-mail"
+              id="email"
+              type="email"
+              inputMode="email"
+              spellCheck={false}
+              placeholder="seu@email.com"
+              autoComplete="email"
+              required
+            />
+          )}
+        </form.Field>
 
-          <form
-            method="post"
-            ref={formRef}
-            className="flex flex-col gap-4"
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault()
-              form.handleSubmit()
-            }}
-          >
-            {/*
-             * O formulário é `noValidate`, então o navegador não valida nada;
-             * e os validadores só rodavam no `blur`. Enviar vazio sem tocar
-             * em campo nenhum não acendia erro em lugar algum da tela — só um
-             * toast, que some. Validar também no envio é o que faz a mensagem
-             * aparecer sob o campo e `aria-invalid` ir junto.
-             */}
-            <form.Field
-              name="email"
-              validators={{
-                onBlur: validateEmail,
-                onSubmit: validateEmail
-              }}
-            >
-              {(field) => (
-                <AuthInputField
-                  label="E-mail"
-                  icon={Envelope}
-                  field={field}
-                  id="email"
-                  type="email"
-                  inputMode="email"
-                  spellCheck={false}
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  required
-                />
-              )}
-            </form.Field>
+        <form.Field
+          name="password"
+          validators={{ onBlur: validatePassword, onSubmit: validatePassword }}
+        >
+          {(field) => (
+            <CampoSenha
+              field={field}
+              rotulo="Senha"
+              id="password"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+              aside={
+                <Link to="/forgot-password" className="entrada-link">
+                  Esqueci a senha
+                </Link>
+              }
+            />
+          )}
+        </form.Field>
 
-            <form.Field
-              name="password"
-              validators={{
-                onBlur: validatePassword,
-                onSubmit: validatePassword
-              }}
-            >
-              {(field) => (
-                <AuthPasswordField
-                  label="Senha"
-                  field={field}
-                  id="password"
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
-                  showPassword={showPassword}
-                  onToggle={() => setShowPassword((v) => !v)}
-                  extraLabel={
-                    <Link
-                      to="/forgot-password"
-                      className="font-semibold text-[var(--onside-muted)] text-xs underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
-                    >
-                      Esqueci minha senha
-                    </Link>
-                  }
-                />
-              )}
-            </form.Field>
+        <Botao
+          type="submit"
+          variante="acid"
+          disabled={isLoading}
+          className="entrada-cta"
+          style={{ marginTop: 4 }}
+        >
+          {isLoading ? 'Entrando…' : 'Entrar'}
+        </Botao>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="onside-btn onside-btn-acid onside-btn-full mt-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader
-                    size={16}
-                    color="currentColor"
-                    className="animate-spin"
-                    aria-hidden="true"
-                  />
-                  Acessando…
-                </>
-              ) : (
-                'Acessar minha conta'
-              )}
-            </button>
+        {captcha.widget}
+      </form>
 
-            <p className="text-center text-[var(--onside-muted)] text-xs">
-              Ao entrar, você acessa o app Onside com sua conta.
-            </p>
-
-            {captcha.widget}
-          </form>
-        </div>
-      </main>
-    </div>
+      <CardTorcedor />
+    </AuthSplit>
   )
 }
