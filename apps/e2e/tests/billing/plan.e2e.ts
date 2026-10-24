@@ -362,9 +362,10 @@ test('trial que já é do Stripe: troca de plano, com o plano contratado como at
   ).toBeVisible()
 })
 
-// WEB-347: depois de contratar no teste, o painel confirma que "pegou" — selo
-// próprio e a primeira cobrança, em vez do "Trial gratuito" de quem não pagou.
-test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e quando sai a primeira cobrança', async ({
+// WEB-347: depois de contratar no teste, "Plano e cobrança" confirma que
+// "pegou" — selo próprio e a primeira cobrança, em vez do "Trial gratuito" de
+// quem não pagou. O Hoje do painel novo não fala de plano: é só aqui.
+test('trial que já é do Stripe: /admin/billing diz contratado e quando sai a primeira cobrança', async ({
   page
 }) => {
   const { user } = await createPub({
@@ -390,14 +391,6 @@ test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e q
   ).toBeVisible()
   // Nem no rodapé nem em outro canto da página.
   await expect(page.getByText('Trial gratuito')).toHaveCount(0)
-
-  await page.goto('/admin')
-  await expect(
-    page.getByText(
-      /Contratado · em teste · Primeira cobrança de R\$ 269 em \d{2}\/\d{2}\/\d{4}/
-    )
-  ).toBeVisible()
-  await expect(page.getByText(/Trial gratuito até/)).toHaveCount(0)
 })
 
 test('assinatura paga abre no próprio plano, sem checkout de outro por padrão', async ({
