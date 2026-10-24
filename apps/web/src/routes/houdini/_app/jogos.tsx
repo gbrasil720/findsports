@@ -3,6 +3,7 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
   keepPreviousData,
   useMutation,
@@ -64,14 +65,6 @@ function whenLabel(startsAt: Date | string) {
   if (day === today) return `hoje ${time}`
   if (day === tomorrow) return `amanhã ${time}`
   return `${day.slice(8, 10)}/${day.slice(5, 7)} ${time}`
-}
-
-function matchTitle(game: Game) {
-  return (
-    game.participants.join(' × ') ||
-    game.participantFreeText ||
-    game.championship
-  )
 }
 
 /** Códigos do balcão em vigor: quem marcou "Vou assistir aqui" no Elite. */
@@ -209,7 +202,7 @@ function JogosPage() {
                             className="hd-cell-btn"
                             onClick={() => setPickedId(game.id)}
                           >
-                            {matchTitle(game)}
+                            {gameTitle(game)}
                             <span className="hd-sub">{game.championship}</span>
                             {game.warnings.length > 0 ? (
                               <span
@@ -385,7 +378,7 @@ function GamePanel({ game }: { game: Game }) {
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h2 className="hd-h1" style={{ fontSize: 18 }}>
-          {matchTitle(game)}
+          {gameTitle(game)}
         </h2>
         <span className="hd-small">
           {game.championship} · {game.barName}

@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useState } from 'react'
 import Call from 'reicon-react/icons/Call'
 import Check from 'reicon-react/icons/Check'
@@ -18,6 +19,7 @@ type Participant = { team: { name: string } }
 type Event = {
   id: string
   championship: string
+  participantFreeText: string | null
   participants: Participant[]
 }
 
@@ -159,10 +161,7 @@ export function PubHeroSection({
               {liveEvent && !editing && (
                 <div className="mb-3 inline-flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--onside-live)]">
                   <span className="onside-live-dot is-pulse" />
-                  Ao vivo ·{' '}
-                  {liveEvent.participants.length > 0
-                    ? liveEvent.participants.map((p) => p.team.name).join(' × ')
-                    : liveEvent.championship}
+                  Ao vivo · {gameTitle(liveEvent)}
                 </div>
               )}
 

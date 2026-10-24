@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Link } from '@tanstack/react-router'
 import Heart from 'reicon-react/icons/Heart'
 import Location from 'reicon-react/icons/Location'
@@ -33,11 +34,7 @@ export function FavoriteCard({ favorite, onUnfavorite, isPending }: Props) {
               {nextEvent.sport.name}
             </div>
             <div className="truncate font-bold text-[var(--onside-ink)] text-xs">
-              {nextEvent.participants.length > 0
-                ? nextEvent.participants
-                    .map((participant) => participant.team.name)
-                    .join(' × ')
-                : nextEvent.participantFreeText || nextEvent.championship}
+              {gameTitle(nextEvent)}
             </div>
             <div className="mt-0.5 text-[var(--onside-muted)] text-xs">
               {formatDayLabel(new Date(nextEvent.startsAt), undefined, 'short')}

@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { Link } from '@tanstack/react-router'
 import ArrowRight from 'reicon-react/icons/ArrowRight'
@@ -229,11 +230,7 @@ export function ProfileOverview({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-bold text-sm transition-colors group-hover:text-[var(--onside-live-text)]">
-                      {event.participants.length > 0
-                        ? event.participants
-                            .map((participant) => participant.team.name)
-                            .join(' × ')
-                        : event.participantFreeText || event.championship}
+                      {gameTitle(event)}
                     </div>
                     <div className="truncate text-[var(--onside-muted)] text-xs">
                       {event.bar.name}
