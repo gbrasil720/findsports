@@ -500,6 +500,36 @@ test('"Com oferta da casa" não se marca nas características, e o antigo "Aceit
   expect(bar?.amenities).toEqual([1])
 })
 
+test('Pagamento separa Pix, Cartão, Vale-refeição e Couvert, e o antigo "Pix e cartão" fica gravado (WEB-455)', async ({
+  page
+}) => {
+  // 14 era "Pix e cartão"; a migration 0073 deu Pix (16) e Cartão (17) a quem
+  // o tinha, e ele continua no banco, escondido.
+  const pub = await createPub({ bar: { amenities: [14, 16, 17] } })
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  const caracteristicas = page.getByRole('region', { name: 'Características' })
+  const pagamento = caracteristicas.getByRole('group', { name: 'Pagamento' })
+
+  for (const name of ['Pix', 'Cartão', 'Vale-refeição', 'Couvert']) {
+    await expect(pagamento.getByRole('button', { name })).toBeVisible()
+  }
+  await expect(
+    caracteristicas.getByRole('button', { name: 'Pix e cartão' })
+  ).toHaveCount(0)
+  for (const name of ['Drinks', 'Opção vegetariana', 'Perto do metrô']) {
+    await expect(caracteristicas.getByRole('button', { name })).toBeVisible()
+  }
+
+  await pagamento.getByRole('button', { name: 'Vale-refeição' }).click()
+  await caracteristicas.getByRole('button', { name: 'Bicicletário' }).click()
+  expect((await save(page)).ok()).toBe(true)
+  const [bar] = await query('SELECT amenities FROM bar WHERE id = $1', [
+    pub.barId
+  ])
+  expect(bar?.amenities).toEqual([14, 16, 17, 18, 23])
+})
+
 test('horário: informar, salvar e tirar da página', async ({ page }) => {
   const { barId } = await openProfile(page)
   const horario = page.getByRole('region', {
