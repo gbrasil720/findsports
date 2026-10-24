@@ -60,10 +60,7 @@ export default function AfterGame() {
   const mine = useQuery(trpc.attendance.mine.queryOptions())
   const pending = useQuery(trpc.ratings.getPending.queryOptions())
   const reports = useQuery(trpc.attendance.pendingReports.queryOptions())
-  const achievements = useQuery({
-    ...trpc.achievements.mine.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const achievements = useQuery(trpc.achievements.mine.queryOptions())
   // O jogo vem de Meus jogos; quem só abriu rota ou WhatsApp chega pela
   // lista de avaliações pendentes.
   const game =

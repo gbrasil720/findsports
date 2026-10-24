@@ -66,14 +66,8 @@ export default function MyGames() {
   const soon = useSoon()
   useStatusBar('auto')
   const mine = useQuery(trpc.attendance.mine.queryOptions())
-  const ratings = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const reports = useQuery({
-    ...trpc.attendance.pendingReports.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const ratings = useQuery(trpc.ratings.getPending.queryOptions())
+  const reports = useQuery(trpc.attendance.pendingReports.queryOptions())
   const now = Date.now()
   const games = mine.data ?? []
   // O servidor manda do mais recente ao mais antigo; os próximos vão do mais

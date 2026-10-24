@@ -62,18 +62,9 @@ export default function FiltersSheet() {
   const col3 = (width - 36 - 16) / 3
   const col2 = (width - 36 - 8) / 2
   const session = authClient.useSession()
-  const sports = useQuery({
-    ...trpc.pubs.getSports.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const prefs = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const sports = useQuery(trpc.pubs.getSports.queryOptions())
+  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const mine = (prefs.data ?? []).map((p) => p.sportId)
   const sportList = sportsMineFirst(sports.data ?? [], mine)
   const [draft, setDraft] = useState<Filters>(state.filters)
@@ -98,8 +89,7 @@ export default function FiltersSheet() {
       sportId: draft.sportId ?? undefined,
       amenities: draft.amenities.length ? draft.amenities : undefined
     }),
-    placeholderData: keepPreviousData,
-    meta: { errorToast: false }
+    placeholderData: keepPreviousData
   })
   // Quantos bares o rascunho traria: o número do botão.
   const preview = useQuery({
@@ -111,8 +101,7 @@ export default function FiltersSheet() {
       amenities: draft.amenities.length ? draft.amenities : undefined,
       limit: 50
     }),
-    placeholderData: keepPreviousData,
-    meta: { errorToast: false }
+    placeholderData: keepPreviousData
   })
   const count = preview.data?.bars.length ?? 0
   const more = Boolean(preview.data?.nextCursor)

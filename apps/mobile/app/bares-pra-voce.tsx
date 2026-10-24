@@ -565,14 +565,8 @@ function Match({
   const game = item.game
   const going = game?.going ? todayGoing(game.going) : null
   const gameToday = game ? isToday(game.startsAt, now) : false
-  const teams = useQuery({
-    ...trpc.pubs.getMyTeams.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const prefs = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const teams = useQuery(trpc.pubs.getMyTeams.queryOptions())
+  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
   const queryClient = useQueryClient()
   const alert = useMutation(trpc.recommendations.setAlert.mutationOptions())
   const remind = useMutation(trpc.recommendations.remind.mutationOptions())
@@ -1193,8 +1187,7 @@ function Row({
 function useExpansion(where: Coordinates | null, enabled: boolean) {
   return useQuery({
     ...trpc.recommendations.expansion.queryOptions(where ?? { lat: 0, lng: 0 }),
-    enabled: enabled && Boolean(where),
-    meta: { errorToast: false }
+    enabled: enabled && Boolean(where)
   })
 }
 
@@ -1229,18 +1222,14 @@ function Short({
   const dark = palette.dark
   const expansion = useExpansion(where, true)
   const refill = useRefill(onFilled)
-  const prefs = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
   const savePrefs = useMutation(trpc.pubs.updateMyPreferences.mutationOptions())
   const days = useQuery({
     ...trpc.pubs.gameDays.queryOptions({
       ...(where ?? { lat: 0, lng: 0 }),
       radiusKm: Math.min(50, radiusKm * 2)
     }),
-    enabled: Boolean(where),
-    meta: { errorToast: false }
+    enabled: Boolean(where)
   })
   const tomorrow = days.data?.[1]
   const extra = expansion.data?.sports ?? []
@@ -1544,15 +1533,9 @@ function Locate({
 }) {
   const scheme = useColorScheme()
   const dark = palette.dark
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const origin = searchCenter(null, city.data ?? center)
-  const places = useQuery({
-    ...trpc.recommendations.places.queryOptions(origin),
-    meta: { errorToast: false }
-  })
+  const places = useQuery(trpc.recommendations.places.queryOptions(origin))
   const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

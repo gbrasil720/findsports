@@ -101,20 +101,11 @@ export default function Notices() {
       .catch(() => {})
   }, [])
 
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const mine = useQuery(trpc.attendance.mine.queryOptions())
   const medals = useQuery(trpc.achievements.mine.queryOptions())
-  const teams = useQuery({
-    ...trpc.pubs.getMyTeams.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const friendNotices = useQuery({
-    ...trpc.friends.notices.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const teams = useQuery(trpc.pubs.getMyTeams.queryOptions())
+  const friendNotices = useQuery(trpc.friends.notices.queryOptions())
   // Pedido respondido continua na tela, com a resposta, até ela abrir de novo.
   const requests = useKept(friendNotices.data?.requests)
   const [answered, setAnswered] = useState<Record<string, Answered>>({})
@@ -157,10 +148,7 @@ export default function Notices() {
     })
   )
   // Avisar e Lembrar, de "Bares pra você" (WEB-425).
-  const asked = useQuery({
-    ...trpc.recommendations.notices.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const asked = useQuery(trpc.recommendations.notices.queryOptions())
   const center = searchCenter(state.device, city.data)
   const teamIds = (teams.data ?? []).map((t) => t.id)
   const teamBars = useQuery({
@@ -170,8 +158,7 @@ export default function Notices() {
       teamIds,
       limit: 50
     }),
-    enabled: teamIds.length > 0,
-    meta: { errorToast: false }
+    enabled: teamIds.length > 0
   })
   const now = Date.now()
   const list = medals.data?.achievements ?? []
@@ -469,7 +456,6 @@ function TodayCard({
 }) {
   const going = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: game.barId }),
-    meta: { errorToast: false },
     select: (bar) =>
       bar.events.find((e) => e.startsAt === game.startsAt)?.going ?? null
   })

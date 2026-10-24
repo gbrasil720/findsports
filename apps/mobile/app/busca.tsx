@@ -93,18 +93,14 @@ export default function Search() {
     SecureStore.setItemAsync(RECENT_KEY, JSON.stringify(next)).catch(() => {})
   }
 
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const center = searchCenter(state.device, city.data)
   const near = useQuery({
     ...trpc.pubs.search.queryOptions({
       ...center,
       radiusKm: NEAR_KM,
       limit: 50
-    }),
-    meta: { errorToast: false }
+    })
   })
   // Time e campeonato também no servidor, num raio maior.
   const remote = useQuery({
@@ -115,8 +111,7 @@ export default function Search() {
       limit: 20
     }),
     enabled: deferred.length >= 2,
-    placeholderData: keepPreviousData,
-    meta: { errorToast: false }
+    placeholderData: keepPreviousData
   })
   const now = Date.now()
   const bars = (near.data?.bars ?? []) as (NearBar & { id: string })[]

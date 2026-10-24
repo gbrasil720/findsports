@@ -124,10 +124,7 @@ export default function YourBars() {
   const { device } = useExploreState()
   // A aba "Você" mostra esta tela sob o menu quando se vem daqui.
   const shotSource = useShotSource('bars')
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const from = searchCenter(device, city.data)
   const mine = yourBars(visits.data ?? [], saved.data ?? [], from, distanceKm)
   const barRows = mine.bars.filter((b) => hit(b.name, b.neighborhood))
