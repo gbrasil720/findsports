@@ -38,7 +38,7 @@ function isNew(createdAt?: string): boolean {
   return Date.now() - new Date(createdAt).getTime() < 30 * 24 * 60 * 60 * 1000
 }
 
-function SportBadge({ name }: { slug: string; name: string }) {
+function SportBadge({ name }: { name: string }) {
   const initials = name.slice(0, 2).toUpperCase()
   return (
     <span
@@ -246,7 +246,7 @@ export function BarCard({
             </span>
             {event ? (
               <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--bar-card-muted)] text-xs">
-                <SportBadge slug={event.sport.slug} name={event.sport.name} />
+                <SportBadge name={event.sport.name} />
                 <span className="truncate" title={event.championship}>
                   {event.championship}
                 </span>
