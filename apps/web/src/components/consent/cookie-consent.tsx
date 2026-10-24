@@ -60,7 +60,9 @@ export function CookieConsent() {
 
   useEffect(() => {
     // `ssr` é o render da hidratação: vale o que o script do `<head>` decidiu.
-    if (consent === 'ssr') return
+    // Sem aviso (dev sem PostHog), nada de `data-consent`: ele reservaria no
+    // fim da página o espaço de um aviso que não aparece.
+    if (consent === 'ssr' || !consentBannerEnabled()) return
     const root = document.documentElement
     if (consent === 'unset') root.setAttribute('data-consent', 'pending')
     else if (reviewing) root.setAttribute('data-consent', 'review')
