@@ -512,7 +512,7 @@
 .painel .entrada-teaser-jogo b {
   font-size: 14px;
 }
-.painel .entrada-teaser-jogo span {
+.painel .entrada-teaser-jogo > div span {
   font-size: 12px;
   color: #aaa9a4;
 }
@@ -1231,6 +1231,9 @@
     border-left: 0;
     border-top: 1px solid var(--painel-line);
   }
+  .painel .entrada-noar-confete {
+    display: none;
+  }
 }
 @media (max-width: 760px) {
   .painel .entrada-ob-topo {
@@ -1241,9 +1244,12 @@
   }
   .painel .entrada-ob-passos {
     order: 3;
-    flex-basis: 100%;
+    flex: 0 0 100%;
+    min-width: 0;
+    margin: 0;
   }
   .painel .entrada-ob-passos li span {
+    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1258,8 +1264,15 @@
   .painel .entrada-noar-lado {
     padding: 28px 16px;
   }
-  .painel .entrada-ob-grade > * {
-    grid-column: span 6;
+  .painel .entrada-ob-grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .painel .entrada-ob-grade > [class] {
+    grid-column: span 2;
+  }
+  /* Cidade e UF lado a lado; o resto ocupa a linha. */
+  .painel .entrada-ob-grade > :is(.entrada-c1, :has(+ .entrada-c1)) {
+    grid-column: span 1;
   }
 }
 
