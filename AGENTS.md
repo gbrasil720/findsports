@@ -270,7 +270,7 @@ Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), es
 no card "Oferta da casa" do `/admin` (Na hora / Depois do jogo, pela comanda), por
 `pub.updateCodeConfirmation`. Ligada, a tela do código do torcedor fala com o garçom
 ("anote na comanda"), o card traz o recado pronto para a equipe, e o dono lança os
-códigos anotados em `/admin/validate` por `reservationValidation.logLate`, até 48 h
+códigos anotados em `/admin/quem-vai` por `reservationValidation.logLate`, até 48 h
 depois do fim do jogo (`getLateEntryWindow`). Acima da caixa, "Faltou lançar?"
 (`reservationValidation.notLogged`) lista pelo nome quem marcou e não foi lançado, sem
 ler `attendance_report`. O uso fica com `late = true` e `used_at` na
@@ -405,7 +405,21 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   para caber os jogos do dia. Quem vai e quem chegou saem de
   `commercialAnalytics.getMyEventAnalytics` (`reservedPeople`, `arrivals`, só no Elite);
   "Chegaram agora", de `barReservations.going`. "Novo jogo" abre
-  `/admin/jogos?novo=1` (o `validateSearch` da rota), que deve abrir o formulário.
+  `/admin/jogos?novo=1` (o `validateSearch` da rota), que abre o formulário.
+- **Jogos** (`/admin/jogos`, `components/painel-jogos/jogos-page.tsx`, contas em
+  `domain/painel-jogos.ts`): lista por dia ou semana (a partir de hoje, as setas andam
+  sete dias), o jogo aberto à direita (abaixo de 1100 px e na semana, numa folha
+  lateral) e o formulário na folha (`admin/event-form.tsx`). `?novo=1` abre o "Novo
+  jogo" quando a criação está aberta e sai da URL; `?jogo=<id>` abre um jogo.
+  "Duplicar" só abre o formulário com o jogo uma semana depois. Rascunho, sugestões e
+  importação da rodada (WEB-433), oferta por jogo (WEB-422) e a lista de quem vai por
+  jogo não existem no servidor: aparecem com "em breve". "Viram o jogo" é o
+  `uniqueVisitors` do analytics por jogo. "Desempenho por jogo" segue no pé, no
+  `painel-legado`.
+- **Quem vai** (`components/painel-jogos/quem-vai-page.tsx`): um card por jogo com a
+  validação aberta, com as peças do jogo aberto (`PessoaQuemVai`); `#jogo-<id>` rola até
+  o jogo ("Ver os 24 →"). O bar Elite que confirma pela comanda lança os códigos aqui
+  (`admin/late-code-entry.tsx`), com o "Faltou lançar?".
 
 ### Houdini (painel interno)
 
