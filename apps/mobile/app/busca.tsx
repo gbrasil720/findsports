@@ -127,7 +127,7 @@ export default function Search() {
     remember(hood.name)
     const lat = avg(hood.bars.map((b) => Number(b.latitude)))
     const lng = avg(hood.bars.map((b) => Number(b.longitude)))
-    state.setFocus({ lat, lng, km: 1.6 })
+    state.setFocus({ lat, lng, kmTall: 1.6, kmWide: 1.6 })
     if (apply === 'hoje')
       state.setFilters({ ...state.filters, date: dayKey(now) })
     if (apply === 'telao' && !state.filters.amenities.includes(TELAO))

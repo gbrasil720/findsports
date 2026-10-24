@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildIndex,
   expandGroup,
+  frameRegion,
   hoodNames,
   indexCache,
   labelBudget,
@@ -177,4 +178,20 @@ describe('indexCache', () => {
     expect(live).not.toBe(first)
     expect(live.getClusters([-180, -90, 180, 90], 20)).toHaveLength(1)
   })
+})
+
+test('frameRegion põe o quadro na faixa livre, entre cabeçalho e folha', () => {
+  // Tela de 390 x 844, faixa de 200 a 544 (344 pt).
+  const screen = { width: 390, height: 844, top: 200, bottom: 300 }
+  const box = { lat: -23.56, lng: -46.69, kmTall: 3.44, kmWide: 1 }
+  const r = frameRegion(box, screen)
+  // 3,44 km na faixa de 344 pt: 10 m por ponto, a tela toda tem 8,44 km.
+  expect(r.latitudeDelta).toBeCloseTo(8440 / 111_000, 9)
+  // O meio da faixa (372 pt) cai no centro do quadro: o da tela (422 pt) fica
+  // 50 pt (500 m) ao sul.
+  expect(r.latitude).toBeCloseTo(-23.56 - 500 / 111_000, 9)
+  expect(r.longitude).toBe(-46.69)
+  // Quadro largo: a largura manda (2 km em 390 pt).
+  const wide = frameRegion({ ...box, kmTall: 1, kmWide: 2 }, screen)
+  expect(wide.latitudeDelta).toBeCloseTo((844 * 2000) / 390 / 111_000, 9)
 })

@@ -14,6 +14,7 @@ import type { View } from 'react-native'
 import { captureRef, releaseCapture } from 'react-native-view-shot'
 import type { Coordinates } from '@/lib/explore'
 import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
+import type { MapFrame } from '@/lib/map-layers'
 
 /*
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
@@ -43,8 +44,8 @@ type ExploreState = {
    * "Ver no mapa" da busca (19b): o Explorar leva o mapa até lá e limpa.
    * `km` é o tamanho da área a mostrar.
    */
-  focus: (Coordinates & { km: number }) | null
-  setFocus: (focus: (Coordinates & { km: number }) | null) => void
+  focus: MapFrame | null
+  setFocus: (focus: MapFrame | null) => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void

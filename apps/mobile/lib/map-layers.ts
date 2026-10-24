@@ -18,6 +18,39 @@ export type Region = {
   longitudeDelta: number
 }
 
+/** Um quadro no mapa: `kmTall` (norte–sul) por `kmWide` em volta do centro. */
+export type MapFrame = {
+  lat: number
+  lng: number
+  kmTall: number
+  kmWide: number
+}
+
+/**
+ * A região que põe o quadro na faixa livre, entre o cabeçalho (`top`, do
+ * topo da tela) e a folha (`bottom`, do pé). A região é da tela toda, com o
+ * centro deslocado para o quadro cair na faixa: `mapPadding` e `edgePadding`
+ * no iOS abriam três vezes mais longe.
+ */
+export function frameRegion(
+  box: MapFrame,
+  screen: { width: number; height: number; top: number; bottom: number }
+): Region {
+  const band = screen.height - screen.top - screen.bottom
+  const metersPerPoint = Math.max(
+    (box.kmTall * 1000) / band,
+    (box.kmWide * 1000) / screen.width
+  )
+  const shift = screen.height / 2 - (screen.top + band / 2)
+  const cosLat = Math.cos((box.lat * Math.PI) / 180)
+  return {
+    latitude: box.lat - (shift * metersPerPoint) / 111_000,
+    longitude: box.lng,
+    latitudeDelta: (screen.height * metersPerPoint) / 111_000,
+    longitudeDelta: (screen.width * metersPerPoint) / (111_320 * cosLat)
+  }
+}
+
 export type MapBar = {
   id: string
   name: string

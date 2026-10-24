@@ -71,6 +71,7 @@ import {
 } from '@/lib/filters'
 import {
   expandGroup,
+  frameRegion,
   hoodNames,
   indexCache,
   type Layer,
@@ -216,22 +217,14 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }
   // A câmera abre no raio da pessoa (20d, regra 01): o círculo do raio na
   // faixa livre entre os chips e a folha. Nunca a cidade inteira. Abre no
-  // zoom de bairro (20a); tocar num grupo leva ao de rua (20b). A região é
-  // da tela toda, com o centro deslocado para o círculo cair na faixa:
-  // `mapPadding` e `edgePadding` no iOS abriam três vezes mais longe.
+  // zoom de bairro (20a); tocar num grupo leva ao de rua (20b).
+  const screen = { width, height, top: padding.top, bottom: padding.bottom }
   const band = height - padding.top - padding.bottom
-  const metersPerPoint = Math.max(
-    (radiusKm * 2000) / band,
-    (radiusKm * 2000) / width
-  )
   const shift = height / 2 - (padding.top + band / 2)
-  const cosLat = Math.cos((center.lat * Math.PI) / 180)
-  const region = {
-    latitude: center.lat - (shift * metersPerPoint) / 111_000,
-    longitude: center.lng,
-    latitudeDelta: (height * metersPerPoint) / 111_000,
-    longitudeDelta: (width * metersPerPoint) / (111_320 * cosLat)
-  }
+  const region = frameRegion(
+    { ...center, kmTall: radiusKm * 2, kmWide: radiusKm * 2 },
+    screen
+  )
   const map = useRef<MapView>(null)
   const frameRadius = () =>
     map.current?.animateToRegion(region, reduced ? 0 : 400)
@@ -351,20 +344,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   useEffect(() => {
     if (mapReady) frameRadius()
   }, [mapReady, center.lat, center.lng, framed])
-  // "Ver no mapa" da busca (19b): leva o mapa até o bairro escolhido.
+  // "Ver no mapa" da busca (19b) e da busca com IA (WEB-432): o quadro
+  // pedido na faixa livre, como o raio.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando o foco muda
   useEffect(() => {
     const { focus } = state
     if (!mapReady || !focus) return
-    map.current?.animateToRegion(
-      {
-        latitude: focus.lat,
-        longitude: focus.lng,
-        latitudeDelta: focus.km / 111,
-        longitudeDelta: focus.km / 111
-      },
-      reduced ? 0 : 500
-    )
+    map.current?.animateToRegion(frameRegion(focus, screen), reduced ? 0 : 500)
     state.setFocus(null)
   }, [mapReady, state.focus])
   // "Ampliar" reenquadra quando os bares do raio novo chegam, não no toque:
