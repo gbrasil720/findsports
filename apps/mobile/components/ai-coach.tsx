@@ -111,11 +111,17 @@ export function useCoachPending(force: boolean) {
       setPending(true)
       return
     }
+    let gone = false
+    let timer: ReturnType<typeof setTimeout> | undefined
     SecureStore.getItemAsync(SEEN_KEY)
       .then((seen) => {
-        if (!seen) setTimeout(() => setPending(true), 700)
+        if (!seen && !gone) timer = setTimeout(() => setPending(true), 700)
       })
       .catch(() => {})
+    return () => {
+      gone = true
+      clearTimeout(timer)
+    }
   }, [force])
   const done = () => {
     setPending(false)
