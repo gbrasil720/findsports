@@ -786,6 +786,7 @@ function Informacoes({
         className="col-span-4 sm:col-span-3"
         rotulo="Rua"
         autoComplete="address-line1"
+        maxLength={200}
         value={r.rua}
         onChange={(e) => mudar({ rua: e.target.value })}
         aria-invalid={erros.rua ? true : undefined}
@@ -795,6 +796,7 @@ function Informacoes({
         className="col-span-2 sm:col-span-1"
         rotulo="Número"
         autoComplete="address-line2"
+        maxLength={20}
         value={r.numero}
         onChange={(e) => mudar({ numero: e.target.value })}
         aria-invalid={erros.numero ? true : undefined}
