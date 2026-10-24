@@ -240,22 +240,47 @@ async function assertTeamsMatchSport(
   }
 }
 
-async function getBarByUserId(userId: string) {
-  const result = await db.query.bar.findFirst({
-    where: eq(bar.userId, userId),
-    // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
-    columns: { geo: false },
-    with: { subscription: true }
-  })
-
+function ownBarOrThrow<T>(result: T | undefined): T {
   if (!result) {
     throw new TRPCError({
       code: 'NOT_FOUND',
       message: 'Bar não encontrado para este usuário.'
     })
   }
-
   return result
+}
+
+/** A linha inteira do bar do dono: para quem devolve ou edita o perfil. */
+async function getBarByUserId(userId: string) {
+  return ownBarOrThrow(
+    await db.query.bar.findFirst({
+      where: eq(bar.userId, userId),
+      // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
+      columns: { geo: false },
+      with: { subscription: true }
+    })
+  )
+}
+
+/**
+ * O bar do dono só com o que os outros procedimentos usam: o id, se está no
+ * ar, os contadores da nota e a assinatura. Descrição, horário, foto e o
+ * resto do perfil não viajam a cada chamada do painel.
+ */
+async function getOwnBar(userId: string) {
+  const [result] = await db
+    .select({
+      id: bar.id,
+      isActive: bar.isActive,
+      ratingCount: bar.ratingCount,
+      ratingPositive: bar.ratingPositive,
+      subscription
+    })
+    .from(bar)
+    .leftJoin(subscription, eq(subscription.barId, bar.id))
+    .where(eq(bar.userId, userId))
+    .limit(1)
+  return ownBarOrThrow(result)
 }
 
 export const pubRouter = router({
@@ -408,7 +433,7 @@ export const pubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanConfigureHouseOffer(existingBar.subscription ?? null)
       const houseOffer = parseHouseOfferInput(input.houseOffer)
 
@@ -430,7 +455,7 @@ export const pubRouter = router({
   updateCodeConfirmation: pubProcedure
     .input(z.object({ later: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanValidateReservations(existingBar.subscription ?? null)
       const [updated] = await db
         .update(bar)
@@ -447,7 +472,7 @@ export const pubRouter = router({
   updateOpeningHours: pubProcedure
     .input(z.object({ openingHours: openingHoursSchema.nullable() }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       const [updated] = await db
         .update(bar)
         .set({ openingHours: normalizeOpeningHours(input.openingHours) })
@@ -485,7 +510,7 @@ export const pubRouter = router({
         )
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanConfigureBarMenu(existingBar.subscription ?? null)
 
       const [updated] = await db
@@ -525,7 +550,7 @@ export const pubRouter = router({
    * pessoal, e o dono tem o telefone dessa pessoa.
    */
   getMyRatings: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
 
     const rows = await db.execute(sql`
       SELECT
@@ -574,7 +599,7 @@ export const pubRouter = router({
   getMyEvents: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
 
     // O que a exclusão levaria junto vem na mesma leitura (WEB-252): a grade
     // avisa do bloqueio antes do clique, sem uma ida por jogo.
@@ -601,14 +626,14 @@ export const pubRouter = router({
 
   /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
   getMyInterest: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     return readInterestSignal(existingBar.id)
   }),
 
   getMyEventCreationPolicy: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
     return getEventCreationPolicy(db, existingBar)
   }),
 
@@ -757,7 +782,7 @@ export const pubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      const existingBar = await getBarByUserId(userId)
+      const existingBar = await getOwnBar(userId)
 
       const existingEvent = await db.query.event.findFirst({
         where: eq(event.id, input.eventId)
@@ -840,7 +865,7 @@ export const pubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      const existingBar = await getBarByUserId(userId)
+      const existingBar = await getOwnBar(userId)
 
       await db.transaction(async (tx) => {
         // A trava na linha do jogo fecha a corrida com o pedido que chega no
@@ -890,7 +915,7 @@ export const pubRouter = router({
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
     const now = new Date()
 
     return existingBar.subscription
@@ -905,7 +930,7 @@ export const pubRouter = router({
   // Saldo e próxima fatura no Stripe (WEB-350). Fora de `getMySubscription`
   // para o card do plano não esperar o Stripe.
   getMyBillingBalance: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     return readBillingBalance(
       stripeClient,
       existingBar.subscription?.externalSubscriptionId
@@ -915,7 +940,7 @@ export const pubRouter = router({
   // "Cancelar assinatura" de `/admin/billing` (WEB-339): só a URL do portal,
   // sem escrita no banco. Mutation porque cria uma sessão no Stripe.
   openSubscriptionCancel: pubProcedure.mutation(async ({ ctx }) => {
-    const { subscription: current } = await getBarByUserId(ctx.session.user.id)
+    const { subscription: current } = await getOwnBar(ctx.session.user.id)
     const subscriptionId = current?.externalSubscriptionId
     if (
       !current ||
@@ -947,7 +972,7 @@ export const pubRouter = router({
   changeTrialPlan: pubProcedure
     .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       const [changed] = await db
         .update(subscription)
         .set({ plan: input.plan })
@@ -973,7 +998,7 @@ export const pubRouter = router({
     }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     // Assinatura viva não segura a exclusão: é encerrada junto (WEB-336), e
     // a tela avisa antes de o dono confirmar.
     return {
