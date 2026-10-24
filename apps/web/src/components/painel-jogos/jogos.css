@@ -174,6 +174,21 @@
 .painel .jogos-linha[data-passado] b {
   color: var(--painel-muted);
 }
+/* Rascunho: o "Publicar" (`gameRow`) fica por cima da linha, no lugar da seta. */
+.painel .jogos-dia > li {
+  position: relative;
+}
+.painel .jogos-linha[data-rascunho] {
+  padding-right: 124px;
+}
+.painel .jogos-linha-publicar {
+  position: absolute;
+  top: 0;
+  right: 18px;
+  bottom: 0;
+  margin: auto 0;
+  font-size: 13px;
+}
 .painel .jogos-hora {
   flex: none;
   width: 66px;
@@ -443,6 +458,23 @@
 }
 .painel .jogos-semana-jogo[data-passado] {
   opacity: 0.6;
+}
+.painel .jogos-semana-jogo[data-rascunho] {
+  background: none;
+  box-shadow: none;
+  outline: 1.5px dashed var(--painel-draft-line);
+  outline-offset: -1.5px;
+}
+/* O jogo aberto no formulário (1p): acid com a sombra dura. */
+.painel .jogos-semana-jogo[data-editando] {
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: var(--painel-sh-btn);
+  cursor: default;
+}
+.painel .jogos-semana-jogo[data-editando] > span:last-child:not(:first-child) {
+  font-weight: 700;
+  color: var(--painel-ink);
 }
 @media (prefers-color-scheme: dark) {
   .painel .jogos-semana-jogo[data-live] {
