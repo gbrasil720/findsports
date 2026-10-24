@@ -3,18 +3,14 @@ import { ACID, INK, LIVE, PAPER } from '@/components/ui'
 
 /*
  * As cores das peças do chat (Rodada 24), claro e escuro, como o HTML do
- * design escreve. Em cima da paleta do Explorar (`card`, `muted`, `ring`…),
- * que os cards de bar já usam.
+ * design escreve. Em cima da tabela de `components/theme` (`card`, `muted`,
+ * `ring`, `sheet`, `hot`…), que os cards de bar já usam.
  */
 const AI = {
   light: {
     ...PALETTE.light,
-    /** Fundo da folha (rgba .97 sobre o mapa). */
-    sheet: '#f1eee6',
     // O fundo da folha (24a–24e): 97%, o mapa aparece de leve por trás.
     sheetBg: 'rgba(241,238,230,.97)',
-    /** Título da 24a: "assistir?" em vermelho. */
-    hot: '#c92b0c',
     /** Chips de contexto e de filtro. */
     soft: 'rgba(18,18,15,.06)',
     softer: 'rgba(18,18,15,.08)',
@@ -50,11 +46,9 @@ const AI = {
   },
   dark: {
     ...PALETTE.dark,
-    sheet: '#161613',
     sheetBg: 'rgba(22,22,19,.97)',
     /** Sombra dura dos cards no escuro (a do design é mais forte). */
     shadow: 'rgba(0,0,0,.6)',
-    hot: ACID,
     soft: 'rgba(241,238,230,.1)',
     softer: 'rgba(241,238,230,.14)',
     outline: 'rgba(241,238,230,.2)',
