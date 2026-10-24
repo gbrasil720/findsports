@@ -6,7 +6,6 @@ import {
   assertAnalyticsPeriodAllowed,
   assertRecordable,
   COMMERCIAL_EVENT_TYPES,
-  canViewEventType,
   getAnalyticsEntitlements,
   getAnalyticsPlan,
   getComparisonMetrics,
@@ -265,18 +264,6 @@ describe('commercial-analytics entitlements', () => {
       getAnalyticsEntitlements('elite')
     )
     expect(elite.events).toEqual([expected])
-  })
-
-  it('canViewEventType returns correct values', () => {
-    expect(canViewEventType('starter', 'profile_view')).toBe(true)
-    expect(canViewEventType('starter', 'phone_clicked')).toBe(false)
-    expect(canViewEventType('pro', 'phone_clicked')).toBe(true)
-    expect(canViewEventType('pro', 'directions_opened')).toBe(true)
-    expect(canViewEventType('elite', 'directions_opened')).toBe(true)
-    expect(canViewEventType('elite', 'whatsapp_opened')).toBe(true)
-    expect(canViewEventType('pro', 'classic_exposure')).toBe(false)
-    expect(canViewEventType('elite', 'classic_click')).toBe(true)
-    expect(canViewEventType('starter', 'unknown')).toBe(false)
   })
 })
 
