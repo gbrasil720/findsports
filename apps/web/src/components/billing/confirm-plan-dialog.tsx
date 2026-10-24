@@ -1,13 +1,13 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { Link } from '@tanstack/react-router'
-import { Botao, Card, EmBreve, Icone } from '@/components/painel'
+import { Botao, Card, EmBreve, Icone, Medalha } from '@/components/painel'
 import {
   FOUNDER_DISCOUNT,
   formatPlanPrice,
   getPlan,
   planChargeForShowcase
 } from '@/lib/plan-catalog'
-import { Medalha, PainelModal } from './planos'
+import { PainelModal } from './planos'
 
 const dia = (date: Date) =>
   date

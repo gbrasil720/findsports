@@ -1,4 +1,3 @@
-import type { SubscriptionPlan } from '@findsports_oficial/db'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,7 @@ import {
   type RefObject,
   useRef
 } from 'react'
-import { BotaoIcone, Icone } from '@/components/painel'
+import { BotaoIcone } from '@/components/painel'
 
 /*
  * Os estilos estão em `planos.css`, ligado no `head` de cada rota que usa estas
@@ -20,36 +19,6 @@ import { BotaoIcone, Icone } from '@/components/painel'
  * chegava depois da hidratação, e no celular a tabela sem estilo alargava a
  * página antes de ganhar a rolagem própria.
  */
-
-/** Cor da estrela de cada plano na medalha (`medal` do design). */
-const ESTRELA: Record<SubscriptionPlan, string> = {
-  starter: '#b88a5a',
-  pro: 'var(--painel-acid)',
-  elite: 'var(--painel-live-fill)'
-}
-
-export function Medalha({
-  plano,
-  tamanho = 44
-}: {
-  plano: SubscriptionPlan
-  tamanho?: number
-}) {
-  return (
-    <span
-      className="pl-medalha"
-      data-plano={plano}
-      style={{ '--pl-medalha': `${tamanho}px` } as CSSProperties}
-    >
-      <Icone
-        nome="medal"
-        tamanho={Math.round(tamanho * 0.62)}
-        acento={ESTRELA[plano]}
-        base={0.35}
-      />
-    </span>
-  )
-}
 
 /**
  * `/plan` e `/plan/confirmed` ficam fora do shell do painel, com o cabeçalho

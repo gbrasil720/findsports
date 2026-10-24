@@ -1070,20 +1070,6 @@
   font-weight: 700;
 }
 
-.painel .entrada-medalha {
-  display: grid;
-  place-items: center;
-  flex: none;
-  border-radius: 10px;
-  background: var(--painel-ink);
-  color: var(--painel-paper);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .entrada-medalha {
-    background: #262621;
-  }
-}
-
 /* No ar (4r/4w) */
 .painel .entrada-noar {
   position: relative;

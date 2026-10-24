@@ -8,7 +8,6 @@ import {
   type PerdaCancelamento
 } from '@/components/billing/cancel-plan-dialog'
 import { PlanChangedNotice } from '@/components/billing/plan-change'
-import { Medalha } from '@/components/billing/planos'
 import planosCss from '@/components/billing/planos.css?url'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import {
@@ -20,6 +19,7 @@ import {
   EmBreve,
   Icone,
   type IconeNome,
+  Medalha,
   propsBotao
 } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
@@ -260,7 +260,7 @@ function BillingPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-center gap-3.5">
-                  <Medalha plano={shownPlan} tamanho={52} />
+                  <Medalha plano={shownPlan} tamanho={52} sobreTinta />
                   <div>
                     <h2
                       id="seu-plano"

@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Icone } from '@/components/painel'
+import { Icone, Medalha } from '@/components/painel'
 import {
   CONTRACTED_TRIAL_LABEL,
   type Plan,
@@ -14,7 +14,6 @@ import {
   receiptCycleLabel,
   receiptStampLabel
 } from '@/lib/subscription-receipt'
-import { Medalha } from './planos'
 import './subscription-receipt.css'
 
 const STATUS_LABEL: Record<string, string> = {

@@ -1,9 +1,9 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { Link } from '@tanstack/react-router'
 import { useRef } from 'react'
-import { Botao, propsBotao } from '@/components/painel'
+import { Botao, Medalha, propsBotao } from '@/components/painel'
 import { getPlan } from '@/lib/plan-catalog'
-import { Medalha, PainelModal } from './planos'
+import { PainelModal } from './planos'
 
 /**
  * Chegada em `/plan` logo depois do cadastro do bar. O primeiro dono leu o
