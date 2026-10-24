@@ -281,6 +281,11 @@ export const event = pgTable(
     // evento". Quem resolve é `packages/api/src/lib/event-screen.ts`.
     onBigScreen: boolean('on_big_screen'),
     withSound: boolean('with_sound'),
+    // Quando o jogo foi publicado (WEB-436). Nulo é rascunho: só o painel do
+    // bar vê; fica fora do app, das buscas, do "Vou assistir" e das
+    // analytics. O limite do Starter conta por esta data, não pela criação.
+    // O padrão `now()` mantém publicado o jogo que o código anterior cria.
+    publishedAt: timestamp('published_at').defaultNow(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
