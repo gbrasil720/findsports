@@ -8,7 +8,6 @@ import Check from 'reicon-react/icons/Check'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
-import { AppShell } from '@/components/app/app-shell'
 import { CancelSubscriptionButton } from '@/components/billing/cancel-subscription-button'
 import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
@@ -36,7 +35,7 @@ import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
-export const Route = createFileRoute('/admin_/billing')({
+export const Route = createFileRoute('/admin/billing')({
   validateSearch: parsePlanChange,
   head: () => ({
     meta: [
@@ -169,7 +168,7 @@ function BillingPage() {
     ]
 
   return (
-    <AppShell variant="pub" userMeta="Assinatura">
+    <div className="painel-legado">
       <div className="mb-8">
         <p className="onside-kicker inline-flex items-center gap-2">
           <CreditCard size={12} color="currentColor" aria-hidden="true" />
@@ -512,6 +511,6 @@ function BillingPage() {
           })}
         </aside>
       </div>
-    </AppShell>
+    </div>
   )
 }

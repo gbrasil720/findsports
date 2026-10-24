@@ -25,8 +25,13 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
-import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
-import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminJogosRouteImport } from './routes/admin.jogos'
+import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
+import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
+import { Route as AdminValidateRouteImport } from './routes/admin.validate'
 import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
@@ -136,15 +141,40 @@ const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
-  id: '/admin_/billing',
-  path: '/admin/billing',
-  getParentRoute: () => rootRouteImport,
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJogosRoute = AdminJogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMeuEspacoRoute = AdminMeuEspacoRouteImport.update({
+  id: '/meu-espaco',
+  path: '/meu-espaco',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuemVaiRoute = AdminQuemVaiRouteImport.update({
+  id: '/quem-vai',
+  path: '/quem-vai',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminValidateRoute = AdminValidateRouteImport.update({
-  id: '/admin_/validate',
-  path: '/admin/validate',
-  getParentRoute: () => rootRouteImport,
+  id: '/validate',
+  path: '/validate',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ConviteCodeRoute = ConviteCodeRouteImport.update({
   id: '/convite/$code',
@@ -290,7 +320,7 @@ const HoudiniAppPessoasUserIdRoute = HoudiniAppPessoasUserIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
   '/plan': typeof PlanRoute
@@ -305,11 +335,16 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -337,7 +372,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniAppIndexRoute
   '/plan': typeof PlanRoute
@@ -352,11 +386,16 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/admin': typeof AdminIndexRoute
   '/guia': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
@@ -384,7 +423,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
   '/plan': typeof PlanRoute
@@ -398,13 +437,18 @@ export interface FileRoutesById {
   '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
-  '/admin_/billing': typeof AdminBillingRoute
-  '/admin_/validate': typeof AdminValidateRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
+  '/admin/validate': typeof AdminValidateRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
+  '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
@@ -449,11 +493,16 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/jogos'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
     | '/admin/validate'
     | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/admin/'
     | '/guia/'
     | '/dashboard/games'
     | '/dashboard/profile'
@@ -481,7 +530,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
-    | '/admin'
     | '/app'
     | '/houdini'
     | '/plan'
@@ -496,11 +544,16 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/jogos'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
     | '/admin/validate'
     | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/admin'
     | '/guia'
     | '/dashboard/games'
     | '/dashboard/profile'
@@ -541,13 +594,18 @@ export interface FileRouteTypes {
     | '/(auth)/two-factor'
     | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
-    | '/admin_/billing'
-    | '/admin_/validate'
+    | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/jogos'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
+    | '/admin/validate'
     | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
     | '/plan_/confirmed'
+    | '/admin/'
     | '/guia/'
     | '/(dashboard)/dashboard_/games'
     | '/(dashboard)/dashboard_/profile'
@@ -576,7 +634,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRoute
   HoudiniRoute: typeof HoudiniRouteWithChildren
   PlanRoute: typeof PlanRoute
@@ -590,8 +648,6 @@ export interface RootRouteChildren {
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
-  AdminBillingRoute: typeof AdminBillingRoute
-  AdminValidateRoute: typeof AdminValidateRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
@@ -722,19 +778,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/billing': {
-      id: '/admin_/billing'
-      path: '/admin/billing'
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/billing'
       fullPath: '/admin/billing'
       preLoaderRoute: typeof AdminBillingRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/admin_/validate': {
-      id: '/admin_/validate'
-      path: '/admin/validate'
+    '/admin/configuracoes': {
+      id: '/admin/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AdminConfiguracoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/jogos': {
+      id: '/admin/jogos'
+      path: '/jogos'
+      fullPath: '/admin/jogos'
+      preLoaderRoute: typeof AdminJogosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/meu-espaco': {
+      id: '/admin/meu-espaco'
+      path: '/meu-espaco'
+      fullPath: '/admin/meu-espaco'
+      preLoaderRoute: typeof AdminMeuEspacoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/quem-vai': {
+      id: '/admin/quem-vai'
+      path: '/quem-vai'
+      fullPath: '/admin/quem-vai'
+      preLoaderRoute: typeof AdminQuemVaiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/validate': {
+      id: '/admin/validate'
+      path: '/validate'
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/convite/$code': {
       id: '/convite/$code'
@@ -935,6 +1026,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
+  AdminJogosRoute: typeof AdminJogosRoute
+  AdminMeuEspacoRoute: typeof AdminMeuEspacoRoute
+  AdminQuemVaiRoute: typeof AdminQuemVaiRoute
+  AdminValidateRoute: typeof AdminValidateRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminBillingRoute: AdminBillingRoute,
+  AdminConfiguracoesRoute: AdminConfiguracoesRoute,
+  AdminJogosRoute: AdminJogosRoute,
+  AdminMeuEspacoRoute: AdminMeuEspacoRoute,
+  AdminQuemVaiRoute: AdminQuemVaiRoute,
+  AdminValidateRoute: AdminValidateRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface HoudiniAppRouteChildren {
   HoudiniAppAmpulhetaRoute: typeof HoudiniAppAmpulhetaRoute
   HoudiniAppBaresRoute: typeof HoudiniAppBaresRoute
@@ -985,7 +1098,7 @@ const HoudiniRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRoute,
   HoudiniRoute: HoudiniRouteWithChildren,
   PlanRoute: PlanRoute,
@@ -999,8 +1112,6 @@ const rootRouteChildren: RootRouteChildren = {
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
-  AdminBillingRoute: AdminBillingRoute,
-  AdminValidateRoute: AdminValidateRoute,
   ConviteCodeRoute: ConviteCodeRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,

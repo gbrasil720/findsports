@@ -1,67 +1,36 @@
-import { Link } from '@tanstack/react-router'
 import { Activity, type ReactNode } from 'react'
-import { RovingTabs } from '@/components/app/roving-tabs'
 
+/**
+ * As abas antigas do `/admin` (por hash) e a rota do painel que cada uma
+ * virou. O hash continua valendo: link salvo, e-mail antigo e os atalhos da
+ * página do bar (`/admin#admin-espaco`) são levados à rota nova pelo
+ * `routes/admin.tsx`. `label` nomeia a seção para leitor de tela.
+ */
 export const ADMIN_SECTIONS = [
-  { id: 'admin-visao', label: 'Visão geral' },
-  { id: 'admin-grade', label: 'Minha grade' },
-  { id: 'admin-espaco', label: 'Meu espaço' },
-  { id: 'admin-quem-vai', label: 'Quem vai' },
-  { id: 'admin-configuracoes', label: 'Configurações' }
+  { id: 'admin-visao', label: 'Hoje', to: '/admin' },
+  { id: 'admin-grade', label: 'Jogos', to: '/admin/jogos' },
+  { id: 'admin-espaco', label: 'Meu espaço', to: '/admin/meu-espaco' },
+  { id: 'admin-quem-vai', label: 'Quem vai', to: '/admin/quem-vai' },
+  {
+    id: 'admin-configuracoes',
+    label: 'Configurações',
+    to: '/admin/configuracoes'
+  }
 ] as const
 
 export type AdminSectionId = (typeof ADMIN_SECTIONS)[number]['id']
-type AdminSection = (typeof ADMIN_SECTIONS)[number]
+export type AdminSectionRoute = (typeof ADMIN_SECTIONS)[number]['to']
 
-/**
- * "Quem vai" existe para o bar Elite e para o que ainda tem código em aberto
- * para honrar (WEB-341). Para o resto, a aba não aparece.
- */
-export function getAdminSections(showsGoing: boolean): readonly AdminSection[] {
-  return showsGoing
-    ? ADMIN_SECTIONS
-    : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-quem-vai')
-}
-
-type Props = {
-  sections: readonly AdminSection[]
-  activeSection: AdminSectionId
-  onChange: (section: AdminSectionId) => void
-}
-
-function tabId(section: AdminSectionId): string {
-  return `${section}-tab`
-}
-
-export function getAdminSectionFromHash(hash: string): AdminSectionId | null {
+/** A rota nova de um hash de aba antiga; `null` para hash que não é de aba. */
+export function getAdminRouteFromHash(hash: string): AdminSectionRoute | null {
   const sectionId = hash.replace(/^#/, '')
-  return ADMIN_SECTIONS.find((section) => section.id === sectionId)?.id ?? null
-}
-
-export function AdminTabs({ sections, activeSection, onChange }: Props) {
-  return (
-    <nav className="onside-admin-nav" aria-label="Navegação do painel">
-      <RovingTabs
-        tabs={sections}
-        activeId={activeSection}
-        onChange={onChange}
-        label="Seções do painel"
-        tabId={tabId}
-        panelId={(section) => section}
-        className="onside-admin-tablist"
-      />
-
-      <Link to="/admin/validate">Validar código</Link>
-      <Link to="/admin/billing">Assinatura e pagamentos</Link>
-    </nav>
-  )
+  return ADMIN_SECTIONS.find((section) => section.id === sectionId)?.to ?? null
 }
 
 /**
- * Painel de uma aba. Fica montado quando a aba está escondida: `Activity`
- * preserva o que o dono digitou ao trocar de aba (WEB-140). As queries moram
- * no componente da aba, fora do `Activity`, então continuam assinadas e
- * buscando mesmo com a aba escondida.
+ * Seção de uma tela antiga do painel, com o `id` de antes (âncoras e testes
+ * ainda o usam). `active` sobrou das abas: cada tela agora é uma rota e passa
+ * `true`. As telas novas não precisam disto.
  */
 export function AdminTabPanel({
   id,
@@ -74,14 +43,10 @@ export function AdminTabPanel({
   className?: string
   children: ReactNode
 }) {
+  const label = ADMIN_SECTIONS.find((section) => section.id === id)?.label
   return (
     <Activity mode={active ? 'visible' : 'hidden'}>
-      <section
-        id={id}
-        role="tabpanel"
-        aria-labelledby={tabId(id)}
-        className={className}
-      >
+      <section id={id} aria-label={label} className={className}>
         {children}
       </section>
     </Activity>
