@@ -29,14 +29,14 @@ test('Starter: cardápio, oferta e Quem vai bloqueados, com link para os planos'
 }) => {
   await openSpace(page, { subscription: { plan: 'starter' } })
 
-  await expect(card(page, 'Cardápio e preço médio')).toContainText(
+  await expect(card(page, 'Cardápio e preço')).toContainText(
     'Disponível nos planos Pro e Elite'
   )
   await expect(card(page, 'Oferta da casa')).toContainText(
     'Disponível no plano Elite'
   )
   await expect(
-    card(page, 'Cardápio e preço médio').getByRole('link', {
+    card(page, 'Cardápio e preço').getByRole('link', {
       name: 'Ver planos'
     })
   ).toHaveAttribute('href', /\/plan\?origin=admin/)
@@ -46,7 +46,7 @@ test('Starter: cardápio, oferta e Quem vai bloqueados, com link para os planos'
 test('sem assinatura: tudo bloqueado, como no Starter', async ({ page }) => {
   await openSpace(page, { subscription: null })
 
-  await expect(card(page, 'Cardápio e preço médio')).toContainText(
+  await expect(card(page, 'Cardápio e preço')).toContainText(
     'Disponível nos planos Pro e Elite'
   )
   await expect(card(page, 'Oferta da casa')).toContainText(
@@ -82,12 +82,12 @@ test('Pro: cardápio liberado e salvo; oferta e Quem vai seguem bloqueadas', asy
 }) => {
   const { barId } = await openSpace(page, { subscription: { plan: 'pro' } })
 
-  const menu = card(page, 'Cardápio e preço médio')
+  const menu = card(page, 'Cardápio e preço')
   await expect(menu).not.toContainText('Disponível nos planos')
   await menu
     .getByLabel(/link do cardápio/i)
     .fill('https://cardapio.e2e.test/menu')
-  await menu.getByRole('button', { name: 'Salvar' }).click()
+  await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect
     .poll(async () => {
       const [bar] = await query('SELECT menu_url FROM bar WHERE id = $1', [

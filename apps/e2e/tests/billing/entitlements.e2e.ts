@@ -49,13 +49,15 @@ for (const { name, subscription, allowed } of cases) {
     await signIn(page, user)
     await page.goto('/admin/meu-espaco')
 
-    const field = page.getByLabel('Link do cardápio (opcional)')
+    const field = page.getByLabel('Link do cardápio')
     if (allowed) {
       await expect(field).toBeVisible()
     } else {
       // Só a seção da tela: o cabeçalho e o resto podem repetir o texto.
       await expect(
-        page.locator('#admin-espaco').getByText('Trial do plano Pro encerrado')
+        page
+          .getByRole('region', { name: 'Cardápio e preço' })
+          .getByText('Trial do plano Pro encerrado')
       ).toBeVisible()
       await expect(field).toHaveCount(0)
     }
