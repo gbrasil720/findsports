@@ -3,11 +3,11 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
-import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
   BRASILIA_TIME_ZONE,
   brasiliaDayStart
 } from '@findsports_oficial/db/event-window'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
   keepPreviousData,
   useMutation,
