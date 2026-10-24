@@ -38,19 +38,21 @@ export function brasiliaDay(at: Date | string | number, plusDays = 0): string {
   return noon.toISOString().slice(0, 10)
 }
 
-const offsetParts = new Intl.DateTimeFormat('en-US', {
-  timeZone: BRASILIA_TIME_ZONE,
-  year: 'numeric',
-  month: 'numeric',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: 'numeric',
-  second: 'numeric',
-  hourCycle: 'h23'
-})
+// Criado no primeiro uso: o app (Hermes) só precisa de `brasiliaDay`.
+let offsetParts: Intl.DateTimeFormat | undefined
 
 /** Quanto o relógio de Brasília está à frente do UTC em `ms` (negativo). */
 function brasiliaOffsetMs(ms: number): number {
+  offsetParts ??= new Intl.DateTimeFormat('en-US', {
+    timeZone: BRASILIA_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hourCycle: 'h23'
+  })
   const p = Object.fromEntries(
     offsetParts
       .formatToParts(new Date(ms))
