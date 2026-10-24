@@ -934,3 +934,184 @@ html[data-consent] .painel .painel-lateral {
   --md-ring: #c9f135;
   --md-sombra: 0 0 #0000;
 }
+
+/* ─── Avisos do painel e card do plano (1t/1u, Rodada 3) ─── */
+
+.painel .painel-aviso {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 7px;
+  background: var(--painel-card);
+  box-shadow: var(--painel-sh);
+}
+.painel .painel-aviso[data-tom="perigo"] {
+  background: #fbe9e4;
+  box-shadow: inset 0 0 0 1.5px var(--painel-live-fill);
+}
+.painel .painel-aviso[data-tom="atencao"] {
+  box-shadow: var(--painel-sh-live);
+}
+.painel .painel-aviso[data-tom="trial"] {
+  box-shadow: var(--painel-sh-hero);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-aviso[data-tom="perigo"] {
+    background: #2a1510;
+  }
+}
+.painel .painel-aviso > .painel-icone {
+  flex: none;
+}
+.painel .painel-aviso-alerta {
+  color: var(--painel-live);
+  --painel-acc: var(--painel-live);
+}
+.painel .painel-aviso-texto {
+  flex: 1;
+  min-width: 0;
+}
+.painel .painel-aviso-texto b {
+  display: block;
+  font-size: 14.5px;
+}
+.painel .painel-aviso-texto span {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .painel-aviso-botao {
+  flex: none;
+  font-size: 13.5px;
+}
+@media (max-width: 640px) {
+  .painel .painel-aviso {
+    flex-wrap: wrap;
+  }
+  .painel .painel-aviso-botao {
+    margin-left: auto;
+  }
+}
+
+.painel .painel-plano {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.painel .painel-plano-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.painel .painel-plano-topo > div {
+  flex: 1;
+  min-width: 0;
+}
+.painel .painel-plano-topo .painel-muted {
+  font-size: 12.5px;
+}
+.painel .painel-plano-sem {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--painel-sub);
+}
+.painel .painel-plano-situacao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.painel .painel-plano-linha {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .painel-plano-uso {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.painel .painel-plano-uso > span:last-child {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel .painel-plano-uso[data-cheio] > span:last-child {
+  font-weight: 700;
+  color: var(--painel-live);
+}
+.painel .painel-plano-segs {
+  display: flex;
+  gap: 4px;
+}
+.painel .painel-plano-segs > span {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--painel-line2);
+}
+.painel .painel-plano-segs > span[data-usado] {
+  background: var(--painel-prog-fill);
+}
+.painel .painel-plano-uso[data-cheio] .painel-plano-segs > span[data-usado] {
+  background: var(--painel-live-fill);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-plano-segs > span[data-usado] {
+    background: var(--painel-acid);
+  }
+}
+.painel .painel-plano-botao {
+  width: 100%;
+}
+.painel .painel-plano-link {
+  width: fit-content;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--painel-fg);
+  text-decoration: none;
+}
+
+.painel .painel-nopro {
+  padding: 18px 20px;
+}
+.painel .painel-nopro > b {
+  font-size: 15px;
+}
+.painel .painel-nopro ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .painel-nopro li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.painel .painel-nopro > .painel-muted {
+  display: block;
+  margin-top: 14px;
+  font-size: 13.5px;
+}
+
+/* Número de resultado com marca-texto (`mk` do design): no escuro, em acid. */
+.painel .painel-marca {
+  padding: 0 4px;
+  margin-left: -4px;
+  background: linear-gradient(180deg, transparent 52%, var(--painel-acid) 52%);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .painel-marca {
+    padding: 0;
+    margin-left: 0;
+    background: none;
+    color: var(--painel-acid);
+  }
+}
