@@ -49,7 +49,7 @@ import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
-import { buscarCep, formatarCep } from '@/lib/cep'
+import { juntarEndereco, separarNumero, useCep } from '@/lib/cep'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
 import {
@@ -87,12 +87,6 @@ const BOAS_VINDAS: readonly (readonly [IconeNome, string])[] = [
 
 /** "Com oferta da casa" não se marca: é o filtro da busca (ver `amenities.ts`). */
 const ITENS = AMENITIES.filter(({ id }) => id !== HOUSE_OFFER_AMENITY_ID)
-
-/** "Rua Aspicuelta, 214" volta a rua e número separados (rascunho e revisão). */
-function separarNumero(endereco: string): [string, string] {
-  const m = endereco.match(/^(.*\S)\s*,\s*([^,]+)$/)
-  return m ? [m[1] as string, (m[2] as string).trim()] : [endereco, '']
-}
 
 function Titulo({
   linhas,
@@ -141,10 +135,6 @@ function PubOnboarding() {
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
-  const [cep, setCep] = useState('')
-  const [cepStatus, setCepStatus] = useState<
-    'idle' | 'buscando' | 'achou' | 'nao'
-  >('idle')
   const [rua, setRua] = useState('')
   const [numero, setNumero] = useState('')
   const [neighborhood, setNeighborhood] = useState('')
@@ -160,7 +150,19 @@ function PubOnboarding() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
-  const address = [rua.trim(), numero.trim()].filter(Boolean).join(', ')
+  const {
+    cep,
+    status: cepStatus,
+    mudar: mudarCep,
+    definir: setCep
+  } = useCep((achado) => {
+    if (achado.rua) setRua(achado.rua)
+    if (achado.bairro) setNeighborhood(achado.bairro)
+    setCity(achado.cidade)
+    if (achado.uf) setUf(achado.uf)
+  })
+
+  const address = juntarEndereco(rua, numero)
   const draft = useMemo<PubOnboardingDraft>(
     () => ({
       name: name.trim(),
@@ -268,7 +270,7 @@ function PubOnboarding() {
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, ULTIMO_PASSO))
-  }, [contaEmail])
+  }, [contaEmail, setCep])
 
   // O rascunho acompanha o preenchimento, com o passo, pela mesma regra da
   // WEB-262 (só com dono); `seguir` o apaga quando o bar é criado. Vem depois
@@ -308,7 +310,6 @@ function PubOnboarding() {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     setName('')
     setCep('')
-    setCepStatus('idle')
     setRua('')
     setNumero('')
     setNeighborhood('')
@@ -326,26 +327,6 @@ function PubOnboarding() {
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: step === 0 })
   }, [step])
-
-  const mudarCep = async (valor: string) => {
-    const formatado = formatarCep(valor)
-    setCep(formatado)
-    if (formatado.length < 9) {
-      setCepStatus('idle')
-      return
-    }
-    setCepStatus('buscando')
-    const achado = await buscarCep(formatado)
-    if (!achado) {
-      setCepStatus('nao')
-      return
-    }
-    setCepStatus('achou')
-    if (achado.rua) setRua(achado.rua)
-    if (achado.bairro) setNeighborhood(achado.bairro)
-    setCity(achado.cidade)
-    if (achado.uf) setUf(achado.uf)
-  }
 
   const toggleAmenity = (id: number) => {
     setAmenities((current) =>
