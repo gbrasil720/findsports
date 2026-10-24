@@ -1,41 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import {
-  getAdminSectionFromHash,
-  getAdminSections,
-  getNextAdminSection
-} from './admin-tabs'
+import { getAdminSectionFromHash, getAdminSections } from './admin-tabs'
 
-describe('admin tabs keyboard navigation', () => {
-  test('moves through adjacent tabs and wraps at both ends', () => {
-    expect(getNextAdminSection('admin-visao', 'ArrowRight')).toBe('admin-grade')
-    expect(getNextAdminSection('admin-grade', 'ArrowDown')).toBe('admin-espaco')
-    expect(getNextAdminSection('admin-espaco', 'ArrowRight')).toBe(
-      'admin-quem-vai'
-    )
-    expect(getNextAdminSection('admin-quem-vai', 'ArrowRight')).toBe(
-      'admin-configuracoes'
-    )
-    expect(getNextAdminSection('admin-configuracoes', 'ArrowRight')).toBe(
-      'admin-visao'
-    )
-    expect(getNextAdminSection('admin-visao', 'ArrowLeft')).toBe(
-      'admin-configuracoes'
-    )
-  })
-
+describe('admin tabs', () => {
   test('recognizes the settings hash as a real admin tab', () => {
     expect(getAdminSectionFromHash('#admin-configuracoes')).toBe(
       'admin-configuracoes'
     )
-  })
-
-  test('supports Home and End without intercepting unrelated keys', () => {
-    expect(getNextAdminSection('admin-grade', 'Home')).toBe('admin-visao')
-    expect(getNextAdminSection('admin-grade', 'End')).toBe(
-      'admin-configuracoes'
-    )
-    expect(getNextAdminSection('admin-grade', 'Tab')).toBeNull()
   })
 
   test('restores valid deep links and rejects unrelated hashes', () => {

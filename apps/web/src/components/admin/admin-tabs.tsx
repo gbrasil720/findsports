@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Activity, type ReactNode } from 'react'
-import { getNextTabId, RovingTabs } from '@/components/app/roving-tabs'
+import { RovingTabs } from '@/components/app/roving-tabs'
 
 export const ADMIN_SECTIONS = [
   { id: 'admin-visao', label: 'Visão geral' },
@@ -23,10 +23,6 @@ export function getAdminSections(showsGoing: boolean): readonly AdminSection[] {
     : ADMIN_SECTIONS.filter((section) => section.id !== 'admin-quem-vai')
 }
 
-const ADMIN_SECTION_IDS = ADMIN_SECTIONS.map(
-  (section) => section.id
-) as AdminSectionId[]
-
 type Props = {
   sections: readonly AdminSection[]
   activeSection: AdminSectionId
@@ -40,13 +36,6 @@ function tabId(section: AdminSectionId): string {
 export function getAdminSectionFromHash(hash: string): AdminSectionId | null {
   const sectionId = hash.replace(/^#/, '')
   return ADMIN_SECTIONS.find((section) => section.id === sectionId)?.id ?? null
-}
-
-export function getNextAdminSection(
-  currentSection: AdminSectionId,
-  key: string
-): AdminSectionId | null {
-  return getNextTabId(ADMIN_SECTION_IDS, currentSection, key)
 }
 
 export function AdminTabs({ sections, activeSection, onChange }: Props) {
