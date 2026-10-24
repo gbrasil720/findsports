@@ -395,6 +395,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }, [resting])
   const start = useSharedValue(0)
   const scrollY = useSharedValue(0)
+  // A barra de abas do iOS 26 apaga o que passa por baixo dela (scroll edge
+  // effect) com a posição que a lista tinha no último layout. A folha anda por
+  // transform, que não refaz layout: aberta do zero e puxada para cima, a
+  // lista ficava apagada onde a barra estava com a folha no meio. Cada parada
+  // mexe 1 pt na lista, fora da tela, para a barra recalcular.
+  const [rests, setRests] = useState(0)
+  const rested = (to: number) => {
+    setResting(to)
+    setRests((count) => count + 1)
+  }
   /** A mola da folha; quando assenta, a tela fica sabendo onde parou. */
   const settle = (to: number, velocity = 0) => {
     'worklet'
@@ -403,7 +413,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         to,
         { duration: 300, dampingRatio: 0.8, velocity, overshootClamping: true },
         (done) => {
-          if (done) scheduleOnRN(setResting, to)
+          if (done) scheduleOnRN(rested, to)
         }
       )
     )
@@ -892,6 +902,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         <GestureDetector gesture={listPan}>
           <GestureDetector gesture={scroll}>
             <Animated.ScrollView
+              style={{ marginBottom: rests % 2 }}
               onScroll={onScroll}
               scrollEventThrottle={16}
               scrollEnabled={expanded}
