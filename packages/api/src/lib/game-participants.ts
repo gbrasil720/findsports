@@ -21,7 +21,7 @@ const teams = (eventId: SQL, aggregate: SQL) => sql`(
   WHERE ep.event_id = ${eventId}
 )`
 
-/** Nomes dos times; a tela monta o título com `getGameTitle`. */
+/** Nomes dos times; a tela monta o título com `gameTitle` (`@findsports_oficial/db/game-title`). */
 export const participantNames = (eventId: SQL) =>
   sql<
     string[]
@@ -49,7 +49,11 @@ export const byMatchOrder = (participant: {
   sql`(SELECT t.name FROM team t WHERE t.id = ${participant.teamId})`
 ]
 
-/** O título pronto, na ordem de `getGameTitle`: times, texto livre, campeonato. */
+/**
+ * O título pronto, com a regra de `@findsports_oficial/db/game-title`: times,
+ * texto livre não vazio, campeonato. `game-participants.integration.test.ts`
+ * confere que as duas concordam.
+ */
 export const gameTitle = (game: {
   id: SQL
   participantFreeText: SQL
@@ -57,6 +61,6 @@ export const gameTitle = (game: {
 }) =>
   sql<string>`COALESCE(
     ${teams(game.id, sql`string_agg(t.name, ' × ' ORDER BY ${MATCH_ORDER})`)},
-    NULLIF(${game.participantFreeText}, ''),
+    NULLIF(btrim(${game.participantFreeText}), ''),
     ${game.championship}
   )`
