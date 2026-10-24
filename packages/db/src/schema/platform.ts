@@ -424,6 +424,35 @@ export const subscription = pgTable('subscription', {
     .notNull()
 })
 
+/**
+ * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao
+ * confirmar "Cancelar mesmo assim", antes de o portal do Stripe abrir. É
+ * intenção, não cancelamento feito: quem desiste no portal fica registrado
+ * igual. O id vem de `CANCEL_REASONS` (`packages/api/src/lib/cancel-reasons.ts`)
+ * e nunca é reusado.
+ */
+export const subscriptionCancelReason = pgTable(
+  'subscription_cancel_reason',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    /** O plano que estava sendo cancelado. */
+    plan: subscriptionPlanEnum('plan').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    index('subscription_cancel_reason_bar_created_idx').on(
+      table.barId,
+      table.createdAt
+    )
+  ]
+)
+
 // Relations — idênticas ao original
 export const barRelations = relations(bar, ({ one, many }) => ({
   user: one(user, { fields: [bar.userId], references: [user.id] }),
