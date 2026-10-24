@@ -486,6 +486,7 @@ async function getEventAnalyticsSnapshots(
     LEFT JOIN bruto ON bruto.event_id = e.id
     LEFT JOIN podado ON podado.event_id = e.id
     WHERE e.bar_id = ${barId}
+      AND e.published_at IS NOT NULL
       AND e.starts_at >= ${from}
       AND e.starts_at <= ${to}
     ORDER BY e.starts_at DESC
