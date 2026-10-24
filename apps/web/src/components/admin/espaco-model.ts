@@ -63,8 +63,34 @@ export const SEMANA_PADRAO: DiaRascunho[] = Array.from({ length: 7 }, () => ({
   closes: '00:00'
 }))
 
+/** O horário gravado no formato do editor; dia fechado guarda a faixa padrão. */
+export function diasDoHorario(
+  hours: OpeningHours | null
+): DiaRascunho[] | null {
+  return (
+    normalizeOpeningHours(hours)?.map((day) =>
+      day
+        ? { open: true, ...day }
+        : { open: false, opens: '17:00', closes: '00:00' }
+    ) ?? null
+  )
+}
+
+/** Dia marcado que abre e fecha na mesma hora: o servidor recusa. */
+export const MSG_HORARIO_INVALIDO =
+  'Abre e fecha no mesmo horário: ajuste o dia marcado.'
+
+export const horarioInvalido = (hours: DiaRascunho[] | null) =>
+  Boolean(hours?.some((day) => day.open && day.opens === day.closes))
+
+/** A oferta passou do limite, contado sobre o texto normalizado. */
+export function erroDaOferta(digitado: string): string | undefined {
+  const tamanho = houseOfferLength(normalizeHouseOffer(digitado))
+  if (tamanho <= HOUSE_OFFER_MAX_LENGTH) return undefined
+  return `A oferta aceita até ${HOUSE_OFFER_MAX_LENGTH} caracteres. Tire ${tamanho - HOUSE_OFFER_MAX_LENGTH}.`
+}
+
 export function rascunhoDoBar(bar: AdminBar): Rascunho {
-  const hours = normalizeOpeningHours(bar.openingHours)
   const [rua, numero] = separarNumero(bar.address ?? '')
   return {
     name: bar.name ?? '',
@@ -80,13 +106,7 @@ export function rascunhoDoBar(bar: AdminBar): Rascunho {
     menuUrl: bar.menuUrl ?? '',
     averageSpend: averageSpendInputValue(bar.averageSpendCents),
     houseOffer: bar.houseOffer ?? '',
-    hours: hours
-      ? hours.map((day) =>
-          day
-            ? { open: true, ...day }
-            : { open: false, opens: '17:00', closes: '00:00' }
-        )
-      : null
+    hours: diasDoHorario(bar.openingHours)
   }
 }
 
@@ -224,16 +244,15 @@ export function alteracoes(
 
   let oferta: string | null | undefined
   if (podeOferta) {
+    const erro = erroDaOferta(r.houseOffer)
     const texto = normalizeHouseOffer(r.houseOffer)
-    const tamanho = houseOfferLength(texto)
-    if (tamanho > HOUSE_OFFER_MAX_LENGTH) {
-      erros.houseOffer = `A oferta aceita até ${HOUSE_OFFER_MAX_LENGTH} caracteres. Tire ${tamanho - HOUSE_OFFER_MAX_LENGTH}.`
-    } else if (texto !== (bar.houseOffer ?? null)) oferta = texto
+    if (erro) erros.houseOffer = erro
+    else if (texto !== (bar.houseOffer ?? null)) oferta = texto
   }
 
   let horario: OpeningHours | null | undefined
-  if (r.hours?.some((day) => day.open && day.opens === day.closes)) {
-    erros.hours = 'Abre e fecha no mesmo horário: ajuste o dia marcado.'
+  if (horarioInvalido(r.hours)) {
+    erros.hours = MSG_HORARIO_INVALIDO
   } else {
     const proximo = horarioDoRascunho(r.hours)
     if (
