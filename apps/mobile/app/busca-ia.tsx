@@ -74,7 +74,6 @@ import {
   thoughtLabel,
   versionLabel
 } from '@/lib/ai-chat'
-import { WORST_QUESTION } from '@/lib/ai-chat-demo'
 import type { Dubla } from '@/lib/ai-dubla'
 import type { ChatBar, ConfirmResult } from '@/lib/ai-events'
 import { confirm, converse } from '@/lib/ai-stream'
@@ -346,9 +345,14 @@ export default function AiSearch() {
   // Navegador DEV: manda a pergunta da tela pedida.
   const devSent = useRef(false)
   useEffect(() => {
-    if (!devState || devSent.current) return
-    devSent.current = true
-    send(dubla === 'pior' ? WORST_QUESTION : DEV_QUESTION[devState])
+    // `require` dentro do `__DEV__`: o pior caso não entra no bundle de produção.
+    if (__DEV__ && devState && !devSent.current) {
+      devSent.current = true
+      const {
+        WORST_QUESTION
+      }: typeof import('@/lib/ai-chat-demo') = require('@/lib/ai-chat-demo')
+      send(dubla === 'pior' ? WORST_QUESTION : DEV_QUESTION[devState])
+    }
   })
 
   // A proposta nova traz os interruptores como a IA sugeriu.
