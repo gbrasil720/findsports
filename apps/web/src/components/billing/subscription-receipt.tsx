@@ -59,14 +59,16 @@ function carimboDeHora(date: Date) {
     .toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo'
     })
     .replaceAll(' de ', ' ')
     .replace('.', '')
     .toUpperCase()
   const hora = date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
   })
   return `${dia} · ${hora}`
 }

@@ -106,7 +106,11 @@ export function CancelPlanDialog({
       <p className="text-[15px] text-[var(--painel-muted)] leading-normal">
         {until
           ? `O plano fica ativo até ${until
-              .toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
+              .toLocaleDateString('pt-BR', {
+                day: 'numeric',
+                month: 'short',
+                timeZone: 'America/Sao_Paulo'
+              })
               .replace('.', '')
               .replace(
                 ' de ',
