@@ -28,6 +28,7 @@ import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-emai
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminDesempenhoRouteImport } from './routes/admin.desempenho'
 import { Route as AdminJogosRouteImport } from './routes/admin.jogos'
 import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
 import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
@@ -152,6 +153,11 @@ const AdminBillingRoute = AdminBillingRouteImport.update({
 const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDesempenhoRoute = AdminDesempenhoRouteImport.update({
+  id: '/desempenho',
+  path: '/desempenho',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminJogosRoute = AdminJogosRouteImport.update({
@@ -324,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
   '/admin/jogos': typeof AdminJogosRoute
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
@@ -373,6 +380,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
   '/admin/jogos': typeof AdminJogosRoute
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
@@ -423,6 +431,7 @@ export interface FileRoutesById {
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
   '/admin/jogos': typeof AdminJogosRoute
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/admin/billing'
     | '/admin/configuracoes'
+    | '/admin/desempenho'
     | '/admin/jogos'
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
@@ -525,6 +535,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/admin/billing'
     | '/admin/configuracoes'
+    | '/admin/desempenho'
     | '/admin/jogos'
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/(auth)/verify-email'
     | '/admin/billing'
     | '/admin/configuracoes'
+    | '/admin/desempenho'
     | '/admin/jogos'
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
@@ -771,6 +783,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/admin/configuracoes'
       preLoaderRoute: typeof AdminConfiguracoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/desempenho': {
+      id: '/admin/desempenho'
+      path: '/desempenho'
+      fullPath: '/admin/desempenho'
+      preLoaderRoute: typeof AdminDesempenhoRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/jogos': {
@@ -989,6 +1008,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminBillingRoute: typeof AdminBillingRoute
   AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
+  AdminDesempenhoRoute: typeof AdminDesempenhoRoute
   AdminJogosRoute: typeof AdminJogosRoute
   AdminMeuEspacoRoute: typeof AdminMeuEspacoRoute
   AdminQuemVaiRoute: typeof AdminQuemVaiRoute
@@ -999,6 +1019,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBillingRoute: AdminBillingRoute,
   AdminConfiguracoesRoute: AdminConfiguracoesRoute,
+  AdminDesempenhoRoute: AdminDesempenhoRoute,
   AdminJogosRoute: AdminJogosRoute,
   AdminMeuEspacoRoute: AdminMeuEspacoRoute,
   AdminQuemVaiRoute: AdminQuemVaiRoute,

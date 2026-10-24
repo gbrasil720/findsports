@@ -5,41 +5,27 @@ import {
   PopoverTitle,
   PopoverTrigger
 } from '@findsports_oficial/ui/components/popover'
-import CircleInfo from 'reicon-react/icons/CircleInfo'
 import { getMetric, type MetricId } from './metric-glossary'
 
 /**
- * Ícone ⓘ ao lado de um rótulo de métrica.
+ * O "i" ao lado de um rótulo de métrica (`hint` do design do painel), que
+ * abre a explicação do glossário.
  *
- * Abre em clique/toque (não em hover): o painel é usado majoritariamente no
- * celular, onde hover não existe.
- *
- * O gatilho é inline de propósito. `.onside-label` é `display: block` com
- * especificidade maior que a dos utilitários do Tailwind, então um `flex` no
- * elemento do rótulo seria descartado sem aviso. O alvo de toque de 44px vem
- * do `::after` esticado, que não ocupa espaço no layout.
+ * Abre em clique/toque, não em hover: no celular hover não existe. O alvo de
+ * toque de 44px vem do `::after` esticado, que não ocupa espaço no layout.
  */
-export function MetricHint({
-  metric,
-  className
-}: {
-  metric: MetricId
-  className?: string
-}) {
+export function MetricHint({ metric }: { metric: MetricId }) {
   const { label, definition } = getMetric(metric)
 
   return (
     <Popover>
       <PopoverTrigger
         aria-label={`O que significa "${label}"`}
-        className={
-          'relative ml-1.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center align-middle text-[var(--onside-ink)] opacity-50 transition-opacity after:absolute after:-inset-2.5 after:content-[""] hover:opacity-100' +
-          (className ? ` ${className}` : '')
-        }
+        className="desemp-hint"
       >
-        <CircleInfo size={14} color="currentColor" aria-hidden="true" />
+        i
       </PopoverTrigger>
-      <PopoverContent>
+      <PopoverContent className="desemp-hint-pop">
         <PopoverTitle className="mb-2 font-[family-name:var(--onside-mono)] font-semibold text-[11px] uppercase leading-tight tracking-[0.12em]">
           {label}
         </PopoverTitle>

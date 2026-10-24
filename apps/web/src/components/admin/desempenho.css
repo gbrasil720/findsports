@@ -1,0 +1,847 @@
+/*
+ * Desempenho (telas 1x/1y) e Jogos · Passados, "Como cada jogo foi" (1z/1aa),
+ * do design "Bar Web", Rodada 3 (`perf`, `daily`, `dchart`, `passados`).
+ * Usa os tokens de `painel.css`; carrega em `/admin/desempenho` e
+ * `/admin/jogos` (link no `head` das duas rotas).
+ */
+
+.painel .desemp,
+.painel .desemp-carregando {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ─── Peças ─── */
+
+/* Número de resultado (`mk`): marca-texto acid no claro, acid no escuro. */
+.painel .desemp-mk {
+  font: 400 var(--desemp-mk, 40px) / 1 var(--onside-display);
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, transparent 52%, var(--painel-acid) 52%);
+  padding: 0 4px;
+  margin-left: -4px;
+  white-space: nowrap;
+}
+.painel .desemp-mk[data-vazio] {
+  background: none;
+}
+@media (prefers-color-scheme: dark) {
+  .painel .desemp-mk {
+    background: none;
+    color: var(--painel-acid);
+  }
+  .painel .desemp-mk[data-vazio] {
+    color: inherit;
+  }
+}
+
+/* O "i" do glossário (`hint`). */
+.painel .desemp-hint {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: inset 0 0 0 1.2px var(--painel-line2);
+  color: var(--painel-muted);
+  font: 700 10px / 1 var(--onside-body);
+  cursor: pointer;
+}
+.painel .desemp-hint::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+}
+.painel .desemp-hint:hover {
+  color: var(--painel-fg);
+}
+.painel .desemp-hint-pop {
+  border-radius: 7px;
+  background: var(--painel-card);
+  color: var(--painel-fg);
+  box-shadow: var(--painel-sh);
+}
+
+.painel .desemp-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0;
+  margin-bottom: 14px;
+}
+.painel .desemp-titulo > :is(h2, h3) {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.painel .desemp-titulo > .painel-badge {
+  margin-left: 10px;
+}
+.painel .desemp-titulo:has(+ .desemp-sub) {
+  margin-bottom: 6px;
+}
+
+.painel .desemp-sub {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .desemp-nota {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .desemp-erro {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--painel-live);
+}
+
+.painel .desemp-var {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel .desemp-var-texto {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.painel .desemp-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--painel-tint);
+  text-decoration: none;
+}
+.painel .desemp-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ─── Período personalizado ─── */
+
+.painel .desemp-personalizado form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.painel .desemp-personalizado form > :is(p) {
+  flex-basis: 100%;
+}
+
+/* ─── Os três números ─── */
+
+.painel .desemp-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.painel .desemp-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.painel .desemp-kpi-rotulo {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.painel .desemp-kpi-rotulo h2 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--painel-muted);
+}
+.painel .desemp-apoio {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+
+/* ─── Atividade diária ─── */
+
+.painel .desemp-ativ {
+  padding: 22px 24px;
+  border-radius: 8px;
+  background: var(--painel-surface-ink);
+  color: var(--painel-paper);
+  box-shadow: 5px 5px 0 var(--painel-acid);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .desemp-ativ {
+    box-shadow: var(--painel-sh-hero);
+  }
+}
+.painel .desemp-ativ h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+.painel .desemp-ativ-totais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 44px;
+  margin: 16px 0 22px;
+}
+.painel .desemp-ativ-totais dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #aaa9a4;
+}
+.painel .desemp-ativ-totais dt > span {
+  width: 24px;
+  border-top: 2px solid var(--painel-paper);
+}
+.painel .desemp-ativ-totais dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: #aaa9a4;
+}
+.painel .desemp-ativ-num {
+  font: 400 40px / 1 var(--onside-display);
+  color: var(--painel-acid);
+  font-variant-numeric: tabular-nums;
+}
+.painel .desemp-ativ .desemp-var-texto {
+  color: #aaa9a4;
+}
+.painel .desemp-ativ-legenda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: #aaa9a4;
+}
+.painel .desemp-ativ-legenda > span {
+  width: 24px;
+  height: 4px;
+  background: var(--painel-acid);
+}
+
+.painel .desemp-graf {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 0 8px;
+  font: 500 10px / 1 var(--onside-mono);
+  color: #aaa9a4;
+  font-variant-numeric: tabular-nums;
+}
+.painel .desemp-graf-y {
+  position: relative;
+}
+.painel .desemp-graf-y > span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+}
+.painel .desemp-graf-area {
+  position: relative;
+  height: 240px;
+  touch-action: pan-y;
+  outline: none;
+}
+.painel .desemp-graf-area:focus-visible {
+  box-shadow: 0 0 0 3px rgb(201 241 53 / 40%);
+}
+.painel .desemp-graf-area > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.painel .desemp-graf-guia {
+  position: absolute;
+  inset-block: 0;
+  width: 1px;
+  background: var(--painel-paper);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.painel .desemp-graf-ponto {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--painel-ink);
+  border-radius: 50%;
+  background: var(--painel-paper);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.painel .desemp-graf-dica {
+  position: absolute;
+  top: 4px;
+  z-index: 1;
+  width: max-content;
+  margin-left: 12px;
+  padding: 9px 11px;
+  border-radius: 5px;
+  background: var(--painel-paper);
+  color: var(--painel-ink);
+  box-shadow: 4px 4px 0 var(--painel-acid);
+  font: 500 12.5px / 1.45 var(--onside-body);
+  pointer-events: none;
+}
+.painel .desemp-graf-dica[data-lado="esq"] {
+  margin-left: -12px;
+  transform: translateX(-100%);
+}
+.painel .desemp-graf-dica > b:first-child {
+  display: block;
+  margin-bottom: 2px;
+}
+.painel .desemp-graf-x {
+  position: relative;
+  height: 12px;
+  margin-top: 8px;
+}
+.painel .desemp-graf-x > span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.painel .desemp-graf-x > span[data-borda="ini"] {
+  transform: none;
+}
+.painel .desemp-graf-x > span[data-borda="fim"] {
+  transform: translateX(-100%);
+}
+
+/* ─── Cards ─── */
+
+.painel .desemp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.painel .desemp-card {
+  padding: 20px 22px;
+}
+.painel .desemp-cols {
+  display: grid;
+  grid-template-columns: repeat(var(--desemp-cols, 2), minmax(0, 1fr));
+  gap: 14px 16px;
+  margin: 0;
+}
+.painel .desemp-cols[data-cols="3"] {
+  --desemp-cols: 3;
+}
+.painel .desemp-cols dt {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+}
+.painel .desemp-cols dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 0 0;
+}
+.painel .desemp-comp-num {
+  font: 400 26px / 1 var(--onside-display);
+  font-variant-numeric: tabular-nums;
+}
+.painel .desemp-comp-num[data-travado] {
+  font: 600 13px / 1.35 var(--onside-body);
+  color: var(--painel-muted);
+}
+.painel .desemp-quemfoi-barra {
+  margin: 14px 0 12px;
+}
+
+.painel .desemp-mais {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border-radius: 5px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.painel .desemp-canais {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .desemp-canais li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.painel .desemp-canais b {
+  font-variant-numeric: tabular-nums;
+}
+.painel .desemp-canais small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--painel-muted);
+}
+.painel .desemp-canal-trilho {
+  display: block;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--painel-sub);
+  overflow: hidden;
+}
+.painel .desemp-canal-trilho > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--painel-ink);
+}
+.painel .desemp-canal-trilho > span[data-lider] {
+  background: var(--painel-acid);
+  box-shadow: inset 0 0 0 1.5px var(--painel-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .desemp-canal-trilho > span {
+    background: #55554f;
+  }
+  .painel .desemp-canal-trilho > span[data-lider] {
+    box-shadow: none;
+  }
+}
+
+/* "Como cada jogo foi" no Desempenho: os três primeiros. */
+.painel .desemp-resumo {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .desemp-resumo li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+}
+.painel .desemp-resumo li + li {
+  border-top: 1px solid var(--painel-line);
+}
+.painel .desemp-resumo li > b {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+}
+.painel .desemp-resumo li > b span {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--painel-muted);
+}
+.painel .desemp-resumo-viram,
+.painel .desemp-resumo-taxa {
+  flex: none;
+  font-size: 13px;
+  color: var(--painel-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.painel .desemp-resumo-viram {
+  width: 90px;
+}
+.painel .desemp-resumo-taxa {
+  width: 60px;
+}
+.painel .desemp-resumo-int {
+  flex: none;
+  min-width: 110px;
+  font-size: 14px;
+  text-align: right;
+}
+
+/* ─── Jogos · Passados: "Como cada jogo foi" (1z/1aa) ─── */
+
+.painel .passados {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 24px;
+  align-items: start;
+}
+.painel .passados[data-sem-comparar] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.painel .passados-esq {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.painel .passados-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+.painel .passados-cab > span:last-child {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--painel-muted);
+}
+.painel .passados-melhor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 6px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  font-size: 14px;
+  line-height: 1.35;
+  box-shadow: 3px 3px 0 var(--painel-ink);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .passados-melhor {
+    box-shadow: 3px 3px 0 #000;
+  }
+}
+.painel .passados-periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--painel-muted);
+}
+
+.painel .passados-tabela {
+  padding: 14px 16px 6px;
+}
+.painel .passados-linha,
+.painel .passados-colunas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 64px 50px 14px;
+  gap: 0 10px;
+  align-items: center;
+}
+.painel .passados-tabela[data-codigos] :is(.passados-linha, .passados-colunas) {
+  grid-template-columns: minmax(0, 1fr) 46px 64px 50px 58px 64px 14px;
+}
+.painel .passados-colunas {
+  padding: 4px 6px 10px;
+  font: 600 10.5px / 1 var(--onside-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--painel-muted);
+  text-align: right;
+}
+.painel .passados-item {
+  border-top: 1px solid var(--painel-line);
+}
+.painel .passados-linha {
+  width: 100%;
+  padding: 13px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  cursor: pointer;
+}
+.painel .passados-linha:focus-visible {
+  outline: none;
+  box-shadow: var(--painel-focus-ring);
+  border-radius: 4px;
+}
+.painel .passados-nome {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+}
+.painel .passados-nome b {
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.painel .passados-nome span {
+  flex: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--painel-muted);
+}
+.painel .passados-int {
+  font-weight: 700;
+}
+.painel .passados-taxa {
+  font-weight: 400;
+}
+.painel .passados-cod {
+  border-left: 1px solid var(--painel-line);
+}
+.painel .passados-seta {
+  justify-self: end;
+  transition: transform var(--onside-motion-fast) var(--onside-ease-out);
+}
+.painel .passados-linha[aria-expanded="true"] .passados-seta {
+  transform: rotate(180deg);
+}
+.painel .passados-aberto {
+  padding: 4px 6px 16px;
+}
+.painel .passados-canais,
+.painel .passados-codigos {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.painel .passados-canais {
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--painel-sub);
+}
+.painel .passados-codigos {
+  padding: 12px 14px 0;
+}
+.painel :is(.passados-canais, .passados-codigos) dt {
+  font-size: 12px;
+  color: var(--painel-muted);
+}
+.painel :is(.passados-canais, .passados-codigos) dd {
+  margin: 3px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.painel .passados-codigos > p {
+  grid-column: span 3;
+  align-self: center;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+
+/* Comparar jogos (Pro e Elite). */
+.painel .comparar {
+  padding: 20px 22px;
+}
+.painel .comparar-cab {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.painel .comparar-cab h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.painel .comparar-modo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 14px 0 12px;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+}
+.painel .comparar-modo label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.painel .comparar-modo input {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid var(--painel-line2);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.painel .comparar-modo input:checked {
+  border: 5px solid var(--painel-fg);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .comparar-modo input:checked {
+    border-color: var(--painel-acid);
+  }
+}
+.painel .comparar-modo input:focus-visible {
+  outline: none;
+  box-shadow: var(--painel-focus-ring);
+}
+.painel .comparar-jogos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.painel .comparar-bloco {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--painel-line);
+}
+.painel .comparar-bloco h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.painel .comparar-bloco h3 + p {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--painel-muted);
+}
+.painel .comparar-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  table-layout: fixed;
+}
+.painel .comparar-tabela th,
+.painel .comparar-tabela td {
+  padding: 9px 0 9px 5px;
+  border-bottom: 1px solid var(--painel-line);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+.painel .comparar-tabela thead th {
+  padding-block: 6px;
+  border-bottom-color: var(--painel-line2);
+  font: 600 10px / 1 var(--onside-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--painel-muted);
+}
+.painel .comparar-tabela :is(th, td):first-child {
+  padding-left: 0;
+  text-align: left;
+}
+.painel .comparar-tabela tbody th {
+  overflow: hidden;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.painel .comparar-tabela tbody td:last-child {
+  font-weight: 700;
+}
+.painel .comparar-ranking {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .comparar-ranking li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+.painel .comparar-insights {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.painel .comparar-insights li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.painel .comparar-insights li span {
+  color: var(--painel-muted);
+}
+.painel .comparar-bench {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--painel-muted);
+}
+
+/* ─── Telas menores ─── */
+
+@media (max-width: 1240px) {
+  .painel .passados {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .painel .desemp-kpis,
+  .painel .desemp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .painel .desemp-graf-area {
+    height: 200px;
+  }
+}
+@media (max-width: 640px) {
+  .painel .desemp-graf-x > span[data-celular="nao"] {
+    display: none;
+  }
+  .painel .desemp-resumo li {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .painel .desemp-resumo li > b {
+    flex-basis: 100%;
+  }
+  .painel .desemp-resumo-viram,
+  .painel .desemp-resumo-int,
+  .painel .desemp-resumo-taxa {
+    width: auto;
+    min-width: 0;
+    text-align: left;
+  }
+  .painel .passados-tabela :is(.passados-linha, .passados-colunas),
+  .painel
+    .passados-tabela[data-codigos]
+    :is(.passados-linha, .passados-colunas) {
+    grid-template-columns: minmax(0, 1fr) 64px 14px;
+  }
+  .painel
+    .passados-tabela
+    :is(.passados-col-viram, .passados-col-taxa, .passados-col-cod) {
+    display: none;
+  }
+  .painel .passados-canais,
+  .painel .passados-codigos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .painel .passados-codigos > p {
+    grid-column: 1 / -1;
+  }
+}

@@ -17,6 +17,8 @@ export type MetricId =
   | 'mainAction'
   | 'periodComparison'
   | 'eventPerformance'
+  | 'classicPlacement'
+  | 'codes'
   | 'profileReadiness'
 
 export type MetricDefinition = {
@@ -61,6 +63,16 @@ export const METRIC_GLOSSARY: Record<MetricId, MetricDefinition> = {
     label: 'Como cada jogo foi',
     definition:
       'Quantas pessoas viram seu bar e se interessaram a partir de cada jogo cadastrado. Mostra quais jogos puxam público — e quais não valem a vaga na grade.'
+  },
+  classicPlacement: {
+    label: 'Entrega Elite nos clássicos',
+    definition:
+      'Quantas vezes seu bar apareceu na posição garantida e quantas pessoas abriram o perfil a partir dessa posição.'
+  },
+  codes: {
+    label: 'Quem foi pela Onside',
+    definition:
+      'Quem marcou “Vou assistir aqui” e recebeu o código, e os códigos que você validou no balcão. Não se somam a Interesse nem entram na taxa.'
   },
   profileReadiness: {
     label: 'O que falta no seu perfil',
