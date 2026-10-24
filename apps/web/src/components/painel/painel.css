@@ -541,6 +541,52 @@
   white-space: nowrap;
 }
 
+/* ─── Diálogos `.onside-dialog` dentro do painel ───
+ * Senha, duas etapas e exclusão (`components/account`, pelo `admin/modal`) e
+ * o feedback do menu do dono são a superfície do resto do app, só clara. No
+ * painel, o cartão é o dos diálogos daqui (`.pl-modal`) e os tokens
+ * `--onside-*` e os do shadcn (campo, botão) passam a ser os do painel, que
+ * seguem o tema. O `!important` é para ganhar o de `.onside-dialog`. */
+.painel .onside-dialog {
+  --onside-paper: var(--painel-card2);
+  --onside-ink: var(--painel-fg);
+  --onside-stone: var(--painel-sub);
+  --onside-line: var(--painel-line2);
+  --onside-muted: var(--painel-muted);
+  --onside-live-text: var(--painel-live);
+  --background: var(--painel-field);
+  --foreground: var(--painel-fg);
+  --input: var(--painel-line2);
+  --border: var(--painel-line2);
+  --primary: var(--painel-btn-ink-bg);
+  --primary-foreground: var(--painel-btn-ink-fg);
+  --muted: var(--painel-hover);
+  --muted-foreground: var(--painel-muted);
+  --ring: var(--painel-fg);
+
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--painel-card2) !important;
+  color: var(--painel-fg);
+  box-shadow:
+    8px 8px 0 var(--painel-ink),
+    0 40px 80px -30px rgb(0 0 0 / 60%) !important;
+}
+.painel .onside-dialog [data-slot="input"] {
+  background: var(--painel-field);
+}
+@media (prefers-color-scheme: dark) {
+  .painel .onside-dialog {
+    box-shadow:
+      8px 8px 0 #000,
+      0 40px 80px -30px rgb(0 0 0 / 60%),
+      inset 0 0 0 1px rgb(241 238 230 / 9%) !important;
+  }
+  .painel .onside-dialog .onside-callout-warn {
+    background: color-mix(in srgb, #e0a82e 18%, var(--painel-card2));
+  }
+}
+
 /* ─── Conteúdo antigo dentro do shell novo ───
  * As telas de antes só têm o tema claro. Enquanto não são refeitas, ficam
  * numa folha clara, para não sair tinta sobre tinta no escuro. */
