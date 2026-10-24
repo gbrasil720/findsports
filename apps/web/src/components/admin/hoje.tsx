@@ -216,11 +216,11 @@ export function Hoje() {
         />
       </section>
 
-      <Card className="hoje-noite-card">
-        <CabecalhoCard
-          titulo="A noite"
-          meta={`${noite.de % 24}h → ${noite.ate % 24}h`}
-        />
+      <Secao
+        className="hoje-noite-card"
+        titulo="A noite"
+        meta={`${noite.de % 24}h → ${noite.ate % 24}h`}
+      >
         {events.isError ? (
           <div className="hoje-espaco">
             <QueryError
@@ -313,7 +313,7 @@ export function Hoje() {
             </div>
           </div>
         )}
-      </Card>
+      </Secao>
 
       <div
         className="hoje-grade"
@@ -335,8 +335,11 @@ export function Hoje() {
           </div>
         ) : null}
 
-        <Card className="hoje-semana">
-          <CabecalhoCard titulo="Esta semana" meta="vs. semana passada" />
+        <Secao
+          className="hoje-semana"
+          titulo="Esta semana"
+          meta="vs. semana passada"
+        >
           {visao.isError ? (
             <Falha tentar={() => void visao.refetch()} />
           ) : (
@@ -384,18 +387,18 @@ export function Hoje() {
               hoje={noite.dia}
             />
           ) : null}
-        </Card>
+        </Secao>
 
         <div className="hoje-coluna">
-          <Card className="hoje-avaliacoes">
-            <CabecalhoCard
-              titulo="Avaliações recentes"
-              meta={
-                ratings.data?.total
-                  ? `${ratings.data.percentage}% voltariam`
-                  : undefined
-              }
-            />
+          <Secao
+            className="hoje-avaliacoes"
+            titulo="Avaliações recentes"
+            meta={
+              ratings.data?.total
+                ? `${ratings.data.percentage}% voltariam`
+                : undefined
+            }
+          >
             {ratings.isError ? (
               <Falha tentar={() => void ratings.refetch()} />
             ) : !ratings.data ? (
@@ -424,7 +427,7 @@ export function Hoje() {
                 ))}
               </ul>
             )}
-          </Card>
+          </Secao>
           {proximo ? (
             <div className="hoje-promo" aria-disabled="true">
               <Icone
@@ -575,15 +578,15 @@ function ChegaramAgora({
 }) {
   const total = validados ?? chegadas?.length
   return (
-    <Card className="hoje-chegaram">
-      <CabecalhoCard
-        titulo="Chegaram agora"
-        meta={
-          total === undefined
-            ? undefined
-            : `${total} ${plural(total, 'validado', 'validados')}`
-        }
-      />
+    <Secao
+      className="hoje-chegaram"
+      titulo="Chegaram agora"
+      meta={
+        total === undefined
+          ? undefined
+          : `${total} ${plural(total, 'validado', 'validados')}`
+      }
+    >
       {erro ? (
         <Falha tentar={erro} />
       ) : !chegadas ? (
@@ -608,7 +611,7 @@ function ChegaramAgora({
           ))}
         </ul>
       )}
-    </Card>
+    </Secao>
   )
 }
 
@@ -676,5 +679,26 @@ function VaoPorDia({
         )
       })}
     </ol>
+  )
+}
+
+/** Card com título que também nomeia a região (leitor de tela e testes). */
+function Secao({
+  titulo,
+  meta,
+  className,
+  children
+}: {
+  titulo: string
+  meta?: ReactNode
+  className: string
+  children: ReactNode
+}) {
+  const id = useId()
+  return (
+    <Card role="region" aria-labelledby={id} className={className}>
+      <CabecalhoCard id={id} titulo={titulo} meta={meta} />
+      {children}
+    </Card>
   )
 }
