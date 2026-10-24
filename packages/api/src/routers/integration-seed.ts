@@ -187,3 +187,29 @@ export async function refusal(promise: Promise<unknown>) {
   const { code, message } = error as TRPCError
   return { code, message }
 }
+
+/**
+ * Roda `fn` com o banco numa sessão no fuso `session` (o Postgres converte
+ * `timestamp` × `timestamptz` por ele) e, se dado, o processo no fuso
+ * `process` (o driver escreve um `Date` cru nele). Produção é UTC nos dois;
+ * os testes do relógio do jogo provam que nenhum dos dois muda a resposta.
+ */
+export async function withClock<T>(
+  zones: { session: string; process?: string },
+  fn: () => Promise<T>
+): Promise<T> {
+  const [{ runWithDb }, { resolveAndValidateDatabaseUrl }] = await Promise.all([
+    import('@findsports_oficial/db'),
+    import('@findsports_oficial/db/utils/db-resolver')
+  ])
+  const url = new URL(resolveAndValidateDatabaseUrl().url)
+  url.searchParams.set('options', `-c TimeZone=${zones.session}`)
+  const previous = process.env.TZ
+  if (zones.process) process.env.TZ = zones.process
+  try {
+    return await runWithDb(url.toString(), fn)
+  } finally {
+    if (previous === undefined) delete process.env.TZ
+    else process.env.TZ = previous
+  }
+}
