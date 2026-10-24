@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-
+import type { PolicyState } from '@/components/admin/admin-model'
 import { getLapsedPaidPlan } from '@/lib/lapsed-plan'
-import type { PolicyState } from './admin-model'
-import { getCreateBlockReason, getDeleteErrorMessage } from './events-manager'
+import { getCreateBlockReason, getDeleteErrorMessage } from './jogos-page'
 
 test('recusa do servidor na exclusão vira texto da tela', () => {
   expect(getDeleteErrorMessage({ data: { code: 'PRECONDITION_FAILED' } })).toBe(

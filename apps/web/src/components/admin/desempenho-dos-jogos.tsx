@@ -3,40 +3,24 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import type { EventAnalyticsState, PolicyState } from './admin-model'
-import {
-  useEventsState,
-  useMyAnalyticsEntitlements,
-  useMyEventCreationPolicy,
-  useMyEvents
-} from './admin-queries'
-import { AdminTabPanel } from './admin-tabs'
-import type { AnalyticsDateRange } from './analytics-period'
+import type { EventAnalyticsState } from './admin-model'
+import { useMyAnalyticsEntitlements, useMyEvents } from './admin-queries'
+import { getAnalyticsRange } from './analytics-period'
 import { EventPerformance } from './event-performance'
-import { EventsManager } from './events-manager'
 
-export function ScheduleTab({
-  active,
-  analyticsRange
-}: {
-  active: boolean
-  analyticsRange: AnalyticsDateRange
-}) {
+/**
+ * "Desempenho por jogo" (analytics por jogo, com comparação no plano que
+ * tem), no pé da tela Jogos. O design novo não desenha esta seção: ela segue
+ * com a cara de antes até ganhar a sua.
+ */
+export function DesempenhoDosJogos() {
+  const [analyticsRange] = useState(() => getAnalyticsRange('30d'))
   const trpc = useTRPC()
   const [eventComparisonTarget, setEventComparisonTarget] = useState<
     EventComparisonTarget | undefined
   >()
 
-  const eventsState = useEventsState()
   const { data: events } = useMyEvents()
-
-  const {
-    data: creationPolicy,
-    isLoading: loadingPolicy,
-    isError: policyError,
-    error: policyQueryError,
-    refetch: refetchPolicy
-  } = useMyEventCreationPolicy()
 
   const {
     data: analyticsEntitlements,
@@ -80,18 +64,6 @@ export function ScheduleTab({
     }),
     meta: { errorToast: false }
   })
-
-  const policyState: PolicyState = loadingPolicy
-    ? { status: 'loading' }
-    : policyError || !creationPolicy
-      ? {
-          status: 'error',
-          retryable: isRetryableError(policyQueryError),
-          retry: () => {
-            void refetchPolicy()
-          }
-        }
-      : { status: 'ready', policy: creationPolicy }
 
   // O entitlement (não o plano) é autoritativo.
   const eventAnalyticsState: EventAnalyticsState = loadingEntitlements
@@ -138,9 +110,8 @@ export function ScheduleTab({
               : { status: 'empty' }
 
   return (
-    <AdminTabPanel id="admin-grade" active={active} className="space-y-6">
-      <EventsManager eventsState={eventsState} policyState={policyState} />
+    <div className="painel-legado">
       <EventPerformance eventAnalyticsState={eventAnalyticsState} />
-    </AdminTabPanel>
+    </div>
   )
 }
