@@ -23,10 +23,46 @@ import { useTRPC } from '@/utils/trpc'
 const CONFIRMATION = 'EXCLUIR MINHA CONTA'
 const SUPPORT_EMAIL = 'contato@onside.sh'
 
-export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
+/**
+ * Se a exclusão encerra uma assinatura no Stripe (WEB-336). Só o bar tem; a
+ * falha de leitura deixa a exclusão indisponível por segurança.
+ */
+export function useDeletionEligibility(surface: 'fan' | 'pub') {
   const trpc = useTRPC()
+  const eligibility = useQuery({
+    ...trpc.pub.getAccountDeletionEligibility.queryOptions(),
+    enabled: surface === 'pub',
+    meta: { errorToast: false }
+  })
+  return {
+    eligibility,
+    endsSubscription:
+      surface === 'pub' && eligibility.data?.endsSubscription === true,
+    loading: surface === 'pub' && eligibility.isLoading,
+    error:
+      surface === 'pub' && eligibility.error
+        ? getUserFacingError(
+            eligibility.error,
+            'Não foi possível verificar a assinatura. A exclusão permanece indisponível por segurança.'
+          )
+        : null
+  }
+}
+
+/** A confirmação da exclusão: senha, a frase e o aviso da assinatura. */
+export function DeleteAccountDialog({
+  open,
+  onClose,
+  endsSubscription,
+  onFailed
+}: {
+  open: boolean
+  onClose: () => void
+  endsSubscription: boolean
+  /** A recusa pode ter mudado a assinatura: quem abriu relê a elegibilidade. */
+  onFailed?: () => void
+}) {
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -34,26 +70,13 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   // O formulário é `noValidate` (WEB-272): senha vazia recebe o texto da tela,
   // junto ao campo, no lugar do balão do navegador.
   const [passwordError, setPasswordError] = useState<string | null>(null)
-  const eligibility = useQuery({
-    ...trpc.pub.getAccountDeletionEligibility.queryOptions(),
-    enabled: surface === 'pub',
-    meta: { errorToast: false }
-  })
-  const endsSubscription =
-    surface === 'pub' && eligibility.data?.endsSubscription === true
-  const eligibilityErrorFeedback = eligibility.error
-    ? getUserFacingError(
-        eligibility.error,
-        'Não foi possível verificar a assinatura. A exclusão permanece indisponível por segurança.'
-      )
-    : null
 
   const close = () => {
     setPassword('')
     setConfirmation('')
     setError(null)
     setPasswordError(null)
-    setOpen(false)
+    onClose()
   }
 
   const remove = async (event: React.FormEvent) => {
@@ -82,7 +105,7 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
               'Não foi possível excluir a conta.'
             )
       )
-      if (surface === 'pub') void eligibility.refetch()
+      onFailed?.()
       return
     }
     close()
@@ -94,15 +117,110 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   }
 
   return (
+    <Modal title="Excluir conta permanentemente" open={open} onClose={close}>
+      <form
+        method="post"
+        className="flex flex-col gap-5 pt-5"
+        onSubmit={remove}
+        noValidate
+      >
+        <div className="onside-callout onside-callout-danger" role="alert">
+          Esta ação não pode ser desfeita. Seus dados locais serão apagados.
+        </div>
+        {endsSubscription ? (
+          <div className="onside-callout onside-callout-warn">
+            <div className="flex flex-col gap-2">
+              <p>
+                Sua assinatura será encerrada agora. O valor já pago do período
+                em curso não é devolvido, e o crédito em conta, se houver, se
+                perde.
+              </p>
+              <p>
+                Se a sua primeira contratação foi feita há até 7 dias, você tem
+                direito ao reembolso integral: peça ao suporte em{' '}
+                <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>
+                  {SUPPORT_EMAIL}
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <FieldGroup>
+          <Field data-invalid={Boolean(passwordError)}>
+            <FieldLabel htmlFor="delete-account-password">
+              Senha atual
+            </FieldLabel>
+            <Input
+              id="delete-account-password"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={Boolean(passwordError)}
+              aria-describedby={
+                passwordError ? 'delete-account-password-error' : undefined
+              }
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                if (event.target.value) setPasswordError(null)
+              }}
+              required
+            />
+            <FieldError id="delete-account-password-error">
+              {passwordError}
+            </FieldError>
+          </Field>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="delete-account-confirmation">
+              Digite {CONFIRMATION}
+            </FieldLabel>
+            <Input
+              id="delete-account-confirmation"
+              autoComplete="off"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'delete-account-error' : undefined}
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              required
+            />
+            <FieldError id="delete-account-error">{error}</FieldError>
+          </Field>
+        </FieldGroup>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" size="lg" onClick={close}>
+            Manter minha conta
+          </Button>
+          <Button
+            type="submit"
+            variant="destructive"
+            size="lg"
+            disabled={deleting || confirmation !== CONFIRMATION}
+          >
+            {deleting ? <Spinner data-icon="inline-start" /> : null}
+            {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
+  const [open, setOpen] = useState(false)
+  const {
+    eligibility,
+    endsSubscription,
+    loading,
+    error: eligibilityErrorFeedback
+  } = useDeletionEligibility(surface)
+  return (
     <section className="border border-[var(--onside-live)] bg-[var(--onside-paper)] p-5 sm:p-6">
       <p className="font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-live-text)] uppercase tracking-[0.14em]">
         Zona de exclusão
       </p>
       <div
         className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-        aria-busy={
-          surface === 'pub' && eligibility.isLoading ? true : undefined
-        }
+        aria-busy={loading || undefined}
       >
         <div className="flex min-w-0 gap-3">
           <Trash
@@ -121,16 +239,14 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         <Button
           variant="destructive"
           size="lg"
-          disabled={
-            surface === 'pub' && (eligibility.isLoading || eligibility.isError)
-          }
+          disabled={loading || (surface === 'pub' && eligibility.isError)}
           onClick={() => setOpen(true)}
         >
           Excluir minha conta
         </Button>
       </div>
 
-      {surface === 'pub' && eligibility.isLoading ? (
+      {loading ? (
         <p className="sr-only" role="status" aria-live="polite">
           Verificando a assinatura antes de liberar a exclusão da conta…
         </p>
@@ -150,91 +266,14 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         </div>
       ) : null}
 
-      <Modal title="Excluir conta permanentemente" open={open} onClose={close}>
-        <form
-          method="post"
-          className="flex flex-col gap-5 pt-5"
-          onSubmit={remove}
-          noValidate
-        >
-          <div className="onside-callout onside-callout-danger" role="alert">
-            Esta ação não pode ser desfeita. Seus dados locais serão apagados.
-          </div>
-          {endsSubscription ? (
-            <div className="onside-callout onside-callout-warn">
-              <div className="flex flex-col gap-2">
-                <p>
-                  Sua assinatura será encerrada agora. O valor já pago do
-                  período em curso não é devolvido, e o crédito em conta, se
-                  houver, se perde.
-                </p>
-                <p>
-                  Se a sua primeira contratação foi feita há até 7 dias, você
-                  tem direito ao reembolso integral: peça ao suporte em{' '}
-                  <a className="underline" href={`mailto:${SUPPORT_EMAIL}`}>
-                    {SUPPORT_EMAIL}
-                  </a>
-                  .
-                </p>
-              </div>
-            </div>
-          ) : null}
-          <FieldGroup>
-            <Field data-invalid={Boolean(passwordError)}>
-              <FieldLabel htmlFor="delete-account-password">
-                Senha atual
-              </FieldLabel>
-              <Input
-                id="delete-account-password"
-                type="password"
-                autoComplete="current-password"
-                aria-invalid={Boolean(passwordError)}
-                aria-describedby={
-                  passwordError ? 'delete-account-password-error' : undefined
-                }
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value)
-                  if (event.target.value) setPasswordError(null)
-                }}
-                required
-              />
-              <FieldError id="delete-account-password-error">
-                {passwordError}
-              </FieldError>
-            </Field>
-            <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="delete-account-confirmation">
-                Digite {CONFIRMATION}
-              </FieldLabel>
-              <Input
-                id="delete-account-confirmation"
-                autoComplete="off"
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'delete-account-error' : undefined}
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-                required
-              />
-              <FieldError id="delete-account-error">{error}</FieldError>
-            </Field>
-          </FieldGroup>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" size="lg" onClick={close}>
-              Manter minha conta
-            </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              size="lg"
-              disabled={deleting || confirmation !== CONFIRMATION}
-            >
-              {deleting ? <Spinner data-icon="inline-start" /> : null}
-              {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <DeleteAccountDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        endsSubscription={endsSubscription}
+        onFailed={() => {
+          if (surface === 'pub') void eligibility.refetch()
+        }}
+      />
     </section>
   )
 }

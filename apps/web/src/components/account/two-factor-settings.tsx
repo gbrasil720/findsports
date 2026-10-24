@@ -32,7 +32,7 @@ const QRCode =
     ? (qrCodeModule.default as typeof QRCodeModule)
     : QRCodeModule
 
-type DialogMode = 'enable' | 'regenerate' | 'disable' | null
+export type DialogMode = 'enable' | 'regenerate' | 'disable' | null
 
 // Os formulários daqui são `noValidate` (WEB-272): campo vazio recebe o texto
 // da tela, no lugar do balão do navegador.
@@ -83,7 +83,7 @@ export function TwoFactorSettings() {
   )
 }
 
-function EnableTwoFactorDialog({
+export function EnableTwoFactorDialog({
   open,
   onClose
 }: {
@@ -291,7 +291,7 @@ function EnableTwoFactorDialog({
   )
 }
 
-function ManageTwoFactorDialog({
+export function ManageTwoFactorDialog({
   mode,
   onModeChange
 }: {
