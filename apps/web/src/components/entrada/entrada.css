@@ -1324,3 +1324,14 @@
   font-weight: 600;
   line-height: 1.45;
 }
+
+/* Código do autenticador (`/two-factor`): as casas do `TwoFactorCodeInput`
+ * pintam com `--onside-*`; aqui valem os do painel, que seguem o tema. */
+.painel .entrada-codigo {
+  --onside-paper: var(--painel-field);
+  --onside-ink: var(--painel-fg);
+}
+.painel .entrada-codigo [data-active="true"] {
+  color: var(--painel-ink);
+  box-shadow: var(--painel-sh-btn);
+}

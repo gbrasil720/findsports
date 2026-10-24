@@ -1,26 +1,10 @@
-import { Button } from '@findsports_oficial/ui/components/button'
-import { Checkbox } from '@findsports_oficial/ui/components/checkbox'
-import {
-  Field,
-  FieldError,
-  FieldLabel
-} from '@findsports_oficial/ui/components/field'
-import { Input } from '@findsports_oficial/ui/components/input'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { Spinner } from '@findsports_oficial/ui/components/spinner'
-import {
-  ToggleGroup,
-  ToggleGroupItem
-} from '@findsports_oficial/ui/components/toggle-group'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import Key from 'reicon-react/icons/Key'
-import Shield from 'reicon-react/icons/Shield'
-import { AuthBrandPanel } from '@/components/auth-brand-panel'
-import { OnsideBrand } from '@/components/brand/onside-brand'
+import { AuthSplit, Disp, entradaHead } from '@/components/entrada/auth'
+import { Botao, Campo, Seg } from '@/components/painel'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
-import { pageHead } from '@/lib/page-head'
 import {
   isTwoFactorChallengeCurrent,
   TWO_FACTOR_CHALLENGE_KEY,
@@ -30,7 +14,7 @@ import { getUserFacingError } from '@/lib/user-facing-error'
 
 export const Route = createFileRoute('/(auth)/two-factor')({
   head: () =>
-    pageHead({
+    entradaHead({
       path: '/two-factor',
       title: 'Confirmar acesso — Onside',
       description:
@@ -103,156 +87,134 @@ function TwoFactorPage() {
   }
 
   return (
-    <div className="onside-app flex">
-      <AuthBrandPanel variant="login">
-        <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
-          <span className="onside-live-dot" aria-hidden="true" />
-          Segundo tempo
-        </div>
-        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
-          PROTEÇÃO <span className="text-[var(--onside-acid)]">EM CAMPO.</span>
-        </p>
-        <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
-          Sua senha passou. Agora confirme o código que só você possui.
-        </p>
-      </AuthBrandPanel>
+    <AuthSplit
+      foto={
+        <>
+          <Disp
+            nivel={0}
+            tamanho={64}
+            linhas={[{ texto: 'Proteção' }, { texto: 'em campo.', tint: true }]}
+            className="entrada-foto-titulo"
+          />
+          <p>Sua senha passou. Agora confirme o código que só você possui.</p>
+        </>
+      }
+    >
+      <p className="entrada-kicker">Confirmar acesso</p>
+      <Disp
+        tamanho={56}
+        linhas={[{ texto: 'Falta um' }, { texto: 'código.', tint: true }]}
+      />
+      <p className="entrada-linha">
+        Use o autenticador ou um dos códigos de recuperação guardados.
+      </p>
 
-      <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
-        <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
-          <Link to="/" aria-label="Onside — página inicial">
-            <OnsideBrand />
-          </Link>
+      {checking ? (
+        <div
+          className="entrada-campos"
+          role="status"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <span className="sr-only">Verificando desafio…</span>
+          <Skeleton className="h-11 w-full bg-[var(--painel-sub)]" />
+          <Skeleton className="h-14 w-full bg-[var(--painel-sub)]" />
+          <Skeleton className="h-12 w-full bg-[var(--painel-sub)]" />
         </div>
-        <div className="w-full max-w-[420px]">
-          <p className="onside-kicker">Confirmar acesso</p>
-          <h1 className="onside-display text-[42px] sm:text-5xl">
-            FALTA UM{' '}
-            <span className="text-[var(--onside-live-text)]">CÓDIGO.</span>
-          </h1>
-          <p className="mt-3 text-[var(--onside-muted)] text-sm">
-            Use o autenticador ou um dos códigos de recuperação guardados.
-          </p>
+      ) : (
+        <form
+          method="post"
+          style={{ marginTop: 6 }}
+          onSubmit={submit}
+          noValidate
+        >
+          <Seg
+            rotulo="Forma de confirmação"
+            valor={method}
+            onChange={(selected) => {
+              setMethod(selected)
+              setCode('')
+              setError(null)
+            }}
+            itens={[
+              { valor: 'totp', rotulo: 'Autenticador' },
+              { valor: 'backup', rotulo: 'Recuperação' }
+            ]}
+          />
 
-          {checking ? (
-            <div
-              className="mt-8 space-y-5"
-              role="status"
-              aria-busy="true"
-              aria-live="polite"
-            >
-              <span className="sr-only">Verificando desafio…</span>
-              <div className="grid grid-cols-2 gap-2" aria-hidden="true">
-                <Skeleton className="h-11 w-full" />
-                <Skeleton className="h-11 w-full" />
+          {method === 'totp' ? (
+            <div className="painel-campo">
+              <div className="painel-campo-topo">
+                <label htmlFor="two-factor-login-code">
+                  Código de 6 dígitos
+                </label>
               </div>
-              <div className="space-y-2" aria-hidden="true">
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-12 w-full" />
+              <div className="entrada-codigo">
+                <TwoFactorCodeInput
+                  id="two-factor-login-code"
+                  value={code}
+                  onChange={setCode}
+                  invalid={Boolean(error)}
+                  describedBy={
+                    error ? 'two-factor-login-code-error' : undefined
+                  }
+                  autoFocus
+                  disabled={submitting}
+                />
               </div>
-              <Skeleton className="h-5 w-56 max-w-full" />
-              <Skeleton className="h-12 w-full" />
             </div>
           ) : (
-            <form
-              method="post"
-              className="mt-8 flex flex-col gap-5"
-              onSubmit={submit}
-              noValidate
-            >
-              <ToggleGroup
-                value={[method]}
-                onValueChange={(values) => {
-                  const selected = values.at(-1)
-                  if (selected === 'totp' || selected === 'backup') {
-                    setMethod(selected)
-                    setCode('')
-                    setError(null)
-                  }
-                }}
-                className="grid w-full grid-cols-2 gap-2"
-                aria-label="Forma de confirmação"
-              >
-                <ToggleGroupItem
-                  value="totp"
-                  className="min-h-11 border border-[var(--onside-ink)] aria-pressed:bg-[var(--onside-acid)]"
-                >
-                  <Shield data-icon="inline-start" /> Autenticador
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="backup"
-                  className="min-h-11 border border-[var(--onside-ink)] aria-pressed:bg-[var(--onside-acid)]"
-                >
-                  <Key data-icon="inline-start" /> Recuperação
-                </ToggleGroupItem>
-              </ToggleGroup>
-
-              <Field data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="two-factor-login-code">
-                  {method === 'totp'
-                    ? 'Código de 6 dígitos'
-                    : 'Código de recuperação'}
-                </FieldLabel>
-                {method === 'totp' ? (
-                  <TwoFactorCodeInput
-                    id="two-factor-login-code"
-                    value={code}
-                    onChange={setCode}
-                    invalid={Boolean(error)}
-                    describedBy={
-                      error ? 'two-factor-login-code-error' : undefined
-                    }
-                    autoFocus
-                    disabled={submitting}
-                  />
-                ) : (
-                  <Input
-                    id="two-factor-login-code"
-                    inputMode="text"
-                    autoComplete="one-time-code"
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={
-                      error ? 'two-factor-login-code-error' : undefined
-                    }
-                    value={code}
-                    onChange={(event) => setCode(event.target.value)}
-                    required
-                    autoFocus
-                  />
-                )}
-                <FieldError id="two-factor-login-code-error">
-                  {error}
-                </FieldError>
-              </Field>
-
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="trust-device"
-                  checked={trustDevice}
-                  onCheckedChange={setTrustDevice}
-                />
-                <FieldLabel htmlFor="trust-device">
-                  Confiar neste dispositivo por 30 dias
-                </FieldLabel>
-              </Field>
-
-              <Button
-                type="submit"
-                size="lg"
-                disabled={
-                  submitting ||
-                  (method === 'totp' ? code.length !== 6 : !code.trim())
-                }
-              >
-                {submitting ? <Spinner data-icon="inline-start" /> : null}
-                {submitting ? 'Confirmando…' : 'Confirmar e entrar'}
-              </Button>
-              <p className="text-center text-[var(--onside-muted)] text-xs">
-                Perdeu o autenticador e todos os códigos? Procure o suporte.
-              </p>
-            </form>
+            <Campo
+              id="two-factor-login-code"
+              rotulo="Código de recuperação"
+              className={error ? 'entrada-campo-erro' : undefined}
+              inputMode="text"
+              autoComplete="one-time-code"
+              aria-invalid={Boolean(error)}
+              aria-describedby={
+                error ? 'two-factor-login-code-error' : undefined
+              }
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              required
+              autoFocus
+            />
           )}
-        </div>
-      </main>
-    </div>
+          {error ? (
+            <span
+              id="two-factor-login-code-error"
+              className="entrada-erro"
+              role="alert"
+            >
+              {error}
+            </span>
+          ) : null}
+
+          <label className="entrada-aceite">
+            <input
+              type="checkbox"
+              checked={trustDevice}
+              onChange={(event) => setTrustDevice(event.target.checked)}
+            />
+            <span>Confiar neste dispositivo por 30 dias</span>
+          </label>
+
+          <Botao
+            type="submit"
+            variante="acid"
+            className="entrada-cta"
+            disabled={
+              submitting ||
+              (method === 'totp' ? code.length !== 6 : !code.trim())
+            }
+          >
+            {submitting ? 'Confirmando…' : 'Confirmar e entrar'}
+          </Botao>
+          <p className="entrada-nota">
+            Perdeu o autenticador e todos os códigos? Procure o suporte.
+          </p>
+        </form>
+      )}
+    </AuthSplit>
   )
 }
