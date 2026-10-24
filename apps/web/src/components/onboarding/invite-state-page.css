@@ -253,15 +253,6 @@
   text-transform: uppercase;
 }
 
-.onside-invite-error {
-  margin: 0;
-  max-width: 24rem;
-  color: var(--onside-live-text);
-  font-size: 14px;
-  font-weight: 600;
-  text-wrap: pretty;
-}
-
 .onside-invite-visual {
   display: flex;
   justify-content: center;
