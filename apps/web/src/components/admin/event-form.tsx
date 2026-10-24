@@ -9,7 +9,7 @@ import {
 } from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { groupTeamsByKind, TeamGroup } from '@/components/sports/team-groups'
 import { useTeamSearch } from '@/components/sports/team-picker'
 import { CATALOG_QUERY } from '@/lib/query-cache'
@@ -58,16 +58,25 @@ type EventForm = {
 
 type Sport = { id: string; name: string; slug: string }
 
+/** O jogo como está no formulário, para a semana mostrar "Editando" (1p). */
+export type PreviaDoJogo = { startsAt: string; titulo: string }
+
 type Props = {
   initial: EventForm
   sports: Sport[]
-  onSave: (form: EventForm) => void
+  /** `publicar` falso é "Salvar rascunho" (WEB-436). */
+  onSave: (form: EventForm, publicar: boolean) => void
   isSaving: boolean
   loadingSports: boolean
   /** Nomes dos times do jogo em edição: podem não estar entre os em destaque. */
   initialParticipants?: { id: string; name: string }[]
-  /** Jogo novo publica; o que já existe só salva. */
+  /**
+   * Jogo novo e rascunho salvam como rascunho ou publicam; o publicado só
+   * salva (não volta a rascunho).
+   */
   editing?: boolean
+  draft?: boolean
+  onPrevia?: (previa: PreviaDoJogo) => void
   /** Para a prévia "Assim aparece no app". */
   barName?: string
   houseOffer?: string | null
@@ -86,8 +95,8 @@ function limitError(subject: string, length: number, max: number) {
 
 /**
  * Formulário do jogo (telas 1p/1q): esporte, campeonato, times, horário, o que
- * o jogo tem e a prévia do app. Rascunho, lista de quem vai e oferta por jogo
- * ainda não existem no servidor: aparecem com "em breve".
+ * o jogo tem e a prévia do app. Lista de quem vai e oferta por jogo ainda não
+ * existem no servidor: aparecem com "em breve".
  */
 export function EventFormComponent({
   initial,
@@ -97,6 +106,8 @@ export function EventFormComponent({
   loadingSports,
   initialParticipants = [],
   editing = false,
+  draft = false,
+  onPrevia,
   barName,
   houseOffer = null,
   showsGoing = false,
@@ -229,6 +240,21 @@ export function EventFormComponent({
       : form.participantFreeText.trim() ||
         form.championship.trim() ||
         'Seu jogo'
+
+  useEffect(() => {
+    onPrevia?.({ startsAt: starts.value ?? '', titulo: previewTitle })
+  }, [onPrevia, starts.value, previewTitle])
+
+  const comRascunho = !editing || draft
+  // Qual dos dois botões mandou salvar: só ele diz "Salvando…".
+  const [publicando, setPublicando] = useState(true)
+  const salvar = (publicar: boolean) => {
+    setPublicando(publicar)
+    onSave(
+      { ...form, startsAt: starts.value ?? '', endsAt: ends.value ?? '' },
+      publicar
+    )
+  }
 
   return (
     <>
@@ -549,23 +575,26 @@ export function EventFormComponent({
       </div>
 
       <div className="jogos-folha-pe">
-        {/* Rascunho não existe no modelo do jogo: em breve. */}
-        <Botao disabled title="Em breve">
-          Salvar rascunho
-        </Botao>
+        {comRascunho ? (
+          <Botao
+            onClick={() => salvar(false)}
+            disabled={!canSave || isSaving}
+            aria-describedby={missing.length > 0 ? missingId : undefined}
+          >
+            {isSaving && !publicando ? 'Salvando…' : 'Salvar rascunho'}
+          </Botao>
+        ) : null}
         <Botao
           variante="acid"
-          onClick={() =>
-            onSave({
-              ...form,
-              startsAt: starts.value ?? '',
-              endsAt: ends.value ?? ''
-            })
-          }
+          onClick={() => salvar(true)}
           disabled={!canSave || isSaving}
           aria-describedby={missing.length > 0 ? missingId : undefined}
         >
-          {isSaving ? 'Salvando…' : editing ? 'Salvar' : 'Publicar jogo'}
+          {isSaving && publicando
+            ? 'Salvando…'
+            : comRascunho
+              ? 'Publicar jogo'
+              : 'Salvar'}
         </Botao>
       </div>
     </>
