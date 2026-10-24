@@ -4,7 +4,7 @@ import {
   BRASILIA_TIME_ZONE as TZ
 } from '@findsports_oficial/db/event-window'
 import type { inferRouterOutputs } from '@trpc/server'
-import { BAR_ITEMS, PIX_E_CARTAO } from './filters'
+import { itemLabel } from './filters'
 
 /*
  * "Bares pra você" (seção 08 do design, rodadas 22 e 23): as frases do card
@@ -108,11 +108,7 @@ export function distanceText(km: number) {
 /** Os nomes curtos das características em comum ("Telão", "Área externa"). */
 export function amenityNames(ids: number[]) {
   return ids
-    .map((id) =>
-      id === PIX_E_CARTAO
-        ? 'Pix e cartão'
-        : BAR_ITEMS.find((item) => item.id === id)?.label
-    )
+    .map(itemLabel)
     .filter((label): label is NonNullable<typeof label> => Boolean(label))
     .slice(0, 2)
 }
