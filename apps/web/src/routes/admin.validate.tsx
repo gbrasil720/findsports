@@ -3,12 +3,11 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { LateCodeEntry } from '@/components/admin/late-code-entry'
-import { AppShell } from '@/components/app/app-shell'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
-export const Route = createFileRoute('/admin_/validate')({
+export const Route = createFileRoute('/admin/validate')({
   // O QR do código no app do torcedor abre aqui com `?code=`.
   validateSearch: (search: Record<string, unknown>): { code?: string } =>
     typeof search.code === 'string' ? { code: search.code } : {},
@@ -58,7 +57,7 @@ function ValidatePage() {
   const { reservationValidation } = useTRPCClient()
 
   return (
-    <AppShell variant="pub" userMeta="Validar código">
+    <div className="painel-legado">
       <div className="mb-8">
         <Link to="/admin" className="onside-btn onside-btn-ghost -ml-3 mb-3">
           <ArrowLeft size={13} color="currentColor" aria-hidden="true" />
@@ -103,6 +102,6 @@ function ValidatePage() {
         undoArrival={reservationValidation.undoArrival.mutate}
         initialCode={code}
       />
-    </AppShell>
+    </div>
   )
 }
