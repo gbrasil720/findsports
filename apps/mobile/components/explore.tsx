@@ -599,9 +599,12 @@ export function MatchRow({
       >
         {live ? 'AO VIVO' : formatTime(game.startsAt)}
       </Text>
-      <Text style={[styles.mono, { color: palette.muted }]} numberOfLines={1}>
-        {game.championship}
-      </Text>
+      {/* Fora de confronto o título pode já ser o campeonato: não repete. */}
+      {(home && away) || gameTitle(game) !== game.championship ? (
+        <Text style={[styles.mono, { color: palette.muted }]} numberOfLines={1}>
+          {game.championship}
+        </Text>
+      ) : null}
     </View>
   )
   if (!home || !away) {
