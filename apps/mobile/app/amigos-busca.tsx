@@ -13,7 +13,6 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
-import { usePalette } from '@/components/explore'
 import {
   AddButton,
   heroShadow,
@@ -23,6 +22,7 @@ import {
 } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import { HOT, Icon, INK, LIVE, text, useStatusBar } from '@/components/ui'
 import { inviteMessage } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'

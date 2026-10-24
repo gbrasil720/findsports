@@ -10,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
   type ViewStyle
 } from 'react-native'
@@ -23,6 +22,7 @@ import Animated, {
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { haptic, popFrom, usePressScale } from '@/components/motion'
+import type { Palette } from '@/components/theme'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
@@ -43,50 +43,6 @@ export type Game = {
   championship: string
   participants: { team: { name: string } }[]
   participantFreeText: string | null
-}
-
-export const PALETTE = {
-  light: {
-    dark: false,
-    bg: PAPER,
-    sheet: PAPER,
-    card: '#faf8f3',
-    ink: INK,
-    muted: '#55554f',
-    line: 'rgba(18,18,15,.12)',
-    ring: 'rgba(18,18,15,.08)',
-    mark: '#e7e3db',
-    markRing: 'rgba(18,18,15,.08)',
-    dash: 'rgba(18,18,15,.16)',
-    grabber: 'rgba(18,18,15,.18)',
-    live: '#c92b0c',
-    accent: LIVE,
-    shadow: 'rgba(18,18,15,.09)',
-    liveShadow: 'rgba(232,50,12,.28)'
-  },
-  dark: {
-    dark: true,
-    bg: INK,
-    sheet: '#161613',
-    card: '#1c1c18',
-    ink: PAPER,
-    muted: '#aaa9a4',
-    line: 'rgba(241,238,230,.1)',
-    ring: 'rgba(241,238,230,.09)',
-    mark: '#2a2a25',
-    markRing: 'rgba(241,238,230,.12)',
-    dash: 'rgba(241,238,230,.16)',
-    grabber: 'rgba(241,238,230,.2)',
-    live: '#f3421d',
-    accent: ACID,
-    shadow: 'rgba(0,0,0,.35)',
-    liveShadow: 'rgba(232,50,12,.30)'
-  }
-}
-export type Palette = (typeof PALETTE)['light'] | (typeof PALETTE)['dark']
-
-export function usePalette(): Palette {
-  return PALETTE[useColorScheme() === 'dark' ? 'dark' : 'light']
 }
 
 const DAY = 86_400_000

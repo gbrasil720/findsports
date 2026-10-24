@@ -37,9 +37,7 @@ import {
   dayLabel,
   dropBox,
   MapDrop,
-  type Palette,
-  PhotoPill,
-  usePalette
+  PhotoPill
 } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import {
@@ -50,6 +48,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

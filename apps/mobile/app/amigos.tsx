@@ -14,7 +14,7 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { HardShadow, type Palette, usePalette } from '@/components/explore'
+import { HardShadow } from '@/components/explore'
 import {
   AddButton,
   Avatar,
@@ -32,6 +32,7 @@ import {
   usePress,
   usePressScale
 } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,

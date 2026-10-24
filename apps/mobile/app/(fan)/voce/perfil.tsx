@@ -16,17 +16,12 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import {
-  dayLabel,
-  initials,
-  type Palette,
-  Photo,
-  usePalette
-} from '@/components/explore'
+import { dayLabel, initials, Photo } from '@/components/explore'
 import { MedalImage } from '@/components/medal'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,

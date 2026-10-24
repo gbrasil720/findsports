@@ -19,14 +19,13 @@ import {
   dayLabel,
   dropBox,
   MapDrop,
-  type Palette,
   Photo,
-  RadiusCircle,
-  usePalette
+  RadiusCircle
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   Icon,

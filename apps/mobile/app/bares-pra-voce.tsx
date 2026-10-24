@@ -34,7 +34,7 @@ import Svg, {
   Stop
 } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { initials, type Palette, usePalette } from '@/components/explore'
+import { initials } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
@@ -59,6 +59,7 @@ import {
   MissingCard,
   ReleaseHint
 } from '@/components/suggestions'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,

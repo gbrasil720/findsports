@@ -1,5 +1,5 @@
+import { PALETTE, usePalette } from '@/components/theme'
 import { ACID, INK, LIVE, PAPER } from '@/components/ui'
-import { PALETTE, usePalette } from '../explore'
 
 /*
  * As cores das peças do chat (Rodada 24), claro e escuro, como o HTML do

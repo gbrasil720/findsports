@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
-import { dayLabel, type Palette, Photo, usePalette } from '@/components/explore'
+import { dayLabel, Photo } from '@/components/explore'
 import {
   Avatar,
   heroShadow,
@@ -23,6 +23,7 @@ import {
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
