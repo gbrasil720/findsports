@@ -30,7 +30,6 @@ import {
   planChargeForShowcase,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
-import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -40,10 +39,8 @@ export const Route = createFileRoute('/admin/billing')({
   head: () => ({
     meta: [
       { title: 'Assinatura e pagamentos — Onside' },
-      { name: 'robots', content: 'noindex' },
-      ...PWA_META
-    ],
-    links: [...PWA_LINKS]
+      { name: 'robots', content: 'noindex' }
+    ]
   }),
   component: BillingPage
 })
