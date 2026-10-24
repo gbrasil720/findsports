@@ -232,7 +232,7 @@ function Detail({
           {describe(medal)}
         </Text>
         <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
-          <Card palette={P} shadow={P.drop}>
+          <Card shadow={P.drop}>
             <View style={styles.stats}>
               {stats.map(([label, value], i) => (
                 <View

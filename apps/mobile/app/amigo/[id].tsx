@@ -23,7 +23,7 @@ import {
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -142,7 +142,6 @@ export default function FriendProfile() {
                 name={person.name}
                 image={person.image}
                 size={80}
-                palette={palette}
               />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
@@ -196,7 +195,6 @@ export default function FriendProfile() {
             {person.relation !== 'self' ? (
               <View style={styles.buttons}>
                 <RelationButton
-                  palette={palette}
                   relation={person.relation}
                   busy={actions.busy}
                   onPress={() =>
@@ -261,7 +259,6 @@ export default function FriendProfile() {
 
             {person.visible && person.nextGame ? (
               <NextGame
-                palette={palette}
                 name={firstName}
                 game={person.nextGame}
                 onOpen={() =>
@@ -325,7 +322,6 @@ export default function FriendProfile() {
                         <Photo
                           uri={bar.photoUrl}
                           name={bar.name}
-                          palette={palette}
                           style={styles.commonPhoto}
                         />
                         <Text
@@ -377,16 +373,15 @@ function sinceLabel(iso: string) {
 
 /** O botão da relação no perfil, em pílula: Amigos, Adicionar, Pedido enviado, Aceitar. */
 function RelationButton({
-  palette,
   relation,
   busy,
   onPress
 }: {
-  palette: Palette
   relation: 'friends' | 'sent' | 'received' | 'none'
   busy: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   if (relation === 'friends' || relation === 'sent')
     return (
       <ScalePress
@@ -477,13 +472,11 @@ function Compare({
 
 /** "Marina vai ao Bar do Zé", com o "Vou também". */
 function NextGame({
-  palette,
   name,
   game,
   onOpen,
   onGo
 }: {
-  palette: Palette
   name: string
   game: {
     barName: string
@@ -497,6 +490,7 @@ function NextGame({
   onOpen: () => void
   onGo: () => void
 }) {
+  const palette = usePalette()
   const now = Date.now()
   const live = isLive(game, now)
   const when = live
@@ -504,12 +498,11 @@ function NextGame({
     : `${dayLabel(game.startsAt, now).split(',')[0]} · ${formatTime(game.startsAt)}`
   return (
     <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
-      <Card palette={palette} shadow={palette.liveShadow}>
+      <Card shadow={palette.liveShadow}>
         <View style={styles.next}>
           <Photo
             uri={game.photoUrl}
             name={game.barName}
-            palette={palette}
             style={styles.nextPhoto}
           />
           <View style={{ flex: 1, minWidth: 0 }}>

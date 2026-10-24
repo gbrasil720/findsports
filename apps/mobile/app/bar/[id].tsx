@@ -48,7 +48,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -453,7 +453,6 @@ export default function BarPage() {
                     nextEvent: next
                   }}
                   now={now}
-                  palette={palette}
                   favorite={favorite}
                   onFavorite={toggleFavorite}
                 />
@@ -467,7 +466,7 @@ export default function BarPage() {
             {tiles.length ? (
               <View style={styles.tiles}>
                 {tiles.map((tile) => (
-                  <Card key={tile.id} palette={palette} style={styles.tile}>
+                  <Card key={tile.id} style={styles.tile}>
                     <Icon
                       name={tile.icon}
                       size={26}
@@ -489,18 +488,15 @@ export default function BarPage() {
               </View>
             ) : null}
 
-            {data.houseOffer ? (
-              <OfferCard palette={palette} offer={data.houseOffer} />
-            ) : null}
+            {data.houseOffer ? <OfferCard offer={data.houseOffer} /> : null}
 
             {games.length > 1 ? (
               <>
                 <Heading
-                  palette={palette}
                   title="Próximos jogos aqui"
                   aside={`${week} esta semana`}
                 />
-                <Card palette={palette} soft>
+                <Card soft>
                   <View style={styles.list}>
                     {games.slice(1, 1 + MORE_GAMES).map((game, index) => (
                       <View
@@ -556,7 +552,7 @@ export default function BarPage() {
                           </View>
                         </View>
                         {gameTag(game) ? (
-                          <Label palette={palette}>{gameTag(game) ?? ''}</Label>
+                          <Label>{gameTag(game) ?? ''}</Label>
                         ) : null}
                       </View>
                     ))}
@@ -567,7 +563,7 @@ export default function BarPage() {
 
             {features.length ? (
               <>
-                <Heading palette={palette} title="O que tem" />
+                <Heading title="O que tem" />
                 <View style={styles.chips}>
                   {features.map((label) => (
                     <View
@@ -590,8 +586,8 @@ export default function BarPage() {
 
             {located ? (
               <>
-                <Heading palette={palette} title="Onde fica" />
-                <Card palette={palette} soft>
+                <Heading title="Onde fica" />
+                <Card soft>
                   {/* Tocar no mapa abre a rota, como um mapa estático no iOS. */}
                   <AnimatedPressable
                     accessibilityRole="link"
@@ -696,7 +692,6 @@ export default function BarPage() {
             {data.openingHours ? (
               <>
                 <Heading
-                  palette={palette}
                   title="Horário"
                   aside={
                     data.openNow === null
@@ -706,7 +701,7 @@ export default function BarPage() {
                         : 'Fechado agora'
                   }
                 />
-                <Card palette={palette} soft>
+                <Card soft>
                   <View style={styles.list}>
                     {groupOpeningHours(data.openingHours).map((row, index) => (
                       <View
@@ -746,7 +741,6 @@ export default function BarPage() {
             {data.rating ? (
               <>
                 <Heading
-                  palette={palette}
                   title="O que dizem"
                   aside={`${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
                 />
@@ -774,7 +768,7 @@ export default function BarPage() {
                 {data.ratingReasons &&
                 (data.ratingReasons.positive.length ||
                   data.ratingReasons.negative.length) ? (
-                  <Card palette={palette} soft>
+                  <Card soft>
                     <View style={styles.list}>
                       {(
                         [
@@ -956,15 +950,8 @@ export default function BarPage() {
 }
 
 /** O título de seção do design, com o número à direita ("5 esta semana"). */
-function Heading({
-  palette,
-  title,
-  aside
-}: {
-  palette: Palette
-  title: string
-  aside?: string
-}) {
+function Heading({ title, aside }: { title: string; aside?: string }) {
+  const palette = usePalette()
   return (
     <View style={styles.heading}>
       <Text
@@ -982,7 +969,8 @@ function Heading({
 }
 
 /** A etiqueta cinza da lista de jogos ("Vou"). */
-function Label({ palette, children }: { palette: Palette; children: string }) {
+function Label({ children }: { children: string }) {
+  const palette = usePalette()
   return (
     <View style={[styles.label, { backgroundColor: palette.mark }]}>
       <Text style={[text(10.5, 'Bold', 1.2), { color: palette.ink }]}>

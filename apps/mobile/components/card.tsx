@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { haptic, usePressScale } from '@/components/motion'
-import type { Palette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*
@@ -20,16 +20,15 @@ export function FilterChip({
   label,
   on,
   onPress,
-  palette,
   raised
 }: {
   label: string
   on: boolean
   onPress: () => void
-  palette: Palette
   /** Ligado, com a sombra dura e o canto 5 dos chips de ordem (17e). */
   raised?: boolean
 }) {
+  const palette = usePalette()
   const press = usePressScale()
   return (
     <Pressable
@@ -71,7 +70,7 @@ export function FilterChip({
 
 /** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
 export function Card({
-  palette,
+  fill,
   shadow,
   offset = 4,
   soft,
@@ -79,7 +78,8 @@ export function Card({
   style,
   children
 }: {
-  palette: Palette
+  /** O fundo, quando não é o `card` da paleta (o cartão de tinta no claro). */
+  fill?: string
   shadow?: string
   offset?: number
   /** Mais a sombra longa e macia dos cartões de lista. */
@@ -92,6 +92,7 @@ export function Card({
   style?: object
   children: ReactNode
 }) {
+  const palette = usePalette()
   return (
     <View style={style && { flex: 1 }}>
       {/* A sombra longa num fundo cheio: sem fundo o iOS a calcularia pelos
@@ -101,7 +102,7 @@ export function Card({
           style={[
             StyleSheet.absoluteFill,
             styles.soft,
-            { backgroundColor: palette.card }
+            { backgroundColor: fill ?? palette.card }
           ]}
         />
       ) : null}
@@ -121,7 +122,7 @@ export function Card({
       <View
         style={[
           styles.card,
-          { backgroundColor: palette.card, borderColor: palette.ring },
+          { backgroundColor: fill ?? palette.card, borderColor: palette.ring },
           notched && { overflow: 'visible' },
           style
         ]}
@@ -134,20 +135,19 @@ export function Card({
 
 /** "Oferta da casa", com o canhoto acid do ingresso. */
 export function OfferCard({
-  palette,
   offer,
   note,
   compact
 }: {
-  palette: Palette
   offer: string
   /** O que vem depois da oferta ("Vale com o seu código."). */
   note?: string
   /** A versão menor da folha "Vou assistir aqui" (3d). */
   compact?: boolean
 }) {
+  const palette = usePalette()
   return (
-    <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
+    <Card shadow="rgba(201,241,53,.85)" offset={5}>
       <View style={styles.offer}>
         <View style={[styles.offerStub, { width: compact ? 56 : 62 }]}>
           <Icon name="ticket" size={26} color={INK} accent={INK} />

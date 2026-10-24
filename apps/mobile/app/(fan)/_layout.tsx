@@ -260,7 +260,6 @@ export default function FanTabs() {
       </NativeTabs>
       {menuOpen ? (
         <YouMenu
-          palette={palette}
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
           image={user?.image}

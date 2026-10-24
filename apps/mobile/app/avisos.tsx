@@ -35,7 +35,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,
@@ -284,7 +284,7 @@ export default function Notices() {
                 : router.push(`/bar/${today.barId}` as Href)
             }
           >
-            <TodayCard palette={palette} game={today} now={now} />
+            <TodayCard game={today} now={now} />
           </ScalePress>
         ) : null}
 
@@ -354,7 +354,6 @@ export default function Notices() {
                   notice.kind === 'call' || notice.kind === 'call-accepted' ? (
                     <CallCard
                       key={notice.id}
-                      palette={palette}
                       notice={notice}
                       unread={!read.includes(notice.id)}
                       now={now}
@@ -377,7 +376,6 @@ export default function Notices() {
                   ) : notice.kind === 'friend-request' ? (
                     <NoticeCard
                       key={notice.id}
-                      palette={palette}
                       notice={notice}
                       medals={list}
                       unread={!read.includes(notice.id)}
@@ -385,7 +383,6 @@ export default function Notices() {
                       onOpen={() => open(notice)}
                       answer={
                         <RequestAnswer
-                          palette={palette}
                           answered={answered[notice.person.id]}
                           busy={actions.busy}
                           onAnswer={(accept) => respond(notice.person, accept)}
@@ -400,7 +397,6 @@ export default function Notices() {
                       onPress={() => open(notice)}
                     >
                       <NoticeCard
-                        palette={palette}
                         notice={notice}
                         medals={list}
                         unread={!read.includes(notice.id)}
@@ -432,11 +428,9 @@ export default function Notices() {
 }
 
 function TodayCard({
-  palette,
   game,
   now
 }: {
-  palette: Palette
   game: {
     barId: string
     barName: string
@@ -448,6 +442,7 @@ function TodayCard({
   }
   now: number
 }) {
+  const palette = usePalette()
   const going = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: game.barId }),
     select: (bar) =>
@@ -539,7 +534,6 @@ function TodayCard({
 }
 
 function NoticeCard({
-  palette,
   notice,
   medals,
   unread,
@@ -547,7 +541,6 @@ function NoticeCard({
   answer,
   onOpen
 }: {
-  palette: Palette
   notice: Notice
   medals: Achievement[]
   unread: boolean
@@ -557,6 +550,7 @@ function NoticeCard({
   /** O pedido abre o perfil pela linha de cima (os botões ficam fora). */
   onOpen?: () => void
 }) {
+  const palette = usePalette()
   const time = (
     <View style={styles.time}>
       {unread ? <View style={styles.dot} /> : null}
@@ -570,7 +564,7 @@ function NoticeCard({
   )
   if (notice.kind === 'offer')
     return (
-      <Card palette={palette} soft>
+      <Card soft>
         <View style={{ flexDirection: 'row' }}>
           <View style={styles.stub}>
             <Icon name="ticket" size={26} color={INK} accent={INK} />
@@ -604,7 +598,7 @@ function NoticeCard({
     )
   if (notice.kind === 'game')
     return (
-      <Card palette={palette} soft>
+      <Card soft>
         <View style={styles.gameRow}>
           {notice.sides ? (
             <View style={{ flexDirection: 'row' }}>
@@ -640,7 +634,7 @@ function NoticeCard({
   if (notice.kind === 'friend-request' || notice.kind === 'friend-accepted') {
     const { person } = notice
     return (
-      <Card palette={palette} soft>
+      <Card soft>
         <View style={styles.friendCard}>
           <ScalePress
             to={0.98}
@@ -654,7 +648,6 @@ function NoticeCard({
               name={person.name}
               image={person.image}
               size={50}
-              palette={palette}
             />
             <View style={{ flex: 1, minWidth: 0 }}>
               {/* Sem corte: com nome longo, "pediu sua amizade" sumiria. */}
@@ -688,7 +681,7 @@ function NoticeCard({
   }
   if (notice.kind === 'alert' || notice.kind === 'reminder')
     return (
-      <Card palette={palette} soft>
+      <Card soft>
         <View style={styles.gameRow}>
           <View style={[styles.mark, { backgroundColor: palette.mark }]}>
             <Icon
@@ -721,7 +714,6 @@ function NoticeCard({
   const next = nextInSeries(medals, medal)
   return (
     <Card
-      palette={palette}
       soft
       shadow={palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
       offset={5}
@@ -770,23 +762,22 @@ function NoticeCard({
 
 /** Aceitar e Recusar do pedido (19c); respondido, a resposta no lugar. */
 function RequestAnswer({
-  palette,
   answered,
   busy,
   onAnswer
 }: {
-  palette: Palette
   answered?: Answered
   busy: boolean
   onAnswer: (accept: boolean) => void
 }) {
+  const palette = usePalette()
   const accept = usePress(3, 3)
   const decline = usePressScale(0.97)
   if (answered)
     return (
       <Animated.View entering={SWAP} style={styles.answered}>
         {answered === 'friends' ? (
-          <AddButton relation="friends" palette={palette} onPress={() => {}} />
+          <AddButton relation="friends" onPress={() => {}} />
         ) : (
           <Text style={[text(13, 'Bold'), { color: palette.muted }]}>
             Recusado
@@ -844,7 +835,6 @@ function RequestAnswer({
  * Para quem chamou, o mesmo topo com "Marina vai também".
  */
 function CallCard({
-  palette,
   notice,
   unread,
   now,
@@ -854,7 +844,6 @@ function CallCard({
   onAnswer,
   onCode
 }: {
-  palette: Palette
   notice: Extract<Notice, { kind: 'call' | 'call-accepted' }>
   unread: boolean
   now: number
@@ -865,12 +854,12 @@ function CallCard({
   onAnswer: (answer: 'going' | 'not_now') => void
   onCode: () => void
 }) {
+  const palette = usePalette()
   const { call } = notice
   const first = firstName(call.person.name)
   const pending = notice.kind === 'call' && call.status === 'pending'
   return (
     <Card
-      palette={palette}
       soft
       shadow={
         pending
@@ -895,7 +884,6 @@ function CallCard({
             name={call.person.name}
             image={call.person.image}
             size={44}
-            palette={palette}
           />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}>
@@ -918,7 +906,6 @@ function CallCard({
         </ScalePress>
         {notice.kind === 'call' ? (
           <CallAnswer
-            palette={palette}
             call={call}
             code={code}
             busy={busy}
@@ -937,20 +924,19 @@ function CallCard({
  * artigo nem particípio.
  */
 function CallAnswer({
-  palette,
   call,
   code,
   busy,
   onAnswer,
   onCode
 }: {
-  palette: Palette
   call: CallNotice
   code: string | null
   busy: boolean
   onAnswer: (answer: 'going' | 'not_now') => void
   onCode: () => void
 }) {
+  const palette = usePalette()
   const going = usePress(3, 3)
   const later = usePressScale(0.97)
   const strip = usePressScale(0.98)

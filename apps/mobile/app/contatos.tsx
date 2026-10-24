@@ -145,7 +145,6 @@ export default function ContactsScreen() {
                 image={person.image}
                 sub={personLine(person)}
                 size={42}
-                palette={palette}
                 first={index === 0}
                 onPress={() =>
                   router.push(`/amigo/${person.id}?via=contacts` as Href)
@@ -153,7 +152,6 @@ export default function ContactsScreen() {
                 right={
                   <AddButton
                     relation={changed[person.id] ?? person.relation}
-                    palette={palette}
                     busy={actions.busy}
                     onPress={() =>
                       actions.act(

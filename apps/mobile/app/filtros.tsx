@@ -18,7 +18,7 @@ import { RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, PillButton, text } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { searchCenter } from '@/lib/explore'
@@ -155,7 +155,6 @@ export default function FiltersSheet() {
         </View>
 
         <Card
-          palette={palette}
           shadow={
             palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
           }
@@ -213,7 +212,7 @@ export default function FiltersSheet() {
           </Text>
         </Card>
 
-        <Section palette={palette} title="Quando" meta="jogos perto de você">
+        <Section title="Quando" meta="jogos perto de você">
           <View style={styles.days}>
             {(days.data ?? []).map((d, i) => {
               const on = draft.date === d.day
@@ -275,7 +274,7 @@ export default function FiltersSheet() {
           </View>
         </Section>
 
-        <Section palette={palette} title="Esporte" meta="seus primeiro">
+        <Section title="Esporte" meta="seus primeiro">
           <View style={styles.grid3}>
             {sportList.map((sport) => {
               const on = draft.sportId === sport.id
@@ -319,7 +318,6 @@ export default function FiltersSheet() {
                   </Text>
                   <View style={styles.sportPin}>
                     <PinButton
-                      palette={palette}
                       on={pins.includes(key)}
                       onTint={on}
                       full={pins.length >= MAX_SHORTCUTS}
@@ -334,7 +332,6 @@ export default function FiltersSheet() {
         </Section>
 
         <Section
-          palette={palette}
           title="Distância"
           meta={state.district ? `de ${state.district}` : 'de onde você está'}
         >
@@ -420,7 +417,7 @@ export default function FiltersSheet() {
           </View>
         </Section>
 
-        <Section palette={palette} title="No bar">
+        <Section title="No bar">
           <View style={styles.grid2}>
             {BAR_ITEMS.map((item) => {
               const on = draft.amenities.includes(item.id)
@@ -464,7 +461,6 @@ export default function FiltersSheet() {
                     {item.label}
                   </Text>
                   <PinButton
-                    palette={palette}
                     on={pins.includes(key)}
                     full={pins.length >= MAX_SHORTCUTS}
                     label={item.label}
@@ -476,7 +472,7 @@ export default function FiltersSheet() {
           </View>
         </Section>
 
-        <Section palette={palette} title="Pagamento">
+        <Section title="Pagamento">
           <View style={{ flexDirection: 'row' }}>
             <Pressable
               accessibilityRole="button"
@@ -595,16 +591,15 @@ function weekday(day: string, index: number) {
 }
 
 function Section({
-  palette,
   title,
   meta,
   children
 }: {
-  palette: Palette
   title: string
   meta?: string
   children: React.ReactNode
 }) {
+  const palette = usePalette()
   return (
     <View style={{ gap: 10 }}>
       <View style={styles.sectionHead}>
@@ -620,14 +615,12 @@ function Section({
 
 /** O alfinete que fixa o filtro no topo do mapa. */
 function PinButton({
-  palette,
   on,
   onTint,
   full,
   label,
   onPress
 }: {
-  palette: Palette
   on: boolean
   /** Sobre o tile ligado (acid): o alfinete vai em tinta. */
   onTint?: boolean
@@ -636,6 +629,7 @@ function PinButton({
   label: string
   onPress: () => void
 }) {
+  const palette = usePalette()
   const lit = on ? (palette.dark && !onTint ? ACID : INK) : 'transparent'
   return (
     <Pressable

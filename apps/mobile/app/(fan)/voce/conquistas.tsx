@@ -110,7 +110,6 @@ export default function Shelf() {
               contentContainerStyle={styles.chips}
             >
               <FilterChip
-                palette={P}
                 label={`Todas · ${list.length}`}
                 on={group === null}
                 onPress={() => setGroup(null)}
@@ -118,7 +117,6 @@ export default function Shelf() {
               {GROUPS.map((g) => (
                 <FilterChip
                   key={g.key}
-                  palette={P}
                   label={g.label}
                   on={group === g.key}
                   onPress={() => setGroup(g.key)}
@@ -158,7 +156,7 @@ function Level({
   const { level } = data
   const share = level.nextAt ? level.unlocked / level.nextAt : 1
   return (
-    <Card palette={P} shadow={P.glow} offset={5}>
+    <Card shadow={P.glow} offset={5}>
       <View style={styles.level}>
         <View style={{ flex: 1 }}>
           <Text style={[text(13), { color: P.muted }]}>Seu nível</Text>
@@ -238,7 +236,6 @@ function Tile({
       {/* Altura da linha: a medalha ganha fica do tamanho da que tem barra. */}
       <Animated.View style={[{ flex: 1 }, press.style]}>
         <Card
-          palette={P}
           shadow={highlight ? P.glow : P.drop}
           offset={highlight ? 5 : 4}
           style={{ flex: 1 }}

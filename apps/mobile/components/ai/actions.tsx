@@ -168,12 +168,10 @@ const RISE = [rise(0), rise(1), rise(2), rise(3)]
 
 export function FollowUps({
   items,
-  palette,
   onAsk,
   onMap
 }: {
   items: ReturnType<typeof followUps>
-  palette: AiPalette
   onAsk: (question: string) => void
   onMap: () => void
 }) {
@@ -191,7 +189,6 @@ export function FollowUps({
             label={item.label}
             icon={item.kind === 'map' ? 'map' : undefined}
             on={false}
-            palette={palette}
             onPress={() => (item.kind === 'map' ? onMap() : onAsk(item.label))}
           />
         </Animated.View>

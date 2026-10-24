@@ -192,7 +192,6 @@ export default function YourBars() {
         ) : null}
 
         <Segments
-          palette={palette}
           tab={tab}
           visits={visits.data?.length ?? 0}
           saved={saved.data?.length ?? 0}
@@ -221,7 +220,6 @@ export default function YourBars() {
           <Animated.View key={tab} entering={SWAP} style={styles.stack}>
             {tab === 'bars' ? (
               <Bars
-                palette={palette}
                 all={mine}
                 rows={barRows}
                 searching={Boolean(term)}
@@ -230,7 +228,6 @@ export default function YourBars() {
               />
             ) : tab === 'visits' ? (
               <Visits
-                palette={palette}
                 now={now}
                 all={visits.data ?? []}
                 rows={visitRows}
@@ -241,7 +238,6 @@ export default function YourBars() {
               />
             ) : (
               <Saved
-                palette={palette}
                 now={now}
                 rows={savedRows}
                 searching={Boolean(term)}
@@ -259,20 +255,19 @@ export default function YourBars() {
 
 /** "Já fui 9", "Salvos 6", "Bares 8": as três abas no vidro, com o número num selo. */
 function Segments({
-  palette,
   tab,
   visits,
   saved,
   bars,
   onPick
 }: {
-  palette: Palette
   tab: Tab
   visits: number
   saved: number
   bars: number
   onPick: (tab: Tab) => void
 }) {
+  const palette = usePalette()
   const options: [Tab, string, number][] = [
     ['visits', 'Já fui', visits],
     ['saved', 'Salvos', saved],
@@ -351,7 +346,6 @@ function tones(palette: Palette) {
 }
 
 function Visits({
-  palette,
   now,
   all,
   rows,
@@ -360,7 +354,6 @@ function Visits({
   onOpen,
   onToggle
 }: {
-  palette: Palette
   now: number
   all: VisitRow[]
   rows: VisitRow[]
@@ -369,11 +362,12 @@ function Visits({
   onOpen: (barId: string) => void
   onToggle: (barId: string) => void
 }) {
+  const palette = usePalette()
   const t = tones(palette)
   const grid = visitGrid(all, now)
   return (
     <>
-      <Card palette={palette} shadow={t.glow} offset={5}>
+      <Card shadow={t.glow} offset={5}>
         <View style={styles.panel}>
           {WEEK_COLUMNS.map((column, col) => (
             <View key={column.key} style={styles.column}>
@@ -411,7 +405,7 @@ function Visits({
           </Text>
         </View>
       ) : !rows.length && searching ? (
-        <NoMatch palette={palette} />
+        <NoMatch />
       ) : (
         byMonth(rows).map((group) => (
           <View key={group.key}>
@@ -423,7 +417,6 @@ function Visits({
               return (
                 <Row
                   key={visit.eventId}
-                  palette={palette}
                   first={i === 0}
                   side={
                     <View style={styles.dateCol}>
@@ -453,7 +446,6 @@ function Visits({
 }
 
 function Saved({
-  palette,
   now,
   rows,
   searching,
@@ -461,7 +453,6 @@ function Saved({
   onToggle,
   onExplore
 }: {
-  palette: Palette
   now: number
   rows: SavedRow[]
   searching: boolean
@@ -469,11 +460,12 @@ function Saved({
   onToggle: (barId: string) => void
   onExplore: () => void
 }) {
+  const palette = usePalette()
   const t = tones(palette)
   const week = savedWeek(rows, now)
   return (
     <>
-      <Card palette={palette} shadow={t.glow} offset={5}>
+      <Card shadow={t.glow} offset={5}>
         <View style={styles.panel}>
           {week.days.map((day, i) => (
             <View key={day.key} style={styles.column}>
@@ -537,13 +529,12 @@ function Saved({
           <PillButton label="Procurar bares" onPress={onExplore} />
         </View>
       ) : !rows.length ? (
-        <NoMatch palette={palette} />
+        <NoMatch />
       ) : (
         <>
           {week.groups.map((group) => (
             <View key={group.key}>
               <Header
-                palette={palette}
                 label={group.label}
                 count={`${group.games.length} ${group.games.length === 1 ? 'jogo' : 'jogos'}`}
               />
@@ -552,7 +543,6 @@ function Saved({
                 return (
                   <Row
                     key={game.id}
-                    palette={palette}
                     first={i === 0}
                     side={
                       <View style={styles.timeCol}>
@@ -590,7 +580,6 @@ function Saved({
           {week.idle.length ? (
             <View>
               <Header
-                palette={palette}
                 label="Sem jogo"
                 count={`${week.idle.length} ${week.idle.length === 1 ? 'bar' : 'bares'}`}
               />
@@ -598,7 +587,6 @@ function Saved({
                 return (
                   <Row
                     key={s.barId}
-                    palette={palette}
                     first={i === 0}
                     side={
                       <View style={styles.timeCol}>
@@ -635,20 +623,19 @@ const segmentColor = (palette: Palette, i: number) =>
   i === 0 ? ACID : i === 1 ? palette.ink : palette.dark ? '#55554f' : '#c9c5bc'
 
 function Bars({
-  palette,
   all,
   rows,
   searching,
   onOpen,
   onToggle
 }: {
-  palette: Palette
   all: ReturnType<typeof yourBars>
   rows: YourBar[]
   searching: boolean
   onOpen: (barId: string) => void
   onToggle: (barId: string) => void
 }) {
+  const palette = usePalette()
   const t = tones(palette)
   const [sort, setSort] = useState<BarSort>('bairro')
   const sorts: [BarSort, string][] = [
@@ -670,7 +657,7 @@ function Bars({
     )
   return (
     <>
-      <Card palette={palette} shadow={t.glow} offset={5}>
+      <Card shadow={t.glow} offset={5}>
         <View style={styles.summary}>
           <View style={styles.summaryTop}>
             <Text style={[text(14, 'Bold'), { color: palette.ink }]}>
@@ -729,7 +716,6 @@ function Bars({
           {sorts.map(([key, label]) => (
             <FilterChip
               key={key}
-              palette={palette}
               label={label}
               on={sort === key}
               raised
@@ -739,7 +725,7 @@ function Bars({
         </View>
       </View>
       {!rows.length && searching ? (
-        <NoMatch palette={palette} />
+        <NoMatch />
       ) : (
         barGroups(rows, all.neighborhoods, sort)
           .filter((group) => group.bars.length)
@@ -747,7 +733,6 @@ function Bars({
             <View key={group.key}>
               {group.label ? (
                 <Header
-                  palette={palette}
                   label={group.label}
                   count={`${group.bars.length} ${group.bars.length === 1 ? 'bar' : 'bares'}`}
                 />
@@ -755,7 +740,6 @@ function Bars({
               {group.bars.map((b, i) => (
                 <Row
                   key={b.barId}
-                  palette={palette}
                   first={i === 0}
                   gap={13}
                   pad={11}
@@ -763,7 +747,6 @@ function Bars({
                     <Photo
                       uri={b.photoUrl}
                       name={b.name}
-                      palette={palette}
                       style={styles.thumb}
                     />
                   }
@@ -812,15 +795,8 @@ function Bars({
   )
 }
 
-function Header({
-  palette,
-  label,
-  count
-}: {
-  palette: Palette
-  label: string
-  count: string
-}) {
+function Header({ label, count }: { label: string; count: string }) {
+  const palette = usePalette()
   return (
     <View style={styles.headerRow}>
       <Text
@@ -837,7 +813,8 @@ function Header({
   )
 }
 
-function NoMatch({ palette }: { palette: Palette }) {
+function NoMatch() {
+  const palette = usePalette()
   return (
     <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
       Nada com esse nome, bairro ou jogo.
@@ -850,7 +827,6 @@ const ROW_MOVE = LinearTransition.duration(220).easing(EASE)
 
 /** Uma linha das duas listas: a coluna da data ou da hora, o bar e o coração. */
 function Row({
-  palette,
   first,
   side,
   name,
@@ -862,7 +838,6 @@ function Row({
   gap = 14,
   pad = 12
 }: {
-  palette: Palette
   first: boolean
   side: ReactNode
   name: string
@@ -876,6 +851,7 @@ function Row({
   onOpen?: () => void
   onToggle: () => void
 }) {
+  const palette = usePalette()
   const press = usePressScale(0.98)
   return (
     // Tirar dos salvos: a linha sai em fade e as de baixo sobem.
@@ -921,7 +897,7 @@ function Row({
           >
             {/* O coração estala ao mudar: a troca é a resposta do toque. */}
             <Animated.View key={String(saved)} entering={POP_FAST}>
-              <SavedHeart on={saved} palette={palette} />
+              <SavedHeart on={saved} />
             </Animated.View>
           </Pressable>
         </Animated.View>
@@ -931,7 +907,8 @@ function Row({
 }
 
 /** O coração do design: vermelho cheio salvo, apagado quando não. */
-function SavedHeart({ on, palette }: { on: boolean; palette: Palette }) {
+function SavedHeart({ on }: { on: boolean }) {
+  const palette = usePalette()
   const color = on ? palette.live : palette.muted
   return (
     <Svg width={20} height={20} viewBox="0 0 24 24">

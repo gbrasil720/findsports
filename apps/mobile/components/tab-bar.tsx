@@ -8,7 +8,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
-import type { Palette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, text } from '@/components/ui'
 
 /*
@@ -66,7 +66,6 @@ const MENU_IN: EntryExitAnimationFunction = () => {
 }
 
 export function YouMenu({
-  palette,
   name,
   initials,
   image,
@@ -77,7 +76,6 @@ export function YouMenu({
   onChat,
   onSettings
 }: {
-  palette: Palette
   name: string
   initials: string
   /** A foto do perfil (WEB-419), no lugar das iniciais. */
@@ -90,6 +88,7 @@ export function YouMenu({
   onChat: () => void
   onSettings: () => void
 }) {
+  const palette = usePalette()
   const bar = useTabBarSpace()
   const bottom = bar + 10
   const tone = palette.dark ? 'dark' : 'light'

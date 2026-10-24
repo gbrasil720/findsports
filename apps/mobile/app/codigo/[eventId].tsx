@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-qr-code'
 import { dayLabel, Perforation } from '@/components/explore'
 import { Glass } from '@/components/glass'
-import { PALETTE } from '@/components/theme'
+import { PALETTE, PaletteProvider } from '@/components/theme'
 import {
   ACID,
   BackButton,
@@ -181,12 +181,13 @@ export default function CounterCode() {
                 </Text>
               </View>
             </View>
-            <Perforation
-              palette={TICKET}
-              shadow={{ color: ACID, offset: 6 }}
-              inset={20}
-              radius={10}
-            />
+            <PaletteProvider value={TICKET}>
+              <Perforation
+                shadow={{ color: ACID, offset: 6 }}
+                inset={20}
+                radius={10}
+              />
+            </PaletteProvider>
             <View style={styles.codeBox}>
               <Text style={[text(13, 'SemiBold'), { color: MUTED }]}>
                 {/* Bar que confirma pela comanda (WEB-412): fala com o garçom. */}

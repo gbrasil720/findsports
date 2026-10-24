@@ -22,7 +22,7 @@ import Animated, {
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { haptic, popFrom, usePressScale } from '@/components/motion'
-import type { Palette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
@@ -371,7 +371,6 @@ export function Chip({
   icon,
   live,
   on,
-  palette,
   onPress
 }: {
   label: string
@@ -386,9 +385,9 @@ export function Chip({
     | 'search'
   live?: boolean
   on: boolean
-  palette: Palette
   onPress: () => void
 }) {
+  const palette = usePalette()
   const fg = on || live ? INK : palette.ink
   const press = usePressScale()
   return (
@@ -490,16 +489,15 @@ export function Photo({
   uri,
   name,
   style,
-  palette,
   big
 }: {
   uri: string | null
   name: string
   style: ViewStyle
-  palette: Palette
   big?: boolean
 }) {
   // Foto que não carrega cai para as iniciais em vez de um quadro vazio.
+  const palette = usePalette()
   const [failed, setFailed] = useState(false)
   if (uri && !failed)
     return (
@@ -533,15 +531,8 @@ export function Photo({
 }
 
 /** Time contra time, com o estado no meio ("AO VIVO" ou a hora). */
-export function MatchRow({
-  game,
-  now,
-  palette
-}: {
-  game: Game
-  now: number
-  palette: Palette
-}) {
+export function MatchRow({ game, now }: { game: Game; now: number }) {
+  const palette = usePalette()
   const live = isLive(game, now)
   // Um de cada lado só no confronto (dois); corrida vai pelo título.
   const [home, away] = matchSides(game) ?? []
@@ -618,12 +609,10 @@ export function MatchRow({
 
 /** O picote entre o jogo e o bar, com os dois recortes na cor da folha. */
 export function Perforation({
-  palette,
   shadow,
   inset = 14,
   radius = 9
 }: {
-  palette: Palette
   /**
    * A sombra dura do ingresso. Nos ingressos recortados do design (Meus
    * jogos, código no balcão) a sombra tem o mesmo furo, deslocado: no furo
@@ -635,6 +624,7 @@ export function Perforation({
   /** Raio do furo. */
   radius?: number
 }) {
+  const palette = usePalette()
   const size = radius * 2
   const notch = {
     width: size,
@@ -700,13 +690,8 @@ const AMENITY_ICONS = [
   [4, 'outdoor']
 ] as const
 
-export function AmenityIcons({
-  ids,
-  palette
-}: {
-  ids: number[]
-  palette: Palette
-}) {
+export function AmenityIcons({ ids }: { ids: number[] }) {
+  const palette = usePalette()
   const shown = AMENITY_ICONS.filter(([id]) => ids.includes(id))
   if (!shown.length) return null
   return (
@@ -724,13 +709,12 @@ export function AmenityIcons({
  */
 export function Going({
   count,
-  initials,
-  palette
+  initials
 }: {
   count: number
   initials: string[]
-  palette: Palette
 }) {
+  const palette = usePalette()
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {initials.length ? (
@@ -837,7 +821,6 @@ function HeartPop({ on }: { on: boolean }) {
 type CardProps = {
   bar: SearchBar
   now: number
-  palette: Palette
   favorite: boolean
   onFavorite: () => void
   onPress: () => void
@@ -851,7 +834,6 @@ type CardProps = {
 export function BarTicket({
   bar,
   now,
-  palette,
   favorite,
   onFavorite,
   onPress
@@ -859,6 +841,7 @@ export function BarTicket({
   bar: TicketBar
   onPress?: () => void
 }) {
+  const palette = usePalette()
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const elite = bar.plan === 'elite'
@@ -890,7 +873,6 @@ export function BarTicket({
               uri={bar.photo_url}
               name={bar.name}
               style={StyleSheet.absoluteFill}
-              palette={palette}
               big
             />
             <LinearGradient
@@ -952,12 +934,8 @@ export function BarTicket({
               </Glass>
             </Pressable>
           </View>
-          {game ? <MatchRow game={game} now={now} palette={palette} /> : null}
-          {game ? (
-            <Perforation palette={palette} />
-          ) : (
-            <View style={{ height: 12 }} />
-          )}
+          {game ? <MatchRow game={game} now={now} /> : null}
+          {game ? <Perforation /> : <View style={{ height: 12 }} />}
           <View style={styles.ticketFoot}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={styles.nameRow}>
@@ -981,15 +959,11 @@ export function BarTicket({
                 >
                   {bar.neighborhood}
                 </Text>
-                <AmenityIcons ids={bar.amenities} palette={palette} />
+                <AmenityIcons ids={bar.amenities} />
               </View>
             </View>
             {bar.goingCount ? (
-              <Going
-                count={bar.goingCount}
-                initials={bar.goingInitials}
-                palette={palette}
-              />
+              <Going count={bar.goingCount} initials={bar.goingInitials} />
             ) : null}
           </View>
         </View>
@@ -1005,13 +979,13 @@ export function BarTicket({
 export function BarRow({
   bar,
   now,
-  palette,
   onPress,
   compact
 }: Omit<CardProps, 'favorite' | 'onFavorite'> & {
   /** O card da folha baixa do Explorar (20a): sem a coluna da hora. */
   compact?: boolean
 }) {
+  const palette = usePalette()
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const press = usePressScale(0.985)
@@ -1036,7 +1010,6 @@ export function BarRow({
               uri={bar.photo_url}
               name={bar.name}
               style={styles.rowPhoto}
-              palette={palette}
             />
             {isNewBar(bar.created_at, now) ? (
               <View style={styles.newTag}>

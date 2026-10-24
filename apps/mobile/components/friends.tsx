@@ -5,7 +5,7 @@ import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow, initials } from '@/components/explore'
 import { haptic, usePress } from '@/components/motion'
-import type { Palette } from '@/components/theme'
+import { type Palette, usePalette } from '@/components/theme'
 import { ACID, HOT, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
@@ -34,19 +34,18 @@ export function Avatar({
   id,
   name,
   size,
-  palette,
   me,
   image
 }: {
   id: string
   name: string
   size: number
-  palette: Palette
   /** Você: tinta com acid em Anton, como no design. */
   me?: boolean
   /** A foto do perfil (WEB-419), no lugar das iniciais. */
   image?: string | null
 }) {
+  const palette = usePalette()
   if (image)
     return (
       <Image
@@ -110,15 +109,14 @@ export function Avatar({
  */
 export function AddButton({
   relation,
-  palette,
   busy,
   onPress
 }: {
   relation: Relation
-  palette: Palette
   busy?: boolean
   onPress: () => void
 }) {
+  const palette = usePalette()
   const press = usePress(3, 3)
   if (relation === 'self') return null
   if (relation === 'friends')
@@ -184,7 +182,6 @@ export function PersonRow({
   name,
   image,
   sub,
-  palette,
   first,
   size = 40,
   right,
@@ -200,12 +197,12 @@ export function PersonRow({
   highlight?: string
   /** A linha da busca (11b): nome em 15 e a de baixo em até duas linhas. */
   big?: boolean
-  palette: Palette
   first?: boolean
   size?: number
   right?: ReactNode
   onPress?: () => void
 }) {
+  const palette = usePalette()
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -218,7 +215,7 @@ export function PersonRow({
         pressed && { opacity: 0.7 }
       ]}
     >
-      <Avatar id={id} name={name} image={image} size={size} palette={palette} />
+      <Avatar id={id} name={name} image={image} size={size} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={[text(big ? 15 : 14.5, 'Bold', 1.25), { color: palette.ink }]}

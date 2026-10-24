@@ -30,7 +30,7 @@ import { Card } from '@/components/card'
 import { Chip } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { EASE, haptic } from '@/components/motion'
-import { type Palette, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   GlassRound,
@@ -194,7 +194,6 @@ export default function ShortcutsScreen() {
 
         {/* Prévia: a fileira como vai ficar sobre o mapa. */}
         <Card
-          palette={palette}
           shadow={
             palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
           }
@@ -250,13 +249,7 @@ export default function ShortcutsScreen() {
                 accent={palette.dark ? INK : ACID}
               />
             </View>
-            <Chip
-              live
-              label="Ao vivo"
-              on
-              palette={palette}
-              onPress={() => {}}
-            />
+            <Chip live label="Ao vivo" on onPress={() => {}} />
             {list.map((key) => {
               const shown = shortcutLabel(key, sportList)
               return shown ? (
@@ -265,7 +258,6 @@ export default function ShortcutsScreen() {
                   icon={shown.icon}
                   label={shown.label}
                   on={false}
-                  palette={palette}
                   onPress={() => {}}
                 />
               ) : null
@@ -281,7 +273,7 @@ export default function ShortcutsScreen() {
             {list.length}/{MAX_SHORTCUTS}
           </Text>
         </View>
-        <Card palette={palette} soft style={{ overflow: 'visible' }}>
+        <Card soft style={{ overflow: 'visible' }}>
           <View style={styles.row}>
             <Icon name="lock" size={18} color={palette.muted} />
             <View style={styles.liveDot} />
@@ -297,7 +289,6 @@ export default function ShortcutsScreen() {
             </View>
           </View>
           <Sortable
-            palette={palette}
             list={list}
             sportList={sportList}
             mainSport={mainSport}
@@ -396,14 +387,12 @@ function shift(positions: Record<string, number>, id: string, to: number) {
  * lugar livre; soltar grava a ordem. Altura fixa (58).
  */
 function Sortable({
-  palette,
   list,
   sportList,
   mainSport,
   onMove,
   onRemove
 }: {
-  palette: Palette
   list: Shortcut[]
   sportList: { slug: string; name: string }[]
   mainSport: string | null
@@ -426,7 +415,6 @@ function Sortable({
           index={index}
           count={list.length}
           positions={positions}
-          palette={palette}
           label={shortcutLabel(key, sportList)}
           sub={key === `esporte:${mainSport}` ? 'Seu esporte principal' : null}
           onTick={haptic.select}
@@ -443,7 +431,6 @@ function SortRow({
   index,
   count,
   positions,
-  palette,
   label,
   sub,
   onTick,
@@ -454,13 +441,13 @@ function SortRow({
   index: number
   count: number
   positions: SharedValue<Record<string, number>>
-  palette: Palette
   label: ReturnType<typeof shortcutLabel>
   sub: string | null
   onTick: () => void
   onCommit: (order: Shortcut[]) => void
   onRemove: () => void
 }) {
+  const palette = usePalette()
   const reduced = useReducedMotion()
   const dragging = useSharedValue(false)
   /** 0 no lugar, 1 levantada: escala, giro e o cartão por trás. */

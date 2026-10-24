@@ -140,12 +140,7 @@ export const CitedBar = forwardRef<
               { backgroundColor: palette.card, borderColor: palette.ring }
             ]}
           >
-            <Photo
-              uri={bar.photoUrl}
-              name={bar.name}
-              style={styles.photo}
-              palette={palette}
-            />
+            <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
             <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
               <View style={styles.nameRow}>
                 <Text

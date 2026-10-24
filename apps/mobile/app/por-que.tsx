@@ -108,7 +108,7 @@ export default function WhyThisBar() {
         <BackButton icon="close" />
       </View>
 
-      <Card palette={palette} shadow={ACID} offset={6}>
+      <Card shadow={ACID} offset={6}>
         <View style={[styles.summary, { backgroundColor: INK }]}>
           <ScoreBadge score={item.score} size={62} />
           <View style={{ flex: 1, gap: 10 }}>
@@ -147,7 +147,7 @@ export default function WhyThisBar() {
         </View>
       </Card>
 
-      <Card palette={palette} soft>
+      <Card soft>
         {AXES.map((axis, i) => (
           <AxisRow
             key={axis.key}
