@@ -42,12 +42,11 @@ import { type Achievement, reviewLine } from '@/lib/achievements'
 import { trpc } from '@/lib/trpc'
 
 /*
- * Pós-jogo (3g do design): "Você foi ao bar?" e "Voltaria?" numa tela só.
- * A primeira é a pergunta de presença (`attendance.report`, WEB-128), que só
- * existe para quem marcou "Vou assistir aqui"; a segunda é a avaliação
- * (`ratings.submit`), que conta para as medalhas de resenha (o cartão "Sua
- * Nª resenha"). "O que pesou?" (WEB-398) são só etiquetas, opcionais, e vão
- * junto do "voltaria" no mesmo envio.
+ * Pós-jogo (3g do design): "Você foi ao bar?" e "Voltaria?" numa tela só,
+ * um item de `postGame.pending`. A primeira (WEB-128) só existe para quem
+ * marcou "Vou assistir aqui"; a segunda conta para as medalhas de resenha (o
+ * cartão "Sua Nª resenha"). "O que pesou?" (WEB-398) são só etiquetas,
+ * opcionais. Tudo vai num `postGame.answer`, que grava junto ou nada.
  */
 
 export default function AfterGame() {
@@ -57,50 +56,38 @@ export default function AfterGame() {
   const palette = usePalette()
   const queryClient = useQueryClient()
   useStatusBar('auto')
-  const mine = useQuery(trpc.attendance.mine.queryOptions())
-  const pending = useQuery(trpc.ratings.getPending.queryOptions())
-  const reports = useQuery(trpc.attendance.pendingReports.queryOptions())
+  const pending = useQuery(trpc.postGame.pending.queryOptions())
   const achievements = useQuery(trpc.achievements.mine.queryOptions())
-  // O jogo vem de Meus jogos; quem só abriu rota ou WhatsApp chega pela
-  // lista de avaliações pendentes.
-  const game =
-    mine.data?.find((item) => item.eventId === eventId) ??
-    pending.data?.find((item) => item.eventId === eventId)
-  const asksPresence = Boolean(
-    reports.data?.some((item) => item.eventId === eventId)
-  )
-  const canRate = Boolean(
-    pending.data?.some((item) => item.eventId === eventId)
-  )
+  const game = pending.data?.find((item) => item.eventId === eventId)
+  const asksPresence = Boolean(game?.presence)
+  const canRate = Boolean(game?.rating)
   const [went, setWent] = useState(true)
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null)
   const [reasons, setReasons] = useState<RatingReasonId[]>([])
 
-  const report = useMutation(trpc.attendance.report.mutationOptions())
-  const rate = useMutation(trpc.ratings.submit.mutationOptions())
-  const sending = report.isPending || rate.isPending
-  const error = report.error?.message ?? rate.error?.message ?? null
+  const answer = useMutation(trpc.postGame.answer.mutationOptions())
+  const sending = answer.isPending
+  const error = answer.error?.message ?? null
 
   const send = async () => {
     if (!game) return
     try {
-      if (asksPresence)
-        await report.mutateAsync({ eventId: game.eventId, attended: went })
-      if (went && canRate && wouldReturn !== null)
-        await rate.mutateAsync({
-          barId: game.barId,
-          eventId: game.eventId,
-          wouldReturn,
-          reasons
-        })
+      // "Não fui" não leva nota: o servidor recusaria a resposta inteira.
+      await answer.mutateAsync({
+        eventId: game.eventId,
+        attended: asksPresence ? went : undefined,
+        rating:
+          went && canRate && wouldReturn !== null
+            ? { wouldReturn, reasons }
+            : undefined
+      })
     } catch {
       return
     }
     haptic.success()
     await Promise.all(
       [
-        trpc.ratings.getPending.queryKey(),
-        trpc.attendance.pendingReports.queryKey(),
+        trpc.postGame.pending.queryKey(),
         // A resenha pode dar medalha: a conquista nova abre sozinha.
         trpc.achievements.mine.queryKey()
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey }))
@@ -117,7 +104,7 @@ export default function AfterGame() {
           { backgroundColor: palette.bg, paddingTop: insets.top }
         ]}
       >
-        {mine.isPending || pending.isPending ? (
+        {pending.isPending ? (
           <ActivityIndicator color={palette.ink} />
         ) : (
           <>
@@ -154,7 +141,7 @@ export default function AfterGame() {
         <Card palette={palette} soft>
           <View style={styles.went}>
             <Photo
-              uri={'photoUrl' in game ? game.photoUrl : null}
+              uri={game.photoUrl}
               name={game.barName}
               palette={palette}
               style={styles.photo}
