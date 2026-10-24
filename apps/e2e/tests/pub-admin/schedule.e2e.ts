@@ -7,8 +7,8 @@ import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// "Minha grade": criar, editar e excluir jogo, limite de jogos por plano e
-// sinal de interesse dos torcedores.
+// Jogos do painel: criar, editar, duplicar e excluir jogo, limite de jogos
+// por plano e sinal de interesse dos torcedores.
 
 const STARTER_LIMIT = 5
 
@@ -47,6 +47,16 @@ async function soccerTeams(): Promise<string[]> {
   return rows.map((row) => row.name)
 }
 
+/** Abre o jogo da lista; o detalhe aparece à direita. */
+async function openGame(page: Page, text: string) {
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: text })
+    .getByRole('button')
+    .click()
+  return page.getByRole('region', { name: /^Jogo aberto/ })
+}
+
 async function participantsOf(barId: string): Promise<string[]> {
   const rows = await query<{ name: string }>(
     `SELECT t.name FROM event_participants ep
@@ -64,33 +74,38 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   const [home = '', away = '', other = ''] = await soccerTeams()
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
-  await dialog.getByLabel('Esporte *').selectOption({ label: 'Futebol' })
-  await dialog.getByLabel('Campeonato *').fill('Brasileirão E2E')
-  await dialog.getByLabel('Data e horário *').fill(tomorrowAt(21))
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Brasileirão E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
   await dialog.getByRole('button', { name: home, exact: true }).click()
   await dialog.getByRole('button', { name: away, exact: true }).click()
-  // Futebol é confronto direto: o terceiro time fica travado.
+  // Futebol é confronto direto: fechado o confronto, a lista recolhe para os
+  // dois marcados.
   await expect(
     dialog.getByRole('button', { name: other, exact: true })
-  ).toBeDisabled()
-  await dialog.getByRole('button', { name: 'Salvar' }).click()
+  ).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
   await expect(dialog).toBeHidden()
 
   const row = page.getByRole('listitem').filter({ hasText: 'Brasileirão E2E' })
   await expect(row).toContainText(home)
   await expect(row).toContainText(away)
-  await expect(row).toContainText('PROGRAMADO')
+  await expect(row).toContainText('Publicado')
   expect(await participantsOf(barId)).toEqual([home, away])
 
-  await row.getByRole('button', { name: 'Editar evento' }).click()
-  const edit = page.getByRole('dialog', { name: 'Editar evento' })
-  await expect(edit.getByLabel('Campeonato *')).toHaveValue('Brasileirão E2E')
-  await edit.getByLabel('Campeonato *').fill('Copa E2E')
+  await (await openGame(page, 'Brasileirão E2E'))
+    .getByRole('button', { name: 'Editar' })
+    .click()
+  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
+  await expect(edit.getByLabel('Campeonato', { exact: true })).toHaveValue(
+    'Brasileirão E2E'
+  )
+  await edit.getByLabel('Campeonato', { exact: true }).fill('Copa E2E')
   await edit.getByRole('button', { name: away, exact: true }).click()
   await edit.getByRole('button', { name: other, exact: true }).click()
-  await edit.getByRole('button', { name: 'Salvar' }).click()
+  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(edit).toBeHidden()
 
   const edited = page.getByRole('listitem').filter({ hasText: 'Copa E2E' })
@@ -99,14 +114,18 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   expect(await participantsOf(barId)).toEqual([home, other])
 
   // Excluir pede confirmação: cancelar não apaga nada.
-  await edited.getByRole('button', { name: 'Excluir evento' }).click()
+  await (await openGame(page, 'Copa E2E'))
+    .getByRole('button', { name: 'Excluir' })
+    .click()
   const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
   await expect(confirm).toContainText('sai da sua grade e do seu perfil')
   await confirm.getByRole('button', { name: 'Cancelar' }).click()
   await expect(confirm).toBeHidden()
   await expect(edited).toHaveCount(1)
 
-  await edited.getByRole('button', { name: 'Excluir evento' }).click()
+  await (await openGame(page, 'Copa E2E'))
+    .getByRole('button', { name: 'Excluir' })
+    .click()
   await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
   await expect(edited).toHaveCount(0)
   await expect
@@ -127,15 +146,15 @@ test('a ordem em que os times são marcados é a do confronto, e dá para invert
   await gotoSchedule(page)
 
   // Marcados fora da ordem alfabética: `second` joga em casa.
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
-  await dialog.getByLabel('Esporte *').selectOption({ label: 'Futebol' })
-  await dialog.getByLabel('Campeonato *').fill('Ordem E2E')
-  await dialog.getByLabel('Data e horário *').fill(tomorrowAt(21))
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Ordem E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
   await dialog.getByRole('button', { name: second, exact: true }).click()
   await dialog.getByRole('button', { name: first, exact: true }).click()
   await expect(dialog).toContainText(`Confronto: ${second} × ${first}`)
-  await dialog.getByRole('button', { name: 'Salvar' }).click()
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
   await expect(dialog).toBeHidden()
 
   const row = page.getByRole('listitem').filter({ hasText: 'Ordem E2E' })
@@ -145,17 +164,56 @@ test('a ordem em que os times são marcados é a do confronto, e dá para invert
 
   // Editar abre na ordem gravada; inverter troca mandante e visitante.
   await gotoSchedule(page)
-  await row.getByRole('button', { name: 'Editar evento' }).click()
-  const edit = page.getByRole('dialog', { name: 'Editar evento' })
+  await (await openGame(page, 'Ordem E2E'))
+    .getByRole('button', { name: 'Editar' })
+    .click()
+  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
   await expect(edit).toContainText(`Confronto: ${second} × ${first}`)
   await edit.getByRole('button', { name: 'Inverter' }).click()
   await expect(edit).toContainText(`Confronto: ${first} × ${second}`)
-  await edit.getByRole('button', { name: 'Salvar' }).click()
+  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(edit).toBeHidden()
 
   await expect(row).toContainText(`${first} × ${second}`)
   await page.goto(`/pub/${barId}`)
   await expect(page.getByText(`${first} × ${second}`).first()).toBeVisible()
+})
+
+// Duplicar abre o formulário de jogo novo com o mesmo jogo uma semana depois.
+test('duplica um jogo para a semana seguinte', async ({ page }) => {
+  const { barId } = await openSchedule(page)
+  const startsAt = new Date(Date.now() + 86_400_000)
+  await createEvent(barId, { championship: 'Duplicado E2E', startsAt })
+  await gotoSchedule(page)
+
+  await (await openGame(page, 'Duplicado E2E'))
+    .getByRole('button', { name: 'Duplicar' })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await expect(dialog.getByLabel('Campeonato', { exact: true })).toHaveValue(
+    'Duplicado E2E'
+  )
+  const nextWeek = new Date(startsAt.getTime() + 7 * 86_400_000)
+  const day = nextWeek.toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  })
+  expect(await dialog.getByLabel('Começa').inputValue()).toMatch(
+    new RegExp(`^${day} `)
+  )
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  await expect(dialog).toBeHidden()
+
+  await expect
+    .poll(
+      async () =>
+        (
+          await query<{ id: string }>(
+            "SELECT id FROM event WHERE bar_id = $1 AND championship = 'Duplicado E2E'",
+            [barId]
+          )
+        ).length
+    )
+    .toBe(2)
 })
 
 test('jogo com código de quem vai não é excluído, e o desmarcado vai junto', async ({
@@ -168,10 +226,8 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
   await createTicket(free.eventId, { unmarked: true })
   await gotoSchedule(page)
 
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'Bloqueado E2E' })
-    .getByRole('button', { name: 'Excluir evento' })
+  await (await openGame(page, 'Bloqueado E2E'))
+    .getByRole('button', { name: 'Excluir' })
     .click()
   const refusal = page.getByRole('dialog', {
     name: 'Este jogo não pode ser excluído'
@@ -188,10 +244,8 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
   })
   expect(response.status()).toBe(412)
 
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'Liberado E2E' })
-    .getByRole('button', { name: 'Excluir evento' })
+  await (await openGame(page, 'Liberado E2E'))
+    .getByRole('button', { name: 'Excluir' })
     .click()
   const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
   await expect(confirm).toContainText('Também apaga 1 código desmarcado')
@@ -211,16 +265,18 @@ test('término antes do início não deixa salvar', async ({ page }) => {
   await openSchedule(page)
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
-  await dialog.getByLabel('Esporte *').selectOption({ label: 'Futebol' })
-  await dialog.getByLabel('Campeonato *').fill('Brasileirão E2E')
-  await dialog.getByLabel('Data e horário *').fill(tomorrowAt(21))
-  await dialog.getByLabel('Horário de término').fill(tomorrowAt(20))
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Brasileirão E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  await dialog.getByLabel('Termina').fill(tomorrowAt(20))
   await expect(
     dialog.getByText('Término deve ser posterior ao início.')
   ).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Salvar' })).toBeDisabled()
+  await expect(
+    dialog.getByRole('button', { name: 'Publicar jogo' })
+  ).toBeDisabled()
 })
 
 test('Starter cria até o limite do mês e depois é mandado para os planos', async ({
@@ -233,16 +289,16 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
   await gotoSchedule(page)
 
   // Falta um: ainda cria.
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
-  await dialog.getByLabel('Esporte *').selectOption({ label: 'Futebol' })
-  await dialog.getByLabel('Campeonato *').fill('Quinto jogo E2E')
-  await dialog.getByLabel('Data e horário *').fill(tomorrowAt(21))
-  await dialog.getByRole('button', { name: 'Salvar' }).click()
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Quinto jogo E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
   await expect(dialog).toBeHidden()
 
   // No limite: botão travado, motivo e caminho para o upgrade.
-  await expect(page.getByRole('button', { name: 'Novo evento' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
   await expect(page.getByText('Limite do plano atingido.')).toBeVisible()
   await expect(
     page.getByRole('link', { name: 'Fazer upgrade' })
@@ -283,7 +339,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   await createEvent(barId)
   await page.reload()
   await gotoSchedule(page)
-  await expect(page.getByRole('button', { name: 'Novo evento' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
   await expect(
     page.getByText(
       'Plano Elite com pagamento pendente: limite de jogos atingido.'
@@ -314,9 +370,7 @@ for (const plan of ['pro', 'elite'] as const) {
     for (let i = 0; i < STARTER_LIMIT + 1; i++) await createEvent(barId)
     await gotoSchedule(page)
 
-    await expect(
-      page.getByRole('button', { name: 'Novo evento' })
-    ).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeEnabled()
     await expect(page.getByText('Limite do plano atingido.')).toHaveCount(0)
   })
 }
@@ -327,7 +381,7 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
   const { barId } = await openSchedule(page, { bar: { is_active: false } })
   await gotoSchedule(page)
 
-  await expect(page.getByRole('button', { name: 'Novo evento' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
   await expect(
     page.getByText('Ative um plano para adicionar eventos.').first()
   ).toBeVisible()
@@ -345,10 +399,13 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
   ).toEqual([])
 })
 
+// O Elite vê quantos vão (Quem vai); o sinal relativo é dos outros planos.
 test('o interesse dos torcedores aparece no jogo depois de 5 jogos com presença', async ({
   page
 }) => {
-  const { barId } = await openSchedule(page)
+  const { barId } = await openSchedule(page, {
+    subscription: { plan: 'pro' }
+  })
   const attend = async (eventId: string, fans: number) => {
     for (let i = 0; i < fans; i++) {
       const fan = await createUser()
