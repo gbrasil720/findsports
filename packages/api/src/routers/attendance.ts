@@ -1,9 +1,5 @@
 import { and, db, eq } from '@findsports_oficial/db'
-import {
-  attendance,
-  attendanceReport
-} from '@findsports_oficial/db/schema/attendance'
-import { event } from '@findsports_oficial/db/schema/platform'
+import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -13,10 +9,9 @@ import {
   readAttendanceQuestions,
   readMyGames,
   readUnregisteredAlerts,
-  readVisitedGames
+  readVisitedGames,
+  setAttendance
 } from '../lib/attendance'
-import { issueTicket, readTicket, retireTicket } from '../lib/attendance-ticket'
-import { getCurrentPlan } from '../lib/current-plan'
 
 /** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
 async function openQuestion(userId: string, eventId: string) {
@@ -32,10 +27,8 @@ async function openQuestion(userId: string, eventId: string) {
 
 /**
  * "Vou assistir aqui" (WEB-127): o torcedor marca e desmarca presença num
- * jogo futuro. Vale para bar de qualquer plano (ADR 0003, "Recorte de
- * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
- * oferta da casa (`attendance-ticket.ts`). Repetir a mesma marcação devolve
- * o mesmo estado.
+ * jogo futuro. A regra é de `setAttendance` (`lib/attendance.ts`), o mesmo
+ * caminho do "Confirmar" da IA e do "Vou também" de um chamado.
  */
 export const attendanceRouter = router({
   set: fanProcedure
@@ -49,65 +42,10 @@ export const attendanceRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      const now = new Date()
-      const game = await db.query.event.findFirst({
-        where: eq(event.id, input.eventId),
-        columns: { startsAt: true, barId: true },
-        with: {
-          bar: {
-            columns: {
-              isActive: true,
-              houseOffer: true,
-              confirmsCodesLater: true
-            },
-            with: {
-              subscription: {
-                columns: { plan: true, status: true, currentPeriodEnd: true }
-              }
-            }
-          }
-        }
-      })
-      if (!game?.bar.isActive) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Jogo não encontrado.'
-        })
-      }
-      // Jogo encerrado vira histórico do sinal de interesse do bar: não muda.
-      if (game.startsAt <= now) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Este jogo já começou.'
-        })
-      }
-
-      const ticket = await db.transaction(async (tx) => {
-        if (input.attending) {
-          await tx
-            .insert(attendance)
-            .values({ userId, eventId: input.eventId })
-            .onConflictDoUpdate({
-              target: [attendance.userId, attendance.eventId],
-              set: { source: 'manual' }
-            })
-          if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
-            await issueTicket(tx, userId, input.eventId, game.bar.houseOffer)
-            return readTicket(tx, userId, input.eventId)
-          }
-        } else {
-          // O ingresso sai antes da presença: código validado recusa tudo.
-          await retireTicket(tx, userId, input.eventId)
-          await tx
-            .delete(attendance)
-            .where(
-              and(
-                eq(attendance.userId, userId),
-                eq(attendance.eventId, input.eventId)
-              )
-            )
-        }
-        return null
+      const { barId, ...marked } = await setAttendance({
+        userId,
+        eventId: input.eventId,
+        attending: input.attending
       })
       if (input.attending && input.recommendationRunId) {
         // Atribuição é telemetria: falhar aqui não desfaz a presença.
@@ -115,7 +53,7 @@ export const attendanceRouter = router({
           .insert(recommendationEvent)
           .values({
             actorUserId: userId,
-            barId: game.barId,
+            barId,
             runId: input.recommendationRunId,
             type: 'attend'
           })
@@ -123,13 +61,7 @@ export const attendanceRouter = router({
           .catch(() => {})
       }
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
-      return {
-        attending: input.attending,
-        code: ticket?.code ?? null,
-        offer: ticket?.offer ?? null,
-        // O diálogo do código fala com o garçom (WEB-412).
-        confirmsCodesLater: ticket ? game.bar.confirmsCodesLater : false
-      }
+      return marked
     }),
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */

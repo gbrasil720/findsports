@@ -33,6 +33,13 @@ import {
   reservationCode,
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
+import { TRPCError } from '@trpc/server'
+import {
+  issueTicket,
+  readTicket,
+  retireTicket,
+  type Tx
+} from './attendance-ticket'
 import { getCurrentPlan } from './current-plan'
 import { participantNames } from './game-participants'
 import { getLateEntryWindow } from './reservation-validation'
@@ -54,6 +61,100 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
  * pelo menos uma presença. Valor provisório da ADR.
  */
 export const INTEREST_MIN_HISTORY = 5
+
+/**
+ * O jogo onde "Vou assistir aqui" ainda cabe: existe, o bar está no ar e não
+ * começou (jogo começado vira histórico do sinal de interesse do bar e não
+ * muda). É a precondição de marcar, desmarcar e chamar um amigo para o jogo.
+ */
+export async function attendableGame(
+  eventId: string,
+  now = new Date(),
+  tx: Tx | typeof db = db
+) {
+  const game = await tx.query.event.findFirst({
+    where: eq(event.id, eventId),
+    columns: { startsAt: true, barId: true },
+    with: {
+      bar: {
+        columns: { isActive: true, houseOffer: true, confirmsCodesLater: true },
+        with: {
+          subscription: {
+            columns: { plan: true, status: true, currentPeriodEnd: true }
+          }
+        }
+      }
+    }
+  })
+  if (!game?.bar.isActive) return { ok: false as const, reason: 'not_found' }
+  if (game.startsAt <= now) return { ok: false as const, reason: 'started' }
+  return { ok: true as const, game }
+}
+
+/**
+ * Marca ou desmarca "Vou assistir aqui" (WEB-127) de `userId`, que quem chama
+ * já autorizou. Vale para bar de qualquer plano (ADR 0003, "Recorte de
+ * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
+ * oferta da casa (`attendance-ticket.ts`), e desmarcar o aposenta. Repetir a
+ * mesma marcação devolve o mesmo estado.
+ *
+ * Com `tx`, roda dentro da transação de quem chama (o "Vou também" grava o
+ * chamado e a presença juntos); recusa lança `TRPCError` e desfaz tudo.
+ */
+export async function setAttendance(
+  input: { userId: string; eventId: string; attending: boolean; now?: Date },
+  tx?: Tx
+): Promise<{
+  attending: boolean
+  barId: string
+  /** O código do balcão, só em bar Elite e ao marcar. */
+  code: string | null
+  offer: string | null
+  confirmsCodesLater: boolean
+}> {
+  if (!tx) return db.transaction((own) => setAttendance(input, own))
+  const { userId, eventId, attending, now = new Date() } = input
+  const found = await attendableGame(eventId, now, tx)
+  if (!found.ok) {
+    throw found.reason === 'not_found'
+      ? new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
+      : new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este jogo já começou.'
+        })
+  }
+  const { game } = found
+  let ticket: { code: string; offer: string | null } | null = null
+  if (attending) {
+    await tx
+      .insert(attendance)
+      .values({ userId, eventId })
+      .onConflictDoUpdate({
+        target: [attendance.userId, attendance.eventId],
+        set: { source: 'manual' }
+      })
+    if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
+      await issueTicket(tx, userId, eventId, game.bar.houseOffer)
+      ticket = await readTicket(tx, userId, eventId)
+    }
+  } else {
+    // O ingresso sai antes da presença: código validado recusa tudo.
+    await retireTicket(tx, userId, eventId)
+    await tx
+      .delete(attendance)
+      .where(
+        and(eq(attendance.userId, userId), eq(attendance.eventId, eventId))
+      )
+  }
+  return {
+    attending,
+    barId: game.barId,
+    code: ticket?.code ?? null,
+    offer: ticket?.offer ?? null,
+    // O diálogo do código fala com o garçom (WEB-412).
+    confirmsCodesLater: ticket ? game.bar.confirmsCodesLater : false
+  }
+}
 
 /** Um amigo que marcou "Vou assistir aqui" (WEB-404). */
 export type GoingFriend = { id: string; name: string; image: string | null }
