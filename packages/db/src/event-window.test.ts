@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  brasiliaDay,
+  brasiliaDayStart,
   DEFAULT_EVENT_DURATION_MS,
   EVENT_START_MAX_AHEAD_DAYS,
   getEventEnd,
   getEventStartProblem,
   getValidationWindow,
+  hasEventEnded,
+  isEventLive,
   isWithinValidationWindow,
   VALIDATION_WINDOW_MARGIN_MS
 } from './event-window'
@@ -111,5 +115,81 @@ describe('getEventStartProblem', () => {
     const limit = NOW.getTime() + EVENT_START_MAX_AHEAD_DAYS * DAY
     expect(getEventStartProblem(new Date(limit), NOW)).toBeNull()
     expect(getEventStartProblem(new Date(limit + 1), NOW)).toBe('too_far')
+  })
+})
+
+describe('brasiliaDay', () => {
+  it('vira à meia-noite de Brasília, não à do UTC', () => {
+    expect(brasiliaDay(new Date('2026-09-07T02:59:59.999Z'))).toBe('2026-09-06')
+    expect(brasiliaDay(new Date('2026-09-07T03:00:00.000Z'))).toBe('2026-09-07')
+  })
+
+  it('o jogo das 21h às 23h59 de Brasília é do dia de Brasília', () => {
+    // 21:00 em Brasília já é o dia seguinte no UTC.
+    expect(brasiliaDay('2026-10-25T00:00:00Z')).toBe('2026-10-24')
+    expect(brasiliaDay('2026-10-25T02:59:00Z')).toBe('2026-10-24')
+  })
+
+  it('soma dias de calendário, inclusive na virada de mês e de ano', () => {
+    const at = new Date('2026-12-31T23:00:00Z') // 20:00 de 31/12
+    expect(brasiliaDay(at, 1)).toBe('2027-01-01')
+    expect(brasiliaDay(at, -31)).toBe('2026-11-30')
+  })
+
+  it('usa o histórico do fuso: no horário de verão, -02:00', () => {
+    // 15/12/2018 01:30 UTC = 23:30 de 14/12 em -02:00 (seria 22:30 em -03:00).
+    expect(brasiliaDay('2018-12-15T01:30:00Z')).toBe('2018-12-14')
+    expect(brasiliaDay('2018-12-15T02:00:00Z')).toBe('2018-12-15')
+  })
+})
+
+describe('brasiliaDayStart', () => {
+  it('meia-noite de Brasília é 03:00 UTC desde 2019', () => {
+    expect(brasiliaDayStart('2026-10-24').toISOString()).toBe(
+      '2026-10-24T03:00:00.000Z'
+    )
+  })
+
+  it('no horário de verão histórico, 02:00 UTC', () => {
+    expect(brasiliaDayStart('2018-12-15').toISOString()).toBe(
+      '2018-12-15T02:00:00.000Z'
+    )
+  })
+
+  it('no dia em que o horário de verão começava, o dia começa no pulo', () => {
+    // 04/11/2018: 00:00 virou 01:00, que é 03:00 UTC (o Postgres dá o mesmo).
+    expect(brasiliaDayStart('2018-11-04').toISOString()).toBe(
+      '2018-11-04T03:00:00.000Z'
+    )
+    expect(brasiliaDay(brasiliaDayStart('2018-11-04'))).toBe('2018-11-04')
+  })
+
+  it('no dia em que o horário de verão acabava, meia-noite em -03:00', () => {
+    expect(brasiliaDayStart('2019-02-17').toISOString()).toBe(
+      '2019-02-17T03:00:00.000Z'
+    )
+  })
+})
+
+describe('isEventLive e hasEventEnded', () => {
+  const game = { startsAt: START, endsAt: null }
+  const end = START.getTime() + DEFAULT_EVENT_DURATION_MS
+
+  it('ao vivo do início (inclusivo) ao fim (exclusivo)', () => {
+    expect(isEventLive(game, START.getTime() - 1)).toBe(false)
+    expect(isEventLive(game, START)).toBe(true)
+    expect(isEventLive(game, end - 1)).toBe(true)
+    expect(isEventLive(game, end)).toBe(false)
+  })
+
+  it('acabou no instante do fim derivado', () => {
+    expect(hasEventEnded(game, end - 1)).toBe(false)
+    expect(hasEventEnded(game, end)).toBe(true)
+  })
+
+  it('o fim informado ganha do padrão', () => {
+    const short = { startsAt: START, endsAt: new Date(START.getTime() + HOUR) }
+    expect(hasEventEnded(short, START.getTime() + HOUR)).toBe(true)
+    expect(isEventLive(short, START.getTime() + HOUR)).toBe(false)
   })
 })
