@@ -225,9 +225,12 @@ test('pagamento atrasado mostra o plano parado e manda regularizar', async ({
   })
   await expect(currentPlan(page)).toContainText('Pro')
   await expect(currentPlan(page)).toContainText('Pagamento pendente')
-  await expect(currentPlan(page)).toContainText(
-    'O último pagamento não foi confirmado.'
-  )
+  await expect(currentPlan(page)).toContainText('cobrança não confirmada')
+  // O motivo sobe para o aviso do topo (3s).
+  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
+  await expect(aviso).toContainText('Plano Pro com pagamento pendente')
+  await expect(aviso).toContainText('O último pagamento não foi confirmado.')
+  await expect(aviso).toContainText('o cardápio no perfil')
 })
 
 test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => {
