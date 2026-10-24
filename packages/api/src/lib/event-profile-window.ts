@@ -1,7 +1,6 @@
 import {
   DEFAULT_EVENT_DURATION_HOURS,
-  DEFAULT_EVENT_DURATION_MS,
-  getEventEnd
+  DEFAULT_EVENT_DURATION_MS
 } from '@findsports_oficial/db/event-window'
 
 /**
@@ -20,16 +19,3 @@ import {
 export const EVENT_LIVE_WINDOW_HOURS = DEFAULT_EVENT_DURATION_HOURS
 
 export const EVENT_LIVE_WINDOW_MS = DEFAULT_EVENT_DURATION_MS
-
-/**
- * Espelho em TypeScript do predicado SQL usado em `pubs.getById`. Existe para
- * que o limite da janela seja testável sem banco — a query e esta função
- * precisam responder igual nas bordas.
- */
-export function isEventVisibleOnProfile(
-  startsAt: Date,
-  endsAt: Date | null,
-  now: Date = new Date()
-): boolean {
-  return getEventEnd({ startsAt, endsAt }).getTime() >= now.getTime()
-}
