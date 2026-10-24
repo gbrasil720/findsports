@@ -26,22 +26,22 @@ describe('diaDaCasa', () => {
 })
 
 describe('datas', () => {
-  test('topo da tela e semana de segunda a domingo', () => {
+  test('topo da tela e semana de domingo a sábado', () => {
     expect(dataCurta('2026-10-12')).toBe('Seg, 12 out')
     expect(nomeDoDia('2026-10-24')).toBe('sábado')
     const semana = semanaDe('2026-10-24')
     expect(semana.map((d) => d.rotulo)).toEqual([
+      'Dom',
       'Seg',
       'Ter',
       'Qua',
       'Qui',
       'Sex',
-      'Sáb',
-      'Dom'
+      'Sáb'
     ])
-    expect(semana[0]?.dia).toBe('2026-10-19')
-    expect(semana[6]?.dia).toBe('2026-10-25')
-    expect(semanaDe('2026-10-25')[0]?.dia).toBe('2026-10-19')
+    expect(semana[0]?.dia).toBe('2026-10-18')
+    expect(semana[6]?.dia).toBe('2026-10-24')
+    expect(semanaDe('2026-10-25')[0]?.dia).toBe('2026-10-25')
   })
 })
 

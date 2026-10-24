@@ -407,8 +407,8 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   "Chegaram agora", de `barReservations.going`. "Novo jogo" abre
   `/admin/jogos?novo=1` (o `validateSearch` da rota), que abre o formulário.
 - **Jogos** (`/admin/jogos`, `components/painel-jogos/jogos-page.tsx`, contas em
-  `domain/painel-jogos.ts`): lista por dia ou semana (a partir de hoje, as setas andam
-  sete dias), o jogo aberto à direita (abaixo de 1100 px e na semana, numa folha
+  `domain/painel-jogos.ts`): lista por dia ou semana (de domingo a sábado, decisão do
+  dono; as setas andam sete dias), o jogo aberto à direita (abaixo de 1100 px e na semana, numa folha
   lateral) e o formulário na folha (`admin/event-form.tsx`). `?novo=1` abre o "Novo
   jogo" quando a criação está aberta e sai da URL; `?jogo=<id>` abre um jogo.
   "Duplicar" só abre o formulário com o jogo uma semana depois. Rascunho, sugestões e

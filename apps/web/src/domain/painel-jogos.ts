@@ -147,6 +147,14 @@ export type DiaSemana<T> = {
   jogos: T[]
 }
 
+/**
+ * Domingo da semana de `dia`: a semana do painel vai de domingo a sábado
+ * (decisão do dono, 24/10/2026).
+ */
+export function inicioDaSemana(dia: string): string {
+  return somarDias(dia, -new Date(`${dia}T12:00:00Z`).getUTCDay())
+}
+
 /** Os sete dias a partir de `inicio`, com os jogos de cada um. */
 export function montarSemana<T extends Jogo>(
   inicio: string,
