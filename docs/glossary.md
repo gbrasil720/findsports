@@ -219,3 +219,23 @@ com qualquer outro número, o texto livre do bar e, em branco, o campeonato
 
 Um bar numa lista de busca, completado depois do cache com gasto médio,
 características, quem vai e nota pública (`toBarCards`).
+
+## Visita
+
+O torcedor esteve no bar para o jogo: uma por torcedor e jogo, com a primeira
+confirmação. Hoje é o código validado no balcão e não desfeito; o check-in
+(WEB-408) será a segunda fonte. Fonte única em `packages/api/src/lib/visits.ts`.
+Não é a chegada vista pelo bar: "Quem vai", o alerta interno e a análise
+comercial leem o código de propósito.
+
+## Pós-jogo
+
+As perguntas depois do jogo, "Você foi?" e "Voltaria?", numa fila com um item
+por jogo e uma resposta que grava as duas numa transação
+(`packages/api/src/lib/post-game.ts`, router `postGame`). Quem responde "Não
+fui" não avalia.
+
+## Código do balcão
+
+O ingresso que o torcedor mostra no bar para ganhar a oferta da casa. Só bar
+com Elite vigente emite: `issuesCounterCode` (`packages/api/src/lib/current-plan.ts`).
