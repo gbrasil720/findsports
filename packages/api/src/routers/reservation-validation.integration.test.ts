@@ -921,6 +921,193 @@ integrationTest(
   }
 )
 
+/**
+ * Mais códigos no mesmo jogo do `seed`, um torcedor por código (a reserva é
+ * uma por pessoa e jogo). Quem chama apaga as contas devolvidas.
+ */
+async function moreCodes(
+  ctx: Seeded,
+  statuses: ('confirmed' | 'pending')[]
+): Promise<{ fans: string[]; codes: string[] }> {
+  const [own] = await ctx.db
+    .select({ eventId: reservation.eventId })
+    .from(reservation)
+    .where(eq(reservation.id, ctx.reservationId))
+  if (!own) throw new Error('reserva do seed sumiu')
+  const fans = statuses.map(() => crypto.randomUUID())
+  const codes = statuses.map(() => newCode())
+  await ctx.db.insert(user).values(
+    fans.map((id) => ({
+      id,
+      role: 'fan' as const,
+      name: `Torcedor ${id}`,
+      email: `${id}@integration.invalid`,
+      emailVerified: true,
+      onboardingCompleted: true
+    }))
+  )
+  const reservations = await ctx.db
+    .insert(reservation)
+    .values(
+      fans.map((userId, i) => ({
+        eventId: own.eventId,
+        userId,
+        partySize: 1,
+        status: statuses[i]
+      }))
+    )
+    .returning({ id: reservation.id })
+  await ctx.db.insert(reservationCode).values(
+    reservations.map((row, i) => ({
+      code: codes[i] ?? '',
+      reservationId: row.id,
+      maxUses: 1
+    }))
+  )
+  return { fans, codes }
+}
+
+async function usedCountOf(ctx: Seeded, code: string) {
+  const [row] = await ctx.db
+    .select({ usedCount: reservationCode.usedCount })
+    .from(reservationCode)
+    .where(eq(reservationCode.code, code))
+  return row?.usedCount
+}
+
+async function attemptsOf(ctx: Seeded) {
+  const [row] = await ctx.db
+    .select({ count: rateLimit.count })
+    .from(rateLimit)
+    .where(eq(rateLimit.key, validationAttemptKey(ctx.ownerId)))
+  return row?.count ?? 0
+}
+
+integrationTest(
+  'lançar em lote: cada código com o seu desfecho, e só o que não resolve gasta tentativa',
+  async () => {
+    const ctx = await seed({
+      startsAt: new Date(Date.now() - 26 * HOUR),
+      partySize: 1
+    })
+    const extra = await moreCodes(ctx, ['confirmed', 'confirmed', 'pending'])
+    try {
+      await confirmsLater(ctx)
+      const [fresh, validated, pending] = extra.codes as [
+        string,
+        string,
+        string
+      ]
+      await ctx.owner.logLate({ codes: [validated] })
+      expect(await attemptsOf(ctx)).toBe(0)
+
+      const results = await ctx.owner.logLate({
+        codes: [
+          ctx.code,
+          fresh,
+          'ZZZZZZ',
+          'AB',
+          validated,
+          pending,
+          ctx.code.toLowerCase()
+        ]
+      })
+      expect(results.map((r) => [r.code, r.status])).toEqual([
+        [ctx.code, 'logged'],
+        [fresh, 'logged'],
+        ['ZZZZZZ', 'not_found'],
+        ['AB', 'not_found'],
+        [validated, 'used'],
+        [pending, 'not_confirmed']
+      ])
+      expect(results[1]).toMatchObject({
+        guestName: `Torcedor ${extra.fans[0]}`,
+        event: { championship: 'Campeonato de integração' }
+      })
+      expect(results[2]).toEqual({ code: 'ZZZZZZ', status: 'not_found' })
+      expect(await attemptsOf(ctx)).toBe(2)
+      expect(await usedCountOf(ctx, ctx.code)).toBe(1)
+      expect(await usedCountOf(ctx, fresh)).toBe(1)
+      expect(await usedCountOf(ctx, validated)).toBe(1)
+      expect(await usedCountOf(ctx, pending)).toBe(0)
+      expect((await usesOf(ctx)).map((use) => use.late)).toEqual([true])
+    } finally {
+      await ctx.db.delete(user).where(inArray(user.id, extra.fans))
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'limite estourado no meio do lote: o resto volta limited, como um por um',
+  async () => {
+    const ctx = await seed({
+      startsAt: new Date(Date.now() - 26 * HOUR),
+      partySize: 1
+    })
+    const extra = await moreCodes(ctx, ['confirmed'])
+    try {
+      await confirmsLater(ctx)
+      await ctx.db.insert(rateLimit).values({
+        id: crypto.randomUUID(),
+        key: validationAttemptKey(ctx.ownerId),
+        count: VALIDATION_ATTEMPT_LIMIT.max - 2,
+        lastRequest: Date.now()
+      })
+      const [other] = extra.codes as [string]
+      const results = await ctx.owner.logLate({
+        codes: ['ZZZZZA', ctx.code, 'ZZZZZB', 'ZZZZZC', other]
+      })
+      // Um por um: 9, 10 (devolvida), 10, 11 estoura e para a lista.
+      expect(results.map((r) => r.status)).toEqual([
+        'not_found',
+        'logged',
+        'not_found',
+        'limited',
+        'limited'
+      ])
+      expect(results[4]).toEqual({ code: other, status: 'limited' })
+      expect(await attemptsOf(ctx)).toBe(VALIDATION_ATTEMPT_LIMIT.max + 1)
+      expect(await counterOf(ctx)).toBe(1)
+      expect(await usedCountOf(ctx, other)).toBe(0)
+    } finally {
+      await ctx.db.delete(user).where(inArray(user.id, extra.fans))
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'dois lançamentos ao mesmo tempo com o mesmo código: entra uma vez só',
+  async () => {
+    const ctx = await seed({
+      startsAt: new Date(Date.now() - 26 * HOUR),
+      partySize: 1
+    })
+    const extra = await moreCodes(ctx, ['confirmed', 'confirmed'])
+    try {
+      await confirmsLater(ctx)
+      const [a, b] = extra.codes as [string, string]
+      const [first, second] = await Promise.all([
+        ctx.owner.logLate({ codes: [ctx.code, a] }),
+        ctx.owner.logLate({ codes: [ctx.code, b] })
+      ])
+      expect([first[0]?.status, second[0]?.status].sort()).toEqual([
+        'logged',
+        'used'
+      ])
+      expect(first[1]?.status).toBe('logged')
+      expect(second[1]?.status).toBe('logged')
+      expect(await counterOf(ctx)).toBe(1)
+      expect(await usedCountOf(ctx, a)).toBe(1)
+      expect(await usedCountOf(ctx, b)).toBe(1)
+    } finally {
+      await ctx.db.delete(user).where(inArray(user.id, extra.fans))
+      await ctx.cleanup()
+    }
+  }
+)
+
 integrationTest(
   'pela comanda é do Elite: o bar que perdeu o plano não lança depois',
   async () => {
