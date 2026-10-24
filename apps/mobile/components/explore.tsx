@@ -1,5 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { gameTitle } from '@findsports_oficial/db/game-title'
+import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -586,7 +586,8 @@ export function MatchRow({
   palette: Palette
 }) {
   const live = isLive(game, now)
-  const [home, away] = game.participants.map((p) => p.team.name)
+  // Um de cada lado só no confronto (dois); corrida vai pelo título.
+  const [home, away] = matchSides(game) ?? []
   const center = (
     // Campeonato de nome longo corta em vez de espremer os times.
     <View style={{ alignItems: 'center', maxWidth: 112 }}>

@@ -363,7 +363,7 @@ export function CodeCard({
   code: string
   /** "Corinthians × Palmeiras". */
   title: string
-  /** Os times, um por linha; sem times, o título numa linha só. */
+  /** Os dois lados do confronto, um por linha; vazio, o título numa linha só. */
   participants: string[]
   /** "hoje 21:30". */
   when: string
