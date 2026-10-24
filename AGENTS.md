@@ -172,7 +172,7 @@ cascata). `featured` é a lista curta que a tela mostra sem busca; o resto apare
 ### Environment variables
 
 Split by runtime boundary:
-- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
+- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
@@ -308,8 +308,7 @@ o app desconectar não perde o `ai_run`. A resposta sai com `Cache-Control: no-t
 para a compressão da borda não juntar os eventos. O app fala com
 `ai.converse` pelo `httpBatchStreamLink` com o `fetch` de `expo/fetch` (`splitLink` em
 `apps/mobile/lib/trpc.ts`). Fumaça contra um web rodando:
-`packages/api/scripts/ai-converse-smoke.ts`. `ai.chat` está obsoleto e sai quando o app
-migrar.
+`packages/api/scripts/ai-converse-smoke.ts`.
 
 ### UI / Styling
 
@@ -544,7 +543,7 @@ invente layout que o projeto não tem.
   direção, pendente até aceitar; recusar ou desfazer apaga) e, em `user`, `username`,
   `friend_code` ("GB-4821", o do QR), `activity_visibility` e `friend_requests_from`
   (Privacidade, 11i). `@` e código nascem no primeiro uso (`ensureSocialIdentity`). Regras
-  em `packages/api/src/lib/friends.ts`, roteador `friends`. Telas: `app/(fan)/voce/amigos`
+  em `packages/api/src/lib/friends.ts`, roteador `friends`. Telas: `app/amigos`
   (11a, item "Amigos" do menu "Você"; no design abre pelo Ranking), `amigos-busca` (11b,
   "Perto de você" é a mesma cidade), `meu-codigo` (11c, QR do link de convite e leitor
   pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
@@ -684,10 +683,13 @@ invente layout que o projeto não tem.
   recomeça a entrada quando o objeto muda, e um `ZoomIn.delay(...)` escrito no JSX é um
   objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
 - **Navegador de telas (só em desenvolvimento):** a aba "DEV" na borda direita
-  (`components/dev-tab.tsx`) abre `app/dev.tsx`, a lista das telas pelo código do design
+  (`components/dev-tab.tsx`) abre `app/dev.tsx` (a tela fica em `dev/navegador.tsx`, que a
+  rota só carrega com `__DEV__`, para ficar fora do bundle de produção), a lista das telas pelo código do design
   (4b…4n, 2p, 11p…11x, 2d/2e; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
   tela montada de novo; "Recarregar esta tela", ou segurar a aba, monta a atual outra vez
-  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`.
+  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`
+  (`dev/navegador.tsx`). O dublê da IA (`lib/ai-dubla.ts`) também só entra por `require`
+  dentro do `__DEV__`.
 - **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
   `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
   `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.
@@ -698,11 +700,10 @@ invente layout que o projeto não tem.
   (`formSheet`, detent 1) aberta pela aba IA, por "Pedido mais específico?" da busca e pelo
   coach. Fala com `ai.converse` em eventos (passos, ferramentas, `bars` antes do `text`,
   proposta, `done`) e `ai.confirm`; a fonte está em `lib/ai-stream.ts`, os tipos em
-  `lib/ai-events.ts` (cópia dos de `packages/api/src/lib/ai/events.ts`, trocar pelo `import
-  type` quando estiverem juntos) e as contas puras em `lib/ai-chat.ts` (eventos → resposta,
+  `lib/ai-events.ts` (`import type` dos de `packages/api/src/lib/ai/events.ts` e do router) e as contas puras em `lib/ai-chat.ts` (eventos → resposta,
   citações `[[n]]` em pedaços, versões do "refazer", recentes, chips). As peças são de
   `components/ai/` (uma por arquivo, nomes do AI Elements da 24f) e o quadro delas (t24c) é a
-  tela DEV `app/ai-pecas.tsx`. O raciocínio fica aberto enquanto pensa e fecha no primeiro
+  tela DEV `app/ai-pecas.tsx` (corpo em `dev/ai-pecas.tsx`). O raciocínio fica aberto enquanto pensa e fecha no primeiro
   texto ou proposta; ferramenta pronta entra nele, a que espera "Confirmar" fica à vista.
   Citação tocada rola até o card e o faz piscar. Tirar um chip de "Entendi assim" refaz a
   busca sem IA: a `key` do chip é `<argumento de pubs.search>:<valor>` (mais
