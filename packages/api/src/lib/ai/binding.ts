@@ -14,7 +14,7 @@ import { env } from '@findsports_oficial/env/server'
 
 import { type AiBinding, currentAiBinding, setAiBinding } from './binding-slot'
 
-export type { AiBinding, AiGatewayOptions } from './binding-slot'
+export type { AiBinding } from './binding-slot'
 export { setAiBinding }
 
 let binding: AiBinding | null = null
