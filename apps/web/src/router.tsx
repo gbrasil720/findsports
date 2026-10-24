@@ -74,14 +74,15 @@ export const getRouter = () => {
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
       // O lote só responde quando a última chamada dele termina. As consultas
-      // do cupom e do saldo vão ao Stripe; no mesmo lote, seguravam a assinatura
-      // de `/admin/billing` e de `/plan` em "Carregando…" até o Stripe responder
-      // (WEB-348) — o saldo, num refetch junto com a assinatura. Cada uma sai
-      // em requisição própria.
+      // do cupom, do saldo e das faturas (WEB-443) vão ao Stripe; no mesmo
+      // lote, seguravam a assinatura de `/admin/billing` e de `/plan` em
+      // "Carregando…" até o Stripe responder (WEB-348) — o saldo, num refetch
+      // junto com a assinatura. Cada uma sai em requisição própria.
       splitLink({
         condition: (op) =>
           op.path === 'pub.getFounderCouponAvailable' ||
-          op.path === 'pub.getMyBillingBalance',
+          op.path === 'pub.getMyBillingBalance' ||
+          op.path === 'pub.getMyInvoices',
         true: httpLink(linkOptions),
         false: httpBatchLink(linkOptions)
       })

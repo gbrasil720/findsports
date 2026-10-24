@@ -41,6 +41,7 @@ import {
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
 import { readBillingBalance } from '../lib/billing-balance'
+import { readInvoices } from '../lib/billing-invoices'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   canCancelSubscription,
@@ -937,6 +938,16 @@ export const pubRouter = router({
   getMyBillingBalance: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
     return readBillingBalance(
+      stripeClient,
+      existingBar.subscription?.externalSubscriptionId
+    )
+  }),
+
+  // Faturas da assinatura no Stripe, com o PDF e a data da cobrança recusada
+  // (WEB-443). Consulta à parte, como o saldo: o plano não espera o Stripe.
+  getMyInvoices: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getOwnBar(ctx.session.user.id)
+    return readInvoices(
       stripeClient,
       existingBar.subscription?.externalSubscriptionId
     )
