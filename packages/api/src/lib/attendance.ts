@@ -3,6 +3,7 @@ import {
   db,
   eq,
   inArray,
+  isNotNull,
   isNull,
   type SQL,
   sql
@@ -74,7 +75,8 @@ export async function attendableGame(
   tx: Tx | typeof db = db
 ) {
   const game = await tx.query.event.findFirst({
-    where: eq(event.id, eventId),
+    // Rascunho (WEB-436) é como jogo que não existe para o torcedor.
+    where: and(eq(event.id, eventId), isNotNull(event.publishedAt)),
     columns: { startsAt: true, barId: true },
     with: {
       bar: {

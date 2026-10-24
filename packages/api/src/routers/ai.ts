@@ -1,5 +1,5 @@
 import { runInBackground } from '@findsports_oficial/auth/background'
-import { and, db, eq, isNull, or } from '@findsports_oficial/db'
+import { and, db, eq, isNotNull, isNull, or } from '@findsports_oficial/db'
 import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
@@ -353,7 +353,12 @@ async function readProposalBar(
     columns: { name: true, neighborhood: true },
     with: {
       events: {
-        where: (game) => and(eq(game.id, eventId), eventNotEndedSql(game, now)),
+        where: (game) =>
+          and(
+            eq(game.id, eventId),
+            isNotNull(game.publishedAt),
+            eventNotEndedSql(game, now)
+          ),
         columns: {
           startsAt: true,
           championship: true,

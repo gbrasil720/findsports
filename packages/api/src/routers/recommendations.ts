@@ -454,6 +454,7 @@ export const recommendationsRouter = router({
         JOIN sport s ON s.id = e.sport_id
         LEFT JOIN team t ON t.id = a.team_id
         WHERE a.user_id = ${userId}
+          AND e.published_at IS NOT NULL
           AND ${eventNotEndedSql('e', now)}
           AND (
             a.sport_id = e.sport_id
@@ -474,6 +475,7 @@ export const recommendationsRouter = router({
         JOIN event e ON e.id = r.event_id
         JOIN bar b ON b.id = e.bar_id AND b.is_active
         WHERE r.user_id = ${userId}
+          AND e.published_at IS NOT NULL
           AND ${eventNotEndedSql('e', now)}
       `)
     ])
