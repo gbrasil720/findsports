@@ -107,7 +107,7 @@ test('a revisão avisa que o bar entra no ar com o plano grátis, e segue para /
   await confirmacao.getByRole('button', { name: 'Ver os planos' }).click()
   await expect(page).toHaveURL(/\/plan$/)
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+    page.getByRole('heading', { name: /^Você está no Elite até / })
   ).toBeVisible()
   const [bar] = await query<{ is_active: boolean; plan: string }>(
     'SELECT is_active, plan FROM bar WHERE user_id = $1',

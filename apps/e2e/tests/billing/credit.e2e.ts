@@ -12,9 +12,9 @@ import { expect, test } from '../../fixtures/test'
 // (`stubs/server.ts`).
 
 const currentPlan = (page: Page) =>
-  page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  page.getByRole('region', { name: 'Seu plano' })
+/** Cartão, próxima cobrança e crédito ficam no card Pagamento (tela 3o). */
+const payment = (page: Page) => page.getByRole('region', { name: 'Pagamento' })
 
 test('bar com crédito vê o saldo e o valor da próxima cobrança', async ({
   page,
@@ -38,12 +38,12 @@ test('bar com crédito vê o saldo e o valor da próxima cobrança', async ({
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
-  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
-  await expect(currentPlan(page)).toContainText(
+  await expect(currentPlan(page)).toContainText(/renova \d+ /)
+  await expect(payment(page)).toContainText(
     /Valor da próxima cobrança:\sR\$\s0,00/
   )
-  await expect(currentPlan(page)).toContainText(
-    /Você tem R\$\s198,70 de crédito; as próximas cobranças serão descontadas dele\./
+  await expect(payment(page)).toContainText(
+    /R\$\s198,70 de crédito\s*As próximas cobranças serão descontadas dele\./
   )
 })
 
@@ -68,12 +68,12 @@ test('sem crédito: só o valor da próxima cobrança', async ({
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
-  await expect(currentPlan(page)).toContainText(
+  await expect(payment(page)).toContainText(
     /Valor da próxima cobrança:\sR\$\s69,00/
   )
-  await expect(currentPlan(page).getByText(/de crédito/)).toHaveCount(0)
-  // Assinatura sem forma de pagamento no Stripe: nenhuma linha de cartão.
-  await expect(currentPlan(page).getByText(/Cartão/)).toHaveCount(0)
+  await expect(payment(page).getByText(/de crédito/)).toHaveCount(0)
+  // Assinatura sem forma de pagamento no Stripe: nenhum cartão salvo.
+  await expect(payment(page).getByText(/Cartão ••••/)).toHaveCount(0)
 })
 
 // Quem contrata durante o teste só é cobrado no fim dele: o que confirma que
@@ -107,7 +107,7 @@ test('contratou no teste grátis: o card confirma o cartão salvo', async ({
 
   await expect(currentPlan(page)).toContainText('Contratado · em teste')
   await expect(
-    currentPlan(page).getByText('Cartão •••• 4242 salvo', { exact: true })
+    payment(page).getByText('Cartão •••• 4242', { exact: true })
   ).toBeVisible()
 })
 
@@ -148,15 +148,13 @@ test('consulta do saldo pendente não segura o card do plano', async ({
 
   // Com a consulta do saldo parada, o card já mostra o plano.
   await expect(currentPlan(page)).toContainText('Starter')
-  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
+  await expect(currentPlan(page)).toContainText(/renova \d+ /)
   await expect.poll(() => urls.length).toBe(1)
   expect(urls[0]).not.toContain('getMySubscription')
-  await expect(currentPlan(page).getByText(/de crédito/)).toHaveCount(0)
+  await expect(payment(page).getByText(/de crédito/)).toHaveCount(0)
 
   release()
-  await expect(currentPlan(page)).toContainText(
-    /Você tem R\$\s198,70 de crédito/
-  )
+  await expect(payment(page)).toContainText(/R\$\s198,70 de crédito/)
 })
 
 // Na volta à janela, com os dados vencidos (60s), assinatura e saldo refazem
@@ -182,7 +180,7 @@ test('refetch ao voltar à janela: o saldo não viaja no lote da assinatura', as
   )
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
-  await expect(currentPlan(page)).toContainText(/Valor da próxima cobrança/)
+  await expect(payment(page)).toContainText(/Valor da próxima cobrança/)
 
   const paths: string[] = []
   page.on('request', (sent) => {
@@ -216,8 +214,8 @@ test('Stripe sem resposta para a assinatura: o card aparece como antes, sem o sa
 
   expect((await balance).ok()).toBe(true)
   await expect(currentPlan(page)).toContainText('Elite')
-  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
+  await expect(currentPlan(page)).toContainText(/renova \d+ /)
   await expect(
-    currentPlan(page).getByText(/Valor da próxima cobrança|de crédito/)
+    payment(page).getByText(/Valor da próxima cobrança|de crédito/)
   ).toHaveCount(0)
 })
