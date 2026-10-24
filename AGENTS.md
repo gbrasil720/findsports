@@ -400,6 +400,12 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   (`/admin#admin-espaco`) são levadas à rota nova no cliente (`getAdminRouteFromHash`).
 - Tela antiga que ainda não foi refeita fica num `div.painel-legado`, que no escuro vira
   uma folha clara.
+- **Hoje** (`/admin`, `components/admin/hoje.tsx`, contas em `hoje-model.ts`): o dia da
+  casa vira às 6h de Brasília (`diaDaCasa`), e "A noite" vai de 18h a 2h, esticando
+  para caber os jogos do dia. Quem vai e quem chegou saem de
+  `commercialAnalytics.getMyEventAnalytics` (`reservedPeople`, `arrivals`, só no Elite);
+  "Chegaram agora", de `barReservations.going`. "Novo jogo" abre
+  `/admin/jogos?novo=1` (o `validateSearch` da rota), que deve abrir o formulário.
 
 ### Houdini (painel interno)
 
