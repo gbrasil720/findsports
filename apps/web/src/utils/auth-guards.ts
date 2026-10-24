@@ -77,9 +77,11 @@ export function applyAuthGuards(
     ) {
       throw redirect({ to: FAN_HOME })
     }
-    // WEB-278: sessão pronta não fica olhando o formulário de login.
+    // WEB-278: sessão pronta não fica olhando o formulário de login; segue o
+    // destino pedido (o do admin para o Houdini) ou vai à página do app.
     if (pathname === '/login' || pathname === '/signup') {
-      throw redirect({ to: FAN_HOME })
+      const destino = getCallbackUrl(href)
+      throw redirect({ to: destino === '/admin' ? FAN_HOME : destino })
     }
     // Landing: o torcedor vai ao app; admin fica (é o "Ir para o site" dele).
     // `String()`: o router faz JSON.parse da query, e `/?public=1` digitado

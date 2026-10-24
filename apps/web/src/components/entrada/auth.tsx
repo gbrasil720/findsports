@@ -1,6 +1,11 @@
 import type { AnyFieldApi } from '@tanstack/form-core'
 import { Link } from '@tanstack/react-router'
-import { type InputHTMLAttributes, type ReactNode, useState } from 'react'
+import {
+  Fragment,
+  type InputHTMLAttributes,
+  type ReactNode,
+  useState
+} from 'react'
 import { changeAuthField } from '@/components/auth-field-change'
 import { Campo, Icone, type IconeNome } from '@/components/painel'
 import painelCss from '@/components/painel/painel.css?url'
@@ -52,11 +57,16 @@ export function Disp({
   nivel?: 1 | 2 | 0
   className?: string
 }) {
+  // O espaço entre as linhas não aparece (cada uma é um bloco), mas entra no
+  // nome acessível: "Seu bar no radar", e não "Seu bar noradar".
   const conteudo = linhas.map((linha, i) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: linhas fixas do título
-    <span key={i} className={linha.tint ? 'entrada-tint' : undefined}>
-      {linha.texto}
-    </span>
+    <Fragment key={i}>
+      {i > 0 ? ' ' : null}
+      <span className={linha.tint ? 'entrada-tint' : undefined}>
+        {linha.texto}
+      </span>
+    </Fragment>
   ))
   const props = {
     className: `entrada-disp${className ? ` ${className}` : ''}`,

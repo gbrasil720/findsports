@@ -559,9 +559,6 @@
     display: inline;
     color: inherit;
   }
-  .painel .entrada-app-titulo > span + span::before {
-    content: " ";
-  }
   .painel .entrada-app-cartao {
     order: 3;
   }
