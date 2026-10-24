@@ -1,6 +1,8 @@
+import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
+
 // As colunas são `timestamp` sem fuso, em UTC; o Houdini lê no horário de
 // Brasília, que é o de quem opera e o do dono do bar.
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 export function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString('pt-BR', { timeZone: TZ })

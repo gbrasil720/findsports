@@ -12,23 +12,23 @@ describe('getEventTemporalState', () => {
     )
   })
 
-  test('is live from the start through the existing three-hour boundary', () => {
+  test('is live from the start until the three-hour boundary', () => {
     expect(getEventTemporalState(START, null, START)).toBe('live')
     expect(
       getEventTemporalState(
         START,
         null,
-        START.getTime() + DEFAULT_EVENT_DURATION_MS
+        START.getTime() + DEFAULT_EVENT_DURATION_MS - 1
       )
     ).toBe('live')
   })
 
-  test('is past after the three-hour boundary', () => {
+  test('is past at the three-hour boundary, like the server', () => {
     expect(
       getEventTemporalState(
         START,
         null,
-        START.getTime() + DEFAULT_EVENT_DURATION_MS + 1
+        START.getTime() + DEFAULT_EVENT_DURATION_MS
       )
     ).toBe('past')
   })
@@ -37,10 +37,10 @@ describe('getEventTemporalState', () => {
     const shortEnd = new Date(START.getTime() + 60 * 60 * 1000)
     const longEnd = new Date(START.getTime() + 5 * 60 * 60 * 1000)
 
-    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime())).toBe(
+    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime() - 1)).toBe(
       'live'
     )
-    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime() + 1)).toBe(
+    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime())).toBe(
       'past'
     )
     expect(
