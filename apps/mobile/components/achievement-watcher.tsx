@@ -21,8 +21,7 @@ export function useNewAchievement() {
   const mine = useQuery({
     ...trpc.achievements.mine.queryOptions(),
     enabled: Boolean(userId),
-    retry: false,
-    meta: { errorToast: false }
+    retry: false
   })
   const list = mine.data?.achievements
   useEffect(() => {

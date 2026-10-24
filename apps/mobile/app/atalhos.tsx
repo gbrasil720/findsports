@@ -68,18 +68,9 @@ export default function ShortcutsScreen() {
   const palette = usePalette()
   const state = useExploreState()
   useStatusBar('auto')
-  const sports = useQuery({
-    ...trpc.pubs.getSports.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const prefs = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const sports = useQuery(trpc.pubs.getSports.queryOptions())
+  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const mainSport = prefs.data?.[0]?.sport.slug ?? null
   const saved = state.shortcuts ?? defaultShortcuts(mainSport)
   const [draft, setList] = useState<Shortcut[] | null>(null)

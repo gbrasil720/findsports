@@ -173,14 +173,8 @@ function Preferences({ palette }: { palette: Palette }) {
   const state = useExploreState()
   const session = authClient.useSession()
   const sports = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const teams = useQuery({
-    ...trpc.pubs.getMyTeams.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const teams = useQuery(trpc.pubs.getMyTeams.queryOptions())
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const saved = session.data?.user.searchRadiusKm ?? 3
   // O raio novo vale na hora; o servidor confirma por trás.
   const [picked, setPicked] = useState<number | null>(null)
@@ -188,8 +182,7 @@ function Preferences({ palette }: { palette: Palette }) {
   const center = searchCenter(state.device, city.data)
   const inRadius = useQuery({
     ...trpc.pubs.search.queryOptions({ ...center, radiusKm, limit: 50 }),
-    placeholderData: keepPreviousData,
-    meta: { errorToast: false }
+    placeholderData: keepPreviousData
   })
   const count = inRadius.data?.bars.length ?? 0
   const more = Boolean(inRadius.data?.nextCursor)
@@ -571,26 +564,19 @@ function Account({ palette }: { palette: Palette }) {
   const router = useRouter()
   const session = authClient.useSession()
   const user = session.data?.user
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const sessions = useQuery({
     queryKey: ['account-sessions'],
     queryFn: async () => {
       const result = await authClient.listSessions()
       if (result.error) throw result.error
       return result.data ?? []
-    },
-    meta: { errorToast: false }
+    }
   })
   const now = Date.now()
   const current = session.data?.session.id
   const queryClient = useQueryClient()
-  const me = useQuery({
-    ...trpc.friends.me.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const me = useQuery(trpc.friends.me.queryOptions())
   const username = useMutation(
     trpc.friends.updateUsername.mutationOptions({
       onSuccess: () => {
@@ -946,10 +932,7 @@ const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
 
 function Privacy({ palette }: { palette: Palette }) {
   const queryClient = useQueryClient()
-  const me = useQuery({
-    ...trpc.friends.me.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const me = useQuery(trpc.friends.me.queryOptions())
   // Otimista: a escolha aparece na hora e volta se o servidor recusar.
   const save = useMutation(
     trpc.friends.updatePrivacy.mutationOptions({

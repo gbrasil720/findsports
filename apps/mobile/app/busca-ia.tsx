@@ -208,13 +208,9 @@ export default function AiSearch() {
 
   const status = useQuery({
     ...trpc.ai.status.queryOptions(),
-    enabled: !dubla,
-    meta: { errorToast: false }
+    enabled: !dubla
   })
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const feedback = useMutation(trpc.ai.feedback.mutationOptions())
   const action = useMutation(trpc.ai.action.mutationOptions())
 
@@ -249,8 +245,7 @@ export default function AiSearch() {
     ...trpc.pubs.search.queryOptions(
       rebuilt?.input ?? { lat: 0, lng: 0, limit: 20 }
     ),
-    enabled: !!rebuilt,
-    meta: { errorToast: false }
+    enabled: !!rebuilt
   })
 
   const barsOf = (turn: Turn, reply: Reply): ChatBar[] => {

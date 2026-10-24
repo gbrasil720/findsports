@@ -111,10 +111,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const state = useExploreState()
   const shotSource = useShotSource('explore', capture)
   const { device, district, liveOnly, filters } = state
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const center = searchCenter(device, city.data)
   const radiusKm = filters.radius ?? session.data?.user.searchRadiusKm ?? 3
   // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
@@ -174,14 +171,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const favorites = useFavorites()
   // Atalhos do topo do mapa (19e): os da pessoa, ou os padrão com o esporte
   // principal dela.
-  const sportList = useQuery({
-    ...trpc.pubs.getSports.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const prefs = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const sportList = useQuery(trpc.pubs.getSports.queryOptions())
+  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
   const sports = sportList.data ?? []
   const shortcuts =
     state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)

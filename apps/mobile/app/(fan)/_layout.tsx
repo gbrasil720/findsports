@@ -104,8 +104,7 @@ export default function FanTabs() {
   const coach = useCoachPending(forceCoach === '1')
   const pending = useQuery({
     ...trpc.ratings.getPending.queryOptions(),
-    retry: false,
-    meta: { errorToast: false }
+    retry: false
   })
   // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
   // ainda não existe e o aparelho sabe onde está.
@@ -113,8 +112,7 @@ export default function FanTabs() {
   const suggestions = useQuery({
     ...trpc.recommendations.today.queryOptions({ where: device }),
     enabled: menuOpen,
-    retry: false,
-    meta: { errorToast: false }
+    retry: false
   })
   const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']

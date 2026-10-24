@@ -33,10 +33,7 @@ export default function City() {
     const timer = setTimeout(() => setQuery(typed.trim()), 200)
     return () => clearTimeout(timer)
   }, [typed])
-  const current = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const current = useQuery(trpc.pubs.getMyCity.queryOptions())
   const suggestions = useQuery({
     ...trpc.pubs.searchCities.queryOptions({ query }),
     enabled: query.length >= 2

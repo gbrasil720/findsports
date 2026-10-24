@@ -72,14 +72,8 @@ export default function Profile() {
   const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
   const mine = useQuery(trpc.attendance.mine.queryOptions())
   const sports = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const city = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const pending = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
+  const pending = useQuery(trpc.ratings.getPending.queryOptions())
   const feedback = useMutation(trpc.feedback.send.mutationOptions())
   const queries = [achievements, visits, saved, mine, sports]
   const now = Date.now()
