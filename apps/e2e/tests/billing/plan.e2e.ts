@@ -539,9 +539,9 @@ test.describe('torcedor', () => {
   test.use({ storageState: storageState('fan') })
 
   for (const path of ['/plan', '/plan/confirmed']) {
-    test(`${path} manda para /dashboard`, async ({ page }) => {
+    test(`${path} manda para a página do app`, async ({ page }) => {
       await page.goto(path)
-      await expect(page).toHaveURL(/\/dashboard$/)
+      await expect(page).toHaveURL(/\/torcedor$/)
     })
   }
 })

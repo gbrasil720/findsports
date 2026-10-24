@@ -11,24 +11,19 @@ export const uniqueEmail = (prefix: string) =>
 
 /** Marca o aceite dos Termos e da Política, sem o qual o cadastro não envia. */
 export async function acceptTerms(page: Page) {
-  await page
-    .getByRole('checkbox', { name: /Declaro que li e concordo/ })
-    .check()
+  await page.getByRole('checkbox', { name: /Li e aceito os Termos/ }).check()
 }
 
-/** Preenche e envia o /signup já aberto, com o papel que estiver marcado. */
+/** Preenche e envia o /signup já aberto (o cadastro do web é sempre de bar). */
 export async function submitSignup(
   page: Page,
   { name, email }: { name: string; email: string }
 ) {
-  await page.getByLabel('Nome completo').fill(name)
-  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Seu nome').fill(name)
+  await page.getByLabel('E-mail do responsável').fill(email)
   await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
   await acceptTerms(page)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await page.getByRole('button', { name: 'Criar conta do bar' }).click()
 }
 
 /** Login pela tela. Para só ter sessão, `signIn` de `fixtures/auth`. */
@@ -40,10 +35,10 @@ export async function loginWithForm(
   await page.goto(url)
   await page.getByLabel('E-mail').fill(user.email)
   await page.getByLabel('Senha', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
+/** As configurações da conta do bar (o web não tem mais conta de torcedor). */
 export async function openAccountSettings(page: Page) {
-  await page.goto('/dashboard/profile')
-  await page.getByRole('tab', { name: 'Configurações' }).click()
+  await page.goto('/admin/configuracoes')
 }

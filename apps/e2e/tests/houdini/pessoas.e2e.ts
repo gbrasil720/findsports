@@ -150,7 +150,8 @@ test('entrar na pele de torcedor mostra a faixa; tirar a pele volta a Pessoas', 
   const { dossie } = await openPerson(page, target)
   await dossie.getByRole('button', { name: 'Entrar na pele' }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  // O web não tem tela de torcedor: a pele dele cai na página do app.
+  await expect(page).toHaveURL(/\/torcedor$/)
   await waitForHydration(page)
   const banner = peleBanner(page)
   await expect(banner).toContainText(target.name)
@@ -191,7 +192,7 @@ test('na pele em Só olhar a escrita é recusada; em Pode agir passa', async ({
   const target = await createUser({ name: uniqueName('Só olhar') })
   const { dossie } = await openPerson(page, target)
   await dossie.getByRole('button', { name: 'Entrar na pele' }).click()
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/torcedor$/)
   await waitForHydration(page)
 
   const banner = peleBanner(page)

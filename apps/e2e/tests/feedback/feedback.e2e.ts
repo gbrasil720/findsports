@@ -4,9 +4,8 @@ import { signIn } from '../../fixtures/auth'
 import { lastEmailTo } from '../../fixtures/email'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
 
-// "Enviar feedback" no menu da conta, nos dois cascos. Todo feedback vai para
+// "Enviar feedback" no menu da conta do painel do bar. Todo feedback vai para
 // a mesma caixa: cada teste acha o seu e-mail por um código no assunto.
 
 const INBOX = 'contato@onside.sh'
@@ -28,13 +27,14 @@ async function openFeedback(page: Page) {
   return dialog
 }
 
-test('torcedor envia feedback com imagem e o e-mail chega com o anexo', async ({
+test('bar envia feedback com imagem e o e-mail chega com o anexo', async ({
   page
 }) => {
-  const user = await createUser()
+  const barName = `Bar Anexo ${randomUUID().slice(0, 8)}`
+  const { user } = await createPub({ bar: { name: barName } })
   const code = randomUUID().slice(0, 8)
   await signIn(page, user)
-  await page.goto('/dashboard')
+  await page.goto('/admin')
 
   const dialog = await openFeedback(page)
   const send = dialog.getByRole('button', { name: 'Enviar' })
@@ -60,11 +60,11 @@ test('torcedor envia feedback com imagem e o e-mail chega com o anexo', async ({
 
   const email = await lastEmailTo(INBOX, { subject: new RegExp(code) })
   expect(email.subject).toBe(
-    `Feedback de torcedor: Teste ${code}: o mapa demorou para abrir.`
+    `Feedback de bar (${barName}): Teste ${code}: o mapa demorou para abrir.`
   )
   expect(email.replyTo).toBe(user.email)
   expect(email.text).toContain(`\nE-mail: ${user.email}\n`)
-  expect(email.text).toMatch(/\nPágina: http:\/\/127\.0\.0\.1:\d+\/dashboard\n/)
+  expect(email.text).toMatch(/\nPágina: http:\/\/127\.0\.0\.1:\d+\/admin\n/)
   expect(email.attachments).toEqual([
     { filename: 'imagem-1.png', contentType: 'image/png', size: PNG.length }
   ])
@@ -101,8 +101,8 @@ test('bar envia feedback pelo painel e o assunto leva o nome do bar', async ({
 test('Esc fecha o diálogo e devolve o foco ao menu da conta', async ({
   page
 }) => {
-  await signIn(page, await createUser())
-  await page.goto('/dashboard')
+  await signIn(page, (await createPub()).user)
+  await page.goto('/admin')
 
   await openFeedback(page)
   await page.keyboard.press('Escape')

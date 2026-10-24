@@ -2,9 +2,9 @@ import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { base32Decode, seedTwoFactor, totp } from '../../fixtures/two-factor'
-import { createUser } from '../../fixtures/users'
 import { loginWithForm, openAccountSettings } from './forms'
 
 // WEB-175 — autenticação em dois fatores: ativação, login e gestão.
@@ -16,10 +16,13 @@ async function typeCode(page: Page, id: string, code: string) {
   await page.locator(`#${id}`).pressSequentially(code)
 }
 
+/** O web é do bar: as contas destes testes são de bar. */
+const pubUser = async () => (await createPub()).user
+
 test('ativar: senha, QR, código do totpURI e códigos de recuperação', async ({
   page
 }) => {
-  const user = await createUser()
+  const user = await pubUser()
   await signIn(page, user)
   await openAccountSettings(page)
 
@@ -58,7 +61,7 @@ test('ativar: senha, QR, código do totpURI e códigos de recuperação', async 
 
 test.describe('login com 2FA', () => {
   test('código TOTP', async ({ page }) => {
-    const user = await createUser()
+    const user = await pubUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -66,11 +69,11 @@ test.describe('login com 2FA', () => {
     await typeCode(page, 'two-factor-login-code', totp(secret))
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
 
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page).toHaveURL(/\/admin$/)
   })
 
   test('código errado mostra erro e não entra', async ({ page }) => {
-    const user = await createUser()
+    const user = await pubUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -87,7 +90,7 @@ test.describe('login com 2FA', () => {
   })
 
   test('código de recuperação', async ({ page }) => {
-    const user = await createUser()
+    const user = await pubUser()
     const { backupCodes } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -96,13 +99,13 @@ test.describe('login com 2FA', () => {
     await page.getByLabel('Código de recuperação').fill(backupCodes[0] ?? '')
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
 
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page).toHaveURL(/\/admin$/)
   })
 
   test('"confiar neste dispositivo" pula o código no login seguinte', async ({
     page
   }) => {
-    const user = await createUser()
+    const user = await pubUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -112,7 +115,7 @@ test.describe('login com 2FA', () => {
       .getByRole('checkbox', { name: 'Confiar neste dispositivo por 30 dias' })
       .check()
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page).toHaveURL(/\/admin$/)
 
     // Sai só da sessão: o cookie de dispositivo confiável fica no contexto.
     // `data: {}` e a conferência do status: sem corpo JSON o better-auth
@@ -124,7 +127,7 @@ test.describe('login com 2FA', () => {
     })
     expect(signOut.status(), await signOut.text()).toBe(200)
     await loginWithForm(page, user)
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page).toHaveURL(/\/admin$/)
   })
 })
 
@@ -139,7 +142,7 @@ test.describe('/two-factor sem desafio válido volta para /login', () => {
       ([key, startedAt]) => {
         sessionStorage.setItem(
           key as string,
-          JSON.stringify({ callbackUrl: '/dashboard', startedAt })
+          JSON.stringify({ callbackUrl: '/admin', startedAt })
         )
       },
       [CHALLENGE_KEY, Date.now() - 11 * 60 * 1000] as const
@@ -150,7 +153,7 @@ test.describe('/two-factor sem desafio válido volta para /login', () => {
 })
 
 test('regenerar códigos e desativar 2FA', async ({ page }) => {
-  const user = await createUser()
+  const user = await pubUser()
   // Entra antes de ligar o 2FA: com ele ligado o login pede o código.
   await signIn(page, user)
   const { backupCodes } = await seedTwoFactor(user.id)

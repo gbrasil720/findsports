@@ -5,8 +5,8 @@ import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
-import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
-import { acceptTerms } from '../auth/forms'
+import { createUser } from '../../fixtures/users'
+import { submitSignup } from '../auth/forms'
 
 // WEB-177: onboarding do bar (`routes/(onboarding)/onboarding.pub.tsx`). O
 // `completePub` geocodifica no servidor, contra o stub da LocationIQ.
@@ -15,7 +15,12 @@ const DRAFT_KEY = 'onside:pub-onboarding-draft'
 
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
-const progress = (page: Page) => page.getByText(/^Passo \d de 4$/)
+/** O passo marcado no topo ("1. Boas-vindas" … "4. Revisão"). */
+const progress = (page: Page) => page.locator('li[aria-current="step"]')
+/** Depois do cadastro, a tela "Seu bar está no ar" (4r). */
+const NO_AR = /\/onboarding\/pub\/no-ar$/
+const telas = (page: Page) =>
+  page.getByRole('group', { name: 'Quantas telas?' })
 
 /** Endereço único: a rua vai para o stub e para o cache do geocoding. */
 const street = (tag = '') => `Rua E2E ${tag}${randomUUID().slice(0, 8)}, 100`
@@ -36,12 +41,20 @@ type Establishment = {
   phone?: string
 }
 
+/** "Rua E2E x, 100" → rua e número, que o formulário pede separados. */
+const splitAddress = (address: string) => {
+  const at = address.lastIndexOf(', ')
+  return at < 0 ? [address, ''] : [address.slice(0, at), address.slice(at + 2)]
+}
+
 async function fillEstablishment(page: Page, data: Establishment) {
+  const [rua, numero] = splitAddress(data.address)
   await page.getByLabel('Nome do estabelecimento').fill(data.name)
-  await page.getByLabel('Endereço').fill(data.address)
-  await page.getByLabel('Bairro').fill(data.neighborhood)
+  await page.getByLabel('Rua *', { exact: true }).fill(rua ?? '')
+  await page.getByLabel('Número *', { exact: true }).fill(numero ?? '')
+  await page.getByLabel('Bairro *', { exact: true }).fill(data.neighborhood)
   if (data.city !== undefined)
-    await page.getByLabel('Cidade', { exact: true }).fill(data.city)
+    await page.getByLabel('Cidade *', { exact: true }).fill(data.city)
   if (data.phone !== undefined) {
     await page.getByLabel('Telefone').fill(data.phone)
   }
@@ -74,15 +87,7 @@ async function signUpPub(page: Page) {
   const email = `pub-draft-${randomUUID()}@e2e.test`
 
   await page.goto('/signup')
-  await button(page, /Dono de Bar/).click()
-  await page.getByLabel('Nome completo').fill('Dona do Rascunho')
-  await page.getByLabel('E-mail').fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await page
-    .getByLabel('Confirmar senha', { exact: true })
-    .fill(DEFAULT_PASSWORD)
-  await acceptTerms(page)
-  await button(page, 'Entrar no time').click()
+  await submitSignup(page, { name: 'Dona do Rascunho', email })
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   return email
 }
@@ -102,21 +107,21 @@ async function barOf(userId: string) {
   )
 }
 
-test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', async ({
+test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', async ({
   page
 }) => {
   const owner = await signInPendingPub(page)
   const address = street()
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText('Passo 1 de 4')
+  await expect(progress(page)).toHaveText('1. Boas-vindas')
   await button(page, 'Começar').click()
 
   // Estabelecimento
   await expect(
     page.getByRole('heading', { name: 'Conta um pouco do seu bar.' })
   ).toBeVisible()
-  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
+  await expect(page.getByLabel('Cidade *', { exact: true })).toHaveValue(
     'São Paulo'
   )
   // WEB-270: a UF nasce com a da cidade que já vem preenchida.
@@ -139,24 +144,33 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
   // Não é escolha do bar: é o filtro da busca para quem é Elite com oferta.
   await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
-  await page.getByLabel('Quantas telas?').fill('4')
+  for (let i = 0; i < 4; i++) await button(page, 'Mais uma tela').click()
+  await expect(telas(page)).toContainText('4')
   await page.getByLabel('Mais alguma coisa? (opcional)').fill('Sinuca no fundo')
+  // A prévia "Assim o torcedor vê" acompanha o formulário.
+  await expect(page.locator('aside')).toContainText('4 telas')
   await button(page, 'Continuar').click()
 
-  // Revisão
-  await expect(progress(page)).toHaveText('Passo 4 de 4')
+  // Revisão: a lista e a prévia ao lado.
+  await expect(progress(page)).toHaveText('4. Revisão')
   for (const dado of [
     'Bar do Teste',
     'Pinheiros',
     'Telão / projetor',
     address,
-    '(11) 98765-4321',
-    'Sinuca no fundo'
+    '(11) 98765-4321'
   ]) {
-    await expect(page.getByText(dado, { exact: true })).toBeVisible()
+    await expect(page.locator('body')).toContainText(dado)
   }
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Seu bar está no ar.' })
+  ).toBeVisible()
+  await expect(page.getByText('Bar do Teste já aparece no mapa')).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Cadastrar o primeiro jogo' })
+  ).toHaveAttribute('href', '/admin/jogos?novo=1')
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -189,7 +203,7 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   await expect(continuar).toBeDisabled()
   // WEB-270: o botão desabilitado diz o que falta.
   await expect(continuar).toHaveAccessibleDescription(
-    'Para continuar, falta preencher: nome do estabelecimento, endereço, bairro.'
+    'Para continuar, falta preencher: nome do estabelecimento, rua, número, bairro.'
   )
   const valid = {
     name: 'Bar Válido',
@@ -198,21 +212,26 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   }
   // Cada campo no limite de baixo segura o botão; um caractere a mais solta.
   for (const [label, short, ok] of [
-    ['Nome do estabelecimento', 'B', 'Bo'],
-    ['Bairro', 'C', 'Ce'],
-    ['Endereço', 'Rua ', 'Rua A']
+    ['Nome do estabelecimento *', 'B', 'Bo'],
+    ['Bairro *', 'C', 'Ce'],
+    ['Rua *', 'Ru ', 'Rua']
   ] as const) {
     await fillEstablishment(page, valid)
     await expect(continuar).toBeEnabled()
-    await page.getByLabel(label).fill(short)
+    await page.getByLabel(label, { exact: true }).fill(short)
     await expect(continuar).toBeDisabled()
-    await page.getByLabel(label).fill(ok)
+    await page.getByLabel(label, { exact: true }).fill(ok)
     await expect(continuar).toBeEnabled()
   }
   await expect(continuar).toHaveAccessibleDescription('')
-  await page.getByLabel('Endereço').fill('Rua ')
+  await page.getByLabel('Rua *', { exact: true }).fill('Ru ')
   await expect(continuar).toHaveAccessibleDescription(
-    'Para continuar, falta preencher: endereço (pelo menos 5 caracteres).'
+    'Para continuar, falta preencher: rua (pelo menos 3 caracteres).'
+  )
+  await page.getByLabel('Rua *', { exact: true }).fill('Rua A')
+  await page.getByLabel('Número *', { exact: true }).fill('')
+  await expect(continuar).toHaveAccessibleDescription(
+    'Para continuar, falta preencher: número.'
   )
 
   // Telefone: conferido ao avançar, com a mesma regra do servidor.
@@ -220,8 +239,8 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   await continuar.click()
   await expect(page.getByRole('alert')).toHaveText(/Telefone incompleto/)
   await expect(page.getByLabel('Telefone')).toHaveAttribute(
-    'aria-describedby',
-    'pub-phone-error'
+    'aria-invalid',
+    'true'
   )
   await page.getByLabel('Telefone').fill('2098765432')
   await continuar.click()
@@ -288,7 +307,7 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
     address,
     neighborhood: 'Centro'
   })
-  const cidade = page.getByLabel('Cidade', { exact: true })
+  const cidade = page.getByLabel('Cidade *', { exact: true })
   const uf = page.getByLabel('Estado (UF)')
   const continuar = button(page, 'Continuar')
 
@@ -308,9 +327,9 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await uf.selectOption('RN')
   await continuar.click()
   await button(page, 'Pular').click()
-  await expect(page.getByText('Bom Jesus, RN', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Bom Jesus, RN/)).toBeVisible()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({ city: 'Bom Jesus', uf: 'RN' })
@@ -356,7 +375,7 @@ test('rascunho de antes da UF não é enviado: abre no formulário pedindo o est
   expect(await barOf(owner.id)).toHaveLength(0)
 })
 
-test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem em /plan', async ({
+test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem no "no ar"', async ({
   page
 }) => {
   const email = await signUpPub(page)
@@ -385,7 +404,7 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
 
   const [owner] = await query<{ id: string; onboarding_completed: boolean }>(
     'SELECT id, onboarding_completed FROM "user" WHERE email = $1',
@@ -415,7 +434,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
 
   await page.getByLabel('E-mail').fill(owner.email)
   await page.getByLabel('Senha', { exact: true }).fill(owner.password)
-  await button(page, 'Acessar minha conta').click()
+  await button(page, 'Entrar').click()
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
 
   await reachReview(page, {
@@ -424,7 +443,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
     neighborhood: 'Centro'
   })
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
   expect(await barOf(owner.id)).toHaveLength(1)
 })
 
@@ -443,7 +462,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
   await button(page, 'Continuar').click()
   const telao = button(page, 'Telão / projetor')
   await telao.click()
-  await page.getByLabel('Quantas telas?').fill('3')
+  for (let i = 0; i < 3; i++) await button(page, 'Mais uma tela').click()
   await page.getByLabel('Mais alguma coisa? (opcional)').fill('Chope gelado')
   await expect
     .poll(async () => (await storedDraft(page))?.draft)
@@ -451,9 +470,9 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
 
   // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
   await page.goto(page.url())
-  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  await expect(progress(page)).toHaveText('3. Características')
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
+  await expect(telas(page)).toContainText('3')
   await expect(page.getByLabel('Mais alguma coisa? (opcional)')).toHaveValue(
     'Chope gelado'
   )
@@ -461,13 +480,17 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue(
     'Bar Recarregado'
   )
-  await expect(page.getByLabel('Endereço')).toHaveValue(address)
-  await expect(page.getByLabel('Bairro')).toHaveValue('Lapa')
+  const [rua, numero] = splitAddress(address)
+  await expect(page.getByLabel('Rua *', { exact: true })).toHaveValue(rua ?? '')
+  await expect(page.getByLabel('Número *', { exact: true })).toHaveValue(
+    numero ?? ''
+  )
+  await expect(page.getByLabel('Bairro *', { exact: true })).toHaveValue('Lapa')
 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
   expect(await storedDraft(page)).toBeNull()
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -505,7 +528,7 @@ test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)'
 
   await page.goto('/onboarding/pub')
   await expect.poll(() => storedDraft(page)).toBeNull()
-  await expect(progress(page)).toHaveText('Passo 1 de 4')
+  await expect(progress(page)).toHaveText('1. Boas-vindas')
   await button(page, 'Começar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
 })
@@ -539,7 +562,7 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
 
   await button(page, 'Pular').click()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
   expect(
     await query(
@@ -567,7 +590,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  await expect(progress(page)).toHaveText('3. Características')
   expect(
     await query(
       'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
@@ -578,7 +601,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   await button(page, 'Pular').click()
   await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
   expect(await storedDraft(page)).toBeNull()
 })
 
@@ -607,7 +630,7 @@ test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cl
   })
   expect(await cache()).toHaveLength(1)
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
   expect(await cache()).toHaveLength(0)
 })
 

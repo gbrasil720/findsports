@@ -156,11 +156,12 @@ test('upload para o R2 é interceptado no navegador', async ({ page }) => {
 })
 
 test.describe('mapa', () => {
-  test.use({ storageState: storageState('fan') })
+  test.use({ storageState: storageState('pub') })
 
+  // O mapa que sobrou no web é a prévia do bar, em Meu espaço.
   test('carrega os tiles do stub, sem erro', async ({ page }) => {
     const tiles = page.waitForResponse(`${STUB_URL}/tiles.json`)
-    await page.goto('/dashboard')
+    await page.goto('/admin/meu-espaco')
     expect((await tiles).ok()).toBe(true)
     await expect(page.locator('.maplibregl-canvas').first()).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)

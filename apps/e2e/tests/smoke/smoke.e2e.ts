@@ -1,6 +1,6 @@
 import { storageState } from '../../fixtures/auth'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
 
 // Teste-sentinela (WEB-174): se isto quebra, nada mais na suíte vale.
 
@@ -21,21 +21,19 @@ test('landing carrega para visitante', async ({ page }) => {
   await expect(page.locator('#lista, #bar-form')).toHaveCount(0)
 })
 
-test('torcedor semeado entra pelo /login e chega no /dashboard', async ({
-  page
-}) => {
-  const fan = await createUser({ role: 'fan' })
+test('bar semeado entra pelo /login e chega no /admin', async ({ page }) => {
+  const { user } = await createPub()
 
   await page.goto('/login')
-  await page.getByLabel('E-mail').fill(fan.email)
-  await page.getByLabel('Senha', { exact: true }).fill(fan.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByLabel('E-mail').fill(user.email)
+  await page.getByLabel('Senha', { exact: true }).fill(user.password)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/admin$/)
 })
 
 for (const [role, home] of [
-  ['fan', '/dashboard'],
+  ['fan', '/torcedor'],
   ['pub', '/admin'],
   ['admin', '/houdini']
 ] as const) {
