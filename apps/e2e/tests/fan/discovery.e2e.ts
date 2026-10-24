@@ -404,10 +404,11 @@ test('o pino muda com o plano vigente e com o jogo ao vivo, e o Elite fica por c
   await expect(pin(vizinho)).toBeVisible()
   await pin(elite).click({ trial: true })
 
-  // O jogo começa: o relógio do navegador passa da hora, e o foco no pino
-  // redesenha o mapa.
+  // O jogo começa: o relógio do navegador passa da hora. Os pinos seguem o
+  // tique de minuto (`MinuteTickProvider`), que só dispararia na próxima
+  // virada real; voltar à aba relê a hora na mesma hora.
   await page.clock.setFixedTime(hours(1))
-  await pin(starter).focus()
+  await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
   await temCores(pro, [LIVE, CREME, 'none'])
   await temCores(eliteComJogo, [LIVE, 'none', INK])
 })
