@@ -57,17 +57,6 @@ export function getPeriodDays(from: string, to: string): number {
   return Math.max(1, Math.round((end - start) / DAY_MS) + 1)
 }
 
-export function formatAnalyticsPeriod(from: string, to: string): string {
-  const format = (date: string) =>
-    new Date(`${date}T12:00:00.000Z`).toLocaleDateString('pt-BR', {
-      timeZone: 'UTC',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  return `${format(from)} — ${format(to)}`
-}
-
 export function formatComparisonPeriod(from: string, to: string): string {
   const days = getPeriodDays(from, to)
   return days === 1 ? '1 dia anterior' : `${days} dias anteriores`
