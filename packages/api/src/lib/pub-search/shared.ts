@@ -291,7 +291,11 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   const eventFilter = sql.join(
     [
       sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
-      date ? sql`AND DATE(e.starts_at) = ${date}` : sql``,
+      // O dia pedido é o de Brasília; `starts_at` guarda UTC sem fuso.
+      date
+        ? sql`AND e.starts_at >= ((${date}::date)::timestamp AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')
+            AND e.starts_at < ((${date}::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
+        : sql``,
       teamIds?.length
         ? sql`AND EXISTS (
               SELECT 1 FROM event_participants ep
