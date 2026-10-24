@@ -1,5 +1,6 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import {
   brasiliaDaySql,
   eventEndSql
@@ -8,7 +9,6 @@ import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
-import { getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
 import { getAnalyticsPlan } from './entitlements'
 import type {
@@ -150,8 +150,8 @@ async function buscarDiasPodados(
     FROM bar_commercial_daily_rollup r
     WHERE r.bar_id = ${barId}
       AND r.is_finalized = true
-      AND r.commercial_day >= ${getCommercialDay(prev.start)}::date
-      AND r.commercial_day <= ${getCommercialDay(to)}::date
+      AND r.commercial_day >= ${brasiliaDay(prev.start)}::date
+      AND r.commercial_day <= ${brasiliaDay(to)}::date
       AND NOT EXISTS (
         SELECT 1
         FROM bar_commercial_event e
@@ -295,10 +295,10 @@ export async function getMyAnalyticsOverview(
   const diasPodados = await buscarDiasPodados(barId, prev, to)
   if (diasPodados.length > 0) {
     limitations.push('distinct_counts_are_daily_sums_after_retention')
-    const atualIni = getCommercialDay(from)
-    const atualFim = getCommercialDay(to)
-    const anteriorIni = getCommercialDay(prev.start)
-    const anteriorFim = getCommercialDay(prev.end)
+    const atualIni = brasiliaDay(from)
+    const atualFim = brasiliaDay(to)
+    const anteriorIni = brasiliaDay(prev.start)
+    const anteriorFim = brasiliaDay(prev.end)
 
     for (const dia of diasPodados) {
       const noAtual = dia.date >= atualIni && dia.date <= atualFim
@@ -380,8 +380,8 @@ export async function getMyAnalyticsOverview(
     dailyDirectionsOpened,
     dailyPhoneClicked,
     dailyWhatsappOpened,
-    from: getCommercialDay(from),
-    to: getCommercialDay(to),
+    from: brasiliaDay(from),
+    to: brasiliaDay(to),
     limitations
   }
 }
@@ -435,8 +435,8 @@ async function getEventAnalyticsSnapshots(
       FROM bar_commercial_event_daily_rollup r
       WHERE r.bar_id = ${barId}
         AND r.is_finalized = true
-        AND r.commercial_day >= ${getCommercialDay(from)}::date
-        AND r.commercial_day <= ${getCommercialDay(to)}::date
+        AND r.commercial_day >= ${brasiliaDay(from)}::date
+        AND r.commercial_day <= ${brasiliaDay(to)}::date
         AND NOT EXISTS (
           SELECT 1
           FROM bar_commercial_event bce
@@ -575,8 +575,8 @@ export async function getMyEventAnalytics(
 
   const response: EventAnalyticsResponse = {
     events,
-    from: getCommercialDay(from),
-    to: getCommercialDay(to)
+    from: brasiliaDay(from),
+    to: brasiliaDay(to)
   }
 
   if (options?.comparisonTarget) {

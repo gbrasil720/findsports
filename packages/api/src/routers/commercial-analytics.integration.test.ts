@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import { and, eq, gte, inArray, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import {
   analyticsRetentionRun,
   barCommercialDailyRollup,
@@ -15,7 +16,6 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
-import { getCommercialDay } from '../lib/commercial-analytics/commercial-day'
 import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
 import { contextFor, inAMonth, load, seedBar } from './integration-seed'
@@ -161,7 +161,7 @@ integrationTest(
       type,
       sourceEventId,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -297,8 +297,8 @@ integrationTest(
       return d
     }
 
-    const diaCorrente = getCommercialDay(dia(-2))
-    const diaAnterior = getCommercialDay(dia(-3))
+    const diaCorrente = brasiliaDay(dia(-2))
+    const diaAnterior = brasiliaDay(dia(-3))
     // 22h30 em São Paulo do dia corrente = 01h30 UTC do dia seguinte. É a
     // janela em que a data do servidor e o dia comercial discordam.
     const agora = new Date(`${diaCorrente}T22:30:00.000-03:00`)
@@ -313,7 +313,7 @@ integrationTest(
       actorUserId: fanId,
       type: 'profile_view' as const,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -452,7 +452,7 @@ integrationTest(
           : recentDay
         : null,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -815,7 +815,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -826,7 +826,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -837,7 +837,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -848,7 +848,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 B',
           sourceEventStartsAt: secondStartsAt,
           occurredAt: secondStartsAt,
-          commercialDay: getCommercialDay(secondStartsAt)
+          commercialDay: brasiliaDay(secondStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -859,7 +859,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 externo',
           sourceEventStartsAt: foreignStartsAt,
           occurredAt: foreignStartsAt,
-          commercialDay: getCommercialDay(foreignStartsAt)
+          commercialDay: brasiliaDay(foreignStartsAt)
         }
       ])
 
@@ -1007,7 +1007,7 @@ integrationTest(
           sourceEventChampionship: 'Campeonato de integração',
           sourceEventStartsAt: at as Date,
           occurredAt: at as Date,
-          commercialDay: getCommercialDay(at as Date)
+          commercialDay: brasiliaDay(at as Date)
         }))
       )
 

@@ -1,5 +1,5 @@
-import { getCommercialDay } from '@findsports_oficial/api/lib/commercial-analytics/commercial-day'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import type { inferRouterOutputs } from '@trpc/server'
 import { pinDoPlano } from '@/components/app/map-icons'
 import type { MapBar } from '@/components/app/onside-map'
@@ -137,7 +137,7 @@ export function filterDiscoveryBars({
     if (!gamesTodayOnly) return true
     const nextEvent = getNextEvent(bar)
     return nextEvent
-      ? getCommercialDay(new Date(nextEvent.startsAt)) === getCommercialDay(now)
+      ? brasiliaDay(new Date(nextEvent.startsAt)) === brasiliaDay(now)
       : false
   })
 }
