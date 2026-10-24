@@ -404,7 +404,18 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   para caber os jogos do dia. Quem vai e quem chegou saem de
   `commercialAnalytics.getMyEventAnalytics` (`reservedPeople`, `arrivals`, só no Elite);
   "Chegaram agora", de `barReservations.going`. "Novo jogo" abre
-  `/admin/jogos?novo=1` (o `validateSearch` da rota), que abre o formulário.
+  `/admin/jogos?novo=1` (o `validateSearch` da rota), que abre o formulário; sem poder
+  criar (limite, fora do ar), vira "Ver grade". No meio, o "Desempenho do bar" dos
+  últimos 30 dias; à direita, o card do plano. Fora do ar, o resto da tela fica apagado.
+- **Avisos do painel e card do plano** (Rodada 3, `components/admin/avisos.tsx`, regras
+  puras em `avisos-model.ts`): no máximo um aviso por tela, na prioridade fora do ar,
+  trial, Starter (dentro do limite, último jogo, limite), pagamento pendente, trial
+  encerrado. O do trial só em Hoje, o do Starter dentro do limite só em Jogos; Pro ou
+  Elite parado vê "Regularizar assinatura" mesmo no limite (WEB-331). Plano e cobrança
+  tem o seu, com "Atualizar pagamento" (portal). O card do plano (seis estados) fica em
+  Hoje e, no limite do Starter, em Jogos com "No Pro". A medalha dos planos é
+  `Medalha` (`components/painel/medalha.tsx`), a mesma em `/plan`, cobrança,
+  comprovante e onboarding.
 - **Jogos** (`/admin/jogos`, `components/painel-jogos/jogos-page.tsx`, contas em
   `domain/painel-jogos.ts`): lista por dia ou semana (de domingo a sábado, decisão do
   dono; as setas andam sete dias), o jogo aberto à direita (abaixo de 1100 px e na semana, numa folha
@@ -426,8 +437,8 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   período, a ordem dos jogos e os códigos, de `desempenho-contas.ts`. O período
   escolhido vale também em Jogos · Passados até recarregar a página. O que o plano não
   vê vem nulo do servidor: atividade diária, entrega nos clássicos e "Quem foi pela
-  Onside" só no Elite; os canais a partir do Pro. A semana do painel (Jogos, "Esta
-  semana" de Hoje) vai de domingo a sábado; comparação de período não é semana.
+  Onside" só no Elite; os canais a partir do Pro. A semana do painel (Jogos e a
+  contagem de Hoje) vai de domingo a sábado; comparação de período não é semana.
 - **Quem vai** (`components/painel-jogos/quem-vai-page.tsx`): um card por jogo com a
   validação aberta, com as peças do jogo aberto (`PessoaQuemVai`); `#jogo-<id>` rola até
   o jogo ("Ver os 24 →"). O bar Elite que confirma pela comanda lança os códigos aqui
