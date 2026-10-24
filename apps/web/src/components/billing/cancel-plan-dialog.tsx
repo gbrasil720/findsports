@@ -162,15 +162,11 @@ export function CancelPlanDialog({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        <span id="motivo-cancelamento" className="font-semibold text-[13.5px]">
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-2 p-0 font-semibold text-[13.5px]">
           Por que está cancelando?
-        </span>
-        <div
-          role="group"
-          aria-labelledby="motivo-cancelamento"
-          className="flex flex-wrap gap-1.5"
-        >
+        </legend>
+        <div className="flex flex-wrap gap-1.5">
           {CANCEL_REASONS.map((motivo) => (
             <Chip
               key={motivo.id}
@@ -182,7 +178,7 @@ export function CancelPlanDialog({
             </Chip>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {cancel.isError ? (
         <p role="alert" className="text-[13.5px] text-[var(--painel-live)]">
