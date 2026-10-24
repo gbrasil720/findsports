@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import Edit from 'reicon-react/icons/Edit'
 import Trash from 'reicon-react/icons/Trash'
 import { getEventTemporalState } from '@/domain/events'
@@ -47,10 +48,7 @@ export function EventListItem({
   const past = temporalState === 'past'
   const soon = !live && !past && isUpcomingSoon(e.startsAt)
   const timeUntil = soon ? getTimeUntil(e.startsAt) : null
-  const title =
-    e.participants?.map((p) => p.team.name).join(' × ') ||
-    e.participantFreeText ||
-    e.championship
+  const title = gameTitle(e)
   // Bloqueado, a lixeira continua ali: o clique abre o motivo (WEB-252).
   const deleteBlock = getDeleteBlock(e.deletion)
 

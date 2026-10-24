@@ -1,5 +1,6 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { formatAverageSpend } from '@findsports_oficial/db/bar-menu'
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Link } from '@tanstack/react-router'
 import { memo } from 'react'
 import Heart from 'reicon-react/icons/Heart'
@@ -98,12 +99,9 @@ export const BarCard = memo(function BarCard({
   const planBadge = PLAN_BADGE[plan]
   const PlanIcon = getPlan(plan).icon
   const planName = getPlan(plan).name
-  const participantsLabel =
-    event && (event.participants.length > 0 || event.participantFreeText)
-      ? event.participants.length > 0
-        ? event.participants.map((p) => p.team.name).join(' × ')
-        : (event.participantFreeText ?? '')
-      : null
+  // O campeonato já tem linha própria: sem times nem texto livre, nada aqui.
+  const title = event ? gameTitle(event) : null
+  const participantsLabel = event && title !== event.championship ? title : null
 
   const initials = bar.name
     .split(' ')
