@@ -6,16 +6,13 @@ import {
   useNavigate
 } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
-import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { AuthSplit, Disp, entradaHead } from '@/components/entrada/auth'
+import { Botao, propsBotao } from '@/components/painel'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
-import { pageHead } from '@/lib/page-head'
 import {
   PENDING_VERIFICATION_KEY,
   readPendingEmail
@@ -32,7 +29,7 @@ import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   head: () =>
-    pageHead({
+    entradaHead({
       path: '/verify-email',
       title: 'Confirme seu e-mail — Onside',
       description: 'Confirme seu e-mail para começar a usar a Onside.',
@@ -159,102 +156,81 @@ function VerifyEmailPage() {
   }
 
   return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label="Confirmação de e-mail" />
-      <main className="mx-auto grid max-w-3xl gap-8 border border-[var(--onside-line)] bg-[var(--onside-paper)] p-6 text-[var(--onside-ink)] shadow-[8px_8px_0_var(--onside-acid)] sm:p-10 md:grid-cols-[96px_1fr]">
-        <div className="grid size-24 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-          <Envelope size={42} color="currentColor" aria-hidden="true" />
-        </div>
-        <div>
-          <p className="onside-kicker onside-kicker-live">Última checagem</p>
-          <h1 className="onside-display mb-4 text-4xl sm:text-5xl">
-            CONFIRME O E-MAIL. DEPOIS, É BOLA ROLANDO.
-          </h1>
-          <p className="max-w-xl text-[var(--onside-muted)] leading-relaxed">
-            Enviamos um link para{' '}
-            {email ? <strong>{email}</strong> : 'o endereço cadastrado'}. Ele
-            confirma que a conta é realmente sua e libera o próximo passo.
+    <AuthSplit
+      foto={
+        <>
+          <Disp
+            nivel={0}
+            tamanho={64}
+            linhas={[
+              { texto: 'Última checagem' },
+              { texto: 'antes do apito.', tint: true }
+            ]}
+          />
+          <p>
+            Confirmar o e-mail garante que a conta do bar é sua. Depois, é bola
+            rolando.
           </p>
-          <ol className="my-7 grid gap-3 text-sm">
-            <li className="flex items-center gap-3">
-              <Check size={18} color="currentColor" aria-hidden="true" /> Abra o
-              e-mail do Onside.
-            </li>
-            <li className="flex items-center gap-3">
-              <Check size={18} color="currentColor" aria-hidden="true" />
-              Clique em “Confirmar meu e-mail”.
-            </li>
-            <li className="flex items-center gap-3">
-              <Check size={18} color="currentColor" aria-hidden="true" /> Volte
-              aqui para seguir aos planos.
-            </li>
-          </ol>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={continueVerified}
-              disabled={checking}
-              className="onside-btn onside-btn-acid"
-            >
-              {checking ? (
-                <Loader
-                  size={16}
-                  color="currentColor"
-                  className="animate-spin"
-                  aria-hidden="true"
-                />
-              ) : null}
-              {checking ? 'Confirmando…' : 'Já confirmei meu e-mail'}
-            </button>
-            <button
-              type="button"
-              onClick={resend}
-              disabled={resending}
-              className="onside-btn onside-btn-outline"
-            >
-              {resending ? 'Reenviando…' : 'Reenviar link'}
-            </button>
-          </div>
-          {captchaOn ? captcha.widget : null}
-          {needsLogin ? (
-            <div
-              className="onside-callout onside-callout-warn mt-6"
-              role="alert"
-            >
-              {/* Sem sessão nesta aba não dá para saber se o e-mail já foi
-                  confirmado: o link pode ter aberto em outro navegador (o do
-                  app de e-mail) ou a confirmação veio por outro caminho. O
-                  login resolve todos os casos e retoma o cadastro do bar. */}
-              <p className="text-sm font-semibold">
-                Para continuar, entre com seu e-mail e senha. Se o e-mail ainda
-                não estiver confirmado, mandamos um link novo de lá.
-              </p>
-              <Link
-                to="/login"
-                search={{ callbackUrl, ...(email ? { email } : {}) }}
-                className="onside-btn onside-btn-ink"
-              >
-                Entrar para continuar
-              </Link>
-            </div>
-          ) : null}
-          {pubError ? (
-            <div
-              className="onside-callout onside-callout-warn mt-6"
-              role="alert"
-            >
-              <p className="text-sm font-semibold">{pubError}</p>
-              <Link to="/onboarding/pub" className="text-sm underline">
-                Corrigir o cadastro do bar
-              </Link>
-            </div>
-          ) : null}
-          <p className="mt-6 text-xs text-[var(--onside-muted)]">
-            Não reconhece este cadastro? Você pode simplesmente ignorar o
-            e-mail.
+        </>
+      }
+    >
+      <span className="entrada-selo" aria-hidden="true">
+        <Envelope size={30} color="currentColor" />
+      </span>
+      <p className="entrada-kicker">Última checagem</p>
+      <Disp
+        tamanho={52}
+        linhas={[{ texto: 'Confirme' }, { texto: 'seu e-mail' }]}
+      />
+      <p className="entrada-linha">
+        Enviamos um link para{' '}
+        {email ? <strong>{email}</strong> : 'o endereço cadastrado'}. Ele
+        confirma que a conta é realmente sua e libera o próximo passo.
+      </p>
+      <ol className="entrada-lista">
+        <li>Abra o e-mail da Onside.</li>
+        <li>Clique em “Confirmar meu e-mail”.</li>
+        <li>Volte aqui para colocar o bar no ar.</li>
+      </ol>
+      <div className="entrada-botoes">
+        <Botao variante="acid" onClick={continueVerified} disabled={checking}>
+          {checking ? 'Confirmando…' : 'Já confirmei meu e-mail'}
+        </Botao>
+        <Botao onClick={resend} disabled={resending}>
+          {resending ? 'Reenviando…' : 'Reenviar link'}
+        </Botao>
+      </div>
+      {captchaOn ? captcha.widget : null}
+      {needsLogin ? (
+        <div className="entrada-aviso" role="alert">
+          {/* Sem sessão nesta aba não dá para saber se o e-mail já foi
+              confirmado: o link pode ter aberto em outro navegador (o do app
+              de e-mail) ou a confirmação veio por outro caminho. O login
+              resolve todos os casos e retoma o cadastro do bar. */}
+          <p className="m-0">
+            Para continuar, entre com seu e-mail e senha. Se o e-mail ainda não
+            estiver confirmado, mandamos um link novo de lá.
           </p>
+          <Link
+            to="/login"
+            search={{ callbackUrl, ...(email ? { email } : {}) }}
+            {...propsBotao({ variante: 'ink' })}
+          >
+            Entrar para continuar
+          </Link>
         </div>
-      </main>
-    </OnboardingLayout>
+      ) : null}
+      {pubError ? (
+        <div className="entrada-aviso" role="alert">
+          <p className="m-0">{pubError}</p>
+          <Link to="/onboarding/pub" className="entrada-link">
+            Corrigir o cadastro do bar
+          </Link>
+        </div>
+      ) : null}
+      <p className="entrada-nota" style={{ textAlign: 'left' }}>
+        Não reconhece este cadastro? Você pode simplesmente ignorar o e-mail.
+      </p>
+    </AuthSplit>
   )
 }

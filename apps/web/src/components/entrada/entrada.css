@@ -1265,3 +1265,52 @@
     grid-column: span 6;
   }
 }
+
+/* Recuperação de senha e confirmação de e-mail, no mesmo authSplit. */
+.painel .entrada-selo {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: var(--painel-acid);
+  color: var(--painel-ink);
+  box-shadow: var(--painel-sh-btn);
+}
+.painel .entrada-linha strong {
+  color: var(--painel-fg);
+}
+.painel .entrada-lista {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--painel-muted);
+}
+.painel .entrada-lista li {
+  padding-left: 12px;
+  border-left: 2px solid var(--painel-line2);
+}
+.painel .entrada-lista strong {
+  color: var(--painel-fg);
+}
+.painel .entrada-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.painel .entrada-aviso {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 7px;
+  background: var(--painel-sub);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
