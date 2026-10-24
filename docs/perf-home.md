@@ -44,6 +44,11 @@ bunx vite build --mode cloudflare
 bunx vite preview --mode cloudflare --port 3031
 ```
 
+O build copia o `apps/web/.dev.vars` para o Worker: crie-o antes, senão a
+home responde 500 por falta de segredo. Para medir bastam valores falsos:
+`BETTER_AUTH_SECRET` com 32 caracteres ou mais, `BETTER_AUTH_URL` local,
+`PUBLIC_APP_URL` em HTTPS fora de `onside.sh` e `EMAIL_DELIVERY=console`.
+
 O `vite preview` não comprime as respostas, e a borda da Cloudflare comprime:
 sem compressão o CSS da home sai com 201 KB em vez de 32 KB e o resultado não vale.
 Ponha um proxy com gzip na frente (algumas linhas de `Bun.serve` com
@@ -60,4 +65,12 @@ Use `--throttling-method=devtools`, que limita a rede de verdade. O padrão
 limite, e em `localhost` essa ordem varia a cada execução: o elemento do LCP
 alterna entre o pôster e o `h1`, e a mediana não para quieta. Para comparar,
 sirva o `master` noutra porta e alterne as execuções (antes, depois, antes...),
-cinco de cada, e compare medianas.
+dez de cada, e compare medianas.
+
+Mesmo com `devtools`, cerca de uma execução em quatro sai com a primeira
+pintura atrasada em 1 a 2 s (FCP e LCP juntos, rede igual à das rápidas), nos
+dois lados e mais vezes com a máquina carregada. Com cinco de cada, três
+dessas num lado só viram a mediana. Conte quantas saíram assim em cada lado
+antes de concluir. Os dois `vite preview` ao mesmo tempo disputam a porta 9229
+do inspetor: no segundo, `inspectorPort: false` no `cloudflare()` de uma
+cópia descartável do `vite.config.ts`.
