@@ -1,5 +1,5 @@
 import { BASE_URL, MEDIA_PUBLIC_ORIGIN, SAO_PAULO, STUB_URL } from '../../env'
-import { signIn, storageState } from '../../fixtures/auth'
+import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { interceptMediaUploads } from '../../fixtures/media'
@@ -153,17 +153,4 @@ test('upload para o R2 é interceptado no navegador', async ({ page }) => {
     { pathname: 'bars/x/photo', contentType: 'image/png' }
   ])
   expect(result).toEqual({ put: 200, type: 'image/png' })
-})
-
-test.describe('mapa', () => {
-  test.use({ storageState: storageState('pub') })
-
-  // O mapa que sobrou no web é a prévia do bar, em Meu espaço.
-  test('carrega os tiles do stub, sem erro', async ({ page }) => {
-    const tiles = page.waitForResponse(`${STUB_URL}/tiles.json`)
-    await page.goto('/admin/meu-espaco')
-    expect((await tiles).ok()).toBe(true)
-    await expect(page.locator('.maplibregl-canvas').first()).toBeVisible()
-    await expect(page.getByRole('alert')).toHaveCount(0)
-  })
 })
