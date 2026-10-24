@@ -162,7 +162,7 @@
 
 .painel .hoje-grade {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -207,9 +207,6 @@
 }
 .painel .hoje-avaliacoes {
   padding: 18px 20px 6px;
-}
-.painel .hoje-semana {
-  padding: 18px 20px 12px;
 }
 
 .painel .hoje-lista {
@@ -273,103 +270,80 @@
   margin-top: 12px;
 }
 
-.painel .hoje-semana-lista {
-  margin: 4px 0 0;
+/* Desempenho do bar (1r): três números e a atividade diária pequena. */
+.painel .hoje-desempenho {
+  padding: 18px 20px 16px;
+}
+.painel .hoje-desempenho-lista {
+  margin: 6px 0 0;
   padding: 0;
   list-style: none;
 }
-.painel .hoje-semana-lista > li {
+.painel .hoje-desempenho-lista > li {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 10px 0;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
 }
-.painel .hoje-semana-lista > li + li {
+.painel .hoje-desempenho-lista > li + li {
   border-top: 1px solid var(--painel-line);
 }
-.painel .hoje-semana-n {
-  min-width: 90px;
-  font: 400 28px / 1 var(--onside-display);
-}
-.painel .hoje-semana-rotulo {
-  flex: 1;
-  font-size: 14px;
-}
-
-/* Vão assistir por dia (`dayChart`, 110 px). */
-.painel .hoje-dias {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  height: 110px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.painel .hoje-dias > li {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.painel .hoje-dias-n {
-  font: 600 11px / 1 var(--onside-mono);
-  color: var(--painel-muted);
-}
-.painel .hoje-dias-barra {
-  width: 100%;
-  border-radius: 4px 4px 2px 2px;
-  background: rgb(18 18 15 / 12%);
-}
-.painel .hoje-dias-rotulo {
-  font-size: 12px;
-  color: var(--painel-muted);
-}
-.painel .hoje-dias > li[data-hoje] .hoje-dias-n,
-.painel .hoje-dias > li[data-hoje] .hoje-dias-rotulo {
-  color: var(--painel-fg);
-  font-weight: 700;
-}
-.painel .hoje-dias > li[data-hoje] .hoje-dias-barra {
-  background: var(--painel-acid);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .hoje-dias-barra {
-    background: #2e2e29;
-  }
-}
-
-/* Destaque do jogo (`promo`): ainda não existe, fica com o selo. */
-.painel .hoje-promo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: 7px;
-  background: var(--painel-acid);
-  color: var(--painel-ink);
-  box-shadow: 4px 4px 0 var(--painel-ink);
-}
-.painel .hoje-promo > div {
+.painel .hoje-desempenho-lista > li > div {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
-.painel .hoje-promo b {
-  font-size: 15px;
-}
-.painel .hoje-promo span {
+.painel .hoje-desempenho-lista > li > div > span {
   font-size: 13px;
+  color: var(--painel-muted);
 }
-@media (prefers-color-scheme: dark) {
-  .painel .hoje-promo {
-    box-shadow: 4px 4px 0 #000;
-  }
+.painel .hoje-desempenho-lista b {
+  display: block;
+  margin-top: 4px;
+  font: 400 30px / 1 var(--onside-display);
+}
+.painel .hoje-desempenho-var {
+  font-size: 12.5px;
+  color: var(--painel-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.painel .hoje-mini {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 64px;
+  gap: 0 8px;
+  margin-top: 8px;
+  padding: 10px 10px 6px;
+  border-radius: 6px;
+  background: var(--painel-surface-ink);
+  font: 500 10px / 1 var(--onside-mono);
+  color: #aaa9a4;
+}
+.painel .hoje-mini-eixo {
+  position: relative;
+}
+.painel .hoje-mini-eixo span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+}
+.painel .hoje-mini svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.painel .hoje-desempenho-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--painel-tint);
+  text-decoration: none;
+}
+
+/* Fora do ar (1v): o resto da tela apagado, aviso e plano em evidência. */
+.painel .hoje[data-fora] .hoje-apaga {
+  opacity: 0.45;
 }
 
 /* ─── Tablet (1l/1m): trilho de ícones, duas colunas ─── */
@@ -400,16 +374,16 @@
   .painel .hoje-chegaram {
     order: 1;
   }
-  .painel .hoje-semana {
+  .painel .hoje-desempenho {
     order: 2;
   }
-  .painel .hoje-oferta {
+  .painel .hoje-grade .painel-plano {
     order: 3;
   }
-  .painel .hoje-avaliacoes {
+  .painel .hoje-oferta {
     order: 4;
   }
-  .painel .hoje-promo {
+  .painel .hoje-avaliacoes {
     order: 5;
   }
 }

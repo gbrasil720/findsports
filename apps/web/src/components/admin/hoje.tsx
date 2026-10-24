@@ -28,10 +28,19 @@ import { useTRPC } from '@/utils/trpc'
 import {
   useMyAnalyticsEntitlements,
   useMyBar,
+  useMyEventCreationPolicy,
   useMyEvents,
   useMySubscription,
   useShowsGoing
 } from './admin-queries'
+import { AvisoDoPainel, CardDoPlano } from './avisos'
+import { buildSeries, niceMax } from './daily-chart-model'
+import {
+  numerosDoDesempenho,
+  serieDiaria,
+  ultimos30Dias,
+  useDesempenho
+} from './desempenho-dados'
 import {
   chegadasDoDia,
   dataCurta,
@@ -42,11 +51,7 @@ import {
   posicao,
   rotuloHora,
   semanaDe,
-  somaDias,
-  somaDosJogos,
-  validadosAte,
-  vaoPorDia,
-  variacao
+  somaDosJogos
 } from './hoje-model'
 import { QueryError } from './query-error'
 import './hoje.css'
@@ -59,8 +64,6 @@ type Chegada = ReturnType<
 
 const SEM_TOAST = { meta: { errorToast: false } } as const
 
-const numero = (n: number) => n.toLocaleString('pt-BR')
-
 /**
  * "Hoje na casa" (`/admin`, telas 1j/1k e, no tablet, 1l/1m do design "Bar
  * Web"): o que acontece no bar hoje à noite e como foi a semana.
@@ -71,7 +74,12 @@ const numero = (n: number) => n.toLocaleString('pt-BR')
  * (`useShowsGoing`); a oferta da casa, o plano Elite vigente. Rota pedida só a
  * partir do Pro, como nas analytics.
  *
- * "Novo jogo" leva a `/admin/jogos?novo=1`, que abre o formulário de jogo novo.
+ * "Novo jogo" leva a `/admin/jogos?novo=1`, que abre o formulário de jogo novo;
+ * sem poder criar (limite do Starter, bar fora do ar), vira "Ver grade".
+ *
+ * Rodada 3 (1r–1w): o aviso do momento abaixo do título, o "Desempenho do
+ * bar" dos últimos 30 dias no meio e o card do plano à direita. Fora do ar,
+ * o resto da tela fica apagado.
  */
 export function Hoje() {
   const trpc = useTRPC()
@@ -79,6 +87,7 @@ export function Hoje() {
   const { data: bar } = useMyBar()
   const events = useMyEvents()
   const { data: subscription } = useMySubscription()
+  const { data: politica } = useMyEventCreationPolicy()
   const entitlements = useMyAnalyticsEntitlements()
   const showsGoing = useShowsGoing() === true
 
@@ -94,21 +103,6 @@ export function Hoje() {
       to: domingo
     }),
     refetchInterval: 60_000,
-    ...SEM_TOAST
-  })
-  const passada = useQuery({
-    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
-      from: somaDias(segunda, -7),
-      to: somaDias(domingo, -7)
-    }),
-    enabled: lista,
-    ...SEM_TOAST
-  })
-  const visao = useQuery({
-    ...trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions({
-      from: segunda,
-      to: noite.dia
-    }),
     ...SEM_TOAST
   })
   const going = useQuery({
@@ -142,12 +136,11 @@ export function Hoje() {
     )
   const porJogo = new Map(semana.data?.events.map((e) => [e.eventId, e]))
   const ofertaLiberada = subscription?.currentPlan === 'elite'
-  const proximo = (events.data ?? []).find(
-    (e) => new Date(e.startsAt).getTime() > now
-  )
+  const fora = bar.isActive === false
+  const bloqueado = politica?.canCreate === false
 
   return (
-    <div className="hoje">
+    <div className="hoje" data-fora={fora || undefined}>
       <CabecalhoPagina
         kicker={`${dataCurta(noite.dia)} · ${bar.neighborhood}`}
         titulo="Hoje na casa"
@@ -163,19 +156,29 @@ export function Hoje() {
               <IconeBotao nome="share" />
               Ver no app
             </Link>
-            <Link
-              to="/admin/jogos"
-              search={{ novo: 1 }}
-              {...propsBotao({ variante: 'acid' })}
-            >
-              <IconeBotao nome="plus" variante="acid" />
-              Novo jogo
-            </Link>
+            {bloqueado ? (
+              <Link to="/admin/jogos" {...propsBotao({ variante: 'sec' })}>
+                Ver grade
+              </Link>
+            ) : (
+              <Link
+                to="/admin/jogos"
+                search={{ novo: 1 }}
+                {...propsBotao({ variante: 'acid' })}
+              >
+                <IconeBotao nome="plus" variante="acid" />
+                Novo jogo
+              </Link>
+            )}
           </>
         }
       >
-        <b>{countLabel(noite.blocos.length, 'jogo', 'jogos')}</b>
-        {hoje ? (
+        {fora ? (
+          'Fora das buscas e do mapa'
+        ) : (
+          <b>{countLabel(noite.blocos.length, 'jogo', 'jogos')}</b>
+        )}
+        {hoje && !fora ? (
           <>
             {' · '}
             <b>{countLabel(hoje.vao, 'vai assistir', 'vão assistir')}</b>
@@ -188,7 +191,9 @@ export function Hoje() {
         ) : null}
       </CabecalhoPagina>
 
-      <section className="hoje-kpis" aria-label="Números de hoje">
+      <AvisoDoPainel tela="hoje" />
+
+      <section className="hoje-kpis hoje-apaga" aria-label="Números de hoje">
         <Kpi
           valor={events.isPending ? <Carregando /> : noite.blocos.length}
           rotulo="jogos hoje"
@@ -218,9 +223,13 @@ export function Hoje() {
       </section>
 
       <Secao
-        className="hoje-noite-card"
+        className="hoje-noite-card hoje-apaga"
         titulo="A noite"
-        meta={`${noite.de % 24}h → ${noite.ate % 24}h`}
+        meta={
+          fora
+            ? 'Os jogos não aparecem no app enquanto o bar estiver fora do ar'
+            : `${noite.de % 24}h → ${noite.ate % 24}h`
+        }
       >
         {events.isError ? (
           <div className="hoje-espaco">
@@ -321,7 +330,7 @@ export function Hoje() {
         data-colunas={ofertaLiberada || showsGoing ? 3 : 2}
       >
         {ofertaLiberada || showsGoing ? (
-          <div className="hoje-coluna">
+          <div className="hoje-coluna hoje-apaga">
             {ofertaLiberada ? <OfertaDaCasa oferta={bar.houseOffer} /> : null}
             {showsGoing ? (
               <ChegaramAgora
@@ -336,61 +345,10 @@ export function Hoje() {
           </div>
         ) : null}
 
-        <Secao
-          className="hoje-semana"
-          titulo="Esta semana"
-          meta="vs. semana passada"
-        >
-          {visao.isError ? (
-            <Falha tentar={() => void visao.refetch()} />
-          ) : (
-            <ul className="hoje-semana-lista">
-              <LinhaSemana
-                valor={visao.data?.uniqueVisitors}
-                rotulo="viram o bar"
-                variacao={visao.data?.uniqueVisitorsChange}
-              />
-              {lista ? (
-                <LinhaSemana
-                  valor={
-                    semana.data
-                      ? validadosAte(semana.data.events, noite.dia)
-                      : undefined
-                  }
-                  rotulo="códigos validados"
-                  variacao={
-                    semana.data && passada.data
-                      ? variacao(
-                          validadosAte(semana.data.events, noite.dia),
-                          validadosAte(
-                            passada.data.events,
-                            somaDias(noite.dia, -7)
-                          )
-                        )
-                      : null
-                  }
-                />
-              ) : null}
-              <LinhaSemana valor={null} rotulo="salvaram" emBreve />
-              {visao.data?.directionsOpened == null ? null : (
-                <LinhaSemana
-                  valor={visao.data.directionsOpened}
-                  rotulo="pediram rota"
-                  variacao={visao.data.directionsOpenedChange}
-                />
-              )}
-            </ul>
-          )}
-          {lista && semana.data ? (
-            <VaoPorDia
-              dias={semanaDe(noite.dia)}
-              valores={vaoPorDia(semana.data.events, dias)}
-              hoje={noite.dia}
-            />
-          ) : null}
-        </Secao>
+        <DesempenhoMini />
 
         <div className="hoje-coluna">
+          <CardDoPlano />
           <Secao
             className="hoje-avaliacoes"
             titulo="Avaliações recentes"
@@ -432,24 +390,6 @@ export function Hoje() {
               </ul>
             )}
           </Secao>
-          {proximo ? (
-            <div className="hoje-promo" aria-disabled="true">
-              <Icone
-                nome="bolt"
-                tamanho={28}
-                acento="var(--painel-ink)"
-                base={1}
-              />
-              <div>
-                <b>{gameTitle(proximo)} em destaque?</b>
-                <span>
-                  {dataCurta(diaDaCasa(proximo.startsAt))} ·{' '}
-                  {hora(proximo.startsAt)}
-                </span>
-              </div>
-              <Badge tipo="ink">em breve</Badge>
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
@@ -619,70 +559,151 @@ function ChegaramAgora({
   )
 }
 
-function LinhaSemana({
-  valor,
-  rotulo,
-  variacao,
-  emBreve
-}: {
-  /** undefined: carregando. */
-  valor: number | null | undefined
-  rotulo: string
-  variacao?: number | null
-  emBreve?: boolean
-}) {
-  let selo: ReactNode = null
-  if (emBreve) selo = <EmBreve />
-  else if (variacao && variacao > 0)
-    selo = <Badge tipo="acid">↑ +{variacao}%</Badge>
-  else if (variacao && variacao < 0)
-    selo = <Badge tipo="muted">↓ {variacao}%</Badge>
+/**
+ * "Desempenho do bar" (1r): os três números dos últimos 30 dias, com a mesma
+ * conta da página Desempenho (`desempenho-dados.ts`), e a atividade diária
+ * em miniatura.
+ */
+function DesempenhoMini() {
+  const desempenho = useDesempenho(ultimos30Dias())
   return (
-    <li>
-      <span className="hoje-semana-n">
-        {valor === undefined ? (
-          <Carregando />
-        ) : valor === null ? (
-          '—'
-        ) : (
-          numero(valor)
-        )}
-      </span>
-      <span className="hoje-semana-rotulo">{rotulo}</span>
-      {selo}
-    </li>
+    <Secao
+      className="hoje-desempenho"
+      titulo="Desempenho do bar"
+      meta="últimos 30 dias"
+    >
+      {desempenho.isError ? (
+        <Falha tentar={() => void desempenho.refetch()} />
+      ) : !desempenho.data ? (
+        <Carregando linhas={3} />
+      ) : (
+        <>
+          <ul className="hoje-desempenho-lista">
+            {numerosDoDesempenho(desempenho.data).map((n) => (
+              <li key={n.metrica}>
+                <div>
+                  <span>{n.rotulo}</span>
+                  <b>
+                    <span
+                      className={
+                        Number.parseFloat(n.valor) > 0
+                          ? 'painel-marca'
+                          : undefined
+                      }
+                    >
+                      {n.valor}
+                    </span>
+                  </b>
+                </div>
+                {n.variacao?.startsWith('+') ? (
+                  <Badge tipo="acid">↑ {n.variacao}</Badge>
+                ) : n.variacao ? (
+                  <span className="hoje-desempenho-var">
+                    {n.variacao.startsWith('-')
+                      ? `↓ ${n.variacao}`
+                      : n.variacao}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <MiniGrafico dias={serieDiaria(desempenho.data)} />
+        </>
+      )}
+      {/* ponytail: <a> até a rota /admin/desempenho entrar no branch; depois, Link. */}
+      <a href="/admin/desempenho" className="hoje-desempenho-link">
+        Ver desempenho →
+      </a>
+    </Secao>
   )
 }
 
-function VaoPorDia({
-  dias,
-  valores,
-  hoje
+/** A atividade diária pequena: aberturas (linha) e contatos (pontilhado). */
+function MiniGrafico({
+  dias
 }: {
-  dias: { dia: string; rotulo: string }[]
-  valores: number[]
-  hoje: string
+  dias: { date: string; views: number; actions: number }[]
 }) {
-  const max = Math.max(1, ...valores)
+  if (dias.length === 0) return null
+  const topo = niceMax(Math.max(...dias.flatMap((d) => [d.views, d.actions])))
+  const vistas = buildSeries(
+    dias.map((d) => d.views),
+    topo
+  )
+  const contatos = buildSeries(
+    dias.map((d) => d.actions),
+    topo
+  )
+  const trecho = (
+    runs: typeof vistas.runs,
+    parte: 'line' | 'area',
+    sobe: boolean
+  ) =>
+    runs
+      .filter((r) => r.up === sobe)
+      .map((r) => r[parte])
+      .join('')
+  const traco = {
+    fill: 'none',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    vectorEffect: 'non-scaling-stroke'
+  } as const
   return (
-    <ol className="hoje-dias" aria-label="Vão assistir por dia">
-      {dias.map((d, i) => {
-        const v = valores[i] ?? 0
-        return (
-          <li key={d.dia} data-hoje={d.dia === hoje || undefined}>
-            <span className="hoje-dias-n">{v}</span>
-            <span
-              className="hoje-dias-barra"
-              style={{ height: Math.max(2, Math.round((v / max) * 70)) }}
-            />
-            <span className="hoje-dias-rotulo">
-              <span className="sr-only">{dataCurta(d.dia)}: </span>
-              <span aria-hidden="true">{d.rotulo}</span>
-            </span>
-          </li>
-        )
-      })}
-    </ol>
+    <div className="hoje-mini" aria-hidden="true">
+      <div className="hoje-mini-eixo">
+        {[topo, topo / 2, 0].map((v, i) => (
+          <span key={v} style={{ top: `${i * 50}%` }}>
+            {v.toLocaleString('pt-BR')}
+          </span>
+        ))}
+      </div>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        {[0, 50, 100].map((y) => (
+          <line
+            key={y}
+            x1={0}
+            x2={100}
+            y1={y}
+            y2={y}
+            stroke="#aaa9a4"
+            strokeOpacity={y === 100 ? 0.9 : 0.3}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+        <path
+          d={trecho(vistas.runs, 'area', true)}
+          fill="var(--painel-acid)"
+          fillOpacity={0.3}
+        />
+        <path
+          d={trecho(contatos.runs, 'line', false)}
+          stroke="#aaa9a4"
+          strokeWidth={1.8}
+          strokeDasharray="2 6"
+          {...traco}
+        />
+        <path
+          d={trecho(contatos.runs, 'line', true)}
+          stroke="var(--painel-acid)"
+          strokeWidth={1.8}
+          strokeDasharray="2 6"
+          {...traco}
+        />
+        <path
+          d={trecho(vistas.runs, 'line', false)}
+          stroke="#aaa9a4"
+          strokeWidth={2.2}
+          {...traco}
+        />
+        <path
+          d={trecho(vistas.runs, 'line', true)}
+          stroke="var(--painel-acid)"
+          strokeWidth={3.5}
+          {...traco}
+        />
+      </svg>
+    </div>
   )
 }
 

@@ -189,37 +189,6 @@ export function somaDosJogos(
   }
 }
 
-/** Quantos vão assistir em cada dia de `dias` (gráfico da semana). */
-export function vaoPorDia(
-  linhas: readonly LinhaAnalytics[],
-  dias: readonly string[]
-): number[] {
-  return dias.map((dia) =>
-    linhas
-      .filter((l) => diaDaCasa(l.startsAt) === dia)
-      .reduce((s, l) => s + (l.reservedPeople ?? 0), 0)
-  )
-}
-
-/** Códigos validados nos jogos até o dia `ate`, inclusive. */
-export function validadosAte(
-  linhas: readonly LinhaAnalytics[],
-  ate: string
-): number {
-  return linhas
-    .filter((l) => diaDaCasa(l.startsAt) <= ate)
-    .reduce((s, l) => s + (l.arrivals ?? 0), 0)
-}
-
-/**
- * Variação em % contra a semana passada, como `pctChange` do servidor: sem
- * base (zero) não há número, e zero contra zero é zero.
- */
-export function variacao(atual: number, anterior: number): number | null {
-  if (anterior === 0) return atual === 0 ? 0 : null
-  return Math.round(((atual - anterior) / anterior) * 100)
-}
-
 /* ─── Chegaram agora ─── */
 
 type JogoQuemVai = {

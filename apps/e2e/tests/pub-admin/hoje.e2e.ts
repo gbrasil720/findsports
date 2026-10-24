@@ -8,7 +8,7 @@ import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
 // "Hoje na casa" (`/admin`): a noite, quem vai e quem chegou (lista do Elite),
-// a oferta da casa e a semana nas analytics de cada plano.
+// a oferta da casa, o "Desempenho do bar" dos últimos 30 dias e o card do plano.
 
 /** O dia da casa vira às 6h de Brasília, como na tela. */
 const DIA = new Date(Date.now() - 6 * 3_600_000).toLocaleDateString('sv-SE', {
@@ -29,7 +29,9 @@ const kpi = (page: Page, rotulo: string) =>
     .getByRole('region', { name: 'Números de hoje' })
     .locator('> *')
     .filter({ hasText: rotulo })
-const semana = (page: Page) => page.getByRole('region', { name: 'Esta semana' })
+const desempenho = (page: Page) =>
+  page.getByRole('region', { name: 'Desempenho do bar' })
+const plano = (page: Page) => page.getByRole('region', { name: 'Seu plano' })
 
 test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
   page
@@ -84,11 +86,16 @@ test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
   await expect(chegaram.getByRole('listitem')).toContainText('20:50')
   await expect(chegaram.getByRole('listitem')).toContainText('Oferta liberada')
 
-  await expect(semana(page)).toContainText('códigos validados')
-  await expect(semana(page)).toContainText('pediram rota')
+  await expect(desempenho(page)).toContainText('Pessoas que viram seu bar')
+  await expect(desempenho(page)).toContainText('Taxa de interesse')
   await expect(
-    semana(page).getByRole('list', { name: 'Vão assistir por dia' })
-  ).toBeVisible()
+    desempenho(page).getByRole('link', { name: 'Ver desempenho →' })
+  ).toHaveAttribute('href', '/admin/desempenho')
+  await expect(plano(page)).toContainText('Elite')
+  await expect(plano(page)).toContainText('Ativo')
+  await expect(
+    plano(page).getByRole('link', { name: 'Plano e cobrança →' })
+  ).toHaveAttribute('href', '/admin/billing')
 
   // Desligar apaga o texto no servidor; religar na mesma visita o devolve.
   const oferta = page.getByRole('switch', { name: 'Oferta da casa' })
@@ -146,11 +153,11 @@ test('Pro: sem a lista do Elite, nada de contagem de quem vai', async ({
   await expect(
     page.getByRole('switch', { name: 'Oferta da casa' })
   ).toHaveCount(0)
-  await expect(semana(page)).toContainText('pediram rota')
-  await expect(semana(page)).not.toContainText('códigos validados')
+  await expect(desempenho(page)).toContainText('Se interessaram')
+  await expect(plano(page)).toContainText('Pro')
 })
 
-test('Starter sem jogo hoje: noite vazia, só aberturas na semana e "Novo jogo"', async ({
+test('Starter sem jogo hoje: noite vazia, quem viu o bar e "Novo jogo"', async ({
   page
 }) => {
   const pub = await openHoje(page, { subscription: { plan: 'starter' } })
@@ -166,11 +173,14 @@ test('Starter sem jogo hoje: noite vazia, só aberturas na semana e "Novo jogo"'
 
   await page.goto('/admin')
   await expect(page.getByText('Nenhum jogo marcado para hoje.')).toBeVisible()
-  await expect(semana(page).getByRole('listitem').first()).toContainText(
-    '1viram o bar'
+  await expect(desempenho(page).getByRole('listitem').first()).toContainText(
+    'Pessoas que viram seu bar1'
   )
-  await expect(semana(page)).not.toContainText('pediram rota')
-  await expect(semana(page)).toContainText('salvaram')
+  await expect(plano(page)).toContainText('0 de 5 jogos usados neste ciclo')
+  // O aviso do Starter dentro do limite é de Jogos, não de Hoje.
+  await expect(
+    page.getByRole('region', { name: 'Aviso do plano' })
+  ).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Novo jogo' }).click()
   await expect(page).toHaveURL(/\/admin\/jogos\?novo=1$/)
