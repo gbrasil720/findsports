@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import { getEventTemporalState } from '@/domain/events'
-import { marcouHa } from '@/domain/painel-jogos'
+import { ehRascunho, marcouHa } from '@/domain/painel-jogos'
 import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import {
   Avatar,
@@ -24,14 +24,17 @@ export type JogoQuemVai =
   inferRouterOutputs<AppRouter>['barReservations']['going'][number]
 type Pessoa = JogoQuemVai['people'][number]
 
-/** "Ao vivo", "Publicado" ou "Encerrado" (o `stBadge` do design). */
+/** "Rascunho", "Ao vivo", "Publicado" ou "Encerrado" (o `stBadge` do design). */
 export function SeloJogo({
   startsAt,
-  endsAt
+  endsAt,
+  publishedAt
 }: {
   startsAt: string | Date
   endsAt: string | Date | null
+  publishedAt?: string | Date | null
 }) {
+  if (publishedAt === null) return <Badge tipo="draft">Rascunho</Badge>
   const estado = getEventTemporalState(startsAt, endsAt)
   return estado === 'live' ? (
     <Badge tipo="live">Ao vivo</Badge>
@@ -132,13 +135,15 @@ export function JogoAberto({
   evento,
   barId,
   oferta,
-  quemVai,
-  viramOJogo,
+  quemVai: quemVaiDoJogo,
+  viramOJogo: viramDoJogo,
   onFechar,
   onEditar,
   onDuplicar,
   duplicarBloqueado,
   onExcluir,
+  onPublicar,
+  publicando,
   semMoldura
 }: {
   evento: AdminEvent
@@ -153,18 +158,29 @@ export function JogoAberto({
   onDuplicar: () => void
   duplicarBloqueado?: string | null
   onExcluir: () => void
+  /** Só no rascunho (WEB-436). */
+  onPublicar: () => void
+  publicando?: boolean
   /** Dentro da folha lateral (celular), sem o card. */
   semMoldura?: boolean
 }) {
   const titulo = gameTitle(evento)
   const comecou = new Date(evento.startsAt).getTime() <= Date.now()
+  const rascunho = ehRascunho(evento)
+  // Rascunho não está no app: ninguém marca nem vê o jogo.
+  const quemVai = rascunho ? undefined : quemVaiDoJogo
+  const viramOJogo = rascunho ? undefined : viramDoJogo
   const pessoas = quemVai?.people ?? []
   const validaram = quemVai?.validated ?? 0
 
   const conteudo = (
     <>
       <div className="jogos-aberto-topo">
-        <SeloJogo startsAt={evento.startsAt} endsAt={evento.endsAt} />
+        <SeloJogo
+          startsAt={evento.startsAt}
+          endsAt={evento.endsAt}
+          publishedAt={evento.publishedAt}
+        />
         <span>
           <BotaoIcone
             icone="share"
@@ -191,6 +207,7 @@ export function JogoAberto({
         </h2>
         <p className="jogos-aberto-linha">
           {evento.championship} · {quando(evento)}
+          {rascunho ? ' · rascunho, ainda não aparece no app' : ''}
         </p>
       </div>
 
@@ -266,6 +283,11 @@ export function JogoAberto({
       ) : null}
 
       <div className="jogos-acoes">
+        {rascunho ? (
+          <Botao variante="acid" onClick={onPublicar} disabled={publicando}>
+            {publicando ? 'Publicando…' : 'Publicar'}
+          </Botao>
+        ) : null}
         <Botao onClick={onEditar}>Editar</Botao>
         <Botao
           onClick={onDuplicar}

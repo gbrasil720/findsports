@@ -9,6 +9,7 @@ import {
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { toast } from 'sonner'
 import type {
   AdminEvent,
   EventCreationPolicy,
@@ -31,11 +32,13 @@ import { usePeriodoDesempenho } from '@/components/admin/desempenho-contas'
 import { EventDeleteDialog } from '@/components/admin/event-delete-dialog'
 import {
   type EventForm,
-  EventFormComponent
+  EventFormComponent,
+  type PreviaDoJogo
 } from '@/components/admin/event-form'
 import { getEventTemporalState } from '@/domain/events'
 import {
   casaBusca,
+  ehRascunho,
   type FiltroJogos,
   filtrarJogos,
   inicioDaSemana,
@@ -161,9 +164,10 @@ type Vista = 'lista' | 'semana'
 
 /**
  * Jogos do painel do bar (telas 1n–1q): a grade em lista por dia ou em
- * semana, o jogo aberto à direita e o formulário na folha lateral. O que o
- * design mostra e o servidor não tem (rascunho, sugestões e importação da
- * rodada, oferta por jogo) aparece com "em breve".
+ * semana, o jogo aberto à direita e o formulário na folha lateral. Rascunho
+ * (WEB-436) só aparece aqui e no Hoje, e vai ao ar pelo "Publicar". O que o
+ * design mostra e o servidor não tem (sugestões e importação da rodada,
+ * oferta por jogo) aparece com "em breve".
  */
 export function JogosPage({
   jogoInicial,
@@ -248,6 +252,8 @@ export function JogosPage({
   const [aberto, setAberto] = useState<string | null | undefined>(jogoInicial)
   const [folha, setFolha] = useState<Folha | null>(null)
   const [excluindo, setExcluindo] = useState<string | null>(null)
+  // O jogo como está no formulário, para a semana mostrar "Editando" (1p).
+  const [previa, setPrevia] = useState<PreviaDoJogo | null>(null)
 
   const lapsedPlan = getLapsedPaidPlan(subscription)
   const policyBlockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
@@ -314,13 +320,32 @@ export function JogosPage({
   const updateMutation = useMutation(
     trpc.pub.updateEvent.mutationOptions({
       onSuccess: () => {
-        void invalidateEvents()
+        // Publicar o rascunho gasta o limite do Starter.
+        void invalidateEventsAndPolicy()
         setFolha(null)
       }
     })
   )
+  // O "Publicar" da linha e do jogo aberto, sem abrir o formulário.
+  const publishMutation = useMutation(
+    trpc.pub.updateEvent.mutationOptions({
+      onSuccess: () => invalidateEventsAndPolicy(),
+      onError: (error) =>
+        toast.error(
+          getUserFacingMessage(
+            error,
+            'Não foi possível publicar o jogo. Tente novamente.'
+          )
+        )
+    })
+  )
+  const publicar = (eventId: string) =>
+    publishMutation.mutate({ eventId, publish: true })
+  const publicando = publishMutation.isPending
+    ? (publishMutation.variables?.eventId ?? null)
+    : null
 
-  const handleSave = (form: EventForm) => {
+  const handleSave = (form: EventForm, publicarJogo: boolean) => {
     const startsAt = toISOWithTimezone(form.startsAt)
     const endsAt = form.endsAt ? toISOWithTimezone(form.endsAt) : undefined
     const participantIds = form.participantIds
@@ -334,7 +359,8 @@ export function JogosPage({
           participantIds,
           participantFreeText: form.participantFreeText || undefined,
           onBigScreen: form.onBigScreen,
-          withSound: form.withSound
+          withSound: form.withSound,
+          ...(publicarJogo ? {} : { draft: true })
         },
         {
           onSuccess: () => {
@@ -357,7 +383,10 @@ export function JogosPage({
         participantIds,
         participantFreeText: form.participantFreeText,
         onBigScreen: form.onBigScreen,
-        withSound: form.withSound
+        withSound: form.withSound,
+        ...(publicarJogo && eventoFolha && ehRascunho(eventoFolha)
+          ? { publish: true as const }
+          : {})
       })
     }
   }
@@ -373,6 +402,7 @@ export function JogosPage({
   const abrirFolha = (proxima: Folha) => {
     createMutation.reset()
     updateMutation.reset()
+    setPrevia(null)
     setFolha(proxima)
   }
   const novoJogo = (inicial?: Partial<EventForm>) => {
@@ -471,6 +501,7 @@ export function JogosPage({
       : null
 
   const apoio = (evento: AdminEvent) => {
+    if (ehRascunho(evento)) return `${evento.championship} · rascunho`
     const partes = [evento.championship]
     const passado =
       getEventTemporalState(evento.startsAt, evento.endsAt, now) === 'past'
@@ -504,7 +535,9 @@ export function JogosPage({
     onEditar: () => abrirFolha({ tipo: 'editar', id: evento.id }),
     onDuplicar: () => duplicar(evento),
     duplicarBloqueado: blockReason,
-    onExcluir: () => pedirExclusao(evento.id)
+    onExcluir: () => pedirExclusao(evento.id),
+    onPublicar: () => publicar(evento.id),
+    publicando: publicando === evento.id
   })
 
   const planLine =
@@ -611,8 +644,16 @@ export function JogosPage({
           >
             Próximos · {proximos.length}
           </Chip>
-          <Chip check={false} disabled title="Em breve">
-            Rascunhos <EmBreve />
+          <Chip
+            check={false}
+            ativo={filtro === 'rascunhos'}
+            onClick={() => {
+              setFiltro('rascunhos')
+              setVista('lista')
+              setAberto(undefined)
+            }}
+          >
+            Rascunhos · {filtrarJogos(events, 'rascunhos', now).length}
           </Chip>
           <Chip
             check={false}
@@ -759,6 +800,14 @@ export function JogosPage({
       ) : vista === 'semana' ? (
         <SemanaJogos
           dias={montarSemana(semana, visiveis, now)}
+          editando={
+            folha && folha.tipo !== 'jogo' && previa
+              ? {
+                  ...previa,
+                  id: folha.tipo === 'editar' ? folha.id : undefined
+                }
+              : null
+          }
           onAbrir={abrirJogo}
           onAdicionar={
             createBlocked
@@ -786,12 +835,16 @@ export function JogosPage({
                 aberto={abertoId}
                 apoio={apoio}
                 onAbrir={abrirJogo}
+                onPublicar={publicar}
+                publicando={publicando}
               />
             ) : (
               <p className="jogos-dica">
                 {busca.trim()
                   ? `Nada com “${busca.trim()}”.`
-                  : 'Nenhum jogo daqui para frente.'}
+                  : filtro === 'rascunhos'
+                    ? 'Nenhum rascunho.'
+                    : 'Nenhum jogo daqui para frente.'}
               </p>
             )}
           </div>
@@ -842,6 +895,8 @@ export function JogosPage({
             <EventFormComponent
               key={JSON.stringify(folha)}
               editing={folha.tipo === 'editar'}
+              draft={!!eventoFolha && ehRascunho(eventoFolha)}
+              onPrevia={setPrevia}
               initial={
                 folha.tipo === 'editar' && eventoFolha
                   ? formDoEvento(eventoFolha)
