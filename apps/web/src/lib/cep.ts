@@ -2,7 +2,7 @@ import {
   ehUf,
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 /** "05433000" → "05433-000", enquanto digita. */
 export function formatarCep(valor: string): string {
@@ -62,8 +62,11 @@ export type CepStatus = 'idle' | 'buscando' | 'achou' | 'nao'
 export function useCep(preencher: (endereco: EnderecoDoCep) => void) {
   const [cep, setCep] = useState('')
   const [status, setStatus] = useState<CepStatus>('idle')
+  // O CEP da tela agora: resposta de um CEP que já mudou chega e é ignorada.
+  const atual = useRef('')
   const mudar = async (valor: string) => {
     const formatado = formatarCep(valor)
+    atual.current = formatado
     setCep(formatado)
     if (formatado.length < 9) {
       setStatus('idle')
@@ -71,6 +74,7 @@ export function useCep(preencher: (endereco: EnderecoDoCep) => void) {
     }
     setStatus('buscando')
     const achado = await buscarCep(formatado)
+    if (atual.current !== formatado) return
     if (!achado) {
       setStatus('nao')
       return
@@ -80,6 +84,7 @@ export function useCep(preencher: (endereco: EnderecoDoCep) => void) {
   }
   // Estável: entra na lista de dependências de quem restaura um rascunho.
   const definir = useCallback((valor: string) => {
+    atual.current = valor
     setCep(valor)
     setStatus('idle')
   }, [])
