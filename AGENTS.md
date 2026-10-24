@@ -393,7 +393,7 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
 - **Shell:** `PainelShell` (`components/painel/shell.tsx`), a barra lateral com o bar, a
   navegação com contadores, "Validar código" e o menu do dono; vira trilho de ícones
   até 1180 px. Montado uma vez pelo layout `routes/admin.tsx`.
-- **Rotas:** `/admin` (Hoje), `/admin/jogos`, `/admin/quem-vai` (só Elite ou com código
+- **Rotas:** `/admin` (Hoje), `/admin/jogos`, `/admin/desempenho`, `/admin/quem-vai` (só Elite ou com código
   em aberto, senão volta a `/admin`), `/admin/meu-espaco`, `/admin/configuracoes`,
   `/admin/billing`, `/admin/validate`, todas filhas do layout. As abas antigas por hash
   (`/admin#admin-espaco`) são levadas à rota nova no cliente (`getAdminRouteFromHash`).
@@ -413,8 +413,21 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   "Duplicar" só abre o formulário com o jogo uma semana depois. Rascunho, sugestões e
   importação da rodada (WEB-433), oferta por jogo (WEB-422) e a lista de quem vai por
   jogo não existem no servidor: aparecem com "em breve". "Viram o jogo" é o
-  `uniqueVisitors` do analytics por jogo. "Desempenho por jogo" segue no pé, no
-  `painel-legado`.
+  `uniqueVisitors` do analytics por jogo. A aba Passados é "Como cada jogo foi"
+  (`painel-jogos/como-cada-jogo-foi.tsx`): os jogos já começados do período do
+  Desempenho, do que mais puxou público ao que menos, a linha que abre canais e
+  códigos (estes só no Elite) e, no Pro e no Elite, "Comparar jogos" (entre jogos ou
+  contra a média do bar, conta do servidor por `comparisonTarget`). `?passados=1`
+  abre nela.
+- **Desempenho** (`/admin/desempenho`, `components/admin/desempenho.tsx`): o
+  `commercialAnalytics` do bar no período (30 dias, 12 meses e Tudo só se o histórico
+  do plano deixa, e o personalizado, conferido contra ele). Os três números e a série
+  diária são de `desempenho-dados.ts`, que o "Desempenho do bar" de Hoje também lê; o
+  período, a ordem dos jogos e os códigos, de `desempenho-contas.ts`. O período
+  escolhido vale também em Jogos · Passados até recarregar a página. O que o plano não
+  vê vem nulo do servidor: atividade diária, entrega nos clássicos e "Quem foi pela
+  Onside" só no Elite; os canais a partir do Pro. A semana do painel (Jogos, "Esta
+  semana" de Hoje) vai de domingo a sábado; comparação de período não é semana.
 - **Quem vai** (`components/painel-jogos/quem-vai-page.tsx`): um card por jogo com a
   validação aberta, com as peças do jogo aberto (`PessoaQuemVai`); `#jogo-<id>` rola até
   o jogo ("Ver os 24 →"). O bar Elite que confirma pela comanda lança os códigos aqui
