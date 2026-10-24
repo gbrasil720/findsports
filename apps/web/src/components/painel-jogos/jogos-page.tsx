@@ -8,7 +8,6 @@ import {
 } from '@findsports_oficial/ui/components/dialog'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type {
   AdminEvent,
@@ -27,6 +26,7 @@ import {
   getAnalyticsRange,
   getAvailableAnalyticsPeriods
 } from '@/components/admin/analytics-period'
+import { AvisoDoPainel, CardDoPlano, NoPro } from '@/components/admin/avisos'
 import { usePeriodoDesempenho } from '@/components/admin/desempenho-contas'
 import { EventDeleteDialog } from '@/components/admin/event-delete-dialog'
 import {
@@ -104,7 +104,7 @@ export function getDeleteErrorMessage(error: unknown): string {
   )
 }
 
-/** "Elite · jogos ilimitados", "Starter · 3 jogos restantes". */
+/** "Elite · jogos ilimitados", "Starter · 5 jogos por ciclo" (1ab). */
 export function getPlanLine(
   policy: EventCreationPolicy,
   lapsed: boolean
@@ -114,10 +114,10 @@ export function getPlanLine(
   }
   if (policy.status === 'limited') {
     return `${lapsed ? 'Pagamento pendente' : getPlan('starter').name} · ${countLabel(
-      policy.remaining,
-      'jogo restante',
-      'jogos restantes'
-    )}`
+      policy.limit,
+      'jogo',
+      'jogos'
+    )} por ciclo`
   }
   return null
 }
@@ -263,6 +263,13 @@ export function JogosPage({
     policyBlockReason ??
     (loadingSports ? 'Carregando esportes…' : sportsErrorMessage)
   const createBlocked = blockReason !== null
+  // Plano sem criação (limite, fora do ar): o motivo é o aviso do painel, e o
+  // "Novo jogo" ganha o cadeado (1ab). Carregando ou com erro, segue a frase.
+  const travadoPeloPlano =
+    policyState.status === 'ready' && !policyState.policy.canCreate
+  // Starter no limite: à direita, o card do plano e o que o Pro libera.
+  const limiteStarter =
+    travadoPeloPlano && !lapsedPlan && policyState.policy.status === 'limited'
 
   const invalidateMyEvents = () =>
     queryClient.invalidateQueries({ queryKey: trpc.pub.getMyEvents.queryKey() })
@@ -433,7 +440,9 @@ export function JogosPage({
     !larga || vista === 'semana' || filtro === 'passados'
       ? null
       : aberto === undefined
-        ? (naLista[0]?.id ?? null)
+        ? limiteStarter
+          ? null
+          : (naLista[0]?.id ?? null)
         : aberto
   const eventoAberto = events.find((evento) => evento.id === abertoId)
   const eventoFolha =
@@ -540,20 +549,33 @@ export function JogosPage({
             <Botao icone="spark" disabled title="Em breve">
               Importar da rodada <EmBreve />
             </Botao>
-            <Botao
-              variante="acid"
-              icone="plus"
-              onClick={() => novoJogo()}
-              disabled={createBlocked}
-              title={blockReason ?? undefined}
-            >
-              Novo jogo
-            </Botao>
+            {travadoPeloPlano ? (
+              <Botao
+                icone="lock"
+                disabled
+                title={blockReason ?? undefined}
+                className="jogos-novo-travado"
+              >
+                Novo jogo
+              </Botao>
+            ) : (
+              <Botao
+                variante="acid"
+                icone="plus"
+                onClick={() => novoJogo()}
+                disabled={createBlocked}
+                title={blockReason ?? undefined}
+              >
+                Novo jogo
+              </Botao>
+            )}
           </>
         }
       />
 
-      {blockReason ? (
+      <AvisoDoPainel tela="jogos" />
+
+      {blockReason && !travadoPeloPlano ? (
         <p
           className="jogos-bloqueio ml-auto"
           role={
@@ -563,14 +585,6 @@ export function JogosPage({
           }
         >
           {blockReason}{' '}
-          {policyState.status === 'ready' &&
-          policyState.policy.status === 'limited' ? (
-            lapsedPlan ? (
-              <Link to="/admin/billing">Regularizar assinatura</Link>
-            ) : (
-              <a href="/plan">Fazer upgrade</a>
-            )
-          ) : null}
           {policyState.status === 'error' && policyState.retryable ? (
             <button type="button" onClick={policyState.retry}>
               Tentar novamente
@@ -675,7 +689,8 @@ export function JogosPage({
         )}
       </div>
 
-      {filtro === 'passados' ? null : (
+      {/* Nos passados, e no limite do plano, não há o que adicionar (1ab). */}
+      {filtro === 'passados' || travadoPeloPlano ? null : (
         <section className="jogos-sug" aria-label="Sugestões da rodada">
           <div className="jogos-sug-texto">
             <span>
@@ -749,7 +764,8 @@ export function JogosPage({
       ) : (
         <div
           className="jogos-grade"
-          data-aberto={eventoAberto ? true : undefined}
+          data-aberto={eventoAberto || limiteStarter ? true : undefined}
+          data-plano={!eventoAberto && limiteStarter ? true : undefined}
         >
           <div className="jogos-lista">
             {interest?.status === 'gathering' ? (
@@ -779,6 +795,11 @@ export function JogosPage({
               {...detalheProps(eventoAberto)}
               onFechar={() => setAberto(null)}
             />
+          ) : limiteStarter ? (
+            <div className="jogos-plano-col">
+              <CardDoPlano />
+              <NoPro />
+            </div>
           ) : null}
         </div>
       )}
