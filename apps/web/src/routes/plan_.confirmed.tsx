@@ -1,20 +1,20 @@
+import { STARTER_EVENT_LIMIT } from '@findsports_oficial/api/lib/plan-limits'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
-import ExternalLink from 'reicon-react/icons/ArrowUpRight'
+import { PlanosFrame } from '@/components/billing/planos'
+import planosCss from '@/components/billing/planos.css?url'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import {
   countReceiptLines,
   SubscriptionReceipt
 } from '@/components/billing/subscription-receipt'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { Botao, Card, EmBreve, Icone, propsBotao } from '@/components/painel'
+import painelCss from '@/components/painel/painel.css?url'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { getPlan, isContractedTrial } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { roleAccountLabel } from '@/lib/roles'
 import { getScheduledCancelAt } from '@/lib/scheduled-cancel'
 import {
   clearCheckoutIntent,
@@ -42,7 +42,11 @@ export const Route = createFileRoute('/plan_/confirmed')({
       { name: 'robots', content: 'noindex' },
       ...PWA_META
     ],
-    links: [...PWA_LINKS]
+    links: [
+      { rel: 'stylesheet', href: painelCss },
+      { rel: 'stylesheet', href: planosCss },
+      ...PWA_LINKS
+    ]
   }),
   component: SubscriptionConfirmed
 })
@@ -217,135 +221,236 @@ function SubscriptionConfirmed() {
     }
   }
 
-  return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label={roleAccountLabel('pub')} mb="mb-8" />
+  const card = useQuery({
+    ...trpc.pub.getMyBillingBalance.queryOptions(),
+    enabled: confirmed && Boolean(subscription?.externalSubscriptionId),
+    meta: { errorToast: false },
+    retry: false
+  }).data?.card
+  const hasPlan = (stage === 'printing' || stage === 'done') && plan !== null
+  const barName = barQuery.data?.name ?? null
+  const kicker =
+    stage === 'done'
+      ? subscription?.status === 'active'
+        ? 'Pagamento confirmado'
+        : 'Assinatura confirmada'
+      : stage === 'delayed'
+        ? 'Confirmação demorando'
+        : 'Confirmando a assinatura'
+  const passos =
+    hasPlan && plan
+      ? [
+          {
+            icone: 'cal' as const,
+            titulo: 'Cadastre os jogos da semana',
+            texto:
+              plan.id === 'starter'
+                ? `Até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança.`
+                : `${plan.name} não tem limite de jogos.`,
+            to: '/admin/jogos' as const
+          },
+          ...(plan.id === 'elite'
+            ? [
+                {
+                  icone: 'ticket' as const,
+                  titulo: 'Revise a oferta da casa',
+                  texto: 'É ela que o torcedor ganha ao validar.',
+                  to: '/admin/meu-espaco' as const
+                },
+                {
+                  icone: 'code' as const,
+                  titulo: 'Teste a validação no balcão',
+                  texto: 'Pelo painel ou pelo app.',
+                  to: '/admin/validate' as const
+                }
+              ]
+            : [])
+        ]
+      : []
 
-      <SubscriptionReceipt
-        stage={stage}
-        plan={plan}
-        monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
-        status={subscription?.status ?? ''}
-        contractedTrial={isContractedTrial(subscription)}
-        currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
-        cancelAt={scheduledCancelAt}
-        subscriptionRef={subscription?.externalSubscriptionId ?? null}
-        barName={barQuery.data?.name ?? null}
-        issuedAt={issuedAt}
-        printDurationMs={printDurationMs}
-        feedSteps={plan ? countReceiptLines(plan) : 0}
-        onPrinted={() => setPrinted(true)}
-        waitingSlot={
-          stage === 'delayed' ? (
-            <>
-              <h2>A confirmação está demorando.</h2>
-              <p>
-                Isso não quer dizer que o pagamento falhou. A operadora ainda
-                não nos avisou, e o plano é liberado assim que o aviso chega —
-                mesmo que você saia desta página.
-              </p>
-              <p>
-                Para acompanhar, veja assinatura e pagamentos ou abra o portal
-                da operadora.
-              </p>
-              {/*
-               * A consulta automática acabou no teto — de propósito, para a
-               * tela não ficar girando para sempre. O botão devolve a decisão
-               * de tentar de novo a quem está esperando.
-               */}
-              <p>
-                <button
-                  type="button"
-                  className="onside-receipt-retry"
+  return (
+    <PlanosFrame>
+      <div className="mx-auto grid w-full max-w-[1440px] items-start gap-10 px-4 pt-10 pb-16 lg:grid-cols-[minmax(0,1fr)_420px_minmax(0,1fr)] lg:gap-14 lg:px-[72px] lg:pt-14">
+        <div className="flex flex-col gap-3.5 lg:pt-6">
+          <span className="font-bold text-[15px] text-[var(--painel-tint)]">
+            {kicker}
+          </span>
+          {hasPlan && plan ? (
+            <h1
+              className="painel-disp"
+              style={{ '--painel-disp-size': '60px' } as React.CSSProperties}
+            >
+              {plan.name} ativo no
+              {barName ? (
+                <>
+                  <br />
+                  <span className="text-[var(--painel-tint)]">{barName}</span>
+                </>
+              ) : null}
+            </h1>
+          ) : (
+            <h1
+              className="painel-disp"
+              style={{ '--painel-disp-size': '48px' } as React.CSSProperties}
+            >
+              {stage === 'delayed'
+                ? 'A confirmação está demorando.'
+                : 'Confirmando com a operadora.'}
+            </h1>
+          )}
+          <div className="flex max-w-[360px] flex-col gap-2 text-[15px] text-[var(--painel-muted)] leading-normal">
+            {stage === 'done' ? (
+              <p>Tudo já está ligado.</p>
+            ) : stage === 'printing' ? (
+              <p>O comprovante sai assim que a Stripe confirmar o pagamento.</p>
+            ) : stage === 'delayed' ? (
+              <>
+                <p>
+                  Isso não quer dizer que o pagamento falhou. A operadora ainda
+                  não nos avisou, e o plano é liberado assim que o aviso chega —
+                  mesmo que você saia desta página.
+                </p>
+                <p>
+                  Para acompanhar, veja Plano e cobrança ou abra o portal da
+                  operadora.
+                </p>
+                {/*
+                 * A consulta automática acabou no teto — de propósito, para a
+                 * tela não ficar girando para sempre. O botão devolve a
+                 * decisão de tentar de novo a quem está esperando.
+                 */}
+                <Botao
+                  className="mt-2 self-start"
                   onClick={() => void subscriptionQuery.refetch()}
                   disabled={subscriptionQuery.isFetching}
                 >
                   {subscriptionQuery.isFetching
                     ? 'Verificando…'
                     : 'Verificar de novo'}
-                </button>
-              </p>
-              {portalError ? (
-                <p role="alert" className="onside-receipt-error">
-                  {portalError}
+                </Botao>
+                {portalError ? (
+                  <p role="alert" className="text-[var(--painel-live)]">
+                    {portalError}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p>
+                  Costuma levar alguns segundos. O comprovante sai sozinho
+                  quando a confirmação chega.
                 </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <h2>Confirmando com a operadora.</h2>
-              <p>
-                Costuma levar alguns segundos. O recibo é impresso sozinho
-                quando a confirmação chega.
-              </p>
-              {subscriptionQuery.isError ? (
-                <p role="alert" className="onside-receipt-error">
-                  Não conseguimos consultar sua assinatura agora.
-                  {isRetryableError(subscriptionQuery.error) ? (
-                    <>
-                      {' '}
-                      <button
-                        type="button"
-                        className="onside-receipt-retry"
-                        onClick={() => void subscriptionQuery.refetch()}
-                      >
-                        Tentar novamente
-                      </button>
-                    </>
-                  ) : null}
-                </p>
-              ) : null}
-            </>
-          )
-        }
-        actions={
-          stage === 'processing' ? (
-            <Link to="/admin" className="onside-btn onside-btn-outline">
-              Ir para o painel
-              <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-            </Link>
-          ) : stage === 'delayed' ? (
-            <>
-              <Link to="/admin/billing" className="onside-btn onside-btn-ink">
-                Assinatura e pagamentos
-                <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-              </Link>
-              <button
-                type="button"
-                onClick={handleOpenPortal}
-                disabled={openingPortal}
-                className="onside-btn onside-btn-outline"
-              >
-                {openingPortal ? 'Abrindo…' : 'Portal da operadora'}
-                <ExternalLink
-                  size={16}
-                  color="currentColor"
-                  aria-hidden="true"
-                />
-              </button>
-              <Link to="/admin" className="onside-btn onside-btn-ghost">
+                {subscriptionQuery.isError ? (
+                  <p role="alert" className="text-[var(--painel-live)]">
+                    Não conseguimos consultar sua assinatura agora.
+                    {isRetryableError(subscriptionQuery.error) ? (
+                      <>
+                        {' '}
+                        <button
+                          type="button"
+                          className="font-bold underline underline-offset-2"
+                          onClick={() => void subscriptionQuery.refetch()}
+                        >
+                          Tentar novamente
+                        </button>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+
+        <SubscriptionReceipt
+          stage={stage}
+          plan={plan}
+          monthlyDiscountReais={subscription?.monthlyDiscountReais ?? null}
+          status={subscription?.status ?? ''}
+          contractedTrial={isContractedTrial(subscription)}
+          currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
+          cancelAt={scheduledCancelAt}
+          subscriptionRef={subscription?.externalSubscriptionId ?? null}
+          barName={barName}
+          cardLast4={card?.last4 ?? null}
+          issuedAt={issuedAt}
+          printDurationMs={printDurationMs}
+          feedSteps={plan ? countReceiptLines(plan) : 0}
+          onPrinted={() => setPrinted(true)}
+          actions={
+            stage === 'delayed' ? (
+              <>
+                <Link
+                  to="/admin/billing"
+                  {...propsBotao({ variante: 'ink', altura: 50 })}
+                >
+                  Plano e cobrança
+                </Link>
+                <Botao
+                  altura={50}
+                  onClick={handleOpenPortal}
+                  disabled={openingPortal}
+                >
+                  {openingPortal ? 'Abrindo…' : 'Portal da operadora'}
+                </Botao>
+              </>
+            ) : hasPlan ? (
+              <>
+                <Botao
+                  altura={50}
+                  icone="doc"
+                  disabled
+                  className="!flex-1 !rounded-[25px]"
+                  title="Em breve"
+                >
+                  Baixar PDF <EmBreve />
+                </Botao>
+                <Link
+                  to="/admin"
+                  {...propsBotao(
+                    { variante: 'acid', altura: 50 },
+                    '!flex-[1.3] !rounded-[25px]'
+                  )}
+                >
+                  Ir para o painel
+                </Link>
+                {scheduledCancelAt ? (
+                  <ReactivateSubscriptionButton
+                    {...propsBotao({ altura: 50 }, '!rounded-[25px]')}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <Link to="/admin" {...propsBotao({ altura: 50 })}>
                 Ir para o painel
               </Link>
-            </>
-          ) : (
-            <>
-              <Link to="/admin" className="onside-btn onside-btn-acid">
-                Ir para o painel
-                <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-              </Link>
-              <Link
-                to="/admin/billing"
-                className="onside-btn onside-btn-outline"
-              >
-                Assinatura e pagamentos
-              </Link>
-              {scheduledCancelAt ? (
-                <ReactivateSubscriptionButton className="onside-btn onside-btn-outline" />
-              ) : null}
-            </>
-          )
-        }
-      />
-    </OnboardingLayout>
+            )
+          }
+        />
+
+        {passos.length > 0 ? (
+          <div className={`lg:pt-6 ${stage === 'done' ? '' : 'opacity-40'}`}>
+            <Card className="!px-5 !py-[18px]">
+              <h2 className="font-bold text-[15px]">Próximos passos</h2>
+              {passos.map((passo) => (
+                <Link
+                  key={passo.titulo}
+                  to={passo.to}
+                  className="mt-3 flex items-start gap-3 border-[var(--painel-line)] border-t pt-3"
+                >
+                  <Icone nome={passo.icone} tamanho={20} />
+                  <span>
+                    <b className="block text-[14px]">{passo.titulo}</b>
+                    <span className="text-[12.5px] text-[var(--painel-muted)]">
+                      {passo.texto}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </Card>
+          </div>
+        ) : null}
+      </div>
+    </PlanosFrame>
   )
 }

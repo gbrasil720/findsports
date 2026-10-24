@@ -24,7 +24,6 @@ function receipt(subscription: {
       feedSteps={1}
       onPrinted={() => {}}
       actions={null}
-      waitingSlot={null}
     />
   )
 }
