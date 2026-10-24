@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import { isLive } from './explore'
 
@@ -5,8 +6,6 @@ import { isLive } from './explore'
  * Busca (19a e 19b do design): contas puras sobre os bares perto que a
  * `pubs.search` devolve. A tela fica em `app/busca.tsx`.
  */
-
-const TZ = 'America/Sao_Paulo'
 
 type Game = {
   startsAt: string
@@ -85,8 +84,7 @@ export function liveNow<B extends NearBar>(bars: B[], now: number) {
   )
 }
 
-const dayOf = (date: string | number) =>
-  new Date(date).toLocaleDateString('en-CA', { timeZone: TZ })
+const dayOf = (date: string | number) => brasiliaDay(date)
 
 /** "Hoje à noite": os jogos de hoje que ainda não começaram, pela hora. */
 export function tonight<B extends NearBar>(bars: B[], now: number) {

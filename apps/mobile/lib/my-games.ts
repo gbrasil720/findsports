@@ -1,4 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 
@@ -29,7 +30,7 @@ export function shortDate(date: string | Date) {
     .toLocaleDateString('pt-BR', {
       day: 'numeric',
       month: 'short',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: TZ
     })
     .replace(/\.$/, '')
     .replace(' de ', ' ')
@@ -41,7 +42,7 @@ export function thisMonth(games: { startsAt: string | Date }[], now: number) {
     new Date(date).toLocaleDateString('pt-BR', {
       month: 'long',
       year: 'numeric',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: TZ
     })
   const current = month(now)
   const count = games.filter((game) => month(game.startsAt) === current).length
@@ -75,7 +76,7 @@ export function calendarEvent(
     title: `${gameTitle(game)} no ${game.barName}`,
     startDate: new Date(game.startsAt),
     endDate: new Date(game.endsAt),
-    timeZone: 'America/Sao_Paulo',
+    timeZone: TZ,
     location: [game.barName, game.neighborhood].filter(Boolean).join(', '),
     notes: notes.length ? notes.join('\n') : undefined,
     alarms: [{ relativeOffset: -60 }]

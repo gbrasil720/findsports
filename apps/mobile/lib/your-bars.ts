@@ -1,3 +1,7 @@
+import {
+  brasiliaDay,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 import { formatTime, isLive } from './explore'
 
 /*
@@ -6,12 +10,10 @@ import { formatTime, isLive } from './explore'
  * a tela fica em `app/(fan)/favoritos.tsx`.
  */
 
-const TZ = 'America/Sao_Paulo'
 const DAY = 86_400_000
 
 /** "2026-10-17": o dia de Brasília, para comparar datas. */
-export const dayKey = (date: string | number | Date) =>
-  new Date(date).toLocaleDateString('en-CA', { timeZone: TZ })
+export const dayKey = (date: string | number | Date) => brasiliaDay(date)
 
 /** 0 = segunda … 6 = domingo, em Brasília. */
 function weekday(date: number) {

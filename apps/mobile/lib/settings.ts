@@ -1,9 +1,11 @@
+import {
+  brasiliaDay,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 /*
  * Contas puras das Configurações (11f–11i do design); a tela fica em
  * `app/configuracoes.tsx`.
  */
-
-const TZ = 'America/Sao_Paulo'
 
 /** "a", "a e b", "a, b e c". */
 export function listJoin(items: string[]) {
@@ -93,8 +95,7 @@ export function deviceLabel(userAgent: string | null | undefined): {
   return { name: browser ? `${browser} no ${device}` : device, computer }
 }
 
-const dayKey = (date: Date | number) =>
-  new Date(date).toLocaleDateString('en-CA', { timeZone: TZ })
+const dayKey = (date: Date | number) => brasiliaDay(date)
 
 /** Quando a sessão foi usada: "agora", "hoje, 21:30", "ontem, 23:10", "12 out". */
 export function lastSeen(date: Date | string, now: number) {
