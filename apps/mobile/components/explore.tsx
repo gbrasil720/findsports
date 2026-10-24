@@ -132,61 +132,6 @@ export const initials = (name: string) =>
 // --- Mapa -------------------------------------------------------------------
 
 /**
- * O pino do bar: ao vivo em vermelho, com o nome; jogo mais tarde hoje em
- * acid, com a hora; o resto em tinta, com o nome.
- */
-export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
-  const game = bar.nextEvent
-  const live = game ? isLive(game, now) : false
-  const later = game && !live && dayOf(game.startsAt) === dayOf(now)
-  return (
-    <PinTag
-      label={later && game ? formatTime(game.startsAt) : bar.name}
-      kind={live ? 'live' : later ? 'later' : 'idle'}
-    />
-  )
-}
-
-/** A etiqueta do pino, sem a regra de qual cor: o mapa de "Onde fica" a usa. */
-export function PinTag({
-  label,
-  kind,
-  big = kind === 'live'
-}: {
-  label: string
-  kind: 'live' | 'later' | 'idle'
-  /** Maior: o ao vivo de "Onde fica" e o bar tocado no mapa (20c). */
-  big?: boolean
-}) {
-  const live = kind === 'live'
-  const bg = live ? LIVE : kind === 'later' ? ACID : INK
-  const fg = kind === 'later' ? INK : PAPER
-  return (
-    <View style={styles.pin}>
-      <View
-        style={[
-          styles.pinLabel,
-          big && styles.pinLive,
-          { backgroundColor: bg }
-        ]}
-      >
-        {live ? <View style={styles.pinDot} /> : null}
-        <Text
-          style={[
-            text(big ? 13 : 12, 'Bold', 1.2),
-            { color: fg, maxWidth: 150 }
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </View>
-      <View style={[styles.pinTip, { backgroundColor: bg }]} />
-    </View>
-  )
-}
-
-/**
  * A gota do bar (21a): pin clássico com a ponta reta da marca. Tinta com
  * copo (o padrão); vermelha com telão e halo na ponta se ao vivo; acid com
  * estrela se Elite. Ao vivo pode levar a pílula com o nome à direita; o bar
@@ -1212,7 +1157,6 @@ export function BarRow({
 }
 
 const styles = StyleSheet.create({
-  pin: { alignItems: 'center' },
   quietHit: {
     width: 28,
     height: 28,
@@ -1220,12 +1164,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   quietDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
-  pointHit: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
   drop: {
     position: 'absolute',
     left: 0,
@@ -1335,31 +1273,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  pinLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 9,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: PAPER,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 6 }
-  },
-  pinLive: { paddingVertical: 8, paddingHorizontal: 12 },
-  pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
-  pinTip: {
-    width: 9,
-    height: 9,
-    marginTop: -6,
-    transform: [{ rotate: '45deg' }],
-    borderRightWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: PAPER
   },
   meHalo2: {
     width: 74,
