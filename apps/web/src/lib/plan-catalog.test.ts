@@ -4,14 +4,8 @@ import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
-  FOUNDER_DISCOUNT_NOTE,
-  formatComparison,
-  formatHistoryWindow,
-  formatPerGame,
   formatPlanChargeLine,
-  formatPlanPricing,
   founderCouponFromQuery,
-  getAnalyticsEntitlement,
   getDefaultPlanSelection,
   getPlan,
   getPlanExitLink,
@@ -56,7 +50,6 @@ describe('PLAN_CATALOG structure', () => {
       expect(plan.period).toBeTruthy()
       expect(plan.features).toBeInstanceOf(Array)
       expect(plan.features.length).toBeGreaterThan(0)
-      expect(plan.analytics).toBeDefined()
     }
   })
 })
@@ -89,15 +82,6 @@ describe('preços (WEB-112)', () => {
         reais(p.tablePrice)
       ])
     })
-  })
-
-  test('texto mostra os dois preços, sem percentual nem prazo', () => {
-    expect(formatPlanPricing(getPlan('starter'))).toBe(
-      'R$ 69/mês com desconto de fundador · tabela cheia R$ 97/mês'
-    )
-    expect(FOUNDER_DISCOUNT_NOTE).toBe(
-      'Com o desconto de fundador aplicado na contratação, R$ 28 por mês a menos que a tabela cheia.'
-    )
   })
 
   test('vitrine só promete desconto com cupom disponível', () => {
@@ -228,36 +212,6 @@ describe('getPlan', () => {
   })
 })
 
-describe('Analytics entitlements', () => {
-  test('starter has 30-day history', () => {
-    const ent = getAnalyticsEntitlement('starter')
-    expect(ent.historyDays).toBe(30)
-    expect(ent.perGame).toBe('basic')
-    expect(ent.comparison).toBe('previous_period')
-  })
-
-  test('pro has 365-day history', () => {
-    const ent = getAnalyticsEntitlement('pro')
-    expect(ent.historyDays).toBe(365)
-    expect(ent.perGame).toBe('complete')
-    expect(ent.comparison).toBe('cross_game')
-  })
-
-  test('elite has unlimited history', () => {
-    const ent = getAnalyticsEntitlement('elite')
-    expect(ent.historyDays).toBeNull()
-    expect(ent.perGame).toBe('complete')
-    expect(ent.comparison).toBe('advanced')
-  })
-
-  test('catalog plan analytics match entitlement lookup', () => {
-    for (const plan of PLAN_CATALOG) {
-      const ent = getAnalyticsEntitlement(plan.id)
-      expect(plan.analytics).toEqual(ent)
-    }
-  })
-})
-
 describe('Tier ordering', () => {
   test('tier order is starter < pro < elite', () => {
     expect(PLAN_TIER_ORDER.starter).toBe(0)
@@ -325,39 +279,6 @@ describe('Saída da tela de planos', () => {
       label: 'Ver planos depois',
       to: '/admin'
     })
-  })
-})
-
-describe('Format helpers', () => {
-  test('formatHistoryWindow', () => {
-    expect(formatHistoryWindow(getAnalyticsEntitlement('starter'))).toBe(
-      '30 dias'
-    )
-    expect(formatHistoryWindow(getAnalyticsEntitlement('pro'))).toBe('12 meses')
-    expect(formatHistoryWindow(getAnalyticsEntitlement('elite'))).toBe(
-      'Histórico completo'
-    )
-  })
-
-  test('formatPerGame', () => {
-    expect(formatPerGame(getAnalyticsEntitlement('starter'))).toBe(
-      'Desempenho básico por jogo'
-    )
-    expect(formatPerGame(getAnalyticsEntitlement('pro'))).toBe(
-      'Analytics completa por jogo'
-    )
-  })
-
-  test('formatComparison', () => {
-    expect(formatComparison(getAnalyticsEntitlement('starter'))).toBe(
-      'Comparação com período anterior'
-    )
-    expect(formatComparison(getAnalyticsEntitlement('pro'))).toBe(
-      'Comparação entre jogos e períodos'
-    )
-    expect(formatComparison(getAnalyticsEntitlement('elite'))).toBe(
-      'Comparação avançada'
-    )
   })
 })
 

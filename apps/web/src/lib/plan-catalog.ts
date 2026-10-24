@@ -1,5 +1,3 @@
-import { getAnalyticsEntitlements } from '@findsports_oficial/api/lib/commercial-analytics/entitlements'
-import type { AnalyticsComparisonMode } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import {
   PLAN_NAMES,
@@ -41,25 +39,6 @@ export interface PlanProfilePerk {
  * que muda de plano para plano, e os que têm dado do próprio bar para citar.
  */
 export type PlanPerkKey = 'badge' | 'events' | 'menu' | 'going' | 'house_offer'
-
-export interface PlanAnalytics {
-  historyDays: number | null
-  perGame: 'basic' | 'complete'
-  comparison: AnalyticsComparisonMode
-}
-
-function analyticsForPlan(id: SubscriptionPlan): PlanAnalytics {
-  const entitlements = getAnalyticsEntitlements(id)
-  if (entitlements.eventBreakdown === 'none') {
-    throw new Error(`Plan ${id} has no per-game analytics entitlement`)
-  }
-
-  return {
-    historyDays: entitlements.maxDaysRetention,
-    perGame: entitlements.eventBreakdown,
-    comparison: entitlements.comparison
-  }
-}
 
 /**
  * Desconto de fundador, em reais por mês: valor fixo, igual em todos os
@@ -204,9 +183,6 @@ export function formatPlanChargeLine(
   return `${charge} (tabela cheia ${formatPlanPrice(display.listReais)}${period})`
 }
 
-/** @deprecated Só para textos legais; preferir {@link formatPlanChargeLine}. */
-export const FOUNDER_DISCOUNT_NOTE = `Com o desconto de fundador aplicado na contratação, ${formatPlanPrice(FOUNDER_DISCOUNT)} por mês a menos que a tabela cheia.`
-
 export interface Plan {
   id: SubscriptionPlan
   name: string
@@ -220,7 +196,6 @@ export interface Plan {
   icon: React.ComponentType<{ size?: number | string; color?: string }>
   features: PlanFeature[]
   profilePerks: PlanProfilePerk[]
-  analytics: PlanAnalytics
   highlight?: boolean
   badge?: string
 }
@@ -250,10 +225,7 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Perfil completo com agenda e rota', status: 'live' },
       { label: 'Contato direto por WhatsApp', status: 'live' },
       { label: 'Foto de capa', status: 'live' }
-    ],
-    analytics: {
-      ...analyticsForPlan('starter')
-    }
+    ]
   },
   {
     id: 'pro',
@@ -286,10 +258,7 @@ export const PLAN_CATALOG: Plan[] = [
       },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
       { label: 'Promoções no perfil', status: 'soon' }
-    ],
-    analytics: {
-      ...analyticsForPlan('pro')
-    }
+    ]
   },
   {
     id: 'elite',
@@ -333,10 +302,7 @@ export const PLAN_CATALOG: Plan[] = [
       },
       { label: 'Galeria de fotos do ambiente', status: 'soon' },
       { label: 'Promoções no perfil', status: 'soon' }
-    ],
-    analytics: {
-      ...analyticsForPlan('elite')
-    }
+    ]
   }
 ]
 
@@ -352,17 +318,6 @@ export function getPlan(id: SubscriptionPlan): Plan {
   const entry = PLAN_CATALOG.find((p) => p.id === id)
   if (!entry) throw new Error(`Plan ${id} not found in catalog`)
   return entry
-}
-
-/** Os dois preços de um plano à venda, no vocabulário dos Termos de Uso. */
-export function formatPlanPricing(
-  plan: Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
-): string {
-  return `${formatPlanPrice(plan.founderPrice)}${plan.period} com desconto de fundador · tabela cheia ${formatPlanPrice(plan.tablePrice)}${plan.period}`
-}
-
-export function getAnalyticsEntitlement(id: SubscriptionPlan): PlanAnalytics {
-  return getPlan(id).analytics
 }
 
 export function isDowngrade(
@@ -749,27 +704,4 @@ export function getTrialNotice(
     year: 'numeric'
   })
   return `Trial gratuito até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
-}
-
-export function formatHistoryWindow(a: PlanAnalytics): string {
-  if (a.historyDays === null) return 'Histórico completo'
-  if (a.historyDays >= 365) return '12 meses'
-  return `${a.historyDays} dias`
-}
-
-export function formatPerGame(a: PlanAnalytics): string {
-  return a.perGame === 'basic'
-    ? 'Desempenho básico por jogo'
-    : 'Analytics completa por jogo'
-}
-
-export function formatComparison(a: PlanAnalytics): string {
-  switch (a.comparison) {
-    case 'previous_period':
-      return 'Comparação com período anterior'
-    case 'cross_game':
-      return 'Comparação entre jogos e períodos'
-    case 'advanced':
-      return 'Comparação avançada'
-  }
 }
