@@ -188,7 +188,19 @@ só em `packages/db/src/bar-menu.ts`.
 
 `endsAt ?? startsAt + duração padrão`. Existe porque `event.endsAt` é opcional
 no schema e "fim do jogo" precisa ser definido para todo evento. Calculado por
-uma função única.
+uma função única (`getEventEnd`, e `eventEndSql` em SQL). O fim é exclusivo: no
+instante do fim o jogo já acabou.
+
+## Dia de Brasília
+
+O dia do calendário em `America/Sao_Paulo`, "AAAA-MM-DD": é o "hoje" de toda
+tela e consulta, e o `commercial_day` do relatório. Nunca o dia do UTC nem o
+do fuso de quem lê.
+
+## Relógio do jogo
+
+O module que decide o dia de Brasília e o fim derivado, em TypeScript
+(`event-window.ts`) e em SQL (`event-window-sql.ts`), com os mesmos nomes.
 
 ## Comparecimento
 

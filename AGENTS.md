@@ -149,6 +149,20 @@ Não existe modo "descubra sozinho até onde o banco está": marcar como aplicad
 migration que não está faz o `migrate` pular SQL de verdade, e o erro só aparece depois.
 Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 
+### Relógio do jogo
+
+"Que dia é" e "o jogo acabou" têm um dono só: `packages/db/src/event-window.ts`
+(`brasiliaDay`, `brasiliaDayStart`, `getEventEnd`, `isEventLive`, `hasEventEnded`),
+sem imports, lido pelo servidor, pelo web e pelo app. Em SQL, os mesmos nomes estão em
+`event-window-sql.ts` (só servidor: `eventEndSql`, `eventEndedSql`, `eventNotEndedSql`,
+`brasiliaDaySql`, `brasiliaTodaySql`, `brasiliaDayStartSql`, `onBrasiliaDaysSql`,
+`utcNowSql`), e `event-window-sql.integration.test.ts` confere os dois lados no Postgres.
+"Hoje" é sempre o dia de Brasília; o fim derivado é exclusivo (no instante do fim o jogo
+já acabou). `starts_at`, `ends_at` e `current_period_end` são `timestamp` sem fuso em
+UTC: não compare com `now()` cru nem passe `Date` cru no `sql` (o driver o escreve no
+fuso do processo); use `utcNowSql(now?)`. Não escreva `toLocaleDateString('en-CA', …)`,
+`AT TIME ZONE 'America/Sao_Paulo'` nem `coalesce(ends_at, …)` à mão.
+
 ### Catálogo de times e atletas
 
 A tabela `team` (times, seleções, escuderias e atletas: `kind`) é gravada a partir de
