@@ -35,10 +35,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 3001,
-    allowedHosts: [
-      'host.docker.internal',
-      'nintendo-hyperlink-undamaged.ngrok-free.dev'
-    ]
+    allowedHosts: ['host.docker.internal']
   },
   resolve: {
     tsconfigPaths: true
