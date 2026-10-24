@@ -93,14 +93,14 @@ export function Hoje() {
 
   const noite = montarNoite(events.data ?? [], now)
   const dias = semanaDe(noite.dia).map((d) => d.dia)
-  const segunda = dias[0] ?? noite.dia
-  const domingo = dias[6] ?? noite.dia
+  const domingo = dias[0] ?? noite.dia
+  const sabado = dias[6] ?? noite.dia
   const lista = entitlements.data?.canViewReservations === true
 
   const semana = useQuery({
     ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
-      from: segunda,
-      to: domingo
+      from: domingo,
+      to: sabado
     }),
     refetchInterval: 60_000,
     ...SEM_TOAST
