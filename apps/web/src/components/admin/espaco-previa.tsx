@@ -77,7 +77,7 @@ export function EspacoPrevia(props: Props) {
   }
   return (
     <div className="flex flex-col items-center gap-3.5">
-      <div className="flex w-full items-center justify-between gap-3">
+      <div className="flex w-full flex-wrap items-center justify-between gap-3">
         <h2 className="font-bold text-[15px]">Como o torcedor vê</h2>
         <fieldset className="flex gap-1.5">
           <legend className="sr-only">Prévia</legend>
@@ -301,17 +301,20 @@ function CardDoApp({
           className="overflow-hidden rounded-[6px] border border-[rgb(241_238_230/9%)] bg-[#1c1c18]"
           style={{ boxShadow: sombra }}
         >
-          <div
-            className="relative grid h-32 place-items-center bg-[#2a2a25] bg-center bg-cover"
-            style={photoUrl ? { backgroundImage: `url("${photoUrl}")` } : {}}
-          >
-            {photoUrl ? null : (
-              <span className="font-bold text-[34px] text-[rgb(241_238_230/22%)]">
-                {iniciaisDoApp(nome)}
-              </span>
-            )}
+          <div className="relative grid h-32 place-items-center bg-[#2a2a25]">
+            {/* As iniciais ficam por baixo e a foto cobre: foto quebrada mostra
+                as iniciais, como no app. */}
+            <span className="font-bold text-[34px] text-[rgb(241_238_230/22%)]">
+              {iniciaisDoApp(nome)}
+            </span>
+            {photoUrl ? (
+              <div
+                className="absolute inset-0 bg-center bg-cover"
+                style={{ backgroundImage: `url("${photoUrl}")` }}
+              />
+            ) : null}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(18_18_15/0%)_40%,rgb(18_18_15/55%))]" />
-            <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+            <div className="absolute top-2.5 right-[52px] left-2.5 flex flex-wrap gap-1.5">
               {aoVivo ? (
                 <SeloDeVidro fundo="rgb(232 50 12 / 78%)">
                   <span className="size-[7px] rounded-full bg-[#f1eee6]" />
