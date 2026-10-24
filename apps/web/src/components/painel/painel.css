@@ -702,10 +702,18 @@ html[data-consent] .painel .painel-lateral {
   font-size: 12.5px;
   color: var(--painel-muted);
 }
-.painel :is(.painel-bar-texto, .painel-dono-texto) :is(b, span) {
+.painel .painel-dono-texto :is(b, span) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Nome e bairro do bar quebram linha ao lado do selo (1v), até duas linhas. */
+.painel .painel-bar-texto :is(b, span) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .painel .painel-nav {
