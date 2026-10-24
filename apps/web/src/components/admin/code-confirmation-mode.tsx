@@ -109,7 +109,7 @@ export function CodeConfirmationMode({
             <Botao altura={38} onClick={() => printTeamSheet(message)}>
               Imprimir meia folha
             </Botao>
-            <Link to="/admin/validate" {...propsBotao({ altura: 38 })}>
+            <Link to="/admin/quem-vai" {...propsBotao({ altura: 38 })}>
               Lançar códigos da comanda
               <IconeBotao nome="right" />
             </Link>

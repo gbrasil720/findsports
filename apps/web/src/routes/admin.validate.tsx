@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
-import { LateCodeEntry } from '@/components/admin/late-code-entry'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
@@ -37,18 +36,6 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
   const elite = subscriptionQuery.data?.currentPlan === 'elite'
-  // Bar que confirma pela comanda lança aqui o que a equipe anotou (WEB-412).
-  const barQuery = useQuery({
-    ...trpc.pub.getMe.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const confirmsLater = elite && barQuery.data?.confirmsCodesLater === true
-  const notLoggedQuery = useQuery({
-    ...trpc.reservationValidation.notLogged.queryOptions(),
-    enabled: confirmsLater,
-    meta: { errorToast: false }
-  })
-
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
   const { reservationValidation } = useTRPCClient()
@@ -66,14 +53,6 @@ function ValidatePage() {
           da casa.
         </p>
       </div>
-
-      {confirmsLater ? (
-        <LateCodeEntry
-          logLate={reservationValidation.logLate.mutate}
-          missing={notLoggedQuery.data}
-          onLogged={() => void notLoggedQuery.refetch()}
-        />
-      ) : null}
 
       <CodeValidation
         access={

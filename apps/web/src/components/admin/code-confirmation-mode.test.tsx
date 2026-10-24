@@ -40,6 +40,6 @@ describe('CodeConfirmationMode (WEB-412)', () => {
     expect(doc.body.textContent).toContain(
       'ganha a oferta da casa: Chopp em dobro.'
     )
-    expect(doc.querySelector('a[href="/admin/validate"]')).not.toBeNull()
+    expect(doc.querySelector('a[href="/admin/quem-vai"]')).not.toBeNull()
   })
 })
