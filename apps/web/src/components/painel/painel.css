@@ -476,6 +476,7 @@
 .painel .painel-kpi {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   padding: 16px 18px;
 }
