@@ -1,6 +1,7 @@
 import { runInBackground } from '@findsports_oficial/auth/background'
-import { and, db, eq, isNull } from '@findsports_oficial/db'
+import { and, db, eq, isNull, or } from '@findsports_oficial/db'
 import { aiAction, aiProposal, aiRun } from '@findsports_oficial/db/schema/ai'
+import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
@@ -33,7 +34,9 @@ import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import { aiGate, runAi } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
+import { stillOnProfile } from '../lib/event-profile-window'
 import { createFriendCall } from '../lib/friend-calls'
+import { byMatchOrder } from '../lib/game-participants'
 import { attendanceRouter } from './attendance'
 import { recommendationsRouter } from './recommendations'
 
@@ -332,6 +335,46 @@ function failed(error: unknown): ConfirmFailure {
   return { ok: false, code: 'failed', reason: 'Não deu certo agora.' }
 }
 
+/**
+ * Bar e jogo da proposta, só com o que a tela do "Confirmar" mostra (24e).
+ * Mesma regra de `pubs.getById`: bar fora do ar é "não encontrado" (salvo
+ * para o dono), e o jogo só vem enquanto está no perfil.
+ */
+async function readProposalBar(
+  barId: string,
+  eventId: string,
+  userId: string,
+  now: Date
+) {
+  const found = await db.query.bar.findFirst({
+    where: and(
+      eq(bar.id, barId),
+      or(eq(bar.isActive, true), eq(bar.userId, userId))
+    ),
+    columns: { name: true, neighborhood: true },
+    with: {
+      events: {
+        where: (game) => and(eq(game.id, eventId), stillOnProfile(game, now)),
+        columns: {
+          startsAt: true,
+          championship: true,
+          participantFreeText: true
+        },
+        with: {
+          participants: {
+            columns: {},
+            with: { team: { columns: { name: true } } },
+            orderBy: byMatchOrder
+          }
+        }
+      }
+    }
+  })
+  if (!found)
+    throw new TRPCError({ code: 'NOT_FOUND', message: 'Bar não encontrado.' })
+  return found
+}
+
 async function ownRun(runId: string, userId: string) {
   const [row] = await db
     .select({ runId: aiRun.runId })
@@ -441,8 +484,8 @@ export const aiRouter = router({
         try {
           // O que a tela mostra é lido antes de marcar: depois do `set`, a
           // presença está feita e a resposta não pode virar falha.
-          const b = await contextCaller(ctx).getById({ id: p.barId })
-          const game = b.events.find((e) => e.id === p.eventId)
+          const b = await readProposalBar(p.barId, p.eventId, userId, now)
+          const game = b.events[0]
           const marked = await attendanceRouter
             .createCaller(ctx)
             .set({ eventId: p.eventId, attending: true })
