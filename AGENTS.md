@@ -379,6 +379,28 @@ navegador, leia `docs/e2e.md`** — fixtures, dublês (outbox de e-mail, stub da
 LocationIQ, R2, API e webhook do Stripe), por que o servidor roda sem cache e as
 variáveis `E2E_PORT`/`E2E_DATABASE_URL` para rodar em paralelo entre worktrees.
 
+### Painel do bar no web
+
+Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema**
+(`prefers-color-scheme`), claro e escuro; o resto do site continua só no claro.
+
+- **Tokens e estilos:** `apps/web/src/components/painel/painel.css` (variáveis
+  `--painel-*`, sombras sólidas `--painel-sh*`), carregado só pelas rotas `/admin/*`
+  (link no `head` de `routes/admin.tsx`) e preso a `.painel`.
+- **Peças:** `apps/web/src/components/painel/` (`import { Card, Botao } from
+  '@/components/painel'`; a lista está no topo de `index.ts`): ícones duotom, card,
+  botão, badge e "em breve", chip, seg, toggle, campo, avatar, progresso, KPI e os
+  cabeçalhos de página e de card. Peça nova que mais de uma tela usa entra ali.
+- **Shell:** `PainelShell` (`components/painel/shell.tsx`), a barra lateral com o bar, a
+  navegação com contadores, "Validar código" e o menu do dono; vira trilho de ícones
+  até 1180 px. Montado uma vez pelo layout `routes/admin.tsx`.
+- **Rotas:** `/admin` (Hoje), `/admin/jogos`, `/admin/quem-vai` (só Elite ou com código
+  em aberto, senão volta a `/admin`), `/admin/meu-espaco`, `/admin/configuracoes`,
+  `/admin/billing`, `/admin/validate`, todas filhas do layout. As abas antigas por hash
+  (`/admin#admin-espaco`) são levadas à rota nova no cliente (`getAdminRouteFromHash`).
+- Tela antiga que ainda não foi refeita fica num `div.painel-legado`, que no escuro vira
+  uma folha clara.
+
 ### Houdini (painel interno)
 
 O painel interno é o Houdini (projeto Houdini no Linear, WEB-383 em diante), em
