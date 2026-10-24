@@ -1,9 +1,9 @@
 import { db, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { TRPCError } from '@trpc/server'
 import type { Context } from '../../context'
 import { classicRuleMatches, currentClassicRulesCte } from '../classics'
-import { getCommercialDay } from './commercial-day'
 import type { CommercialEventType } from './types'
 
 /** Rate limit: max events per fan per bar per minute */
@@ -174,7 +174,7 @@ export async function recordCommercialEvent(
   //    chamada só tira o snapshot depois que a primeira commitou, e enxerga
   //    o evento já gravado no `prior`.
   const now = new Date()
-  const commercialDay = getCommercialDay(now)
+  const commercialDay = brasiliaDay(now)
   const isHighIntent = HIGH_INTENT_TYPES.includes(eventType)
   const isClassicPlacement =
     eventType === 'classic_exposure' || eventType === 'classic_click'

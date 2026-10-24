@@ -1,10 +1,10 @@
 import {
+  BRASILIA_TIME_ZONE,
   getEventEnd,
   getValidationWindow
 } from '@findsports_oficial/db/event-window'
 import type { ReservationStatus } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
-import { COMMERCIAL_TIME_ZONE } from './commercial-analytics/commercial-day'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import type { JanelaLimite } from './rate-limit-store'
 
@@ -88,7 +88,7 @@ export function assertReservationConfirmed(status: ReservationStatus): void {
 
 /** "12/09, 18:30", no fuso em que os bares operam. */
 const windowDateFormat = new Intl.DateTimeFormat('pt-BR', {
-  timeZone: COMMERCIAL_TIME_ZONE,
+  timeZone: BRASILIA_TIME_ZONE,
   day: '2-digit',
   month: '2-digit',
   hour: '2-digit',

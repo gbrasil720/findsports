@@ -1,4 +1,5 @@
 import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
+import { brasiliaDayStart } from '@findsports_oficial/db/event-window'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { adminProcedure, pubProcedure, router } from '../index'
@@ -6,7 +7,6 @@ import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
   assertAnalyticsPeriodAllowed,
-  COMMERCIAL_TIME_ZONE,
   getAnalyticsEntitlements,
   getComparisonMetrics,
   getMyAnalyticsOverview,
@@ -17,16 +17,6 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const dateTimeParts = new Intl.DateTimeFormat('en-CA', {
-  timeZone: COMMERCIAL_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hourCycle: 'h23'
-})
 
 export const analyticsDateSchema = z
   .string()
@@ -44,48 +34,6 @@ export const comparisonTargetSchema = z.discriminatedUnion('type', [
   })
 ])
 
-function startOfCommercialDay(date: string): Date {
-  const [year, month, day] = date.split('-').map(Number) as [
-    number,
-    number,
-    number
-  ]
-  const target = Date.UTC(year, month - 1, day)
-  let instant = target
-
-  // Duas passagens resolvem o deslocamento IANA sem fixar UTC-3 e continuam
-  // corretas se a regra de horário de verão de São Paulo mudar no futuro.
-  for (let pass = 0; pass < 2; pass += 1) {
-    const parts = Object.fromEntries(
-      dateTimeParts
-        .formatToParts(new Date(instant))
-        .filter((part) => part.type !== 'literal')
-        .map((part) => [part.type, Number(part.value)])
-    )
-    if (
-      parts.year === undefined ||
-      parts.month === undefined ||
-      parts.day === undefined ||
-      parts.hour === undefined ||
-      parts.minute === undefined ||
-      parts.second === undefined
-    ) {
-      throw new Error('Intl não retornou uma data comercial completa')
-    }
-    const observed = Date.UTC(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      parts.second
-    )
-    instant += target - observed
-  }
-
-  return new Date(instant)
-}
-
 function nextDate(date: string): string {
   const next = new Date(`${date}T00:00:00.000Z`)
   next.setUTCDate(next.getUTCDate() + 1)
@@ -98,10 +46,10 @@ export function parseAnalyticsRange(input: { from: string; to: string }): {
   periodDays: number
 } {
   const from = DATE_ONLY_PATTERN.test(input.from)
-    ? startOfCommercialDay(input.from)
+    ? brasiliaDayStart(input.from)
     : new Date(input.from)
   const to = DATE_ONLY_PATTERN.test(input.to)
-    ? new Date(startOfCommercialDay(nextDate(input.to)).getTime() - 1)
+    ? new Date(brasiliaDayStart(nextDate(input.to)).getTime() - 1)
     : new Date(input.to)
 
   if (from.getTime() > to.getTime()) {

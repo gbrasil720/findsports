@@ -1,5 +1,6 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+
 const DAY_MS = 24 * 60 * 60 * 1000
-const COMMERCIAL_TIME_ZONE = 'America/Sao_Paulo'
 
 export type AnalyticsPeriodPreset = '30d' | '12m' | 'all' | 'custom'
 
@@ -13,17 +14,6 @@ export const ANALYTICS_PERIOD_OPTIONS = [
   { id: '12m', label: '12 meses', maxDays: 365 },
   { id: 'all', label: 'Tudo', maxDays: null }
 ] as const
-
-const commercialDateFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: COMMERCIAL_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-})
-
-export function toCommercialDate(date: Date): string {
-  return commercialDateFormatter.format(date)
-}
 
 function shiftDate(date: string, days: number): string {
   const shifted = new Date(`${date}T12:00:00.000Z`)
@@ -41,7 +31,7 @@ export function getAnalyticsRange(
   now = new Date(),
   since = now
 ): AnalyticsDateRange {
-  const to = toCommercialDate(now)
+  const to = brasiliaDay(now)
 
   switch (preset) {
     case '30d':
@@ -49,7 +39,7 @@ export function getAnalyticsRange(
     case '12m':
       return { from: shiftDate(to, -364), to }
     case 'all':
-      return { from: toCommercialDate(since), to }
+      return { from: brasiliaDay(since), to }
   }
 }
 

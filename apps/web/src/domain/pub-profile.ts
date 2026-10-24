@@ -1,8 +1,8 @@
-import {
-  COMMERCIAL_TIME_ZONE,
-  getCommercialDay
-} from '@findsports_oficial/api/lib/commercial-analytics/commercial-day'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { buildDirectionsUrl } from '@/lib/maps-link'
@@ -160,8 +160,8 @@ export function formatDayLabel(
   now: Date = new Date(),
   weekday: 'long' | 'short' = 'long'
 ): string {
-  const day = getCommercialDay(date)
-  const today = getCommercialDay(now)
+  const day = brasiliaDay(date)
+  const today = brasiliaDay(now)
 
   if (day === today) return 'Hoje'
   if (day === nextDay(today)) return 'Amanhã'
@@ -170,7 +170,7 @@ export function formatDayLabel(
     weekday,
     day: weekday === 'long' ? '2-digit' : 'numeric',
     month: 'short',
-    timeZone: COMMERCIAL_TIME_ZONE
+    timeZone: BRASILIA_TIME_ZONE
   })
 }
 
@@ -178,7 +178,7 @@ export function formatEventTime(date: Date): string {
   return date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: COMMERCIAL_TIME_ZONE
+    timeZone: BRASILIA_TIME_ZONE
   })
 }
 
@@ -202,7 +202,7 @@ export function groupEventsByDay<T extends ProfileEvent>(
   for (const event of [...events].sort(
     (a, b) => a.startsAt.getTime() - b.startsAt.getTime()
   )) {
-    const key = getCommercialDay(event.startsAt)
+    const key = brasiliaDay(event.startsAt)
     const group = groups.get(key)
 
     if (group) {
