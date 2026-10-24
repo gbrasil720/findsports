@@ -163,10 +163,14 @@ export function CancelPlanDialog({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <span className="font-semibold text-[13.5px]">
+        <span id="motivo-cancelamento" className="font-semibold text-[13.5px]">
           Por que está cancelando?
         </span>
-        <div className="flex flex-wrap gap-1.5">
+        <div
+          role="group"
+          aria-labelledby="motivo-cancelamento"
+          className="flex flex-wrap gap-1.5"
+        >
           {CANCEL_REASONS.map((motivo) => (
             <Chip
               key={motivo.id}
