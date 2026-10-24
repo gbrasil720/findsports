@@ -630,7 +630,8 @@ invente layout que o projeto não tem.
 - **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
   - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
     do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
-    `pubs.search` com o rascunho). "Quando" conta jogos por dia com `pubs.gameDays`. "Só
+    `pubs.search` com o rascunho, montada por `searchInput` de `lib/filters.ts`, a mesma do
+    mapa: mesmo raio e o mesmo limite de 30, então o botão diz "Ver 30+"). "Quando" conta jogos por dia com `pubs.gameDays`. "Só
     bares com jogo publicado" (`gamesOnly`) esconde os bares sem jogo da lista e do mapa;
     nasce desligado, ao contrário do design. Ficaram de fora Pix, Cartão e
     Vale-refeição separados (o cadastro tem "Pix e cartão" junto).
@@ -710,14 +711,21 @@ invente layout que o projeto não tem.
   vivo, próximos jogos, oferta, nota, 34 presenças, todas as características). Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
 - **Tema escuro:** o design só desenha conta, onboarding e avulsas no claro; no escuro valem
-  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. As cores que
-  seguem o tema estão em `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`, `LINE`,
-  `DROP`, `EDGE`, `SPARK`, e `themed(claro, escuro)` para um valor avulso): são
-  `DynamicColorIOS`, trocam sozinhas e servem no `StyleSheet` de módulo e no SVG. Onde a cor
-  é calculada em JS (`interpolateColor`, gradiente, imagem, tom do `Glass`) use
-  `useColorScheme`. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
-  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as cores
-  dinâmicas ficam no claro.
+  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. **Uma tabela de
+  cores só**, `PALETTE` em `components/theme.tsx` (claro e escuro), lida de dois jeitos:
+  `usePalette()`, que lê o `PaletteProvider` montado em `app/_layout` (cor calculada em JS:
+  `palette.dark ? … : …`, `interpolateColor`, gradiente, tom do `Glass`; é a forma que vale
+  no Android), e as constantes de `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`,
+  `LINE`, `DROP`, `EDGE`, `SPARK`…), que saem da mesma tabela como `DynamicColorIOS`: trocam
+  sozinhas e servem no `StyleSheet` de módulo e no SVG, sem hook. Cor nova que mais de uma
+  peça usa entra na tabela; `themed(claro, escuro)` fica para um valor avulso de um lugar
+  só. Peça não recebe a paleta por prop: chama `usePalette()`. Trocar uma cor de uma peça
+  é prop dela (`Card fill`, `shadow`); um trecho com outra paleta (o ingresso claro sobre a
+  tela escura) vai dentro de `<PaletteProvider value={…}>`, que vale para tudo dentro dele.
+  A IA (`components/ai/theme.ts`) e a medalha (`useMedalPalette`) estendem a tabela com as
+  cores só delas. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
+  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as
+  constantes dinâmicas ficam no claro.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
